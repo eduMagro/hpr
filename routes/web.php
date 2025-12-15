@@ -81,6 +81,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/epis/api/compras/{compra}', [EpisController::class, 'apiCompra'])->name('epis.api.compras.show');
     Route::post('/epis/api/compras/{compra}', [EpisController::class, 'apiActualizarCompra'])->name('epis.api.compras.update'); // _method PATCH
     Route::get('/epis/compra/{compra}/ticket', [EpisController::class, 'ticketCompra'])->name('epis.compras.ticket');
+    Route::post('/epis/import', [EpisController::class, 'importarDesdeExcel'])->name('epis.import');
     Route::get('/epis/imagen/{epi}', [EpisController::class, 'imagen'])->name('epis.imagen');
 
     Route::post('/epis/catalogo', [EpisController::class, 'storeEpi'])->name('epis.catalogo.store');
@@ -89,6 +90,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/epis/usuarios/{user}/asignaciones', [EpisController::class, 'asignarAUsuario'])->name('epis.usuarios.asignaciones.store');
     Route::patch('/epis/usuarios/{user}/asignaciones/{asignacion}/devolver', [EpisController::class, 'devolverAsignacion'])->name('epis.usuarios.asignaciones.devolver');
+    Route::patch('/epis/usuarios/{user}/asignaciones/{asignacion}/fechas', [EpisController::class, 'actualizarFechasAsignacion'])->name('epis.usuarios.asignaciones.fechas');
 });
 
 // Rutas antiguas redirigidas (compatibilidad)

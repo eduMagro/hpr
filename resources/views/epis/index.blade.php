@@ -65,6 +65,13 @@
                             @click="openCatalog()">
                             Gestionar EPIs
                         </button>
+                        <input type="file" class="hidden" x-ref="epiImportInput" accept=".xlsx,.xls"
+                            @change="handleImportFile">
+                        <button type="button"
+                            class="hidden px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 whitespace-nowrap disabled:opacity-50"
+                            :disabled="importUploading" @click="$refs.epiImportInput.click()">
+                            <span x-text="importUploading ? 'Importando…' : 'Importar Excel'"></span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -329,7 +336,8 @@
 
                                     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
                                         <div class="px-6 py-4 border-b border-gray-100">
-                                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                            <div
+                                                class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                                 <h3 class="font-semibold text-gray-900">EPIs en posesión</h3>
                                                 <input type="text" x-model="userEpiFilterQuery"
                                                     placeholder="Filtrar por producto…"
@@ -440,11 +448,107 @@
                                                                             </div>
 
                                                                             <template x-if="!a.devuelto_en">
+                                                                                <div class="flex gap-2 flex-wrap">
+                                                                                    <button type="button"
+                                                                                        class="px-2 py-1 rounded-lg bg-white border border-gray-300 text-gray-900 hover:bg-gray-100 disabled:opacity-50"
+                                                                                        :disabled="saving"
+                                                                                        @click.stop="openFechaModal(a, 'entrega')">
+                                                                                        <svg viewBox="0 0 24 24"
+                                                                                            class="h-7 w-7"
+                                                                                            fill="none"
+                                                                                            xmlns="http://www.w3.org/2000/svg">
+                                                                                            <g id="SVGRepo_bgCarrier"
+                                                                                                stroke-width="0"></g>
+                                                                                            <g id="SVGRepo_tracerCarrier"
+                                                                                                stroke-linecap="round"
+                                                                                                stroke-linejoin="round">
+                                                                                            </g>
+                                                                                            <g
+                                                                                                id="SVGRepo_iconCarrier">
+                                                                                                <path
+                                                                                                    d="M6.94028 2C7.35614 2 7.69326 2.32421 7.69326 2.72414V4.18487C8.36117 4.17241 9.10983 4.17241 9.95219 4.17241H13.9681C14.8104 4.17241 15.5591 4.17241 16.227 4.18487V2.72414C16.227 2.32421 16.5641 2 16.98 2C17.3958 2 17.733 2.32421 17.733 2.72414V4.24894C19.178 4.36022 20.1267 4.63333 20.8236 5.30359C21.5206 5.97385 21.8046 6.88616 21.9203 8.27586L22 9H2.92456H2V8.27586C2.11571 6.88616 2.3997 5.97385 3.09665 5.30359C3.79361 4.63333 4.74226 4.36022 6.1873 4.24894V2.72414C6.1873 2.32421 6.52442 2 6.94028 2Z"
+                                                                                                    fill="#000000">
+                                                                                                </path>
+                                                                                                <path opacity="0.5"
+                                                                                                    d="M21.9995 14.0001V12.0001C21.9995 11.161 21.9963 9.66527 21.9834 9H2.00917C1.99626 9.66527 1.99953 11.161 1.99953 12.0001V14.0001C1.99953 17.7713 1.99953 19.6569 3.1711 20.8285C4.34267 22.0001 6.22829 22.0001 9.99953 22.0001H13.9995C17.7708 22.0001 19.6564 22.0001 20.828 20.8285C21.9995 19.6569 21.9995 17.7713 21.9995 14.0001Z"
+                                                                                                    fill="#000000">
+                                                                                                </path>
+                                                                                                <path
+                                                                                                    d="M18 17C18 17.5523 17.5523 18 17 18C16.4477 18 16 17.5523 16 17C16 16.4477 16.4477 16 17 16C17.5523 16 18 16.4477 18 17Z"
+                                                                                                    fill="#000000">
+                                                                                                </path>
+                                                                                                <path
+                                                                                                    d="M18 13C18 13.5523 17.5523 14 17 14C16.4477 14 16 13.5523 16 13C16 12.4477 16.4477 12 17 12C17.5523 12 18 12.4477 18 13Z"
+                                                                                                    fill="#000000">
+                                                                                                </path>
+                                                                                                <path
+                                                                                                    d="M13 17C13 17.5523 12.5523 18 12 18C11.4477 18 11 17.5523 11 17C11 16.4477 11.4477 16 12 16C12.5523 16 13 16.4477 13 17Z"
+                                                                                                    fill="#000000">
+                                                                                                </path>
+                                                                                                <path
+                                                                                                    d="M13 13C13 13.5523 12.5523 14 12 14C11.4477 14 11 13.5523 11 13C11 12.4477 11.4477 12 12 12C12.5523 12 13 12.4477 13 13Z"
+                                                                                                    fill="#000000">
+                                                                                                </path>
+                                                                                                <path
+                                                                                                    d="M8 17C8 17.5523 7.55228 18 7 18C6.44772 18 6 17.5523 6 17C6 16.4477 6.44772 16 7 16C7.55228 16 8 16.4477 8 17Z"
+                                                                                                    fill="#000000">
+                                                                                                </path>
+                                                                                                <path
+                                                                                                    d="M8 13C8 13.5523 7.55228 14 7 14C6.44772 14 6 13.5523 6 13C6 12.4477 6.44772 12 7 12C7.55228 12 8 12.4477 8 13Z"
+                                                                                                    fill="#000000">
+                                                                                                </path>
+                                                                                            </g>
+                                                                                        </svg>
+                                                                                    </button>
+                                                                                    <button type="button"
+                                                                                        class="px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50"
+                                                                                        :disabled="saving"
+                                                                                        @click.stop="markReturned(a)">
+                                                                                        Marcar devuelto
+                                                                                    </button>
+                                                                                </div>
+                                                                            </template>
+                                                                            <template x-if="a.devuelto_en">
                                                                                 <button type="button"
-                                                                                    class="px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50"
+                                                                                    class="px-2 py-1 rounded-lg bg-white border border-gray-300 text-gray-900 hover:bg-gray-100 disabled:opacity-50"
                                                                                     :disabled="saving"
-                                                                                    @click.stop="markReturned(a)">
-                                                                                    Marcar devuelto
+                                                                                    @click.stop="openFechaModal(a, 'devolucion')">
+                                                                                    <svg viewBox="0 0 24 24"
+                                                                                        class="h-7 w-7" fill="none"
+                                                                                        xmlns="http://www.w3.org/2000/svg">
+                                                                                        <g id="SVGRepo_bgCarrier"
+                                                                                            stroke-width="0"></g>
+                                                                                        <g id="SVGRepo_tracerCarrier"
+                                                                                            stroke-linecap="round"
+                                                                                            stroke-linejoin="round">
+                                                                                        </g>
+                                                                                        <g id="SVGRepo_iconCarrier">
+                                                                                            <path
+                                                                                                d="M6.94028 2C7.35614 2 7.69326 2.32421 7.69326 2.72414V4.18487C8.36117 4.17241 9.10983 4.17241 9.95219 4.17241H13.9681C14.8104 4.17241 15.5591 4.17241 16.227 4.18487V2.72414C16.227 2.32421 16.5641 2 16.98 2C17.3958 2 17.733 2.32421 17.733 2.72414V4.24894C19.178 4.36022 20.1267 4.63333 20.8236 5.30359C21.5206 5.97385 21.8046 6.88616 21.9203 8.27586L22 9H2.92456H2V8.27586C2.11571 6.88616 2.3997 5.97385 3.09665 5.30359C3.79361 4.63333 4.74226 4.36022 6.1873 4.24894V2.72414C6.1873 2.32421 6.52442 2 6.94028 2Z"
+                                                                                                fill="#000000"></path>
+                                                                                            <path opacity="0.5"
+                                                                                                d="M21.9995 14.0001V12.0001C21.9995 11.161 21.9963 9.66527 21.9834 9H2.00917C1.99626 9.66527 1.99953 11.161 1.99953 12.0001V14.0001C1.99953 17.7713 1.99953 19.6569 3.1711 20.8285C4.34267 22.0001 6.22829 22.0001 9.99953 22.0001H13.9995C17.7708 22.0001 19.6564 22.0001 20.828 20.8285C21.9995 19.6569 21.9995 17.7713 21.9995 14.0001Z"
+                                                                                                fill="#000000"></path>
+                                                                                            <path
+                                                                                                d="M18 17C18 17.5523 17.5523 18 17 18C16.4477 18 16 17.5523 16 17C16 16.4477 16.4477 16 17 16C17.5523 16 18 16.4477 18 17Z"
+                                                                                                fill="#000000"></path>
+                                                                                            <path
+                                                                                                d="M18 13C18 13.5523 17.5523 14 17 14C16.4477 14 16 13.5523 16 13C16 12.4477 16.4477 12 17 12C17.5523 12 18 12.4477 18 13Z"
+                                                                                                fill="#000000"></path>
+                                                                                            <path
+                                                                                                d="M13 17C13 17.5523 12.5523 18 12 18C11.4477 18 11 17.5523 11 17C11 16.4477 11.4477 16 12 16C12.5523 16 13 16.4477 13 17Z"
+                                                                                                fill="#000000"></path>
+                                                                                            <path
+                                                                                                d="M13 13C13 13.5523 12.5523 14 12 14C11.4477 14 11 13.5523 11 13C11 12.4477 11.4477 12 12 12C12.5523 12 13 12.4477 13 13Z"
+                                                                                                fill="#000000"></path>
+                                                                                            <path
+                                                                                                d="M8 17C8 17.5523 7.55228 18 7 18C6.44772 18 6 17.5523 6 17C6 16.4477 6.44772 16 7 16C7.55228 16 8 16.4477 8 17Z"
+                                                                                                fill="#000000"></path>
+                                                                                            <path
+                                                                                                d="M8 13C8 13.5523 7.55228 14 7 14C6.44772 14 6 13.5523 6 13C6 12.4477 6.44772 12 7 12C7.55228 12 8 12.4477 8 13Z"
+                                                                                                fill="#000000"></path>
+                                                                                        </g>
+                                                                                    </svg>
                                                                                 </button>
                                                                             </template>
                                                                         </div>
@@ -758,6 +862,61 @@
             </div>
         </div>
 
+
+        <!-- Modal: editar fechas de asignacion -->
+        <div x-cloak x-show="editFechaModalOpen" x-transition.opacity
+            class="fixed inset-0 z-[20050] flex items-end sm:items-center justify-center">
+            <div class="absolute inset-0 bg-black/50" @click="closeFechaModal()"></div>
+
+            <div
+                class="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
+                <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div class="min-w-0">
+                        <p class="text-xs uppercase tracking-wide text-gray-500">EPIs</p>
+                        <p class="font-semibold text-gray-900 truncate"
+                            x-text="editFechaTipo === 'entrega' ? 'Editar fecha de entrega' : 'Editar fecha de devoluci?n'">
+                        </p>
+                    </div>
+
+                    <button type="button" class="p-2 rounded-lg hover:bg-gray-100" @click="closeFechaModal()"
+                        aria-label="Cerrar">
+                        <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="p-5 space-y-4 overflow-y-auto">
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                        <p class="text-sm text-gray-700">Fecha actual:</p>
+                        <p class="text-lg font-semibold text-gray-900" x-text="editFechaAnterior || 'N/D'"></p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1"
+                            x-text="editFechaTipo === 'entrega' ? 'Nueva fecha de entrega' : 'Nueva fecha de devoluci?n'"></label>
+                        <input type="date"
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                            x-model="editFechaNueva">
+                        <p class="text-xs text-gray-500 mt-1">Si dejas el campo vac?o no se aplicar? ning?n cambio.</p>
+                    </div>
+                </div>
+
+                <div class="px-5 py-4 border-t border-gray-100 flex justify-end gap-3">
+                    <button type="button" class="px-4 py-2 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200"
+                        @click="closeFechaModal()">
+                        Cancelar
+                    </button>
+                    <button type="button"
+                        class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                        :disabled="editFechaSaving" @click="saveFechaAsignacion()">
+                        <span x-text="editFechaSaving ? 'Guardando?' : 'Guardar'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal: compras -->
         <div x-cloak x-show="comprasOpen" x-transition.opacity
             class="fixed inset-0 z-[21000] flex items-end sm:items-center justify-center">
@@ -798,8 +957,7 @@
                         <div class="sm:col-span-4">
                             <label class="block text-xs font-medium text-gray-700 mb-1">Buscar por producto</label>
                             <div class="relative" data-compras-filter-epi-suggest>
-                                <input type="text"
-                                    x-model="comprasFilterEpiQuery"
+                                <input type="text" x-model="comprasFilterEpiQuery"
                                     @input="onComprasFilterEpiQueryChange()"
                                     @keydown.escape="closeComprasFilterEpiSuggestions()"
                                     @focus="openComprasFilterEpiSuggestions()"
@@ -816,20 +974,25 @@
                                             <button type="button"
                                                 class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3"
                                                 @click="selectComprasFilterEpi(e)">
-                                                <div class="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                                <div
+                                                    class="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
                                                     <template x-if="e.imagen_url">
-                                                        <img :src="e.imagen_url" :alt="`Imagen de ${e.nombre}`" class="w-full h-full object-cover" />
+                                                        <img :src="e.imagen_url" :alt="`Imagen de ${e.nombre}`"
+                                                            class="w-full h-full object-cover" />
                                                     </template>
                                                     <template x-if="!e.imagen_url">
                                                         <span class="text-gray-500 text-xs">Sin img</span>
                                                     </template>
                                                 </div>
                                                 <div class="min-w-0 flex-1">
-                                                    <p class="text-sm font-semibold text-gray-900 truncate" x-text="e.nombre"></p>
+                                                    <p class="text-sm font-semibold text-gray-900 truncate"
+                                                        x-text="e.nombre"></p>
                                                     <p class="text-xs text-gray-600 truncate">
-                                                        <span x-text="e.codigo ? `Código: ${e.codigo}` : 'Sin código'"></span>
+                                                        <span
+                                                            x-text="e.codigo ? `Código: ${e.codigo}` : 'Sin código'"></span>
                                                         <span class="mx-1">·</span>
-                                                        <span x-text="e.categoria ? `Categoría: ${e.categoria}` : 'Sin categoría'"></span>
+                                                        <span
+                                                            x-text="e.categoria ? `Categoría: ${e.categoria}` : 'Sin categoría'"></span>
                                                     </p>
                                                 </div>
                                             </button>
@@ -840,7 +1003,8 @@
                                 <template x-if="comprasFilterEpiId">
                                     <div class="mt-2 flex items-center justify-between gap-2">
                                         <p class="text-xs text-gray-600 truncate">
-                                            Filtrando por: <span class="font-medium" x-text="comprasFilterEpiLabel"></span>
+                                            Filtrando por: <span class="font-medium"
+                                                x-text="comprasFilterEpiLabel"></span>
                                         </p>
                                         <button type="button"
                                             class="text-xs px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200"
@@ -866,7 +1030,8 @@
                     <div class="space-y-3" x-show="!comprasLoading && compras.length > 0">
                         <template x-for="c in compras" :key="c.id">
                             <div class="p-4 border rounded-xl"
-                                :class="c.items?.some(it => it.precio_unitario === null || it.precio_unitario === undefined || it.precio_unitario === '') ? 'border-yellow-400' : 'border-gray-200'">
+                                :class="c.items?.some(it => it.precio_unitario === null || it.precio_unitario === undefined ||
+                                    it.precio_unitario === '') ? 'border-yellow-400' : 'border-gray-200'">
                                 <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                                     <div class="min-w-0">
                                         <p class="text-sm font-semibold text-gray-900 truncate"
@@ -878,13 +1043,18 @@
                                             <span class="mx-1">·</span>
                                             <span x-text="`Total: ${formatMoney(c.total ?? 0)}`"></span>
                                             <span class="mx-1">·</span>
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-                                                :class="c.estado === 'comprada' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
-                                                <span x-text="c.estado === 'comprada' ? 'comprada' : 'pendiente'"></span>
+                                            <span
+                                                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                                                :class="c.estado === 'comprada' ? 'bg-green-100 text-green-800' :
+                                                    'bg-yellow-100 text-yellow-800'">
+                                                <span
+                                                    x-text="c.estado === 'comprada' ? 'comprada' : 'pendiente'"></span>
                                             </span>
                                         </p>
-                                        <template x-if="c.items?.some(it => it.precio_unitario === null || it.precio_unitario === undefined || it.precio_unitario === '')">
-                                            <p class="text-xs text-yellow-800 mt-2">Faltan precios en algunos productos.</p>
+                                        <template
+                                            x-if="c.items?.some(it => it.precio_unitario === null || it.precio_unitario === undefined || it.precio_unitario === '')">
+                                            <p class="text-xs text-yellow-800 mt-2">Faltan precios en algunos
+                                                productos.</p>
                                         </template>
                                     </div>
 
@@ -1093,6 +1263,7 @@
                 allUsers: [],
                 agendaUsers: [],
                 loadingUsers: true,
+                importUploading: false,
 
                 modalOpen: false,
                 modalTab: 'usuario', // usuario | catalogo
@@ -1104,6 +1275,12 @@
                 userTotalEnPosesion: 0,
                 loadingAsignaciones: false,
                 expandedEpiId: null,
+                editFechaModalOpen: false,
+                editFechaAsignacion: null,
+                editFechaTipo: 'entrega', // entrega | devolucion
+                editFechaAnterior: '',
+                editFechaNueva: '',
+                editFechaSaving: false,
 
                 epis: [],
                 loadingEpis: false,
@@ -1257,6 +1434,33 @@
                         ...options,
                         headers
                     });
+                },
+
+                async handleImportFile(event) {
+                    const file = event?.target?.files?.[0];
+                    if (!file) return;
+                    this.importUploading = true;
+                    try {
+                        const fd = new FormData();
+                        fd.append('file', file);
+                        const res = await this.api(@js(route('epis.import')), {
+                            method: 'POST',
+                            body: fd
+                        });
+                        const data = await res.json();
+                        if (!res.ok || data.ok === false) {
+                            alert(data.message || 'No se pudo importar el Excel.');
+                            return;
+                        }
+                        alert(data.message || 'ImportaciÃ³n completada.');
+                        await this.refreshUsers();
+                        if (this.selectedUser && data.user && data.user.id === this.selectedUser.id) {
+                            await this.refreshAsignaciones();
+                        }
+                    } finally {
+                        this.importUploading = false;
+                        if (event?.target) event.target.value = '';
+                    }
                 },
 
                 normalize(str) {
@@ -1440,6 +1644,60 @@
                     const d = new Date(iso);
                     if (Number.isNaN(d.getTime())) return '—';
                     return d.toLocaleString('es-ES');
+                },
+
+                isoToDateValue(iso) {
+                    if (!iso) return '';
+                    const d = new Date(iso);
+                    if (Number.isNaN(d.getTime())) return '';
+                    return d.toISOString().slice(0, 10);
+                },
+
+                openFechaModal(a, tipo = 'entrega') {
+                    this.editFechaTipo = tipo;
+                    this.editFechaAsignacion = a;
+                    const iso = tipo === 'entrega' ? (a.entregado_en || a.fecha_asignacion) : a.devuelto_en;
+                    this.editFechaAnterior = this.formatDate(iso);
+                    this.editFechaNueva = this.isoToDateValue(iso);
+                    this.editFechaModalOpen = true;
+                },
+
+                closeFechaModal() {
+                    this.editFechaModalOpen = false;
+                    this.editFechaAsignacion = null;
+                    this.editFechaNueva = '';
+                    this.editFechaAnterior = '';
+                    this.editFechaTipo = 'entrega';
+                },
+
+                async saveFechaAsignacion() {
+                    if (!this.selectedUser || !this.editFechaAsignacion) return;
+                    this.editFechaSaving = true;
+                    try {
+                        const url = @js(url('/epis/usuarios/__UID__/asignaciones/__AID__/fechas'))
+                            .replace('__UID__', this.selectedUser.id)
+                            .replace('__AID__', this.editFechaAsignacion.id);
+                        const payload = {};
+                        if (this.editFechaTipo === 'entrega') {
+                            payload.fecha_entrega = this.editFechaNueva || null;
+                        } else {
+                            payload.fecha_devolucion = this.editFechaNueva || null;
+                        }
+
+                        const res = await this.api(url, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(payload),
+                        });
+                        if (!res.ok) throw new Error('No se pudo actualizar la fecha.');
+                        await this.refreshAsignaciones();
+                        await this.refreshUsers();
+                        this.closeFechaModal();
+                    } finally {
+                        this.editFechaSaving = false;
+                    }
                 },
 
                 formatMoney(value) {
@@ -1764,7 +2022,8 @@
                             g.asignaciones.sort((x, y) => {
                                 const xPosesion = x.devuelto_en ? 1 : 0;
                                 const yPosesion = y.devuelto_en ? 1 : 0;
-                                if (xPosesion !== yPosesion) return xPosesion - yPosesion; // en posesión primero
+                                if (xPosesion !== yPosesion) return xPosesion -
+                                    yPosesion; // en posesión primero
                                 return (y.fecha_asignacion || '').localeCompare(x.fecha_asignacion || '');
                             });
                             return g;

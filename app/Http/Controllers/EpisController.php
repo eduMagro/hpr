@@ -10,7 +10,12 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class EpisController extends Controller
 {
@@ -107,9 +112,11 @@ class EpisController extends Controller
                 });
             })
             ->withSum(
-                ['episAsignaciones as epis_en_posesion' => function ($query) {
-                    $query->whereNull('devuelto_en');
-                }],
+                [
+                    'episAsignaciones as epis_en_posesion' => function ($query) {
+                        $query->whereNull('devuelto_en');
+                    }
+                ],
                 'cantidad'
             )
             ->orderByDesc('epis_en_posesion')
@@ -178,12 +185,12 @@ class EpisController extends Controller
             ->limit(500)
             ->get();
 
-        $mappedAll = $all->map(fn (EpiUsuario $asignacion) => $this->mapAsignacion($asignacion))->values();
+        $mappedAll = $all->map(fn(EpiUsuario $asignacion) => $this->mapAsignacion($asignacion))->values();
 
-        $enPosesion = $mappedAll->filter(fn ($a) => empty($a['devuelto_en']))->values();
-        $historial = $mappedAll->filter(fn ($a) => !empty($a['devuelto_en']))->values();
+        $enPosesion = $mappedAll->filter(fn($a) => empty($a['devuelto_en']))->values();
+        $historial = $mappedAll->filter(fn($a) => !empty($a['devuelto_en']))->values();
         $recent = $mappedAll
-            ->sortByDesc(fn ($a) => $a['fecha_asignacion'] ?? '')
+            ->sortByDesc(fn($a) => $a['fecha_asignacion'] ?? '')
             ->take(10)
             ->values();
 
@@ -218,7 +225,7 @@ class EpisController extends Controller
             ->paginate($per, ['*'], 'page', $page);
 
         $items = $paginator->getCollection()
-            ->map(fn (EpiUsuario $asignacion) => $this->mapAsignacion($asignacion))
+            ->map(fn(EpiUsuario $asignacion) => $this->mapAsignacion($asignacion))
             ->values();
 
         return response()->json([
@@ -258,7 +265,7 @@ class EpisController extends Controller
             ->orderByDesc('created_at')
             ->limit(200)
             ->get()
-            ->map(fn (EpiCompra $c) => $this->mapCompra($c, true))
+            ->map(fn(EpiCompra $c) => $this->mapCompra($c, true))
             ->values();
 
         return response()->json(['compras' => $compras]);
@@ -588,5 +595,207 @@ class EpisController extends Controller
         $asignacion->save();
 
         return response()->json(['ok' => true]);
+    }
+
+    public function actualizarFechasAsignacion(User $user, EpiUsuario $asignacion, Request $request)
+    {
+        if ((int) $asignacion->user_id !== (int) $user->id) {
+            abort(404);
+        }
+
+        $data = $request->validate([
+            'fecha_entrega' => ['nullable', 'date'],
+            'fecha_devolucion' => ['nullable', 'date'],
+        ]);
+
+        if (!array_key_exists('fecha_entrega', $data) && !array_key_exists('fecha_devolucion', $data)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Debes indicar alguna fecha para actualizar.',
+            ], 422);
+        }
+
+        if (array_key_exists('fecha_entrega', $data)) {
+            $asignacion->entregado_en = $data['fecha_entrega']
+                ? Carbon::parse($data['fecha_entrega'])->startOfDay()
+                : null;
+        }
+
+        if (array_key_exists('fecha_devolucion', $data)) {
+            $asignacion->devuelto_en = $data['fecha_devolucion']
+                ? Carbon::parse($data['fecha_devolucion'])->startOfDay()
+                : null;
+        }
+
+        $asignacion->save();
+
+        return response()->json([
+            'ok' => true,
+            'asignacion' => $this->mapAsignacion($asignacion),
+        ]);
+    }
+
+    public function importarDesdeExcel(Request $request)
+    {
+        $data = $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls'],
+        ]);
+
+        $file = $data['file'];
+        $spreadsheet = IOFactory::load($file->getRealPath());
+
+        $totalAsignaciones = 0;
+        $usuariosProcesados = [];
+        $errores = [];
+
+        foreach ($spreadsheet->getAllSheets() as $sheet) {
+            $nombre = trim((string) $sheet->getCell('B1')->getValue());
+            $apellidos = trim((string) $sheet->getCell('B2')->getValue());
+            $fechaRaw = $sheet->getCell('B5')->getValue();
+
+            if ($nombre === '' || $apellidos === '') {
+                $errores[] = "Hoja {$sheet->getTitle()}: falta nombre o apellidos (B1/B2).";
+                continue;
+            }
+
+            $fechaEntrega = $this->excelValueToCarbon($fechaRaw);
+            if (!$fechaEntrega) {
+                $errores[] = "Hoja {$sheet->getTitle()}: fecha de entrega invÃ¡lida (B5).";
+                continue;
+            }
+
+            $user = $this->buscarUsuarioPorNombre($nombre, $apellidos);
+            if (!$user) {
+                $errores[] = "Hoja {$sheet->getTitle()}: usuario no encontrado ({$nombre} {$apellidos}).";
+                continue;
+            }
+
+            $highestColumn = Coordinate::columnIndexFromString($sheet->getHighestColumn());
+
+            for ($col = 2; $col <= $highestColumn; $col++) { // Columna B en adelante
+                $colLetter = Coordinate::stringFromColumnIndex($col);
+                $epiNombre = trim((string) $sheet->getCell($colLetter . '9')->getValue());
+                if ($epiNombre === '' || Str::startsWith(Str::lower($epiNombre), 'epi')) {
+                    continue;
+                }
+
+                // Cantidad estÃ¡ en fila 10 (correcciÃ³n)
+                $cantidadRaw = $sheet->getCell($colLetter . '10')->getCalculatedValue();
+                $cantidad = is_numeric($cantidadRaw) ? (int) $cantidadRaw : null;
+                if (!$cantidad || $cantidad <= 0) {
+                    continue;
+                }
+
+                // Notas: tomar valor de fila 11; si viene vacÃ­o, intentar fila 8
+                $nota = trim((string) $sheet->getCell($colLetter . '11')->getValue());
+                if ($nota === '') {
+                    $nota = trim((string) $sheet->getCell($colLetter . '8')->getValue());
+                }
+
+                $epi = Epi::firstOrCreate(
+                    ['nombre' => $epiNombre],
+                    ['activo' => true]
+                );
+
+                EpiUsuario::create([
+                    'user_id' => $user->id,
+                    'epi_id' => $epi->id,
+                    'cantidad' => $cantidad,
+                    'entregado_en' => $fechaEntrega,
+                    'devuelto_en' => null,
+                    'notas' => $nota !== '' ? $nota : null,
+                ]);
+
+                $totalAsignaciones++;
+            }
+
+            $usuariosProcesados[] = $user->nombre_completo ?? $user->name ?? "{$nombre} {$apellidos}";
+        }
+
+        return response()->json([
+            'ok' => empty($errores),
+            'asignaciones_creadas' => $totalAsignaciones,
+            'usuarios' => $usuariosProcesados,
+            'errores' => $errores,
+            'message' => "ImportaciÃ³n completada. Asignaciones creadas: {$totalAsignaciones}.",
+        ]);
+    }
+
+    private function buscarUsuarioPorNombre(string $nombre, string $apellidos): ?User
+    {
+        $nombreNorm = $this->normalizarNombre($nombre);
+        $apellidosNorm = $this->normalizarNombre($apellidos);
+        $apellidoTokens = array_filter(explode(' ', $apellidosNorm));
+
+        return User::all()->first(function (User $u) use ($nombreNorm, $apellidosNorm, $apellidoTokens) {
+            $full = trim(($u->name ?? '') . ' ' . ($u->primer_apellido ?? '') . ' ' . ($u->segundo_apellido ?? ''));
+            $fullNorm = $this->normalizarNombre($full);
+
+            if ($fullNorm === trim($nombreNorm . ' ' . $apellidosNorm)) {
+                return true; // match exact nombre + apellidos
+            }
+
+            $userNombre = $this->normalizarNombre($u->name ?? '');
+            $userApellido1 = $this->normalizarNombre($u->primer_apellido ?? '');
+            $userApellido2 = $this->normalizarNombre($u->segundo_apellido ?? '');
+
+            // Requerir coincidencia de nombre
+            if ($userNombre !== $nombreNorm) {
+                return false;
+            }
+
+            // Coincidencia flexible: si el primer token del apellido del Excel coincide con primer_apellido del usuario
+            $primerToken = $apellidoTokens[0] ?? '';
+            if ($primerToken !== '' && $primerToken === $userApellido1) {
+                // Si hay segundo token en Excel, que coincida con segundo_apellido si existe
+                if (isset($apellidoTokens[1])) {
+                    return $apellidoTokens[1] === $userApellido2;
+                }
+                return true; // solo primer apellido en Excel
+            }
+
+            // Fallback: todos los tokens de apellidos del Excel estÃ¡n contenidos en la representaciÃ³n de apellidos del usuario
+            $userApellidosNorm = trim($userApellido1 . ' ' . $userApellido2);
+            foreach ($apellidoTokens as $token) {
+                if ($token === '') {
+                    continue;
+                }
+                if (!Str::contains($userApellidosNorm, $token)) {
+                    return false;
+                }
+            }
+            return !empty($apellidoTokens);
+        });
+    }
+
+    private function normalizarNombre(string $value): string
+    {
+        return Str::of($value)
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/\\s+/', ' ')
+            ->trim()
+            ->toString();
+    }
+
+    private function excelValueToCarbon($value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            try {
+                return Carbon::instance(ExcelDate::excelToDateTimeObject($value))->startOfDay();
+            } catch (\Throwable $e) {
+                return null;
+            }
+        }
+
+        try {
+            return Carbon::parse($value)->startOfDay();
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 }
