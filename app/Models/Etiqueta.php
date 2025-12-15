@@ -30,8 +30,6 @@ class Etiqueta extends Model
         'planilla_id',
         'paquete_id',
         'grupo_resumen_id',
-        'producto_id',
-        'producto_id_2',
         'ubicacion_id',
         'operario1_id',
         'operario2_id',

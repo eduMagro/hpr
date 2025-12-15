@@ -258,8 +258,8 @@ class EtiquetaController extends Controller
         $query = Etiqueta::with([
             'planilla:id,codigo,obra_id,cliente_id,seccion',
             'paquete:id,codigo',
-            'producto:id,codigo,nombre',
-            'producto2:id,codigo,nombre',
+            'producto:id,codigo',
+            'producto2:id,codigo',
             'soldador1:id,name,primer_apellido',
             'soldador2:id,name,primer_apellido',
             'ensamblador1:id,name,primer_apellido',
@@ -399,11 +399,6 @@ class EtiquetaController extends Controller
                 'disponible_en_maquina' => $disponible,
             ];
         }
-        log::info('Patrones corte simple', [
-            'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
-            'diametro_mm'    => $diametro,
-            'patrones'       => $patrones,
-        ]);
 
         // 🔠 Esquema tipo A + A + A
         $letra = 'A';
@@ -693,11 +688,7 @@ class EtiquetaController extends Controller
         }
 
         $htmlResumen = $this->construirHtmlResumenMultiLongitudes($longitudesBarraCm, $progresoPorLongitud);
-        log::info('Patrones corte optimizado', [
-            'etiqueta_sub_id'       => $etiquetaSubId,
-            'top_global_98'         => $topGlobal98,
-            'progreso_por_longitud' => $progresoPorLongitud,
-        ]);
+
         /* ─────────────────────────────
         |  7) Responder
         ───────────────────────────── */
@@ -1317,7 +1308,6 @@ class EtiquetaController extends Controller
                 opciones: $opciones
             );
 
-            log::info("Delegando actualización de etiqueta {$dto->etiquetaSubId} a servicio para máquina {$maquina->id} ({$maquina->tipo}, operario1Id={$dto->operario1Id}, operario2Id={$dto->operario2Id})");
             /** @var \App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio $fabrica */
             $fabrica = app(\App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio::class);
             $servicio = $fabrica->porMaquina($maquina);
@@ -1327,6 +1317,7 @@ class EtiquetaController extends Controller
 
             // 🔄 Refrescar la etiqueta desde la base de datos para obtener el peso actualizado
             $etiqueta->refresh();
+            $etiqueta->load(['producto', 'producto2']);
 
             // Extraer coladas únicas de los productos afectados
             $coladas = collect($resultado->productosAfectados)
@@ -1407,6 +1398,9 @@ class EtiquetaController extends Controller
                 'productos_afectados' => $resultado->productosAfectados,
                 'coladas' => $coladas,
                 'coladas_por_elemento' => $coladasPorElemento,
+                // Coladas de la etiqueta (asignadas en primer y segundo clic)
+                'producto_n_colada' => $etiqueta->producto?->n_colada,
+                'producto2_n_colada' => $etiqueta->producto2?->n_colada,
                 'warnings' => $resultado->warnings,
                 'metricas' => $resultado->metricas,
                 'fecha_inicio' => optional($etiqueta->fecha_inicio)->format('d-m-Y H:i:s'),
@@ -1503,7 +1497,6 @@ class EtiquetaController extends Controller
             // Convertir los diámetros requeridos a enteros
             // 2) Diámetros requeridos (normalizados)
             $diametrosRequeridos = array_map('intval', array_keys($diametrosConPesos));
-            Log::info("🔍 Diametros requeridos", $diametrosRequeridos);
 
             // Si por alguna razón no hay diametros (p.ej. diametro null en elementos), intenta derivarlos
             if (empty($diametrosRequeridos)) {
@@ -1514,12 +1507,10 @@ class EtiquetaController extends Controller
                     ->values()
                     ->all();
                 $diametrosRequeridos = $derivados;
-                Log::info('🔄 Diametros requeridos derivados de elementos', $diametrosRequeridos);
             }
             // -------------------------------------------- ESTADO PENDIENTE --------------------------------------------
             switch ($etiqueta->estado) {
                 case 'pendiente':
-                    log::info("Etiqueta {$id}: estado pendiente");
                     // Si la etiqueta está pendiente, verificar si ya están todos los elementos fabricados
                     if ($numeroElementosCompletadosEnMaquina >= $numeroElementosTotalesEnEtiqueta) {
                         // Actualizar estado de la etiqueta a "fabricado"
@@ -1626,13 +1617,7 @@ class EtiquetaController extends Controller
                                 // Transacción corta y autónoma: el movimiento se registra pase lo que pase
                                 DB::transaction(function () use ($productoBaseFaltante, $maquina) {
                                     $this->generarMovimientoRecargaMateriaPrima($productoBaseFaltante, $maquina, null);
-                                    Log::info('✅ Movimiento de recarga creado (faltante)', [
-                                        'producto_base_id' => $productoBaseFaltante->id,
-                                        'maquina_id'       => $maquina->id,
-                                    ]);
                                 });
-                            } else {
-                                Log::warning("No se encontró ProductoBase para Ø{$diametroFaltante} y tipo {$maquina->tipo_material}");
                             }
                         }
 
@@ -1741,12 +1726,6 @@ class EtiquetaController extends Controller
                                         // Tu método existente. productoId = null → materia prima genérica
                                         $this->generarMovimientoRecargaMateriaPrima($productoBase, $maquina, null);
 
-                                        Log::info('📣 Recarga solicitada (déficit previsto)', [
-                                            'maquina_id'       => $maquina->id,
-                                            'producto_base_id' => $productoBase->id,
-                                            'diametro'         => $dInsuf,
-                                            'deficit_kg'       => $deficitKg,
-                                        ]);
                                     } catch (\Throwable $e) {
                                         Log::error('❌ Error al solicitar recarga (déficit previsto)', [
                                             'maquina_id'       => $maquina->id,
@@ -1756,8 +1735,6 @@ class EtiquetaController extends Controller
                                             'error'            => $e->getMessage(),
                                         ]);
                                     }
-                                } else {
-                                    Log::warning("No se encontró ProductoBase para Ø{$dInsuf} y tipo {$maquina->tipo_material} (recarga no creada).");
                                 }
                             }
                         }
@@ -1779,11 +1756,6 @@ class EtiquetaController extends Controller
                         Auth::id(),
                         [] // No hay consumo de productos en este paso
                     );
-                    Log::info('📝 Historial pendiente→fabricando', [
-                        'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
-                        'historial_id' => $historialResult?->id ?? 'NULL',
-                        'guardado' => $historialResult !== null,
-                    ]);
 
                     if ($etiqueta->planilla) {
                         if (is_null($etiqueta->planilla->fecha_inicio)) {
@@ -1889,8 +1861,6 @@ class EtiquetaController extends Controller
                             ], 400);
                         }
 
-                        // Opcional: Si la máquina no es de los tipos esperados, se puede registrar un warning o dejar el estado sin cambios.
-                        Log::info("La máquina actual no es ensambladora ni soldadora en el estado 'fabricada'.");
                     }
                     break;
                 // -------------------------------------------- ESTADO ENSAMBLADA --------------------------------------------
@@ -1934,9 +1904,6 @@ class EtiquetaController extends Controller
                         $etiqueta->soldador1 =  $operario1;
                         $etiqueta->soldador2 =  $operario2;
                         $etiqueta->save();
-                    } else {
-                        // Opcional: Si la máquina no es de los tipos esperados, se puede registrar un warning o dejar el estado sin cambios.
-                        Log::info("La máquina actual no es ensambladora ni soldadora en el estado 'fabricada'.");
                     }
                     break;
 
@@ -1944,7 +1911,6 @@ class EtiquetaController extends Controller
                 case 'ensamblando':
 
                     foreach ($elementosEnMaquina as $elemento) {
-                        Log::info("Entra en el condicional para completar elementos");
                         $elemento->estado = "completado";
                         $elemento->users_id =  $operario1;
                         $elemento->users_id_2 =  $operario2;
@@ -2209,10 +2175,6 @@ class EtiquetaController extends Controller
                 // 3️⃣  Insertamos el movimiento en SU propia transacción
                 DB::transaction(function () use ($productoBase, $maquina) {
                     $this->generarMovimientoRecargaMateriaPrima($productoBase, $maquina);
-                    Log::info('✅ Movimiento de recarga creado', [
-                        'producto_base_id' => $productoBase->id,
-                        'maquina_id'       => $maquina->id,
-                    ]);
                 });
 
                 // 4️⃣  Respondemos y detenemos la ejecución
@@ -2323,17 +2285,6 @@ class EtiquetaController extends Controller
 
             // 🧠 Regla especial: si el nombre de la etiqueta contiene "pates"
             if (Str::of($etiqueta->nombre ?? '')->lower()->contains('pates')) {
-
-                $cid = (string) Str::uuid();
-
-                Log::info("[pates][$cid] Disparada regla especial", [
-                    'etiqueta_id'     => $etiqueta->id ?? null,
-                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id ?? null,
-                    'etiqueta_nombre' => $etiqueta->nombre ?? null,
-                    'maquina_id'      => $maquina->id ?? null,
-                    'maquina_tipo'    => $maquina->tipo ?? null,
-                    'maquina_obra_id' => $maquina->obra_id ?? null,
-                ]);
                 DB::transaction(function () use ($etiqueta, $maquina) {
                     // 1) Marcar etiqueta como "fabricada" y cerrar fecha
                     $etiqueta->estado = 'fabricada';
@@ -2514,12 +2465,6 @@ class EtiquetaController extends Controller
                 ->exists();
 
             if ($yaExiste) {
-                Log::info('Movimiento paquete ya existente; no se duplica', [
-                    'origen'        => $origen->id,
-                    'destino'       => $destino->id,
-                    'etiqueta_sub'  => $etiquetaSubId,
-                    'planilla_id'   => $planillaId,
-                ]);
                 return;
             }
 
@@ -2846,12 +2791,6 @@ class EtiquetaController extends Controller
                     $cambios[] = "Planilla restaurada a estado: pendiente";
                 }
             }
-
-            Log::info('UNDO sin historial: fabricando → pendiente', [
-                'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
-                'cambios' => $cambios,
-                'usuario_id' => Auth::id(),
-            ]);
 
             return response()->json([
                 'success' => true,

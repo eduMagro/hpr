@@ -588,6 +588,7 @@ class ProductoController extends Controller
         $producto = Producto::findOrFail($id);
 
         $modo = $request->get('modo'); // 'total' o 'parcial'
+        $isAjax = $request->ajax() || $request->wantsJson();
 
         if ($modo === 'total') {
             // ✅ Consumir todo y limpiar ubicación/máquina
@@ -601,6 +602,12 @@ class ProductoController extends Controller
             $kgs = (float) $request->get('kgs');
 
             if ($kgs > $producto->peso_stock) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No puedes consumir más de lo disponible en stock.'
+                    ], 400);
+                }
                 return back()->with('error', '❌ No puedes consumir más de lo disponible en stock.');
             }
 
@@ -612,10 +619,28 @@ class ProductoController extends Controller
                 $this->marcarComoConsumido($producto);
             }
         } else {
+            if ($isAjax) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Modo de consumo no válido.'
+                ], 400);
+            }
             return back()->with('error', '❌ Modo de consumo no válido.');
         }
 
         $producto->save();
+
+        if ($isAjax) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Producto consumido correctamente.',
+                'producto' => [
+                    'id' => $producto->id,
+                    'codigo' => $producto->codigo,
+                    'estado' => $producto->estado,
+                ]
+            ]);
+        }
 
         return back()->with('success', '✅ Producto actualizado correctamente.');
     }

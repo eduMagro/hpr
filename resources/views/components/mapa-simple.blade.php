@@ -418,6 +418,8 @@
                     if (mapaContainer && mapaContainer.recargarMapa) {
                         mapaContainer.recargarMapa();
                     }
+                    // Emitir evento para actualizar movimientos completados
+                    window.dispatchEvent(new CustomEvent('movimiento:paquete-creado'));
                 },
                 onCancel: function() {
                     // Nada especial al cancelar
@@ -692,7 +694,10 @@
                     } else {
                         alert('¡Guardado! La posición del paquete se guardó correctamente');
                     }
-                    
+
+                    // Emitir evento para actualizar movimientos completados
+                    window.dispatchEvent(new CustomEvent('movimiento:paquete-creado'));
+
                     salirDeEdicion(paquete, false);
 
                 } catch (error) {

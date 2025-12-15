@@ -613,6 +613,8 @@ function initTrabajoEtiqueta() {
             estado: data.estado,
             peso_etiqueta: data.peso_etiqueta,
             nombre: data.nombre,
+            producto_n_colada: data.producto_n_colada,
+            producto2_n_colada: data.producto2_n_colada,
             data_completa: data
         });
 
@@ -627,9 +629,33 @@ function initTrabajoEtiqueta() {
             aplicarEstadoAProceso(id, data.estado);
         }
 
-        // ✅ Actualizar SVG con coladas si están disponibles
+        // ✅ Actualizar colada de la etiqueta en la leyenda del SVG
+        if (data.producto_n_colada && window.elementosAgrupadosScript) {
+            const grupoIndex = window.elementosAgrupadosScript.findIndex(g =>
+                g.etiqueta && String(g.etiqueta.etiqueta_sub_id) === String(id)
+            );
+
+            if (grupoIndex !== -1) {
+                const grupo = window.elementosAgrupadosScript[grupoIndex];
+                grupo.colada_etiqueta = data.producto_n_colada;
+                grupo.colada_etiqueta_2 = data.producto2_n_colada || null;
+
+                // Regenerar el SVG para mostrar la colada en la leyenda
+                if (typeof window.renderizarGrupoSVG === "function") {
+                    window.renderizarGrupoSVG(grupo, grupoIndex);
+                    console.log(`✅ SVG regenerado con colada de etiqueta: ${data.producto_n_colada}`);
+                }
+            }
+        }
+
+        // ✅ Actualizar SVG con coladas de elementos si están disponibles
         if (data.coladas_por_elemento && typeof window.actualizarSVGConColadas === "function") {
             window.actualizarSVGConColadas(id, data.coladas_por_elemento);
+        }
+
+        // ✅ Habilitar botón deshacer (se creó un nuevo registro en el historial)
+        if (typeof window.HistorialEtiquetas !== "undefined") {
+            window.HistorialEtiquetas.actualizarBoton(id, true);
         }
 
         // Procesar según el estado

@@ -60,9 +60,16 @@
 
             function mostrarError() {
                 console.log('🔴 Mostrando error:', errorMensaje);
+                // Determinar título según el tipo de error
+                let titulo = 'Error';
+                if (nombreArchivo) {
+                    titulo = 'Error de importación';
+                } else if (errorMensaje.toLowerCase().includes('acceso') || errorMensaje.toLowerCase().includes('permiso')) {
+                    titulo = 'Acceso denegado';
+                }
                 Swal.fire({
                     icon: 'error',
-                    title: 'Acceso denegado',
+                    title: titulo,
                     text: errorMensaje,
                     confirmButtonColor: '#d33'
                 }).then((result) => {

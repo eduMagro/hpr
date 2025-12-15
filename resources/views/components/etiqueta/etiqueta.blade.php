@@ -147,11 +147,10 @@
 
         <!-- Botones -->
         <div class="absolute top-2 right-2 flex items-center gap-2 no-print z-10">
-            <!-- Botón Deshacer (UNDO) -->
+            <!-- Botón Deshacer (UNDO) - Manejado por historialEtiquetas.js -->
             <button type="button"
                 class="btn-deshacer bg-amber-500 text-white px-3 py-1 rounded shadow-sm hover:bg-amber-600 hover:shadow-md transition-all duration-200 flex items-center gap-1"
                 data-etiqueta-id="{{ $etiqueta->etiqueta_sub_id }}"
-                onclick="deshacerEtiqueta('{{ $etiqueta->etiqueta_sub_id }}')"
                 title="Deshacer último cambio (Ctrl+Z)">
                 <span class="text-lg">↩️</span>
             </button>
@@ -432,120 +431,4 @@
         w.document.close();
     }
 
-    /**
-     * Deshace el último cambio de una etiqueta
-     * @param {string} etiquetaSubId - El ID de la etiqueta (ej: "A-001.1")
-     */
-    async function deshacerEtiqueta(etiquetaSubId) {
-        // Evitar múltiples clicks
-        if (window._deshacerEnProceso) return;
-        window._deshacerEnProceso = true;
-
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        if (!csrfToken) {
-            console.error('CSRF token no encontrado');
-            window._deshacerEnProceso = false;
-            return;
-        }
-
-        try {
-            // Confirmar antes de deshacer
-            const confirmacion = await Swal.fire({
-                icon: 'question',
-                title: '¿Deshacer último cambio?',
-                text: `Se revertirá el último cambio de la etiqueta ${etiquetaSubId}`,
-                showCancelButton: true,
-                confirmButtonText: 'Sí, deshacer',
-                cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#f59e0b',
-                cancelButtonColor: '#6b7280',
-            });
-
-            if (!confirmacion.isConfirmed) {
-                window._deshacerEnProceso = false;
-                return;
-            }
-
-            // Mostrar loading
-            Swal.fire({
-                title: 'Deshaciendo...',
-                text: 'Revirtiendo cambios...',
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                didOpen: () => Swal.showLoading(),
-            });
-
-            // Llamar al endpoint
-            const response = await fetch(`/etiquetas/${encodeURIComponent(etiquetaSubId)}/deshacer`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                },
-            });
-
-            const data = await response.json();
-
-            if (!response.ok || !data.success) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error al deshacer',
-                    text: data.message || 'No se pudo revertir el cambio.',
-                });
-                window._deshacerEnProceso = false;
-                return;
-            }
-
-            // Éxito - Actualizar UI inmediatamente sin recargar
-            const nuevoEstado = data.estado;
-
-            // Buscar el contenedor de la etiqueta y actualizar su estado visual
-            const etiquetaContainer = document.querySelector(`[data-etiqueta-id="${etiquetaSubId}"]`)?.closest('.etiqueta-card');
-
-            if (etiquetaContainer) {
-                // Remover clases de estado anteriores
-                const estadosValidos = ['pendiente', 'fabricando', 'fabricada', 'completada', 'en-paquete'];
-                estadosValidos.forEach(est => {
-                    etiquetaContainer.classList.remove(`estado-${est}`);
-                });
-
-                // Añadir nueva clase de estado
-                etiquetaContainer.classList.add(`estado-${nuevoEstado}`);
-
-                // Actualizar el atributo data-estado
-                etiquetaContainer.dataset.estado = nuevoEstado;
-            }
-
-            // Mostrar mensaje de éxito
-            await Swal.fire({
-                icon: 'success',
-                title: 'Cambio revertido',
-                html: `
-                    <p>${data.message}</p>
-                    <p class="text-sm text-gray-600 mt-2">
-                        Estado actual: <strong>${nuevoEstado}</strong>
-                    </p>
-                `,
-                timer: 2000,
-                showConfirmButton: false,
-            });
-
-            // Refrescar la vista para sincronizar todos los datos (sin recargar página)
-            if (typeof window.refrescarEtiquetasMaquina === 'function') {
-                await window.refrescarEtiquetasMaquina();
-            }
-            // NO hacer location.reload() - la UI ya está actualizada
-
-        } catch (error) {
-            console.error('Error al deshacer etiqueta:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Error de conexión al intentar deshacer el cambio.',
-            });
-        } finally {
-            window._deshacerEnProceso = false;
-        }
-    }
 </script>

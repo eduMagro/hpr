@@ -1046,6 +1046,7 @@ class PaqueteController extends Controller
 
             // Guardar peso antes de desasociar
             $pesoEtiqueta = $etiqueta->peso ?? 0;
+            $pesoAnterior = $paquete->peso; // Guardar peso anterior del paquete para logs
 
             // Desasociar etiqueta del paquete
             $etiqueta->paquete_id = null;

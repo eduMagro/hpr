@@ -74,10 +74,17 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                         $planilla->estado = 'fabricando';
                         $planilla->save();
                     }
+
+                    // Primer clic: Asignar el producto actual a cada elemento
                     foreach ($elementosEnMaquina as $e) {
                         $e->estado = 'fabricando';
+                        $e->producto_id = $producto->id; // Guardar producto del primer clic
                         $e->save();
                     }
+
+                    // Asignar el producto/colada actual de la máquina a la etiqueta (primer clic)
+                    $etiqueta->producto_id = $producto->id;
+
                     $etiqueta->estado       = 'fabricando';
                     $etiqueta->operario1_id = $datos->operario1Id;
                     $etiqueta->operario2_id = $datos->operario2Id;
@@ -90,7 +97,19 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                     if (!$quedan) {
                         throw new ServicioEtiquetaException('Todos los elementos ya están completados en esta máquina.');
                     }
-                    log::info('Etiqueta en proceso de fabricación.');
+
+                    // Segundo clic: Actualizar producto_id_2 de la etiqueta si cambió
+                    if ($etiqueta->producto_id && $etiqueta->producto_id != $producto->id) {
+                        if (!$etiqueta->producto_id_2) {
+                            $etiqueta->producto_id_2 = $producto->id;
+                        } elseif ($etiqueta->producto_id_2 != $producto->id && !$etiqueta->producto_id_3) {
+                            $etiqueta->producto_id_3 = $producto->id;
+                        }
+                    } elseif (!$etiqueta->producto_id) {
+                        $etiqueta->producto_id = $producto->id;
+                    }
+                    $etiqueta->save();
+
                     $this->consumirPorBarras(
                         $elementosEnMaquina,
                         $maquina,
@@ -165,13 +184,10 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
             $elementosGrupo = $grupo['elementos'] ?? [];
             if (empty($elementosGrupo)) continue;
 
-            Log::info("\n📦 Preparando consumo para Ø{$diametro}mm: " . count($elementosGrupo) . " elementos.");
-
             // === Peso teórico por barra (kg) ===
             $area_m2 = (pi() * pow($diametroSeleccionado, 2)) / 4 / 1_000_000;
             $pesoPorMetro = $area_m2 * 7850; // kg/m
             $pesoBarraEstimado = $pesoPorMetro * $longitudBarraSeleccionada; // kg/barra
-            Log::info(sprintf("📐 Peso teórico para Ø%dmm y %.2fm: %.3f kg", $diametroSeleccionado, $longitudBarraSeleccionada, $pesoBarraEstimado));
 
             // === Productos disponibles (mismo diámetro, misma longitud, tipo barra) ===
             $productos = $maquina->productos()
@@ -182,8 +198,6 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                 ->with('productoBase')
                 ->orderBy('peso_stock') // consumimos primero los más bajos para vaciar lotes
                 ->get();
-
-            Log::info("📦 Productos disponibles para Ø{$diametro}mm:", $productos->pluck('id', 'peso_stock')->toArray());
 
             // === Recorremos elemento a elemento (cada elemento trae su cantidad 'barras' = nº de piezas) ===
             foreach ($elementosGrupo as $elemento) {
@@ -200,16 +214,6 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                 $barrasNecesarias = (int) ceil($cantidadPiezas / $piezasPorBarra);
                 $pesoTotalElemento = $barrasNecesarias * $pesoBarraEstimado;
 
-                Log::info(sprintf(
-                    "🧾 Elemento ID %d → %d piezas (%.2fm) → %d barras → %.3f kg/b → %.3f kg total",
-                    $elemento->id,
-                    $cantidadPiezas,
-                    $longitudPiezaM,
-                    $barrasNecesarias,
-                    $pesoBarraEstimado,
-                    $pesoTotalElemento
-                ));
-
                 // Para asignación final al elemento: guardamos hasta 3 productos distintos usados
                 $productosAsignados = [];
                 $piezasPendientes   = $cantidadPiezas;
@@ -220,16 +224,12 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                     $productoUsadoBar = null;                              // id del primer producto que aporte a esta barra
                     $piezasEstaBarra  = min($piezasPorBarra, $piezasPendientes);
 
-                    Log::info("🟡 Consumiendo barra #{$i} para elemento ID {$elemento->id}. Necesita {$pesoBarraEstimado} kg (para {$piezasEstaBarra} piezas)");
-
                     foreach ($productos as $prod) {
                         $disp = (float) ($prod->peso_stock ?? 0);
                         if ($disp <= 0) continue;
 
                         $consumo = min($disp, $pendienteKg);
                         if ($consumo > 0) {
-                            Log::info("➡️ Producto ID {$prod->id}: disponible {$disp} kg, se consumen {$consumo} kg");
-
                             // Primer producto que contribuye a esta barra = producto "asignado" a la barra
                             if ($productoUsadoBar === null) {
                                 $productoUsadoBar = $prod->id;
@@ -243,7 +243,6 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                                 $prod->estado = 'consumido';
                                 $prod->ubicacion_id = null;
                                 $prod->maquina_id = null;
-                                Log::info("🛑 Producto ID {$prod->id} agotado. Marcado como consumido.");
                             }
 
                             $prod->save();
@@ -255,7 +254,6 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                             ];
 
                             if ($pendienteKg <= self::EPS) {
-                                Log::info("✅ Barra #{$i} completada con producto ID {$prod->id}");
                                 break;
                             }
                         }
@@ -304,10 +302,42 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                 }
 
                 // === Asignación final de productos al elemento (hasta 3 ids distintos usados) ===
-                $elemento->producto_id   = $productosAsignados[0] ?? null;
-                $elemento->producto_id_2 = $productosAsignados[1] ?? null;
-                $elemento->producto_id_3 = $productosAsignados[2] ?? null;
-                $elemento->estado        = 'fabricado';
+                // Respetar producto_id del primer clic y añadir nuevos si cambiaron
+                $productoOriginal = $elemento->producto_id;
+
+                if ($productoOriginal) {
+                    // Ya tenía producto del primer clic
+                    $nuevosProductos = array_filter($productosAsignados, fn($id) => $id != $productoOriginal);
+
+                    if (!empty($nuevosProductos)) {
+                        // Hubo cambio de producto. Verificar si hay intermedio
+                        $productoIntermedio = Producto::where('producto_base_id', $elemento->productoBase?->id ?? Producto::find($productosAsignados[0] ?? 0)?->producto_base_id)
+                            ->where('id', '!=', $productoOriginal)
+                            ->whereNotIn('id', $nuevosProductos)
+                            ->where('estado', 'consumido')
+                            ->where('fecha_consumido', '>=', $elemento->etiqueta->fecha_inicio ?? now()->subDay())
+                            ->orderBy('fecha_consumido', 'asc')
+                            ->first();
+
+                        if ($productoIntermedio) {
+                            // original → intermedio → actual
+                            $elemento->producto_id_2 = $productoIntermedio->id;
+                            $elemento->producto_id_3 = $nuevosProductos[0] ?? null;
+                        } else {
+                            // original → actual
+                            $elemento->producto_id_2 = $nuevosProductos[0] ?? null;
+                            $elemento->producto_id_3 = $nuevosProductos[1] ?? null;
+                        }
+                    }
+                    // Si no hubo cambio, mantener producto_id original y no tocar _2 y _3
+                } else {
+                    // No tenía producto del primer clic (caso legacy)
+                    $elemento->producto_id   = $productosAsignados[0] ?? null;
+                    $elemento->producto_id_2 = $productosAsignados[1] ?? null;
+                    $elemento->producto_id_3 = $productosAsignados[2] ?? null;
+                }
+
+                $elemento->estado = 'fabricado';
                 $elemento->save();
                 // ============================
                 // === CALCULAR SOBRA TOTAL = longitud no utilizada en última barra
@@ -336,15 +366,6 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                     'Sobrante'          => round($sobraTotalM * 100, 2),
                     'comentario'        => 'corte simple',
                 ]);
-
-                Log::info(
-                    "🔗 Elemento ID {$elemento->id} asignado a productos: "
-                        . json_encode([
-                            $elemento->producto_id,
-                            $elemento->producto_id_2,
-                            $elemento->producto_id_3
-                        ])
-                );
             }
         }
     }
@@ -501,8 +522,6 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
             ->with('productoBase:id,diametro,longitud')
             ->first();
 
-        Log::info("Buscando producto en máquina ID {$maquina->id} para Ø{$diametroMm}mm y longitud {$longitudM}m: " . ($producto ? "Encontrado ID {$producto->id}" : "No encontrado"));
-
         if (!$producto) {
             response()->json([
                 'success' => false,
@@ -561,8 +580,6 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
     ): array {
         $need = $this->calcularKgNecesariosParaEtiqueta($elementosEnMaquina, $longitudBarraM, $diametroMm);
         $have = $this->stockDisponibleKg($maquina, $diametroMm, $longitudBarraM);
-
-        Log::info('🔎 Precheck MP', ['kg_necesarios' => $need['kg_total'], 'kg_disponibles' => $have]);
 
         $faltan = max(0, $need['kg_total'] - $have);
         $recargaId = null;

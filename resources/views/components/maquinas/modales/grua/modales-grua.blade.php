@@ -534,9 +534,9 @@
 
 {{-- 📦 MODAL MOVER PAQUETE (3 pasos: escanear, validar, ubicar en mapa) --}}
 <div id="modal-mover-paquete"
-    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center sm:p-4">
+    class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div
-        class="bg-white sm:rounded-2xl shadow-xl w-full max-w-6xl h-screen sm:max-h-[95vh] overflow-hidden flex flex-col"
+        class="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-6xl max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
         data-modal-ajustable-grid="true">
         {{-- Header --}}
         <div
@@ -616,21 +616,15 @@
             </div>
 
             {{-- PASO 2: Seleccionar ubicación en mapa --}}
-            <div id="paso-mapa-paquete" class="hidden space-y-4 h-full">
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <h3 class="font-semibold text-yellow-800 mb-2">Paso 2:
-                        Seleccionar Nueva Ubicación</h3>
-
-                    {{-- Información del paquete seleccionado --}}
-                    <div class="bg-white p-3 rounded border mb-3">
-                        <p class="text-sm"><strong>Paquete:</strong> <span
-                                id="paquete-codigo-mapa"
-                                class="text-green-700 font-bold"></span></p>
-                    </div>
+            <div id="paso-mapa-paquete" class="hidden space-y-2 h-full">
+                {{-- Información del paquete seleccionado (compacta) --}}
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-2 flex items-center gap-2">
+                    <span class="text-sm"><strong>Paquete:</strong></span>
+                    <span id="paquete-codigo-mapa" class="text-green-700 font-bold"></span>
                 </div>
 
                 {{-- Componente de mapa simplificado --}}
-                <div class="bg-white p-4 rounded-lg border h-[550px] overflow-hidden relative">
+                <div class="bg-white p-2 rounded-lg border flex-1 overflow-hidden relative" style="height: calc(100% - 50px);">
                     <x-mapa-simple :nave-id="$naveIdMapa" :modo-edicion="true" class="h-full w-full" />
                 </div>
             </div>

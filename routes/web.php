@@ -309,6 +309,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/maquinas/{id}/descomprimir-etiquetas', [MaquinaController::class, 'descomprimirEtiquetas'])->name('maquinas.descomprimir-etiquetas');
     Route::post('/maquinas/sesion/guardar', [MaquinaController::class, 'guardarSesion'])->name('maquinas.sesion.guardar');
     Route::get('/maquinas/{id}/json', [MaquinaController::class, 'showJson'])->name('maquinas.json');
+    Route::get('/maquinas/movimientos-completados/{naveId}', [MaquinaController::class, 'getMovimientosCompletados'])->name('maquinas.movimientos-completados');
     Route::post('/turnos/cambiar-maquina', [Maquinacontroller::class, 'cambiarMaquina'])->name('turno.cambiarMaquina');
     Route::put('/maquinas/{maquina}/imagen', [MaquinaController::class, 'actualizarImagen'])->name('maquinas.imagen');
     Route::get('/planillas/eventos', [ProduccionController::class, 'eventosPlanillas'])

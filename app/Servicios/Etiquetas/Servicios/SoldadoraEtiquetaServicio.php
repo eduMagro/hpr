@@ -83,11 +83,6 @@ class SoldadoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqueta
                     throw new RuntimeException('Etiqueta ya completada.');
 
                 default:
-                    // Para otros estados, no hay transición específica en soldadora
-                    Log::info('SoldadoraEtiquetaServicio: sin transición para estado', [
-                        'estado' => $etiqueta->estado,
-                        'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
-                    ]);
                     break;
             }
 
