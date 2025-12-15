@@ -516,15 +516,15 @@ class MovimientoController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json(['success' => false, 'message' => $validator->errors()->first(), 'errors' => $validator->errors()], 422);
         }
 
         if ($request->ubicacion_destino && $request->maquina_id) {
-            return response()->json(['error' => 'No puedes elegir una ubicación y una máquina a la vez como destino']);
+            return response()->json(['success' => false, 'message' => 'No puedes elegir una ubicación y una máquina a la vez como destino'], 400);
         }
 
         if (!$request->ubicacion_destino && !$request->maquina_id) {
-            return response()->json(['error' => 'No has elegido destino']);
+            return response()->json(['success' => false, 'message' => 'No has elegido destino'], 400);
         }
 
         try {
@@ -638,9 +638,15 @@ class MovimientoController extends Controller
                 }
             });
 
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true, 'message' => 'Movimiento creado correctamente.']);
+            }
             return redirect()->back()->with('success', 'Movimiento creado correctamente.');
         } catch (\Exception $e) {
             Log::error('Error al registrar movimiento: ' . $e->getMessage());
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+            }
             return redirect()->back()->with('error', 'No se ha podido crear el movimiento.');
         }
     }
@@ -843,6 +849,27 @@ class MovimientoController extends Controller
                                 ]);
                             }
 
+                            // Consumir producto anterior del mismo tipo que estaba fabricando en esta máquina
+                            $productoAnterior = Producto::where('producto_base_id', $producto->producto_base_id)
+                                ->where('id', '!=', $producto->id)
+                                ->where('maquina_id', $maquinaDetectada->id)
+                                ->where('estado', 'fabricando')
+                                ->first();
+
+                            if ($productoAnterior) {
+                                $productoAnterior->update([
+                                    'estado'          => 'consumido',
+                                    'maquina_id'      => null,
+                                    'fecha_consumido' => now(),
+                                    'consumido_by'    => auth()->id(),
+                                ]);
+                                Log::info('Producto anterior consumido automáticamente', [
+                                    'producto_anterior_id' => $productoAnterior->id,
+                                    'producto_nuevo_id'    => $producto->id,
+                                    'maquina_id'           => $maquinaDetectada->id,
+                                ]);
+                            }
+
                             // Actualiza producto a máquina
                             $producto->update([
                                 'ubicacion_id' => null,
@@ -850,21 +877,6 @@ class MovimientoController extends Controller
                                 'maquina_id'   => $maquinaDetectada->id,
                                 'estado'       => 'fabricando',
                             ]);
-
-                            // // Consumir anterior YA NO LO USAMOS, LO DEJAMOS POR AHORA
-                            // $productoAnterior = Producto::where('producto_base_id', $producto->producto_base_id)
-                            //     ->where('id', '!=', $producto->id)
-                            //     ->where('maquina_id', $maquinaDetectada->id)
-                            //     ->where('estado', 'fabricando')
-                            //     ->latest('updated_at')
-                            //     ->first();
-
-                            // if ($productoAnterior) {
-                            //     $productoAnterior->update([
-                            //         'maquina_id' => null,
-                            //         'estado'     => 'consumido',
-                            //     ]);
-                            // }
                         } else {
                             // A ubicación
                             Movimiento::create([

@@ -292,27 +292,33 @@ class MaquinaController extends Controller
             ->groupBy('etiqueta_sub_id')
             ->sortBy($ordenSub);
 
-        $elementosAgrupadosScript = $elementosAgrupados->map(fn($grupo) => [
-            'etiqueta'  => $grupo->first()->etiquetaRelacion,
-            'planilla'  => $grupo->first()->planilla,
-            'elementos' => $grupo->map(fn($e) => [
-                'id'          => $e->id,
-                'codigo'      => $e->codigo,
-                'dimensiones' => $e->dimensiones,
-                'estado'      => $e->estado,
-                'peso'        => $e->peso_kg,
-                'diametro'    => $e->diametro_mm,
-                'longitud'    => $e->longitud_cm,
-                'barras'      => $e->barras,
-                'figura'      => $e->figura,
-                // Incluimos las coladas para mostrarlas en la leyenda del SVG
-                'coladas'     => [
-                    'colada1' => $e->producto ? $e->producto->n_colada : null,
-                    'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
-                    'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
-                ],
-            ])->values(),
-        ])->values();
+        $elementosAgrupadosScript = $elementosAgrupados->map(function($grupo) {
+            $etiqueta = $grupo->first()->etiquetaRelacion;
+            return [
+                'etiqueta'  => $etiqueta,
+                'planilla'  => $grupo->first()->planilla,
+                // Coladas de la etiqueta (asignadas en primer y segundo clic)
+                'colada_etiqueta'   => $etiqueta?->producto?->n_colada,
+                'colada_etiqueta_2' => $etiqueta?->producto2?->n_colada,
+                'elementos' => $grupo->map(fn($e) => [
+                    'id'          => $e->id,
+                    'codigo'      => $e->codigo,
+                    'dimensiones' => $e->dimensiones,
+                    'estado'      => $e->estado,
+                    'peso'        => $e->peso_kg,
+                    'diametro'    => $e->diametro_mm,
+                    'longitud'    => $e->longitud_cm,
+                    'barras'      => $e->barras,
+                    'figura'      => $e->figura,
+                    // Incluimos las coladas para mostrarlas en la leyenda del SVG
+                    'coladas'     => [
+                        'colada1' => $e->producto ? $e->producto->n_colada : null,
+                        'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
+                        'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
+                    ],
+                ])->values(),
+            ];
+        })->values();
 
         // 7) Turno, movimientos y otros contextos
         $turnoHoy = AsignacionTurno::where('user_id', auth()->id())
@@ -435,6 +441,11 @@ class MaquinaController extends Controller
                     'barras' => $e->barras,
                     'figura' => $e->figura,
                     'etiqueta_sub_id' => $e->etiqueta_sub_id,
+                    'coladas' => [
+                        'colada1' => $e->producto ? $e->producto->n_colada : null,
+                        'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
+                        'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
+                    ],
                 ])->values()->toArray(),
             ];
         })->values();
@@ -448,26 +459,32 @@ class MaquinaController extends Controller
         );
 
         // Actualizar elementosAgrupadosScript sin grupos
-        $elementosAgrupadosScriptSinGrupos = $elementosAgrupadosSinGrupos->map(fn($grupo) => [
-            'etiqueta'  => $grupo->first()->etiquetaRelacion,
-            'planilla'  => $grupo->first()->planilla,
-            'elementos' => $grupo->map(fn($e) => [
-                'id'          => $e->id,
-                'codigo'      => $e->codigo,
-                'dimensiones' => $e->dimensiones,
-                'estado'      => $e->estado,
-                'peso'        => $e->peso_kg,
-                'diametro'    => $e->diametro_mm,
-                'longitud'    => $e->longitud_cm,
-                'barras'      => $e->barras,
-                'figura'      => $e->figura,
-                'coladas'     => [
-                    'colada1' => $e->producto ? $e->producto->n_colada : null,
-                    'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
-                    'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
-                ],
-            ])->values(),
-        ])->values();
+        $elementosAgrupadosScriptSinGrupos = $elementosAgrupadosSinGrupos->map(function($grupo) {
+            $etiqueta = $grupo->first()->etiquetaRelacion;
+            return [
+                'etiqueta'  => $etiqueta,
+                'planilla'  => $grupo->first()->planilla,
+                // Coladas de la etiqueta (asignadas en primer y segundo clic)
+                'colada_etiqueta'   => $etiqueta?->producto?->n_colada,
+                'colada_etiqueta_2' => $etiqueta?->producto2?->n_colada,
+                'elementos' => $grupo->map(fn($e) => [
+                    'id'          => $e->id,
+                    'codigo'      => $e->codigo,
+                    'dimensiones' => $e->dimensiones,
+                    'estado'      => $e->estado,
+                    'peso'        => $e->peso_kg,
+                    'diametro'    => $e->diametro_mm,
+                    'longitud'    => $e->longitud_cm,
+                    'barras'      => $e->barras,
+                    'figura'      => $e->figura,
+                    'coladas'     => [
+                        'colada1' => $e->producto ? $e->producto->n_colada : null,
+                        'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
+                        'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
+                    ],
+                ])->values(),
+            ];
+        })->values();
 
         // 12) Devolver vista
         return view('maquinas.show', array_merge($base, [
@@ -1283,26 +1300,32 @@ class MaquinaController extends Controller
             ->groupBy('etiqueta_sub_id')
             ->sortBy($ordenSub);
 
-        $elementosAgrupadosScript = $elementosAgrupados->map(fn($grupo) => [
-            'etiqueta'  => $grupo->first()->etiquetaRelacion,
-            'planilla'  => $grupo->first()->planilla,
-            'elementos' => $grupo->map(fn($e) => [
-                'id'          => $e->id,
-                'codigo'      => $e->codigo,
-                'dimensiones' => $e->dimensiones,
-                'estado'      => $e->estado,
-                'peso'        => $e->peso_kg,
-                'diametro'    => $e->diametro_mm,
-                'longitud'    => $e->longitud_cm,
-                'barras'      => $e->barras,
-                'figura'      => $e->figura,
-                'coladas'     => [
-                    'colada1' => $e->producto ? $e->producto->n_colada : null,
-                    'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
-                    'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
-                ],
-            ])->values(),
-        ])->values();
+        $elementosAgrupadosScript = $elementosAgrupados->map(function($grupo) {
+            $etiqueta = $grupo->first()->etiquetaRelacion;
+            return [
+                'etiqueta'  => $etiqueta,
+                'planilla'  => $grupo->first()->planilla,
+                // Coladas de la etiqueta (asignadas en primer y segundo clic)
+                'colada_etiqueta'   => $etiqueta?->producto?->n_colada,
+                'colada_etiqueta_2' => $etiqueta?->producto2?->n_colada,
+                'elementos' => $grupo->map(fn($e) => [
+                    'id'          => $e->id,
+                    'codigo'      => $e->codigo,
+                    'dimensiones' => $e->dimensiones,
+                    'estado'      => $e->estado,
+                    'peso'        => $e->peso_kg,
+                    'diametro'    => $e->diametro_mm,
+                    'longitud'    => $e->longitud_cm,
+                    'barras'      => $e->barras,
+                    'figura'      => $e->figura,
+                    'coladas'     => [
+                        'colada1' => $e->producto ? $e->producto->n_colada : null,
+                        'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
+                        'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
+                    ],
+                ])->values(),
+            ];
+        })->values();
 
         // Sugerencias de productos base (vacías para grúa)
         $sugerenciasPorElemento = [];
@@ -2178,5 +2201,40 @@ class MaquinaController extends Controller
         $resultado = $svc->descomprimirEtiquetasPorMaquina((int) $id, $posiciones);
 
         return response()->json($resultado);
+    }
+
+    /**
+     * Obtener movimientos completados para una nave (AJAX)
+     */
+    public function getMovimientosCompletados($naveId)
+    {
+        $movimientosCompletados = Movimiento::with([
+            'solicitadoPor:id,name,primer_apellido',
+            'ejecutadoPor:id,name,primer_apellido',
+        ])
+            ->where('estado', 'completado')
+            ->where('nave_id', $naveId)
+            ->orderBy('updated_at', 'desc')
+            ->take(20)
+            ->get()
+            ->map(function ($m) {
+                return [
+                    'id' => $m->id,
+                    'tipo' => ucfirst($m->tipo),
+                    'descripcion_html' => $m->descripcion_html,
+                    'solicitado_por' => $m->solicitadoPor
+                        ? trim($m->solicitadoPor->name . ' ' . ($m->solicitadoPor->primer_apellido ?? ''))
+                        : 'N/A',
+                    'ejecutado_por' => $m->ejecutadoPor
+                        ? trim($m->ejecutadoPor->name . ' ' . ($m->ejecutadoPor->primer_apellido ?? ''))
+                        : 'N/A',
+                    'fecha_completado' => $m->updated_at->format('d/m/Y H:i'),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'movimientos' => $movimientosCompletados
+        ]);
     }
 }

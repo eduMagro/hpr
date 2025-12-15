@@ -81,10 +81,6 @@ class DobladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqueta
                     throw new RuntimeException('Etiqueta ya completada.');
 
                 default:
-                    Log::info('DobladoraEtiquetaServicio: sin transición para estado', [
-                        'estado' => $etiqueta->estado,
-                        'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
-                    ]);
                     break;
             }
 

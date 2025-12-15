@@ -9,6 +9,7 @@ use App\Models\Movimiento;
 use App\Models\Elemento;
 use App\Models\Planilla;
 use App\Models\OrdenPlanilla;
+use App\Models\Producto;
 use App\Models\ProductoBase;
 use App\Models\Ubicacion;
 use App\Services\ProductionLogger;
@@ -23,13 +24,12 @@ abstract class ServicioEtiquetaBase
     /** Bloquea etiqueta y elementos asociados para evitar condiciones de carrera */
     protected function bloquearEtiquetaConElementos(int $etiquetaSubId): Etiqueta
     {
-        log::info("Bloqueando etiqueta para actualización: $etiquetaSubId");
         return DB::transaction(function () use ($etiquetaSubId) {
             /** @var Etiqueta $etiqueta */
             $etiqueta = Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)
                 ->lockForUpdate()
                 ->firstOrFail();
-            log::info("Bloqueada etiqueta para actualización: $etiquetaSubId (id={$etiqueta->id}, estado={$etiqueta->estado})");
+
             // Precargar relaciones necesarias bajo el mismo candado si aplica
             $etiqueta->load(['elementos' => function ($q) {
                 $q->lockForUpdate();
@@ -103,11 +103,6 @@ abstract class ServicioEtiquetaBase
                 ->first();
 
             if ($existente) {
-                Log::info('Recarga ya pendiente: no se duplica', [
-                    'movimiento_id' => $existente->id,
-                    'maquina_id' => $maquina->id,
-                    'producto_base_id' => $productoBase->id,
-                ]);
                 return (int) $existente->id;
             }
         }
@@ -137,12 +132,6 @@ abstract class ServicioEtiquetaBase
             'prioridad'        => $prioridad,
             'fecha_solicitud'  => now(),
             'solicitado_por'   => $solicitanteId,
-        ]);
-
-        Log::info('Movimiento de recarga creado', [
-            'movimiento_id'    => $nuevo->id,
-            'maquina_id'       => $maquina->id,
-            'producto_base_id' => $productoBase->id,
         ]);
 
         return (int) $nuevo->id;
@@ -178,11 +167,6 @@ abstract class ServicioEtiquetaBase
 
             $etiqueta->save();
 
-            Log::info('Etiqueta marcada como completada', [
-                'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
-                'planilla_id'     => $etiqueta->planilla_id,
-                'peso_total'      => $etiqueta->peso,
-            ]);
             return true;
         }
 
@@ -285,11 +269,6 @@ abstract class ServicioEtiquetaBase
                 if ($pb) {
                     // Solicitamos recarga y abortamos el flujo lanzando excepción (controlador responde 400)
                     $this->generarMovimientoRecargaMateriaPrima($pb, $maquina, null, $solicitanteId);
-                    Log::info('Recarga solicitada por falta total de oferta', [
-                        'diametro' => (int)$diametro,
-                        'maquina_id' => $maquina->id,
-                        'producto_base_id' => $pb->id
-                    ]);
                     throw new ServicioEtiquetaException(
                         "No se encontraron materias primas para el diámetro Ø{$diametro}. Se solicitó recarga.",
                         ['diametro' => (int)$diametro, 'maquina_id' => $maquina->id]
@@ -409,10 +388,39 @@ abstract class ServicioEtiquetaBase
                 }
             }
 
-            $elemento->producto_id   = $asignados[0] ?? null;
-            $elemento->producto_id_2 = $asignados[1] ?? null;
-            $elemento->producto_id_3 = $asignados[2] ?? null;
-            // ya fue marcado fabricado arriba, pero si quieres reforzar:
+            // Respetar producto_id del primer clic y añadir nuevos si cambiaron
+            $productoOriginal = $elemento->producto_id;
+
+            if ($productoOriginal) {
+                // Ya tenía producto del primer clic - añadir nuevos si son diferentes
+                $nuevosProductos = array_filter($asignados, fn($id) => $id != $productoOriginal);
+                $nuevosProductos = array_values($nuevosProductos); // Reindexar
+
+                if (!empty($nuevosProductos)) {
+                    // Verificar si hay producto intermedio consumido entre primer clic y ahora
+                    $productoIntermedio = Producto::where('producto_base_id', Producto::find($productoOriginal)?->producto_base_id)
+                        ->where('id', '!=', $productoOriginal)
+                        ->whereNotIn('id', $nuevosProductos)
+                        ->where('estado', 'consumido')
+                        ->where('fecha_consumido', '>=', $etiqueta->fecha_inicio ?? now()->subDay())
+                        ->orderBy('fecha_consumido', 'asc')
+                        ->first();
+
+                    if ($productoIntermedio) {
+                        $elemento->producto_id_2 = $productoIntermedio->id;
+                        $elemento->producto_id_3 = $nuevosProductos[0] ?? null;
+                    } else {
+                        $elemento->producto_id_2 = $nuevosProductos[0] ?? null;
+                        $elemento->producto_id_3 = $nuevosProductos[1] ?? null;
+                    }
+                }
+            } else {
+                // No tenía producto del primer clic (caso legacy)
+                $elemento->producto_id   = $asignados[0] ?? null;
+                $elemento->producto_id_2 = $asignados[1] ?? null;
+                $elemento->producto_id_3 = $asignados[2] ?? null;
+            }
+
             if ($pesoRestante <= 0) {
                 $elemento->estado = 'fabricado';
             }

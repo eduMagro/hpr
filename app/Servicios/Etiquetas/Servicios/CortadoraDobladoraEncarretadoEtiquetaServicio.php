@@ -25,7 +25,7 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
         return DB::transaction(function () use ($datos) {
             /** @var Maquina $maquina */
             $maquina = Maquina::findOrFail($datos->maquinaId);
-            log::info("CortadoraDobladoraEncarretadoEtiquetaServicio::actualizar - Iniciando actualización para etiqueta {$datos->etiquetaSubId} en máquina {$maquina->id}");
+
             // Bloqueo etiqueta + elementos
             $etiqueta = Etiqueta::with('planilla')
                 ->where('etiqueta_sub_id', $datos->etiquetaSubId)
@@ -137,13 +137,7 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                                 // Transacción corta y autónoma: el movimiento se registra pase lo que pase
                                 DB::transaction(function () use ($productoBaseFaltante, $maquina) {
                                     $this->generarMovimientoRecargaMateriaPrima($productoBaseFaltante, $maquina, null);
-                                    Log::info('✅ Movimiento de recarga creado (faltante)', [
-                                        'producto_base_id' => $productoBaseFaltante->id,
-                                        'maquina_id'       => $maquina->id,
-                                    ]);
                                 });
-                            } else {
-                                Log::warning("No se encontró ProductoBase para Ø{$diametroFaltante} y tipo {$maquina->tipo_material}");
                             }
                         }
 
@@ -231,16 +225,6 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                                 . "Faltarán ~" . number_format($deficitKg, 2) . " kg (stock actual: "
                                 . number_format($stockActual, 2) . " kg). Se ha solicitado recarga.";
 
-                            // Log detallado con el "plan" simulado (útil para trazabilidad)
-                            Log::warning('⚠️ Simulación: déficit previsto en diámetro', [
-                                'maquina_id' => $maquina->id,
-                                'diametro'   => $dInsuf,
-                                'pendiente'  => $deficitKg,
-                                'plan'       => $simulacion[$dInsuf]['plan'],
-                                'stock'      => $stockActual,
-                                'necesario'  => (float)($diametrosConPesos[$dInsuf] ?? 0),
-                            ]);
-
                             // (Opcional) solicitar recarga automática, sin parar el flujo
                             if ($solicitarRecargaAuto ?? true) { // flag por si quieres desactivarlo
                                 $productoBase = ProductoBase::where('diametro', $dInsuf)
@@ -251,13 +235,6 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                                     try {
                                         // Tu método existente. productoId = null → materia prima genérica
                                         $this->generarMovimientoRecargaMateriaPrima($productoBase, $maquina, null);
-
-                                        Log::info('📣 Recarga solicitada (déficit previsto)', [
-                                            'maquina_id'       => $maquina->id,
-                                            'producto_base_id' => $productoBase->id,
-                                            'diametro'         => $dInsuf,
-                                            'deficit_kg'       => $deficitKg,
-                                        ]);
                                     } catch (\Throwable $e) {
                                         Log::error('❌ Error al solicitar recarga (déficit previsto)', [
                                             'maquina_id'       => $maquina->id,
@@ -267,8 +244,6 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                                             'error'            => $e->getMessage(),
                                         ]);
                                     }
-                                } else {
-                                    Log::warning("No se encontró ProductoBase para Ø{$dInsuf} y tipo {$maquina->tipo_material} (recarga no creada).");
                                 }
                             }
                         }
@@ -294,9 +269,23 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                         ], 400);
                     }
 
+                    // Primer clic: Asignar el producto/colada actual de la máquina a la etiqueta y elementos
+                    $diametroPrincipal = (int) $elementosEnMaquina->first()->diametro;
+                    $productoActual = $productos
+                        ->filter(fn($p) => (int)$p->productoBase->diametro === $diametroPrincipal)
+                        ->sortBy('peso_stock')
+                        ->first();
+
                     foreach ($elementosEnMaquina as $elemento) {
-                        $elemento->estado     = "fabricando";
+                        $elemento->estado = "fabricando";
+                        if ($productoActual) {
+                            $elemento->producto_id = $productoActual->id; // Guardar producto del primer clic
+                        }
                         $elemento->save();
+                    }
+
+                    if ($productoActual) {
+                        $etiqueta->producto_id = $productoActual->id;
                     }
 
                     $etiqueta->estado        = "fabricando";
@@ -324,6 +313,26 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                                     'maquina_id'      => $maquina->id,
                                 ]
                             );
+                        }
+
+                        // Segundo clic: Verificar si el producto/colada cambió desde el primer clic
+                        $diametroPrincipal = (int) $elementosEnMaquina->first()->diametro;
+                        $productoActual = $maquina->productos()
+                            ->whereHas('productoBase', fn($q) => $q->where('diametro', $diametroPrincipal))
+                            ->orderBy('peso_stock')
+                            ->first();
+
+                        if ($productoActual) {
+                            if ($etiqueta->producto_id && $etiqueta->producto_id != $productoActual->id) {
+                                if (!$etiqueta->producto_id_2) {
+                                    $etiqueta->producto_id_2 = $productoActual->id;
+                                } elseif ($etiqueta->producto_id_2 != $productoActual->id && !$etiqueta->producto_id_3) {
+                                    $etiqueta->producto_id_3 = $productoActual->id;
+                                }
+                            } elseif (!$etiqueta->producto_id) {
+                                $etiqueta->producto_id = $productoActual->id;
+                            }
+                            $etiqueta->save();
                         }
 
                         // Ejecuta la lógica de consumos (no retorna nada)
@@ -363,10 +372,6 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                     throw new RuntimeException('Etiqueta ya completada.' . $etiqueta);
 
                 default:
-                    Log::info('CortadoraDobladoraEtiquetaServicio: sin transición para estado', [
-                        'estado' => $etiqueta->estado,
-                        'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
-                    ]);
                     break;
             }
 

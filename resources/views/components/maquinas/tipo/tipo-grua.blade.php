@@ -246,6 +246,108 @@
             mostrarPagina(1);
         }
     });
+
+    // Escuchar evento de movimiento de paquete para actualizar la lista
+    window.addEventListener('movimiento:paquete-creado', async function() {
+        // Cerrar modal si está abierto
+        const modal = document.getElementById('modal-mover-paquete');
+        if (modal && !modal.classList.contains('hidden')) {
+            modal.classList.add('hidden');
+        }
+
+        // Actualizar lista de movimientos completados via AJAX
+        try {
+            const naveId = {{ $maquina->obra_id ?? 1 }};
+            const response = await fetch(`/maquinas/movimientos-completados/${naveId}`);
+            const data = await response.json();
+
+            if (data.success && data.movimientos) {
+                actualizarListaMovimientosCompletados(data.movimientos);
+            }
+        } catch (error) {
+            console.error('Error al actualizar movimientos:', error);
+        }
+    });
+
+    // Función para actualizar la lista de movimientos completados
+    function actualizarListaMovimientosCompletados(movimientos) {
+        const contenedor = document.getElementById('contenedor-movimientos-completados');
+        if (!contenedor) return;
+
+        const lista = contenedor.querySelector('ul');
+        const mensajeVacio = contenedor.querySelector('p.text-gray-600');
+
+        // Si hay movimientos, actualizar la lista
+        if (movimientos.length > 0) {
+            if (mensajeVacio) mensajeVacio.remove();
+
+            // Crear o actualizar lista
+            let ul = lista;
+            if (!ul) {
+                ul = document.createElement('ul');
+                ul.className = 'space-y-3';
+                contenedor.appendChild(ul);
+            }
+
+            // Limpiar lista existente
+            ul.innerHTML = '';
+
+            // Agregar nuevos movimientos
+            movimientos.forEach(mov => {
+                const li = document.createElement('li');
+                li.className = 'p-3 border border-green-200 rounded shadow-sm bg-white text-sm movimiento-completado';
+                li.innerHTML = `
+                    <div class="flex flex-col gap-2">
+                        <p><strong>Tipo:</strong> ${mov.tipo}</p>
+                        <p>${mov.descripcion_html}</p>
+                        <p><strong>Solicitado por:</strong> ${mov.solicitado_por}</p>
+                        <p><strong>Ejecutado por:</strong> ${mov.ejecutado_por}</p>
+                        <p><strong>Fecha completado:</strong> ${mov.fecha_completado}</p>
+                    </div>
+                `;
+                ul.appendChild(li);
+            });
+
+            // Re-inicializar paginación
+            reiniciarPaginacionCompletados();
+        }
+    }
+
+    // Función para reiniciar la paginación después de actualizar
+    function reiniciarPaginacionCompletados() {
+        const itemsPorPagina = 5;
+        const items = Array.from(document.querySelectorAll('.movimiento-completado'));
+        const paginador = document.getElementById('paginador-movimientos-completados');
+        const totalPaginas = Math.ceil(items.length / itemsPorPagina);
+
+        function mostrarPagina(pagina) {
+            const inicio = (pagina - 1) * itemsPorPagina;
+            const fin = inicio + itemsPorPagina;
+            items.forEach((item, index) => {
+                item.style.display = (index >= inicio && index < fin) ? 'block' : 'none';
+            });
+            actualizarPaginador(pagina);
+        }
+
+        function actualizarPaginador(paginaActual) {
+            paginador.innerHTML = '';
+            for (let i = 1; i <= totalPaginas; i++) {
+                const btn = document.createElement('button');
+                btn.textContent = i;
+                btn.className = `px-3 py-1 rounded border text-sm ${
+                    i === paginaActual
+                        ? 'bg-green-600 text-white'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                }`;
+                btn.onclick = () => mostrarPagina(i);
+                paginador.appendChild(btn);
+            }
+        }
+
+        if (items.length > 0) {
+            mostrarPagina(1);
+        }
+    }
 </script>
 <script>
     function ejecutarSalida(movimientoId, salidaId) {

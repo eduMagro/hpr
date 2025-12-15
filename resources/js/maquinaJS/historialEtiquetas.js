@@ -258,43 +258,68 @@
         const safeId = etiquetaSubId.replace(/\./g, "-");
         const elemento = document.getElementById(`etiqueta-${safeId}`);
 
-        if (!elemento) {
-            console.warn(`Elemento etiqueta-${safeId} no encontrado en DOM`);
-            // Intentar refrescar la página para ver los cambios
-            if (typeof window.refrescarEtiquetasMaquina === "function") {
-                window.refrescarEtiquetasMaquina();
-            }
-            return;
-        }
+        if (elemento) {
+            // Actualizar estado en dataset
+            elemento.dataset.estado = data.estado;
 
-        // Actualizar estado en dataset
-        elemento.dataset.estado = data.estado;
-
-        // Actualizar clases CSS
-        elemento.className = elemento.className
-            .split(" ")
-            .filter((c) => !c.startsWith("estado-"))
-            .join(" ")
-            .trim();
-        elemento.classList.add(`estado-${data.estado}`);
-
-        // Actualizar color de fondo del SVG si existe
-        const contenedor = elemento.querySelector('[id^="contenedor-svg-"]');
-        const svg = contenedor?.querySelector("svg");
-        if (svg) {
-            svg.style.background = getComputedStyle(elemento)
-                .getPropertyValue("--bg-estado")
+            // Actualizar clases CSS
+            elemento.className = elemento.className
+                .split(" ")
+                .filter((c) => !c.startsWith("estado-"))
+                .join(" ")
                 .trim();
+            elemento.classList.add(`estado-${data.estado}`);
+
+            // Actualizar color de fondo del SVG si existe
+            const contenedor = elemento.querySelector('[id^="contenedor-svg-"]');
+            const svg = contenedor?.querySelector("svg");
+            if (svg) {
+                svg.style.background = getComputedStyle(elemento)
+                    .getPropertyValue("--bg-estado")
+                    .trim();
+            }
+
+            // Si existe SistemaDOM, usarlo también
+            if (typeof window.SistemaDOM !== "undefined") {
+                window.SistemaDOM.actualizarEstadoEtiqueta(etiquetaSubId, data.estado);
+            }
         }
 
-        // Actualizar botón de deshacer
-        actualizarBotonDeshacer(etiquetaSubId, data.puede_deshacer);
+        // Si volvemos a estado pendiente, limpiar coladas del SVG y datos
+        if (data.estado === "pendiente") {
+            // Limpiar coladas en elementosAgrupadosScript (datos en memoria)
+            if (window.elementosAgrupadosScript) {
+                const grupos = window.elementosAgrupadosScript;
+                const grupo = grupos.find(g =>
+                    g.etiqueta && String(g.etiqueta.etiqueta_sub_id) === String(etiquetaSubId)
+                );
+                if (grupo) {
+                    // Limpiar coladas del grupo (nivel etiqueta)
+                    grupo.colada_etiqueta = null;
+                    grupo.colada_etiqueta_2 = null;
 
-        // Si existe SistemaDOM, usarlo también
-        if (typeof window.SistemaDOM !== "undefined") {
-            window.SistemaDOM.actualizarEstadoEtiqueta(etiquetaSubId, data.estado);
+                    // Limpiar coladas de cada elemento
+                    if (grupo.elementos) {
+                        grupo.elementos.forEach(el => {
+                            el.coladas = { colada1: null, colada2: null, colada3: null };
+                        });
+                    }
+
+                    // Disparar evento para que canvasMaquina regenere el SVG
+                    window.dispatchEvent(new CustomEvent('regenerar-svg-etiqueta', {
+                        detail: { etiquetaSubId: etiquetaSubId }
+                    }));
+                }
+            }
+
+            // Limpiar el texto de colada en el encabezado de la etiqueta
+            const spanColada = document.getElementById(`colada-${safeId}`);
+            if (spanColada) {
+                spanColada.textContent = "";
+            }
         }
 
+        // NO refrescamos la página para mantener la posición del scroll
         console.log(`✅ DOM actualizado para ${etiquetaSubId}: estado = ${data.estado}`);
     }
 
@@ -307,13 +332,14 @@
         const safeId = etiquetaSubId.replace(/\./g, "-");
         const btn = document.querySelector(`#etiqueta-${safeId} .btn-deshacer`);
 
+        console.log(`🔄 actualizarBotonDeshacer: ${etiquetaSubId}, puede=${puedeDeshacer}, btn encontrado=${!!btn}`);
+
         if (btn) {
-            btn.disabled = !puedeDeshacer;
-            btn.classList.toggle("opacity-50", !puedeDeshacer);
-            btn.classList.toggle("cursor-not-allowed", !puedeDeshacer);
-            btn.title = puedeDeshacer
-                ? "Deshacer último cambio"
-                : "No hay cambios para deshacer";
+            // Ya NO deshabilitamos el botón - siempre habilitado
+            // Si no hay cambios, se muestra mensaje al hacer clic
+            btn.disabled = false;
+            btn.classList.remove("opacity-50", "cursor-not-allowed");
+            btn.title = "Deshacer último cambio (Ctrl+Z)";
         }
     }
 

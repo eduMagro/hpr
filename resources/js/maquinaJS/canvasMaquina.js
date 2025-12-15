@@ -1048,14 +1048,27 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
                 }
             }
 
-            // ✅ NUEVO: Construir texto de coladas
+            // Construir texto de coladas: primero de la etiqueta (primer/segundo clic), luego de elementos
             const coladas = [];
-            if (elemento.coladas?.colada1)
-                coladas.push(elemento.coladas.colada1);
-            if (elemento.coladas?.colada2)
-                coladas.push(elemento.coladas.colada2);
-            if (elemento.coladas?.colada3)
-                coladas.push(elemento.coladas.colada3);
+
+            // Colada de la etiqueta (asignada en primer clic)
+            if (grupo.colada_etiqueta) {
+                coladas.push(grupo.colada_etiqueta);
+            }
+            // Colada 2 de la etiqueta (asignada en segundo clic si cambió)
+            if (grupo.colada_etiqueta_2 && grupo.colada_etiqueta_2 !== grupo.colada_etiqueta) {
+                coladas.push(grupo.colada_etiqueta_2);
+            }
+
+            // Si no hay coladas de etiqueta, usar las de elementos (sistema original)
+            if (coladas.length === 0) {
+                if (elemento.coladas?.colada1)
+                    coladas.push(elemento.coladas.colada1);
+                if (elemento.coladas?.colada2)
+                    coladas.push(elemento.coladas.colada2);
+                if (elemento.coladas?.colada3)
+                    coladas.push(elemento.coladas.colada3);
+            }
 
             const textColadas =
                 coladas.length > 0 ? ` (${coladas.join(", ")})` : "";
@@ -1930,6 +1943,60 @@ function initCanvasMaquina() {
 
         console.log(`✅ SVG actualizado con coladas para etiqueta ${etiquetaSubId}`, coladasPorElemento);
     };
+
+    // =======================
+    // Función global para LIMPIAR coladas del SVG (usado al deshacer)
+    // =======================
+    window.limpiarColadasSVG = function(etiquetaSubId) {
+        if (!window.elementosAgrupadosScript) return;
+
+        // Buscar el grupo de la etiqueta
+        const grupos = window.elementosAgrupadosScript;
+        const grupoIndex = grupos.findIndex(g =>
+            g.etiqueta && String(g.etiqueta.etiqueta_sub_id) === String(etiquetaSubId)
+        );
+
+        if (grupoIndex === -1) {
+            console.warn(`No se encontró grupo para etiqueta ${etiquetaSubId}`);
+            return;
+        }
+
+        const grupo = grupos[grupoIndex];
+
+        // Limpiar coladas de todos los elementos
+        if (grupo.elementos) {
+            grupo.elementos.forEach(elemento => {
+                elemento.coladas = { colada1: null, colada2: null, colada3: null };
+            });
+        }
+
+        // Regenerar el SVG completo para este grupo
+        renderizarGrupoSVG(grupo, grupoIndex);
+
+        console.log(`🧹 Coladas limpiadas del SVG para etiqueta ${etiquetaSubId}`);
+    };
+
+    // =======================
+    // Listener para regenerar SVG cuando se deshace una etiqueta
+    // =======================
+    window.addEventListener('regenerar-svg-etiqueta', function(e) {
+        const etiquetaSubId = e.detail?.etiquetaSubId;
+        if (!etiquetaSubId || !window.elementosAgrupadosScript) return;
+
+        const grupos = window.elementosAgrupadosScript;
+        const grupoIndex = grupos.findIndex(g =>
+            g.etiqueta && String(g.etiqueta.etiqueta_sub_id) === String(etiquetaSubId)
+        );
+
+        if (grupoIndex === -1) {
+            console.warn(`No se encontró grupo para regenerar SVG: ${etiquetaSubId}`);
+            return;
+        }
+
+        const grupo = grupos[grupoIndex];
+        renderizarGrupoSVG(grupo, grupoIndex);
+        console.log(`🔄 SVG regenerado para etiqueta ${etiquetaSubId} (evento deshacer)`);
+    });
 }
 
 // Inicialización compatible con Livewire Navigate

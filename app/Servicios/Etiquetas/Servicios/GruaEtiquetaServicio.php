@@ -28,12 +28,6 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
 {
     public function actualizar(ActualizarEtiquetaDatos $datos): ActualizarEtiquetaResultado
     {
-        Log::info('🏗️ [Grúa] Iniciando fabricación', [
-            'etiqueta_sub_id' => $datos->etiquetaSubId,
-            'maquina_id' => $datos->maquinaId,
-            'opciones' => $datos->opciones,
-        ]);
-
         // Validar que se recibió el producto escaneado
         $productoId = $datos->opciones['producto_id'] ?? null;
         $usoPaqueteCompleto = $datos->opciones['paquete_completo'] ?? true;
@@ -136,15 +130,6 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
                 );
             }
 
-            Log::info('🏗️ [Grúa] Validación de tipo, diámetro y longitud OK', [
-                'producto_codigo' => $producto->codigo,
-                'tipo_producto' => $tipoProducto,
-                'diametro_producto' => $diametroProducto,
-                'diametro_etiqueta' => $diametroEtiqueta,
-                'longitud_producto_m' => $longitudProducto,
-                'longitud_etiqueta_m' => $longitudEtiquetaMetros,
-            ]);
-
             // Obtener elementos de esta etiqueta en esta máquina (o sin máquina asignada)
             $elementosEnMaquina = $etiqueta->elementos()
                 ->where(function ($q) use ($maquina) {
@@ -194,12 +179,6 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
                 $producto->estado = 'consumido';
                 $producto->ubicacion_id = null;
                 $producto->maquina_id = null;
-
-                Log::info('🏗️ [Grúa] Paquete completo consumido', [
-                    'producto_id' => $producto->id,
-                    'codigo' => $producto->codigo,
-                    'peso_consumido' => $pesoConsumido,
-                ]);
             } else {
                 // Quitar barras: restar peso de la etiqueta
                 $pesoConsumido = $pesoEtiqueta;
@@ -212,13 +191,6 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
                     $producto->ubicacion_id = null;
                     $producto->maquina_id = null;
                 }
-
-                Log::info('🏗️ [Grúa] Barras extraídas del paquete', [
-                    'producto_id' => $producto->id,
-                    'codigo' => $producto->codigo,
-                    'peso_consumido' => $pesoConsumido,
-                    'peso_restante' => $producto->peso_stock,
-                ]);
             }
 
             $producto->save();
@@ -250,11 +222,6 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
             $this->actualizarPesoEtiqueta($etiqueta);
             $etiqueta->save();
 
-            Log::info('🏗️ [Grúa] Etiqueta marcada como completada', [
-                'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
-                'estado' => $etiqueta->estado,
-            ]);
-
             // Crear o usar paquete existente para la etiqueta
             $paquete = null;
             if ($etiqueta->paquete_id) {
@@ -276,12 +243,6 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
                 // Asignar paquete a la etiqueta
                 $etiqueta->paquete_id = $paquete->id;
                 $etiqueta->save();
-
-                Log::info('🏗️ [Grúa] Paquete creado para etiqueta', [
-                    'paquete_id' => $paquete->id,
-                    'paquete_codigo' => $paquete->codigo,
-                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
-                ]);
             }
 
             // Si todos los elementos de la planilla están fabricados, cerrar planilla
@@ -297,20 +258,8 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
                     $planilla->fecha_finalizacion = now();
                     $planilla->estado = 'completada';
                     $planilla->save();
-
-                    Log::info('🏗️ [Grúa] Planilla completada', [
-                        'planilla_id' => $planilla->id,
-                        'codigo' => $planilla->codigo,
-                    ]);
                 }
             }
-
-            Log::info('🏗️ [Grúa] Fabricación completada', [
-                'etiqueta_sub_id' => $datos->etiquetaSubId,
-                'elementos_fabricados' => $elementosEnMaquina->count(),
-                'producto_usado' => $producto->codigo,
-                'peso_consumido' => $pesoConsumido,
-            ]);
 
             return new ActualizarEtiquetaResultado(
                 $etiqueta,

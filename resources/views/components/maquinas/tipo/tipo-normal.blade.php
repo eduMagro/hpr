@@ -77,37 +77,33 @@
                                 ->reject(fn($p) => $p->estado === 'consumido')
                                 ->sortByDesc('estado'); // fabricando primero
 
-                            // Si no hay productos activos, saltar
-                            if ($productosDeEsteBase->isEmpty()) continue;
+                            $tieneProductos = $productosDeEsteBase->isNotEmpty();
                         @endphp
 
-                        <div class="mb-2 p-1.5 bg-gray-50 rounded border border-gray-200">
+                        <div class="mb-2 p-1.5 {{ $tieneProductos ? 'bg-gray-50' : 'bg-red-50' }} rounded border {{ $tieneProductos ? 'border-gray-200' : 'border-red-200' }}">
                             {{-- Cabecera del producto base --}}
                             <div class="flex items-center justify-between mb-1">
-                                <span class="bg-green-600 text-white px-1.5 py-0.5 rounded text-xs font-bold shadow-sm">
+                                <span class="{{ $tieneProductos ? 'bg-green-600' : 'bg-red-500' }} text-white px-1.5 py-0.5 rounded text-xs font-bold shadow-sm">
                                     Ø{{ $productoBase->diametro }}
                                     @if (strtoupper($productoBase->tipo) === 'BARRA')
-                                        <span class="text-green-100 font-normal">L:{{ $productoBase->longitud }}m</span>
+                                        <span class="{{ $tieneProductos ? 'text-green-100' : 'text-red-100' }} font-normal">L:{{ $productoBase->longitud }}m</span>
                                     @endif
                                 </span>
-                                <form method="POST" action="{{ route('movimientos.crear') }}" class="inline">
-                                    @csrf
-                                    <input type="hidden" name="tipo" value="recarga_materia_prima">
-                                    <input type="hidden" name="maquina_id" value="{{ $maquina->id }}">
-                                    <input type="hidden" name="producto_base_id" value="{{ $productoBase->id }}">
-                                    <input type="hidden" name="descripcion" value="Recarga Ø{{ $productoBase->diametro }}">
-                                    @if (optional($productoBaseSolicitados)->contains($productoBase->id))
-                                        <button disabled class="bg-gray-300 text-gray-500 text-xs px-2 py-1 rounded cursor-not-allowed">
-                                            🕓
-                                        </button>
-                                    @else
-                                        <button class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded font-medium">
-                                            +
-                                        </button>
-                                    @endif
-                                </form>
+                                @if (optional($productoBaseSolicitados)->contains($productoBase->id))
+                                    <button disabled class="bg-gray-300 text-gray-500 text-xs px-2 py-1 rounded cursor-not-allowed" title="Solicitud pendiente">
+                                        🕓
+                                    </button>
+                                @else
+                                    <button
+                                        onclick="solicitarRecarga(this, {{ $maquina->id }}, {{ $productoBase->id }}, '{{ $productoBase->diametro }}')"
+                                        class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded font-medium"
+                                        title="Solicitar recarga">
+                                        +
+                                    </button>
+                                @endif
                             </div>
 
+                            @if ($tieneProductos)
                             {{-- Lista de productos activos --}}
                             <div class="space-y-1">
                                 @foreach ($productosDeEsteBase as $producto)
@@ -145,6 +141,12 @@
                                     </div>
                                 @endforeach
                             </div>
+                            @else
+                            {{-- Sin stock - mostrar mensaje --}}
+                            <div class="text-center py-2">
+                                <span class="text-xs text-red-600 font-medium">⚠️ Sin stock</span>
+                            </div>
+                            @endif
                         </div>
                     @endforeach
                 </div>
@@ -469,26 +471,139 @@
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
-                window.location.href = `/productos/${productoId}/consumir?modo=total`;
+                // Mostrar loading
+                Swal.fire({
+                    title: 'Consumiendo producto...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                // Hacer petición AJAX
+                fetch(`/productos/${productoId}/consumir?modo=total`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Producto consumido',
+                            text: data.message,
+                            confirmButtonColor: '#10b981',
+                        });
+
+                        // Refrescar la sección de materia prima
+                        refrescarMateriaPrima();
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message || 'No se pudo consumir el producto',
+                            confirmButtonColor: '#dc2626',
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error de conexión',
+                        text: 'No se pudo conectar con el servidor',
+                        confirmButtonColor: '#dc2626',
+                    });
+                });
             }
         });
     }
 
-    // Auto-refresh para el contenedor de materia prima cada 10 segundos
-    let materiaPrimaRefreshInterval = null;
+    // Función para solicitar recarga de materia prima (AJAX)
+    function solicitarRecarga(btn, maquinaId, productoBaseId, diametro) {
+        // Deshabilitar botón inmediatamente
+        btn.disabled = true;
+        btn.innerHTML = '⏳';
+        btn.className = 'bg-gray-400 text-white text-xs px-2 py-1 rounded cursor-wait';
 
-    function refreshMateriaPrima() {
+        fetch('{{ route("movimientos.crear") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                tipo: 'recarga_materia_prima',
+                maquina_id: maquinaId,
+                producto_base_id: productoBaseId,
+                descripcion: `Recarga Ø${diametro}`
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Cambiar a estado "pendiente"
+                btn.innerHTML = '🕓';
+                btn.className = 'bg-gray-300 text-gray-500 text-xs px-2 py-1 rounded cursor-not-allowed';
+                btn.title = 'Solicitud pendiente';
+
+                // Toast de éxito
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: `Recarga Ø${diametro} solicitada`,
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true,
+                });
+            } else {
+                // Restaurar botón si falla
+                btn.disabled = false;
+                btn.innerHTML = '+';
+                btn.className = 'bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded font-medium';
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'error',
+                    title: data.message || 'Error al solicitar recarga',
+                    showConfirmButton: false,
+                    timer: 3000,
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            // Restaurar botón si falla
+            btn.disabled = false;
+            btn.innerHTML = '+';
+            btn.className = 'bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded font-medium';
+
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'error',
+                title: 'Error de conexión',
+                showConfirmButton: false,
+                timer: 3000,
+            });
+        });
+    }
+
+    // Función para refrescar la sección de materia prima sin recargar la página
+    function refrescarMateriaPrima() {
         const container = document.getElementById('materia-prima-container');
-        if (!container) {
-            console.warn('Contenedor de materia prima no encontrado');
-            return;
-        }
+        if (!container) return;
 
-        // Obtener parámetros de URL actuales
-        const params = new URLSearchParams(window.location.search);
-        const url = window.location.pathname + '?' + params.toString();
+        // Obtener la URL actual
+        const url = window.location.href;
 
-        // Hacer fetch para obtener el HTML actualizado
         fetch(url, {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
@@ -496,83 +611,19 @@
         })
         .then(response => response.text())
         .then(html => {
-            // Parsear el HTML
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
+            const nuevoContainer = doc.getElementById('materia-prima-container');
 
-            // Dibujamos la etiqueta en la lista visual
-            const li = document.createElement('li');
-            li.textContent = `Etiqueta ${etiquetaId}`;
-            li.dataset.etiquetaId = etiquetaId;
-            itemsList.appendChild(li);
-
-            inputQr.value = '';
+            if (nuevoContainer) {
+                container.innerHTML = nuevoContainer.innerHTML;
+            }
+        })
+        .catch(error => {
+            console.error('Error al refrescar materia prima:', error);
         });
+    }
 
-        /**
-         * Enviar petición para crear el paquete desde la máquina actual.
-         * Envía:
-         *  - maquina_id
-         *  - etiquetas_ids[]
-         */
-        btnCrear.addEventListener('click', async () => {
-            if (!maquinaId) {
-                alert(
-                    'No se ha podido determinar la máquina actual.');
-                return;
-            }
-
-            if (etiquetasSeleccionadas.size === 0) {
-                alert(
-                    'Añade al menos una etiqueta al carro antes de crear el paquete.');
-                return;
-            }
-
-            const etiquetasIds = Array.from(
-                etiquetasSeleccionadas);
-
-            try {
-                const resp = await fetch(
-                    "{{ route('paquetes.store') }}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document
-                                .querySelector(
-                                    'meta[name=\"csrf-token\"]'
-                                    ).getAttribute(
-                                    'content'),
-                            'Accept': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            maquina_id: maquinaId,
-                            etiquetas_ids: etiquetasIds,
-                        }),
-                    });
-
-                if (!resp.ok) {
-                    throw new Error(
-                        'Error al crear el paquete');
-                }
-
-                const data = await resp.json();
-
-                // Aquí el paquete ya tiene localización en el mapa
-                // (se ha creado el registro en localizaciones_paquetes)
-                // Podrías mostrar un Swal bonito:
-                // Swal.fire({ icon: 'success', title: 'Paquete creado', text: 'ID: ' + data.paquete.id });
-
-                // Limpiamos el carro
-                etiquetasSeleccionadas.clear();
-                itemsList.innerHTML = '';
-
-            } catch (e) {
-                console.error(e);
-                alert(
-                    'Ha ocurrido un error al crear el paquete.');
-            }
-        });
-    });
 </script>
 
 {{-- Panel de información del elemento --}}
