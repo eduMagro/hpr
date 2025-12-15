@@ -894,13 +894,16 @@
                                                                                 <table class="min-w-full text-sm">
                                                                                     <thead
                                                                                         class="bg-gray-100 text-gray-700 sticky top-0 z-10">
-                                                                                        <tr>
-                                                                                            <th
-                                                                                                class="px-4 py-2 text-center font-medium">
-                                                                                                Pedido</th>
-                                                                                            <th
-                                                                                                class="px-4 py-2 text-left font-medium">
-                                                                                                Fabricante</th>
+                                                                                                <tr>
+                                                                                                    <th
+                                                                                                        class="px-4 py-2 text-center font-medium">
+                                                                                                        Pedido</th>
+                                                                                                    <th
+                                                                                                        class="px-4 py-2 text-center font-medium">
+                                                                                                        Codigo linea</th>
+                                                                                                    <th
+                                                                                                        class="px-4 py-2 text-left font-medium">
+                                                                                                        Fabricante</th>
                                                                                             <th
                                                                                                 class="px-4 py-2 text-left font-medium">
                                                                                                 Producto</th>
@@ -933,6 +936,10 @@
                                                                                                         <span
                                                                                                             class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Recomendado</span>
                                                                                                     @endif
+                                                                                                </td>
+                                                                                                <td
+                                                                                                    class="px-4 py-3 text-center text-gray-700">
+                                                                                                    {{ $linea['codigo_linea'] ?? '-' }}
                                                                                                 </td>
                                                                                                 <td
                                                                                                     class="px-4 py-3 text-gray-600 text-xs">

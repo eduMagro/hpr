@@ -21,6 +21,8 @@ return [
     'schema_map' => [
         'siderurgica' => env('DOCUPIPE_SCHEMA_SISE'),
         'megasa' => env('DOCUPIPE_SCHEMA_MEGASA'),
+        'balboa' => env('DOCUPIPE_SCHEMA_BALBOA'),
+        'otro' => env('DOCUPIPE_SCHEMA_GENERIC'),
     ],
 
     'default_schema' => env('DOCUPIPE_SCHEMA_DEFAULT'),

@@ -487,6 +487,7 @@ class OpenAIController extends Controller
                     'codigo' => $linea->codigo,
                     'pedido_codigo' => $linea->pedido?->codigo,
                     'pedido_id' => $linea->pedido_id,
+                'codigo_linea' => $linea->codigo ?? null,
                 ]);
             }
 
@@ -577,6 +578,7 @@ class OpenAIController extends Controller
             return [
                 'id' => $linea->id,
                 'pedido_id' => $linea->pedido_id,
+                'codigo_linea' => $linea->codigo ?? null,
                 'pedido_codigo' => $linea->pedido->codigo ?? '(sin código)',
                 'fabricante' => $fabricante,
                 'obra' => $linea->obra->obra ?? $linea->obra_manual ?? '(sin obra)',
@@ -669,6 +671,7 @@ class OpenAIController extends Controller
             return [
                 'id' => $linea->id,
                 'pedido_id' => $linea->pedido_id,
+                'codigo_linea' => $linea->codigo ?? null,
                 'pedido_codigo' => $linea->pedido->codigo ?? '(sin código)',
                 'fabricante' => $fabricante,
                 'obra' => $linea->obra->obra ?? $linea->obra_manual ?? '(sin obra)',
