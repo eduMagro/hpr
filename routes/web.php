@@ -57,7 +57,14 @@ use App\Http\Controllers\OpenAIController;
 
 Route::get('/', [PageController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
-// Ruta de prueba para escaneo de albaranes con OpenAI
+// Escaneo de albaranes (producción)
+Route::get('/albaranes/scan', [OpenAIController::class, 'index'])->name('albaranes.scan.index');
+Route::post('/albaranes/scan/procesar', [OpenAIController::class, 'procesar'])->name('albaranes.scan.procesar');
+Route::post('/albaranes/scan/procesar-ajax', [OpenAIController::class, 'procesarAjax'])->name('albaranes.scan.procesar.ajax');
+Route::post('/albaranes/scan/buscar-pedido', [OpenAIController::class, 'buscarPedido'])->name('albaranes.scan.pedido.lookup');
+Route::post('/albaranes/scan/simular', [OpenAIController::class, 'simular'])->name('albaranes.scan.simular');
+
+// Alias legacy (compatibilidad)
 Route::get('/pruebasScanAlbaran', [OpenAIController::class, 'index'])->name('openai.index');
 Route::post('/pruebasScanAlbaran/procesar', [OpenAIController::class, 'procesar'])->name('openai.procesar');
 Route::post('/pruebasScanAlbaran/procesar-ajax', [OpenAIController::class, 'procesarAjax'])->name('openai.procesar.ajax');

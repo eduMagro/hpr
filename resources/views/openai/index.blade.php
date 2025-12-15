@@ -196,7 +196,7 @@
                     </div>
                 </div>
 
-                <form action="{{ route('openai.procesar') }}" method="POST" enctype="multipart/form-data" id="ocrForm"
+                <form action="{{ route('albaranes.scan.procesar') }}" method="POST" enctype="multipart/form-data" id="ocrForm"
                     class="mt-6 space-y-4">
                     @csrf
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2803,7 +2803,7 @@
             setProcessingState(true);
 
             try {
-                const response = await fetch("{{ route('openai.procesar.ajax') }}", {
+                const response = await fetch("{{ route('albaranes.scan.procesar.ajax') }}", {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
@@ -3604,7 +3604,7 @@
             }
 
             try {
-                const response = await fetch("{{ route('openai.pedido.lookup') }}", {
+                const response = await fetch("{{ route('albaranes.scan.pedido.lookup') }}", {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
@@ -3639,7 +3639,7 @@
             const proveedor = proveedorStep1?.value || cache.parsed?.proveedor || null;
 
             try {
-                const response = await fetch("{{ route('openai.simular') }}", {
+                const response = await fetch("{{ route('albaranes.scan.simular') }}", {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
