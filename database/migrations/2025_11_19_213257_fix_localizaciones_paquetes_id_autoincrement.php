@@ -12,8 +12,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Arreglar la columna 'id' para que sea AUTO_INCREMENT
-        DB::statement('ALTER TABLE localizaciones_paquetes MODIFY COLUMN id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY');
+        // Arreglar la columna 'id' para que sea AUTO_INCREMENT (sin redefinir la PK si ya existe)
+        DB::statement('ALTER TABLE localizaciones_paquetes MODIFY COLUMN id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT');
     }
 
     /**
@@ -22,6 +22,6 @@ return new class extends Migration
     public function down(): void
     {
         // No es necesario revertir, pero por completitud:
-        DB::statement('ALTER TABLE localizaciones_paquetes MODIFY COLUMN id BIGINT UNSIGNED PRIMARY KEY');
+        DB::statement('ALTER TABLE localizaciones_paquetes MODIFY COLUMN id BIGINT UNSIGNED NOT NULL');
     }
 };

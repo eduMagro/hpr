@@ -34,6 +34,7 @@ use Illuminate\Support\Facades\Session as FacadeSession;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
+use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
 use App\Servicios\Turnos\TurnoMapper;
 use App\Services\OperarioService;
 
@@ -811,21 +812,29 @@ class ProfileController extends Controller
         if ($request->hasFile('imagen')) {
             $archivo = $request->file('imagen');
 
-            $manager = new ImageManager(new GdDriver());
-            $imagen = $manager->read($archivo)->cover(300, 300)->toJpeg(85);
-            $nombreArchivo = 'perfil_' . $user->id . '_' . uniqid() . '.jpg';
-
-            // ✅ Usa explícitamente el disco "public"
-            Storage::disk('public')->put("perfiles/{$nombreArchivo}", $imagen->toString());
-
-            // ✅ También en exists y delete:
-            if ($user->imagen && Storage::disk('public')->exists("perfiles/{$user->imagen}")) {
+            // Borrar anterior si existe
+            if ($user->imagen) {
                 Storage::disk('public')->delete("perfiles/{$user->imagen}");
             }
 
-            // Borrar anterior si existe
-            if ($user->imagen && Storage::exists("public/perfiles/{$user->imagen}")) {
-                Storage::delete("public/perfiles/{$user->imagen}");
+            $driver = null;
+            if (extension_loaded('gd')) {
+                $driver = new GdDriver();
+            } elseif (extension_loaded('imagick')) {
+                $driver = new ImagickDriver();
+            }
+
+            if ($driver) {
+                // Normalizar y optimizar imagen de perfil (300x300 JPG)
+                $manager = new ImageManager($driver);
+                $imagen = $manager->read($archivo)->cover(300, 300)->toJpeg(85);
+                $nombreArchivo = 'perfil_' . $user->id . '_' . uniqid() . '.jpg';
+                Storage::disk('public')->put("perfiles/{$nombreArchivo}", $imagen->toString());
+            } else {
+                // Fallback sin drivers de imagen: guardar el archivo tal cual.
+                $ext = strtolower($archivo->getClientOriginalExtension() ?: 'jpg');
+                $nombreArchivo = 'perfil_' . $user->id . '_' . uniqid() . '.' . $ext;
+                Storage::disk('public')->putFileAs('perfiles', $archivo, $nombreArchivo);
             }
 
             $user->imagen = $nombreArchivo;

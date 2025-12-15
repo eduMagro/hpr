@@ -10,6 +10,8 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Models\AsignacionTurno;
+use App\Models\Epi;
+use App\Models\EpiUsuario;
 
 
 class User extends Authenticatable
@@ -362,5 +364,17 @@ class User extends Authenticatable
     public function activeFcmTokens()
     {
         return $this->fcmTokens()->active();
+    }
+
+    public function epis()
+    {
+        return $this->belongsToMany(Epi::class, 'epis_usuario')
+            ->withPivot(['id', 'cantidad', 'entregado_en', 'devuelto_en', 'notas'])
+            ->withTimestamps();
+    }
+
+    public function episAsignaciones()
+    {
+        return $this->hasMany(EpiUsuario::class, 'user_id');
     }
 }
