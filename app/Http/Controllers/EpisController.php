@@ -99,6 +99,9 @@ class EpisController extends Controller
     public function apiUsers(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
+        $epi = trim((string) $request->query('epi', ''));
+        $epiProvided = $epi !== '';
+        $epiTokens = $epi !== '' ? preg_split('/\s+/', $epi, -1, PREG_SPLIT_NO_EMPTY) : [];
 
         $users = User::query()
             ->when($q !== '', function ($query) use ($q) {
@@ -110,6 +113,23 @@ class EpisController extends Controller
                         ->orWhere('dni', 'like', "%{$q}%")
                         ->orWhere('movil_personal', 'like', "%{$q}%");
                 });
+            })
+            ->when($epi !== '', function ($query) use ($epiTokens) {
+                $query->withExists([
+                    'episAsignaciones as epi_match' => function ($asignaciones) use ($epiTokens) {
+                        $asignaciones
+                            ->whereNull('devuelto_en')
+                            ->whereHas('epi', function ($epis) use ($epiTokens) {
+                                foreach ($epiTokens as $token) {
+                                    $epis->where(function ($sub) use ($token) {
+                                        $sub->where('nombre', 'like', "%{$token}%")
+                                            ->orWhere('codigo', 'like', "%{$token}%")
+                                            ->orWhere('categoria', 'like', "%{$token}%");
+                                    });
+                                }
+                            });
+                    },
+                ]);
             })
             ->withSum(
                 [
@@ -124,7 +144,7 @@ class EpisController extends Controller
             ->orderBy('segundo_apellido')
             ->orderBy('name')
             ->get()
-            ->map(function (User $user) {
+            ->map(function (User $user) use ($epiProvided) {
                 return [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -137,6 +157,7 @@ class EpisController extends Controller
                     'ruta_imagen' => $user->ruta_imagen,
                     'epis_en_posesion' => (int) ($user->epis_en_posesion ?? 0),
                     'tiene_epis' => ((int) ($user->epis_en_posesion ?? 0)) > 0,
+                    'epi_match' => $epiProvided ? (bool) ($user->epi_match ?? false) : true,
                 ];
             })
             ->values();
