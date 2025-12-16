@@ -221,12 +221,10 @@
                                     class="px-2 py-1 rounded-lg bg-amber-200 text-amber-900 hover:bg-amber-300">
                                     Reimportar
                                 </button>
-                                @if (in_array($planilla->estado, ['pendiente', 'fabricando']))
-                                    <button type="button" onclick="resetearPlanilla({{ $planilla->id }}, '{{ $planilla->codigo }}')"
-                                        class="px-2 py-1 rounded-lg bg-orange-200 text-orange-900 hover:bg-orange-300">
-                                        Resetear
-                                    </button>
-                                @endif
+                                <button type="button" onclick="resetearPlanilla({{ $planilla->id }}, '{{ $planilla->codigo }}')"
+                                    class="px-2 py-1 rounded-lg bg-orange-200 text-orange-900 hover:bg-orange-300">
+                                    Resetear
+                                </button>
                                 @if (!($planilla->revisada ?? false))
                                     <form action="{{ route('planillas.marcarRevisada', $planilla->id) }}"
                                         method="POST" class="inline">
