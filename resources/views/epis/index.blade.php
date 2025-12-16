@@ -152,7 +152,7 @@
                     <div class="divide-y divide-gray-100">
                         <template x-for="u in agendaUsers" :key="u.id">
                             <div
-                                class="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:bg-gray-200 group">
+                                class="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:bg-blue-50 group hover:cursor-pointer">
                                 <div class="flex items-center gap-4 min-w-0">
                                     <div
                                         class="group flex items-center justify-center w-12 h-12 rounded-full overflow-hidden bg-gray-100 border-0 border-transparent group-hover:border-2 group-hover:border-gray-700 transition-all duration-100">
@@ -190,12 +190,12 @@
 
                                 <div class="flex gap-2">
                                     <button type="button"
-                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 shadow-sm hover:shadow-md transition"
+                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-gradient-to-tr from-slate-700 to-slate-800 text-white hover:bg-gray-800 shadow-sm hover:shadow-md transition"
                                         @click="openUser(u)">
                                         EPIs
                                     </button>
                                     <button type="button"
-                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-gray-400 text-gray-900 hover:bg-gray-600 hover:text-white shadow-sm hover:shadow-md"
+                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-gray-200 text-gray-900 hover:bg-gray-300 shadow-sm hover:shadow-md"
                                         @click="openRecentModalForUser(u)">
                                         Últimos
                                     </button>
@@ -214,14 +214,15 @@
 
             <div
                 class="relative w-full sm:max-w-5xl bg-white/95 backdrop-blur rounded-t-2xl sm:rounded-2xl border border-slate-200 shadow-[0_20px_60px_rgba(15,23,42,0.35)] overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col">
-                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
+                <div
+                    class="px-6 py-4 border-b border-slate-200 bg-gradient-to-tr from-slate-900 to-slate-900 flex items-center justify-between">
                     <div class="min-w-0 w-full">
-                        <p class="text-xs uppercase tracking-wide text-gray-500">EPIs</p>
+                        <p class="text-xs uppercase tracking-wide text-gray-200">EPIs</p>
                         <div class="flex flex-col sm:flex-row sm:items-center sm:gap-3">
-                            <p class="font-semibold text-gray-900 truncate" x-text="modalTitle"></p>
+                            <p class="font-semibold text-white truncate" x-text="modalTitle"></p>
                             <template x-if="modalTab === 'usuario' && selectedUser">
                                 <div
-                                    class="text-xs text-gray-600 flex flex-col sm:flex-row sm:items-center sm:gap-3 w-full sm:w-auto">
+                                    class="text-xs text-gray-300 flex flex-col sm:flex-row sm:items-center sm:gap-3 w-full sm:w-auto">
                                     <span
                                         x-text="`Categoría: ${selectedUser.categoria?.nombre || 'Sin asignar'}`"></span>
                                     <span x-text="`Empresa: ${selectedUser.empresa?.nombre || 'Sin empresa'}`"></span>
@@ -242,12 +243,14 @@
                 <div class="px-6 pt-4">
                     <div class="flex gap-2 border-b border-slate-200">
                         <button type="button" class="px-4 py-2 text-sm font-medium rounded-t-lg"
-                            :class="modalTab === 'usuario' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-200'"
+                            :class="modalTab === 'usuario' ? 'bg-gradient-to-tr from-slate-700 to-slate-800 text-white' :
+                                'text-gray-700 bg-gray-200 hover:bg-gray-300'"
                             @click="switchModalTab('usuario')" :disabled="!selectedUser">
                             Usuario
                         </button>
                         <button type="button" class="px-4 py-2 text-sm font-medium rounded-t-lg"
-                            :class="modalTab === 'catalogo' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-200'"
+                            :class="modalTab === 'catalogo' ? 'bg-gradient-to-tr from-slate-700 to-slate-800 text-white' :
+                                'text-gray-700 bg-gray-200 hover:bg-gray-300'"
                             @click="switchModalTab('catalogo')">
                             Catálogo
                         </button>
@@ -398,7 +401,7 @@
                                             </p>
                                             <div class="mt-4">
                                                 <button type="button"
-                                                    class="w-full px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800"
+                                                    class="w-full px-4 py-2 rounded-lg bg-gradient-to-tr from-slate-700 to-slate-800 text-white hover:bg-gray-800"
                                                     @click="openRecentModal()">
                                                     Últimos asignados
                                                 </button>
@@ -431,7 +434,7 @@
                                             <div class="divide-y divide-gray-100">
                                                 <template x-for="g in userEpiGroupsFiltered" :key="g.epi.id">
                                                     <div>
-                                                        <div class="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 cursor-pointer"
+                                                        <div class="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 cursor-pointer hover:bg-blue-50 group"
                                                             @click="toggleEpiGroup(g.epi.id)"
                                                             :class="expandedEpiId === Number(g.epi.id) ? 'bg-slate-50' : ''">
                                                             <div class="flex items-center gap-4 min-w-0">
@@ -550,7 +553,7 @@
                                                                                         </svg>
                                                                                     </button>
                                                                                     <button type="button"
-                                                                                        class="px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50"
+                                                                                        class="px-4 py-2 rounded-lg bg-gradient-to-tr from-slate-700 to-slate-800 text-white hover:bg-gray-800 disabled:opacity-50"
                                                                                         :disabled="saving"
                                                                                         @click.stop="markReturned(a)">
                                                                                         Marcar devuelto
@@ -703,7 +706,8 @@
                                 <template x-if="!loadingEpis && catalogEpis.length > 0">
                                     <div class="divide-y divide-gray-100">
                                         <template x-for="e in catalogEpis" :key="e.id">
-                                            <div class="p-4 sm:p-6" x-data="{ editOpen: false, form: { ...e } }">
+                                            <div class="p-4 sm:p-6 hover:bg-blue-50 group hover:cursor-pointer"
+                                                x-data="{ editOpen: false, form: { ...e } }">
                                                 <div
                                                     class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                                     <div class="flex items-center gap-4 min-w-0">
@@ -1115,7 +1119,7 @@
                                             Editar
                                         </button>
                                         <button type="button"
-                                            class="px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800"
+                                            class="px-4 py-2 rounded-lg bg-gradient-to-tr from-slate-700 to-slate-800 text-white hover:bg-gray-800"
                                             @click="toggleCompraEstado(c)">
                                             <span
                                                 x-text="c.estado === 'comprada' ? 'Marcar pendiente' : 'Marcar comprada'"></span>
@@ -2129,8 +2133,7 @@
                     const q = this.epiAssignQuery;
                     const filtered = this.epis
                         .filter(e => e.activo)
-                        .filter(e => this.epiMatches(e, q))
-                        .slice(0, 10);
+                        .filter(e => this.epiMatches(e, q));
                     this.epiAssignSuggestions = filtered;
                 },
 
