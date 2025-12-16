@@ -188,7 +188,7 @@ class MaquinaController extends Controller
             // ⚠️ IMPORTANTE: Activar movimientos ANTES de cargar el contexto
             // para que los nuevos movimientos aparezcan en la primera carga
             $this->activarMovimientosSalidasHoy();
-            $this->activarMovimientosSalidasAlmacenHoy();
+            //$this->activarMovimientosSalidasAlmacenHoy();
             $this->activarMovimientosPreparacionPaquete($maquina);
 
             // 🔧 MODO FABRICACIÓN: Si viene el parámetro fabricar_planilla, mostrar vista de fabricación
@@ -292,7 +292,7 @@ class MaquinaController extends Controller
             ->groupBy('etiqueta_sub_id')
             ->sortBy($ordenSub);
 
-        $elementosAgrupadosScript = $elementosAgrupados->map(function($grupo) {
+        $elementosAgrupadosScript = $elementosAgrupados->map(function ($grupo) {
             $etiqueta = $grupo->first()->etiquetaRelacion;
             return [
                 'etiqueta'  => $etiqueta,
@@ -411,7 +411,7 @@ class MaquinaController extends Controller
             ->where('maquina_id', $maquina->id)
             ->where(function ($query) use ($planillaIds) {
                 $query->whereIn('planilla_id', $planillaIds)
-                      ->orWhereNull('planilla_id'); // Grupos multi-planilla
+                    ->orWhereNull('planilla_id'); // Grupos multi-planilla
             })
             ->with(['etiquetas.planilla', 'planilla'])
             ->get();
@@ -488,7 +488,7 @@ class MaquinaController extends Controller
         );
 
         // Actualizar elementosAgrupadosScript sin grupos
-        $elementosAgrupadosScriptSinGrupos = $elementosAgrupadosSinGrupos->map(function($grupo) {
+        $elementosAgrupadosScriptSinGrupos = $elementosAgrupadosSinGrupos->map(function ($grupo) {
             $etiqueta = $grupo->first()->etiquetaRelacion;
             return [
                 'etiqueta'  => $etiqueta,
@@ -940,7 +940,7 @@ class MaquinaController extends Controller
                     'x2'    => (int) $loc->x2,
                     'y2'    => (int) $loc->y2,
                     'tipo'  => $loc->tipo ?? 'transitable',
-                    'nombre'=> (string) $loc->nombre,
+                    'nombre' => (string) $loc->nombre,
                 ];
             })->values()->toArray();
 
@@ -1165,10 +1165,9 @@ class MaquinaController extends Controller
         // Puede ser por fecha_entrega del elemento o por fecha_estimada_entrega de la planilla
         $elementosSinElaborar = Elemento::with(['planilla.cliente', 'planilla.obra', 'maquina'])
             ->where('elaborado', 0)
+            ->where('longitud_cm', '!=', 600) // ❌ excluir 6 metros
             ->where(function ($query) use ($manana) {
-                // Elementos con fecha_entrega propia para mañana
                 $query->whereDate('fecha_entrega', $manana)
-                    // O elementos sin fecha_entrega propia pero cuya planilla tiene fecha_estimada_entrega para mañana
                     ->orWhere(function ($q) use ($manana) {
                         $q->whereNull('fecha_entrega')
                             ->whereHas('planilla', function ($planillaQuery) use ($manana) {
@@ -1178,8 +1177,9 @@ class MaquinaController extends Controller
             })
             ->get();
 
+
         if ($elementosSinElaborar->isEmpty()) {
-            Log::info("ℹ️ No hay elementos sin elaborar con fecha de entrega para mañana");
+            // No hay elementos sin elaborar para mañana
             return;
         }
 
@@ -1330,7 +1330,7 @@ class MaquinaController extends Controller
             ->groupBy('etiqueta_sub_id')
             ->sortBy($ordenSub);
 
-        $elementosAgrupadosScript = $elementosAgrupados->map(function($grupo) {
+        $elementosAgrupadosScript = $elementosAgrupados->map(function ($grupo) {
             $etiqueta = $grupo->first()->etiquetaRelacion;
             return [
                 'etiqueta'  => $etiqueta,
@@ -2081,7 +2081,6 @@ class MaquinaController extends Controller
                 'detalles' => $detalles,
                 'resumen' => $resumen,
             ]);
-
         } catch (\Exception $e) {
             Log::error("Error en redistribuir máquina {$id}: " . $e->getMessage());
             return response()->json([
@@ -2138,8 +2137,8 @@ class MaquinaController extends Controller
                     ->whereDoesntHave('paquete')
                     ->whereHas('elementos', function ($q) use ($maquina) {
                         $q->where('maquina_id', $maquina->id)
-                          ->orWhere('maquina_id_2', $maquina->id)
-                          ->orWhere('maquina_id_3', $maquina->id);
+                            ->orWhere('maquina_id_2', $maquina->id)
+                            ->orWhere('maquina_id_3', $maquina->id);
                     })
                     ->count();
 
@@ -2178,7 +2177,6 @@ class MaquinaController extends Controller
                 'message' => $mensaje,
                 'planillas_completadas' => $planillasCompletadas
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Error al completar planilla manual en máquina {$id}: " . $e->getMessage());

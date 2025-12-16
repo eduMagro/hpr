@@ -5,26 +5,6 @@
 @endphp
 
 @if(auth()->user()->esOficina())
-{{-- Script para establecer estado inicial sin parpadeo --}}
-<script>
-(function() {
-    if (window.innerWidth >= 768) {
-        var isOpen = localStorage.getItem('sidebar_open') !== 'false';
-        var style = document.createElement('style');
-        style.id = 'sidebar-initial-state';
-        style.textContent = '#main-sidebar { width: ' + (isOpen ? '16rem' : '4rem') + ' !important; }' +
-            (isOpen ? '' : ' #main-sidebar [x-show="open"] { display: none !important; }');
-        document.head.appendChild(style);
-        // Remover después de que Alpine inicialice
-        document.addEventListener('alpine:initialized', function() {
-            setTimeout(function() {
-                var s = document.getElementById('sidebar-initial-state');
-                if (s) s.remove();
-            }, 100);
-        });
-    }
-})();
-</script>
 <div x-data="{
     open: window.innerWidth >= 768 ? (localStorage.getItem('sidebar_open') !== 'false') : false,
     activeSections: JSON.parse(localStorage.getItem('sidebar_active_sections') || '[]'),
@@ -517,7 +497,7 @@
                         </path>
                     </svg>
                     <span x-show="open" x-cloak
-                        class="text-gray-400 group-hover:text-white transition">Buscar
+                        class="sidebar-text text-gray-400 group-hover:text-white transition">Buscar
                         (Ctrl+K)</span>
                 </button>
             </div>
@@ -535,9 +515,9 @@
                         </path>
                     </svg>
                     <span x-show="open" x-cloak
-                        class="text-gray-400 group-hover:text-white transition">Favoritos</span>
+                        class="sidebar-text text-gray-400 group-hover:text-white transition">Favoritos</span>
                     <span x-show="open && favorites.length > 0" x-cloak
-                        class="ml-auto bg-yellow-600 text-xs px-2 py-0.5 rounded-full"
+                        class="sidebar-text ml-auto bg-yellow-600 text-xs px-2 py-0.5 rounded-full"
                         x-text="favorites.length"></span>
                     <span x-show="!open && favorites.length > 0"
                         class="absolute -top-1 -right-1 bg-yellow-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full"
@@ -601,7 +581,7 @@
                         </path>
                     </svg>
                     <span x-show="open" x-cloak
-                        class="text-gray-400 group-hover:text-white transition">Recientes
+                        class="sidebar-text text-gray-400 group-hover:text-white transition">Recientes
                         (Ctrl+H)</span>
                 </button>
 
@@ -681,12 +661,12 @@
                                 <span
                                     class="text-xl flex-shrink-0">{{ $section['icon'] }}</span>
                                 <span x-show="open" x-cloak x-transition
-                                    class="font-medium">{{ $section['label'] }}</span>
+                                    class="sidebar-text font-medium">{{ $section['label'] }}</span>
                             </div>
                             <svg x-show="open" x-cloak
                                 :class="activeSections.includes('{{ $section['id'] }}') ?
                                     'rotate-180' : ''"
-                                class="w-4 h-4 flex-shrink-0 transition-transform"
+                                class="sidebar-text w-4 h-4 flex-shrink-0 transition-transform"
                                 fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
                                 <path stroke-linecap="round"
@@ -776,7 +756,7 @@
                     </path>
                 </svg>
                 <span x-show="open" x-cloak
-                    class="text-gray-400 group-hover:text-white">Dashboard</span>
+                    class="sidebar-text text-gray-400 group-hover:text-white">Dashboard</span>
             </a>
 
             <!-- Modo Oscuro -->
@@ -796,7 +776,7 @@
                     </path>
                 </svg>
                 <span x-show="open" x-cloak
-                    class="text-gray-400 group-hover:text-white"
+                    class="sidebar-text text-gray-400 group-hover:text-white"
                     x-text="darkMode ? 'Modo Claro' : 'Modo Oscuro'"></span>
             </button>
         </div>
@@ -939,24 +919,44 @@
         .sidebar-mobile-hidden.sidebar-ready {
             transition: transform 0.3s ease-in-out;
         }
+
+        /* En móvil, mostrar textos siempre que sidebar esté abierto */
+        .sidebar-mobile-hidden.sidebar-open .sidebar-text {
+            display: inline !important;
+            visibility: visible;
+        }
+
+        .sidebar-mobile-hidden.sidebar-open svg.sidebar-text {
+            display: inline-block !important;
+        }
     }
 
     /* ===== SIDEBAR DESKTOP ===== */
     @media (min-width: 768px) {
         .sidebar-mobile-hidden {
             transform: translateX(0);
-            /* Ancho inicial basado en localStorage para evitar saltos */
-            width: 16rem;
+            width: 4rem; /* Por defecto cerrado */
+        }
+
+        /* Elementos ocultos por defecto (antes de Alpine) */
+        .sidebar-mobile-hidden .sidebar-text {
+            display: none !important;
+            visibility: hidden;
+        }
+
+        /* Mostrar elementos solo cuando sidebar abierto Y listo */
+        .sidebar-mobile-hidden.sidebar-open.sidebar-ready .sidebar-text {
+            display: inline !important;
+            visibility: visible;
+        }
+
+        /* Para SVGs usar inline-block */
+        .sidebar-mobile-hidden.sidebar-open.sidebar-ready svg.sidebar-text {
+            display: inline-block !important;
         }
 
         .sidebar-mobile-hidden.sidebar-open {
             width: 16rem;
-        }
-
-        /* Ocultar textos cuando sidebar cerrado (sin esperar Alpine) */
-        .sidebar-mobile-hidden.sidebar-closed [x-show="open"],
-        .sidebar-mobile-hidden:not(.sidebar-open):not(.sidebar-ready) [x-show="open"] {
-            display: none !important;
         }
 
         .sidebar-mobile-hidden.sidebar-closed {
