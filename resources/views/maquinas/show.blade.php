@@ -514,12 +514,13 @@
                     @endif
                 @endif
 
-                <form method="POST" action="{{ route('turno.cambiarMaquina') }}">
+                <form method="POST" action="{{ route('turno.cambiarMaquina') }}" id="form-cambiar-maquina">
                     @csrf
                     <input type="hidden" name="asignacion_id" value="{{ $turnoHoy->id ?? '' }}">
+                    <input type="hidden" name="nueva_maquina_id" id="hidden-nueva-maquina-id" value="">
 
                     <div class="relative">
-                        <select name="nueva_maquina_id" onchange="this.form.submit()"
+                        <select id="select-cambiar-maquina"
                             class="appearance-none bg-white border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
                             @foreach ($maquinas as $m)
                                 <option value="{{ $m->id }}"
@@ -537,6 +538,88 @@
                         </div>
                     </div>
                 </form>
+
+                {{-- Overlay de carga al cambiar máquina --}}
+                <style>
+                    #overlay-cambiar-maquina {
+                        opacity: 0;
+                        visibility: hidden;
+                        transition: opacity 0.4s ease, visibility 0.4s ease;
+                    }
+                    #overlay-cambiar-maquina.active {
+                        opacity: 1;
+                        visibility: visible;
+                    }
+                    #overlay-cambiar-maquina .overlay-bg {
+                        opacity: 0;
+                        transition: opacity 0.4s ease;
+                    }
+                    #overlay-cambiar-maquina.active .overlay-bg {
+                        opacity: 1;
+                    }
+                    #overlay-cambiar-maquina .loader-card {
+                        opacity: 0;
+                        transform: scale(0.9) translateY(20px);
+                        transition: opacity 0.4s ease 0.1s, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s;
+                    }
+                    #overlay-cambiar-maquina.active .loader-card {
+                        opacity: 1;
+                        transform: scale(1) translateY(0);
+                    }
+                    @keyframes spin-smooth {
+                        to { transform: rotate(360deg); }
+                    }
+                    .spinner-ring {
+                        animation: spin-smooth 1s linear infinite;
+                    }
+                </style>
+                <div id="overlay-cambiar-maquina" class="fixed inset-0 z-[9999]">
+                    {{-- Fondo con blur --}}
+                    <div class="overlay-bg absolute inset-0 bg-gray-900/50 backdrop-blur-sm"></div>
+                    {{-- Contenedor central --}}
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="loader-card bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-5">
+                            {{-- Spinner elegante --}}
+                            <div class="relative w-16 h-16">
+                                <div class="absolute inset-0 border-4 border-blue-100 rounded-full"></div>
+                                <div class="absolute inset-0 border-4 border-transparent border-t-blue-600 rounded-full spinner-ring"></div>
+                            </div>
+                            {{-- Texto --}}
+                            <div class="text-center">
+                                <p class="text-gray-800 font-semibold text-lg">Cambiando de máquina</p>
+                                <p class="text-gray-500 text-sm mt-1" id="loader-maquina-nombre"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <script>
+                    document.getElementById('select-cambiar-maquina').addEventListener('change', function() {
+                        const overlay = document.getElementById('overlay-cambiar-maquina');
+                        const nombreMaquina = document.getElementById('loader-maquina-nombre');
+                        const hiddenInput = document.getElementById('hidden-nueva-maquina-id');
+                        const select = this;
+
+                        // Guardar valor en campo hidden antes de deshabilitar
+                        hiddenInput.value = select.value;
+
+                        // Obtener nombre de la máquina seleccionada
+                        const selectedOption = select.options[select.selectedIndex];
+                        nombreMaquina.textContent = selectedOption.text;
+
+                        // Activar overlay con animación suave
+                        overlay.classList.add('active');
+
+                        // Deshabilitar select visualmente
+                        select.disabled = true;
+                        select.classList.add('opacity-50');
+
+                        // Enviar formulario después de que se vea la animación
+                        setTimeout(() => {
+                            document.getElementById('form-cambiar-maquina').submit();
+                        }, 300);
+                    });
+                </script>
             </div>
         </div>
     </x-slot>

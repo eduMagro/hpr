@@ -397,8 +397,11 @@ class MaquinaController extends Controller
             ->toArray();
 
         // 11) AUTO-RESUMEN: Ejecutar automáticamente resumen multi-planilla si hay etiquetas agrupables
-        $resumenService = app(\App\Services\ResumenEtiquetaService::class);
-        $resumenService->resumirMultiplanilla($maquina->id, auth()->id());
+        // Excluir MSR20 del auto-resumen (usa sistema de BVBs diferente)
+        if (strtoupper($maquina->nombre) !== 'MSR20') {
+            $resumenService = app(\App\Services\ResumenEtiquetaService::class);
+            $resumenService->resumirMultiplanilla($maquina->id, auth()->id());
+        }
 
         // 12) Grupos de resumen activos para esta máquina
         // Incluye tanto grupos de planilla individual como grupos multi-planilla (planilla_id = null)
