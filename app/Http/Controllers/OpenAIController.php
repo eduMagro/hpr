@@ -213,6 +213,7 @@ class OpenAIController extends Controller
             ->unique()
             ->values()
             ->all();
+        $diametrosInt = array_values(array_unique(array_map(fn($v) => (int) round((float) $v), $diametros)));
 
         if ($normalized === '') {
             return response()->json([
@@ -256,6 +257,31 @@ class OpenAIController extends Controller
             ]);
         }
 
+        // Si el albaran trae diametros y ninguna linea coincide, no mostrar "encontrado".
+        if (!empty($diametrosInt)) {
+            $lineas = $lineas->filter(function (PedidoProducto $linea) use ($diametrosInt) {
+                $diam = $linea->productoBase?->diametro;
+                if ($diam === null) {
+                    return false;
+                }
+                $diamInt = (int) round((float) $diam);
+                return in_array($diamInt, $diametrosInt, true);
+            })->values();
+
+            if ($lineas->isEmpty()) {
+                return response()->json([
+                    'exists' => false,
+                    'reason' => 'diametro_mismatch',
+                    'searched' => $codigo,
+                    'normalized_search' => $normalized,
+                    'match_type' => $matchType,
+                    'exact_count' => $exactCount,
+                    'contains_count' => $containsCount,
+                    'diametros' => $diametrosInt,
+                ]);
+            }
+        }
+
         $estadoRank = function (?string $estado): int {
             $e = mb_strtolower(trim((string) $estado));
             // Menor es mejor (más "usable" para recepcionar)
@@ -271,10 +297,10 @@ class OpenAIController extends Controller
         };
 
         $bestLinea = $lineas
-            ->sortBy(function (PedidoProducto $linea) use ($diametros, $estadoRank) {
+            ->sortBy(function (PedidoProducto $linea) use ($diametrosInt, $estadoRank) {
                 $rank = $estadoRank($linea->estado);
-                $diam = (float) ($linea->productoBase?->diametro ?? 0);
-                $diamMatch = (!empty($diametros) && $diam > 0 && in_array($diam, $diametros, true)) ? 0 : 1;
+                $diamInt = (int) round((float) ($linea->productoBase?->diametro ?? 0));
+                $diamMatch = (!empty($diametrosInt) && $diamInt > 0 && in_array($diamInt, $diametrosInt, true)) ? 0 : 1;
                 // Orden: estado "bueno" primero, luego match de diámetro, luego más reciente
                 return [$rank, $diamMatch, -$linea->created_at?->timestamp];
             })
@@ -319,7 +345,7 @@ class OpenAIController extends Controller
             'match_type' => $matchType,
             'exact_count' => $exactCount,
             'contains_count' => $containsCount,
-            'diametros' => $diametros,
+            'diametros' => !empty($diametrosInt) ? $diametrosInt : $diametros,
             'best_linea_id' => $bestLinea?->id,
             'lineas' => $lineasPayload,
         ]);
@@ -465,7 +491,8 @@ class OpenAIController extends Controller
 
         // Buscar líneas de pedidos de COMPRA pendientes (filtrar solo por FABRICANTE)
         $lineasPendientes = \App\Models\PedidoProducto::query()
-            ->with(['pedido.fabricante', 'productoBase', 'obra'])
+            ->with(['pedido.fabricante', 'pedido.distribuidor', 'productoBase', 'obra'])
+            ->whereHas('pedido')
             ->whereNotIn('estado', ['completado', 'cancelado', 'facturado'])
             ->get()
             ->filter(fn($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados));
@@ -474,10 +501,11 @@ class OpenAIController extends Controller
         $hoy = now();
 
         // Encontrar el pedido más antiguo para calcular puntuación por regla de 3
-        $pedidoMasAntiguo = $lineasPendientes->min(function ($linea) {
-            return $linea->pedido->created_at;
-        });
-        $diasMaximos = $pedidoMasAntiguo ? $pedidoMasAntiguo->diffInDays($hoy) : 0;
+        $fechaPedidoMasAntigua = $lineasPendientes
+            ->map(fn($linea) => $linea->pedido?->created_at)
+            ->filter()
+            ->min();
+        $diasMaximos = $fechaPedidoMasAntigua ? $fechaPedidoMasAntigua->diffInDays($hoy) : 0;
         $puntajeAntiguedadMaximo = 10; // Puntos máximos por antigüedad
 
         $lineasConScoring = $lineasPendientes->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $normalizedPedidoCodigo, $normalizeCode, $fabricanteId, $hoy, $diasMaximos, $puntajeAntiguedadMaximo) {
@@ -569,7 +597,8 @@ class OpenAIController extends Controller
 
 
             // Obtener fabricante (TODOS los pedidos tienen fabricante)
-            $fabricante = $linea->pedido->fabricante->nombre ?? '(sin fabricante)';
+            $fabricante = $linea->pedido->fabricante->nombre ?? null;
+            $distribuidor = $linea->pedido->distribuidor->nombre ?? null;
 
             // Construir descripción del producto
             $productoDescripcion = $linea->productoBase->nombre ?? null;
@@ -585,6 +614,7 @@ class OpenAIController extends Controller
                 'codigo_linea' => $linea->codigo ?? null,
                 'pedido_codigo' => $linea->pedido->codigo ?? '(sin código)',
                 'fabricante' => $fabricante,
+                'distribuidor' => $distribuidor,
                 'obra' => $linea->obra->obra ?? $linea->obra_manual ?? '(sin obra)',
                 'producto' => $productoDescripcion,
                 'diametro' => $diametroLineaInt,
@@ -593,17 +623,43 @@ class OpenAIController extends Controller
                 'cantidad_pendiente' => $cantidadPendienteKg,
                 'estado' => $linea->estado,
                 'fecha_creacion' => $linea->pedido->created_at->format('d/m/Y'),
+                'fecha_entrega' => $linea->fecha_estimada_entrega?->toDateString(),
+                'fecha_entrega_fmt' => $linea->fecha_estimada_entrega?->format('d/m/Y'),
                 'score' => $score,
                 'razones' => $razones,
                 'incompatibilidades' => $incompatibilidades,
                 'es_viable' => count($incompatibilidades) === 0,
             ];
-        })->sortByDesc('score')->values()->toArray();
+        })
+            ->sort(function (array $a, array $b) {
+                $aScore = (float) ($a['score'] ?? 0);
+                $bScore = (float) ($b['score'] ?? 0);
+                if (abs($aScore - $bScore) > 1e-6) {
+                    return $bScore <=> $aScore;
+                }
+
+                $aFecha = $a['fecha_entrega'] ?? null;
+                $bFecha = $b['fecha_entrega'] ?? null;
+
+                if ($aFecha !== $bFecha) {
+                    if ($aFecha === null) {
+                        return 1; // sin fecha al final
+                    }
+                    if ($bFecha === null) {
+                        return -1;
+                    }
+                    return $aFecha <=> $bFecha; // mas antigua primero (incluye fechas pasadas)
+                }
+
+                return ($a['id'] ?? 0) <=> ($b['id'] ?? 0);
+            })
+            ->values()
+            ->toArray();
 
         // Obtener TODAS las líneas pendientes/parciales (sin filtro de fabricante)
         // Para que el usuario pueda elegir manualmente si lo desea
         $todasLasLineasQuery = \App\Models\PedidoProducto::query()
-            ->with(['pedido.fabricante', 'productoBase', 'obra'])
+            ->with(['pedido.fabricante', 'pedido.distribuidor', 'productoBase', 'obra'])
             ->whereIn('estado', ['pendiente', 'parcial'])
             ->whereHas('pedido', function ($q) {
                 $q->whereNotIn('estado', ['completado', 'cancelado', 'facturado']);
@@ -612,10 +668,11 @@ class OpenAIController extends Controller
             ->filter(fn($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados));
 
         // Encontrar el pedido más antiguo de TODAS las líneas para calcular puntuación
-        $pedidoMasAntiguoTodas = $todasLasLineasQuery->min(function ($linea) {
-            return $linea->pedido->created_at;
-        });
-        $diasMaximosTodas = $pedidoMasAntiguoTodas ? $pedidoMasAntiguoTodas->diffInDays(now()) : 0;
+        $fechaPedidoMasAntiguaTodas = $todasLasLineasQuery
+            ->map(fn($linea) => $linea->pedido?->created_at)
+            ->filter()
+            ->min();
+        $diasMaximosTodas = $fechaPedidoMasAntiguaTodas ? $fechaPedidoMasAntiguaTodas->diffInDays(now()) : 0;
 
         $todasLasLineas = $todasLasLineasQuery->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $normalizedPedidoCodigo, $normalizeCode, $fabricanteId, $diasMaximosTodas, $puntajeAntiguedadMaximo) {
             // Calcular scoring para cada línea (mismo algoritmo que arriba)
@@ -623,7 +680,8 @@ class OpenAIController extends Controller
             $cantidadPendiente = ($linea->cantidad ?? 0) - ($linea->cantidad_recepcionada ?? 0);
             $diametroLinea = $linea->productoBase->diametro ?? null;
             $diametroLineaInt = $diametroLinea !== null ? (int) round((float) $diametroLinea) : null;
-            $fabricante = $linea->pedido->fabricante->nombre ?? '(sin fabricante)';
+            $fabricante = $linea->pedido->fabricante->nombre ?? null;
+            $distribuidor = $linea->pedido->distribuidor->nombre ?? null;
 
             // SCORING 0: Fabricante
             if ($fabricanteId) {
@@ -678,6 +736,7 @@ class OpenAIController extends Controller
                 'codigo_linea' => $linea->codigo ?? null,
                 'pedido_codigo' => $linea->pedido->codigo ?? '(sin código)',
                 'fabricante' => $fabricante,
+                'distribuidor' => $distribuidor,
                 'obra' => $linea->obra->obra ?? $linea->obra_manual ?? '(sin obra)',
                 'producto' => $productoDescripcion,
                 'diametro' => $diametroLineaInt,
@@ -686,11 +745,34 @@ class OpenAIController extends Controller
                 'cantidad_pendiente' => $cantidadPendiente,
                 'estado' => $linea->estado,
                 'fecha_creacion' => $linea->pedido->created_at->format('d/m/Y'),
+                'fecha_entrega' => $linea->fecha_estimada_entrega?->toDateString(),
+                'fecha_entrega_fmt' => $linea->fecha_estimada_entrega?->format('d/m/Y'),
                 'score' => $score,
                 'coincide_diametro' => $coincideDiametro,
             ];
         })
-            ->sortByDesc('score')  // Ordenar por score de mayor a menor
+            ->sort(function (array $a, array $b) {
+                $aScore = (float) ($a['score'] ?? 0);
+                $bScore = (float) ($b['score'] ?? 0);
+                if (abs($aScore - $bScore) > 1e-6) {
+                    return $bScore <=> $aScore;
+                }
+
+                $aFecha = $a['fecha_entrega'] ?? null;
+                $bFecha = $b['fecha_entrega'] ?? null;
+
+                if ($aFecha !== $bFecha) {
+                    if ($aFecha === null) {
+                        return 1;
+                    }
+                    if ($bFecha === null) {
+                        return -1;
+                    }
+                    return $aFecha <=> $bFecha;
+                }
+
+                return ($a['id'] ?? 0) <=> ($b['id'] ?? 0);
+            })  // Ordenar por score (desc) y entrega (asc)
             ->values()
             ->toArray();
 
@@ -800,6 +882,10 @@ class OpenAIController extends Controller
 
     protected function esLineaPermitida($linea, ?int $fabricanteId, array $diametrosEscaneados): bool
     {
+        if (!$linea || !$linea->pedido) {
+            return false;
+        }
+
         $lineaFabricanteId = $linea->pedido->fabricante_id ?? null;
         if ($fabricanteId && $lineaFabricanteId && $lineaFabricanteId !== $fabricanteId) {
             return false;

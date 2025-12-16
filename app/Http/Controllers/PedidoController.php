@@ -1001,6 +1001,8 @@ class PedidoController extends Controller
             'coladas.*.colada' => ['nullable', 'string', 'max:255'],
             'coladas.*.bulto' => ['nullable', 'numeric', 'min:0'],
             'ocr_log_id' => ['nullable', 'integer', 'exists:entrada_import_logs,id'],
+            'json_resultante' => ['nullable', 'array'],
+            'id_pedido_productos_recomendado' => ['nullable', 'integer', 'exists:pedido_productos,id'],
         ]);
 
         $productoBase = $linea->productoBase;
@@ -1085,6 +1087,49 @@ class PedidoController extends Controller
                 'ocr_log_id' => $data['ocr_log_id'] ?? null,
                 'prioridad' => 2,
                 'nave_id' => $linea->obra_id,
+            ]);
+
+            // Log de activacion automatizada (Docupipe -> usuario -> seleccion de pedido)
+            $ocrLogId = $data['ocr_log_id'] ?? null;
+            $jsonOriginal = null;
+            if ($ocrLogId) {
+                $log = EntradaImportLog::find($ocrLogId);
+                $jsonOriginal = $log?->parsed_payload;
+            }
+
+            $uiPayload = $data['json_resultante'] ?? null;
+            $jsonResultante = (is_array($jsonOriginal) && is_array($uiPayload))
+                ? $this->applyDocupipeUpdatesFromUi($jsonOriginal, $uiPayload)
+                : (is_array($jsonOriginal) ? $jsonOriginal : $uiPayload);
+
+            $idRecomendado = $data['id_pedido_productos_recomendado'] ?? null;
+            $seleccion = null;
+            $idManual = null;
+            if ($idRecomendado) {
+                if ((int) $idRecomendado === (int) $lineaId) {
+                    $seleccion = 'recomendado';
+                } else {
+                    $seleccion = 'manual';
+                    $idManual = (int) $lineaId;
+                }
+            }
+
+            $editado = null;
+            if (is_array($jsonOriginal) && is_array($jsonResultante)) {
+                $editado = !$this->jsonArraysEquivalent($jsonOriginal, $jsonResultante);
+            }
+
+            DB::table('activacion_pedido_automatizada')->insert([
+                'ocr_log_id' => $ocrLogId,
+                'user_id' => auth()->id(),
+                'json_original' => $jsonOriginal ? json_encode($jsonOriginal, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
+                'json_resultante' => $jsonResultante ? json_encode($jsonResultante, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
+                'editado' => (bool) ($editado ?? false),
+                'seleccion_pedido' => $seleccion,
+                'id_pedido_productos_recomendado' => $idRecomendado,
+                'id_pedido_productos_seleccion_manual' => $idManual,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
             DB::commit();
@@ -1842,5 +1887,142 @@ class PedidoController extends Controller
             'total_lineas' => $todas->count(),
             'lineas_relevantes' => $relevantes->count(),
         ]);
+    }
+
+    private function jsonArraysEquivalent(array $a, array $b): bool
+    {
+        // No considerar este campo para "editado" porque en la UI se fuerza a mostrar
+        // el proveedor seleccionado en el paso 1 y puede diferir del texto original Docupipe.
+        unset($a['proveedor_texto'], $b['proveedor_texto']);
+        if (isset($a['data']) && is_array($a['data'])) {
+            unset($a['data']['proveedor_texto']);
+        }
+        if (isset($b['data']) && is_array($b['data'])) {
+            unset($b['data']['proveedor_texto']);
+        }
+
+        $normalize = function (&$value) use (&$normalize): void {
+            if (!is_array($value)) {
+                return;
+            }
+
+            foreach ($value as &$v) {
+                $normalize($v);
+            }
+            unset($v);
+
+            $isAssoc = array_keys($value) !== range(0, count($value) - 1);
+            if ($isAssoc) {
+                ksort($value);
+            }
+        };
+
+        $normalize($a);
+        $normalize($b);
+
+        return json_encode($a, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            === json_encode($b, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    private function applyDocupipeUpdatesFromUi(array $original, array $ui): array
+    {
+        $result = $original;
+
+        $dataContainer = null;
+        if (isset($result['data']) && is_array($result['data'])) {
+            $dataContainer = 'data';
+        }
+
+        $apply = function (string $key, $value) use (&$result, $dataContainer): void {
+            if ($dataContainer) {
+                if (!isset($result[$dataContainer]) || !is_array($result[$dataContainer])) {
+                    $result[$dataContainer] = [];
+                }
+                $result[$dataContainer][$key] = $value;
+                return;
+            }
+
+            $result[$key] = $value;
+        };
+
+        $toInt = static function ($v): ?int {
+            if ($v === null || $v === '') {
+                return null;
+            }
+            if (is_int($v)) {
+                return $v;
+            }
+            if (is_numeric($v)) {
+                return (int) round((float) $v);
+            }
+            return null;
+        };
+
+        $toString = static function ($v): ?string {
+            $v = is_string($v) ? trim($v) : $v;
+            if ($v === null || $v === '') {
+                return null;
+            }
+            return (string) $v;
+        };
+
+        // Mapeo: inputs de la vista -> campos Docupipe (normalmente result['data'][...])
+        if (array_key_exists('albaran', $ui)) {
+            $apply('albaran', $toString($ui['albaran']));
+        }
+        if (array_key_exists('tipo_compra', $ui)) {
+            $apply('tipo_compra', $toString($ui['tipo_compra']));
+        }
+        // proveedor_texto se ignora a propósito (ver jsonArraysEquivalent)
+        if (array_key_exists('fecha', $ui)) {
+            $apply('fecha', $toString($ui['fecha']));
+        }
+        if (array_key_exists('pedido_codigo', $ui)) {
+            $apply('pedido_codigo', $toString($ui['pedido_codigo']));
+        }
+        if (array_key_exists('pedido_cliente', $ui)) {
+            $apply('pedido_cliente', $toString($ui['pedido_cliente']));
+        }
+        if (array_key_exists('peso_total', $ui)) {
+            $apply('peso_total', $toInt($ui['peso_total']));
+        }
+        if (array_key_exists('bultos_total', $ui)) {
+            $apply('bultos_total', $toInt($ui['bultos_total']));
+        }
+
+        if (array_key_exists('productos', $ui) && is_array($ui['productos'])) {
+            $productos = [];
+            foreach ($ui['productos'] as $producto) {
+                if (!is_array($producto)) {
+                    continue;
+                }
+
+                $lineItems = [];
+                if (isset($producto['line_items']) && is_array($producto['line_items'])) {
+                    foreach ($producto['line_items'] as $li) {
+                        if (!is_array($li)) {
+                            continue;
+                        }
+                        $lineItems[] = [
+                            'colada' => $toString($li['colada'] ?? null),
+                            'bultos' => $toInt($li['bultos'] ?? null),
+                            'peso_kg' => $toInt($li['peso_kg'] ?? null),
+                        ];
+                    }
+                }
+
+                $productos[] = [
+                    'descripcion' => $toString($producto['descripcion'] ?? null),
+                    'diametro' => $toInt($producto['diametro'] ?? null),
+                    'longitud' => $toInt($producto['longitud'] ?? null),
+                    'calidad' => $toString($producto['calidad'] ?? null),
+                    'line_items' => $lineItems,
+                ];
+            }
+
+            $apply('productos', $productos);
+        }
+
+        return $result;
     }
 }
