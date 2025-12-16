@@ -227,16 +227,18 @@
         }
 
         // Inicializar valores originales al cargar la página
-        document.addEventListener('DOMContentLoaded', function() {
+        const initOriginalValues = () => {
             const selects = document.querySelectorAll('select[data-field]');
             selects.forEach(select => {
                 select.dataset.originalValue = select.value;
             });
-        });
+        };
+        document.addEventListener('DOMContentLoaded', initOriginalValues);
+        document.addEventListener('livewire:navigated', initOriginalValues);
     </script>
 
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
+        const bindModalDibujo = () => {
             const modal = document.getElementById("modal-dibujo");
             const titulo = document.getElementById("modal-titulo");
             const canvas = document.getElementById("canvas-dibujo");
@@ -288,18 +290,22 @@
             }
 
             document.querySelectorAll(".abrir-modal-dibujo").forEach(ojo => {
+                if (ojo.dataset.modalDibujoBound === '1') return;
+                ojo.dataset.modalDibujoBound = '1';
                 ojo.addEventListener("mouseenter", () => abrirModal(ojo));
                 ojo.addEventListener("mouseleave", cerrarModal);
                 ojo.addEventListener("click", e => e.preventDefault());
             });
 
             // Mantener el modal abierto cuando el cursor está sobre él
-            if (modal) {
+            if (modal && modal.dataset.modalDibujoBound !== '1') {
+                modal.dataset.modalDibujoBound = '1';
                 modal.addEventListener("mouseenter", mantenerModalAbierto);
                 modal.addEventListener("mouseleave", cerrarModal);
             }
 
-            if (cerrar) {
+            if (cerrar && cerrar.dataset.modalDibujoBound !== '1') {
+                cerrar.dataset.modalDibujoBound = '1';
                 cerrar.addEventListener("click", () => {
                     if (timeoutCerrar) {
                         clearTimeout(timeoutCerrar);
@@ -308,7 +314,9 @@
                     modal.classList.add("hidden");
                 });
             }
-        });
+        };
+        document.addEventListener("DOMContentLoaded", bindModalDibujo);
+        document.addEventListener("livewire:navigated", bindModalDibujo);
     </script>
     <script>
         @if (isset($elemento))
