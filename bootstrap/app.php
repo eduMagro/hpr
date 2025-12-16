@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\VerificarAccesoSeccion;
 use App\Http\Middleware\VerificarPermisoAsistente;
+use App\Http\Middleware\FerrawinApiAuth;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Http\Request;
 //use App\Console\Commands\SincronizarFestivosCommand;
@@ -20,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'acceso.seccion' => VerificarAccesoSeccion::class,
             'puede.asistente' => VerificarPermisoAsistente::class,
+            'ferrawin.api' => FerrawinApiAuth::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

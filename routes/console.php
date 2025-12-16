@@ -74,3 +74,23 @@ $schedule->command('vacaciones:reset')
 $schedule->command('festivos:sincronizar')
     ->yearlyOn(1, 1, '01:10')
     ->timezone('Europe/Madrid');
+
+// =====================================================================
+// SINCRONIZACIÓN FERRAWIN
+// =====================================================================
+
+// Sincronizar planillas desde FerraWin diariamente a las 14:00
+$schedule->command('sync:ferrawin')
+    ->dailyAt(config('ferrawin.sync.hora_ejecucion', '14:00'))
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->timezone('Europe/Madrid')
+    ->appendOutputTo(storage_path('logs/ferrawin-sync.log'))
+    ->onSuccess(function () {
+        \Illuminate\Support\Facades\Log::channel('ferrawin_sync')
+            ->info('✅ Sincronización FerraWin programada completada');
+    })
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::channel('ferrawin_sync')
+            ->error('❌ Sincronización FerraWin programada falló');
+    });

@@ -566,13 +566,14 @@
     /* ******************************************************************
      * Función principal para dibujar la figura usando SVG
      ****************************************************************** */
-    function dibujarFigura(containerId, dimensionesStr, peso, diametro, barras) {
+    function dibujarFigura(containerId, dimensionesStr, peso, diametro, barras, cantidadElementos) {
         console.log("🎨 dibujarFigura llamada:", {
             containerId,
             dimensionesStr,
             peso,
             diametro,
             barras,
+            cantidadElementos,
         });
 
         let contenedor = document.getElementById(containerId);
@@ -872,7 +873,7 @@
         }
 
         // Mostrar información del elemento
-        console.log('📝 Información a mostrar:', { peso, diametro, barras, ancho, alto });
+        console.log('📝 Información a mostrar:', { peso, diametro, barras, cantidadElementos, ancho, alto });
 
         // Determinar si mostrar formato compacto (panel lateral) o expandido (modal)
         const esCompacto = ancho < 350;
@@ -881,8 +882,15 @@
         if (esCompacto) {
             // Formato compacto: una línea en la parte inferior
             const infoParts = [];
+            // Mostrar cantidad de elementos si es un grupo (>1)
+            if (cantidadElementos && cantidadElementos > 1) infoParts.push(`${cantidadElementos} elem`);
             if (diametro) infoParts.push(`Ø${diametro}`);
-            if (peso) infoParts.push(`${peso}kg`);
+            // Peso redondeado a 1 decimal
+            if (peso) {
+                const pesoNum = parseFloat(peso);
+                const pesoRedondeado = isNaN(pesoNum) ? peso : pesoNum.toFixed(1);
+                infoParts.push(`${pesoRedondeado}kg`);
+            }
             if (barras) infoParts.push(`${barras}b`);
 
             if (infoParts.length > 0) {
@@ -904,11 +912,14 @@
             const lineHeight = infoSize + 8;
 
             if (peso) {
+                // Peso redondeado a 1 decimal
+                const pesoNum = parseFloat(peso);
+                const pesoRedondeado = isNaN(pesoNum) ? peso : pesoNum.toFixed(1);
                 agregarTexto(
                     svg,
                     infoMarginX,
                     infoMarginY,
-                    `Peso: ${peso} kg`,
+                    `Peso: ${pesoRedondeado} kg`,
                     "#333333",
                     infoSize,
                     "start"

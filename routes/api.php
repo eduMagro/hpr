@@ -106,3 +106,19 @@ Route::prefix('etiquetas/resumir')->group(function () {
     Route::post('/multiplanilla/habilitar-reagrupacion', [ResumenEtiquetaController::class, 'habilitarReagrupacion'])
         ->name('api.etiquetas.resumir.multiplanilla.habilitar-reagrupacion');
 });
+
+// =====================================================================
+// FERRAWIN SYNC API
+// =====================================================================
+use App\Http\Controllers\Api\FerrawinSyncController;
+
+Route::prefix('ferrawin')->group(function () {
+    // Status público (para verificar conectividad)
+    Route::get('/status', [FerrawinSyncController::class, 'status'])
+        ->name('api.ferrawin.status');
+
+    // Sync protegido con token
+    Route::post('/sync', [FerrawinSyncController::class, 'sync'])
+        ->middleware('ferrawin.api')
+        ->name('api.ferrawin.sync');
+});
