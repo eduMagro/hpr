@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Categoria;
 use App\Models\Epi;
 use App\Models\EpiCompra;
 use App\Models\EpiCompraItem;
 use App\Models\EpiUsuario;
+use App\Models\Empresa;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -93,17 +95,33 @@ class EpisController extends Controller
 
     public function index(Request $request)
     {
-        return view('epis.index');
+        $categorias = Categoria::select('id', 'nombre')->orderBy('nombre')->get();
+        $empresas = Empresa::select('id', 'nombre')->orderBy('nombre')->get();
+
+        return view('epis.index', [
+            'categorias' => $categorias,
+            'empresas' => $empresas,
+        ]);
     }
 
     public function apiUsers(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
         $epi = trim((string) $request->query('epi', ''));
+        $empresaId = $request->query('empresa_id');
+        $categoriaId = $request->query('categoria_id');
+        $empresaId = ($empresaId === null || $empresaId === '') ? null : (int) $empresaId;
+        $categoriaId = ($categoriaId === null || $categoriaId === '') ? null : (int) $categoriaId;
         $epiProvided = $epi !== '';
         $epiTokens = $epi !== '' ? preg_split('/\s+/', $epi, -1, PREG_SPLIT_NO_EMPTY) : [];
 
         $users = User::query()
+            ->when($empresaId !== null, function ($query) use ($empresaId) {
+                $query->where('empresa_id', $empresaId);
+            })
+            ->when($categoriaId !== null, function ($query) use ($categoriaId) {
+                $query->where('categoria_id', $categoriaId);
+            })
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
@@ -131,6 +149,7 @@ class EpisController extends Controller
                     },
                 ]);
             })
+            ->with(['empresa:id,nombre', 'categoria:id,nombre'])
             ->withSum(
                 [
                     'episAsignaciones as epis_en_posesion' => function ($query) {
@@ -154,6 +173,16 @@ class EpisController extends Controller
                     'dni' => $user->dni,
                     'email' => $user->email,
                     'movil_personal' => $user->movil_personal,
+                    'empresa_id' => $user->empresa_id,
+                    'categoria_id' => $user->categoria_id,
+                    'empresa' => $user->empresa ? [
+                        'id' => $user->empresa->id,
+                        'nombre' => $user->empresa->nombre,
+                    ] : null,
+                    'categoria' => $user->categoria ? [
+                        'id' => $user->categoria->id,
+                        'nombre' => $user->categoria->nombre,
+                    ] : null,
                     'ruta_imagen' => $user->ruta_imagen,
                     'epis_en_posesion' => (int) ($user->epis_en_posesion ?? 0),
                     'tiene_epis' => ((int) ($user->epis_en_posesion ?? 0)) > 0,

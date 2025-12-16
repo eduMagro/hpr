@@ -48,6 +48,11 @@
                                                 <span class="mx-1">·</span>
                                                 <span x-text="u.movil_personal || 'Móvil N/D'"></span>
                                             </p>
+                                            <p class="text-xs text-gray-500 mt-1 flex flex-col">
+                                                <span
+                                                    x-text="`Categoría: ${u.categoria?.nombre || 'Sin asignar'}`"></span>
+                                                <span x-text="`Empresa: ${u.empresa?.nombre || 'Sin empresa'}`"></span>
+                                            </p>
                                         </div>
                                         <span
                                             class="text-xs font-medium text-blue-700 bg-blue-50 rounded-full px-2 py-0.5"
@@ -87,11 +92,43 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl border border-gray-200 p-4">
-                <label class="block text-xs font-medium text-gray-700 mb-1">Filtrar usuarios por EPI</label>
-                <input type="text" x-model="agendaEpiQuery" @input="onAgendaEpiQueryChange()"
-                    placeholder="Nombre, codigo o categoria del EPI"
-                    class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
+            <div class="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Filtrar usuarios por EPI</label>
+                        <input type="text" x-model="agendaEpiQuery" @input="onAgendaEpiQueryChange()"
+                            placeholder="Nombre, codigo o categoria del EPI"
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Filtrar por empresa</label>
+                        <select x-model="agendaEmpresaId" @change="onAgendaFiltersChange()"
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">Todas</option>
+                            @foreach ($empresas as $empresa)
+                                <option value="{{ $empresa->id }}">{{ $empresa->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Filtrar por categoría</label>
+                        <select x-model="agendaCategoriaId" @change="onAgendaFiltersChange()"
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">Todas</option>
+                            @foreach ($categorias as $categoria)
+                                <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button type="button"
+                        class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                        @click="resetAgendaFilters()"
+                        :disabled="!agendaEpiQuery && !agendaEmpresaId && !agendaCategoriaId">
+                        Limpiar filtros
+                    </button>
+                </div>
             </div>
 
             <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -126,7 +163,8 @@
 
                                     <div class="min-w-0">
                                         <div class="flex items-center gap-2 min-w-0">
-                                            <p class="font-semibold text-gray-900 truncate" x-text="u.nombre_completo">
+                                            <p class="font-semibold text-gray-900 truncate"
+                                                x-text="u.nombre_completo">
                                             </p>
                                             <span
                                                 class="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-xs font-medium"
@@ -136,6 +174,11 @@
                                             <span x-text="`DNI: ${u.dni || 'N/D'}`"></span>
                                             <span class="truncate" x-text="`Email: ${u.email || 'N/D'}`"></span>
                                             <span x-text="`Móvil: ${u.movil_personal || 'N/D'}`"></span>
+                                        </div>
+                                        <div class="text-sm text-gray-600 flex flex-col sm:flex-row sm:gap-4 mt-1">
+                                            <span x-text="`Categoría: ${u.categoria?.nombre || 'Sin asignar'}`"></span>
+                                            <span class="truncate"
+                                                x-text="`Empresa: ${u.empresa?.nombre || 'Sin empresa'}`"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -167,9 +210,19 @@
             <div
                 class="relative w-full sm:max-w-5xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col">
                 <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                    <div class="min-w-0">
+                    <div class="min-w-0 w-full">
                         <p class="text-xs uppercase tracking-wide text-gray-500">EPIs</p>
-                        <p class="font-semibold text-gray-900 truncate" x-text="modalTitle"></p>
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:gap-3">
+                            <p class="font-semibold text-gray-900 truncate" x-text="modalTitle"></p>
+                            <template x-if="modalTab === 'usuario' && selectedUser">
+                                <div
+                                    class="text-xs text-gray-600 flex flex-col sm:flex-row sm:items-center sm:gap-3 w-full sm:w-auto">
+                                    <span x-text="`${selectedUser.empresa?.nombre || 'Sin empresa'}`"></span>
+                                    <p> | </p>
+                                    <span x-text="`${selectedUser.categoria?.nombre || 'Sin asignar'}`"></span>
+                                </div>
+                            </template>
+                        </div>
                     </div>
 
                     <button type="button" class="p-2 rounded-lg hover:bg-gray-100" @click="closeModal()"
@@ -316,9 +369,15 @@
                                                             x-text="selectedUser.nombre_completo?.slice(0,1)?.toUpperCase()"></span>
                                                     </template>
                                                 </div>
-                                                <div class="min-w-0">
-                                                    <p class="text-lg font-semibold text-gray-900 truncate"
-                                                        x-text="selectedUser.nombre_completo"></p>
+                                                <div class="min-w-0 w-full">
+                                                    <div
+                                                        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                                        <p class="text-lg font-semibold text-gray-900 truncate"
+                                                            x-text="selectedUser.nombre_completo"></p>
+                                                        <div
+                                                            class="text-xs text-gray-600 flex flex-col sm:flex-row sm:items-center sm:gap-3">
+                                                        </div>
+                                                    </div>
                                                     <p class="text-sm text-gray-600 mt-0.5"
                                                         x-text="`DNI: ${selectedUser.dni || 'N/D'}`"></p>
                                                 </div>
@@ -1328,6 +1387,8 @@
 
                 agendaEpiQuery: '',
                 agendaEpiDebounceId: null,
+                agendaEmpresaId: '',
+                agendaCategoriaId: '',
 
                 userEpiFilterQuery: '',
 
@@ -1496,6 +1557,8 @@
                         u.email || '',
                         u.dni || '',
                         u.movil_personal || '',
+                        u.empresa?.nombre || '',
+                        u.categoria?.nombre || '',
                         this.digits(u.movil_personal || ''),
                     ].join(' | ');
                     u._hay = this.normalize(parts);
@@ -1543,6 +1606,21 @@
                     }, 300);
                 },
 
+                onAgendaFiltersChange() {
+                    this.refreshUsers();
+                },
+
+                resetAgendaFilters() {
+                    if (this.agendaEpiDebounceId) {
+                        clearTimeout(this.agendaEpiDebounceId);
+                        this.agendaEpiDebounceId = null;
+                    }
+                    this.agendaEpiQuery = '';
+                    this.agendaEmpresaId = '';
+                    this.agendaCategoriaId = '';
+                    this.refreshUsers();
+                },
+
                 async refreshUsers() {
                     this.loadingUsers = true;
                     try {
@@ -1550,6 +1628,10 @@
                         const url = new URL(baseUrl, window.location.origin);
                         const epi = (this.agendaEpiQuery || '').trim();
                         if (epi) url.searchParams.set('epi', epi);
+                        const empresa = (this.agendaEmpresaId || '').toString().trim();
+                        if (empresa) url.searchParams.set('empresa_id', empresa);
+                        const categoria = (this.agendaCategoriaId || '').toString().trim();
+                        if (categoria) url.searchParams.set('categoria_id', categoria);
 
                         const res = await this.api(url.toString());
                         const data = await res.json();
