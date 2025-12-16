@@ -5,6 +5,26 @@
 @endphp
 
 @if(auth()->user()->esOficina())
+{{-- Script para establecer estado inicial sin parpadeo --}}
+<script>
+(function() {
+    if (window.innerWidth >= 768) {
+        var isOpen = localStorage.getItem('sidebar_open') !== 'false';
+        var style = document.createElement('style');
+        style.id = 'sidebar-initial-state';
+        style.textContent = '#main-sidebar { width: ' + (isOpen ? '16rem' : '4rem') + ' !important; }' +
+            (isOpen ? '' : ' #main-sidebar [x-show="open"] { display: none !important; }');
+        document.head.appendChild(style);
+        // Remover después de que Alpine inicialice
+        document.addEventListener('alpine:initialized', function() {
+            setTimeout(function() {
+                var s = document.getElementById('sidebar-initial-state');
+                if (s) s.remove();
+            }, 100);
+        });
+    }
+})();
+</script>
 <div x-data="{
     open: window.innerWidth >= 768 ? (localStorage.getItem('sidebar_open') !== 'false') : false,
     activeSections: JSON.parse(localStorage.getItem('sidebar_active_sections') || '[]'),
@@ -441,16 +461,14 @@
         class="fixed inset-0 bg-black bg-opacity-50 z-[9998] md:hidden" x-cloak>
     </div>
 
-    <!-- Sidebar: en móvil empieza oculto con style inline para evitar flash -->
+    <!-- Sidebar -->
     <div id="main-sidebar"
         :class="{
             'sidebar-open': open,
             'sidebar-closed': !open,
             'sidebar-ready': ready
         }"
-        class="sidebar-mobile-hidden bg-gray-900 dark:bg-gray-950 text-white flex-shrink-0 flex flex-col fixed md:static inset-y-0 left-0 z-[9999] md:z-auto"
-        style="transform: translateX(-100%);"
-        x-bind:style="(window.innerWidth >= 768 || open) ? 'transform: translateX(0);' : 'transform: translateX(-100%);'">
+        class="sidebar-mobile-hidden bg-gray-900 dark:bg-gray-950 text-white flex-shrink-0 flex flex-col fixed md:static inset-y-0 left-0 z-[9999] md:z-auto">
 
         <!-- Header del Sidebar -->
         <div class="px-4 h-14 flex items-center justify-around border-b border-gray-800 border-r-0 overflow-hidden">
@@ -498,7 +516,7 @@
                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z">
                         </path>
                     </svg>
-                    <span x-show="open"
+                    <span x-show="open" x-cloak
                         class="text-gray-400 group-hover:text-white transition">Buscar
                         (Ctrl+K)</span>
                 </button>
@@ -516,9 +534,9 @@
                             d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z">
                         </path>
                     </svg>
-                    <span x-show="open"
+                    <span x-show="open" x-cloak
                         class="text-gray-400 group-hover:text-white transition">Favoritos</span>
-                    <span x-show="open && favorites.length > 0"
+                    <span x-show="open && favorites.length > 0" x-cloak
                         class="ml-auto bg-yellow-600 text-xs px-2 py-0.5 rounded-full"
                         x-text="favorites.length"></span>
                     <span x-show="!open && favorites.length > 0"
@@ -582,7 +600,7 @@
                             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z">
                         </path>
                     </svg>
-                    <span x-show="open"
+                    <span x-show="open" x-cloak
                         class="text-gray-400 group-hover:text-white transition">Recientes
                         (Ctrl+H)</span>
                 </button>
@@ -662,10 +680,10 @@
                             <div class="flex items-center space-x-3">
                                 <span
                                     class="text-xl flex-shrink-0">{{ $section['icon'] }}</span>
-                                <span x-show="open" x-transition
+                                <span x-show="open" x-cloak x-transition
                                     class="font-medium">{{ $section['label'] }}</span>
                             </div>
-                            <svg x-show="open"
+                            <svg x-show="open" x-cloak
                                 :class="activeSections.includes('{{ $section['id'] }}') ?
                                     'rotate-180' : ''"
                                 class="w-4 h-4 flex-shrink-0 transition-transform"
@@ -757,27 +775,27 @@
                         d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
                     </path>
                 </svg>
-                <span x-show="open"
+                <span x-show="open" x-cloak
                     class="text-gray-400 group-hover:text-white">Dashboard</span>
             </a>
 
             <!-- Modo Oscuro -->
             <button @click="toggleDarkMode()"
                 class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition text-sm group">
-                <svg x-show="!darkMode"
+                <svg x-show="!darkMode" x-cloak
                     class="w-5 h-5 flex-shrink-0 text-yellow-500"
                     fill="currentColor" viewBox="0 0 24 24">
                     <path
                         d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
                     </path>
                 </svg>
-                <svg x-show="darkMode"
+                <svg x-show="darkMode" x-cloak
                     class="w-5 h-5 flex-shrink-0 text-blue-400"
                     fill="currentColor" viewBox="0 0 24 24">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z">
                     </path>
                 </svg>
-                <span x-show="open"
+                <span x-show="open" x-cloak
                     class="text-gray-400 group-hover:text-white"
                     x-text="darkMode ? 'Modo Claro' : 'Modo Oscuro'"></span>
             </button>
@@ -927,10 +945,18 @@
     @media (min-width: 768px) {
         .sidebar-mobile-hidden {
             transform: translateX(0);
+            /* Ancho inicial basado en localStorage para evitar saltos */
+            width: 16rem;
         }
 
         .sidebar-mobile-hidden.sidebar-open {
             width: 16rem;
+        }
+
+        /* Ocultar textos cuando sidebar cerrado (sin esperar Alpine) */
+        .sidebar-mobile-hidden.sidebar-closed [x-show="open"],
+        .sidebar-mobile-hidden:not(.sidebar-open):not(.sidebar-ready) [x-show="open"] {
+            display: none !important;
         }
 
         .sidebar-mobile-hidden.sidebar-closed {
