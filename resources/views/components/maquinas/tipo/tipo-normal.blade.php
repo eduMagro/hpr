@@ -242,9 +242,19 @@
                             <section class="bg-gradient-to-br from-gray-50 to-white rounded-lg border-2 border-gray-200 shadow-md overflow-hidden">
                                 <div class="space-y-2 overflow-y-auto flex flex-col items-center justify-start pt-4" style="max-height: calc(100vh - 70px);">
 
-                                    {{-- GRUPOS DE RESUMEN de esta planilla --}}
+                                    {{-- GRUPOS DE RESUMEN de esta planilla (incluye multi-planilla en la primera) --}}
                                     @php
-                                        $gruposDePlanilla = collect($gruposResumen ?? [])->where('planilla_id', $planilla->id);
+                                        $gruposDePlanilla = collect($gruposResumen ?? [])->filter(function($grupo) use ($planilla, $loop) {
+                                            // Grupos específicos de esta planilla
+                                            if ($grupo['planilla_id'] == $planilla->id) {
+                                                return true;
+                                            }
+                                            // Grupos multi-planilla (planilla_id = null) solo en la primera planilla
+                                            if ($loop->first && is_null($grupo['planilla_id'])) {
+                                                return true;
+                                            }
+                                            return false;
+                                        });
                                     @endphp
 
                                     @foreach ($gruposDePlanilla as $grupo)
