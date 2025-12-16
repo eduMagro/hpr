@@ -22,6 +22,7 @@
     isToggling: false,
     focusedSectionId: null,
     focusedItemIndex: -1, // -1 = sección, 0+ = item del submenú
+    ready: false, // Para controlar transiciones
     menuSectionIds: [@foreach($menuItems as $section)'{{ $section['id'] }}'@if(!$loop->last), @endif @endforeach],
     menuItemCounts: { @foreach($menuItems as $section)'{{ $section['id'] }}': {{ isset($section['submenu']) ? count($section['submenu']) : 0 }}@if(!$loop->last), @endif @endforeach },
 
@@ -251,6 +252,12 @@
         // Aplicar modo oscuro
         this.applyDarkMode();
 
+        // Activar transiciones después de que Alpine haya renderizado
+        // Esto evita el efecto de abrir/cerrar al cargar en móvil
+        setTimeout(() => {
+            this.ready = true;
+        }, 100);
+
         // Actualizar sección activa cuando Livewire navega
         document.addEventListener('livewire:navigated', () => {
             // Cerrar paneles desplegables
@@ -434,10 +441,16 @@
         class="fixed inset-0 bg-black bg-opacity-50 z-[9998] md:hidden" x-cloak>
     </div>
 
-    <!-- Sidebar -->
-    <div :class="open ? 'w-64 translate-x-0' : 'w-16 -translate-x-full md:translate-x-0'"
-        class="bg-gray-900 dark:bg-gray-950 text-white flex-shrink-0 flex flex-col fixed md:static inset-y-0 left-0 z-[9999] md:z-auto"
-        style="transition: width 0.3s ease-in-out, transform 0.3s ease-in-out;">
+    <!-- Sidebar: en móvil empieza oculto con style inline para evitar flash -->
+    <div id="main-sidebar"
+        :class="{
+            'sidebar-open': open,
+            'sidebar-closed': !open,
+            'sidebar-ready': ready
+        }"
+        class="sidebar-mobile-hidden bg-gray-900 dark:bg-gray-950 text-white flex-shrink-0 flex flex-col fixed md:static inset-y-0 left-0 z-[9999] md:z-auto"
+        style="transform: translateX(-100%);"
+        x-bind:style="(window.innerWidth >= 768 || open) ? 'transform: translateX(0);' : 'transform: translateX(-100%);'">
 
         <!-- Header del Sidebar -->
         <div class="px-4 h-14 flex items-center justify-around border-b border-gray-800 border-r-0 overflow-hidden">
@@ -889,5 +902,44 @@
     /* Animaciones suaves */
     [x-cloak] {
         display: none !important;
+    }
+
+    /* ===== SIDEBAR MÓVIL ===== */
+    /* Por defecto: oculto en móvil sin transición */
+    @media (max-width: 767px) {
+        .sidebar-mobile-hidden {
+            transform: translateX(-100%);
+            width: 16rem;
+        }
+
+        /* Cuando está abierto en móvil */
+        .sidebar-mobile-hidden.sidebar-open {
+            transform: translateX(0);
+        }
+
+        /* Solo aplicar transiciones cuando ready=true */
+        .sidebar-mobile-hidden.sidebar-ready {
+            transition: transform 0.3s ease-in-out;
+        }
+    }
+
+    /* ===== SIDEBAR DESKTOP ===== */
+    @media (min-width: 768px) {
+        .sidebar-mobile-hidden {
+            transform: translateX(0);
+        }
+
+        .sidebar-mobile-hidden.sidebar-open {
+            width: 16rem;
+        }
+
+        .sidebar-mobile-hidden.sidebar-closed {
+            width: 4rem;
+        }
+
+        /* Transiciones solo cuando ready */
+        .sidebar-mobile-hidden.sidebar-ready {
+            transition: width 0.3s ease-in-out;
+        }
     }
 </style>
