@@ -483,8 +483,8 @@
             }
         }
 
-        // Función para resetear planilla directamente por ID
-        async function resetearPlanilla(planillaId, codigoPlanilla) {
+        // Función para resetear planilla directamente por ID (global para Livewire)
+        window.resetearPlanilla = async function(planillaId, codigoPlanilla) {
             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
             // Confirmar acción
