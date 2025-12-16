@@ -10,7 +10,7 @@ return new class extends IdempotentSqlMigration
 CREATE TABLE IF NOT EXISTS `grupos_resumen` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `codigo` varchar(20) NOT NULL,
-  `planilla_id` bigint(20) UNSIGNED NOT NULL,
+  `planilla_id` bigint(20) UNSIGNED DEFAULT NULL,
   `maquina_id` bigint(20) UNSIGNED DEFAULT NULL,
   `diametro` decimal(8,2) NOT NULL,
   `dimensiones` varchar(255) DEFAULT NULL,
