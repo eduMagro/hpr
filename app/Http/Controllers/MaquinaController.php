@@ -413,14 +413,15 @@ class MaquinaController extends Controller
             ->get();
 
         // Preparar datos de grupos para la vista (con elementos de cada etiqueta)
-        $gruposResumenData = $gruposResumen->map(function ($grupo) use ($elementosFiltrados) {
-            // Obtener los etiqueta_sub_id del grupo
-            $subIds = $grupo->etiquetas->pluck('etiqueta_sub_id')->toArray();
+        $gruposResumenData = $gruposResumen->map(function ($grupo) use ($maquina) {
+            // Obtener los IDs de etiquetas del grupo
+            $etiquetaIds = $grupo->etiquetas->pluck('id')->toArray();
 
-            // Filtrar elementos que pertenecen a este grupo
-            $elementosGrupo = $elementosFiltrados->filter(
-                fn($e) => in_array($e->etiqueta_sub_id, $subIds)
-            );
+            // Obtener elementos directamente de la BD (no depender de elementosFiltrados)
+            $elementosGrupo = Elemento::with(['producto', 'producto2', 'producto3'])
+                ->whereIn('etiqueta_id', $etiquetaIds)
+                ->where('maquina_id', $maquina->id)
+                ->get();
 
             // Para grupos multi-planilla, obtener códigos de planillas involucradas
             $esMultiplanilla = is_null($grupo->planilla_id);

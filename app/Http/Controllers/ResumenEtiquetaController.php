@@ -223,4 +223,55 @@ class ResumenEtiquetaController extends Controller
             'total' => $grupos->count(),
         ]);
     }
+
+    /**
+     * Reagrupa manualmente todas las etiquetas de una máquina.
+     * Habilita etiquetas previamente desagrupadas y ejecuta el resumen.
+     * POST /api/etiquetas/resumir/multiplanilla/reagrupar
+     */
+    public function reagruparManual(Request $request): JsonResponse
+    {
+        $request->validate([
+            'maquina_id' => 'required|integer|exists:maquinas,id',
+        ]);
+
+        $resultado = $this->resumenService->reagruparManual(
+            $request->integer('maquina_id'),
+            auth()->id()
+        );
+
+        return response()->json($resultado);
+    }
+
+    /**
+     * Habilita la reagrupación para etiquetas específicas o todas de una máquina.
+     * POST /api/etiquetas/resumir/multiplanilla/habilitar-reagrupacion
+     */
+    public function habilitarReagrupacion(Request $request): JsonResponse
+    {
+        $request->validate([
+            'maquina_id' => 'required|integer|exists:maquinas,id',
+            'etiqueta_ids' => 'nullable|array',
+            'etiqueta_ids.*' => 'integer|exists:etiquetas,id',
+        ]);
+
+        $resultado = $this->resumenService->habilitarReagrupacion(
+            $request->integer('maquina_id'),
+            $request->input('etiqueta_ids')
+        );
+
+        return response()->json($resultado);
+    }
+
+    /**
+     * Deshace el último estado de un grupo de etiquetas.
+     * Revierte: completada -> fabricando -> pendiente
+     * POST /api/etiquetas/resumir/{grupo}/deshacer-estado
+     */
+    public function deshacerEstado(int $grupoId): JsonResponse
+    {
+        $resultado = $this->resumenService->deshacerEstadoGrupo($grupoId);
+
+        return response()->json($resultado);
+    }
 }

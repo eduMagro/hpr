@@ -56,8 +56,11 @@
 
         <!-- Botones (igual que etiqueta normal) -->
         <div class="absolute top-2 right-2 flex items-center gap-2 no-print z-10">
-            <!-- Badge de grupo (junto a los botones) -->
-            <span class="{{ $badgeBg }} text-white px-3 py-1 rounded shadow-sm flex items-center gap-1" title="{{ $esMultiplanilla ? 'Grupo multi-planilla de ' . $totalEtiquetas . ' etiquetas' : 'Grupo de ' . $totalEtiquetas . ' etiquetas resumidas' }}">
+            <!-- Badge de grupo CLICKEABLE para DESAGRUPAR -->
+            <button type="button"
+                onclick="desagruparGrupo({{ $grupo['id'] }})"
+                class="{{ $badgeBg }} text-white px-3 py-1 rounded shadow-sm flex items-center gap-1 hover:opacity-80 hover:scale-105 transition-all duration-200 cursor-pointer border-2 border-transparent hover:border-white"
+                title="Clic para DESAGRUPAR: separar las {{ $totalEtiquetas }} etiquetas">
                 <svg style="width:16px;height:16px;flex:none;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     @if($esMultiplanilla)
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
@@ -66,13 +69,13 @@
                     @endif
                 </svg>
                 <span class="font-bold text-sm">x{{ $totalEtiquetas }}</span>
-            </span>
+            </button>
 
-            <!-- Botón Desagrupar -->
+            <!-- Botón Deshacer Estado (solo revierte estado, NO desagrupa) -->
             <button type="button"
                 class="bg-amber-500 text-white px-3 py-1 rounded shadow-sm hover:bg-amber-600 hover:shadow-md transition-all duration-200 flex items-center gap-1"
-                onclick="desagruparGrupo({{ $grupo['id'] }})"
-                title="Desagrupar (volver a ver etiquetas individuales)">
+                onclick="deshacerEstadoGrupo({{ $grupo['id'] }})"
+                title="Deshacer estado (completada → fabricando → pendiente)">
                 <span class="text-lg">↩️</span>
             </button>
 

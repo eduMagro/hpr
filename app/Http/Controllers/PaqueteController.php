@@ -310,6 +310,66 @@ class PaqueteController extends Controller
                 ], 400);
             }
 
+            // 3.1) VALIDACIÓN: Todas las etiquetas deben pertenecer a la MISMA OBRA
+            $etiquetasParaValidar = Etiqueta::with('planilla.obra')
+                ->whereIn('etiqueta_sub_id', $etiquetasSubIds)
+                ->get();
+
+            $obrasUnicas = $etiquetasParaValidar
+                ->pluck('planilla.obra_id')
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($obrasUnicas->count() > 1) {
+                $nombresObras = $etiquetasParaValidar
+                    ->pluck('planilla.obra.obra')
+                    ->filter()
+                    ->unique()
+                    ->implode(', ');
+
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "No se puede crear el paquete: las etiquetas pertenecen a obras diferentes ({$nombresObras}). Un paquete solo puede contener etiquetas de la misma obra.",
+                ], 400);
+            }
+
+            // 3.2) VALIDACIÓN: Todas las planillas deben tener la MISMA FECHA DE ENTREGA
+            $fechasEntrega = $etiquetasParaValidar
+                ->pluck('planilla.fecha_estimada_entrega')
+                ->filter()
+                ->map(fn($fecha) => $fecha instanceof \Carbon\Carbon ? $fecha->format('Y-m-d') : $fecha)
+                ->unique()
+                ->values();
+
+            if ($fechasEntrega->count() > 1) {
+                $fechasFormateadas = $etiquetasParaValidar
+                    ->pluck('planilla')
+                    ->filter()
+                    ->unique('id')
+                    ->map(fn($p) => $p->codigo_limpio . ' (' . ($p->fecha_estimada_entrega ? $p->fecha_estimada_entrega->format('d/m/Y') : 'sin fecha') . ')')
+                    ->implode(', ');
+
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "No se puede crear el paquete: las planillas tienen diferentes fechas de entrega ({$fechasFormateadas}). Un paquete solo puede contener etiquetas con la misma fecha de entrega.",
+                ], 400);
+            }
+
+            // 3.3) VALIDACIÓN: El peso total no puede exceder 1350 kg
+            $pesoMaximo = 1350;
+            $pesoTotalCalculado = $todosElementos->sum(fn($elemento) => $elemento->peso ?? 0);
+
+            if ($pesoTotalCalculado > $pesoMaximo) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "No se puede crear el paquete: el peso total (" . number_format($pesoTotalCalculado, 2) . " kg) excede el límite máximo de {$pesoMaximo} kg.",
+                ], 400);
+            }
+
             // 4) Máquina y planilla
             //    - Se usa la máquina para:
             //         * determinar ubicación (Ubicacion)
@@ -864,8 +924,10 @@ class PaqueteController extends Controller
             $paquete = Paquete::findOrFail($paqueteId);
             $codigoEtiqueta = trim($request->etiqueta_codigo);
 
-            // Buscar la etiqueta
-            $etiqueta = Etiqueta::where('etiqueta_sub_id', $codigoEtiqueta)->first();
+            // Buscar la etiqueta con sus relaciones necesarias para validación
+            $etiqueta = Etiqueta::with('planilla.obra')
+                ->where('etiqueta_sub_id', $codigoEtiqueta)
+                ->first();
 
             if (!$etiqueta) {
                 return response()->json([
@@ -874,11 +936,54 @@ class PaqueteController extends Controller
                 ], 404);
             }
 
-            // Validar que la etiqueta pertenezca a la misma planilla
-            if ($etiqueta->planilla_id !== $paquete->planilla_id) {
+            // VALIDACIÓN 1: La etiqueta debe pertenecer a la MISMA OBRA del paquete
+            $obraPaquete = $paquete->nave_id;
+            $obraEtiqueta = $etiqueta->planilla->obra_id ?? null;
+
+            if ($obraPaquete && $obraEtiqueta && $obraPaquete !== $obraEtiqueta) {
+                $nombreObraPaquete = \App\Models\Obra::find($obraPaquete)?->obra ?? 'Desconocida';
+                $nombreObraEtiqueta = $etiqueta->planilla->obra->obra ?? 'Desconocida';
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'La etiqueta no pertenece a la misma planilla del paquete'
+                    'message' => "No se puede añadir la etiqueta: pertenece a la obra '{$nombreObraEtiqueta}' pero el paquete es de la obra '{$nombreObraPaquete}'. Un paquete solo puede contener etiquetas de la misma obra."
+                ], 400);
+            }
+
+            // VALIDACIÓN 2: La fecha de entrega de la planilla debe ser la MISMA que las demás del paquete
+            $etiquetasPaquete = Etiqueta::with('planilla')
+                ->where('paquete_id', $paquete->id)
+                ->get();
+
+            if ($etiquetasPaquete->isNotEmpty()) {
+                $fechaPaquete = $etiquetasPaquete->first()->planilla?->fecha_estimada_entrega;
+                $fechaEtiqueta = $etiqueta->planilla?->fecha_estimada_entrega;
+
+                // Normalizar fechas para comparación
+                $fechaPaqueteStr = $fechaPaquete instanceof \Carbon\Carbon ? $fechaPaquete->format('Y-m-d') : $fechaPaquete;
+                $fechaEtiquetaStr = $fechaEtiqueta instanceof \Carbon\Carbon ? $fechaEtiqueta->format('Y-m-d') : $fechaEtiqueta;
+
+                if ($fechaPaqueteStr && $fechaEtiquetaStr && $fechaPaqueteStr !== $fechaEtiquetaStr) {
+                    $fechaPaqueteFormato = $fechaPaquete instanceof \Carbon\Carbon ? $fechaPaquete->format('d/m/Y') : $fechaPaquete;
+                    $fechaEtiquetaFormato = $fechaEtiqueta instanceof \Carbon\Carbon ? $fechaEtiqueta->format('d/m/Y') : $fechaEtiqueta;
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => "No se puede añadir la etiqueta: su planilla tiene fecha de entrega {$fechaEtiquetaFormato} pero las etiquetas del paquete tienen fecha {$fechaPaqueteFormato}. Un paquete solo puede contener etiquetas con la misma fecha de entrega."
+                    ], 400);
+                }
+            }
+
+            // VALIDACIÓN 3: El peso del paquete + etiqueta no puede exceder 1350 kg
+            $pesoMaximo = 1350;
+            $pesoEtiquetaNueva = $etiqueta->peso ?? 0;
+            $pesoPaqueteActual = $paquete->peso ?? 0;
+            $pesoTotalResultante = $pesoPaqueteActual + $pesoEtiquetaNueva;
+
+            if ($pesoTotalResultante > $pesoMaximo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "No se puede añadir la etiqueta: el peso resultante (" . number_format($pesoTotalResultante, 2) . " kg) excedería el límite máximo de {$pesoMaximo} kg. Peso actual del paquete: " . number_format($pesoPaqueteActual, 2) . " kg, peso de la etiqueta: " . number_format($pesoEtiquetaNueva, 2) . " kg."
                 ], 400);
             }
 
