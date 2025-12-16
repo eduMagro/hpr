@@ -1146,7 +1146,7 @@ class PedidoController extends Controller
         $linea  = PedidoProducto::findOrFail($lineaId);
 
         if ($linea->pedido_id !== $pedido->id) {
-            abort(403, 'La línea no pertenece a este pedido.');
+            return back()->with('error', 'La línea no pertenece a este pedido.');
         }
 
         if (trim(strtolower($linea->estado)) === 'cancelado') {

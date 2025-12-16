@@ -26,10 +26,23 @@
 
     // Usar el ID de la primera etiqueta para el contenedor SVG
     $contenedorSvgId = $primeraEtiqueta->id;
+
+    // Detectar si es multi-planilla
+    $esMultiplanilla = $grupo['es_multiplanilla'] ?? false;
+    $codigosPlanillas = $grupo['codigos_planillas'] ?? [];
+
+    // Colores según tipo de grupo
+    $badgeBg = $esMultiplanilla ? 'bg-purple-600' : 'bg-teal-600';
+    $badgeText = $esMultiplanilla ? 'MULTI-PLANILLA' : 'GRUPO';
+    $borderColor = $esMultiplanilla ? 'border-purple-200' : 'border-teal-200';
+    $bgColor = $esMultiplanilla ? 'bg-purple-50' : 'bg-teal-50';
+    $textColor = $esMultiplanilla ? 'text-purple-700' : 'text-teal-700';
+    $textColorLight = $esMultiplanilla ? 'text-purple-600' : 'text-teal-600';
+    $borderColorDark = $esMultiplanilla ? 'border-purple-300' : 'border-teal-300';
 @endphp
 
-<div class="etiqueta-wrapper" data-grupo-id="{{ $grupo['id'] }}" data-es-grupo="true">
-    <div class="etiqueta-card proceso estado-{{ $estado }} grupo-resumen-card" id="etiqueta-{{ $safeSubId }}"
+<div class="etiqueta-wrapper" data-grupo-id="{{ $grupo['id'] }}" data-es-grupo="true" data-es-multiplanilla="{{ $esMultiplanilla ? '1' : '0' }}">
+    <div class="etiqueta-card proceso estado-{{ $estado }} grupo-resumen-card {{ $esMultiplanilla ? 'multiplanilla' : '' }}" id="etiqueta-{{ $safeSubId }}"
         data-estado="{{ $estado }}"
         data-grupo-id="{{ $grupo['id'] }}"
         data-maquina-id="{{ $maquina->id }}"
@@ -38,14 +51,19 @@
         data-elementos='@json($grupo['elementos'] ?? [])'
         data-etiquetas-sub-ids='@json(collect($grupo["etiquetas"])->pluck("etiqueta_sub_id")->values())'
         data-primera-etiqueta-id="{{ $primeraEtiqueta->etiqueta_sub_id }}"
-        data-planilla-id="{{ $planilla->id }}">
+        data-planilla-id="{{ $planilla->id }}"
+        data-es-multiplanilla="{{ $esMultiplanilla ? '1' : '0' }}">
 
         <!-- Botones (igual que etiqueta normal) -->
         <div class="absolute top-2 right-2 flex items-center gap-2 no-print z-10">
             <!-- Badge de grupo (junto a los botones) -->
-            <span class="bg-teal-600 text-white px-3 py-1 rounded shadow-sm flex items-center gap-1" title="Grupo de {{ $totalEtiquetas }} etiquetas resumidas">
+            <span class="{{ $badgeBg }} text-white px-3 py-1 rounded shadow-sm flex items-center gap-1" title="{{ $esMultiplanilla ? 'Grupo multi-planilla de ' . $totalEtiquetas . ' etiquetas' : 'Grupo de ' . $totalEtiquetas . ' etiquetas resumidas' }}">
                 <svg style="width:16px;height:16px;flex:none;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    @if($esMultiplanilla)
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+                    @else
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    @endif
                 </svg>
                 <span class="font-bold text-sm">x{{ $totalEtiquetas }}</span>
             </span>
@@ -109,23 +127,37 @@
 
         <!-- Barra inferior con info del grupo -->
         <div class="absolute bottom-1 left-1 right-1 no-print">
-            <div class="flex items-center justify-between text-xs bg-teal-50 border border-teal-200 rounded px-2 py-1">
-                <div class="flex items-center gap-2">
-                    <span class="font-medium text-teal-700">Etiquetas:</span>
-                    <div class="flex flex-wrap gap-1">
-                        @foreach (array_slice($grupo['etiquetas'] ?? [], 0, 4) as $et)
-                            <span class="bg-white border border-teal-300 text-teal-700 px-1.5 py-0.5 rounded text-xs">
-                                {{ $et['etiqueta_sub_id'] }}
-                            </span>
-                        @endforeach
-                        @if (count($grupo['etiquetas'] ?? []) > 4)
-                            <span class="text-teal-600 font-medium">+{{ count($grupo['etiquetas']) - 4 }} más</span>
-                        @endif
-                    </div>
+            <div class="flex items-center justify-between text-xs {{ $bgColor }} border {{ $borderColor }} rounded px-2 py-1">
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                    @if($esMultiplanilla)
+                        <span class="font-medium {{ $textColor }}">Planillas:</span>
+                        <div class="flex flex-wrap gap-1">
+                            @foreach (array_slice($codigosPlanillas, 0, 3) as $codigoPlanilla)
+                                <span class="bg-white border {{ $borderColorDark }} {{ $textColor }} px-1.5 py-0.5 rounded text-xs">
+                                    {{ $codigoPlanilla }}
+                                </span>
+                            @endforeach
+                            @if (count($codigosPlanillas) > 3)
+                                <span class="{{ $textColorLight }} font-medium">+{{ count($codigosPlanillas) - 3 }} más</span>
+                            @endif
+                        </div>
+                    @else
+                        <span class="font-medium {{ $textColor }}">Etiquetas:</span>
+                        <div class="flex flex-wrap gap-1">
+                            @foreach (array_slice($grupo['etiquetas'] ?? [], 0, 4) as $et)
+                                <span class="bg-white border {{ $borderColorDark }} {{ $textColor }} px-1.5 py-0.5 rounded text-xs">
+                                    {{ $et['etiqueta_sub_id'] }}
+                                </span>
+                            @endforeach
+                            @if (count($grupo['etiquetas'] ?? []) > 4)
+                                <span class="{{ $textColorLight }} font-medium">+{{ count($grupo['etiquetas']) - 4 }} más</span>
+                            @endif
+                        </div>
+                    @endif
                 </div>
-                <div class="flex items-center gap-3">
-                    <span class="text-teal-600 font-semibold" title="Total de barras sumadas">{{ $totalBarras }} barras</span>
-                    <span class="text-teal-600">{{ $totalElementos }} elem.</span>
+                <div class="flex items-center gap-3 flex-shrink-0">
+                    <span class="{{ $textColorLight }} font-semibold" title="Total de barras sumadas">{{ $totalBarras }} barras</span>
+                    <span class="{{ $textColorLight }}">{{ $totalElementos }} elem.</span>
                 </div>
             </div>
         </div>

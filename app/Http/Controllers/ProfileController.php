@@ -369,7 +369,7 @@ class ProfileController extends Controller
         $id = $user instanceof User ? $user->id : $user;
 
         if ($auth->rol !== 'oficina' && (int)$auth->id !== (int)$id) {
-            abort(403);
+            return back()->with('error', 'No tienes permiso para ver este perfil.');
         }
 
         $user = User::with(['asignacionesTurnos.turno'])->findOrFail($id);

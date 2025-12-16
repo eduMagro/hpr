@@ -627,6 +627,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/departamentos/{departamento}/asignar-secciones', [DepartamentoController::class, 'asignarSecciones'])->name('departamentos.asignarSecciones');
     Route::post('/departamentos/{departamento}/permisos', [DepartamentoController::class, 'actualizarPermiso']);
     Route::resource('secciones', SeccionController::class)->names('secciones');
+    Route::post('/secciones/actualizar-orden', [SeccionController::class, 'actualizarOrden'])->name('secciones.actualizarOrden');
 
     // === PAPELERA ===
     Route::get('/papelera', [PapeleraController::class, 'index'])->name('papelera.index');
@@ -636,7 +637,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::get('/verificar-seccion/{seccion}', function ($seccion) {
         if (!session()->get("clave_validada_$seccion")) {
-            abort(403);
+            return response()->json(['error' => 'Sección protegida por clave'], 403);
         }
         return response()->json(['ok' => true]);
     });

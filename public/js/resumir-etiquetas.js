@@ -533,4 +533,291 @@ window.desagruparTodos = async function(planillaId, maquinaId = null) {
     }
 };
 
-console.log('Sistema de resumen de etiquetas cargado');
+// ==================== FUNCIONES MULTI-PLANILLA ====================
+
+/**
+ * Ejecuta el proceso de resumen de etiquetas entre MÚLTIPLES planillas revisadas
+ * @param {number} maquinaId - ID de la máquina
+ */
+window.resumirEtiquetasMultiplanilla = async function(maquinaId) {
+    if (!maquinaId) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Máquina requerida',
+            text: 'Debes estar en una máquina para resumir entre planillas',
+        });
+        return;
+    }
+
+    // 1. Obtener preview
+    Swal.fire({
+        title: 'Analizando planillas revisadas...',
+        text: 'Buscando etiquetas con mismo diámetro y dimensiones entre planillas',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    try {
+        const params = new URLSearchParams();
+        params.set('maquina_id', maquinaId);
+
+        const response = await fetch(`/api/etiquetas/resumir/multiplanilla/preview?${params}`);
+        const preview = await response.json();
+
+        if (!preview.grupos || preview.grupos.length === 0) {
+            return Swal.fire({
+                icon: 'info',
+                title: 'Sin grupos para resumir',
+                html: `
+                    <p class="text-gray-600">No hay etiquetas con mismo diámetro y dimensiones que agrupar entre planillas revisadas.</p>
+                    <p class="mt-2 text-sm text-gray-500">Asegúrate de que las planillas estén marcadas como "revisadas".</p>
+                `,
+            });
+        }
+
+        // 2. Construir HTML del preview con info de planillas
+        window._elementosParaDibujarMulti = [];
+
+        // Mostrar las planillas involucradas
+        const planillasHtml = Object.entries(preview.planillas_involucradas || {})
+            .map(([id, codigo]) => `<span class="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs mr-1 mb-1">${codigo}</span>`)
+            .join('');
+
+        const gruposHtml = preview.grupos.map((g, idx) => {
+            const etiquetasHtml = g.etiquetas.map((et, etIdx) => {
+                const elementosHtml = et.elementos_detalle.map((el, elIdx) => {
+                    const canvasId = `mini-fig-multi-${idx}-${etIdx}-${elIdx}`;
+                    window._elementosParaDibujarMulti.push({
+                        canvasId,
+                        dimensiones: el.dimensiones || '',
+                        peso: el.peso,
+                        diametro: el.diametro
+                    });
+
+                    return `
+                        <div class="inline-block bg-white border border-gray-200 rounded p-1 mr-1 mb-1 text-center" style="min-width: 80px;">
+                            <div class="text-xs text-gray-500 font-mono">${el.codigo || el.marca}</div>
+                            <canvas id="${canvasId}" class="w-full" style="height: 50px; display: block;"></canvas>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="pl-4 py-2 text-xs border-l-2 border-purple-200 ml-2 mb-1 bg-gray-50 rounded-r">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-medium text-gray-700">${et.etiqueta_sub_id}</span>
+                            <span class="text-purple-600 bg-purple-50 px-2 py-0.5 rounded font-medium">${et.planilla_codigo}</span>
+                        </div>
+                        <div class="flex flex-wrap">${elementosHtml}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Mostrar las planillas de este grupo
+            const planillasGrupo = g.planillas_codigos ? g.planillas_codigos.join(', ') : '';
+
+            return `
+                <div class="py-2 border-b border-gray-200 last:border-0">
+                    <div class="flex justify-between items-center cursor-pointer" onclick="document.getElementById('grupo-multi-detalle-${idx}').classList.toggle('hidden'); this.querySelector('svg').classList.toggle('rotate-180');">
+                        <div class="flex-1">
+                            <span class="font-bold text-purple-700">Ø${g.diametro}</span>
+                            <span class="text-gray-500 text-sm ml-2">${g.dimensiones || 'barra'}</span>
+                            <span class="text-purple-400 text-xs ml-2">(${g.total_planillas} planillas: ${planillasGrupo})</span>
+                        </div>
+                        <div class="text-right flex items-center gap-3">
+                            <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm font-medium">
+                                ${g.total_etiquetas} etiquetas
+                            </span>
+                            <span class="text-gray-500 text-sm">${g.total_elementos} elem</span>
+                            <span class="text-gray-400 text-sm">${g.peso_total} kg</span>
+                            <svg class="w-4 h-4 text-gray-400 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div id="grupo-multi-detalle-${idx}" class="hidden mt-2">
+                        ${etiquetasHtml}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // 3. Mostrar preview y confirmar
+        const result = await Swal.fire({
+            icon: 'question',
+            title: 'Resumir Entre Planillas Revisadas',
+            html: `
+                <div class="text-left">
+                    <p class="mb-3 text-gray-600">
+                        Se crearán <strong class="text-purple-600">${preview.total_grupos} grupos</strong>
+                        agrupando <strong class="text-purple-600">${preview.total_etiquetas} etiquetas</strong>
+                        de <strong class="text-purple-600">${preview.total_planillas} planillas</strong>
+                        (${preview.total_elementos} elementos, ${preview.peso_total} kg):
+                    </p>
+                    <div class="mb-3">
+                        <span class="text-xs text-gray-500">Planillas involucradas:</span>
+                        <div class="mt-1">${planillasHtml}</div>
+                    </div>
+                    <div class="max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-gray-50">
+                        ${gruposHtml}
+                    </div>
+                    <p class="mt-4 text-sm text-gray-500 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Las etiquetas originales se mantienen para imprimir
+                    </p>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonColor: '#9333ea',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Resumir Multi-Planilla',
+            cancelButtonText: 'Cancelar',
+            width: '750px',
+            didOpen: () => {
+                if (typeof window.dibujarFiguraElemento === 'function' && window._elementosParaDibujarMulti) {
+                    setTimeout(() => {
+                        window._elementosParaDibujarMulti.forEach(el => {
+                            const canvas = document.getElementById(el.canvasId);
+                            if (canvas) {
+                                canvas.width = canvas.clientWidth || 80;
+                                canvas.height = canvas.clientHeight || 50;
+                                window.dibujarFiguraElemento(el.canvasId, el.dimensiones, null, el.diametro);
+                            }
+                        });
+                    }, 100);
+                }
+            }
+        });
+
+        if (!result.isConfirmed) return;
+
+        // 4. Ejecutar resumen multi-planilla
+        Swal.fire({
+            title: 'Resumiendo entre planillas...',
+            text: 'Creando grupos de resumen multi-planilla',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        const execResponse = await fetch('/api/etiquetas/resumir/multiplanilla', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                maquina_id: maquinaId
+            })
+        });
+
+        const resultado = await execResponse.json();
+
+        if (resultado.success) {
+            await Swal.fire({
+                icon: 'success',
+                title: 'Resumen multi-planilla completado',
+                html: `
+                    <p class="text-gray-600">${resultado.message}</p>
+                    <p class="mt-3 text-sm text-gray-500">
+                        Puedes desagrupar en cualquier momento haciendo clic en la X del grupo.
+                    </p>
+                `,
+                confirmButtonColor: '#9333ea',
+            });
+
+            // Refrescar vista
+            if (typeof window.refrescarEtiquetasMaquina === 'function') {
+                window.refrescarEtiquetasMaquina();
+            } else {
+                location.reload();
+            }
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: resultado.message || 'No se pudo completar el resumen multi-planilla',
+            });
+        }
+
+    } catch (error) {
+        console.error('Error al resumir etiquetas multi-planilla:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de conexión',
+            text: 'No se pudo conectar con el servidor',
+        });
+    }
+};
+
+/**
+ * Desagrupa todos los grupos multi-planilla de una máquina
+ * @param {number} maquinaId - ID de la máquina
+ */
+window.desagruparTodosMultiplanilla = async function(maquinaId) {
+    const result = await Swal.fire({
+        icon: 'warning',
+        title: '¿Desagrupar todos los grupos multi-planilla?',
+        text: 'Las etiquetas volverán a mostrarse individualmente en sus planillas originales',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, desagrupar todos',
+        cancelButtonText: 'Cancelar',
+    });
+
+    if (!result.isConfirmed) return;
+
+    Swal.fire({
+        title: 'Desagrupando...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    try {
+        const response = await fetch('/api/etiquetas/resumir/multiplanilla/desagrupar-todos', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                maquina_id: maquinaId
+            })
+        });
+
+        const resultado = await response.json();
+
+        if (resultado.success) {
+            await Swal.fire({
+                icon: 'success',
+                title: 'Grupos desagrupados',
+                text: resultado.message,
+                timer: 2000,
+                showConfirmButton: false,
+            });
+
+            if (typeof window.refrescarEtiquetasMaquina === 'function') {
+                window.refrescarEtiquetasMaquina();
+            } else {
+                location.reload();
+            }
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: resultado.message,
+            });
+        }
+    } catch (error) {
+        console.error('Error al desagrupar todos multi-planilla:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de conexión',
+            text: 'No se pudo conectar con el servidor',
+        });
+    }
+};
+
+console.log('Sistema de resumen de etiquetas cargado (incluye multi-planilla)');

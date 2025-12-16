@@ -28,9 +28,10 @@ class PageController extends Controller
         $empresaServiciosId   = Empresa::whereRaw("LOWER(nombre) LIKE ?", ['%hpr servicios%'])->value('id');
         $empresaId = $user->empresa_id;
 
-        // 📌 Secciones visibles
+        // 📌 Secciones visibles (ordenadas)
         $secciones = Seccion::with('departamentos')
             ->where('mostrar_en_dashboard', true)
+            ->orderBy('orden')
             ->get();
 
         // ✅ Caso 1: Acceso total → todas las secciones visibles
@@ -108,7 +109,10 @@ class PageController extends Controller
             'rol' => $user->rol,
         ]);
 
-        abort(403, 'No tienes acceso. Contacta con administración');
+        // Mostrar dashboard vacío con mensaje de error en lugar de página 403
+        $items = collect([]);
+        session()->flash('error', 'No tienes acceso a ninguna sección. Contacta con administración.');
+        return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina'));
     }
 
     /**

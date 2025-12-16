@@ -153,9 +153,9 @@ class SubEtiquetaService
         $codigoPadre = (string) $padre->codigo;
         $maxElementosPorSub = 5; // Límite de elementos por etiqueta_sub_id
 
-        // 1) Localizar HERMANOS: mismo etiqueta_id + mismo prefijo y YA en esa máquina (según obtenerMaquinaReal)
-        $hermanos = Elemento::where('etiqueta_id', $elemento->etiqueta_id)
-            ->whereNotNull('etiqueta_sub_id')
+        // 1) Localizar HERMANOS: mismo CÓDIGO PADRE (no etiqueta_id) y YA en esa máquina
+        // Busca por prefijo del etiqueta_sub_id para encontrar hermanos de diferentes etiquetas
+        $hermanos = Elemento::whereNotNull('etiqueta_sub_id')
             ->where('etiqueta_sub_id', 'like', $prefijoPadre . '%')
             ->where('id', '!=', $elemento->id) // Excluir el elemento actual
             ->get()

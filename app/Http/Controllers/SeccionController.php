@@ -137,4 +137,36 @@ class SeccionController extends Controller
     {
         //
     }
+
+    /**
+     * Actualiza el orden de las secciones (drag & drop)
+     */
+    public function actualizarOrden(Request $request)
+    {
+        try {
+            $request->validate([
+                'orden' => 'required|array',
+                'orden.*' => 'integer|exists:secciones,id',
+            ]);
+
+            foreach ($request->orden as $posicion => $seccionId) {
+                Seccion::where('id', $seccionId)->update(['orden' => $posicion]);
+            }
+
+            // Limpiar caché del dashboard
+            \Cache::forget('dashboard_items');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Orden actualizado correctamente.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar orden de secciones: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar el orden.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

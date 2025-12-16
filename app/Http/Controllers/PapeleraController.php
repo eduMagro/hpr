@@ -42,7 +42,7 @@ class PapeleraController extends Controller
             ->exists();
 
         if (!$esProgramador) {
-            abort(403, 'No tienes permisos para acceder a la papelera.');
+            return back()->with('error', 'No tienes permisos para acceder a la papelera.');
         }
 
         // Obtener todos los registros eliminados
@@ -88,7 +88,7 @@ class PapeleraController extends Controller
             ->exists();
 
         if (!$esProgramador) {
-            abort(403, 'No tienes permisos para restaurar registros.');
+            return back()->with('error', 'No tienes permisos para restaurar registros.');
         }
 
         $models = [

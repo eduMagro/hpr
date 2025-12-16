@@ -782,7 +782,7 @@ El sistema te guiará paso a paso:
     {
         // Solo administradores pueden acceder
         if (!Auth::user()->esAdminDepartamento()) {
-            abort(403, 'No tienes permisos para acceder a esta sección');
+            return back()->with('error', 'No tienes permisos para acceder a esta sección.');
         }
 
         $usuarios = User::orderBy('name')->get();

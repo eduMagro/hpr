@@ -182,4 +182,49 @@ class GrupoResumen extends Model
         $dims = $this->dimensiones ?: 'barra';
         return "Ø{$this->diametro} | {$dims}";
     }
+
+    /**
+     * Verifica si es un grupo multi-planilla (planilla_id es null)
+     */
+    public function getEsMultiplanillaAttribute(): bool
+    {
+        return is_null($this->planilla_id);
+    }
+
+    /**
+     * Obtiene las planillas involucradas en el grupo (para grupos multi-planilla)
+     */
+    public function getPlanillasInvolucradasAttribute(): array
+    {
+        if (!$this->es_multiplanilla) {
+            return $this->planilla ? [$this->planilla] : [];
+        }
+
+        return $this->etiquetas()
+            ->with('planilla')
+            ->get()
+            ->pluck('planilla')
+            ->unique('id')
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Obtiene los códigos de planillas involucradas (útil para mostrar en UI)
+     */
+    public function getCodigosPlanillasAttribute(): array
+    {
+        if (!$this->es_multiplanilla && $this->planilla) {
+            return [$this->planilla->codigo_limpio ?? $this->planilla->codigo];
+        }
+
+        return $this->etiquetas()
+            ->with('planilla')
+            ->get()
+            ->pluck('planilla')
+            ->unique('id')
+            ->map(fn($p) => $p->codigo_limpio ?? $p->codigo)
+            ->values()
+            ->toArray();
+    }
 }
