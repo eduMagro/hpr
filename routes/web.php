@@ -199,10 +199,15 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Route::post('/productos/crear-desde-recepcion', [PedidoController::class, 'crearDesdeRecepcion'])->name('productos.crear.desde.recepcion');
     // Route::post('/solicitar-stock', [ProductoController::class, 'solicitarStock'])->name('solicitar.stock');
     Route::get('productos/{id}/consumir', [ProductoController::class, 'consumir'])->name('productos.editarConsumir');
+    Route::post('productos/consumir-lote', [ProductoController::class, 'consumirLoteAjax'])->name('productos.consumirLote');
     Route::post('productos/generar-exportar', [ProductoController::class, 'GenerarYExportar'])->name('productos.generar.crearExportar');
     Route::post('productos/generar-datos', [ProductoController::class, 'GenerarYObtenerDatos'])->name('productos.generar.datos');
     Route::post('/productos/{codigo}/reasignar', [ProductoController::class, 'editarUbicacionInventario'])
         ->name('productos.editarUbicacionInventario');
+    Route::post('/productos/{codigo}/restablecer', [ProductoController::class, 'restablecerDesdeInventario'])
+        ->name('productos.restablecerInventario');
+    Route::post('/productos/{codigo}/liberar-maquina', [ProductoController::class, 'liberarFabricandoInventario'])
+        ->name('productos.liberarMaquinaInventario');
 
     // Descargar instalador del servicio de impresion P-Touch
     Route::get('print-service/download', function () {
