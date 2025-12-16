@@ -606,6 +606,7 @@ class PaqueteController extends Controller
             return Paquete::create([
                 'planilla_id'   => $planillaId,
                 'ubicacion_id'  => $ubicacionId,
+                'user_id'       => auth()->id(),
                 'peso'          => $pesoTotal ?? 0,
                 'codigo'        => $codigo,
                 'nave_id'     => $obraId,
@@ -707,30 +708,38 @@ class PaqueteController extends Controller
         $validated = $request->validate([
             'codigo' => 'required|string|max:100',
         ], [
-            'codigo.required' => 'Debes indicar el etiqueta_sub_id.',
+            'codigo.required' => 'Debes indicar el código de etiqueta o paquete.',
         ]);
 
         $codigo = trim($validated['codigo']);
+        $paquete = null;
 
-        // 2) Buscar etiqueta directamente
-        $etiqueta = Etiqueta::where('etiqueta_sub_id', $codigo)->first();
+        // 2) Primero intentar buscar directamente como código de paquete
+        $paquete = Paquete::with(['etiquetas.elementos', 'localizacionPaquete'])
+            ->where('codigo', $codigo)
+            ->first();
 
-        // 3) Fallback: buscar en elementos
-        if (!$etiqueta) {
-            $elemento = Elemento::with('etiqueta')
-                ->where('etiqueta_sub_id', $codigo)
-                ->first();
-            if ($elemento) {
-                $etiqueta = $elemento->etiqueta;
+        // 3) Si no es un paquete, buscar como etiqueta
+        if (!$paquete) {
+            $etiqueta = Etiqueta::where('etiqueta_sub_id', $codigo)->first();
+
+            // 4) Fallback: buscar en elementos
+            if (!$etiqueta) {
+                $elemento = Elemento::with('etiqueta')
+                    ->where('etiqueta_sub_id', $codigo)
+                    ->first();
+                if ($elemento) {
+                    $etiqueta = $elemento->etiqueta;
+                }
             }
-        }
 
-        if (!$etiqueta || !$etiqueta->paquete_id) {
-            return response()->json(['error' => 'Etiqueta no asociada a ningún paquete.'], 404);
-        }
+            if (!$etiqueta || !$etiqueta->paquete_id) {
+                return response()->json(['error' => 'Código no encontrado. Introduce un código de etiqueta o de paquete válido.'], 404);
+            }
 
-        // 4) Cargar paquete con todas sus etiquetas, elementos y localización
-        $paquete = Paquete::with(['etiquetas.elementos', 'localizacionPaquete'])->find($etiqueta->paquete_id);
+            // 5) Cargar paquete desde la etiqueta
+            $paquete = Paquete::with(['etiquetas.elementos', 'localizacionPaquete'])->find($etiqueta->paquete_id);
+        }
         if (!$paquete) {
             return response()->json(['error' => 'Paquete no encontrado.'], 404);
         }
@@ -836,7 +845,7 @@ class PaqueteController extends Controller
                     ->with(['elementos' => function ($q) {
                         $q->select('id', 'codigo', 'dimensiones', 'etiqueta_sub_id');
                     }]);
-            }, 'ubicacion:id,nombre'])
+            }, 'ubicacion:id,nombre,descripcion', 'user:id,name'])
                 ->where('planilla_id', $planillaId);
 
             // Filtrar por máquina si se proporciona el parámetro
@@ -853,7 +862,8 @@ class PaqueteController extends Controller
                     'codigo' => $paquete->codigo,
                     'peso' => number_format($paquete->peso, 2, '.', ''),
                     'cantidad_etiquetas' => $paquete->etiquetas->count(),
-                    'ubicacion' => optional($paquete->ubicacion)->nombre ?? 'Sin ubicación',
+                    'ubicacion' => optional($paquete->ubicacion)->descripcion ?? optional($paquete->ubicacion)->nombre ?? 'Sin ubicación',
+                    'usuario' => optional($paquete->user)->name ?? 'Sin asignar',
                     'created_at' => $paquete->created_at->format('d/m/Y H:i'),
                     // Datos para QR
                     'planilla_codigo' => $planilla->codigo_limpio ?? $planilla->codigo ?? '',
@@ -936,25 +946,30 @@ class PaqueteController extends Controller
                 ], 404);
             }
 
-            // VALIDACIÓN 1: La etiqueta debe pertenecer a la MISMA OBRA del paquete
-            $obraPaquete = $paquete->nave_id;
-            $obraEtiqueta = $etiqueta->planilla->obra_id ?? null;
-
-            if ($obraPaquete && $obraEtiqueta && $obraPaquete !== $obraEtiqueta) {
-                $nombreObraPaquete = \App\Models\Obra::find($obraPaquete)?->obra ?? 'Desconocida';
-                $nombreObraEtiqueta = $etiqueta->planilla->obra->obra ?? 'Desconocida';
-
-                return response()->json([
-                    'success' => false,
-                    'message' => "No se puede añadir la etiqueta: pertenece a la obra '{$nombreObraEtiqueta}' pero el paquete es de la obra '{$nombreObraPaquete}'. Un paquete solo puede contener etiquetas de la misma obra."
-                ], 400);
-            }
-
-            // VALIDACIÓN 2: La fecha de entrega de la planilla debe ser la MISMA que las demás del paquete
-            $etiquetasPaquete = Etiqueta::with('planilla')
+            // Obtener las etiquetas existentes en el paquete (se usa para varias validaciones)
+            $etiquetasPaquete = Etiqueta::with('planilla.obra')
                 ->where('paquete_id', $paquete->id)
                 ->get();
 
+            // VALIDACIÓN 1: La etiqueta debe pertenecer a la MISMA OBRA de las etiquetas ya en el paquete
+            if ($etiquetasPaquete->isNotEmpty()) {
+                // Obtener la obra de la primera etiqueta del paquete como referencia
+                $obraPaquete = $etiquetasPaquete->first()->planilla->obra_id ?? null;
+                $obraEtiqueta = $etiqueta->planilla->obra_id ?? null;
+
+                if ($obraPaquete && $obraEtiqueta && $obraPaquete !== $obraEtiqueta) {
+                    $nombreObraPaquete = $etiquetasPaquete->first()->planilla->obra->obra ?? 'Desconocida';
+                    $nombreObraEtiqueta = $etiqueta->planilla->obra->obra ?? 'Desconocida';
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => "No se puede añadir la etiqueta: pertenece a la obra '{$nombreObraEtiqueta}' pero las etiquetas del paquete son de la obra '{$nombreObraPaquete}'. Un paquete solo puede contener etiquetas de la misma obra."
+                    ], 400);
+                }
+            }
+            // Si el paquete está vacío, se permite cualquier etiqueta (la primera define la obra del paquete)
+
+            // VALIDACIÓN 2: La fecha de entrega de la planilla debe ser la MISMA que las demás del paquete
             if ($etiquetasPaquete->isNotEmpty()) {
                 $fechaPaquete = $etiquetasPaquete->first()->planilla?->fecha_estimada_entrega;
                 $fechaEtiqueta = $etiqueta->planilla?->fecha_estimada_entrega;
@@ -1194,6 +1209,7 @@ class PaqueteController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "Etiqueta eliminada correctamente del paquete",
+                'etiqueta_codigo' => $codigoEtiqueta,
                 'paquete' => [
                     'id' => $paquete->id,
                     'codigo' => $paquete->codigo,
@@ -1239,10 +1255,17 @@ class PaqueteController extends Controller
                 'usuario' => auth()->user()->nombre_completo ?? 'desconocido'
             ]);
 
-            // 📊 Obtener IDs de etiquetas para logs (antes de liberarlas)
-            $etiquetasIds = Etiqueta::where('paquete_id', $paquete->id)
-                ->pluck('etiqueta_sub_id')
+            // 📊 Obtener datos de etiquetas para logs y actualización del DOM (antes de liberarlas)
+            $etiquetasData = Etiqueta::where('paquete_id', $paquete->id)
+                ->select('etiqueta_sub_id', 'estado')
+                ->get()
+                ->map(fn($e) => [
+                    'id' => $e->etiqueta_sub_id,
+                    'estado' => $e->estado
+                ])
                 ->toArray();
+
+            $etiquetasIds = array_column($etiquetasData, 'id');
 
             // Liberar todas las etiquetas del paquete (solo quitar paquete_id, mantener estado)
             $etiquetasLiberadas = Etiqueta::where('paquete_id', $paquete->id)
@@ -1283,7 +1306,10 @@ class PaqueteController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "Paquete {$codigoPaquete} eliminado correctamente. {$etiquetasLiberadas} etiquetas liberadas",
-                'etiquetas_liberadas' => $etiquetasLiberadas
+                'etiquetas_liberadas' => $etiquetasLiberadas,
+                'etiquetas_ids' => $etiquetasIds,
+                'etiquetas_data' => $etiquetasData,
+                'codigo_paquete' => $codigoPaquete
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             DB::rollBack();

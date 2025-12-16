@@ -1389,7 +1389,7 @@ class SalidaFerrallaController extends Controller
 
             $request->validate([
                 'salida_id' => 'required|exists:salidas,id',
-                'paquetes_ids' => 'required|array',
+                'paquetes_ids' => 'present|array',
                 'paquetes_ids.*' => 'exists:paquetes,id',
             ]);
 

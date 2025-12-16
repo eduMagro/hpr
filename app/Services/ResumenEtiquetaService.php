@@ -5,6 +5,9 @@ namespace App\Services;
 use App\Models\Elemento;
 use App\Models\Etiqueta;
 use App\Models\GrupoResumen;
+use App\Models\Maquina;
+use App\Models\Producto;
+use App\Models\ProductoBase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -440,6 +443,12 @@ class ResumenEtiquetaService
             return ['success' => false, 'message' => 'El grupo no tiene etiquetas'];
         }
 
+        // Obtener la máquina
+        $maquina = Maquina::find($maquinaId);
+        if (!$maquina) {
+            return ['success' => false, 'message' => 'Máquina no encontrada'];
+        }
+
         // Determinar estado actual (tomar el de la primera etiqueta)
         $estadoActual = strtolower($etiquetas->first()->estado ?? 'pendiente');
 
@@ -461,21 +470,152 @@ class ResumenEtiquetaService
         $totalEtiquetas = $etiquetas->count();
 
         return DB::transaction(function () use (
-            $etiquetas, $siguienteEstado, $ahora, $totalEtiquetas, $usuarioId, $grupo
+            $etiquetas, $siguienteEstado, $ahora, $totalEtiquetas, $usuarioId, $grupo, $maquina, $maquinaId
         ) {
             $etiquetasActualizadas = [];
             $etiquetasParaImprimir = [];
+            $productosAfectados = [];
+            $productoNColada = null;
+            $producto2NColada = null;
+
+            // Obtener todos los elementos del grupo para asignación de productos
+            $elementosDelGrupo = Elemento::whereIn('etiqueta_sub_id', $etiquetas->pluck('etiqueta_sub_id'))
+                ->where(function ($q) use ($maquinaId) {
+                    $q->where('maquina_id', $maquinaId)
+                        ->orWhere('maquina_id_2', $maquinaId)
+                        ->orWhere('maquina_id_3', $maquinaId);
+                })
+                ->get();
+
+            // Agrupar elementos por diámetro para asignación de productos
+            $elementosPorDiametro = $elementosDelGrupo->groupBy(fn($e) => (int) $e->diametro);
+
+            // Buscar productos disponibles en la máquina por diámetro
+            $productosPorDiametro = [];
+            foreach ($elementosPorDiametro->keys() as $diametro) {
+                $productosPorDiametro[$diametro] = $maquina->productos()
+                    ->whereHas('productoBase', fn($q) => $q->where('diametro', $diametro))
+                    ->where('peso_stock', '>', 0)
+                    ->with('productoBase')
+                    ->orderBy('peso_stock')
+                    ->get();
+            }
 
             foreach ($etiquetas as $index => $etiqueta) {
                 $estadoAnterior = $etiqueta->estado;
 
                 if ($siguienteEstado === 'fabricando') {
-                    // Inicio de fabricación
+                    // ═══════════════════════════════════════════════════════════════════
+                    // PRIMER CLIC: PENDIENTE -> FABRICANDO
+                    // Asignar producto_id a etiqueta y elementos
+                    // ═══════════════════════════════════════════════════════════════════
+
+                    // Obtener elementos de esta etiqueta en la máquina
+                    $elementosEtiqueta = $elementosDelGrupo->where('etiqueta_sub_id', $etiqueta->etiqueta_sub_id);
+
+                    foreach ($elementosEtiqueta as $elemento) {
+                        $diametro = (int) $elemento->diametro;
+                        $productos = $productosPorDiametro[$diametro] ?? collect();
+
+                        if ($productos->isNotEmpty()) {
+                            $producto = $productos->first();
+                            $elemento->producto_id = $producto->id;
+                            $elemento->estado = 'fabricando';
+                            $elemento->users_id = $usuarioId;
+                            $elemento->save();
+
+                            // Guardar colada del primer producto para la respuesta
+                            if (!$productoNColada) {
+                                $productoNColada = $producto->n_colada;
+                            }
+                        } else {
+                            $elemento->estado = 'fabricando';
+                            $elemento->users_id = $usuarioId;
+                            $elemento->save();
+                        }
+                    }
+
+                    // Asignar producto_id a la etiqueta (usar el primer producto encontrado)
+                    $primerElemento = $elementosEtiqueta->first();
+                    if ($primerElemento && $primerElemento->producto_id && !$etiqueta->producto_id) {
+                        $etiqueta->producto_id = $primerElemento->producto_id;
+                    }
+
                     $etiqueta->estado = 'fabricando';
                     $etiqueta->fecha_inicio = $ahora;
                     $etiqueta->operario1_id = $usuarioId;
+
                 } elseif ($siguienteEstado === 'completada') {
-                    // Completar fabricación - repartir tiempo
+                    // ═══════════════════════════════════════════════════════════════════
+                    // SEGUNDO CLIC: FABRICANDO -> COMPLETADA
+                    // Verificar si el producto cambió, asignar producto_id_2, consumir stock
+                    // ═══════════════════════════════════════════════════════════════════
+
+                    $elementosEtiqueta = $elementosDelGrupo->where('etiqueta_sub_id', $etiqueta->etiqueta_sub_id);
+
+                    foreach ($elementosEtiqueta as $elemento) {
+                        $diametro = (int) $elemento->diametro;
+                        $productos = $productosPorDiametro[$diametro] ?? collect();
+
+                        if ($productos->isNotEmpty()) {
+                            $productoActual = $productos->first();
+
+                            // Verificar si el producto cambió desde el primer clic
+                            if ($elemento->producto_id && $elemento->producto_id != $productoActual->id) {
+                                // El producto cambió, asignar a producto_id_2 o producto_id_3
+                                if (!$elemento->producto_id_2) {
+                                    $elemento->producto_id_2 = $productoActual->id;
+                                } elseif ($elemento->producto_id_2 != $productoActual->id && !$elemento->producto_id_3) {
+                                    $elemento->producto_id_3 = $productoActual->id;
+                                }
+                            } elseif (!$elemento->producto_id) {
+                                $elemento->producto_id = $productoActual->id;
+                            }
+
+                            // Consumir stock del producto
+                            $pesoElemento = (float) ($elemento->peso_kg ?? 0);
+                            if ($pesoElemento > 0 && $productoActual->peso_stock >= $pesoElemento) {
+                                $productoActual->peso_stock -= $pesoElemento;
+                                if ($productoActual->peso_stock <= 0) {
+                                    $productoActual->peso_stock = 0;
+                                    $productoActual->estado = 'consumido';
+                                }
+                                $productoActual->save();
+
+                                $productosAfectados[] = [
+                                    'id' => $productoActual->id,
+                                    'peso_stock' => $productoActual->peso_stock,
+                                    'peso_inicial' => $productoActual->peso_inicial ?? null,
+                                ];
+                            }
+
+                            // Guardar coladas para la respuesta
+                            if (!$productoNColada && $elemento->producto_id) {
+                                $prod1 = Producto::find($elemento->producto_id);
+                                $productoNColada = $prod1?->n_colada;
+                            }
+                            if (!$producto2NColada && $elemento->producto_id_2) {
+                                $prod2 = Producto::find($elemento->producto_id_2);
+                                $producto2NColada = $prod2?->n_colada;
+                            }
+                        }
+
+                        $elemento->estado = 'completado';
+                        $elemento->save();
+                    }
+
+                    // Verificar si el producto de la etiqueta cambió
+                    $primerElemento = $elementosEtiqueta->first();
+                    if ($primerElemento) {
+                        if ($etiqueta->producto_id && $primerElemento->producto_id && $etiqueta->producto_id != $primerElemento->producto_id) {
+                            if (!$etiqueta->producto_id_2) {
+                                $etiqueta->producto_id_2 = $primerElemento->producto_id;
+                            }
+                        } elseif (!$etiqueta->producto_id && $primerElemento->producto_id) {
+                            $etiqueta->producto_id = $primerElemento->producto_id;
+                        }
+                    }
+
                     $etiqueta->estado = 'completada';
                     $etiqueta->fecha_finalizacion = $ahora;
 
@@ -483,8 +623,6 @@ class ResumenEtiquetaService
                     if ($etiqueta->fecha_inicio) {
                         $tiempoTotalSegundos = $etiqueta->fecha_inicio->diffInSeconds($ahora);
                         $tiempoPorEtiqueta = (int) round($tiempoTotalSegundos / $totalEtiquetas);
-
-                        // Ajustar fecha_inicio para que el tiempo sea proporcional
                         $etiqueta->fecha_inicio = $ahora->copy()->subSeconds($tiempoPorEtiqueta);
                     }
 
@@ -494,25 +632,11 @@ class ResumenEtiquetaService
                             'id' => $etiqueta->id,
                             'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
                         ];
-                        // Marcar como impresa
                         $etiqueta->impresa = true;
                     }
                 }
 
                 $etiqueta->save();
-
-                // Actualizar estado de los elementos
-                // Los elementos usan género masculino: fabricado, completado, etc.
-                $estadoElemento = match ($siguienteEstado) {
-                    'fabricando' => 'fabricando',
-                    'completada' => 'completado',
-                    'fabricada' => 'fabricado',
-                    'ensamblada' => 'ensamblado',
-                    'soldada' => 'soldado',
-                    default => $siguienteEstado,
-                };
-                Elemento::where('etiqueta_sub_id', $etiqueta->etiqueta_sub_id)
-                    ->update(['estado' => $estadoElemento]);
 
                 $etiquetasActualizadas[] = [
                     'id' => $etiqueta->id,
@@ -527,13 +651,13 @@ class ResumenEtiquetaService
                     'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
                     'estado_anterior' => $estadoAnterior,
                     'estado_nuevo' => $siguienteEstado,
+                    'producto_n_colada' => $productoNColada,
                 ]);
             }
 
             // Si se completó el grupo, desagrupar las etiquetas para trabajar individualmente
             $desagrupado = false;
             if ($siguienteEstado === 'completada') {
-                // Desagrupar: quitar grupo_resumen_id de las etiquetas y marcar grupo como inactivo
                 Etiqueta::where('grupo_resumen_id', $grupo->id)
                     ->update(['grupo_resumen_id' => null]);
 
@@ -560,6 +684,9 @@ class ResumenEtiquetaService
                 'etiquetas' => $etiquetasActualizadas,
                 'desagrupado' => $desagrupado,
                 'imprimir_etiquetas' => $etiquetasParaImprimir,
+                'productos_afectados' => $productosAfectados,
+                'producto_n_colada' => $productoNColada,
+                'producto2_n_colada' => $producto2NColada,
             ];
         });
     }

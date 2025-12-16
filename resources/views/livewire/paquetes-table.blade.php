@@ -28,6 +28,7 @@
                         <th class="p-2 border">Cliente</th>
                         <th class="p-2 border">Nave</th>
                         <th class="p-2 border">Ubicación</th>
+                        <th class="p-2 border">Usuario</th>
                         <th class="p-2 border cursor-pointer" wire:click="sortBy('estado')">
                             Estado @if ($sort === 'estado')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
@@ -94,6 +95,7 @@
                                 class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Ubicación...">
                         </th>
+                        <th class="p-2 border"></th> {{-- Usuario (sin filtro) --}}
                         <th class="p-2 border">
                             <select wire:model.live="estado"
                                 class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
@@ -149,6 +151,7 @@
                             <td class="p-2 text-center border">{{ $paquete->planilla->cliente->empresa ?? '-' }}</td>
                             <td class="p-2 text-center border">{{ $paquete->nave->obra ?? '-' }}</td>
                             <td class="p-2 text-center border">{{ $paquete->ubicacion->nombre ?? '-' }}</td>
+                            <td class="p-2 text-center border">{{ $paquete->user->name ?? '-' }}</td>
                             <td class="p-2 text-center border">
                                 @php
                                     $estadoBadge = match ($paquete->estado) {
@@ -267,7 +270,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="15" class="text-center py-4 text-gray-500">No hay paquetes registrados</td>
+                            <td colspan="16" class="text-center py-4 text-gray-500">No hay paquetes registrados</td>
                         </tr>
                     @endforelse
                 </tbody>

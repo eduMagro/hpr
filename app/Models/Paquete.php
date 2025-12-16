@@ -21,6 +21,7 @@ class Paquete extends Model
         'nave_id',
         'planilla_id',
         'ubicacion_id',
+        'user_id',
         'peso',
         'estado',
     ];
@@ -81,6 +82,14 @@ class Paquete extends Model
     public function ubicacion()
     {
         return $this->belongsTo(Ubicacion::class, 'ubicacion_id');
+    }
+
+    /**
+     * Relación: Un paquete pertenece a un usuario (quien lo creó)
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     /**

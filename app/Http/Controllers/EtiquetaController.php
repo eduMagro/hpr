@@ -459,7 +459,8 @@ class EtiquetaController extends Controller
         int $planillaId,
         int $diametroMm,
         string $excluirSubId,
-        ?int $maquinaIdObjetivo = null
+        ?int $maquinaIdObjetivo = null,
+        ?int $barrasRequeridas = null
     ): array {
         $planilla = Planilla::with('etiquetas.elementos')->find($planillaId);
         if (!$planilla) return [];
@@ -495,6 +496,11 @@ class EtiquetaController extends Controller
             $longitudCm  = (float) ($e->longitud ?? 0);       // en BD: cm
             $disponibles = (int)   max(0, (int) ($e->barras ?? 0));
             if ($longitudCm <= 0 || $disponibles <= 0) continue;
+
+            // ⬇️ NUEVO: filtrar por MISMO número de barras si se indicó
+            if ($barrasRequeridas !== null && $disponibles !== $barrasRequeridas) {
+                continue;
+            }
 
             $candidatos[] = [
                 'id'          => $subId,
@@ -591,12 +597,13 @@ class EtiquetaController extends Controller
         foreach ($planillasEnOrden as $planillaId) {
             if (count($topGlobal98) >= 3) break;
 
-            // ⬇️ ahora filtrará por máquina
+            // ⬇️ ahora filtrará por máquina y por mismo número de barras
             $candidatos = $this->construirCandidatosEnPlanilla(
                 $planillaId,
                 $diametro,
                 $etiquetaSubId,
-                $maquinaObjetivoId
+                $maquinaObjetivoId,
+                $barrasA
             );
             if (empty($candidatos)) continue;
             // 5.2) Pre-carga de etiquetas para ESTA planilla (y A) → evita N+1
@@ -674,6 +681,7 @@ class EtiquetaController extends Controller
         usort($topGlobal98, $comparador);
         $topGlobal98 = array_slice($topGlobal98, 0, 3);
 
+        $etiquetasPlanillas = [];
         if (!empty($topGlobal98)) {
             $todosSubIdsTop = collect($topGlobal98)->flatMap(fn($p) => array_keys($p['conteo_por_subid']))->unique()->values();
             $mapaGlobal = Etiqueta::with(['elementos', 'planilla'])
@@ -685,6 +693,11 @@ class EtiquetaController extends Controller
                 $pat['grupos'] = $this->construirGruposParaCanvas($pat['conteo_por_subid'], $mapaGlobal);
             }
             unset($pat);
+
+            // Construir mapa etiqueta -> planilla para el frontend
+            foreach ($mapaGlobal as $subId => $etiqueta) {
+                $etiquetasPlanillas[$subId] = $etiqueta->planilla?->codigo_limpio ?? null;
+            }
         }
 
         $htmlResumen = $this->construirHtmlResumenMultiLongitudes($longitudesBarraCm, $progresoPorLongitud);
@@ -696,6 +709,7 @@ class EtiquetaController extends Controller
             'success'               => true,
             'longitudes_barra_cm'   => array_values($longitudesBarraCm),
             'top_global'            => $topGlobal98,
+            'etiquetas_planillas'   => $etiquetasPlanillas,
             'progreso_por_longitud' => $progresoPorLongitud,
             'kmax'                  => $Kmax,
             'umbral_ok'             => $UMBRAL_OK,
@@ -1022,10 +1036,18 @@ class EtiquetaController extends Controller
 
     /**
      * Inserta patrones en TopLocal y TopGlobal con deduplicación por combinación multiset.
+     * Descarta patrones que solo contengan una etiqueta (ej: A+A+A) - deben combinar al menos 2 etiquetas diferentes.
      */
     private function acumularPatrones(array $encontrados, array &$topLocal98, array &$topGlobal98, array &$combinacionesYaVistas, callable $comparador): void
     {
         foreach ($encontrados as $p) {
+            // Descartar patrones que solo tienen una etiqueta única (ej: A+A+A)
+            // Los patrones optimizados deben combinar al menos 2 etiquetas diferentes
+            $etiquetasUnicas = count(array_keys($p['conteo_por_subid'] ?? []));
+            if ($etiquetasUnicas < 2) {
+                continue;
+            }
+
             $clave = $p['clave_estable']; // ids ordenados, con repeticiones
             if (isset($combinacionesYaVistas[$clave])) continue;
             $combinacionesYaVistas[$clave] = true;
@@ -2927,6 +2949,102 @@ class EtiquetaController extends Controller
             'producto_id' => $producto->id,
             'producto_codigo' => $producto->codigo,
             'diametro' => $producto->productoBase->diametro,
+        ]);
+    }
+
+    /**
+     * Renderiza múltiples etiquetas para impresión.
+     * Útil cuando las etiquetas no están en el DOM (ej: grupos multiplanilla).
+     * POST /etiquetas/render-multiple
+     */
+    public function renderMultiple(Request $request): JsonResponse
+    {
+        $request->validate([
+            'etiqueta_sub_ids' => 'required|array|min:1',
+            'etiqueta_sub_ids.*' => 'required|string',
+            'maquina_tipo' => 'nullable|string',
+        ]);
+
+        $etiquetaSubIds = $request->input('etiqueta_sub_ids');
+        $maquinaTipo = $request->input('maquina_tipo', 'barra');
+
+        $etiquetas = Etiqueta::with([
+                'planilla.obra',
+                'planilla.cliente',
+                'elementos.producto',
+                'elementos.producto2',
+                'elementos.producto3',
+                'paquete'
+            ])
+            ->whereIn('etiqueta_sub_id', $etiquetaSubIds)
+            ->get()
+            ->keyBy('etiqueta_sub_id');
+
+        $resultado = [];
+
+        foreach ($etiquetaSubIds as $subId) {
+            $etiqueta = $etiquetas->get($subId);
+
+            if (!$etiqueta) {
+                $resultado[] = [
+                    'etiqueta_sub_id' => $subId,
+                    'found' => false,
+                    'html' => null,
+                    'elementos' => [],
+                ];
+                continue;
+            }
+
+            // Renderizar el HTML de la etiqueta
+            $html = view('components.etiqueta.etiqueta', [
+                'etiqueta' => $etiqueta,
+                'planilla' => $etiqueta->planilla,
+                'maquinaTipo' => $maquinaTipo,
+            ])->render();
+
+            // Preparar datos de elementos para el SVG
+            $elementos = $etiqueta->elementos->map(function ($el) {
+                return [
+                    'id' => $el->id,
+                    'diametro' => $el->diametro,
+                    'dimensiones' => $el->dimensiones,
+                    'barras' => $el->barras,
+                    'peso' => $el->peso,
+                    'tipo' => $el->tipo,
+                    'marca' => $el->marca,
+                    'longitud' => $el->longitud,
+                    'coladas' => [
+                        'colada1' => $el->producto?->n_colada,
+                        'colada2' => $el->producto2?->n_colada ?? null,
+                        'colada3' => $el->producto3?->n_colada ?? null,
+                    ],
+                ];
+            })->toArray();
+
+            $resultado[] = [
+                'etiqueta_sub_id' => $subId,
+                'found' => true,
+                'html' => $html,
+                'elementos' => $elementos,
+                'data' => [
+                    'id' => $etiqueta->id,
+                    'nombre' => $etiqueta->nombre,
+                    'peso_kg' => $etiqueta->peso_kg,
+                    'estado' => $etiqueta->estado,
+                    'planilla_codigo' => $etiqueta->planilla->codigo_limpio ?? $etiqueta->planilla->codigo,
+                    'planilla_seccion' => $etiqueta->planilla->seccion,
+                    'obra' => $etiqueta->planilla->obra->obra ?? 'N/A',
+                    'cliente' => $etiqueta->planilla->cliente->empresa ?? 'N/A',
+                    'paquete_codigo' => $etiqueta->paquete?->codigo,
+                ],
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'etiquetas' => $resultado,
+            'total' => count($resultado),
+            'found' => collect($resultado)->where('found', true)->count(),
         ]);
     }
 }

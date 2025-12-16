@@ -20,7 +20,7 @@
                     <input type="radio" name="accion_etiqueta" value="mover" onchange="toggleCamposDivision()">
                     <span>➡️ Pasar todo a una nueva etiqueta</span>
                 </label>
-                <label class="inline-flex items-center gap-2">
+                <label class="inline-flex items-center gap-2 transition-opacity duration-200" id="labelCambiarMaquina">
                     <input type="radio" name="accion_etiqueta" value="cambiar_maquina" onchange="toggleCamposDivision()">
                     <span>🔄 Mandar a otra máquina</span>
                 </label>
