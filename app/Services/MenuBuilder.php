@@ -13,48 +13,28 @@ class MenuBuilder
     public static function buildForUser($user)
     {
         if (!$user) {
-            \Log::warning('MenuBuilder: Usuario no autenticado');
             return [];
         }
 
-        // TEMPORAL: Desactivar caché para depurar
-        Cache::forget("menu_user_{$user->id}");
+        // Cachear el menú por usuario durante 30 minutos
+        return Cache::remember("menu_user_{$user->id}", 1800, function () use ($user) {
+            $menu = config('menu.main');
 
-        $menu = config('menu.main');
-
-        // DEBUG
-        \Log::info('MenuBuilder DEBUG', [
-            'user_email' => $user->email,
-            'user_rol' => $user->rol,
-            'menu_config_count' => $menu ? count($menu) : 'NULL',
-            'menu_first_section' => $menu[0]['id'] ?? 'NO HAY',
-        ]);
-
-        if (!$menu || !is_array($menu)) {
-            \Log::error('MenuBuilder: config(menu.main) está vacío o no es array');
-            return [];
-        }
-
-        $filteredMenu = [];
-
-        foreach ($menu as $section) {
-            $filteredSection = self::filterSection($section, $user);
-            if ($filteredSection) {
-                $filteredMenu[] = $filteredSection;
-            } else {
-                \Log::info('MenuBuilder: Sección filtrada', [
-                    'section_id' => $section['id'] ?? 'sin id',
-                    'user' => $user->email
-                ]);
+            if (!$menu || !is_array($menu)) {
+                return [];
             }
-        }
 
-        \Log::info('MenuBuilder: Resultado final', [
-            'user' => $user->email,
-            'secciones_visibles' => count($filteredMenu)
-        ]);
+            $filteredMenu = [];
 
-        return $filteredMenu;
+            foreach ($menu as $section) {
+                $filteredSection = self::filterSection($section, $user);
+                if ($filteredSection) {
+                    $filteredMenu[] = $filteredSection;
+                }
+            }
+
+            return $filteredMenu;
+        });
     }
 
     /**
