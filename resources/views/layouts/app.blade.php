@@ -180,7 +180,7 @@
 
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto bg-neutral-100 dark:bg-gray-900 transition-colors">
-                <div class="py-2 h-full">
+                <div class="py-2 md:px-2 h-full">
                     <!-- Breadcrumbs -->
                     <x-breadcrumbs />
 
