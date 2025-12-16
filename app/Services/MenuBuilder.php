@@ -38,10 +38,8 @@ class MenuBuilder
      */
     private static function filterSection($section, $user)
     {
-        // Verificar si el usuario puede acceder a la sección principal
-        if (!self::userCanAccessRoute($section['route'], $user)) {
-            return null;
-        }
+        // No verificamos la ruta de la sección principal (ej: secciones.produccion)
+        // porque son rutas virtuales. Solo verificamos los items del submenu.
 
         $filteredSubmenu = [];
         $hasAccessibleItems = false;
