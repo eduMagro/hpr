@@ -1,8 +1,8 @@
 <x-app-layout>
-    <x-slot name="title">Departamentos</x-slot>
+    <x-slot name="title">Permisos y configuración</x-slot>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Gestión de Permisos') }}
+            {{ __('Permisos y configuración') }}
         </h2>
     </x-slot>
 
@@ -512,6 +512,213 @@
 
             </table>
         </div>
+        <!-- ═══════════════════════════════════════════════════════════════════════════════
+             CONFIGURACIÓN DEL DASHBOARD - Orden de secciones y acceso de operarios
+        ═══════════════════════════════════════════════════════════════════════════════ -->
+        <div class="mt-12 bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
+            <div class="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-4">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Configuración del Dashboard
+                </h3>
+                <p class="text-orange-100 text-sm mt-1">Arrastra las secciones para cambiar el orden en el dashboard</p>
+            </div>
+
+            <div class="p-6">
+                <!-- Secciones del Dashboard con Drag & Drop -->
+                <div class="mb-6">
+                    <h4 class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                        </svg>
+                        Orden de Secciones en Dashboard
+                        <span class="text-sm font-normal text-gray-500">(arrastra para reordenar)</span>
+                    </h4>
+
+                    <div id="sortable-secciones" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        @foreach ($seccionesDashboard as $seccion)
+                            <div class="seccion-item flex items-center gap-3 p-3 bg-gray-50 border-2 border-gray-200 rounded-lg cursor-move hover:border-orange-400 hover:bg-orange-50 transition-all group"
+                                data-id="{{ $seccion->id }}">
+                                <div class="drag-handle text-gray-400 group-hover:text-orange-500">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4 8h16M4 16h16" />
+                                    </svg>
+                                </div>
+                                <span
+                                    class="w-8 h-8 flex items-center justify-center bg-orange-100 text-orange-600 rounded-lg font-bold text-sm orden-numero">
+                                    {{ $loop->iteration }}
+                                </span>
+                                @if ($seccion->icono)
+                                    <img src="{{ asset($seccion->icono) }}" alt="" class="w-6 h-6">
+                                @else
+                                    <div
+                                        class="w-6 h-6 bg-gradient-to-br from-orange-400 to-amber-500 rounded flex items-center justify-center text-white text-xs font-bold">
+                                        {{ strtoupper(substr($seccion->nombre, 0, 1)) }}
+                                    </div>
+                                @endif
+                                <span class="font-medium text-gray-700 flex-1">{{ $seccion->nombre }}</span>
+                                <span class="text-xs text-gray-400">{{ $seccion->ruta }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="mt-4 flex items-center gap-3">
+                        <button type="button" id="btn-guardar-orden"
+                            class="inline-flex items-center px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors shadow-sm">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
+                            Guardar Orden
+                        </button>
+                        <span id="orden-status" class="text-sm text-gray-500 hidden">
+                            <svg class="w-4 h-4 inline-block animate-spin" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Guardando...
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Configuración de Secciones para Operarios -->
+                @if ($departamentoOperarios)
+                    <div class="border-t pt-6 mt-6">
+                        <h4 class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                            Secciones visibles para Operarios
+                            <span class="text-sm font-normal text-gray-500">(Departamento: {{ $departamentoOperarios->nombre }})</span>
+                        </h4>
+
+                        <p class="text-sm text-gray-600 mb-4">
+                            Las secciones marcadas serán visibles en el dashboard de los usuarios con rol "operario".
+                            <a href="#" @click.prevent="openModalSecciones = true; departamentoId = {{ $departamentoOperarios->id }}"
+                                class="text-blue-600 hover:underline">Editar secciones</a>
+                        </p>
+
+                        <div class="flex flex-wrap gap-2">
+                            @forelse ($departamentoOperarios->secciones as $seccion)
+                                <span
+                                    class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                                    @if ($seccion->icono)
+                                        <img src="{{ asset($seccion->icono) }}" alt="" class="w-4 h-4">
+                                    @endif
+                                    {{ $seccion->nombre }}
+                                </span>
+                            @empty
+                                <span class="text-gray-500 italic">No hay secciones asignadas al departamento Operarios</span>
+                            @endforelse
+                        </div>
+                    </div>
+                @else
+                    <div class="border-t pt-6 mt-6">
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <div class="flex items-start gap-3">
+                                <svg class="w-5 h-5 text-yellow-500 mt-0.5" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <div>
+                                    <h5 class="font-semibold text-yellow-800">Departamento "Operarios" no encontrado</h5>
+                                    <p class="text-sm text-yellow-700 mt-1">
+                                        Para configurar las secciones visibles para operarios, primero crea un departamento llamado
+                                        exactamente "Operarios".
+                                    </p>
+                                    <button type="button" @click="openNuevoDepartamentoModal = true"
+                                        class="mt-2 text-sm text-yellow-800 hover:text-yellow-900 font-medium underline">
+                                        + Crear departamento Operarios
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- Script para Drag & Drop con SortableJS -->
+        <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const sortableContainer = document.getElementById('sortable-secciones');
+                if (sortableContainer) {
+                    new Sortable(sortableContainer, {
+                        animation: 150,
+                        ghostClass: 'bg-orange-200',
+                        chosenClass: 'bg-orange-100',
+                        dragClass: 'shadow-lg',
+                        handle: '.seccion-item',
+                        onEnd: function() {
+                            // Actualizar números de orden visual
+                            document.querySelectorAll('.seccion-item').forEach((item, index) => {
+                                item.querySelector('.orden-numero').textContent = index + 1;
+                            });
+                        }
+                    });
+                }
+
+                // Guardar orden
+                document.getElementById('btn-guardar-orden')?.addEventListener('click', function() {
+                    const items = document.querySelectorAll('.seccion-item');
+                    const orden = Array.from(items).map(item => parseInt(item.dataset.id));
+                    const statusEl = document.getElementById('orden-status');
+
+                    statusEl.classList.remove('hidden');
+                    this.disabled = true;
+
+                    fetch('{{ route('secciones.actualizarOrden') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                orden: orden
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            statusEl.classList.add('hidden');
+                            this.disabled = false;
+
+                            if (data.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Orden guardado',
+                                    text: 'El orden de las secciones se ha actualizado correctamente.',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+                            } else {
+                                throw new Error(data.message || 'Error al guardar');
+                            }
+                        })
+                        .catch(error => {
+                            statusEl.classList.add('hidden');
+                            this.disabled = false;
+
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: error.message || 'No se pudo guardar el orden.'
+                            });
+                        });
+                });
+            });
+        </script>
+
         <script>
             function toggleMostrarDashboard(seccionId, valor) {
                 console.log('🔄 Actualizando sección', seccionId, 'a', valor);

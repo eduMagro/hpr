@@ -553,6 +553,297 @@ class ResumenEtiquetaService
         });
     }
 
+    // ==================== MÉTODOS MULTI-PLANILLA ====================
+
+    /**
+     * Agrupa etiquetas de MÚLTIPLES planillas revisadas de una máquina.
+     * Las etiquetas se agrupan por diámetro + dimensiones sin importar la planilla de origen.
+     *
+     * @param int $maquinaId ID de la máquina
+     * @param int|null $usuarioId ID del usuario que realiza la acción
+     * @return array Resultado de la operación
+     */
+    public function resumirMultiplanilla(int $maquinaId, ?int $usuarioId = null): array
+    {
+        return DB::transaction(function () use ($maquinaId, $usuarioId) {
+            // 1. Obtener etiquetas elegibles de planillas REVISADAS
+            $query = Etiqueta::where('estado', 'pendiente')
+                ->whereNull('grupo_resumen_id')
+                ->whereHas('planilla', function ($q) {
+                    $q->where('revisada', true);
+                })
+                ->whereHas('elementos', function ($q) use ($maquinaId) {
+                    $q->where(function ($subQ) use ($maquinaId) {
+                        $subQ->where('maquina_id', $maquinaId)
+                            ->orWhere('maquina_id_2', $maquinaId)
+                            ->orWhere('maquina_id_3', $maquinaId);
+                    });
+                });
+
+            $etiquetas = $query->with(['elementos', 'planilla'])->get();
+
+            if ($etiquetas->isEmpty()) {
+                return [
+                    'success' => true,
+                    'message' => 'No hay etiquetas pendientes en planillas revisadas para agrupar',
+                    'grupos' => [],
+                    'stats' => ['grupos_creados' => 0, 'etiquetas_agrupadas' => 0, 'planillas_involucradas' => 0],
+                ];
+            }
+
+            // 2. Agrupar etiquetas por diámetro + dimensiones (ignorando planilla)
+            $agrupaciones = [];
+            $planillasInvolucradas = [];
+
+            foreach ($etiquetas as $etiqueta) {
+                $elementos = $etiqueta->elementos->filter(function ($e) use ($maquinaId) {
+                    return $e->maquina_id == $maquinaId
+                        || $e->maquina_id_2 == $maquinaId
+                        || $e->maquina_id_3 == $maquinaId;
+                });
+
+                if ($elementos->isEmpty()) {
+                    continue;
+                }
+
+                $primerElemento = $elementos->first();
+                $diametro = (float) $primerElemento->diametro;
+                $dimensiones = $this->normalizarDimensiones($primerElemento->dimensiones);
+                $key = "{$diametro}|{$dimensiones}";
+
+                if (!isset($agrupaciones[$key])) {
+                    $agrupaciones[$key] = [
+                        'diametro' => $diametro,
+                        'dimensiones' => $dimensiones,
+                        'dimensiones_original' => $primerElemento->dimensiones,
+                        'etiquetas' => [],
+                        'planillas' => [],
+                    ];
+                }
+
+                $agrupaciones[$key]['etiquetas'][] = $etiqueta;
+                $agrupaciones[$key]['planillas'][$etiqueta->planilla_id] = true;
+                $planillasInvolucradas[$etiqueta->planilla_id] = true;
+            }
+
+            // 3. Crear grupos solo para los que tienen más de 1 etiqueta
+            $gruposCreados = [];
+            $stats = [
+                'grupos_creados' => 0,
+                'etiquetas_agrupadas' => 0,
+                'planillas_involucradas' => count($planillasInvolucradas),
+            ];
+
+            foreach ($agrupaciones as $key => $grupoData) {
+                if (count($grupoData['etiquetas']) <= 1) {
+                    continue;
+                }
+
+                // Crear grupo de resumen (planilla_id = null para multi-planilla)
+                $grupo = GrupoResumen::create([
+                    'codigo' => GrupoResumen::generarCodigo(),
+                    'planilla_id' => null, // Multi-planilla
+                    'maquina_id' => $maquinaId,
+                    'diametro' => $grupoData['diametro'],
+                    'dimensiones' => $grupoData['dimensiones_original'],
+                    'usuario_id' => $usuarioId,
+                    'activo' => true,
+                ]);
+
+                // Asignar etiquetas al grupo
+                foreach ($grupoData['etiquetas'] as $etiqueta) {
+                    $etiqueta->grupo_resumen_id = $grupo->id;
+                    $etiqueta->save();
+                    $stats['etiquetas_agrupadas']++;
+                }
+
+                // Recalcular estadísticas del grupo
+                $grupo->recalcularEstadisticas();
+
+                $gruposCreados[] = $grupo->fresh(['etiquetas']);
+                $stats['grupos_creados']++;
+
+                Log::info('Grupo de resumen multi-planilla creado', [
+                    'grupo_id' => $grupo->id,
+                    'codigo' => $grupo->codigo,
+                    'diametro' => $grupo->diametro,
+                    'dimensiones' => $grupo->dimensiones,
+                    'etiquetas' => count($grupoData['etiquetas']),
+                    'planillas' => array_keys($grupoData['planillas']),
+                ]);
+            }
+
+            return [
+                'success' => true,
+                'message' => $stats['grupos_creados'] > 0
+                    ? "Resumen multi-planilla completado: {$stats['grupos_creados']} grupos con {$stats['etiquetas_agrupadas']} etiquetas de {$stats['planillas_involucradas']} planillas"
+                    : 'No se encontraron etiquetas similares para agrupar entre planillas',
+                'grupos' => $gruposCreados,
+                'stats' => $stats,
+            ];
+        });
+    }
+
+    /**
+     * Vista previa del resumen multi-planilla sin ejecutar cambios.
+     *
+     * @param int $maquinaId ID de la máquina
+     * @return array Vista previa de grupos
+     */
+    public function previsualizarMultiplanilla(int $maquinaId): array
+    {
+        $query = Etiqueta::where('estado', 'pendiente')
+            ->whereNull('grupo_resumen_id')
+            ->whereHas('planilla', function ($q) {
+                $q->where('revisada', true);
+            })
+            ->whereHas('elementos', function ($q) use ($maquinaId) {
+                $q->where(function ($subQ) use ($maquinaId) {
+                    $subQ->where('maquina_id', $maquinaId)
+                        ->orWhere('maquina_id_2', $maquinaId)
+                        ->orWhere('maquina_id_3', $maquinaId);
+                });
+            });
+
+        $etiquetas = $query->with(['elementos', 'planilla'])->get();
+
+        // Agrupar
+        $agrupaciones = [];
+        $planillasInvolucradas = [];
+
+        foreach ($etiquetas as $etiqueta) {
+            $elementos = $etiqueta->elementos->filter(function ($e) use ($maquinaId) {
+                return $e->maquina_id == $maquinaId
+                    || $e->maquina_id_2 == $maquinaId
+                    || $e->maquina_id_3 == $maquinaId;
+            });
+
+            if ($elementos->isEmpty()) {
+                continue;
+            }
+
+            $primerElemento = $elementos->first();
+            $diametro = (float) $primerElemento->diametro;
+            $dimensiones = $this->normalizarDimensiones($primerElemento->dimensiones);
+            $key = "{$diametro}|{$dimensiones}";
+
+            if (!isset($agrupaciones[$key])) {
+                $agrupaciones[$key] = [
+                    'diametro' => $diametro,
+                    'dimensiones' => $primerElemento->dimensiones ?: 'barra',
+                    'etiquetas' => [],
+                    'total_elementos' => 0,
+                    'peso_total' => 0,
+                    'planillas' => [],
+                ];
+            }
+
+            $cantidadElementos = $elementos->count();
+            $pesoElementos = $elementos->sum('peso');
+            $planillaCodigo = $etiqueta->planilla->codigo_limpio ?? $etiqueta->planilla->codigo ?? 'N/A';
+
+            $agrupaciones[$key]['etiquetas'][] = [
+                'id' => $etiqueta->id,
+                'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                'nombre' => $etiqueta->nombre,
+                'planilla_id' => $etiqueta->planilla_id,
+                'planilla_codigo' => $planillaCodigo,
+                'elementos' => $cantidadElementos,
+                'elementos_detalle' => $elementos->map(fn($e) => [
+                    'id' => $e->id,
+                    'codigo' => $e->codigo,
+                    'marca' => $e->marca,
+                    'peso' => round($e->peso, 2),
+                    'diametro' => $e->diametro,
+                    'dimensiones' => $e->dimensiones,
+                ])->values()->toArray(),
+                'peso' => round($pesoElementos, 2),
+            ];
+            $agrupaciones[$key]['total_elementos'] += $cantidadElementos;
+            $agrupaciones[$key]['peso_total'] += $pesoElementos;
+            $agrupaciones[$key]['planillas'][$etiqueta->planilla_id] = $planillaCodigo;
+            $planillasInvolucradas[$etiqueta->planilla_id] = $planillaCodigo;
+        }
+
+        // Filtrar solo grupos con más de 1 etiqueta
+        $preview = collect($agrupaciones)
+            ->filter(fn($g) => count($g['etiquetas']) > 1)
+            ->map(fn($g) => [
+                ...$g,
+                'peso_total' => round($g['peso_total'], 2),
+                'total_etiquetas' => count($g['etiquetas']),
+                'total_planillas' => count($g['planillas']),
+                'planillas_codigos' => array_values($g['planillas']),
+            ])
+            ->values()
+            ->toArray();
+
+        return [
+            'grupos' => $preview,
+            'total_grupos' => count($preview),
+            'total_etiquetas' => collect($preview)->sum('total_etiquetas'),
+            'total_elementos' => collect($preview)->sum('total_elementos'),
+            'peso_total' => round(collect($preview)->sum('peso_total'), 2),
+            'planillas_involucradas' => $planillasInvolucradas,
+            'total_planillas' => count($planillasInvolucradas),
+        ];
+    }
+
+    /**
+     * Desagrupa todos los grupos multi-planilla activos de una máquina.
+     *
+     * @param int $maquinaId ID de la máquina
+     * @return array Resultado de la operación
+     */
+    public function desagruparTodosMaquina(int $maquinaId): array
+    {
+        // Grupos multi-planilla (planilla_id IS NULL) de esta máquina
+        $grupos = GrupoResumen::where('maquina_id', $maquinaId)
+            ->whereNull('planilla_id')
+            ->where('activo', true)
+            ->get();
+
+        $total = $grupos->count();
+
+        if ($total === 0) {
+            return ['success' => true, 'message' => 'No hay grupos multi-planilla activos para desagrupar'];
+        }
+
+        foreach ($grupos as $grupo) {
+            $grupo->desagrupar();
+        }
+
+        Log::info('Grupos multi-planilla desagrupados masivamente', [
+            'maquina_id' => $maquinaId,
+            'grupos_desagrupados' => $total,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => "{$total} grupos multi-planilla desagrupados",
+            'total' => $total,
+        ];
+    }
+
+    /**
+     * Obtiene los grupos multi-planilla activos de una máquina.
+     *
+     * @param int $maquinaId ID de la máquina
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function obtenerGruposMultiplanilla(int $maquinaId)
+    {
+        return GrupoResumen::where('maquina_id', $maquinaId)
+            ->whereNull('planilla_id')
+            ->where('activo', true)
+            ->with(['etiquetas' => function ($q) {
+                $q->with(['elementos', 'planilla']);
+            }])
+            ->orderBy('diametro')
+            ->orderBy('dimensiones')
+            ->get();
+    }
+
     /**
      * Normaliza las dimensiones para comparación consistente.
      *

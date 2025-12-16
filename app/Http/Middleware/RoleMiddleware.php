@@ -18,8 +18,12 @@ class RoleMiddleware
     public function handle($request, Closure $next, $role)
     {
         if (!Auth::check() || Auth::user()->role !== $role) {
-            // Redirigir si el usuario no está autenticado o no tiene el rol adecuado
-            abort(403, 'Acceso denegado');
+            // Si es AJAX, responder con JSON
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['error' => 'Acceso denegado'], 403);
+            }
+            // Redirigir con mensaje de error para SweetAlert
+            return back()->with('error', 'No tienes permiso para acceder a esta sección.');
         }
 
         return $next($request);

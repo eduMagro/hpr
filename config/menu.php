@@ -337,6 +337,14 @@ return [
                         ['label' => 'Ver panel', 'route' => 'estadisticas.index', 'permission' => 'ver'],
                     ]
                 ],
+                [
+                    'label' => 'Permisos y configuración',
+                    'route' => 'departamentos.index',
+                    'icon' => '🔐',
+                    'actions' => [
+                        ['label' => 'Gestionar permisos', 'route' => 'departamentos.index', 'permission' => 'ver'],
+                    ]
+                ],
             ]
         ],
     ],

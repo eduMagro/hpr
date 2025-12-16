@@ -15,6 +15,7 @@ class Seccion extends Model
         'ruta',
         'icono',
         'mostrar_en_dashboard',
+        'orden',
     ];
     protected $casts = [
         'mostrar_en_dashboard' => 'boolean',
@@ -39,8 +40,9 @@ class Seccion extends Model
     {
         return Cache::rememberForever('dashboard_items', function () {
             return self::with('departamentos:id')
-                ->select('id', 'nombre', 'ruta', 'icono')
+                ->select('id', 'nombre', 'ruta', 'icono', 'orden')
                 ->where('mostrar_en_dashboard', true)
+                ->orderBy('orden')
                 ->get()
                 ->map(fn($s) => [
                     'route' => $s->ruta,

@@ -148,4 +148,79 @@ class ResumenEtiquetaController extends Controller
 
         return response()->json($resultado);
     }
+
+    // ==================== ENDPOINTS MULTI-PLANILLA ====================
+
+    /**
+     * Vista previa del resumen multi-planilla.
+     * GET /api/etiquetas/resumir/multiplanilla/preview
+     */
+    public function previewMultiplanilla(Request $request): JsonResponse
+    {
+        $request->validate([
+            'maquina_id' => 'required|integer|exists:maquinas,id',
+        ]);
+
+        $resultado = $this->resumenService->previsualizarMultiplanilla(
+            $request->integer('maquina_id')
+        );
+
+        return response()->json($resultado);
+    }
+
+    /**
+     * Ejecuta el resumen multi-planilla.
+     * POST /api/etiquetas/resumir/multiplanilla
+     */
+    public function resumirMultiplanilla(Request $request): JsonResponse
+    {
+        $request->validate([
+            'maquina_id' => 'required|integer|exists:maquinas,id',
+        ]);
+
+        $resultado = $this->resumenService->resumirMultiplanilla(
+            $request->integer('maquina_id'),
+            auth()->id()
+        );
+
+        return response()->json($resultado);
+    }
+
+    /**
+     * Desagrupa todos los grupos multi-planilla de una máquina.
+     * POST /api/etiquetas/resumir/multiplanilla/desagrupar-todos
+     */
+    public function desagruparTodosMultiplanilla(Request $request): JsonResponse
+    {
+        $request->validate([
+            'maquina_id' => 'required|integer|exists:maquinas,id',
+        ]);
+
+        $resultado = $this->resumenService->desagruparTodosMaquina(
+            $request->integer('maquina_id')
+        );
+
+        return response()->json($resultado);
+    }
+
+    /**
+     * Obtiene los grupos multi-planilla activos de una máquina.
+     * GET /api/etiquetas/resumir/multiplanilla/grupos
+     */
+    public function gruposMultiplanilla(Request $request): JsonResponse
+    {
+        $request->validate([
+            'maquina_id' => 'required|integer|exists:maquinas,id',
+        ]);
+
+        $grupos = $this->resumenService->obtenerGruposMultiplanilla(
+            $request->integer('maquina_id')
+        );
+
+        return response()->json([
+            'success' => true,
+            'grupos' => $grupos,
+            'total' => $grupos->count(),
+        ]);
+    }
 }

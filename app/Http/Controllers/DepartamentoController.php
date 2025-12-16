@@ -15,9 +15,21 @@ class DepartamentoController extends Controller
     {
         $departamentos = Departamento::with('usuarios')->get();
         $usuariosOficina = User::where('rol', 'oficina')->orderBy('name')->get();
-        $todasLasSecciones = Seccion::with('departamentos')->get();
+        $todasLasSecciones = Seccion::with('departamentos')->orderBy('orden')->get();
 
-        return view('departamentos.index', compact('departamentos', 'usuariosOficina', 'todasLasSecciones'));
+        // Obtener el departamento "Operarios" para la configuración del dashboard
+        $departamentoOperarios = Departamento::where('nombre', 'Operarios')->with('secciones')->first();
+
+        // Secciones del dashboard ordenadas
+        $seccionesDashboard = Seccion::where('mostrar_en_dashboard', true)->orderBy('orden')->get();
+
+        return view('departamentos.index', compact(
+            'departamentos',
+            'usuariosOficina',
+            'todasLasSecciones',
+            'departamentoOperarios',
+            'seccionesDashboard'
+        ));
     }
 
     public function asignarUsuarios(Request $request, Departamento $departamento)

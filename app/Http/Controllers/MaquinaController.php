@@ -96,7 +96,7 @@ class MaquinaController extends Controller
 
             // Si no tiene ninguna asignación, no ha fichado
             if (!$asignacionSinMaquina) {
-                abort(403, 'No has fichado entrada');
+                return back()->with('error', 'No has fichado entrada. Debes fichar antes de acceder.');
             }
 
             // Tiene asignación pero sin máquina: mostrar selector de máquinas
@@ -396,12 +396,20 @@ class MaquinaController extends Controller
             })
             ->toArray();
 
-        // 11) Grupos de resumen activos para esta máquina
+        // 11) AUTO-RESUMEN: Ejecutar automáticamente resumen multi-planilla si hay etiquetas agrupables
+        $resumenService = app(\App\Services\ResumenEtiquetaService::class);
+        $resumenService->resumirMultiplanilla($maquina->id, auth()->id());
+
+        // 12) Grupos de resumen activos para esta máquina
+        // Incluye tanto grupos de planilla individual como grupos multi-planilla (planilla_id = null)
         $planillaIds = collect($planillasActivas)->pluck('id')->toArray();
         $gruposResumen = GrupoResumen::where('activo', true)
             ->where('maquina_id', $maquina->id)
-            ->whereIn('planilla_id', $planillaIds)
-            ->with(['etiquetas', 'planilla'])
+            ->where(function ($query) use ($planillaIds) {
+                $query->whereIn('planilla_id', $planillaIds)
+                      ->orWhereNull('planilla_id'); // Grupos multi-planilla
+            })
+            ->with(['etiquetas.planilla', 'planilla'])
             ->get();
 
         // Preparar datos de grupos para la vista (con elementos de cada etiqueta)
@@ -414,6 +422,18 @@ class MaquinaController extends Controller
                 fn($e) => in_array($e->etiqueta_sub_id, $subIds)
             );
 
+            // Para grupos multi-planilla, obtener códigos de planillas involucradas
+            $esMultiplanilla = is_null($grupo->planilla_id);
+            $codigosPlanillas = [];
+            if ($esMultiplanilla) {
+                $codigosPlanillas = $grupo->etiquetas
+                    ->pluck('planilla')
+                    ->unique('id')
+                    ->map(fn($p) => $p->codigo_limpio ?? $p->codigo)
+                    ->values()
+                    ->toArray();
+            }
+
             return [
                 'id' => $grupo->id,
                 'codigo' => $grupo->codigo,
@@ -424,11 +444,14 @@ class MaquinaController extends Controller
                 'total_etiquetas' => $grupo->total_etiquetas,
                 'planilla_id' => $grupo->planilla_id,
                 'planilla_codigo' => $grupo->planilla->codigo ?? '',
+                'es_multiplanilla' => $esMultiplanilla,
+                'codigos_planillas' => $codigosPlanillas,
                 'estado' => $grupo->estado_predominante,
                 'etiquetas' => $grupo->etiquetas->map(fn($et) => [
                     'id' => $et->id,
                     'etiqueta_sub_id' => $et->etiqueta_sub_id,
                     'estado' => $et->estado,
+                    'planilla_codigo' => $et->planilla->codigo_limpio ?? $et->planilla->codigo ?? '',
                 ])->values()->toArray(),
                 'elementos' => $elementosGrupo->map(fn($e) => [
                     'id' => $e->id,

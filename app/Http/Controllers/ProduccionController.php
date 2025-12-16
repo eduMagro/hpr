@@ -3643,8 +3643,16 @@ class ProduccionController extends Controller
             // Instanciar el servicio de asignación para validaciones
             $asignarMaquinaService = app(\App\Services\AsignarMaquinaService::class);
 
+            // Registro de elementos ya procesados (para evitar duplicados con hermanos)
+            $elementosProcesados = [];
+
             foreach ($movimientos as $mov) {
                 try {
+                    // Saltar si ya se procesó este elemento (como hermano de otro)
+                    if (in_array($mov['elemento_id'], $elementosProcesados)) {
+                        continue;
+                    }
+
                     $elemento = Elemento::find($mov['elemento_id']);
 
                     if (!$elemento) {
@@ -3680,53 +3688,94 @@ class ProduccionController extends Controller
                         continue;
                     }
 
-                    // Guardar máquina anterior
-                    $maquinaAnterior = $elemento->maquina_id;
-                    $planillaId = $elemento->planilla_id;
+                    // 🔗 MSR20: Buscar hermanos y moverlos juntos
+                    $esMSR20 = strtoupper($maquinaDestino->codigo ?? '') === 'MSR20';
+                    $elementosAMover = collect([$elemento]);
 
-                    // 1. Buscar o crear OrdenPlanilla en la máquina destino
-                    $maxPosicion = OrdenPlanilla::where('maquina_id', $mov['maquina_nueva_id'])->max('posicion');
+                    if ($esMSR20 && $elemento->etiqueta_sub_id) {
+                        // Extraer código padre (ej: ETQ2512001 de ETQ2512001.01)
+                        $codigoPadre = preg_replace('/\.\d+$/', '', $elemento->etiqueta_sub_id);
 
-                    $ordenPlanillaDestino = OrdenPlanilla::firstOrCreate([
-                        'planilla_id' => $planillaId,
-                        'maquina_id' => $mov['maquina_nueva_id']
-                    ], [
-                        'posicion' => ($maxPosicion ?? 0) + 1
-                    ]);
+                        // Buscar hermanos: mismo etiqueta_id, mismo prefijo, misma máquina origen, pendientes
+                        $hermanos = Elemento::where('etiqueta_id', $elemento->etiqueta_id)
+                            ->where('maquina_id', $mov['maquina_actual_id'])
+                            ->where('estado', 'pendiente')
+                            ->where('id', '!=', $elemento->id)
+                            ->whereNotNull('etiqueta_sub_id')
+                            ->where('etiqueta_sub_id', 'like', $codigoPadre . '.%')
+                            ->whereHas('planilla', fn($q) => $q->where('revisada', false))
+                            ->get();
 
-                    // 2. Actualizar elemento con nueva máquina y orden_planilla_id
-                    $nuevaMaquinaId = (int) $mov['maquina_nueva_id'];
-                    $elemento->maquina_id = $nuevaMaquinaId;
-                    $elemento->orden_planilla_id = $ordenPlanillaDestino->id;
-                    $elemento->save();
-
-                    // 🏷️ Reubicar subetiquetas usando SubEtiquetaService
-                    /** @var SubEtiquetaService $subEtiquetaService */
-                    $subEtiquetaService = app(SubEtiquetaService::class);
-                    $subEtiquetaService->reubicarParaProduccion($elemento, $nuevaMaquinaId);
-
-                    // 3. Si la OrdenPlanilla origen quedó vacía, eliminarla
-                    if ($maquinaAnterior) {
-                        $ordenPlanillaOrigen = OrdenPlanilla::where('planilla_id', $planillaId)
-                            ->where('maquina_id', $maquinaAnterior)
-                            ->first();
-
-                        if ($ordenPlanillaOrigen) {
-                            $elementosRestantes = Elemento::where('orden_planilla_id', $ordenPlanillaOrigen->id)
-                                ->whereNotIn('estado', ['completado', 'fabricado'])
-                                ->count();
-
-                            if ($elementosRestantes == 0) {
-                                $ordenPlanillaOrigen->delete();
-                            }
+                        if ($hermanos->isNotEmpty()) {
+                            $elementosAMover = $elementosAMover->merge($hermanos);
+                            Log::info('🔗 MSR20 Balanceo: Moviendo elemento con hermanos', [
+                                'elemento_principal' => $elemento->id,
+                                'codigo_padre' => $codigoPadre,
+                                'hermanos_encontrados' => $hermanos->pluck('id')->toArray(),
+                                'total_a_mover' => $elementosAMover->count(),
+                            ]);
                         }
                     }
 
-                    $procesados++;
+                    // Procesar todos los elementos (principal + hermanos)
+                    foreach ($elementosAMover as $elem) {
+                        // Marcar como procesado
+                        $elementosProcesados[] = $elem->id;
 
-                    // Registrar planilla afectada
-                    if ($planillaId && !in_array($planillaId, $planillasAfectadas)) {
-                        $planillasAfectadas[] = $planillaId;
+                        // Saltar si ya está en planilla excluida
+                        if (in_array($elem->planilla_id, $planillasExcluidas)) {
+                            $omitidos++;
+                            continue;
+                        }
+
+                        // Guardar máquina anterior
+                        $maquinaAnterior = $elem->maquina_id;
+                        $planillaId = $elem->planilla_id;
+
+                        // 1. Buscar o crear OrdenPlanilla en la máquina destino
+                        $maxPosicion = OrdenPlanilla::where('maquina_id', $mov['maquina_nueva_id'])->max('posicion');
+
+                        $ordenPlanillaDestino = OrdenPlanilla::firstOrCreate([
+                            'planilla_id' => $planillaId,
+                            'maquina_id' => $mov['maquina_nueva_id']
+                        ], [
+                            'posicion' => ($maxPosicion ?? 0) + 1
+                        ]);
+
+                        // 2. Actualizar elemento con nueva máquina y orden_planilla_id
+                        $nuevaMaquinaId = (int) $mov['maquina_nueva_id'];
+                        $elem->maquina_id = $nuevaMaquinaId;
+                        $elem->orden_planilla_id = $ordenPlanillaDestino->id;
+                        $elem->save();
+
+                        // 🏷️ Reubicar subetiquetas usando SubEtiquetaService
+                        /** @var SubEtiquetaService $subEtiquetaService */
+                        $subEtiquetaService = app(SubEtiquetaService::class);
+                        $subEtiquetaService->reubicarParaProduccion($elem, $nuevaMaquinaId);
+
+                        // 3. Si la OrdenPlanilla origen quedó vacía, eliminarla
+                        if ($maquinaAnterior) {
+                            $ordenPlanillaOrigen = OrdenPlanilla::where('planilla_id', $planillaId)
+                                ->where('maquina_id', $maquinaAnterior)
+                                ->first();
+
+                            if ($ordenPlanillaOrigen) {
+                                $elementosRestantes = Elemento::where('orden_planilla_id', $ordenPlanillaOrigen->id)
+                                    ->whereNotIn('estado', ['completado', 'fabricado'])
+                                    ->count();
+
+                                if ($elementosRestantes == 0) {
+                                    $ordenPlanillaOrigen->delete();
+                                }
+                            }
+                        }
+
+                        $procesados++;
+
+                        // Registrar planilla afectada
+                        if ($planillaId && !in_array($planillaId, $planillasAfectadas)) {
+                            $planillasAfectadas[] = $planillaId;
+                        }
                     }
 
                 } catch (\Exception $e) {

@@ -20,7 +20,7 @@ class PerfilController extends Controller
     {
         // 🔒 Si quieres que solo pueda ver su propio perfil:
         if (Auth::id() !== $user->id) {
-            abort(403, 'No tienes permiso para ver este perfil.');
+            return back()->with('error', 'No tienes permiso para ver este perfil.');
         }
 
         // Recarga el usuario con todas sus relaciones necesarias

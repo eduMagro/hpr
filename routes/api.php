@@ -76,4 +76,21 @@ Route::prefix('etiquetas/resumir')->group(function () {
     // Cambiar estado de todas las etiquetas del grupo (fabricando/completada)
     Route::put('/{grupo}/estado', [ResumenEtiquetaController::class, 'cambiarEstado'])
         ->name('api.etiquetas.resumir.estado');
+
+    // === RUTAS MULTI-PLANILLA ===
+    // Vista previa de resumen entre planillas revisadas
+    Route::get('/multiplanilla/preview', [ResumenEtiquetaController::class, 'previewMultiplanilla'])
+        ->name('api.etiquetas.resumir.multiplanilla.preview');
+
+    // Ejecutar resumen multi-planilla
+    Route::post('/multiplanilla', [ResumenEtiquetaController::class, 'resumirMultiplanilla'])
+        ->name('api.etiquetas.resumir.multiplanilla');
+
+    // Obtener grupos multi-planilla activos
+    Route::get('/multiplanilla/grupos', [ResumenEtiquetaController::class, 'gruposMultiplanilla'])
+        ->name('api.etiquetas.resumir.multiplanilla.grupos');
+
+    // Desagrupar todos los grupos multi-planilla de una máquina
+    Route::post('/multiplanilla/desagrupar-todos', [ResumenEtiquetaController::class, 'desagruparTodosMultiplanilla'])
+        ->name('api.etiquetas.resumir.multiplanilla.desagrupar-todos');
 });
