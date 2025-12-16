@@ -820,4 +820,182 @@ window.desagruparTodosMultiplanilla = async function(maquinaId) {
     }
 };
 
-console.log('Sistema de resumen de etiquetas cargado (incluye multi-planilla)');
+/**
+ * Reagrupa manualmente etiquetas que fueron desagrupadas previamente.
+ * Habilita las etiquetas marcadas como no_agrupar y ejecuta el resumen.
+ * @param {number} maquinaId - ID de la máquina
+ */
+window.reagruparEtiquetasManual = async function(maquinaId) {
+    if (!maquinaId) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Máquina requerida',
+            text: 'Debes estar en una máquina para reagrupar etiquetas',
+        });
+        return;
+    }
+
+    const result = await Swal.fire({
+        icon: 'question',
+        title: 'Reagrupar etiquetas',
+        html: `
+            <p class="text-gray-600 mb-3">
+                Esta acción habilitará las etiquetas que fueron desagrupadas manualmente
+                y las volverá a agrupar con las demás etiquetas similares.
+            </p>
+            <p class="text-sm text-amber-600">
+                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                Las etiquetas que desagrupaste volverán a reagruparse
+            </p>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, reagrupar',
+        cancelButtonText: 'Cancelar',
+    });
+
+    if (!result.isConfirmed) return;
+
+    Swal.fire({
+        title: 'Reagrupando...',
+        text: 'Habilitando etiquetas y creando grupos',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    try {
+        const response = await fetch('/api/etiquetas/resumir/multiplanilla/reagrupar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                maquina_id: maquinaId
+            })
+        });
+
+        const resultado = await response.json();
+
+        if (resultado.success) {
+            await Swal.fire({
+                icon: 'success',
+                title: 'Reagrupación completada',
+                html: `
+                    <p class="text-gray-600">${resultado.message}</p>
+                    <div class="mt-3 text-sm text-gray-500">
+                        <div>Etiquetas habilitadas: <strong>${resultado.etiquetas_habilitadas || 0}</strong></div>
+                        <div>Grupos creados: <strong>${resultado.grupos_creados || 0}</strong></div>
+                        <div>Etiquetas agrupadas: <strong>${resultado.etiquetas_agrupadas || 0}</strong></div>
+                    </div>
+                `,
+                confirmButtonColor: '#10b981',
+            });
+
+            // Refrescar vista
+            if (typeof window.refrescarEtiquetasMaquina === 'function') {
+                window.refrescarEtiquetasMaquina();
+            } else {
+                location.reload();
+            }
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: resultado.message || 'No se pudo completar la reagrupación',
+            });
+        }
+
+    } catch (error) {
+        console.error('Error al reagrupar etiquetas:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de conexión',
+            text: 'No se pudo conectar con el servidor',
+        });
+    }
+};
+
+/**
+ * Deshace el último estado de un grupo de etiquetas.
+ * Revierte: completada -> fabricando -> pendiente
+ * @param {number} grupoId - ID del grupo
+ */
+window.deshacerEstadoGrupo = async function(grupoId) {
+    const result = await Swal.fire({
+        icon: 'question',
+        title: '¿Deshacer estado del grupo?',
+        html: `
+            <p class="text-gray-600 mb-2">Se revertirá el estado de todas las etiquetas del grupo al estado anterior.</p>
+            <p class="text-sm text-amber-600">
+                <strong>completada</strong> → fabricando → pendiente
+            </p>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: '#f59e0b',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, deshacer',
+        cancelButtonText: 'Cancelar',
+    });
+
+    if (!result.isConfirmed) return;
+
+    Swal.fire({
+        title: 'Deshaciendo estado...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    try {
+        const response = await fetch(`/api/etiquetas/resumir/${grupoId}/deshacer-estado`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            }
+        });
+
+        const resultado = await response.json();
+
+        if (resultado.success) {
+            await Swal.fire({
+                icon: 'success',
+                title: 'Estado revertido',
+                html: `
+                    <p class="text-gray-600">${resultado.message}</p>
+                    <p class="mt-2 text-sm">
+                        Estado anterior: <strong>${resultado.estado_anterior}</strong><br>
+                        Estado nuevo: <strong>${resultado.estado_nuevo}</strong>
+                    </p>
+                `,
+                timer: 3000,
+                showConfirmButton: false,
+            });
+
+            // Refrescar vista
+            if (typeof window.refrescarEtiquetasMaquina === 'function') {
+                window.refrescarEtiquetasMaquina();
+            } else {
+                location.reload();
+            }
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: resultado.message || 'No se pudo deshacer el estado',
+            });
+        }
+    } catch (error) {
+        console.error('Error al deshacer estado del grupo:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de conexión',
+            text: 'No se pudo conectar con el servidor',
+        });
+    }
+};
+
+console.log('Sistema de resumen de etiquetas cargado (incluye multi-planilla, reagrupación manual y deshacer estado)');

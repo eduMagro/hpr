@@ -477,14 +477,34 @@ function initTrabajoEtiqueta() {
                     denyButtonColor: "#6c757d",
                 });
 
-                if (resultado.isConfirmed && typeof window.imprimirEtiquetas === "function") {
-                    window.imprimirEtiquetas(etSubIds, "a6");
-                } else if (resultado.isDenied && typeof window.imprimirEtiquetas === "function") {
-                    window.imprimirEtiquetas(etSubIds, "a4");
+                if (resultado.isConfirmed || resultado.isDenied) {
+                    const modo = resultado.isConfirmed ? "a6" : "a4";
+
+                    // Refrescar la vista para que las etiquetas individuales se rendericen
+                    if (typeof window.refrescarEtiquetasMaquina === "function") {
+                        Swal.fire({
+                            title: 'Preparando impresión...',
+                            html: 'Renderizando etiquetas...',
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+
+                        await window.refrescarEtiquetasMaquina();
+
+                        // Esperar a que los SVGs se rendericen completamente
+                        await new Promise(resolve => setTimeout(resolve, 800));
+
+                        Swal.close();
+                    }
+
+                    // Ahora imprimir con los SVGs renderizados
+                    if (typeof window.imprimirEtiquetas === "function") {
+                        await window.imprimirEtiquetas(etSubIds, modo);
+                    }
                 }
 
                 // Esperar después de imprimir
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 500));
 
                 // Reagrupar las etiquetas
                 const reagruparPlanillaId = data.planilla_id || planillaId;

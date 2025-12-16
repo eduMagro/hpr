@@ -23,6 +23,7 @@ class Etiqueta extends Model
         'fecha_inicio_soldadura' => 'datetime:Y-m-d H:i',
         'fecha_finalizacion_soldadura' => 'datetime:Y-m-d H:i',
         'impresa' => 'boolean',
+        'no_agrupar' => 'boolean',
     ];
 
     protected $fillable = [
@@ -31,6 +32,7 @@ class Etiqueta extends Model
         'planilla_id',
         'paquete_id',
         'grupo_resumen_id',
+        'no_agrupar',
         'ubicacion_id',
         'operario1_id',
         'operario2_id',

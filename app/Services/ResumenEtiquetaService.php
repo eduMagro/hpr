@@ -30,10 +30,11 @@ class ResumenEtiquetaService
     ): array {
         return DB::transaction(function () use ($planillaId, $maquinaId, $usuarioId) {
 
-            // 1. Obtener etiquetas elegibles (pendientes, no agrupadas ya)
+            // 1. Obtener etiquetas elegibles (pendientes, no agrupadas ya, y que permitan agrupación)
             $query = Etiqueta::where('planilla_id', $planillaId)
                 ->where('estado', 'pendiente')
-                ->whereNull('grupo_resumen_id');
+                ->whereNull('grupo_resumen_id')
+                ->where('no_agrupar', false);
 
             if ($maquinaId) {
                 // Filtrar etiquetas cuyos elementos estén en esta máquina
@@ -163,7 +164,8 @@ class ResumenEtiquetaService
     {
         $query = Etiqueta::where('planilla_id', $planillaId)
             ->where('estado', 'pendiente')
-            ->whereNull('grupo_resumen_id');
+            ->whereNull('grupo_resumen_id')
+            ->where('no_agrupar', false);
 
         if ($maquinaId) {
             $query->whereHas('elementos', function ($q) use ($maquinaId) {
@@ -276,17 +278,26 @@ class ResumenEtiquetaService
         $totalEtiquetas = $grupo->total_etiquetas;
         $codigo = $grupo->codigo;
 
+        // Marcar etiquetas para que no se reagrupen automáticamente
+        $etiquetaIds = $grupo->etiquetas()->pluck('id')->toArray();
+
         $grupo->desagrupar();
 
-        Log::info('Grupo de resumen desagrupado', [
+        // Marcar etiquetas con no_agrupar = true para evitar reagrupación automática
+        if (!empty($etiquetaIds)) {
+            Etiqueta::whereIn('id', $etiquetaIds)->update(['no_agrupar' => true]);
+        }
+
+        Log::info('Grupo de resumen desagrupado manualmente', [
             'grupo_id' => $grupoId,
             'codigo' => $codigo,
             'etiquetas_liberadas' => $totalEtiquetas,
+            'etiquetas_marcadas_no_agrupar' => count($etiquetaIds),
         ]);
 
         return [
             'success' => true,
-            'message' => "Grupo {$codigo} desagrupado: {$totalEtiquetas} etiquetas liberadas",
+            'message' => "Grupo {$codigo} desagrupado: {$totalEtiquetas} etiquetas liberadas (no se reagruparán automáticamente)",
         ];
     }
 
@@ -566,9 +577,10 @@ class ResumenEtiquetaService
     public function resumirMultiplanilla(int $maquinaId, ?int $usuarioId = null): array
     {
         return DB::transaction(function () use ($maquinaId, $usuarioId) {
-            // 1. Obtener etiquetas elegibles de planillas REVISADAS
+            // 1. Obtener etiquetas elegibles de planillas REVISADAS (excluyendo las marcadas como no_agrupar)
             $query = Etiqueta::where('estado', 'pendiente')
                 ->whereNull('grupo_resumen_id')
+                ->where('no_agrupar', false)
                 ->whereHas('planilla', function ($q) {
                     $q->where('revisada', true);
                 })
@@ -694,6 +706,7 @@ class ResumenEtiquetaService
     {
         $query = Etiqueta::where('estado', 'pendiente')
             ->whereNull('grupo_resumen_id')
+            ->where('no_agrupar', false)
             ->whereHas('planilla', function ($q) {
                 $q->where('revisada', true);
             })
@@ -842,6 +855,146 @@ class ResumenEtiquetaService
             ->orderBy('diametro')
             ->orderBy('dimensiones')
             ->get();
+    }
+
+    /**
+     * Habilita la reagrupación para etiquetas de una máquina que fueron previamente desagrupadas.
+     * Resetea el campo no_agrupar a false para las etiquetas pendientes de esta máquina.
+     *
+     * @param int $maquinaId ID de la máquina
+     * @param array|null $etiquetaIds IDs específicos de etiquetas a habilitar (opcional, si null habilita todas)
+     * @return array Resultado de la operación
+     */
+    public function habilitarReagrupacion(int $maquinaId, ?array $etiquetaIds = null): array
+    {
+        $query = Etiqueta::where('estado', 'pendiente')
+            ->where('no_agrupar', true)
+            ->whereNull('grupo_resumen_id')
+            ->whereHas('planilla', function ($q) {
+                $q->where('revisada', true);
+            })
+            ->whereHas('elementos', function ($q) use ($maquinaId) {
+                $q->where(function ($subQ) use ($maquinaId) {
+                    $subQ->where('maquina_id', $maquinaId)
+                        ->orWhere('maquina_id_2', $maquinaId)
+                        ->orWhere('maquina_id_3', $maquinaId);
+                });
+            });
+
+        if ($etiquetaIds) {
+            $query->whereIn('id', $etiquetaIds);
+        }
+
+        $etiquetas = $query->get();
+        $total = $etiquetas->count();
+
+        if ($total === 0) {
+            return [
+                'success' => true,
+                'message' => 'No hay etiquetas marcadas como no-agrupar para habilitar',
+                'total' => 0,
+            ];
+        }
+
+        // Resetear el campo no_agrupar
+        $query->update(['no_agrupar' => false]);
+
+        Log::info('Etiquetas habilitadas para reagrupación', [
+            'maquina_id' => $maquinaId,
+            'etiquetas_habilitadas' => $total,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => "{$total} etiquetas habilitadas para reagrupación",
+            'total' => $total,
+        ];
+    }
+
+    /**
+     * Habilita reagrupación y ejecuta el resumen multi-planilla en un solo paso.
+     *
+     * @param int $maquinaId ID de la máquina
+     * @param int|null $usuarioId ID del usuario que realiza la acción
+     * @return array Resultado de la operación
+     */
+    public function reagruparManual(int $maquinaId, ?int $usuarioId = null): array
+    {
+        // Primero habilitar todas las etiquetas marcadas como no_agrupar
+        $habilitacion = $this->habilitarReagrupacion($maquinaId);
+
+        // Luego ejecutar el resumen multi-planilla
+        $resumen = $this->resumirMultiplanilla($maquinaId, $usuarioId);
+
+        return [
+            'success' => true,
+            'message' => "Reagrupación manual completada: {$habilitacion['total']} etiquetas habilitadas, {$resumen['stats']['grupos_creados']} grupos creados",
+            'etiquetas_habilitadas' => $habilitacion['total'],
+            'grupos_creados' => $resumen['stats']['grupos_creados'],
+            'etiquetas_agrupadas' => $resumen['stats']['etiquetas_agrupadas'],
+            'grupos' => $resumen['grupos'] ?? [],
+        ];
+    }
+
+    /**
+     * Deshace el último estado de un grupo de etiquetas.
+     * Revierte: completada -> fabricando -> pendiente
+     *
+     * @param int $grupoId ID del grupo
+     * @return array Resultado de la operación
+     */
+    public function deshacerEstadoGrupo(int $grupoId): array
+    {
+        $grupo = GrupoResumen::with('etiquetas')->find($grupoId);
+
+        if (!$grupo) {
+            return ['success' => false, 'message' => 'Grupo no encontrado'];
+        }
+
+        // Mapeo de estados para revertir
+        $estadosReversos = [
+            'completada' => 'fabricando',
+            'fabricando' => 'pendiente',
+            'fabricada' => 'fabricando',
+            'ensamblada' => 'fabricando',
+            'soldada' => 'fabricando',
+        ];
+
+        // Obtener estado actual del grupo (basado en la primera etiqueta)
+        $primeraEtiqueta = $grupo->etiquetas->first();
+        if (!$primeraEtiqueta) {
+            return ['success' => false, 'message' => 'El grupo no tiene etiquetas'];
+        }
+
+        $estadoActual = strtolower($primeraEtiqueta->estado ?? 'pendiente');
+
+        if (!isset($estadosReversos[$estadoActual])) {
+            return [
+                'success' => false,
+                'message' => "No se puede deshacer el estado '{$estadoActual}'. Solo se puede revertir desde completada/fabricando."
+            ];
+        }
+
+        $nuevoEstado = $estadosReversos[$estadoActual];
+
+        // Actualizar todas las etiquetas del grupo
+        $etiquetaIds = $grupo->etiquetas->pluck('id')->toArray();
+        Etiqueta::whereIn('id', $etiquetaIds)->update(['estado' => $nuevoEstado]);
+
+        Log::info('Estado de grupo revertido', [
+            'grupo_id' => $grupoId,
+            'estado_anterior' => $estadoActual,
+            'estado_nuevo' => $nuevoEstado,
+            'etiquetas_afectadas' => count($etiquetaIds),
+        ]);
+
+        return [
+            'success' => true,
+            'message' => "Estado revertido de {$estadoActual} a {$nuevoEstado} para " . count($etiquetaIds) . " etiquetas",
+            'estado_anterior' => $estadoActual,
+            'estado_nuevo' => $nuevoEstado,
+            'etiquetas_afectadas' => count($etiquetaIds),
+        ];
     }
 
     /**

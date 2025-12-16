@@ -144,7 +144,7 @@
                             }, 300);
                         }
 
-                        function ejecutarCambioPlanillas() {
+                        async function ejecutarCambioPlanillas() {
                             const pos1 = document.getElementById('posicion_1').value;
                             const pos2 = document.getElementById('posicion_2').value;
 
@@ -156,7 +156,6 @@
                                     text: 'No puedes seleccionar la misma posición dos veces',
                                     confirmButtonColor: '#3085d6',
                                 });
-                                // Resetear el segundo selector
                                 document.getElementById('posicion_2').value = '0';
                                 return;
                             }
@@ -164,22 +163,26 @@
                             // Marcar como en proceso
                             cambiarPosicionesEnProceso = true;
 
-                            // Deshabilitar los selectores mientras se carga
                             const select1 = document.getElementById('posicion_1');
                             const select2 = document.getElementById('posicion_2');
                             const loadingIndicator = document.getElementById('loading-planillas');
+                            const gridActual = document.getElementById('grid-maquina');
 
                             select1.disabled = true;
                             select2.disabled = true;
 
-                            // Mostrar indicador de carga
                             if (loadingIndicator) {
                                 loadingIndicator.style.display = 'inline-block';
                             }
 
+                            // Ocultar grid actual con transición
+                            if (gridActual) {
+                                gridActual.style.opacity = '0.3';
+                            }
+
                             console.log('🔄 Cambiando planillas a posiciones:', pos1, pos2);
 
-                            // Construir URL con parámetros (0 = ninguna selección)
+                            // Construir URL
                             const params = new URLSearchParams(window.location.search);
                             if (pos1 && pos1 !== '0') {
                                 params.set('posicion_1', pos1);
@@ -192,135 +195,151 @@
                                 params.delete('posicion_2');
                             }
 
-                            // Actualizar URL sin recargar
                             const newUrl = window.location.pathname + '?' + params.toString();
+
+                            // Actualizar URL sin recargar
                             window.history.pushState({}, '', newUrl);
 
-                            // Recargar solo el contenido de planillas
-                            fetch(newUrl, {
-                                    headers: {
-                                        'X-Requested-With': 'XMLHttpRequest'
-                                    }
-                                })
-                                .then(response => response.text())
-                                .then(html => {
-                                    // Crear un documento temporal para parsear el HTML
-                                    const parser = new DOMParser();
-                                    const doc = parser.parseFromString(html, 'text/html');
-
-                                    // Obtener el nuevo grid de máquina
-                                    const nuevoGrid = doc.getElementById('grid-maquina');
-                                    if (nuevoGrid) {
-                                        const gridActual = document.getElementById('grid-maquina');
-                                        if (gridActual) {
-                                            // Ocultar el grid actual
-                                            gridActual.style.opacity = '0';
-                                            gridActual.style.visibility = 'hidden';
-
-                                            // Después de la animación, reemplazar el contenido
-                                            setTimeout(() => {
-                                                gridActual.innerHTML = nuevoGrid.innerHTML;
-
-                                                // Actualizar variables globales
-                                                const scripts = doc.querySelectorAll('script');
-                                                scripts.forEach(script => {
-                                                    const content = script.textContent || script.innerText;
-                                                    if (content.includes('window.elementosAgrupadosScript') ||
-                                                        content.includes('window.etiquetasData') ||
-                                                        content.includes('window.pesosElementos') ||
-                                                        content.includes('window.SUGERENCIAS')) {
-                                                        eval(content);
-                                                    }
-                                                });
-
-                                                // Actualizar data sources si existe la función
-                                                if (window.setDataSources && window.elementosAgrupadosScript) {
-                                                    window.setDataSources({
-                                                        sugerencias: window.SUGERENCIAS || {},
-                                                        elementosAgrupados: window.elementosAgrupadosScript || []
-                                                    });
-                                                }
-
-                                                // Re-renderizar SVGs
-                                                if (window.elementosAgrupadosScript && window.renderizarGrupoSVG) {
-                                                    window.elementosAgrupadosScript.forEach((grupo, gidx) => {
-                                                        window.renderizarGrupoSVG(grupo, gidx);
-                                                    });
-                                                }
-
-                                                // Mostrar el grid con animación optimizada
-                                                requestAnimationFrame(() => {
-                                                    gridActual.style.opacity = '1';
-                                                    gridActual.style.visibility = 'visible';
-
-                                                    // Mostrar etiquetas
-                                                    document.querySelectorAll('.proceso').forEach(el => {
-                                                        el.style.opacity = '1';
-                                                    });
-
-                                                    // Re-aplicar clases de columnas después de AJAX
-                                                    if (window.updateGridClasses) {
-                                                        // Detectar cuántas planillas hay activas contando secciones
-                                                        const numPlanillas = gridActual.querySelectorAll(
-                                                            '.planilla-section, section.bg-gradient-to-br').length;
-
-                                                        // Actualizar clase dos-planillas / una-planilla
-                                                        if (numPlanillas >= 2) {
-                                                            gridActual.classList.remove('una-planilla');
-                                                            gridActual.classList.add('dos-planillas');
-                                                        } else {
-                                                            gridActual.classList.remove('dos-planillas');
-                                                            gridActual.classList.add('una-planilla');
-                                                        }
-
-                                                        const showLeft = JSON.parse(localStorage.getItem('showLeft') ??
-                                                            'true');
-                                                        const showRight = JSON.parse(localStorage.getItem(
-                                                            'showRight') ?? 'true');
-                                                        window.updateGridClasses(showLeft, showRight);
-                                                    }
-
-                                                    // Re-inicializar event listeners del botón crear paquete
-                                                    const btnCrear = document.getElementById("crearPaqueteBtn");
-                                                    if (btnCrear && window.TrabajoPaquete && window.TrabajoPaquete
-                                                        .crearPaquete) {
-                                                        btnCrear.removeEventListener("click", window.TrabajoPaquete
-                                                            .crearPaquete);
-                                                        btnCrear.addEventListener("click", window.TrabajoPaquete
-                                                            .crearPaquete);
-                                                        console.log(
-                                                            '✅ Event listener del botón crear paquete re-inicializado después de cambio de planillas'
-                                                        );
-                                                    }
-                                                });
-
-                                                // Re-habilitar selectores y ocultar loading
-                                                select1.disabled = false;
-                                                select2.disabled = false;
-                                                if (loadingIndicator) {
-                                                    loadingIndicator.style.display = 'none';
-                                                }
-                                                cambiarPosicionesEnProceso = false;
-
-                                                console.log('✅ Planillas cambiadas correctamente');
-                                            }, 100);
-                                        }
-                                    }
-                                })
-                                .catch(error => {
-                                    console.error('❌ Error al cambiar planillas:', error);
-
-                                    // Re-habilitar selectores y ocultar loading en caso de error
-                                    select1.disabled = false;
-                                    select2.disabled = false;
-                                    if (loadingIndicator) {
-                                        loadingIndicator.style.display = 'none';
-                                    }
-                                    cambiarPosicionesEnProceso = false;
-
-                                    // Si falla, hacer refresh normal
-                                    window.location.href = newUrl;
+                            try {
+                                // Fetch AJAX
+                                const response = await fetch(newUrl, {
+                                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
                                 });
+                                const html = await response.text();
+
+                                // Parsear HTML
+                                const parser = new DOMParser();
+                                const doc = parser.parseFromString(html, 'text/html');
+                                const nuevoGrid = doc.getElementById('grid-maquina');
+
+                                if (nuevoGrid && gridActual) {
+                                    // Extraer y ejecutar scripts con variables globales
+                                    const scripts = doc.querySelectorAll('script');
+                                    scripts.forEach(script => {
+                                        const content = script.textContent || script.innerText;
+                                        // Buscar scripts con definiciones de variables globales
+                                        if (content.includes('window.elementosAgrupadosScript') ||
+                                            content.includes('window.SUGERENCIAS') ||
+                                            content.includes('window.gruposResumenData') ||
+                                            content.includes('window.etiquetasData') ||
+                                            content.includes('window.pesosElementos')) {
+                                            try {
+                                                // Crear función para ejecutar en contexto global
+                                                const fn = new Function(content);
+                                                fn();
+                                                console.log('📊 Variables globales actualizadas');
+                                            } catch (e) {
+                                                console.warn('Error ejecutando script:', e);
+                                            }
+                                        }
+                                    });
+
+                                    // Reemplazar contenido del grid
+                                    gridActual.innerHTML = nuevoGrid.innerHTML;
+
+                                    // Actualizar data sources si existe
+                                    if (window.setDataSources && window.elementosAgrupadosScript) {
+                                        window.setDataSources({
+                                            sugerencias: window.SUGERENCIAS || {},
+                                            elementosAgrupados: window.elementosAgrupadosScript || []
+                                        });
+                                    }
+
+                                    // Esperar a que el DOM se actualice
+                                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                                    // Renderizar SVGs
+                                    console.log('🎨 Renderizando SVGs...');
+                                    console.log('   - elementosAgrupadosScript:', window.elementosAgrupadosScript?.length || 0);
+                                    console.log('   - renderizarGrupoSVG:', typeof window.renderizarGrupoSVG);
+
+                                    if (window.elementosAgrupadosScript && typeof window.renderizarGrupoSVG === 'function') {
+                                        window.elementosAgrupadosScript.forEach((grupo, gidx) => {
+                                            try {
+                                                window.renderizarGrupoSVG(grupo, gidx);
+                                            } catch (e) {
+                                                console.warn('Error renderizando grupo', gidx, e);
+                                            }
+                                        });
+                                        console.log('✅ SVGs renderizados:', window.elementosAgrupadosScript.length);
+                                    }
+
+                                    // Renderizar SVGs de grupos de resumen (leyendo datos del DOM)
+                                    const gruposResumenCards = gridActual.querySelectorAll('.grupo-resumen-card');
+                                    if (gruposResumenCards.length > 0 && typeof window.renderizarGrupoSVG === 'function') {
+                                        console.log('🎨 Renderizando grupos de resumen:', gruposResumenCards.length);
+                                        gruposResumenCards.forEach((card) => {
+                                            const contenedorSvgId = card.dataset.contenedorSvgId;
+                                            const grupoId = card.dataset.grupoId;
+                                            let elementos = [];
+                                            try {
+                                                elementos = JSON.parse(card.dataset.elementos || '[]');
+                                            } catch (e) {
+                                                console.warn('Error parsing elementos del grupo:', e);
+                                            }
+
+                                            if (contenedorSvgId && elementos.length > 0) {
+                                                try {
+                                                    const grupoData = {
+                                                        id: parseInt(contenedorSvgId),
+                                                        etiqueta: { id: parseInt(contenedorSvgId) },
+                                                        elementos: elementos
+                                                    };
+                                                    window.renderizarGrupoSVG(grupoData, parseInt(grupoId));
+                                                    console.log('✅ Grupo', grupoId, 'renderizado con', elementos.length, 'elementos');
+                                                } catch (e) {
+                                                    console.warn('Error renderizando grupo resumen', grupoId, e);
+                                                }
+                                            }
+                                        });
+                                    }
+
+                                    // Mostrar grid con transición
+                                    gridActual.style.opacity = '1';
+
+                                    // Mostrar etiquetas
+                                    document.querySelectorAll('.proceso').forEach(el => {
+                                        el.style.opacity = '1';
+                                    });
+
+                                    // Re-aplicar clases de columnas
+                                    if (window.updateGridClasses) {
+                                        const numPlanillas = gridActual.querySelectorAll('.planilla-section, section.bg-gradient-to-br').length;
+                                        if (numPlanillas >= 2) {
+                                            gridActual.classList.remove('una-planilla');
+                                            gridActual.classList.add('dos-planillas');
+                                        } else {
+                                            gridActual.classList.remove('dos-planillas');
+                                            gridActual.classList.add('una-planilla');
+                                        }
+                                        const showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'true');
+                                        const showRight = JSON.parse(localStorage.getItem('showRight') ?? 'true');
+                                        window.updateGridClasses(showLeft, showRight);
+                                    }
+
+                                    // Re-inicializar event listeners
+                                    const btnCrear = document.getElementById("crearPaqueteBtn");
+                                    if (btnCrear && window.TrabajoPaquete?.crearPaquete) {
+                                        btnCrear.removeEventListener("click", window.TrabajoPaquete.crearPaquete);
+                                        btnCrear.addEventListener("click", window.TrabajoPaquete.crearPaquete);
+                                    }
+
+                                    console.log('✅ Planillas cambiadas correctamente (inline)');
+                                }
+                            } catch (error) {
+                                console.error('❌ Error al cambiar planillas:', error);
+                                // En caso de error, hacer reload como fallback
+                                window.location.href = newUrl;
+                                return;
+                            }
+
+                            // Re-habilitar selectores
+                            select1.disabled = false;
+                            select2.disabled = false;
+                            if (loadingIndicator) {
+                                loadingIndicator.style.display = 'none';
+                            }
+                            cambiarPosicionesEnProceso = false;
                         }
                     </script>
 
@@ -350,51 +369,21 @@
                             this.filtroEstado = estado;
                             localStorage.setItem('filtroEstadoEtiqueta', estado);
                             window.dispatchEvent(new CustomEvent('filtroEstadoChanged', { detail: estado }));
+                        },
+                        init() {
+                            // Escuchar eventos de teclado para sincronizar estado visual de botones
+                            window.addEventListener('toggleLeft', () => {
+                                this.showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'true');
+                            });
+                            window.addEventListener('toggleRight', () => {
+                                this.showRight = JSON.parse(localStorage.getItem('showRight') ?? 'true');
+                            });
+                            window.addEventListener('solo', () => {
+                                this.showLeft = false;
+                                this.showRight = false;
+                            });
                         }
                     }">
-                        <button @click="toggleLeft()"
-                            class="px-3 py-1.5 rounded-md text-sm font-medium border transition-all duration-200"
-                            :class="showLeft ? 'bg-white border-gray-300 text-gray-700 shadow-sm' :
-                                'bg-blue-500 border-blue-600 text-white hover:bg-blue-600'"
-                            title="Mostrar/Ocultar materia prima">
-                            <span class="flex items-center gap-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                                </svg>
-                                <span x-text="showLeft ? 'Ocultar' : 'Materia'"></span>
-                            </span>
-                        </button>
-
-                        <button @click="solo()"
-                            class="px-3 py-1.5 rounded-md text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all duration-200 shadow-sm"
-                            title="Ver solo planillas">
-                            <span class="flex items-center gap-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M4 6h16M4 12h16M4 18h16" />
-                                </svg>
-                                Solo Planillas
-                            </span>
-                        </button>
-
-                        <button @click="toggleRight()"
-                            class="px-3 py-1.5 rounded-md text-sm font-medium border transition-all duration-200"
-                            :class="showRight ? 'bg-white border-gray-300 text-gray-700 shadow-sm' :
-                                'bg-blue-500 border-blue-600 text-white hover:bg-blue-600'"
-                            title="Mostrar/Ocultar paquetes">
-                            <span class="flex items-center gap-1">
-                                <span x-text="showRight ? 'Ocultar' : 'Paquetes'"></span>
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                                </svg>
-                            </span>
-                        </button>
-
-                        {{-- Separador visual --}}
-                        <div class="h-6 w-px bg-gray-300 mx-1"></div>
-
                         {{-- Filtros de estado de etiquetas - Select personalizado --}}
                         <div class="relative" x-data="{ open: false }">
                             <button @click="open = !open" @click.away="open = false" type="button"
@@ -500,23 +489,14 @@
                             </svg>
                             Descomprimir
                         </button>
-                        <button type="button" onclick="resumirEtiquetasMaquina()"
-                            class="px-3 py-2 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
-                            title="Resumir: Agrupa etiquetas con mismo diámetro y dimensiones (mantiene originales para imprimir)">
+                        <button type="button" onclick="reagruparEtiquetasManual({{ $maquina->id }})"
+                            class="px-3 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
+                            title="Reagrupar: Vuelve a agrupar etiquetas que fueron desagrupadas manualmente">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>
-                            Resumir
-                        </button>
-                        <button type="button" onclick="resumirEtiquetasMultiplanilla({{ $maquina->id }})"
-                            class="px-3 py-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
-                            title="Resumir Multi-Planilla: Agrupa etiquetas de TODAS las planillas revisadas con mismo diámetro y dimensiones">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
-                            </svg>
-                            Multi-Planilla
+                            Reagrupar
                         </button>
                     </div>
 
@@ -600,6 +580,9 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
         <script src="{{ asset('js/imprimirQrS.js') }}"></script>
 
+        {{-- Script del sistema de resumen de etiquetas (debe cargar antes del botón Reagrupar) --}}
+        <script src="{{ asset('js/resumir-etiquetas.js') }}"></script>
+
         <script>
             window.SUGERENCIAS = @json($sugerenciasPorElemento ?? []);
             window.elementosAgrupadosScript = @json($elementosAgrupadosScript ?? null);
@@ -663,6 +646,7 @@
 
                     // Actualizar variables globales
                     const scripts = doc.querySelectorAll('script');
+                    let variablesActualizadas = 0;
                     scripts.forEach(script => {
                         const content = script.textContent || script.innerText;
                         if (content.includes('window.elementosAgrupadosScript') ||
@@ -673,12 +657,16 @@
                             content.includes('window.DIAMETRO_POR_ETIQUETA') ||
                             content.includes('window.SUGERENCIAS')) {
                             try {
-                                eval(content);
+                                // Usar new Function para ejecutar en contexto global
+                                const fn = new Function(content);
+                                fn();
+                                variablesActualizadas++;
                             } catch (e) {
-                                console.warn('Error al evaluar script:', e);
+                                console.warn('Error al ejecutar script:', e);
                             }
                         }
                     });
+                    console.log('📊 Variables actualizadas:', variablesActualizadas, 'scripts procesados');
 
                     // Actualizar data sources
                     if (window.setDataSources && window.elementosAgrupadosScript) {
@@ -935,8 +923,12 @@
                                         text: data.message,
                                         confirmButtonColor: '#9333ea',
                                     }).then(() => {
-                                        // Recargar la página para actualizar las posiciones
-                                        window.location.reload();
+                                        // Refrescar contenido sin recargar página
+                                        if (typeof window.refrescarEtiquetasMaquina === 'function') {
+                                            window.refrescarEtiquetasMaquina();
+                                        } else {
+                                            window.location.reload();
+                                        }
                                     });
                                 } else {
                                     Swal.fire({
@@ -1152,72 +1144,103 @@
                 });
             }
 
-            // Función para resumir etiquetas de la máquina actual
-            function resumirEtiquetasMaquina() {
-                // Obtener las planillas activas (por posición seleccionada)
-                const pos1 = document.getElementById('posicion_1')?.value;
-                const pos2 = document.getElementById('posicion_2')?.value;
-
-                // Si hay planillas activas definidas en el scope
-                const planillasActivas = @json($planillasActivas ?? []);
-
-                if (planillasActivas.length === 0) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Sin planillas',
-                        text: 'No hay planillas activas en esta máquina para resumir',
-                    });
-                    return;
-                }
-
-                // Si hay una sola planilla, usar esa directamente
-                if (planillasActivas.length === 1) {
-                    resumirEtiquetas(planillasActivas[0].id, {{ $maquina->id }});
-                    return;
-                }
-
-                // Si hay múltiples planillas, preguntar cuál resumir
-                const opcionesHtml = planillasActivas.map(p =>
-                    `<option value="${p.id}">${p.codigo} (${p.peso_total || 0} kg)</option>`
-                ).join('');
-
-                Swal.fire({
-                    icon: 'question',
-                    title: 'Seleccionar planilla',
-                    html: `
-                        <p class="mb-3">Selecciona la planilla a resumir:</p>
-                        <select id="swal-planilla-select" class="w-full border rounded px-3 py-2">
-                            <option value="todas">Todas las planillas</option>
-                            ${opcionesHtml}
-                        </select>
-                    `,
-                    showCancelButton: true,
-                    confirmButtonColor: '#14b8a6',
-                    cancelButtonColor: '#6b7280',
-                    confirmButtonText: 'Continuar',
-                    cancelButtonText: 'Cancelar',
-                    preConfirm: () => {
-                        return document.getElementById('swal-planilla-select').value;
-                    }
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        if (result.value === 'todas') {
-                            // Resumir todas las planillas una por una
-                            planillasActivas.forEach(p => {
-                                resumirEtiquetas(p.id, {{ $maquina->id }});
-                            });
-                        } else {
-                            resumirEtiquetas(parseInt(result.value), {{ $maquina->id }});
-                        }
-                    }
-                });
-            }
         </script>
 
         {{-- Script para dibujar figuras de elementos --}}
         <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
 
-        {{-- Script del sistema de resumen de etiquetas --}}
-        <script src="{{ asset('js/resumir-etiquetas.js') }}"></script>
+        {{-- Script de atajos de teclado para control de columnas --}}
+        <script>
+            (function() {
+                // Estado del header (se guarda en localStorage)
+                let showHeader = JSON.parse(localStorage.getItem('showHeader') ?? 'true');
+
+                // Aplicar estado inicial del header
+                function aplicarEstadoHeader() {
+                    const header = document.querySelector('main header.mb-6');
+                    if (header) {
+                        header.style.display = showHeader ? '' : 'none';
+                        header.style.transition = 'all 0.2s ease-in-out';
+                    }
+                }
+
+                // Toggle header visibility
+                function toggleHeader() {
+                    showHeader = !showHeader;
+                    localStorage.setItem('showHeader', JSON.stringify(showHeader));
+                    aplicarEstadoHeader();
+                    console.log('🎯 Header:', showHeader ? 'visible' : 'oculto');
+                }
+
+                // Listener de teclas de dirección
+                document.addEventListener('keydown', function(e) {
+                    // No activar si el usuario está escribiendo en un input, select o textarea
+                    const activeElement = document.activeElement;
+                    const isTyping = activeElement.tagName === 'INPUT' ||
+                                    activeElement.tagName === 'TEXTAREA' ||
+                                    activeElement.tagName === 'SELECT' ||
+                                    activeElement.isContentEditable;
+
+                    if (isTyping) return;
+
+                    // Solo procesar teclas de dirección
+                    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+
+                    e.preventDefault(); // Evitar scroll de página
+
+                    switch (e.key) {
+                        case 'ArrowLeft':
+                            // Toggle columna izquierda (materia prima)
+                            // Actualizar localStorage PRIMERO para que Alpine.js lea el valor correcto
+                            const showLeftActual = JSON.parse(localStorage.getItem('showLeft') ?? 'true');
+                            localStorage.setItem('showLeft', JSON.stringify(!showLeftActual));
+                            // Luego disparar evento para que Alpine.js se sincronice
+                            window.dispatchEvent(new CustomEvent('toggleLeft'));
+                            console.log('⬅️ Columna izquierda:', !showLeftActual ? 'visible' : 'oculta');
+                            break;
+
+                        case 'ArrowRight':
+                            // Toggle columna derecha (paquetes)
+                            // Actualizar localStorage PRIMERO para que Alpine.js lea el valor correcto
+                            const showRightActual = JSON.parse(localStorage.getItem('showRight') ?? 'true');
+                            localStorage.setItem('showRight', JSON.stringify(!showRightActual));
+                            // Luego disparar evento para que Alpine.js se sincronice
+                            window.dispatchEvent(new CustomEvent('toggleRight'));
+                            console.log('➡️ Columna derecha:', !showRightActual ? 'visible' : 'oculta');
+                            break;
+
+                        case 'ArrowUp':
+                            // Toggle header (nombre máquina, botones reagrupar, etc.)
+                            toggleHeader();
+                            break;
+
+                        case 'ArrowDown':
+                            // Modo solo: ocultar todo excepto columna central
+                            window.dispatchEvent(new CustomEvent('solo'));
+                            localStorage.setItem('showLeft', 'false');
+                            localStorage.setItem('showRight', 'false');
+                            // También ocultar header
+                            showHeader = false;
+                            localStorage.setItem('showHeader', 'false');
+                            aplicarEstadoHeader();
+                            console.log('⬇️ Modo solo: solo columna central visible');
+                            break;
+                    }
+                });
+
+                // Aplicar estado del header al cargar
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', aplicarEstadoHeader);
+                } else {
+                    aplicarEstadoHeader();
+                }
+
+                // Re-aplicar después de navegación Livewire
+                document.addEventListener('livewire:navigated', aplicarEstadoHeader);
+
+                // Exponer función para uso externo si es necesario
+                window.toggleMaquinaHeader = toggleHeader;
+            })();
+        </script>
 
 </x-app-layout>

@@ -65,7 +65,15 @@
         </div>
 
         {{-- Botones de acción --}}
-        <div class="flex gap-1 ml-2 flex-shrink-0">
+        <div class="flex gap-1 ml-2 flex-shrink-0 items-center">
+            {{-- Botón Deshacer Estado (solo revierte estado, no desagrupa) --}}
+            <button onclick="deshacerEstadoGrupo({{ $grupo->id }})"
+                    class="p-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition shadow-sm"
+                    title="Deshacer último estado">
+                <span class="text-sm">↩️</span>
+            </button>
+
+            {{-- Botón Ver etiquetas --}}
             <button onclick="toggleExpandirGrupo({{ $grupo->id }})"
                     class="p-2 bg-white rounded-lg {{ $hoverBg }} transition shadow-sm"
                     title="Ver etiquetas">
@@ -74,12 +82,19 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
             </button>
+
+            {{-- Botón Desagrupar (icono de capas con número) --}}
             <button onclick="desagruparGrupo({{ $grupo->id }})"
-                    class="p-2 bg-white rounded-lg hover:bg-red-50 transition shadow-sm"
-                    title="Desagrupar">
-                <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    class="flex items-center gap-1 px-2 py-1 bg-white rounded-lg hover:bg-red-50 border {{ $borderLight }} hover:border-red-300 transition shadow-sm group"
+                    title="Desagrupar: separar las {{ $grupo->total_etiquetas }} etiquetas">
+                {{-- Icono de capas --}}
+                <svg class="w-4 h-4 text-gray-500 group-hover:text-red-500 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                 </svg>
+                {{-- Número de etiquetas --}}
+                <span class="text-xs font-bold text-gray-600 group-hover:text-red-600 transition">
+                    {{ $grupo->total_etiquetas }}
+                </span>
             </button>
         </div>
     </div>

@@ -69,6 +69,10 @@ Route::prefix('etiquetas/resumir')->group(function () {
     Route::post('/{grupo}/desagrupar', [ResumenEtiquetaController::class, 'desagrupar'])
         ->name('api.etiquetas.resumir.desagrupar');
 
+    // Deshacer estado de un grupo (completada -> fabricando -> pendiente)
+    Route::post('/{grupo}/deshacer-estado', [ResumenEtiquetaController::class, 'deshacerEstado'])
+        ->name('api.etiquetas.resumir.deshacer-estado');
+
     // Obtener etiquetas de un grupo para imprimir
     Route::get('/{grupo}/imprimir', [ResumenEtiquetaController::class, 'etiquetasParaImprimir'])
         ->name('api.etiquetas.resumir.imprimir');
@@ -93,4 +97,12 @@ Route::prefix('etiquetas/resumir')->group(function () {
     // Desagrupar todos los grupos multi-planilla de una máquina
     Route::post('/multiplanilla/desagrupar-todos', [ResumenEtiquetaController::class, 'desagruparTodosMultiplanilla'])
         ->name('api.etiquetas.resumir.multiplanilla.desagrupar-todos');
+
+    // Reagrupar manualmente (habilita etiquetas desagrupadas + ejecuta resumen)
+    Route::post('/multiplanilla/reagrupar', [ResumenEtiquetaController::class, 'reagruparManual'])
+        ->name('api.etiquetas.resumir.multiplanilla.reagrupar');
+
+    // Habilitar reagrupación para etiquetas específicas o todas de una máquina
+    Route::post('/multiplanilla/habilitar-reagrupacion', [ResumenEtiquetaController::class, 'habilitarReagrupacion'])
+        ->name('api.etiquetas.resumir.multiplanilla.habilitar-reagrupacion');
 });
