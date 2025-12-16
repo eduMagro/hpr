@@ -13,23 +13,48 @@ class MenuBuilder
     public static function buildForUser($user)
     {
         if (!$user) {
+            \Log::warning('MenuBuilder: Usuario no autenticado');
             return [];
         }
 
-        // Cachear el menú por usuario durante 1 hora
-        return Cache::remember("menu_user_{$user->id}", 3600, function () use ($user) {
-            $menu = config('menu.main');
-            $filteredMenu = [];
+        // TEMPORAL: Desactivar caché para depurar
+        Cache::forget("menu_user_{$user->id}");
 
-            foreach ($menu as $section) {
-                $filteredSection = self::filterSection($section, $user);
-                if ($filteredSection) {
-                    $filteredMenu[] = $filteredSection;
-                }
+        $menu = config('menu.main');
+
+        // DEBUG
+        \Log::info('MenuBuilder DEBUG', [
+            'user_email' => $user->email,
+            'user_rol' => $user->rol,
+            'menu_config_count' => $menu ? count($menu) : 'NULL',
+            'menu_first_section' => $menu[0]['id'] ?? 'NO HAY',
+        ]);
+
+        if (!$menu || !is_array($menu)) {
+            \Log::error('MenuBuilder: config(menu.main) está vacío o no es array');
+            return [];
+        }
+
+        $filteredMenu = [];
+
+        foreach ($menu as $section) {
+            $filteredSection = self::filterSection($section, $user);
+            if ($filteredSection) {
+                $filteredMenu[] = $filteredSection;
+            } else {
+                \Log::info('MenuBuilder: Sección filtrada', [
+                    'section_id' => $section['id'] ?? 'sin id',
+                    'user' => $user->email
+                ]);
             }
+        }
 
-            return $filteredMenu;
-        });
+        \Log::info('MenuBuilder: Resultado final', [
+            'user' => $user->email,
+            'secciones_visibles' => count($filteredMenu)
+        ]);
+
+        return $filteredMenu;
     }
 
     /**
