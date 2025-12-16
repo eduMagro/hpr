@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="title">EPIs</x-slot>
 
-    <div class="py-6 px-4" x-data="episPage()" x-init="init()">
+    <div class="py-6 px-4 bg-slate-100 min-h-screen" x-data="episPage()" x-init="init()">
         <div class="max-w-6xl mx-auto space-y-6">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
@@ -20,14 +20,14 @@
 
                         <!-- Helper / sugerencias -->
                         <div x-cloak x-show="suggestionsOpen"
-                            class="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                            class="absolute z-50 mt-2 w-full bg-white/95 backdrop-blur border border-slate-200 rounded-xl shadow-2xl overflow-hidden">
                             <div class="max-h-80 overflow-y-auto">
                                 <template x-if="suggestions.length === 0">
                                     <div class="p-4 text-sm text-gray-600">Sin coincidencias.</div>
                                 </template>
                                 <template x-for="u in suggestions" :key="u.id">
                                     <button type="button"
-                                        class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3"
+                                        class="w-full text-left px-4 py-3 hover:bg-gray-200 transition-colors flex items-center gap-3"
                                         @click="selectUser(u)">
                                         <div
                                             class="w-9 h-9 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -48,6 +48,11 @@
                                                 <span class="mx-1">·</span>
                                                 <span x-text="u.movil_personal || 'Móvil N/D'"></span>
                                             </p>
+                                            <p class="text-xs text-gray-500 mt-1 flex flex-col">
+                                                <span
+                                                    x-text="`Categoría: ${u.categoria?.nombre || 'Sin asignar'}`"></span>
+                                                <span x-text="`Empresa: ${u.empresa?.nombre || 'Sin empresa'}`"></span>
+                                            </p>
                                         </div>
                                         <span
                                             class="text-xs font-medium text-blue-700 bg-blue-50 rounded-full px-2 py-0.5"
@@ -61,7 +66,7 @@
                     <div class="flex flex-col">
                         <span class="block text-xs font-medium text-transparent mb-1 select-none">.</span>
                         <button type="button"
-                            class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 whitespace-nowrap"
+                            class="px-4 py-2 rounded-lg bg-blue-600 text-white shadow-md hover:shadow-lg hover:bg-blue-700 transition whitespace-nowrap"
                             @click="openCatalog()">
                             Gestionar EPIs
                         </button>
@@ -77,25 +82,61 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="bg-white rounded-xl border border-gray-200 p-4">
+                <div
+                    class="bg-white rounded-xl border border-slate-200 p-4 shadow-md hover:shadow-lg transition-shadow duration-200">
                     <p class="text-xs uppercase tracking-wide text-gray-500">Usuarios con EPIs</p>
-                    <p class="text-2xl font-semibold text-gray-900 mt-1" x-text="stats.usuariosConEpis"></p>
+                    <p class="text-lg font-semibold text-gray-900 mt-1" x-text="stats.usuariosConEpis"></p>
                 </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4">
+                <div
+                    class="bg-white rounded-xl border border-slate-200 p-4 shadow-md hover:shadow-lg transition-shadow duration-200">
                     <p class="text-xs uppercase tracking-wide text-gray-500">Catálogo</p>
-                    <p class="text-2xl font-semibold text-gray-900 mt-1" x-text="catalogoCount"></p>
+                    <p class="text-lg font-semibold text-gray-900 mt-1" x-text="catalogoCount"></p>
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl border border-gray-200 p-4">
-                <label class="block text-xs font-medium text-gray-700 mb-1">Filtrar usuarios por EPI</label>
-                <input type="text" x-model="agendaEpiQuery" @input="onAgendaEpiQueryChange()"
-                    placeholder="Nombre, codigo o categoria del EPI"
-                    class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
+            <div
+                class="bg-white/95 rounded-xl border border-slate-200 p-4 space-y-4 shadow-lg hover:shadow-xl transition-shadow duration-200">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Filtrar usuarios por EPI</label>
+                        <input type="text" x-model="agendaEpiQuery" @input="onAgendaEpiQueryChange()"
+                            placeholder="Nombre, codigo o categoria del EPI"
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Filtrar por empresa</label>
+                        <select x-model="agendaEmpresaId" @change="onAgendaFiltersChange()"
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">Todas</option>
+                            @foreach ($empresas as $empresa)
+                                <option value="{{ $empresa->id }}">{{ $empresa->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Filtrar por categoría</label>
+                        <select x-model="agendaCategoriaId" @change="onAgendaFiltersChange()"
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">Todas</option>
+                            @foreach ($categorias as $categoria)
+                                <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button type="button"
+                        class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 shadow-sm hover:shadow-md transition"
+                        @click="resetAgendaFilters()"
+                        :disabled="!agendaEpiQuery && !agendaEmpresaId && !agendaCategoriaId">
+                        Limpiar filtros
+                    </button>
+                </div>
             </div>
 
-            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-100">
+            <div
+                class="bg-white/95 rounded-xl border border-slate-200 overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-200">
+                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/70">
                     <h2 class="font-semibold text-gray-900">Agenda</h2>
                 </div>
 
@@ -110,10 +151,11 @@
                 <template x-if="!loadingUsers && agendaUsers.length > 0">
                     <div class="divide-y divide-gray-100">
                         <template x-for="u in agendaUsers" :key="u.id">
-                            <div class="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div
+                                class="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:bg-gray-200 group">
                                 <div class="flex items-center gap-4 min-w-0">
                                     <div
-                                        class="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                        class="group flex items-center justify-center w-12 h-12 rounded-full overflow-hidden bg-gray-100 border-0 border-transparent group-hover:border-2 group-hover:border-gray-700 transition-all duration-100">
                                         <template x-if="u.ruta_imagen">
                                             <img :src="u.ruta_imagen" :alt="`Foto de ${u.nombre_completo}`"
                                                 class="w-full h-full object-cover" />
@@ -126,7 +168,8 @@
 
                                     <div class="min-w-0">
                                         <div class="flex items-center gap-2 min-w-0">
-                                            <p class="font-semibold text-gray-900 truncate" x-text="u.nombre_completo">
+                                            <p class="font-semibold text-gray-900 truncate"
+                                                x-text="u.nombre_completo">
                                             </p>
                                             <span
                                                 class="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-xs font-medium"
@@ -137,17 +180,22 @@
                                             <span class="truncate" x-text="`Email: ${u.email || 'N/D'}`"></span>
                                             <span x-text="`Móvil: ${u.movil_personal || 'N/D'}`"></span>
                                         </div>
+                                        <div class="text-sm text-gray-600 flex flex-col sm:flex-row sm:gap-4 mt-1">
+                                            <span x-text="`Categoría: ${u.categoria?.nombre || 'Sin asignar'}`"></span>
+                                            <span class="truncate"
+                                                x-text="`Empresa: ${u.empresa?.nombre || 'Sin empresa'}`"></span>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div class="flex gap-2">
                                     <button type="button"
-                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800"
+                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 shadow-sm hover:shadow-md transition"
                                         @click="openUser(u)">
                                         EPIs
                                     </button>
                                     <button type="button"
-                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-gray-100 text-gray-900 hover:bg-gray-200"
+                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-gray-400 text-gray-900 hover:bg-gray-600 hover:text-white shadow-sm hover:shadow-md"
                                         @click="openRecentModalForUser(u)">
                                         Últimos
                                     </button>
@@ -165,16 +213,26 @@
             <div class="absolute inset-0 bg-black/50" @click="closeModal()"></div>
 
             <div
-                class="relative w-full sm:max-w-5xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col">
-                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                    <div class="min-w-0">
+                class="relative w-full sm:max-w-5xl bg-white/95 backdrop-blur rounded-t-2xl sm:rounded-2xl border border-slate-200 shadow-[0_20px_60px_rgba(15,23,42,0.35)] overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col">
+                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
+                    <div class="min-w-0 w-full">
                         <p class="text-xs uppercase tracking-wide text-gray-500">EPIs</p>
-                        <p class="font-semibold text-gray-900 truncate" x-text="modalTitle"></p>
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:gap-3">
+                            <p class="font-semibold text-gray-900 truncate" x-text="modalTitle"></p>
+                            <template x-if="modalTab === 'usuario' && selectedUser">
+                                <div
+                                    class="text-xs text-gray-600 flex flex-col sm:flex-row sm:items-center sm:gap-3 w-full sm:w-auto">
+                                    <span
+                                        x-text="`Categoría: ${selectedUser.categoria?.nombre || 'Sin asignar'}`"></span>
+                                    <span x-text="`Empresa: ${selectedUser.empresa?.nombre || 'Sin empresa'}`"></span>
+                                </div>
+                            </template>
+                        </div>
                     </div>
 
-                    <button type="button" class="p-2 rounded-lg hover:bg-gray-100" @click="closeModal()"
+                    <button type="button" class="p-2 rounded-lg shadow-sm hover:shadow-md" @click="closeModal()"
                         aria-label="Cerrar">
-                        <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="white" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -182,14 +240,14 @@
                 </div>
 
                 <div class="px-6 pt-4">
-                    <div class="flex gap-2 border-b border-gray-200">
+                    <div class="flex gap-2 border-b border-slate-200">
                         <button type="button" class="px-4 py-2 text-sm font-medium rounded-t-lg"
-                            :class="modalTab === 'usuario' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'"
+                            :class="modalTab === 'usuario' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-200'"
                             @click="switchModalTab('usuario')" :disabled="!selectedUser">
                             Usuario
                         </button>
                         <button type="button" class="px-4 py-2 text-sm font-medium rounded-t-lg"
-                            :class="modalTab === 'catalogo' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'"
+                            :class="modalTab === 'catalogo' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-200'"
                             @click="switchModalTab('catalogo')">
                             Catálogo
                         </button>
@@ -202,7 +260,7 @@
                         <div>
                             <template x-if="!selectedUser">
                                 <div
-                                    class="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-gray-700">
+                                    class="rounded-lg border border-dashed border-gray-300 bg-slate-50 p-6 text-gray-700">
                                     Selecciona un usuario para ver/gestionar sus EPIs.
                                 </div>
                             </template>
@@ -210,7 +268,8 @@
                             <template x-if="selectedUser">
                                 <div class="space-y-6">
                                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                        <div class="lg:col-span-2 bg-gray-50 border border-gray-200 rounded-xl p-4">
+                                        <div
+                                            class="lg:col-span-2 bg-white/95 border border-slate-200 rounded-xl p-4 shadow-md">
                                             <p class="text-xs uppercase tracking-wide text-gray-500">Asignar EPI</p>
                                             <div class="mt-3 grid grid-cols-1 sm:grid-cols-4 gap-3">
                                                 <div class="sm:col-span-2">
@@ -225,7 +284,7 @@
                                                             class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
 
                                                         <div x-cloak x-show="epiAssignSuggestionsOpen"
-                                                            class="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                                                            class="absolute z-50 mt-2 w-full bg-white/95 border border-slate-200 shadow-sm rounded-xl shadow-xl overflow-hidden">
                                                             <div class="max-h-80 overflow-y-auto">
                                                                 <template x-if="epiAssignSuggestions.length === 0">
                                                                     <div class="p-4 text-sm text-gray-600">Sin
@@ -234,7 +293,7 @@
                                                                 <template x-for="e in epiAssignSuggestions"
                                                                     :key="e.id">
                                                                     <button type="button"
-                                                                        class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3"
+                                                                        class="w-full text-left px-4 py-3 hover:bg-gray-200 flex items-center gap-3"
                                                                         @click="selectEpiToAssign(e)">
                                                                         <div
                                                                             class="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -301,7 +360,7 @@
                                             </div>
                                         </div>
 
-                                        <div class="bg-white border border-gray-200 rounded-xl p-4">
+                                        <div class="bg-white/95 border border-slate-200 rounded-xl p-4 shadow-md">
                                             <p class="text-xs uppercase tracking-wide text-gray-500">Resumen</p>
                                             <div class="mt-2 flex items-center gap-3">
                                                 <div
@@ -316,9 +375,15 @@
                                                             x-text="selectedUser.nombre_completo?.slice(0,1)?.toUpperCase()"></span>
                                                     </template>
                                                 </div>
-                                                <div class="min-w-0">
-                                                    <p class="text-lg font-semibold text-gray-900 truncate"
-                                                        x-text="selectedUser.nombre_completo"></p>
+                                                <div class="min-w-0 w-full">
+                                                    <div
+                                                        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                                        <p class="text-lg font-semibold text-gray-900 truncate"
+                                                            x-text="selectedUser.nombre_completo"></p>
+                                                        <div
+                                                            class="text-xs text-gray-600 flex flex-col sm:flex-row sm:items-center sm:gap-3">
+                                                        </div>
+                                                    </div>
                                                     <p class="text-sm text-gray-600 mt-0.5"
                                                         x-text="`DNI: ${selectedUser.dni || 'N/D'}`"></p>
                                                 </div>
@@ -341,8 +406,9 @@
                                         </div>
                                     </div>
 
-                                    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                                        <div class="px-6 py-4 border-b border-gray-100">
+                                    <div
+                                        class="bg-white/95 border border-slate-200 rounded-xl overflow-hidden shadow-md">
+                                        <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/70">
                                             <div
                                                 class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                                 <h3 class="font-semibold text-gray-900">EPIs en posesión</h3>
@@ -367,7 +433,7 @@
                                                     <div>
                                                         <div class="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 cursor-pointer"
                                                             @click="toggleEpiGroup(g.epi.id)"
-                                                            :class="expandedEpiId === Number(g.epi.id) ? 'bg-gray-50' : ''">
+                                                            :class="expandedEpiId === Number(g.epi.id) ? 'bg-slate-50' : ''">
                                                             <div class="flex items-center gap-4 min-w-0">
                                                                 <div
                                                                     class="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -408,11 +474,11 @@
 
                                                         <div :id="`epi-details-${g.epi.id}`"
                                                             x-show="expandedEpiId === Number(g.epi.id)" x-transition
-                                                            class="px-4 sm:px-6 pb-6 mt-2 border-t border-gray-100 bg-gray-50">
+                                                            class="px-4 sm:px-6 py-4 border-t border-gray-300 bg-gray-300">
                                                             <div
-                                                                class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                                                                class="bg-white/95 border border-slate-200 shadow-sm rounded-xl overflow-hidden mt-2">
                                                                 <div
-                                                                    class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                                                                    class="px-4 py-3 border-b border-gray-300 flex items-center justify-between">
                                                                     <p class="text-sm font-semibold text-gray-900">
                                                                         Historial de asignaciones</p>
                                                                     <p class="text-xs text-gray-600">
@@ -446,24 +512,27 @@
                                                                                             class="text-green-700 font-medium">En
                                                                                             posesión</span>
                                                                                     </template>
-                                                                                    <template x-if="a.notas">
-                                                                                        <span class="mx-1">·</span>
-                                                                                        <span class="truncate"
-                                                                                            x-text="`Notas: ${a.notas}`"></span>
-                                                                                    </template>
+                                                                                    <span class="mx-1">-</span>
+                                                                                    <span class="truncate"
+                                                                                        x-text="`Notas: ${a.notas || 'Sin notas'}`"></span>
                                                                                 </p>
                                                                             </div>
 
                                                                             <template x-if="!a.devuelto_en">
                                                                                 <div class="flex gap-2 flex-wrap">
                                                                                     <button type="button"
-                                                                                        class="px-2 py-1 rounded-lg bg-white border border-gray-300 text-gray-900 hover:bg-gray-100 disabled:opacity-50"
+                                                                                        class="px-2 py-1 rounded-lg bg-white border border-gray-300 text-gray-900 hover:bg-gray-200 disabled:opacity-50"
                                                                                         :disabled="saving"
                                                                                         @click.stop="openFechaModal(a, 'entrega')">
-                                                                                        <svg viewBox="0 0 24 24"
-                                                                                            class="h-7 w-7"
-                                                                                            fill="none"
-                                                                                            xmlns="http://www.w3.org/2000/svg">
+                                                                                        <svg class="h-6 w-6"
+                                                                                            fill="#000000"
+                                                                                            viewBox="0 0 122.88 122.88"
+                                                                                            version="1.1"
+                                                                                            id="Layer_1"
+                                                                                            xmlns="http://www.w3.org/2000/svg"
+                                                                                            xmlns:xlink="http://www.w3.org/1999/xlink"
+                                                                                            style="enable-background:new 0 0 122.88 122.88"
+                                                                                            xml:space="preserve">
                                                                                             <g id="SVGRepo_bgCarrier"
                                                                                                 stroke-width="0"></g>
                                                                                             <g id="SVGRepo_tracerCarrier"
@@ -472,38 +541,11 @@
                                                                                             </g>
                                                                                             <g
                                                                                                 id="SVGRepo_iconCarrier">
-                                                                                                <path
-                                                                                                    d="M6.94028 2C7.35614 2 7.69326 2.32421 7.69326 2.72414V4.18487C8.36117 4.17241 9.10983 4.17241 9.95219 4.17241H13.9681C14.8104 4.17241 15.5591 4.17241 16.227 4.18487V2.72414C16.227 2.32421 16.5641 2 16.98 2C17.3958 2 17.733 2.32421 17.733 2.72414V4.24894C19.178 4.36022 20.1267 4.63333 20.8236 5.30359C21.5206 5.97385 21.8046 6.88616 21.9203 8.27586L22 9H2.92456H2V8.27586C2.11571 6.88616 2.3997 5.97385 3.09665 5.30359C3.79361 4.63333 4.74226 4.36022 6.1873 4.24894V2.72414C6.1873 2.32421 6.52442 2 6.94028 2Z"
-                                                                                                    fill="#000000">
-                                                                                                </path>
-                                                                                                <path opacity="0.5"
-                                                                                                    d="M21.9995 14.0001V12.0001C21.9995 11.161 21.9963 9.66527 21.9834 9H2.00917C1.99626 9.66527 1.99953 11.161 1.99953 12.0001V14.0001C1.99953 17.7713 1.99953 19.6569 3.1711 20.8285C4.34267 22.0001 6.22829 22.0001 9.99953 22.0001H13.9995C17.7708 22.0001 19.6564 22.0001 20.828 20.8285C21.9995 19.6569 21.9995 17.7713 21.9995 14.0001Z"
-                                                                                                    fill="#000000">
-                                                                                                </path>
-                                                                                                <path
-                                                                                                    d="M18 17C18 17.5523 17.5523 18 17 18C16.4477 18 16 17.5523 16 17C16 16.4477 16.4477 16 17 16C17.5523 16 18 16.4477 18 17Z"
-                                                                                                    fill="#000000">
-                                                                                                </path>
-                                                                                                <path
-                                                                                                    d="M18 13C18 13.5523 17.5523 14 17 14C16.4477 14 16 13.5523 16 13C16 12.4477 16.4477 12 17 12C17.5523 12 18 12.4477 18 13Z"
-                                                                                                    fill="#000000">
-                                                                                                </path>
-                                                                                                <path
-                                                                                                    d="M13 17C13 17.5523 12.5523 18 12 18C11.4477 18 11 17.5523 11 17C11 16.4477 11.4477 16 12 16C12.5523 16 13 16.4477 13 17Z"
-                                                                                                    fill="#000000">
-                                                                                                </path>
-                                                                                                <path
-                                                                                                    d="M13 13C13 13.5523 12.5523 14 12 14C11.4477 14 11 13.5523 11 13C11 12.4477 11.4477 12 12 12C12.5523 12 13 12.4477 13 13Z"
-                                                                                                    fill="#000000">
-                                                                                                </path>
-                                                                                                <path
-                                                                                                    d="M8 17C8 17.5523 7.55228 18 7 18C6.44772 18 6 17.5523 6 17C6 16.4477 6.44772 16 7 16C7.55228 16 8 16.4477 8 17Z"
-                                                                                                    fill="#000000">
-                                                                                                </path>
-                                                                                                <path
-                                                                                                    d="M8 13C8 13.5523 7.55228 14 7 14C6.44772 14 6 13.5523 6 13C6 12.4477 6.44772 12 7 12C7.55228 12 8 12.4477 8 13Z"
-                                                                                                    fill="#000000">
-                                                                                                </path>
+                                                                                                <g>
+                                                                                                    <path
+                                                                                                        d="M81.61,4.73c0-2.61,2.58-4.73,5.77-4.73c3.19,0,5.77,2.12,5.77,4.73v20.72c0,2.61-2.58,4.73-5.77,4.73 c-3.19,0-5.77-2.12-5.77-4.73V4.73L81.61,4.73z M66.11,103.81c-0.34,0-0.61-1.43-0.61-3.2c0-1.77,0.27-3.2,0.61-3.2H81.9 c0.34,0,0.61,1.43,0.61,3.2c0,1.77-0.27,3.2-0.61,3.2H66.11L66.11,103.81z M15.85,67.09c-0.34,0-0.61-1.43-0.61-3.2 c0-1.77,0.27-3.2,0.61-3.2h15.79c0.34,0,0.61,1.43,0.61,3.2c0,1.77-0.27,3.2-0.61,3.2H15.85L15.85,67.09z M40.98,67.09 c-0.34,0-0.61-1.43-0.61-3.2c0-1.77,0.27-3.2,0.61-3.2h15.79c0.34,0,0.61,1.43,0.61,3.2c0,1.77-0.27,3.2-0.61,3.2H40.98 L40.98,67.09z M66.11,67.09c-0.34,0-0.61-1.43-0.61-3.2c0-1.77,0.27-3.2,0.61-3.2H81.9c0.34,0,0.61,1.43,0.61,3.2 c0,1.77-0.27,3.2-0.61,3.2H66.11L66.11,67.09z M91.25,67.09c-0.34,0-0.61-1.43-0.61-3.2c0-1.77,0.27-3.2,0.61-3.2h15.79 c0.34,0,0.61,1.43,0.61,3.2c0,1.77-0.27,3.2-0.61,3.2H91.25L91.25,67.09z M15.85,85.45c-0.34,0-0.61-1.43-0.61-3.2 c0-1.77,0.27-3.2,0.61-3.2h15.79c0.34,0,0.61,1.43,0.61,3.2c0,1.77-0.27,3.2-0.61,3.2H15.85L15.85,85.45z M40.98,85.45 c-0.34,0-0.61-1.43-0.61-3.2c0-1.77,0.27-3.2,0.61-3.2h15.79c0.34,0,0.61,1.43,0.61,3.2c0,1.77-0.27,3.2-0.61,3.2H40.98 L40.98,85.45z M66.11,85.45c-0.34,0-0.61-1.43-0.61-3.2c0-1.77,0.27-3.2,0.61-3.2H81.9c0.34,0,0.61,1.43,0.61,3.2 c0,1.77-0.27,3.2-0.61,3.2H66.11L66.11,85.45z M91.25,85.45c-0.34,0-0.61-1.43-0.61-3.2c0-1.77,0.27-3.2,0.61-3.2h15.79 c0.34,0,0.61,1.43,0.61,3.2c0,1.77-0.27,3.2-0.61,3.2H91.25L91.25,85.45z M15.85,103.81c-0.34,0-0.61-1.43-0.61-3.2 c0-1.77,0.27-3.2,0.61-3.2h15.79c0.34,0,0.61,1.43,0.61,3.2c0,1.77-0.27,3.2-0.61,3.2H15.85L15.85,103.81z M40.98,103.81 c-0.34,0-0.61-1.43-0.61-3.2c0-1.77,0.27-3.2,0.61-3.2h15.79c0.34,0,0.61,1.43,0.61,3.2c0,1.77-0.27,3.2-0.61,3.2H40.98 L40.98,103.81z M29.61,4.73c0-2.61,2.58-4.73,5.77-4.73s5.77,2.12,5.77,4.73v20.72c0,2.61-2.58,4.73-5.77,4.73 s-5.77-2.12-5.77-4.73V4.73L29.61,4.73z M6.4,45.32h110.07V21.47c0-0.8-0.33-1.53-0.86-2.07c-0.53-0.53-1.26-0.86-2.07-0.86H103 c-1.77,0-3.2-1.43-3.2-3.2c0-1.77,1.43-3.2,3.2-3.2h10.55c2.57,0,4.9,1.05,6.59,2.74c1.69,1.69,2.74,4.02,2.74,6.59v27.06v65.03 c0,2.57-1.05,4.9-2.74,6.59c-1.69,1.69-4.02,2.74-6.59,2.74H9.33c-2.57,0-4.9-1.05-6.59-2.74C1.05,118.45,0,116.12,0,113.55V48.52 V21.47c0-2.57,1.05-4.9,2.74-6.59c1.69-1.69,4.02-2.74,6.59-2.74H20.6c1.77,0,3.2,1.43,3.2,3.2c0,1.77-1.43,3.2-3.2,3.2H9.33 c-0.8,0-1.53,0.33-2.07,0.86c-0.53,0.53-0.86,1.26-0.86,2.07V45.32L6.4,45.32z M116.48,51.73H6.4v61.82c0,0.8,0.33,1.53,0.86,2.07 c0.53,0.53,1.26,0.86,2.07,0.86h104.22c0.8,0,1.53-0.33,2.07-0.86c0.53-0.53,0.86-1.26,0.86-2.07V51.73L116.48,51.73z M50.43,18.54 c-1.77,0-3.2-1.43-3.2-3.2c0-1.77,1.43-3.2,3.2-3.2h21.49c1.77,0,3.2,1.43,3.2,3.2c0,1.77-1.43,3.2-3.2,3.2H50.43L50.43,18.54z">
+                                                                                                    </path>
+                                                                                                </g>
                                                                                             </g>
                                                                                         </svg>
                                                                                     </button>
@@ -517,7 +559,7 @@
                                                                             </template>
                                                                             <template x-if="a.devuelto_en">
                                                                                 <button type="button"
-                                                                                    class="px-2 py-1 rounded-lg bg-white border border-gray-300 text-gray-900 hover:bg-gray-100 disabled:opacity-50"
+                                                                                    class="px-2 py-1 rounded-lg bg-white border border-gray-300 text-gray-900 hover:bg-gray-200 disabled:opacity-50"
                                                                                     :disabled="saving"
                                                                                     @click.stop="openFechaModal(a, 'devolucion')">
                                                                                     <svg viewBox="0 0 24 24"
@@ -576,7 +618,7 @@
                     <!-- Tab catálogo -->
                     <template x-if="modalTab === 'catalogo'">
                         <div class="space-y-6">
-                            <div class="bg-white border border-gray-200 rounded-xl p-4">
+                            <div class="bg-white/95 border border-slate-200 shadow-sm rounded-xl p-4">
                                 <p class="text-xs uppercase tracking-wide text-gray-500">Crear EPI</p>
                                 <div class="mt-3 grid grid-cols-1 sm:grid-cols-6 gap-3">
                                     <div class="sm:col-span-2">
@@ -625,8 +667,8 @@
                                 </div>
                             </div>
 
-                            <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                                <div class="px-6 py-4 border-b border-gray-100">
+                            <div class="bg-white/95 border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+                                <div class="px-6 py-4 border-b border-gray-300">
                                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <h3 class="font-semibold text-gray-900">EPIs en base de datos</h3>
                                         <div class="flex gap-2">
@@ -714,7 +756,7 @@
                                                 </div>
 
                                                 <div x-cloak x-show="editOpen"
-                                                    class="mt-4 bg-gray-50 border border-gray-200 rounded-xl p-4">
+                                                    class="mt-4 bg-slate-50 border border-slate-200 rounded-xl p-4">
                                                     <div class="grid grid-cols-1 sm:grid-cols-6 gap-3">
                                                         <div class="sm:col-span-2">
                                                             <label
@@ -783,34 +825,35 @@
             <div class="absolute inset-0 bg-black/50" @click="closeRecentModal()"></div>
 
             <div
-                class="relative w-full sm:max-w-3xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col">
-                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                class="relative w-full sm:max-w-3xl bg-white/95 backdrop-blur border border-slate-200 rounded-t-2xl sm:rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.35)] overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col">
+                <div
+                    class="px-6 py-4 border-b border-slate-200 bg-gradient-to-tr from-gray-700 to-gray-800 flex items-center justify-between">
                     <div class="min-w-0">
-                        <p class="text-xs uppercase tracking-wide text-gray-500">Historial de EPIs</p>
-                        <p class="font-semibold text-gray-900 truncate"
+                        <p class="text-xs uppercase tracking-wide text-gray-200">Historial de EPIs</p>
+                        <p class="font-semibold text-white truncate"
                             x-text="recentModalUser?.nombre_completo || 'Usuario'"></p>
                     </div>
 
-                    <button type="button" class="p-2 rounded-lg hover:bg-gray-100" @click="closeRecentModal()"
-                        aria-label="Cerrar">
-                        <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button type="button" class="p-2 rounded-lg shadow-sm hover:shadow-md"
+                        @click="closeRecentModal()" aria-label="Cerrar">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="white" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
-                <div class="px-6 py-3 border-b border-gray-100 flex items-center justify-between">
+                <div class="px-6 py-3 border-b border-gray-300 flex items-center justify-between">
                     <p class="text-sm text-gray-700" x-text="recentModalSummary"></p>
                     <div class="flex items-center gap-2">
                         <button type="button"
-                            class="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-900 text-sm disabled:opacity-50"
+                            class="px-3 py-1.5 rounded-lg bg-gradient-to-tr from-gray-300 to-gray-400 hover:from-gray-400 hover:to-gray-500 text-sm disabled:opacity-50"
                             :disabled="recentModalLoading || recentModalPage <= 1"
                             @click="loadRecentModalPage(recentModalPage - 1)">
                             Anterior
                         </button>
                         <button type="button"
-                            class="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-900 text-sm disabled:opacity-50"
+                            class="px-3 py-1.5 rounded-lg bg-gradient-to-tr from-gray-300 to-gray-400 hover:from-gray-400 hover:to-gray-500 text-sm disabled:opacity-50"
                             :disabled="recentModalLoading || recentModalPage >= recentModalLastPage"
                             @click="loadRecentModalPage(recentModalPage + 1)">
                             Siguiente
@@ -829,7 +872,8 @@
 
                     <div class="space-y-3" x-show="!recentModalLoading && recentModalItems.length > 0">
                         <template x-for="a in recentModalItems" :key="a.id">
-                            <div class="p-4 border border-gray-200 rounded-xl flex items-center gap-4">
+                            <div
+                                class="p-4 border border-slate-200 rounded-xl hover:bg-gray-200 flex items-center gap-4">
                                 <div
                                     class="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
                                     <template x-if="a.epi?.imagen_url">
@@ -844,10 +888,9 @@
                                 <div class="min-w-0 flex-1">
                                     <p class="text-sm font-semibold text-gray-900 truncate"
                                         x-text="a.epi?.nombre || 'EPI'"></p>
-                                    <template x-if="a.notas">
-                                        <p class="text-xs text-gray-600 truncate mt-0.5" x-text="`Nota: ${a.notas}`">
-                                        </p>
-                                    </template>
+                                    <p class="text-xs text-gray-600 truncate mt-0.5"
+                                        x-text="`Notas: ${a.notas || 'Sin notas'}`">
+                                    </p>
                                     <p class="text-xs text-gray-600 mt-1">
                                         <span x-text="`Entregado: ${formatDate(a.fecha_asignacion)}`"></span>
                                         <span class="mx-1">·</span>
@@ -877,7 +920,7 @@
 
             <div
                 class="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
-                <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div class="px-5 py-4 border-b border-gray-300 flex items-center justify-between">
                     <div class="min-w-0">
                         <p class="text-xs uppercase tracking-wide text-gray-500">EPIs</p>
                         <p class="font-semibold text-gray-900 truncate"
@@ -885,7 +928,7 @@
                         </p>
                     </div>
 
-                    <button type="button" class="p-2 rounded-lg hover:bg-gray-100" @click="closeFechaModal()"
+                    <button type="button" class="p-2 rounded-lg hover:bg-gray-200" @click="closeFechaModal()"
                         aria-label="Cerrar">
                         <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -895,7 +938,7 @@
                 </div>
 
                 <div class="p-5 space-y-4 overflow-y-auto">
-                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
                         <p class="text-sm text-gray-700">Fecha actual:</p>
                         <p class="text-lg font-semibold text-gray-900" x-text="editFechaAnterior || 'N/D'"></p>
                     </div>
@@ -910,7 +953,7 @@
                     </div>
                 </div>
 
-                <div class="px-5 py-4 border-t border-gray-100 flex justify-end gap-3">
+                <div class="px-5 py-4 border-t border-gray-300 flex justify-end gap-3">
                     <button type="button" class="px-4 py-2 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200"
                         @click="closeFechaModal()">
                         Cancelar
@@ -931,12 +974,12 @@
 
             <div
                 class="relative w-full sm:max-w-4xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col">
-                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div class="px-6 py-4 border-b border-gray-300 flex items-center justify-between">
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500">Compras</p>
                         <p class="font-semibold text-gray-900">Compras de EPIs</p>
                     </div>
-                    <button type="button" class="p-2 rounded-lg hover:bg-gray-100" @click="closeCompras()"
+                    <button type="button" class="p-2 rounded-lg hover:bg-gray-200" @click="closeCompras()"
                         aria-label="Cerrar">
                         <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -945,7 +988,7 @@
                     </button>
                 </div>
 
-                <div class="px-6 py-3 border-b border-gray-100 flex items-center justify-between">
+                <div class="px-6 py-3 border-b border-gray-300 flex items-center justify-between">
                     <p class="text-sm text-gray-700"
                         x-text="comprasLoading ? 'Cargando…' : `${compras.length} compras`"></p>
                     <button type="button" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
@@ -954,7 +997,7 @@
                     </button>
                 </div>
 
-                <div class="px-6 py-4 border-b border-gray-100">
+                <div class="px-6 py-4 border-b border-gray-300">
                     <div class="grid grid-cols-1 sm:grid-cols-6 gap-3">
                         <div class="sm:col-span-2">
                             <label class="block text-xs font-medium text-gray-700 mb-1">Fecha (día)</label>
@@ -972,14 +1015,14 @@
                                     class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
 
                                 <div x-show="comprasFilterEpiSuggestionsOpen"
-                                    class="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                                    class="absolute z-50 mt-2 w-full bg-white/95 border border-slate-200 shadow-sm rounded-xl shadow-xl overflow-hidden">
                                     <div class="max-h-80 overflow-y-auto">
                                         <template x-if="comprasFilterEpiSuggestions.length === 0">
                                             <div class="p-4 text-sm text-gray-600">Sin coincidencias.</div>
                                         </template>
                                         <template x-for="e in comprasFilterEpiSuggestions" :key="e.id">
                                             <button type="button"
-                                                class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3"
+                                                class="w-full text-left px-4 py-3 hover:bg-gray-200 flex items-center gap-3"
                                                 @click="selectComprasFilterEpi(e)">
                                                 <div
                                                     class="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -1038,7 +1081,7 @@
                         <template x-for="c in compras" :key="c.id">
                             <div class="p-4 border rounded-xl"
                                 :class="c.items?.some(it => it.precio_unitario === null || it.precio_unitario === undefined ||
-                                    it.precio_unitario === '') ? 'border-yellow-400' : 'border-gray-200'">
+                                    it.precio_unitario === '') ? 'border-yellow-400' : 'border-slate-200'">
                                 <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                                     <div class="min-w-0">
                                         <p class="text-sm font-semibold text-gray-900 truncate"
@@ -1093,14 +1136,14 @@
 
             <div
                 class="relative w-full sm:max-w-5xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col">
-                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div class="px-6 py-4 border-b border-gray-300 flex items-center justify-between">
                     <div class="min-w-0">
                         <p class="text-xs uppercase tracking-wide text-gray-500"
                             x-text="compraMode === 'create' ? 'Nueva compra' : 'Editar compra'"></p>
                         <p class="font-semibold text-gray-900 truncate"
                             x-text="compraMode === 'create' ? 'Hacer compra' : `Compra #${compraId}`"></p>
                     </div>
-                    <button type="button" class="p-2 rounded-lg hover:bg-gray-100" @click="closeCompraModal()"
+                    <button type="button" class="p-2 rounded-lg hover:bg-gray-200" @click="closeCompraModal()"
                         aria-label="Cerrar">
                         <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -1110,7 +1153,7 @@
                 </div>
 
                 <div class="p-6 overflow-y-auto space-y-6">
-                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <p class="text-sm font-semibold text-gray-900">Añadir EPIs a la compra</p>
                             <label class="inline-flex items-center gap-2">
@@ -1131,14 +1174,14 @@
                                         class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
 
                                     <div x-show="compraEpiSuggestionsOpen"
-                                        class="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                                        class="absolute z-50 mt-2 w-full bg-white/95 border border-slate-200 shadow-sm rounded-xl shadow-xl overflow-hidden">
                                         <div class="max-h-80 overflow-y-auto">
                                             <template x-if="compraEpiSuggestions.length === 0">
                                                 <div class="p-4 text-sm text-gray-600">Sin coincidencias.</div>
                                             </template>
                                             <template x-for="e in compraEpiSuggestions" :key="e.id">
                                                 <button type="button"
-                                                    class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3"
+                                                    class="w-full text-left px-4 py-3 hover:bg-gray-200 flex items-center gap-3"
                                                     @click="addCompraItem(e)">
                                                     <div
                                                         class="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -1181,8 +1224,8 @@
                         </div>
                     </div>
 
-                    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div class="bg-white/95 border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-300 flex items-center justify-between">
                             <div>
                                 <h3 class="font-semibold text-gray-900">Items</h3>
                                 <p class="text-xs text-gray-600 mt-1">
@@ -1328,6 +1371,8 @@
 
                 agendaEpiQuery: '',
                 agendaEpiDebounceId: null,
+                agendaEmpresaId: '',
+                agendaCategoriaId: '',
 
                 userEpiFilterQuery: '',
 
@@ -1496,6 +1541,8 @@
                         u.email || '',
                         u.dni || '',
                         u.movil_personal || '',
+                        u.empresa?.nombre || '',
+                        u.categoria?.nombre || '',
                         this.digits(u.movil_personal || ''),
                     ].join(' | ');
                     u._hay = this.normalize(parts);
@@ -1543,6 +1590,21 @@
                     }, 300);
                 },
 
+                onAgendaFiltersChange() {
+                    this.refreshUsers();
+                },
+
+                resetAgendaFilters() {
+                    if (this.agendaEpiDebounceId) {
+                        clearTimeout(this.agendaEpiDebounceId);
+                        this.agendaEpiDebounceId = null;
+                    }
+                    this.agendaEpiQuery = '';
+                    this.agendaEmpresaId = '';
+                    this.agendaCategoriaId = '';
+                    this.refreshUsers();
+                },
+
                 async refreshUsers() {
                     this.loadingUsers = true;
                     try {
@@ -1550,6 +1612,10 @@
                         const url = new URL(baseUrl, window.location.origin);
                         const epi = (this.agendaEpiQuery || '').trim();
                         if (epi) url.searchParams.set('epi', epi);
+                        const empresa = (this.agendaEmpresaId || '').toString().trim();
+                        if (empresa) url.searchParams.set('empresa_id', empresa);
+                        const categoria = (this.agendaCategoriaId || '').toString().trim();
+                        if (categoria) url.searchParams.set('categoria_id', categoria);
 
                         const res = await this.api(url.toString());
                         const data = await res.json();
@@ -1735,16 +1801,6 @@
                     if (!Number.isFinite(id)) return;
                     const isOpening = this.expandedEpiId !== id;
                     this.expandedEpiId = isOpening ? id : null;
-
-                    if (isOpening) {
-                        this.$nextTick?.(() => {
-                            const el = document.getElementById(`epi-details-${id}`);
-                            el?.scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'start'
-                            });
-                        });
-                    }
                 },
 
                 openRecentModal() {
