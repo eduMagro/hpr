@@ -245,6 +245,7 @@ class PaquetesTable extends Component
             'planilla.cliente',
             'nave',
             'ubicacion',
+            'user',
             'etiquetas'
         ]);
 

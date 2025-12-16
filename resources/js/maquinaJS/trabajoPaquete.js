@@ -257,9 +257,11 @@
     }
 
     async function postCreacion(data) {
+        console.log("📦 postCreacion llamada con data:", data);
         const codigo = data.codigo_paquete || data.paquete?.codigo || "N/D";
         const peso = calcularPesoTotal();
         const etiquetas = [...items.map((i) => i.id)];
+        console.log("📦 Etiquetas a actualizar:", etiquetas);
 
         // Detectar si es máquina tipo grúa
         const esGrua = (window.MAQUINA_TIPO_NOMBRE || "").toLowerCase() === "grua";
@@ -325,19 +327,11 @@
             })
         );
 
-        // ⭐ ACTUALIZAR DOM DIRECTAMENTE SI EL SISTEMA NO ESTÁ DISPONIBLE
-        if (typeof window.SistemaDOM === "undefined") {
-            console.log(
-                "⚠️ SistemaDOM no disponible, actualizando manualmente"
-            );
-            etiquetas.forEach((etiquetaId) => {
-                actualizarEtiquetaManual(etiquetaId, codigo);
-            });
-        } else {
-            console.log(
-                "✅ SistemaDOM detectado, se actualizará automáticamente"
-            );
-        }
+        // ⭐ ACTUALIZAR DOM DIRECTAMENTE - Siempre actualizar para mostrar código de paquete
+        console.log(`🔄 Actualizando DOM para ${etiquetas.length} etiquetas con paquete ${codigo}`);
+        etiquetas.forEach((etiquetaId) => {
+            actualizarEtiquetaManual(etiquetaId, codigo);
+        });
     }
 
     // ============================================================================
@@ -346,7 +340,42 @@
 
     function actualizarEtiquetaManual(etiquetaId, codigoPaquete) {
         const safeId = String(etiquetaId).replace(/\./g, "-");
-        const elemento = document.querySelector(`#etiqueta-${safeId}`);
+        console.log(`🔍 Buscando elemento para etiqueta: ${etiquetaId} (safe: ${safeId})`);
+
+        // 1. Buscar etiqueta individual por ID
+        let elemento = document.querySelector(`#etiqueta-${safeId}`);
+        if (elemento) {
+            console.log(`✅ Encontrado por ID: #etiqueta-${safeId}`);
+        }
+
+        // 2. Si no se encuentra, buscar por data-etiqueta-sub-id en el wrapper
+        if (!elemento) {
+            const wrapper = document.querySelector(`[data-etiqueta-sub-id="${etiquetaId}"]`);
+            if (wrapper) {
+                elemento = wrapper.querySelector('.etiqueta-card');
+                if (elemento) {
+                    console.log(`✅ Encontrado por data-etiqueta-sub-id en wrapper`);
+                }
+            }
+        }
+
+        // 3. Si tampoco, buscar en grupos que contengan esta etiqueta
+        if (!elemento) {
+            const grupos = document.querySelectorAll('[data-etiquetas-sub-ids]');
+            console.log(`🔍 Buscando en ${grupos.length} grupos...`);
+            for (const grupo of grupos) {
+                try {
+                    const etiquetasEnGrupo = JSON.parse(grupo.dataset.etiquetasSubIds || '[]');
+                    if (etiquetasEnGrupo.includes(etiquetaId)) {
+                        elemento = grupo;
+                        console.log(`✅ Etiqueta ${etiquetaId} encontrada en grupo con ${etiquetasEnGrupo.length} etiquetas`);
+                        break;
+                    }
+                } catch (e) {
+                    console.warn(`⚠️ Error parseando etiquetas del grupo:`, e);
+                }
+            }
+        }
 
         if (!elemento) {
             console.warn(`❌ No se encontró elemento: ${etiquetaId}`);
@@ -387,21 +416,14 @@
             card.style.background = "#e3e4FA";
         }
 
-        // 7. Añadir info del paquete
-        const h3 = elemento.querySelector("h3");
-        if (h3 && !elemento.querySelector(".paquete-info")) {
-            const paqueteInfo = document.createElement("div");
-            paqueteInfo.className =
-                "paquete-info text-sm font-semibold mt-2 no-print";
-            paqueteInfo.style.cssText =
-                "display: flex; align-items: center; gap: 0.25rem; color: #7c3aed; font-size: 0.875rem;";
-            paqueteInfo.innerHTML = `
-                <svg style="width: 1rem; height: 1rem;" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
-                </svg>
-                <span>Paquete: ${codigoPaquete}</span>
-            `;
-            h3.parentNode.insertBefore(paqueteInfo, h3.nextSibling);
+        // 7. Actualizar código de paquete inline (al lado del código de etiqueta)
+        const paqueteCodigoSpan = elemento.querySelector(".paquete-codigo");
+        if (paqueteCodigoSpan) {
+            paqueteCodigoSpan.textContent = `(${codigoPaquete})`;
+            paqueteCodigoSpan.style.display = "inline";
+            console.log(`✅ Código de paquete actualizado: (${codigoPaquete})`);
+        } else {
+            console.warn(`⚠️ No se encontró span .paquete-codigo en elemento`);
         }
 
         // 8. Deshabilitar botones
@@ -627,6 +649,7 @@
                 let agregadas = 0;
                 let duplicadas = 0;
                 let errores = 0;
+                let motivosErrores = [];
 
                 for (const et of etiquetas) {
                     try {
@@ -634,6 +657,9 @@
 
                         if (!data.valida) {
                             errores++;
+                            if (data.motivo && !motivosErrores.includes(data.motivo)) {
+                                motivosErrores.push(data.motivo);
+                            }
                             continue;
                         }
 
@@ -645,6 +671,7 @@
                         }
                     } catch (err) {
                         errores++;
+                        console.error("Error validando etiqueta:", et.id, err);
                     }
                 }
 
@@ -668,10 +695,18 @@
                         text: `Todas las etiquetas del grupo ya están en el carro.`,
                     });
                 } else {
+                    // Mostrar motivos específicos de por qué las etiquetas no son válidas
+                    const motivosHtml = motivosErrores.length > 0
+                        ? `<ul class="text-left mt-2 text-sm">${motivosErrores.map(m => `<li>• ${m}</li>`).join('')}</ul>`
+                        : '';
+
                     await Swal.fire({
                         icon: "warning",
                         title: "No se añadieron etiquetas",
-                        text: "Las etiquetas del grupo no son válidas para añadir al carro.",
+                        html: `
+                            <p>Las etiquetas del grupo no son válidas para añadir al carro.</p>
+                            ${motivosHtml}
+                        `,
                     });
                 }
             }

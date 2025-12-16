@@ -141,11 +141,23 @@ function initTrabajoEtiqueta() {
             (window.MAQUINA_CODIGO || "").toUpperCase() === "SL28";
         const esCortadoraManual =
             (window.MAQUINA_TIPO_NOMBRE || "").toLowerCase() === "cortadora_manual";
+        const esCortadoraDobladoraBarra =
+            (window.MAQUINA_TIPO_NOMBRE || "").toLowerCase() === "cortadora_dobladora_barra";
+
+        console.log("📋 [TrabajoEtiqueta] Tipo máquina:", {
+            MAQUINA_TIPO: window.MAQUINA_TIPO,
+            MAQUINA_CODIGO: window.MAQUINA_CODIGO,
+            MAQUINA_TIPO_NOMBRE: window.MAQUINA_TIPO_NOMBRE,
+            esMaquinaBarra,
+            esSL28,
+            esCortadoraManual,
+            esCortadoraDobladoraBarra
+        });
 
         // ────────────────────────────────────────────────
-        //  A) MÁQUINAS DE BARRA (SL28 O CORTADORA MANUAL) → VÍA PATRONES (SYNTAX LINE)
+        //  A) MÁQUINAS DE BARRA (SL28, CORTADORA MANUAL O CORTADORA DOBLADORA BARRA) → VÍA PATRONES (SYNTAX LINE)
         // ────────────────────────────────────────────────
-        if ((esMaquinaBarra && esSL28) || esCortadoraManual) {
+        if ((esMaquinaBarra && esSL28) || esCortadoraManual || esCortadoraDobladoraBarra) {
             // Si ya está fabricando (segundo clic), NO pedir desperdicio
             if (esFabricando) {
                 // Intentar usar decisión guardada
@@ -196,19 +208,28 @@ function initTrabajoEtiqueta() {
             while (true) {
                 let decision;
                 try {
+                    console.log("📋 [TrabajoEtiqueta] Llamando a mejorCorteSimple...");
                     decision = await Cortes.mejorCorteSimple(
                         id,
                         diametro,
                         csrfToken
                     );
+                    console.log("📋 [TrabajoEtiqueta] Decisión recibida:", decision);
                 } catch (err) {
+                    console.error("📋 [TrabajoEtiqueta] Error en mejorCorteSimple:", err);
                     showErrorAlert(err);
                     return;
                 }
 
-                if (!decision) return;
+                if (!decision) {
+                    console.log("📋 [TrabajoEtiqueta] Sin decisión, saliendo...");
+                    return;
+                }
+
+                console.log("📋 [TrabajoEtiqueta] Acción:", decision.accion);
 
                 if (decision.accion === "optimizar") {
+                    console.log("📋 [TrabajoEtiqueta] Entrando en flujo de optimización...");
                     let outcome;
                     try {
                         outcome = await Cortes.mejorCorteOptimizado(
@@ -387,38 +408,115 @@ function initTrabajoEtiqueta() {
         // ────────────────────────────────────────────────
         if (estadoActual === "pendiente" && necesitaAsignarProducto && primeraEtiquetaId) {
             try {
-                // Mostrar modal de selección de producto usando la primera etiqueta
-                const decision = await Cortes.mejorCorteSimple(primeraEtiquetaId, diametro, csrfToken);
+                // Bucle para manejar "volver" desde patrones optimizados
+                while (true) {
+                    // Mostrar modal de selección de producto usando la primera etiqueta
+                    const decision = await Cortes.mejorCorteSimple(primeraEtiquetaId, diametro, csrfToken);
 
-                if (!decision) {
-                    return; // Usuario canceló
+                    if (!decision) {
+                        return; // Usuario canceló
+                    }
+
+                    // ═══════════════════════════════════════════════════════════════════
+                    // CASO: Usuario eligió OPTIMIZAR → Mostrar patrones optimizados
+                    // ═══════════════════════════════════════════════════════════════════
+                    if (decision.accion === "optimizar") {
+                        const outcome = await Cortes.mejorCorteOptimizado(
+                            primeraEtiquetaId,
+                            diametro,
+                            null, // Sin patrones previos, que los calcule
+                            csrfToken
+                        );
+
+                        if (outcome === "volver") {
+                            continue; // Volver al modal simple
+                        }
+
+                        if (!outcome || outcome.accion !== "fabricar") {
+                            return; // Usuario canceló o cerró
+                        }
+
+                        // Fabricar con patrón optimizado
+                        const desperdicioEstimadoCm = outcome.patronInfo?.desperdicio_cm || 0;
+                        let coladasRecibidas = null;
+
+                        const resultado = await Cortes.enviarAFabricacionOptimizada({
+                            longitudBarraCm: outcome.longitudBarraCm,
+                            etiquetas: outcome.etiquetas,
+                            csrfToken,
+                            etiquetaId: primeraEtiquetaId,
+                            desperdicioEstimadoCm,
+                            onUpdate: (id, data) => {
+                                if (data.producto_n_colada) {
+                                    coladasRecibidas = {
+                                        colada1: data.producto_n_colada,
+                                        colada2: data.producto2_n_colada || null
+                                    };
+                                }
+                                actualizarEstadoVisualGrupo(grupoCard, "fabricando", grupoId, coladasRecibidas);
+                            },
+                            pedirDesperdicio: true,
+                        });
+
+                        if (resultado?.cancelled) {
+                            continue; // Volver al inicio si canceló desperdicio
+                        }
+
+                        actualizarEstadoVisualGrupo(grupoCard, "fabricando", grupoId, coladasRecibidas);
+                        showAlert("info", "Fabricando", `Grupo iniciado con patrón optimizado`);
+                        return;
+                    }
+
+                    // ═══════════════════════════════════════════════════════════════════
+                    // CASO: Usuario eligió FABRICAR PATRÓN SIMPLE
+                    // ═══════════════════════════════════════════════════════════════════
+                    if (decision.accion === "fabricar_patron_simple") {
+                        const longitudBarraCm = Math.round(Number(decision.longitud_m || 0) * 100);
+                        if (!longitudBarraCm) {
+                            showErrorAlert("Longitud de barra no válida.");
+                            return;
+                        }
+
+                        const desperdicioEstimadoCm = decision.patronInfo?.desperdicio_cm || decision.patron?.sobra_cm || 0;
+
+                        // Enviar fabricación para TODAS las etiquetas del grupo
+                        const etiquetasParaFabricar = etiquetasSubIds.map(id => ({
+                            etiqueta_sub_id: id,
+                            patron_letras: decision.patron_letras || ""
+                        }));
+
+                        let coladasRecibidas = null;
+
+                        const resultado = await Cortes.enviarAFabricacionOptimizada({
+                            longitudBarraCm,
+                            etiquetas: etiquetasParaFabricar,
+                            csrfToken,
+                            etiquetaId: primeraEtiquetaId,
+                            desperdicioEstimadoCm,
+                            onUpdate: (id, data) => {
+                                if (data.producto_n_colada) {
+                                    coladasRecibidas = {
+                                        colada1: data.producto_n_colada,
+                                        colada2: data.producto2_n_colada || null
+                                    };
+                                }
+                                actualizarEstadoVisualGrupo(grupoCard, "fabricando", grupoId, coladasRecibidas);
+                            },
+                            pedirDesperdicio: true,
+                        });
+
+                        if (resultado?.cancelled) {
+                            continue; // Volver al inicio si canceló desperdicio
+                        }
+
+                        actualizarEstadoVisualGrupo(grupoCard, "fabricando", grupoId, coladasRecibidas);
+                        showAlert("info", "Fabricando", `Grupo iniciado (${etiquetasSubIds.length} etiquetas)`);
+                        return;
+                    }
+
+                    // Si llegamos aquí, algo salió mal
+                    return;
                 }
-
-                // Enviar fabricación optimizada para TODAS las etiquetas del grupo
-                const etiquetasParaFabricar = etiquetasSubIds.map(id => ({
-                    etiqueta_sub_id: id,
-                    patron_letras: decision.patron?.patron_letras || ""
-                }));
-
-                const resultado = await Cortes.enviarAFabricacionOptimizada({
-                    longitudBarraCm: decision.longitudBarraCm,
-                    etiquetas: etiquetasParaFabricar,
-                    csrfToken,
-                    etiquetaId: primeraEtiquetaId, // Para el callback de actualización
-                    onUpdate: (id, data) => {
-                        // Actualizar estado visual del grupo
-                        actualizarEstadoVisualGrupo(grupoCard, "fabricando", grupoId);
-                    },
-                    pedirDesperdicio: true,
-                });
-
-                if (resultado?.cancelled) {
-                    return; // Usuario canceló en el desperdicio
-                }
-
-                // Actualizar estado visual del grupo sin reload
-                actualizarEstadoVisualGrupo(grupoCard, "fabricando", grupoId);
-                showAlert("info", "Fabricando", `Grupo iniciado (${etiquetasSubIds.length} etiquetas)`);
 
             } catch (err) {
                 showErrorAlert(err);
@@ -449,11 +547,18 @@ function initTrabajoEtiqueta() {
             const nuevoEstado = data.nuevo_estado || "actualizado";
             const etiquetasParaImprimir = data.imprimir_etiquetas || [];
 
-            // Actualizar estado visual sin reload
-            actualizarEstadoVisualGrupo(grupoCard, nuevoEstado, grupoId);
+            // Obtener coladas de la respuesta
+            const coladasRecibidas = {
+                colada1: data.producto_n_colada || null,
+                colada2: data.producto2_n_colada || null
+            };
+
+            // Actualizar estado visual sin reload (pasar coladas)
+            actualizarEstadoVisualGrupo(grupoCard, nuevoEstado, grupoId, coladasRecibidas);
 
             if (nuevoEstado === "fabricando") {
-                showAlert("info", "Fabricando", `Grupo iniciado (${data.etiquetas_actualizadas || 0} etiquetas)`);
+                const coladaInfo = coladasRecibidas.colada1 ? ` - Colada: ${coladasRecibidas.colada1}` : '';
+                showAlert("info", "Fabricando", `Grupo iniciado (${data.etiquetas_actualizadas || 0} etiquetas)${coladaInfo}`);
             } else if (nuevoEstado === "completada") {
                 showAlert("success", "¡Completado!", `Grupo completado (${data.etiquetas_actualizadas || 0} etiquetas)`);
             }
@@ -561,7 +666,7 @@ function initTrabajoEtiqueta() {
     }
 
     // Función auxiliar para actualizar el estado visual del grupo sin reload
-    function actualizarEstadoVisualGrupo(grupoCard, nuevoEstado, grupoId) {
+    function actualizarEstadoVisualGrupo(grupoCard, nuevoEstado, grupoId, coladas = null) {
         if (!grupoCard) return;
 
         // Actualizar clases CSS
@@ -578,6 +683,21 @@ function initTrabajoEtiqueta() {
         if (contenedorSvgId && elementosJson && typeof window.renderizarGrupoSVG === 'function') {
             try {
                 const elementos = JSON.parse(elementosJson);
+
+                // Si se recibieron coladas, actualizar los elementos con ellas
+                if (coladas) {
+                    elementos.forEach(elem => {
+                        elem.coladas = {
+                            colada1: coladas.colada1 || null,
+                            colada2: coladas.colada2 || null,
+                            colada3: null
+                        };
+                    });
+
+                    // Actualizar también el data-elementos para que persista
+                    grupoCard.dataset.elementos = JSON.stringify(elementos);
+                }
+
                 const grupoData = {
                     id: parseInt(contenedorSvgId),
                     etiqueta: { id: parseInt(contenedorSvgId) },

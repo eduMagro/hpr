@@ -2060,15 +2060,74 @@ window.abrirModalDividirElemento = function abrirModalDividirElemento(elementoId
 
     input.value = elementoId;
 
-    // Si no tenemos barras, buscar en elementosAgrupadosScript
+    // Buscar elemento en elementosAgrupadosScript o gruposResumenData
+    let elementoData = null;
     let barrasTotales = parseInt(barras) || 0;
-    if (barrasTotales === 0 && window.elementosAgrupadosScript) {
+
+    // Buscar en elementosAgrupadosScript
+    if (window.elementosAgrupadosScript) {
         for (const grupo of window.elementosAgrupadosScript) {
             if (grupo.elementos) {
                 const elem = grupo.elementos.find(e => String(e.id) === String(elementoId));
-                if (elem && elem.barras) {
-                    barrasTotales = parseInt(elem.barras) || 0;
+                if (elem) {
+                    elementoData = elem;
+                    if (elem.barras) {
+                        barrasTotales = parseInt(elem.barras) || 0;
+                    }
                     break;
+                }
+            }
+        }
+    }
+
+    // Si no se encontró, buscar en gruposResumenData
+    if (!elementoData && window.gruposResumenData) {
+        for (const grupo of window.gruposResumenData) {
+            if (grupo.elementos) {
+                const elem = grupo.elementos.find(e => String(e.id) === String(elementoId));
+                if (elem) {
+                    elementoData = elem;
+                    if (elem.barras) {
+                        barrasTotales = parseInt(elem.barras) || 0;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    // Verificar si el elemento está fabricado o pertenece a un paquete
+    const esFabricado = elementoData && elementoData.estado === 'fabricado';
+    const tienePaquete = elementoData && elementoData.paquete_id;
+    const deshabilitarCambioMaquina = esFabricado || tienePaquete;
+
+    // Actualizar estado del radio button "cambiar_maquina"
+    const radioCambiarMaquina = document.querySelector('input[name="accion_etiqueta"][value="cambiar_maquina"]');
+    const labelCambiarMaquina = radioCambiarMaquina?.closest('label');
+
+    if (radioCambiarMaquina) {
+        radioCambiarMaquina.disabled = deshabilitarCambioMaquina;
+
+        // Actualizar estilo visual del label
+        if (labelCambiarMaquina) {
+            if (deshabilitarCambioMaquina) {
+                labelCambiarMaquina.classList.add('opacity-50', 'cursor-not-allowed');
+                // Añadir tooltip explicativo
+                let motivo = esFabricado ? 'El elemento ya está fabricado' : 'El elemento pertenece a un paquete';
+                labelCambiarMaquina.setAttribute('title', motivo);
+            } else {
+                labelCambiarMaquina.classList.remove('opacity-50', 'cursor-not-allowed');
+                labelCambiarMaquina.removeAttribute('title');
+            }
+        }
+
+        // Si estaba seleccionado y ahora está deshabilitado, cambiar a dividir
+        if (deshabilitarCambioMaquina && radioCambiarMaquina.checked) {
+            const radioDividir = document.querySelector('input[name="accion_etiqueta"][value="dividir"]');
+            if (radioDividir) {
+                radioDividir.checked = true;
+                if (typeof toggleCamposDivision === 'function') {
+                    toggleCamposDivision();
                 }
             }
         }

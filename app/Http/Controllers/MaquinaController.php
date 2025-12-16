@@ -310,6 +310,7 @@ class MaquinaController extends Controller
                     'longitud'    => $e->longitud_cm,
                     'barras'      => $e->barras,
                     'figura'      => $e->figura,
+                    'paquete_id'  => $e->paquete_id,
                     // Incluimos las coladas para mostrarlas en la leyenda del SVG
                     'coladas'     => [
                         'colada1' => $e->producto ? $e->producto->n_colada : null,
@@ -468,6 +469,7 @@ class MaquinaController extends Controller
                     'barras' => $e->barras,
                     'figura' => $e->figura,
                     'etiqueta_sub_id' => $e->etiqueta_sub_id,
+                    'paquete_id' => $e->paquete_id,
                     'coladas' => [
                         'colada1' => $e->producto ? $e->producto->n_colada : null,
                         'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
@@ -504,6 +506,7 @@ class MaquinaController extends Controller
                     'longitud'    => $e->longitud_cm,
                     'barras'      => $e->barras,
                     'figura'      => $e->figura,
+                    'paquete_id'  => $e->paquete_id,
                     'coladas'     => [
                         'colada1' => $e->producto ? $e->producto->n_colada : null,
                         'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
@@ -1345,6 +1348,7 @@ class MaquinaController extends Controller
                     'longitud'    => $e->longitud_cm,
                     'barras'      => $e->barras,
                     'figura'      => $e->figura,
+                    'paquete_id'  => $e->paquete_id,
                     'coladas'     => [
                         'colada1' => $e->producto ? $e->producto->n_colada : null,
                         'colada2' => $e->producto2 ? $e->producto2->n_colada : null,

@@ -196,19 +196,28 @@ function initTrabajoEtiqueta() {
             while (true) {
                 let decision;
                 try {
+                    console.log("📋 [TrabajoEtiqueta] Llamando a mejorCorteSimple...");
                     decision = await Cortes.mejorCorteSimple(
                         id,
                         diametro,
                         csrfToken
                     );
+                    console.log("📋 [TrabajoEtiqueta] Decisión recibida:", decision);
                 } catch (err) {
+                    console.error("📋 [TrabajoEtiqueta] Error en mejorCorteSimple:", err);
                     showErrorAlert(err);
                     return;
                 }
 
-                if (!decision) return;
+                if (!decision) {
+                    console.log("📋 [TrabajoEtiqueta] Sin decisión, saliendo...");
+                    return;
+                }
+
+                console.log("📋 [TrabajoEtiqueta] Acción:", decision.accion);
 
                 if (decision.accion === "optimizar") {
+                    console.log("📋 [TrabajoEtiqueta] Entrando en flujo de optimización...");
                     let outcome;
                     try {
                         outcome = await Cortes.mejorCorteOptimizado(
@@ -351,6 +360,7 @@ function initTrabajoEtiqueta() {
         // Obtener estado actual del grupo
         const grupoCard = document.querySelector(`[data-grupo-id="${grupoId}"] .etiqueta-card`);
         const estadoActual = (grupoCard?.dataset?.estado || "pendiente").toLowerCase();
+        const diametro = parseInt(grupoCard?.dataset?.diametro) || 0;
 
         // Si ya está completada, no hacer nada
         if (["completada", "en-paquete", "empaquetada"].includes(estadoActual)) {
@@ -364,7 +374,79 @@ function initTrabajoEtiqueta() {
             return;
         }
 
-        // Llamar al endpoint del grupo
+        // Detectar tipo de máquina
+        const esMaquinaBarra = (window.MAQUINA_TIPO || "").toLowerCase() === "barra";
+        const esSL28 = (window.MAQUINA_CODIGO || "").toUpperCase() === "SL28";
+        const esCortadoraManual = (window.MAQUINA_TIPO_NOMBRE || "").toLowerCase() === "cortadora_manual";
+        const necesitaAsignarProducto = (esMaquinaBarra && esSL28) || esCortadoraManual;
+
+        // Obtener IDs de etiquetas del grupo
+        let etiquetasSubIds = [];
+        try {
+            etiquetasSubIds = JSON.parse(grupoCard?.dataset?.etiquetasSubIds || "[]");
+        } catch (e) {
+            console.warn("Error parseando etiquetas del grupo:", e);
+        }
+
+        const primeraEtiquetaId = grupoCard?.dataset?.primeraEtiquetaId;
+        const planillaId = grupoCard?.dataset?.planillaId || window.PLANILLA_ID;
+
+        // ────────────────────────────────────────────────
+        // PRIMER CLIC (pendiente -> fabricando): Asignar producto si es SL28/cortadora
+        // ────────────────────────────────────────────────
+        if (estadoActual === "pendiente" && necesitaAsignarProducto && primeraEtiquetaId) {
+            try {
+                // Mostrar modal de selección de producto usando la primera etiqueta
+                const decision = await Cortes.mejorCorteSimple(primeraEtiquetaId, diametro, csrfToken);
+
+                if (!decision) {
+                    return; // Usuario canceló
+                }
+
+                // Enviar fabricación optimizada para TODAS las etiquetas del grupo
+                const etiquetasParaFabricar = etiquetasSubIds.map(id => ({
+                    etiqueta_sub_id: id,
+                    patron_letras: decision.patron?.patron_letras || ""
+                }));
+
+                let coladasRecibidas = null;
+
+                const resultado = await Cortes.enviarAFabricacionOptimizada({
+                    longitudBarraCm: decision.longitudBarraCm,
+                    etiquetas: etiquetasParaFabricar,
+                    csrfToken,
+                    etiquetaId: primeraEtiquetaId, // Para el callback de actualización
+                    onUpdate: (id, data) => {
+                        // Capturar coladas de la respuesta del backend
+                        if (data.producto_n_colada) {
+                            coladasRecibidas = {
+                                colada1: data.producto_n_colada,
+                                colada2: data.producto2_n_colada || null
+                            };
+                        }
+                        // Actualizar estado visual del grupo con coladas
+                        actualizarEstadoVisualGrupo(grupoCard, "fabricando", grupoId, coladasRecibidas);
+                    },
+                    pedirDesperdicio: true,
+                });
+
+                if (resultado?.cancelled) {
+                    return; // Usuario canceló en el desperdicio
+                }
+
+                // Actualizar estado visual del grupo sin reload (con coladas si las hay)
+                actualizarEstadoVisualGrupo(grupoCard, "fabricando", grupoId, coladasRecibidas);
+                showAlert("info", "Fabricando", `Grupo iniciado (${etiquetasSubIds.length} etiquetas)`);
+
+            } catch (err) {
+                showErrorAlert(err);
+            }
+            return;
+        }
+
+        // ────────────────────────────────────────────────
+        // SEGUNDO CLIC (fabricando -> completada) o máquinas normales
+        // ────────────────────────────────────────────────
         try {
             const res = await fetch(`/api/etiquetas/resumir/${grupoId}/estado`, {
                 method: "PUT",
@@ -382,65 +464,28 @@ function initTrabajoEtiqueta() {
                 throw new Error(data.message || "Error al actualizar grupo");
             }
 
-            // Mostrar resultado según el nuevo estado
             const nuevoEstado = data.nuevo_estado || "actualizado";
             const etiquetasParaImprimir = data.imprimir_etiquetas || [];
+
+            // Actualizar estado visual sin reload
+            actualizarEstadoVisualGrupo(grupoCard, nuevoEstado, grupoId);
 
             if (nuevoEstado === "fabricando") {
                 showAlert("info", "Fabricando", `Grupo iniciado (${data.etiquetas_actualizadas || 0} etiquetas)`);
             } else if (nuevoEstado === "completada") {
-                const desagrupado = data.desagrupado ? " y desagrupado" : "";
-                showAlert("success", "¡Completado!", `Grupo completado${desagrupado} (${data.etiquetas_actualizadas || 0} etiquetas)`);
-            } else {
-                showAlert("success", "Actualizado", data.message);
+                showAlert("success", "¡Completado!", `Grupo completado (${data.etiquetas_actualizadas || 0} etiquetas)`);
             }
 
-            // Actualizar clase visual del grupo
-            if (grupoCard) {
-                ["pendiente", "fabricando", "fabricada", "completada", "en-paquete"].forEach((est) => {
-                    grupoCard.classList.remove(`estado-${est}`);
-                });
-                grupoCard.classList.add(`estado-${nuevoEstado}`);
-                grupoCard.dataset.estado = nuevoEstado;
-
-                // Re-renderizar SVG inmediatamente para actualizar el color de fondo
-                // El data-elementos está en el propio grupoCard
-                const contenedorSvgId = grupoCard.dataset.contenedorSvgId;
-                const elementosJson = grupoCard.dataset.elementos;
-
-                if (contenedorSvgId && elementosJson && typeof window.renderizarGrupoSVG === 'function') {
-                    try {
-                        const elementos = JSON.parse(elementosJson);
-                        const grupoData = {
-                            id: parseInt(contenedorSvgId),
-                            etiqueta: { id: parseInt(contenedorSvgId) },
-                            elementos: elementos
-                        };
-                        window.renderizarGrupoSVG(grupoData, grupoId);
-                    } catch (e) {
-                        console.warn('No se pudo re-renderizar SVG del grupo:', e);
-                    }
-                }
-            }
-
-            // Solo refrescar vista si se completó (para que las etiquetas desagrupadas se rendericen)
-            // NO refrescar cuando solo cambia a "fabricando" para evitar reload innecesario
-            if (nuevoEstado === "completada" && typeof window.refrescarEtiquetasMaquina === "function") {
-                await window.refrescarEtiquetasMaquina();
-            }
-
-            // DESPUÉS de refrescar, preguntar si quiere imprimir (solo si hay etiquetas para imprimir)
+            // Si se completó, preguntar si quiere imprimir
             if (nuevoEstado === "completada" && etiquetasParaImprimir.length > 0) {
-                const etiquetasSubIds = etiquetasParaImprimir.map(e => e.etiqueta_sub_id);
+                const etSubIds = etiquetasParaImprimir.map(e => e.etiqueta_sub_id);
 
-                // Pequeño delay para asegurar que los SVGs estén renderizados
                 await new Promise(resolve => setTimeout(resolve, 300));
 
-                // Preguntar al usuario si quiere imprimir
                 const resultado = await Swal.fire({
                     icon: "question",
                     title: "Imprimir etiquetas",
-                    html: `Se han completado <strong>${etiquetasSubIds.length}</strong> etiquetas.<br>¿Deseas imprimirlas ahora?`,
+                    html: `Se han completado <strong>${etSubIds.length}</strong> etiquetas.<br>¿Deseas imprimirlas ahora?`,
                     showCancelButton: true,
                     confirmButtonText: "Imprimir A6",
                     cancelButtonText: "No imprimir",
@@ -450,21 +495,131 @@ function initTrabajoEtiqueta() {
                     denyButtonColor: "#6c757d",
                 });
 
-                if (resultado.isConfirmed) {
-                    // Imprimir en A6
-                    if (typeof window.imprimirEtiquetas === "function") {
-                        window.imprimirEtiquetas(etiquetasSubIds, "a6");
+                if (resultado.isConfirmed || resultado.isDenied) {
+                    const modo = resultado.isConfirmed ? "a6" : "a4";
+
+                    // Refrescar la vista para que las etiquetas individuales se rendericen
+                    if (typeof window.refrescarEtiquetasMaquina === "function") {
+                        Swal.fire({
+                            title: 'Preparando impresión...',
+                            html: 'Renderizando etiquetas...',
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+
+                        await window.refrescarEtiquetasMaquina();
+
+                        // Esperar a que los SVGs se rendericen completamente
+                        await new Promise(resolve => setTimeout(resolve, 800));
+
+                        Swal.close();
                     }
-                } else if (resultado.isDenied) {
-                    // Imprimir en A4
+
+                    // Ahora imprimir con los SVGs renderizados
                     if (typeof window.imprimirEtiquetas === "function") {
-                        window.imprimirEtiquetas(etiquetasSubIds, "a4");
+                        await window.imprimirEtiquetas(etSubIds, modo);
                     }
                 }
+
+                // Esperar después de imprimir
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // Reagrupar las etiquetas
+                const reagruparPlanillaId = data.planilla_id || planillaId;
+                const reagruparMaquinaId = data.maquina_id || maquinaId;
+
+                if (reagruparPlanillaId && reagruparMaquinaId) {
+                    try {
+                        await fetch('/api/etiquetas/resumir', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                planilla_id: reagruparPlanillaId,
+                                maquina_id: reagruparMaquinaId,
+                            }),
+                        });
+                        console.log('Etiquetas reagrupadas después de completar');
+                    } catch (e) {
+                        console.warn('No se pudieron reagrupar las etiquetas:', e);
+                    }
+                }
+
+                // Añadir etiquetas al carro
+                if (window.TrabajoPaquete && typeof window.TrabajoPaquete.validarEtiqueta === 'function') {
+                    let agregadas = 0;
+
+                    for (const etSubId of etSubIds) {
+                        try {
+                            const dataEt = await window.TrabajoPaquete.validarEtiqueta(etSubId);
+                            if (dataEt.valida) {
+                                const ok = window.TrabajoPaquete.agregarItemEtiqueta(etSubId, dataEt);
+                                if (ok) agregadas++;
+                            }
+                        } catch (e) {
+                            console.warn(`No se pudo añadir ${etSubId} al carro:`, e);
+                        }
+                    }
+
+                    if (agregadas > 0) {
+                        showAlert("success", "Añadidas al carro", `${agregadas} etiquetas añadidas al carro`);
+                    }
+                }
+
+                // Actualizar estado visual del grupo a completada (cambiar color de fondo)
+                actualizarEstadoVisualGrupo(grupoCard, "completada", grupoId);
             }
 
         } catch (err) {
             showErrorAlert(err);
+        }
+    }
+
+    // Función auxiliar para actualizar el estado visual del grupo sin reload
+    function actualizarEstadoVisualGrupo(grupoCard, nuevoEstado, grupoId, coladas = null) {
+        if (!grupoCard) return;
+
+        // Actualizar clases CSS
+        ["pendiente", "fabricando", "fabricada", "completada", "en-paquete"].forEach((est) => {
+            grupoCard.classList.remove(`estado-${est}`);
+        });
+        grupoCard.classList.add(`estado-${nuevoEstado}`);
+        grupoCard.dataset.estado = nuevoEstado;
+
+        // Re-renderizar SVG para actualizar el color de fondo
+        const contenedorSvgId = grupoCard.dataset.contenedorSvgId;
+        const elementosJson = grupoCard.dataset.elementos;
+
+        if (contenedorSvgId && elementosJson && typeof window.renderizarGrupoSVG === 'function') {
+            try {
+                const elementos = JSON.parse(elementosJson);
+
+                // Si se recibieron coladas, actualizar los elementos con ellas
+                if (coladas) {
+                    elementos.forEach(elem => {
+                        elem.coladas = {
+                            colada1: coladas.colada1 || null,
+                            colada2: coladas.colada2 || null,
+                            colada3: null
+                        };
+                    });
+
+                    // Actualizar también el data-elementos para que persista
+                    grupoCard.dataset.elementos = JSON.stringify(elementos);
+                }
+
+                const grupoData = {
+                    id: parseInt(contenedorSvgId),
+                    etiqueta: { id: parseInt(contenedorSvgId) },
+                    elementos: elementos
+                };
+                window.renderizarGrupoSVG(grupoData, grupoId);
+            } catch (e) {
+                console.warn('No se pudo re-renderizar SVG del grupo:', e);
+            }
         }
     }
 

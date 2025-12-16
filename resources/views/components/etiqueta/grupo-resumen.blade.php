@@ -52,6 +52,7 @@
         data-etiquetas-sub-ids='@json(collect($grupo["etiquetas"])->pluck("etiqueta_sub_id")->values())'
         data-primera-etiqueta-id="{{ $primeraEtiqueta->etiqueta_sub_id }}"
         data-planilla-id="{{ $planilla->id }}"
+        data-planilla-codigo="{{ $planilla->codigo_limpio ?? '' }}"
         data-es-multiplanilla="{{ $esMultiplanilla ? '1' : '0' }}">
 
         <!-- Botones (igual que etiqueta normal) -->
@@ -120,7 +121,13 @@
                 {{ $planilla->codigo_limpio ?? $planilla->codigo }} - S:{{ $planilla->seccion }}
             </h2>
             <h3 class="text-lg font-semibold text-gray-900">
-                {{ $primeraEtiqueta->etiqueta_sub_id }} - {{ $primeraEtiqueta->nombre ?? 'Sin nombre' }} - Cal:B500SD -
+                <span class="etiqueta-codigo">{{ $primeraEtiqueta->etiqueta_sub_id }}</span>
+                @if($primeraEtiqueta->paquete)
+                    <span class="paquete-codigo text-purple-600 font-bold">({{ $primeraEtiqueta->paquete->codigo }})</span>
+                @else
+                    <span class="paquete-codigo text-purple-600 font-bold" style="display: none;"></span>
+                @endif
+                - {{ $primeraEtiqueta->nombre ?? 'Sin nombre' }} - Cal:B500SD -
                 {{ number_format($pesoTotal, 1) }} kg
             </h3>
         </div>

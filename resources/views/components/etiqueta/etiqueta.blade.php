@@ -143,7 +143,9 @@
 <div class="etiqueta-wrapper" data-etiqueta-sub-id="{{ $etiqueta->etiqueta_sub_id }}" data-paquete-id="{{ $etiqueta->paquete_id ?? '' }}">
     <div class="etiqueta-card proceso estado-{{ $estado }}" id="etiqueta-{{ $safeSubId }}"
         data-estado="{{ $estado }}"
-        data-en-paquete="{{ $etiqueta->paquete_id ? 'true' : 'false' }}">
+        data-en-paquete="{{ $etiqueta->paquete_id ? 'true' : 'false' }}"
+        data-planilla-codigo="{{ $planilla->codigo_limpio ?? '' }}"
+        data-planilla-id="{{ $planilla->id ?? '' }}">
 
         <!-- Botones -->
         <div class="absolute top-2 right-2 flex items-center gap-2 no-print z-10">
@@ -192,7 +194,13 @@
                 {{ $planilla->codigo_limpio }} - S:{{ $planilla->seccion }}
             </h2>
             <h3 class="text-lg font-semibold text-gray-900">
-                {{ $etiqueta->etiqueta_sub_id }} - {{ $etiqueta->nombre ?? 'Sin nombre' }} - Cal:B500SD -
+                <span class="etiqueta-codigo">{{ $etiqueta->etiqueta_sub_id }}</span>
+                @if($etiqueta->paquete)
+                    <span class="paquete-codigo text-purple-600 font-bold">({{ $etiqueta->paquete->codigo }})</span>
+                @else
+                    <span class="paquete-codigo text-purple-600 font-bold" style="display: none;"></span>
+                @endif
+                - {{ $etiqueta->nombre ?? 'Sin nombre' }} - Cal:B500SD -
                 {{ $etiqueta->peso_kg ?? 'N/A' }}
             </h3>
         </div>
@@ -219,10 +227,117 @@
         if (!Array.isArray(ids)) ids = [ids];
         const etiquetasHtml = [];
 
+        // Paso 1: Identificar etiquetas que no están en el DOM
+        const idsNoEncontrados = [];
+        const idsEncontrados = [];
+
+        for (const rawId of ids) {
+            const safeId = window.domSafe(rawId);
+            const contenedor = document.getElementById(`etiqueta-${safeId}`) ||
+                document.getElementById(`etiqueta-${rawId}`);
+            if (contenedor) {
+                idsEncontrados.push(rawId);
+            } else {
+                idsNoEncontrados.push(rawId);
+            }
+        }
+
+        // Paso 2: Si hay etiquetas no encontradas, obtenerlas del servidor
+        let etiquetasDelServidor = {};
+        if (idsNoEncontrados.length > 0) {
+            console.log(`🖨️ Obteniendo ${idsNoEncontrados.length} etiquetas del servidor para impresión...`);
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const resp = await fetch('/etiquetas/render-multiple', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        etiqueta_sub_ids: idsNoEncontrados,
+                        maquina_tipo: window.MAQUINA_TIPO || 'barra',
+                    }),
+                });
+
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.success && data.etiquetas) {
+                        data.etiquetas.forEach(et => {
+                            if (et.found) {
+                                etiquetasDelServidor[et.etiqueta_sub_id] = et;
+                            }
+                        });
+                        console.log(`✅ Obtenidas ${Object.keys(etiquetasDelServidor).length} etiquetas del servidor`);
+                    }
+                }
+            } catch (e) {
+                console.warn('Error al obtener etiquetas del servidor:', e);
+            }
+        }
+
         for (const rawId of ids) {
             const safeId = window.domSafe(rawId);
             let contenedor = document.getElementById(`etiqueta-${safeId}`) ||
                 document.getElementById(`etiqueta-${rawId}`);
+
+            // Si no está en DOM, intentar usar datos del servidor
+            let contenedorTemporal = null;
+            if (!contenedor && etiquetasDelServidor[rawId]) {
+                const etData = etiquetasDelServidor[rawId];
+                // Crear contenedor temporal con el HTML del servidor
+                contenedorTemporal = document.createElement('div');
+                contenedorTemporal.innerHTML = etData.html;
+                contenedorTemporal.style.position = 'absolute';
+                contenedorTemporal.style.left = '-9999px';
+                contenedorTemporal.style.top = '-9999px';
+                document.body.appendChild(contenedorTemporal);
+
+                // Buscar el contenedor de la etiqueta dentro del HTML renderizado
+                contenedor = contenedorTemporal.querySelector('.etiqueta-card') ||
+                             contenedorTemporal.querySelector('.proceso');
+
+                // Renderizar SVG si hay datos de elementos
+                if (contenedor && etData.elementos && etData.elementos.length > 0) {
+                    const svgContainer = contenedor.querySelector('[id^="contenedor-svg-"]');
+
+                    if (svgContainer && typeof window.renderizarGrupoSVG === 'function') {
+                        // Usar la función completa de renderizado si está disponible
+                        // Extraer el ID del contenedor (ej: "contenedor-svg-123" -> 123)
+                        const containerId = svgContainer.id.replace('contenedor-svg-', '');
+
+                        // Construir objeto grupo en el formato esperado por renderizarGrupoSVG
+                        const grupoData = {
+                            id: parseInt(containerId) || Date.now(),
+                            etiqueta: {
+                                id: parseInt(containerId) || Date.now(),
+                                etiqueta_sub_id: rawId,
+                            },
+                            elementos: etData.elementos,
+                            colada_etiqueta: etData.elementos[0]?.coladas?.colada1 || null,
+                            colada_etiqueta_2: etData.elementos[0]?.coladas?.colada2 || null,
+                        };
+
+                        try {
+                            window.renderizarGrupoSVG(grupoData, containerId);
+                            console.log(`✅ SVG renderizado con renderizarGrupoSVG para ${rawId}`);
+                        } catch (e) {
+                            console.warn(`Error renderizando SVG con función completa:`, e);
+                            // Fallback al SVG básico
+                            const svg = crearSVGBasicoParaImpresion(etData.elementos, etData.data);
+                            svgContainer.innerHTML = '';
+                            svgContainer.appendChild(svg);
+                        }
+                    } else if (svgContainer) {
+                        // Fallback: crear SVG básico con datos de elementos
+                        const svg = crearSVGBasicoParaImpresion(etData.elementos, etData.data);
+                        svgContainer.innerHTML = '';
+                        svgContainer.appendChild(svg);
+                    }
+                }
+            }
+
             if (!contenedor) continue;
 
             // Buscar SVG primero (sistema actual), luego canvas como fallback
@@ -393,6 +508,11 @@
             });
 
             etiquetasHtml.push(clone.outerHTML);
+
+            // Limpiar contenedor temporal si se usó
+            if (contenedorTemporal) {
+                contenedorTemporal.remove();
+            }
         }
 
         // CSS e impresión
@@ -518,6 +638,74 @@
             </body>
           </html>`);
         w.document.close();
+    }
+
+    /**
+     * Crea un SVG básico para impresión cuando las funciones de renderizado completas no están disponibles.
+     * Se usa cuando la etiqueta se obtiene del servidor y no está en el DOM.
+     */
+    function crearSVGBasicoParaImpresion(elementos, datosEtiqueta) {
+        const ancho = 600;
+        const alto = 150;
+
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', `0 0 ${ancho} ${alto}`);
+        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+        svg.style.background = '#ffffff';
+
+        // Fondo blanco
+        const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bgRect.setAttribute('x', '0');
+        bgRect.setAttribute('y', '0');
+        bgRect.setAttribute('width', ancho);
+        bgRect.setAttribute('height', alto);
+        bgRect.setAttribute('fill', '#ffffff');
+        svg.appendChild(bgRect);
+
+        // Crear leyenda con información de elementos
+        const legendY = alto - 15;
+        let xPos = 10;
+        const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+        elementos.forEach((elem, idx) => {
+            const letra = letras[idx] || `(${idx + 1})`;
+            const diametro = elem.diametro || '?';
+            const barras = elem.barras || 0;
+
+            // Construir texto de coladas
+            const coladas = [];
+            if (elem.coladas?.colada1) coladas.push(elem.coladas.colada1);
+            if (elem.coladas?.colada2) coladas.push(elem.coladas.colada2);
+            if (elem.coladas?.colada3) coladas.push(elem.coladas.colada3);
+            const coladaTexto = coladas.length > 0 ? ` (${coladas.join(', ')})` : '';
+
+            const texto = `${letra}: Ø${diametro} x${barras}${coladaTexto}`;
+
+            const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            textEl.setAttribute('x', xPos);
+            textEl.setAttribute('y', legendY);
+            textEl.setAttribute('font-size', '10');
+            textEl.setAttribute('fill', '#333');
+            textEl.setAttribute('font-family', 'Arial, sans-serif');
+            textEl.textContent = texto;
+            svg.appendChild(textEl);
+
+            xPos += texto.length * 6 + 15; // Aproximar ancho del texto
+        });
+
+        // Mensaje indicando que es una etiqueta renderizada desde servidor
+        const infoText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        infoText.setAttribute('x', ancho / 2);
+        infoText.setAttribute('y', alto / 2);
+        infoText.setAttribute('text-anchor', 'middle');
+        infoText.setAttribute('font-size', '12');
+        infoText.setAttribute('fill', '#666');
+        infoText.textContent = `${datosEtiqueta?.nombre || 'Etiqueta'} - ${elementos.length} elemento(s)`;
+        svg.appendChild(infoText);
+
+        return svg;
     }
 
     // Exponer la función globalmente para uso desde otros scripts

@@ -553,15 +553,15 @@
             <div id="paso-escanear-paquete" class="flex-1 overflow-y-auto p-4 space-y-4">
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <h3 class="font-semibold text-blue-800 mb-2">Paso 1:
-                        Escanear Código del Paquete</h3>
+                        Escanear Código</h3>
                     <p class="text-sm text-blue-600 mb-3">Escanea o introduce
-                        el código QR del paquete que deseas mover.</p>
+                        el código de una etiqueta o directamente el código del paquete.</p>
 
                     <div class="flex flex-col gap-2">
                         <div class="flex-1">
                             <x-tabla.input-movil type="text"
-                                id="codigo_paquete_mover" label="Código del Paquete"
-                                placeholder="Escanea o escribe el código (ej: ETQ123456.01)"
+                                id="codigo_paquete_mover" label="Código de Etiqueta o Paquete"
+                                placeholder="Escanea código de etiqueta (ETQ...) o paquete (PAQ...)"
                                 autocomplete="off" inputmode="text" />
                         </div>
                         <button onclick="buscarPaqueteParaMover()" 
@@ -617,14 +617,23 @@
 
             {{-- PASO 2: Seleccionar ubicación en mapa --}}
             <div id="paso-mapa-paquete" class="hidden space-y-2 h-full">
-                {{-- Información del paquete seleccionado (compacta) --}}
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-2 flex items-center gap-2">
-                    <span class="text-sm"><strong>Paquete:</strong></span>
-                    <span id="paquete-codigo-mapa" class="text-green-700 font-bold"></span>
+                {{-- Información del paquete seleccionado --}}
+                <div class="bg-green-50 border border-green-300 rounded-lg p-3 flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">📦</span>
+                        <div>
+                            <p class="font-bold text-green-800 text-lg" id="paquete-codigo-mapa"></p>
+                            <p class="text-sm text-green-600" id="paquete-info-mapa"></p>
+                        </div>
+                    </div>
+                    <button onclick="volverPasoEscaneo()"
+                        class="text-sm px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-1">
+                        ← Buscar otro
+                    </button>
                 </div>
 
                 {{-- Componente de mapa simplificado --}}
-                <div class="bg-white p-2 rounded-lg border flex-1 overflow-hidden relative" style="height: calc(100% - 50px);">
+                <div class="bg-white p-2 rounded-lg border flex-1 overflow-hidden relative" style="height: calc(100% - 70px);">
                     <x-mapa-simple :nave-id="$naveIdMapa" :modo-edicion="true" class="h-full w-full" />
                 </div>
             </div>
@@ -711,13 +720,21 @@
     function mostrarPasoMapa() {
         document.getElementById('paso-escanear-paquete').classList.add('hidden');
         document.getElementById('paso-mapa-paquete').classList.remove('hidden');
-        const codigoPak = (paqueteMoverData?.codigo || '').toString().trim();
-        document.getElementById('paquete-codigo-mapa').textContent = codigoPak;
 
-        if (codigoPak && paqueteMoverData?.tiene_localizacion) {
+        const codigoPak = (paqueteMoverData?.codigo || '').toString().trim();
+        const etiquetasCount = paqueteMoverData?.etiquetas_count || 0;
+        const elementosCount = paqueteMoverData?.elementos_count || 0;
+        const tieneLocalizacion = paqueteMoverData?.tiene_localizacion;
+
+        document.getElementById('paquete-codigo-mapa').textContent = codigoPak;
+        document.getElementById('paquete-info-mapa').textContent =
+            `${etiquetasCount} etiquetas · ${elementosCount} elementos` +
+            (tieneLocalizacion ? '' : ' · Sin ubicación asignada');
+
+        if (codigoPak && tieneLocalizacion) {
             // Paquete con localización: mostrar en el mapa
             mostrarPaqueteEnMapaModal('modal-mover-paquete', codigoPak);
-        } else if (codigoPak && !paqueteMoverData?.tiene_localizacion) {
+        } else if (codigoPak && !tieneLocalizacion) {
             // Paquete SIN localización: crear ghost para asignar ubicación
             crearGhostEnMapaModal('modal-mover-paquete', paqueteMoverData);
         }
@@ -726,6 +743,24 @@
     function volverPasoEscaneo() {
         document.getElementById('paso-mapa-paquete').classList.add('hidden');
         document.getElementById('paso-escanear-paquete').classList.remove('hidden');
+
+        // Limpiar input y dar focus
+        const input = document.getElementById('codigo_paquete_mover');
+        if (input) {
+            input.value = '';
+            setTimeout(() => input.focus(), 100);
+        }
+
+        // Cancelar ghost si existe
+        const modal = document.getElementById('modal-mover-paquete');
+        if (modal) {
+            const mapa = modal.querySelector('[data-mapa-simple]');
+            if (mapa && typeof mapa.cancelarGhost === 'function') {
+                mapa.cancelarGhost();
+            }
+        }
+
+        paqueteMoverData = null;
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -745,17 +780,13 @@
         const codigo = document.getElementById('codigo_paquete_mover').value
             .trim();
         if (!codigo) {
-            mostrarErrorPaquete('Debes introducir un código de paquete.');
+            mostrarErrorPaquete('Debes introducir un código de paquete o etiqueta.');
             return;
         }
 
         document.getElementById('loading-paquete-mover').classList.remove(
             'hidden');
         document.getElementById('error-paquete-mover').classList.add(
-            'hidden');
-        document.getElementById('info-paquete-validado').classList.add(
-            'hidden');
-        document.getElementById('warning-sin-localizacion')?.classList.add(
             'hidden');
 
         try {
@@ -782,32 +813,14 @@
 
             paqueteMoverData = data;
 
-            document.getElementById('paquete-codigo-info').textContent =
-                data.codigo || codigo;
-            document.getElementById('paquete-peso-info').textContent =
-                `${data.etiquetas_count || 0} etq / ${data.elementos_count || 0} elem`;
-
-            // Mostrar/ocultar advertencia según tenga localización
-            const warningSinLoc = document.getElementById('warning-sin-localizacion');
-            if (warningSinLoc) {
-                if (data.tiene_localizacion) {
-                    warningSinLoc.classList.add('hidden');
-                } else {
-                    warningSinLoc.classList.remove('hidden');
-                }
-            }
-
-            document.getElementById('info-paquete-validado').classList
-                .remove('hidden');
-
-            // Mostrar automáticamente el mapa con el paquete (como en localizaciones.index)
-            setTimeout(() => mostrarPasoMapa(), 300);
+            // Ir directamente al mapa
+            document.getElementById('loading-paquete-mover').classList.add('hidden');
+            mostrarPasoMapa();
 
         } catch (error) {
             console.error('Error al buscar paquete:', error);
             mostrarErrorPaquete(error.message ||
                 'No se encontró el paquete. Verifica el código.');
-        } finally {
             document.getElementById('loading-paquete-mover').classList.add(
                 'hidden');
         }
@@ -948,8 +961,8 @@
 
 {{-- 🚛 MODAL EJECUTAR SALIDA (con mapa y escaneo de paquetes) --}}
 <div id="modal-ejecutar-salida"
-    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
-    <div class="bg-white sm:rounded-2xl shadow-xl w-[100vw] h-[100vh] sm:w-[90vw] sm:h-[70vh] overflow-hidden flex flex-col">
+    class="fixed inset-x-0 top-14 bottom-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white sm:rounded-2xl shadow-xl w-full h-full sm:w-[90vw] sm:max-h-[calc(100vh-5rem)] overflow-hidden flex flex-col">
         {{-- Header --}}
         <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-4 flex justify-between items-center">
             <div>

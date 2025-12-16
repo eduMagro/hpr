@@ -94,6 +94,9 @@
                             <span x-text="paquete.cantidad_etiquetas"></span> etiquetas
                         </p>
                         <p class="text-xs text-gray-500" x-text="paquete.ubicacion"></p>
+                        <p class="text-xs text-blue-600" x-show="paquete.usuario">
+                            <span class="font-medium" x-text="paquete.usuario"></span>
+                        </p>
                     </div>
                     <div class="flex items-center gap-2">
                         {{-- Botón Imprimir QR --}}

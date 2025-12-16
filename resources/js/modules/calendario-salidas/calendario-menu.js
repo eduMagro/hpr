@@ -288,7 +288,14 @@ function construirInterfazGestionPaquetesSalida(
                 <div class="bg-green-50 border-2 border-green-200 rounded-lg p-3">
                     <div class="font-semibold text-green-900 mb-2 flex items-center justify-between">
                         <span>📦 Paquetes en esta salida</span>
-                        <span class="text-xs bg-green-200 px-2 py-1 rounded" id="peso-asignados">${totalKgAsignados.toFixed(2)} kg</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs bg-green-200 px-2 py-1 rounded" id="peso-asignados">${totalKgAsignados.toFixed(2)} kg</span>
+                            <button type="button" onclick="window.vaciarSalidaModal()"
+                                class="text-xs px-2 py-1 bg-orange-500 hover:bg-orange-600 text-white rounded transition-colors"
+                                title="Vaciar salida (devolver todos a disponibles)">
+                                🔄 Vaciar
+                            </button>
+                        </div>
                     </div>
                     <div
                         class="paquetes-zona-salida drop-zone overflow-y-auto"
@@ -323,10 +330,16 @@ function construirInterfazGestionPaquetesSalida(
                                 </select>
                             </div>
                         </div>
-                        <button type="button" id="btn-limpiar-filtros-modal"
-                                class="w-full text-xs px-2 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors">
-                            🔄 Limpiar Filtros
-                        </button>
+                        <div class="flex gap-2">
+                            <button type="button" id="btn-limpiar-filtros-modal"
+                                    class="flex-1 text-xs px-2 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors">
+                                🔄 Limpiar Filtros
+                            </button>
+                            <button type="button" onclick="window.volcarTodosASalidaModal()"
+                                    class="flex-1 text-xs px-2 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-colors font-medium">
+                                📥 Volcar todos
+                            </button>
+                        </div>
                     </div>
 
                     <div
@@ -1142,6 +1155,71 @@ function actualizarTotalesSalida() {
     }
 
 }
+
+/* ===================== Vaciar salida modal ===================== */
+function vaciarSalidaModal() {
+    const zonaAsignados = document.querySelector('[data-zona="asignados"]');
+    const zonaDisponibles = document.querySelector('[data-zona="disponibles"]');
+
+    if (!zonaAsignados || !zonaDisponibles) return;
+
+    const paquetes = zonaAsignados.querySelectorAll(".paquete-item-salida");
+
+    if (paquetes.length === 0) return;
+
+    // Mover todos los paquetes a disponibles
+    paquetes.forEach(paquete => {
+        zonaDisponibles.appendChild(paquete);
+    });
+
+    // Remover placeholder de disponibles si existe
+    const placeholder = zonaDisponibles.querySelector(".placeholder-sin-paquetes");
+    if (placeholder) placeholder.remove();
+
+    // Agregar placeholder a asignados si está vacío
+    if (zonaAsignados.querySelectorAll(".paquete-item-salida").length === 0) {
+        zonaAsignados.innerHTML = '<div class="text-gray-400 text-sm text-center py-4 placeholder-sin-paquetes">Sin paquetes</div>';
+    }
+
+    // Actualizar totales
+    actualizarTotalesSalida();
+}
+
+/* ===================== Volcar todos a salida modal ===================== */
+function volcarTodosASalidaModal() {
+    const zonaAsignados = document.querySelector('[data-zona="asignados"]');
+    const zonaDisponibles = document.querySelector('[data-zona="disponibles"]');
+
+    if (!zonaAsignados || !zonaDisponibles) return;
+
+    // Obtener solo los paquetes visibles (no ocultos por filtros)
+    const paquetes = Array.from(zonaDisponibles.querySelectorAll(".paquete-item-salida"))
+        .filter(p => p.style.display !== 'none');
+
+    if (paquetes.length === 0) return;
+
+    // Remover placeholder de asignados si existe
+    const placeholder = zonaAsignados.querySelector(".placeholder-sin-paquetes");
+    if (placeholder) placeholder.remove();
+
+    // Mover todos los paquetes visibles a asignados
+    paquetes.forEach(paquete => {
+        zonaAsignados.appendChild(paquete);
+    });
+
+    // Agregar placeholder a disponibles si está vacío
+    const paquetesRestantes = zonaDisponibles.querySelectorAll(".paquete-item-salida");
+    if (paquetesRestantes.length === 0) {
+        zonaDisponibles.innerHTML = '<div class="text-gray-400 text-sm text-center py-4 placeholder-sin-paquetes">Sin paquetes</div>';
+    }
+
+    // Actualizar totales
+    actualizarTotalesSalida();
+}
+
+// Exportar funciones para uso en el modal
+window.vaciarSalidaModal = vaciarSalidaModal;
+window.volcarTodosASalidaModal = volcarTodosASalidaModal;
 
 /* ===================== Recolectar paquetes salida ===================== */
 function recolectarPaquetesSalida() {

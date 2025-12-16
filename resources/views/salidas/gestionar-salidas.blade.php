@@ -89,6 +89,14 @@
             <div id="contenido-resumen-planillas" class="hidden px-4 pb-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     @foreach ($planillas as $planilla)
+                        @php
+                            $pesoTotal = $planilla->peso_total ?? 0;
+                            $etiquetas = $planilla->etiquetas;
+                            $pesoCompletado = $etiquetas->whereIn('estado', ['completada', 'fabricada', 'en-paquete', 'ensamblada', 'soldada'])->sum('peso');
+                            $pesoFabricando = $etiquetas->where('estado', 'fabricando')->sum('peso');
+                            $pesoPendiente = $etiquetas->where('estado', 'pendiente')->sum('peso');
+                            $porcentajeCompletado = $pesoTotal > 0 ? round(($pesoCompletado / $pesoTotal) * 100) : 0;
+                        @endphp
                         <div class="bg-white p-3 rounded shadow-sm">
                             <div class="flex items-center justify-between mb-2">
                                 <span class="font-semibold text-gray-800">{{ $planilla->codigo_limpio }}</span>
@@ -98,8 +106,35 @@
                             </div>
                             <p class="text-sm text-gray-600">Obra: {{ $planilla->obra->obra }}</p>
                             <p class="text-sm text-gray-600">Cliente: {{ $planilla->cliente->empresa }}</p>
-                            <p class="text-sm text-gray-600">Peso: {{ $planilla->peso_total_kg }} kg</p>
-                            <p class="text-sm text-gray-600">Paquetes disponibles: {{ $planilla->paquetes->count() }}</p>
+
+                            {{-- Resumen de pesos --}}
+                            <div class="mt-2 p-2 bg-gray-50 rounded text-xs space-y-1">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">📦 Total:</span>
+                                    <span class="font-semibold">{{ number_format($pesoTotal, 2, ',', '.') }} kg</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-green-600">✅ Completado:</span>
+                                    <span class="font-semibold text-green-600">{{ number_format($pesoCompletado, 2, ',', '.') }} kg</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-blue-600">🔄 Fabricando:</span>
+                                    <span class="font-semibold text-blue-600">{{ number_format($pesoFabricando, 2, ',', '.') }} kg</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500">⏳ Pendiente:</span>
+                                    <span class="font-semibold text-gray-500">{{ number_format($pesoPendiente, 2, ',', '.') }} kg</span>
+                                </div>
+                                {{-- Barra de progreso --}}
+                                <div class="mt-1">
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div class="bg-green-500 h-2 rounded-full" style="width: {{ $porcentajeCompletado }}%"></div>
+                                    </div>
+                                    <span class="text-gray-500 text-xs">{{ $porcentajeCompletado }}% completado</span>
+                                </div>
+                            </div>
+
+                            <p class="text-sm text-gray-600 mt-2">Paquetes disponibles: {{ $planilla->paquetes->count() }}</p>
                             <p class="text-sm text-gray-600">Entrega: {{ $planilla->fecha_estimada_entrega }}</p>
                         </div>
                     @endforeach
@@ -116,26 +151,28 @@
         <div class="bg-white shadow-md rounded-lg p-6 mb-6">
             <h2 class="text-2xl font-semibold text-gray-800 mb-4">Crear Nuevas Salidas</h2>
 
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    ¿Cuántas salidas necesitas crear para estas {{ $planillas->count() }} planillas?
-                </label>
-                <input type="number" id="num-salidas" min="1" max="10" value="1"
-                    class="w-32 border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                <button type="button" id="btn-generar-formularios"
-                    class="ml-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
-                    Generar Formularios
-                </button>
+            <div class="flex items-center gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Número de salidas a crear
+                    </label>
+                    <input type="number" id="num-salidas" min="1" max="10" value="1"
+                        class="w-24 border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-center">
+                </div>
+                <div class="pt-6">
+                    <button type="button" id="btn-crear-salidas-rapido"
+                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-semibold flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Crear Salidas
+                    </button>
+                </div>
             </div>
-
-            <div id="formularios-salidas" class="space-y-4"></div>
-
-            <div id="btn-crear-container" class="hidden mt-6 text-center">
-                <button type="button" id="btn-crear-todas-salidas"
-                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md font-semibold">
-                    Crear Todas las Salidas
-                </button>
-            </div>
+            <p class="text-xs text-gray-500 mt-2">
+                La fecha de salida se asignará automáticamente según la fecha estimada de entrega de las planillas.
+                Los datos de transporte (empresa, camión, código SAGE) se podrán asignar posteriormente.
+            </p>
         </div>
 
         {{-- Sección: Gestión de Paquetes y Salidas --}}
@@ -156,13 +193,22 @@
                                         <div class="flex-1">
                                             <p class="text-sm">🚚 {{ $salida->codigo_salida }}</p>
                                         </div>
-                                        <button onclick="eliminarSalida({{ $salida->id }})"
-                                                class="text-red-600 hover:text-red-800 hover:bg-red-100 rounded p-1 transition-colors"
-                                                title="Eliminar salida">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                            </svg>
-                                        </button>
+                                        <div class="flex items-center gap-1">
+                                            <button onclick="vaciarSalida({{ $salida->id }})"
+                                                    class="text-orange-600 hover:text-orange-800 hover:bg-orange-100 rounded p-1 transition-colors"
+                                                    title="Vaciar salida (devolver paquetes a disponibles)">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                            <button onclick="eliminarSalida({{ $salida->id }})"
+                                                    class="text-red-600 hover:text-red-800 hover:bg-red-100 rounded p-1 transition-colors"
+                                                    title="Eliminar salida">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="mb-2">
                                         <label class="block text-xs text-gray-600 mb-1">📅 Fecha de salida</label>
@@ -309,6 +355,34 @@
                                         🔄 Limpiar Filtros
                                     </button>
                                 </div>
+
+                                {{-- Sumatorio de peso y botón volcar --}}
+                                <div class="bg-gray-100 border border-gray-300 rounded-md px-3 py-2 mb-3">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm font-semibold text-gray-700">
+                                            ⚖️ Peso total: <span id="peso-total-disponibles" class="text-blue-600">0 kg</span>
+                                        </span>
+                                        <span class="text-xs text-gray-500">
+                                            (<span id="count-paquetes-disponibles">0</span> paquetes)
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {{-- Botón volcar todos a una salida --}}
+                                @if($salidasExistentes->count() > 0)
+                                <div class="flex items-center gap-2 mb-3">
+                                    <select id="select-salida-destino" class="flex-1 text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        @foreach($salidasExistentes as $salida)
+                                            <option value="{{ $salida->id }}">{{ $salida->codigo_salida }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button"
+                                            onclick="volcarTodosASalida()"
+                                            class="text-xs px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-colors font-medium whitespace-nowrap">
+                                        📥 Volcar todos
+                                    </button>
+                                </div>
+                                @endif
                             </div>
                             <div class="paquetes-zona drop-zone bg-white rounded border-2 border-dashed border-gray-400 p-2 min-h-[300px]"
                                 data-salida-id="null"
@@ -390,12 +464,37 @@
     </div>
 
     @php
+        // Obtener la fecha estimada de entrega más próxima de las planillas
+        $fechaEstimadaEntrega = $planillas
+            ->pluck('fecha_estimada_entrega')
+            ->filter()
+            ->map(function($f) {
+                // Intentar parsear con diferentes formatos
+                try {
+                    // Si ya es un objeto Carbon
+                    if ($f instanceof \Carbon\Carbon) {
+                        return $f;
+                    }
+                    // Formato d/m/Y H:i
+                    if (preg_match('/^\d{2}\/\d{2}\/\d{4}/', $f)) {
+                        return \Carbon\Carbon::createFromFormat('d/m/Y H:i', $f);
+                    }
+                    // Formato estándar
+                    return \Carbon\Carbon::parse($f);
+                } catch (\Exception $e) {
+                    return null;
+                }
+            })
+            ->filter()
+            ->min();
+
         $cfg = [
             'csrf' => csrf_token(),
             'planillasIds' => $planillas->pluck('id')->toArray(),
             'empresas' => $empresas,
             'camiones' => $camiones,
             'mostrarTodosPaquetes' => $mostrarTodosPaquetes,
+            'fechaEstimadaEntrega' => $fechaEstimadaEntrega ? $fechaEstimadaEntrega->format('Y-m-d') : now()->format('Y-m-d'),
             'routes' => [
                 'crearSalidasVacias' => route('salidas.crearSalidasVaciasMasivo'),
                 'guardarAsignacionesPaquetes' => route('planificacion.guardarAsignacionesPaquetes'),

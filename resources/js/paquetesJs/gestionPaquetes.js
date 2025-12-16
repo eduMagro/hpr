@@ -19,7 +19,34 @@
         codigoPaquete = null
     ) {
         const safeId = String(etiquetaId).replace(/\./g, "-");
-        const elemento = document.querySelector(`#etiqueta-${safeId}`);
+
+        // 1. Buscar etiqueta individual por ID
+        let elemento = document.querySelector(`#etiqueta-${safeId}`);
+
+        // 2. Si no se encuentra, buscar por data-etiqueta-sub-id en el wrapper
+        if (!elemento) {
+            const wrapper = document.querySelector(`[data-etiqueta-sub-id="${etiquetaId}"]`);
+            if (wrapper) {
+                elemento = wrapper.querySelector('.etiqueta-card');
+            }
+        }
+
+        // 3. Si tampoco, buscar en grupos que contengan esta etiqueta
+        if (!elemento) {
+            const grupos = document.querySelectorAll('[data-etiquetas-sub-ids]');
+            for (const grupo of grupos) {
+                try {
+                    const etiquetasEnGrupo = JSON.parse(grupo.dataset.etiquetasSubIds || '[]');
+                    if (etiquetasEnGrupo.includes(etiquetaId)) {
+                        elemento = grupo;
+                        console.log(`📦 Etiqueta ${etiquetaId} encontrada en grupo`);
+                        break;
+                    }
+                } catch (e) {
+                    // Ignorar errores de parseo
+                }
+            }
+        }
 
         if (!elemento) {
             console.warn(`⚠️ No se encontró elemento: ${etiquetaId}`);
@@ -53,10 +80,11 @@
             delete elemento.dataset.paquete;
             elemento.style.setProperty("--bg-estado", "#ffffff");
 
-            // Eliminar info del paquete
-            const paqueteInfo = elemento.querySelector(".paquete-info");
-            if (paqueteInfo) {
-                paqueteInfo.remove();
+            // Ocultar código de paquete inline
+            const paqueteCodigoSpan = elemento.querySelector(".paquete-codigo");
+            if (paqueteCodigoSpan) {
+                paqueteCodigoSpan.textContent = "";
+                paqueteCodigoSpan.style.display = "none";
             }
         }
 
@@ -90,32 +118,16 @@
     }
 
     /**
-     * Actualizar o añadir información del paquete en la etiqueta
+     * Actualizar o añadir información del paquete en la etiqueta (inline al lado del código)
      */
     function actualizarInfoPaqueteEnEtiqueta(elemento, codigoPaquete) {
-        const h3 = elemento.querySelector("h3");
-        if (!h3) return;
+        // Buscar el span del código de paquete
+        const paqueteCodigoSpan = elemento.querySelector(".paquete-codigo");
 
-        // Buscar si ya existe info del paquete
-        let paqueteInfo = elemento.querySelector(".paquete-info");
-
-        if (!paqueteInfo) {
-            // Crear nuevo elemento de info
-            paqueteInfo = document.createElement("div");
-            paqueteInfo.className =
-                "paquete-info text-sm font-semibold mt-2 no-print";
-            paqueteInfo.style.cssText =
-                "display: flex; align-items: center; gap: 0.25rem; color: #7c3aed; font-size: 0.875rem;";
-            h3.parentNode.insertBefore(paqueteInfo, h3.nextSibling);
+        if (paqueteCodigoSpan) {
+            paqueteCodigoSpan.textContent = `(${codigoPaquete})`;
+            paqueteCodigoSpan.style.display = "inline";
         }
-
-        // Actualizar contenido
-        paqueteInfo.innerHTML = `
-            <svg style="width: 1rem; height: 1rem;" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
-            </svg>
-            <span>Paquete: ${codigoPaquete}</span>
-        `;
     }
 
     /**
@@ -146,7 +158,7 @@
             const { paqueteId, etiquetaCodigo, eliminada } = e.detail;
 
             if (eliminada) {
-                // Etiqueta eliminada del paquete
+                // Etiqueta eliminada del paquete - quitar código de paquete inline
                 actualizarEstadoEtiquetaPaquete(etiquetaCodigo, "pendiente");
             } else {
                 // Etiqueta añadida al paquete - necesitamos el código del paquete
@@ -166,6 +178,15 @@
                         console.error("Error al obtener info del paquete:", err)
                     );
             }
+        });
+
+        // Evento: Paquete eliminado completamente
+        // NOTA: La actualización del DOM se hace directamente en eliminarPaquete.js
+        // Este listener es solo para logging y posibles extensiones futuras
+        window.addEventListener("paquete:eliminado", (e) => {
+            console.log("🗑️ Evento paquete:eliminado recibido:", e.detail);
+            // La actualización del DOM ya se hace en eliminarPaquete.js con limpiarCodigoPaqueteDeEtiqueta()
+            // que restaura el color correcto según el estado real de cada etiqueta
         });
 
         console.log("✅ Listeners de paquetes inicializados");
