@@ -87,6 +87,13 @@
                 </div>
             </div>
 
+            <div class="bg-white rounded-xl border border-gray-200 p-4">
+                <label class="block text-xs font-medium text-gray-700 mb-1">Filtrar usuarios por EPI</label>
+                <input type="text" x-model="agendaEpiQuery" @input="onAgendaEpiQueryChange()"
+                    placeholder="Nombre, codigo o categoria del EPI"
+                    class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
+            </div>
+
             <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100">
                     <h2 class="font-semibold text-gray-900">Agenda</h2>
@@ -1319,6 +1326,9 @@
                 compraEpiSuggestionsOpen: false,
                 compraEpiSuggestions: [],
 
+                agendaEpiQuery: '',
+                agendaEpiDebounceId: null,
+
                 userEpiFilterQuery: '',
 
                 stats: {
@@ -1526,15 +1536,27 @@
                     return tokens.every(t => (e._hay || '').includes(t));
                 },
 
+                onAgendaEpiQueryChange() {
+                    if (this.agendaEpiDebounceId) clearTimeout(this.agendaEpiDebounceId);
+                    this.agendaEpiDebounceId = setTimeout(() => {
+                        this.refreshUsers();
+                    }, 300);
+                },
+
                 async refreshUsers() {
                     this.loadingUsers = true;
                     try {
-                        const res = await this.api(@js(route('epis.api.users')));
+                        const baseUrl = @js(route('epis.api.users'));
+                        const url = new URL(baseUrl, window.location.origin);
+                        const epi = (this.agendaEpiQuery || '').trim();
+                        if (epi) url.searchParams.set('epi', epi);
+
+                        const res = await this.api(url.toString());
                         const data = await res.json();
                         const users = (data.users || []);
                         users.forEach(u => this.buildHaystack(u));
                         this.allUsers = users;
-                        this.agendaUsers = users.filter(u => u.tiene_epis);
+                        this.agendaUsers = users.filter(u => u.tiene_epis && (!epi || !!u.epi_match));
 
                         this.stats.usuariosConEpis = (data.stats?.usuarios_con_epis) ?? this.agendaUsers.length;
                     } finally {
