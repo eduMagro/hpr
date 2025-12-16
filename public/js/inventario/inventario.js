@@ -1,16 +1,21 @@
-document.addEventListener("DOMContentLoaded", () => {
-    const SECTORES = Array.from(document.getElementsByClassName("escondible"));
+function initInventarioUI() {
     const CONTENIDO = document.getElementById("contenido");
-    const SUBCONTENIDOS = Array.from(document.getElementsByClassName("subcontenido"))
-    const DESPLEGAR_SUBCONTENIDOS = Array.from(document.getElementsByClassName("desplegar-subcontenido"))
+    if (!CONTENIDO) return;
+
+    const SECTORES = Array.from(document.getElementsByClassName("escondible"));
+    const SUBCONTENIDOS = Array.from(document.getElementsByClassName("subcontenido"));
+    const DESPLEGAR_SUBCONTENIDOS = Array.from(document.getElementsByClassName("desplegar-subcontenido"));
 
     aparecer(CONTENIDO);
     mostrarOcultarSectores(SECTORES, CONTENIDO, SUBCONTENIDOS);
-
-});
+    bindPergaminoTriggers(DESPLEGAR_SUBCONTENIDOS);
+}
 
 function mostrarOcultarSectores(sectores, contenido, subcontenidos) {
     sectores.forEach((e) => {
+        if (e.dataset.invBound === "1") return;
+        e.dataset.invBound = "1";
+
         e.addEventListener("click", (ev) => {
             const self = ev.currentTarget;                 // el sector clickado
             const estaAbierto = self.classList.contains("mostrandoDetalles");
@@ -101,9 +106,18 @@ function reaparecer(contenido) {
 
 // DESPLEGAR SUBCONTENIDO COMO PERGAMINO
 document.addEventListener("DOMContentLoaded", () => {
-    const TRIGGERS = Array.from(document.getElementsByClassName("desplegar-subcontenido"));
+    initInventarioUI();
+});
 
-    TRIGGERS.forEach((trigger) => {
+document.addEventListener("livewire:navigated", () => {
+    initInventarioUI();
+});
+
+function bindPergaminoTriggers(triggers) {
+    triggers.forEach((trigger) => {
+        if (trigger.dataset.invBound === "1") return;
+        trigger.dataset.invBound = "1";
+
         const panel = trigger.nextElementSibling;
         if (!panel || !panel.classList.contains("subcontenido")) return;
 
@@ -123,7 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
             togglePergamino(panel, trigger, 200);
         });
     });
-});
+}
 
 function togglePergamino(panel, trigger, durMs = 200) {
     if (panel.dataset.animating === "1") return; // debounce
@@ -187,4 +201,3 @@ function togglePergamino(panel, trigger, durMs = 200) {
         panel.addEventListener("transitionend", onOpenEnd);
     }
 }
-

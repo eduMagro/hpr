@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Localizacion;
 use App\Models\LocalizacionPaquete;
-use App\Models\Movimiento;
 use App\Models\Producto;
 use App\Models\Paquete;
 use App\Models\Maquina;
@@ -1125,17 +1124,8 @@ class LocalizacionController extends Controller
                 'y2' => 'required|integer|min:1',
             ]);
 
-            // Buscar la localización del paquete y el paquete
+            // Buscar la localización del paquete
             $localizacionPaquete = LocalizacionPaquete::where('paquete_id', $paqueteId)->firstOrFail();
-            $paquete = Paquete::findOrFail($paqueteId);
-
-            // Guardar ubicación anterior para el movimiento
-            $ubicacionAnterior = [
-                'x1' => $localizacionPaquete->x1,
-                'y1' => $localizacionPaquete->y1,
-                'x2' => $localizacionPaquete->x2,
-                'y2' => $localizacionPaquete->y2,
-            ];
 
             // Actualizar las coordenadas
             $localizacionPaquete->update([
@@ -1145,13 +1135,7 @@ class LocalizacionController extends Controller
                 'y2' => $validated['y2'],
             ]);
 
-            // Obtener nombre de la nave
-            $nave = $paquete->nave_id ? Obra::find($paquete->nave_id) : null;
-            $naveNombre = $nave->obra ?? 'Nave';
-
-            // Crear movimiento de paquete
-            $validated['nave_id'] = $paquete->nave_id;
-            $this->crearMovimientoPaquete($paquete, $validated, $ubicacionAnterior, $naveNombre, false);
+            Log::info("✅ Paquete {$paqueteId} movido a ({$validated['x1']},{$validated['y1']}) - ({$validated['x2']},{$validated['y2']})");
 
             return response()->json([
                 'success' => true,
@@ -1390,26 +1374,14 @@ class LocalizacionController extends Controller
                 'y2' => 'required|integer|min:1',
             ]);
 
-            // Obtener el paquete y la nave
+            // Actualizar el nave_id en el paquete
             $paquete = Paquete::findOrFail($validated['paquete_id']);
-            $nave = Obra::find($validated['nave_id']);
-            $naveNombre = $nave->obra ?? "Nave {$validated['nave_id']}";
+            $paquete->update(['nave_id' => $validated['nave_id']]);
 
-            // Verificar si el paquete ya tiene una ubicación (para el movimiento)
+            // Verificar si el paquete ya tiene una ubicación
             $localizacionExistente = LocalizacionPaquete::where('paquete_id', $validated['paquete_id'])->first();
 
-            // Guardar ubicación anterior para el movimiento
-            $ubicacionAnterior = null;
-            $esNueva = false;
-
             if ($localizacionExistente) {
-                $ubicacionAnterior = [
-                    'x1' => $localizacionExistente->x1,
-                    'y1' => $localizacionExistente->y1,
-                    'x2' => $localizacionExistente->x2,
-                    'y2' => $localizacionExistente->y2,
-                ];
-
                 // Actualizar ubicación existente
                 $localizacionExistente->update([
                     'x1' => $validated['x1'],
@@ -1417,35 +1389,32 @@ class LocalizacionController extends Controller
                     'x2' => $validated['x2'],
                     'y2' => $validated['y2'],
                 ]);
-            } else {
-                $esNueva = true;
 
+                Log::info("✅ Ubicación del paquete {$validated['paquete_id']} actualizada en nave {$validated['nave_id']}");
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Ubicación del paquete actualizada correctamente',
+                    'localizacion' => $localizacionExistente
+                ]);
+            } else {
                 // Crear nueva ubicación
-                $localizacionExistente = LocalizacionPaquete::create([
+                $nuevaLocalizacion = LocalizacionPaquete::create([
                     'paquete_id' => $validated['paquete_id'],
                     'x1' => $validated['x1'],
                     'y1' => $validated['y1'],
                     'x2' => $validated['x2'],
                     'y2' => $validated['y2'],
                 ]);
+
+                Log::info("✅ Nueva ubicación creada para paquete {$validated['paquete_id']} en nave {$validated['nave_id']}");
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Paquete ubicado correctamente en el mapa',
+                    'localizacion' => $nuevaLocalizacion
+                ]);
             }
-
-            // Actualizar el nave_id en el paquete
-            $paquete->update(['nave_id' => $validated['nave_id']]);
-
-            // Crear el movimiento de paquete
-            $this->crearMovimientoPaquete($paquete, $validated, $ubicacionAnterior, $naveNombre, $esNueva);
-
-            $mensaje = $esNueva
-                ? 'Paquete ubicado correctamente en el mapa'
-                : 'Ubicación del paquete actualizada correctamente';
-
-            return response()->json([
-                'success' => true,
-                'message' => $mensaje,
-                'localizacion' => $localizacionExistente
-            ]);
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
@@ -1460,54 +1429,6 @@ class LocalizacionController extends Controller
                 'message' => 'Error al guardar la ubicación del paquete',
                 'error' => $e->getMessage()
             ], 500);
-        }
-    }
-
-    /**
-     * Crear un movimiento de tipo "Movimiento de paquete" al mover/ubicar un paquete en el mapa
-     */
-    private function crearMovimientoPaquete(Paquete $paquete, array $nuevaUbicacion, ?array $ubicacionAnterior, string $naveNombre, bool $esNueva)
-    {
-        try {
-            // Formatear coordenadas para la descripción
-            $formatCoord = fn($x1, $y1, $x2, $y2) => "({$x1},{$y1})-({$x2},{$y2})";
-
-            $coordDestino = $formatCoord(
-                $nuevaUbicacion['x1'],
-                $nuevaUbicacion['y1'],
-                $nuevaUbicacion['x2'],
-                $nuevaUbicacion['y2']
-            );
-
-            // Construir descripción
-            if ($esNueva) {
-                $descripcion = "Movemos paquete (Código: {$paquete->codigo}) a ubicación {$naveNombre} {$coordDestino}";
-            } else {
-                $coordOrigen = $formatCoord(
-                    $ubicacionAnterior['x1'],
-                    $ubicacionAnterior['y1'],
-                    $ubicacionAnterior['x2'],
-                    $ubicacionAnterior['y2']
-                );
-                $descripcion = "Movemos paquete (Código: {$paquete->codigo}) de {$coordOrigen} a ubicación {$naveNombre} {$coordDestino}";
-            }
-
-            // Crear el movimiento
-            Movimiento::create([
-                'tipo'             => 'Movimiento de paquete',
-                'paquete_id'       => $paquete->id,
-                'nave_id'          => $nuevaUbicacion['nave_id'],
-                'descripcion'      => $descripcion,
-                'estado'           => 'completado',
-                'solicitado_por'   => auth()->id(),
-                'ejecutado_por'    => auth()->id(),
-                'fecha_solicitud'  => now(),
-                'fecha_ejecucion'  => now(),
-            ]);
-
-        } catch (\Exception $e) {
-            // No fallar si el movimiento no se puede crear, solo loguearlo
-            Log::warning("⚠️ No se pudo crear movimiento para paquete {$paquete->codigo}: " . $e->getMessage());
         }
     }
 }

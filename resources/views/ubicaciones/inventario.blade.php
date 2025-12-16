@@ -15,7 +15,7 @@
         });
 @endphp
 
-<script>
+<script data-navigate-reload>
     /* Mapas globales base (no reactivos) */
     window.productosAsignados = @json(\App\Models\Producto::whereNotNull('ubicacion_id')->pluck('ubicacion_id', 'codigo'));
     window.detallesProductos = @json($detalles);
@@ -23,7 +23,7 @@
     window.productosEstados = @json(\App\Models\Producto::pluck('estado', 'codigo'));
 </script>
 
-<script>
+<script data-navigate-reload>
     const RUTA_ALERTA = @json(route('alertas.store'));
 
     /* ────── Alpine factory per location ────── */
@@ -354,7 +354,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
     </x-slot>
 
     <div id="contenido"
-        class="max-w-7xl gap-2 flex flex-col altura-c h-[calc(100vh-90px)] w-screen mx-auto opacity-0 transform transition-all duration-200">
+        class="max-w-7xl gap-2 flex flex-col altura-c h-[calc(100vh-90px)] w-screen mx-auto transition-all duration-200">
         @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
             <div x-data="{ abierto: false }" class="h-full w-full">
 
@@ -662,17 +662,22 @@ Inesperados: ${inesperados.join(', ') || '—'}
         </button>
     </div>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            let btn = document.getElementById("btn_limpiar_todos_escaneos")
-            console.log(btn)
-            btn.remove()
-            let header = document.getElementsByClassName("max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8")
-            header = header[0]
-            header.classList.add("flex", "justify-between")
-            console.log(header)
-            header.append(btn)
-        })
+    <script data-navigate-reload>
+        function colocarBotonLimpiar() {
+            const btn = document.getElementById("btn_limpiar_todos_escaneos");
+            if (!btn || btn.dataset.invPlaced === "1") return;
+
+            const header = document.querySelector(".max-w-7xl.mx-auto.py-4.px-4.sm\\:px-6.lg\\:px-8");
+            if (!header) return;
+
+            btn.dataset.invPlaced = "1";
+            btn.remove();
+            header.classList.add("flex", "justify-between");
+            header.append(btn);
+        }
+
+        document.addEventListener("DOMContentLoaded", colocarBotonLimpiar);
+        document.addEventListener("livewire:navigated", colocarBotonLimpiar);
     </script>
 
     <audio id="sonido-ok" src="{{ asset('sonidos/ok.mp3') }}" preload="auto"></audio>
@@ -681,7 +686,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
     <audio id="sonido-estaEnOtraUbi" src="{{ asset('sonidos/estaEnOtraUbi.mp3') }}" preload="auto"></audio>
     <audio id="sonido-noTieneUbicacion" src="{{ asset('sonidos/noTieneUbicacion.mp3') }}" preload="auto"></audio>
 
-    <script>
+    <script data-navigate-reload>
         window.limpiarTodos = function() {
             Swal.fire({
                 icon: 'warning',
@@ -720,6 +725,6 @@ Inesperados: ${inesperados.join(', ') || '—'}
         }
     </style>
 
-    <script src="{{ asset('js/inventario/inventario.js') }}"></script>
+    <script src="{{ asset('js/inventario/inventario.js') }}" data-navigate-reload></script>
 
 </x-app-layout>

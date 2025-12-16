@@ -570,6 +570,85 @@ class ProductoController extends Controller
         }
     }
 
+    public function restablecerDesdeInventario(Request $request, $codigo)
+    {
+        try {
+            $validated = $request->validate([
+                'ubicacion_id' => 'required|exists:ubicaciones,id',
+                'peso_stock'   => 'required|numeric|min:0',
+            ], [
+                'ubicacion_id.required' => 'Debes indicar una ubicación.',
+                'ubicacion_id.exists'   => 'La ubicación seleccionada no existe.',
+                'peso_stock.required'   => 'Debes indicar el peso en stock.',
+                'peso_stock.numeric'    => 'El peso debe ser numérico.',
+                'peso_stock.min'        => 'El peso no puede ser negativo.',
+            ]);
+
+            $producto = Producto::where('codigo', $codigo)->firstOrFail();
+            $pesoInicial = $producto->peso_inicial ?? $validated['peso_stock'];
+            $pesoStock   = min($validated['peso_stock'], $pesoInicial);
+
+            $producto->estado          = 'almacenado';
+            $producto->peso_stock      = $pesoStock;
+            $producto->ubicacion_id    = $validated['ubicacion_id'];
+            $producto->fecha_consumido = null;
+            $producto->consumido_by    = null;
+            $producto->save();
+
+            return response()->json([
+                'success'  => true,
+                'message'  => "Producto {$producto->codigo} restablecido a almacenado en la ubicación {$producto->ubicacion_id}.",
+                'producto' => [
+                    'id'           => $producto->id,
+                    'codigo'       => $producto->codigo,
+                    'ubicacion_id' => $producto->ubicacion_id,
+                    'peso_stock'   => $producto->peso_stock,
+                    'estado'       => $producto->estado,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al restablecer producto: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function liberarFabricandoInventario(Request $request, $codigo)
+    {
+        try {
+            $validated = $request->validate([
+                'ubicacion_id' => 'required|exists:ubicaciones,id',
+            ], [
+                'ubicacion_id.required' => 'Debes indicar una ubicación.',
+                'ubicacion_id.exists'   => 'La ubicación seleccionada no existe.',
+            ]);
+
+            $producto = Producto::where('codigo', $codigo)->firstOrFail();
+            $producto->maquina_id    = null;
+            $producto->estado        = 'almacenado';
+            $producto->ubicacion_id  = $validated['ubicacion_id'];
+            $producto->save();
+
+            return response()->json([
+                'success'  => true,
+                'message'  => "Producto {$producto->codigo} liberado de máquina y asignado a la ubicación {$producto->ubicacion_id}.",
+                'producto' => [
+                    'id'           => $producto->id,
+                    'codigo'       => $producto->codigo,
+                    'ubicacion_id' => $producto->ubicacion_id,
+                    'estado'       => $producto->estado,
+                    'maquina_id'   => $producto->maquina_id,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al liberar producto de máquina: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function solicitarStock(Request $request)
     {
         // Aquí puedes obtener el diámetro o cualquier otro dato necesario de la solicitud
@@ -643,6 +722,63 @@ class ProductoController extends Controller
         }
 
         return back()->with('success', '✅ Producto actualizado correctamente.');
+    }
+
+    public function consumirLoteAjax(Request $request)
+    {
+        $codigos = $request->input('codigos', []);
+        if (!is_array($codigos)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Listado de códigos inválido.',
+            ], 422);
+        }
+
+        $codigosLimpios = collect($codigos)
+            ->filter()
+            ->map(fn ($c) => trim((string) $c))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($codigosLimpios)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No se recibieron códigos para consumir.',
+            ], 422);
+        }
+
+        $productos = Producto::whereIn('codigo', $codigosLimpios)->get();
+
+        $consumidos = [];
+        $errores = [];
+
+        DB::beginTransaction();
+        foreach ($productos as $producto) {
+            try {
+                $this->marcarComoConsumido($producto);
+                $producto->save();
+                $consumidos[] = $producto->codigo;
+            } catch (\Throwable $e) {
+                $errores[] = [
+                    'codigo' => $producto->codigo,
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+        DB::commit();
+
+        $faltantes = array_values(array_diff($codigosLimpios, $consumidos));
+        $ok = empty($errores) && empty($faltantes);
+
+        return response()->json([
+            'ok' => $ok,
+            'consumidos' => $consumidos,
+            'faltantes' => $faltantes,
+            'errores' => $errores,
+            'message' => $ok ? 'Materiales consumidos correctamente.' : 'Consumo completado parcialmente.',
+        ], $ok ? 200 : 207);
     }
 
     private function marcarComoConsumido(Producto $producto)
