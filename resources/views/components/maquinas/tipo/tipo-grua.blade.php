@@ -186,7 +186,7 @@
         @else
             <ul class="space-y-3">
                 @foreach ($movimientosCompletados as $mov)
-                    <li class="p-3 border border-green-200 rounded shadow-sm bg-white text-sm movimiento-completado">
+                    <li class="p-3 border border-green-200 rounded shadow-sm bg-white text-sm movimiento-completado" data-movimiento-id="{{ $mov->id }}">
                         <div class="flex flex-col gap-2">
                             <p><strong>Tipo:</strong> {{ ucfirst($mov->tipo) }}</p>
                             <p>{!! $mov->descripcion_html !!}</p>
@@ -195,9 +195,25 @@
                             <p><strong>Ejecutado por:</strong>
                                 {{ optional($mov->ejecutadoPor)->nombre_completo ?? 'N/A' }}</p>
                             <p><strong>Fecha completado:</strong> {{ $mov->updated_at->format('d/m/Y H:i') }}</p>
+                            @if($mov->producto_consumido_id)
+                                @php
+                                    $codigoConsumido = optional($mov->productoConsumido)->codigo ?? 'N/A';
+                                @endphp
+                                <p class="text-orange-600 text-xs">
+                                    <strong>⚠️ Producto consumido:</strong> {{ $codigoConsumido }}
+                                    (se recuperará al eliminar)
+                                </p>
+                            @endif
                         </div>
                         <div class="flex justify-end mt-2">
-                            <x-tabla.boton-eliminar :action="route('movimientos.destroy', $mov->id)" />
+                            <button type="button"
+                                onclick="eliminarMovimientoGrua({{ $mov->id }}, '{{ $mov->producto_consumido_id ? (optional($mov->productoConsumido)->codigo ?? '') : '' }}')"
+                                class="inline-flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded transition">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Eliminar
+                            </button>
                         </div>
                     </li>
                 @endforeach
@@ -856,4 +872,124 @@
     window.abrirModalPreparacionPaquete = abrirModalPreparacionPaquete;
     window.cerrarModalPreparacionPaquete = cerrarModalPreparacionPaquete;
     window.completarPreparacionDesdeModal = completarPreparacionDesdeModal;
+</script>
+
+<script>
+    // ====== ELIMINAR MOVIMIENTO COMPLETADO CON RECUPERACIÓN DE PRODUCTO ======
+    async function eliminarMovimientoGrua(movimientoId, codigoProductoConsumido) {
+        // Preparar mensaje de confirmación según si hay producto consumido o no
+        let mensajeHtml = '<p class="text-left">¿Estás seguro de eliminar este movimiento?</p>';
+        let tituloAlerta = 'Eliminar Movimiento';
+        const tieneProductoConsumido = codigoProductoConsumido && codigoProductoConsumido !== '';
+
+        if (tieneProductoConsumido) {
+            mensajeHtml = `
+                <div class="text-left">
+                    <p class="mb-3">¿Estás seguro de eliminar este movimiento?</p>
+                    <div class="bg-orange-100 border-l-4 border-orange-500 p-3 rounded">
+                        <p class="text-orange-700 font-semibold">⚠️ Atención:</p>
+                        <p class="text-orange-700 text-sm mt-1">
+                            Se recuperará el producto <strong>${codigoProductoConsumido}</strong> que fue consumido
+                            automáticamente cuando se realizó este movimiento.
+                        </p>
+                        <p class="text-orange-700 text-sm mt-1">
+                            El producto volverá al estado <strong>"fabricando"</strong> en la máquina correspondiente.
+                        </p>
+                    </div>
+                </div>
+            `;
+            tituloAlerta = '⚠️ Eliminar Movimiento';
+        }
+
+        const result = await Swal.fire({
+            title: tituloAlerta,
+            html: mensajeHtml,
+            icon: tieneProductoConsumido ? 'warning' : 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            confirmButtonColor: '#DC2626',
+            cancelButtonText: 'Cancelar',
+            cancelButtonColor: '#6B7280',
+            reverseButtons: true
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+            const response = await fetch(`/movimientos/${movimientoId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Construir mensaje de éxito
+                let mensajeExito = data.message || 'Movimiento eliminado correctamente.';
+
+                if (data.producto_consumido_recuperado && data.producto_recuperado) {
+                    const codigoProducto = data.producto_recuperado.codigo || 'desconocido';
+                    mensajeExito += `<br><br><span class="text-green-700">✅ Producto <strong>${codigoProducto}</strong> recuperado exitosamente.</span>`;
+                }
+
+                await Swal.fire({
+                    title: '¡Eliminado!',
+                    html: mensajeExito,
+                    icon: 'success',
+                    timer: 2500,
+                    timerProgressBar: true,
+                    showConfirmButton: false
+                });
+
+                // Eliminar el elemento de la lista visualmente
+                const elemento = document.querySelector(`[data-movimiento-id="${movimientoId}"]`);
+                if (elemento) {
+                    elemento.style.transition = 'opacity 0.3s, transform 0.3s';
+                    elemento.style.opacity = '0';
+                    elemento.style.transform = 'translateX(-20px)';
+                    setTimeout(() => {
+                        elemento.remove();
+                        // Reiniciar paginación
+                        reiniciarPaginacionCompletados();
+
+                        // Si no quedan más movimientos, mostrar mensaje vacío
+                        const contenedor = document.getElementById('contenedor-movimientos-completados');
+                        const items = contenedor?.querySelectorAll('.movimiento-completado');
+                        if (items && items.length === 0) {
+                            const lista = contenedor.querySelector('ul');
+                            if (lista) lista.remove();
+                            const pVacio = document.createElement('p');
+                            pVacio.className = 'text-gray-600 text-sm';
+                            pVacio.textContent = 'No hay movimientos completados.';
+                            contenedor.querySelector('h3').insertAdjacentElement('afterend', pVacio);
+                        }
+                    }, 300);
+                } else {
+                    // Si no se encuentra el elemento, recargar la página
+                    location.reload();
+                }
+            } else {
+                Swal.fire({
+                    title: 'Error',
+                    text: data.message || 'No se pudo eliminar el movimiento.',
+                    icon: 'error'
+                });
+            }
+        } catch (error) {
+            console.error('Error al eliminar movimiento:', error);
+            Swal.fire({
+                title: 'Error',
+                text: 'Ha ocurrido un error de conexión.',
+                icon: 'error'
+            });
+        }
+    }
+
+    window.eliminarMovimientoGrua = eliminarMovimientoGrua;
 </script>
