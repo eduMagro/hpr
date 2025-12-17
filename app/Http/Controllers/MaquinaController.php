@@ -187,9 +187,9 @@ class MaquinaController extends Controller
         if ($this->esGrua($maquina)) {
             // ⚠️ IMPORTANTE: Activar movimientos ANTES de cargar el contexto
             // para que los nuevos movimientos aparezcan en la primera carga
-            $this->activarMovimientosSalidasHoy();
+            //$this->activarMovimientosSalidasHoy();
             //$this->activarMovimientosSalidasAlmacenHoy();
-            $this->activarMovimientosPreparacionPaquete($maquina);
+            //$this->activarMovimientosPreparacionPaquete($maquina);
 
             // 🔧 MODO FABRICACIÓN: Si viene el parámetro fabricar_planilla, mostrar vista de fabricación
             $fabricarPlanillaId = request('fabricar_planilla');
@@ -1165,7 +1165,7 @@ class MaquinaController extends Controller
         // Puede ser por fecha_entrega del elemento o por fecha_estimada_entrega de la planilla
         $elementosSinElaborar = Elemento::with(['planilla.cliente', 'planilla.obra', 'maquina'])
             ->where('elaborado', 0)
-            ->where('longitud_cm', '!=', 600) // ❌ excluir 6 metros
+            ->where('longitud', '!=', 600) // ❌ excluir 6 metros
             ->where(function ($query) use ($manana) {
                 $query->whereDate('fecha_entrega', $manana)
                     ->orWhere(function ($q) use ($manana) {
