@@ -1411,8 +1411,21 @@
                 transition: all 0.3s;
             }
 
+            .fc-scrollgrid-sync-inner {
+                height: 100% !important;
+            }
+
+            .fc-col-header-cell-cushion {
+                padding: 0 !important;
+                height: 100% !important;
+            }
+
             .selection-badge.show {
                 display: block;
+            }
+
+            .fc-scrollgrid-section-header .fc-scroller {
+                overflow: hidden !important;
             }
 
             /* Highlight en recursos cuando se arrastra */
@@ -1808,7 +1821,7 @@
                             <div class="flex flex-col justify-between h-full w-full py-1">
                                 <a href="/maquinas/${arg.resource.id}"
                                    wire:navigate
-                                   class="text-blue-600 hover:text-blue-800 hover:underline font-semibold maquina-nombre"
+                                   class="text-blue-600 hover:text-blue-800 text-sm hover:underline font-semibold maquina-nombre"
                                    data-maquina-id="${arg.resource.id}"
                                    data-maquina-titulo="${arg.resource.title}">${arg.resource.title}</a>
                                 <div class="flex gap-1 justify-center">
