@@ -299,62 +299,151 @@
                     <!-- Checklist -->
                     <div class="space-y-3">
                         @foreach($documentosPost as $tipo => $item)
-                            <div class="flex items-center justify-between p-4 border rounded-lg {{ $item['completado'] ? 'bg-green-50 border-green-200' : 'bg-white' }}"
-                                id="doc-{{ $tipo }}">
-                                <div class="flex items-center">
-                                    @if($item['completado'])
-                                        <svg class="w-6 h-6 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                        </svg>
-                                    @else
-                                        <div class="w-6 h-6 border-2 border-gray-300 rounded-full mr-3"></div>
+                            @if($item['multiple'] ?? false)
+                                {{-- Caso especial: Formación del puesto (múltiples archivos) --}}
+                                <div class="p-4 border rounded-lg {{ $item['completado'] ? 'bg-green-50 border-green-200' : 'bg-white' }}" id="doc-{{ $tipo }}">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <div class="flex items-center">
+                                            @if($item['completado'])
+                                                <svg class="w-6 h-6 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                                </svg>
+                                            @else
+                                                <div class="w-6 h-6 border-2 border-gray-300 rounded-full mr-3"></div>
+                                            @endif
+                                            <div>
+                                                <p class="font-medium {{ $item['completado'] ? 'text-green-800' : 'text-gray-800' }}">{{ $item['nombre'] }}</p>
+                                                <p class="text-sm text-gray-500">{{ $item['total_archivos'] }} de {{ $item['max'] }} archivos</p>
+                                            </div>
+                                        </div>
+                                        @if($item['puede_anadir'])
+                                            <button onclick="abrirModalSubir('{{ $tipo }}', '{{ $item['nombre'] }}')"
+                                                class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition flex items-center gap-1">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                                </svg>
+                                                Añadir
+                                            </button>
+                                        @endif
+                                    </div>
+
+                                    {{-- Lista de archivos subidos --}}
+                                    @if($item['documentos']->count() > 0 || $item['formaciones']->count() > 0)
+                                        <div class="space-y-2 ml-9">
+                                            @foreach($item['documentos'] as $index => $doc)
+                                                <div class="flex items-center justify-between py-2 px-3 bg-white rounded border">
+                                                    <div class="flex items-center gap-2">
+                                                        <svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" />
+                                                        </svg>
+                                                        <span class="text-sm text-gray-700">Archivo {{ $index + 1 }}</span>
+                                                        @if($doc->notas)
+                                                            <span class="text-xs text-gray-400">- {{ $doc->notas }}</span>
+                                                        @endif
+                                                    </div>
+                                                    <div class="flex items-center gap-2">
+                                                        <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $doc->archivo]) }}"
+                                                            target="_blank" class="text-blue-600 hover:text-blue-800" title="Ver">
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                            </svg>
+                                                        </a>
+                                                        <button onclick="eliminarDocumentoFormacionPuesto({{ $doc->id }})" class="text-red-600 hover:text-red-800" title="Eliminar">
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                            @foreach($item['formaciones'] as $index => $form)
+                                                <div class="flex items-center justify-between py-2 px-3 bg-white rounded border">
+                                                    <div class="flex items-center gap-2">
+                                                        <svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" />
+                                                        </svg>
+                                                        <span class="text-sm text-gray-700">Archivo {{ $item['documentos']->count() + $index + 1 }}</span>
+                                                        <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Por candidato</span>
+                                                    </div>
+                                                    <div class="flex items-center gap-2">
+                                                        <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $form->archivo]) }}"
+                                                            target="_blank" class="text-blue-600 hover:text-blue-800" title="Ver">
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                            </svg>
+                                                        </a>
+                                                        <button onclick="eliminarArchivoFormacion({{ $form->id }}, 'Formación del puesto')" class="text-red-600 hover:text-red-800" title="Eliminar">
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
                                     @endif
-                                    <div>
-                                        <p class="font-medium {{ $item['completado'] ? 'text-green-800' : 'text-gray-800' }}">{{ $item['nombre'] }}</p>
-                                        @if($item['documento'] && $item['documento']->notas)
-                                            <p class="text-sm text-gray-500">{{ $item['documento']->notas }}</p>
+                                </div>
+                            @else
+                                {{-- Caso normal: documento único --}}
+                                <div class="flex items-center justify-between p-4 border rounded-lg {{ $item['completado'] ? 'bg-green-50 border-green-200' : 'bg-white' }}"
+                                    id="doc-{{ $tipo }}">
+                                    <div class="flex items-center">
+                                        @if($item['completado'])
+                                            <svg class="w-6 h-6 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                            </svg>
+                                        @else
+                                            <div class="w-6 h-6 border-2 border-gray-300 rounded-full mr-3"></div>
+                                        @endif
+                                        <div>
+                                            <p class="font-medium {{ $item['completado'] ? 'text-green-800' : 'text-gray-800' }}">{{ $item['nombre'] }}</p>
+                                            @if(($item['documento'] ?? null) && $item['documento']->notas)
+                                                <p class="text-sm text-gray-500">{{ $item['documento']->notas }}</p>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        @if($item['documento'] ?? false)
+                                            {{-- Documento subido desde post-incorporación --}}
+                                            <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $item['documento']->archivo]) }}"
+                                                target="_blank" class="text-blue-600 hover:text-blue-800" title="Ver documento">
+                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            </a>
+                                            <button onclick="eliminarDocumento('{{ $tipo }}')" class="text-red-600 hover:text-red-800" title="Eliminar">
+                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        @elseif($item['formacion'] ?? false)
+                                            {{-- Documento subido por el candidato desde formulario público --}}
+                                            <span class="text-xs text-gray-500 mr-2">Por candidato</span>
+                                            <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $item['formacion']->archivo]) }}"
+                                                target="_blank" class="text-blue-600 hover:text-blue-800" title="Ver documento">
+                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            </a>
+                                            <button onclick="eliminarArchivoFormacion({{ $item['formacion']->id }}, '{{ $item['nombre'] }}')"
+                                                class="text-red-600 hover:text-red-800" title="Eliminar documento">
+                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        @else
+                                            <button onclick="abrirModalSubir('{{ $tipo }}', '{{ $item['nombre'] }}')"
+                                                class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition">
+                                                Subir
+                                            </button>
                                         @endif
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-2">
-                                    @if($item['documento'])
-                                        {{-- Documento subido desde post-incorporación --}}
-                                        <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $item['documento']->archivo]) }}"
-                                            target="_blank" class="text-blue-600 hover:text-blue-800" title="Ver documento">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                        </a>
-                                        <button onclick="eliminarDocumento('{{ $tipo }}')" class="text-red-600 hover:text-red-800" title="Eliminar">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
-                                    @elseif($item['formacion'] ?? false)
-                                        {{-- Documento subido por el candidato desde formulario público --}}
-                                        <span class="text-xs text-gray-500 mr-2">Por candidato</span>
-                                        <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $item['formacion']->archivo]) }}"
-                                            target="_blank" class="text-blue-600 hover:text-blue-800" title="Ver documento">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                        </a>
-                                        <button onclick="eliminarArchivoFormacion({{ $item['formacion']->id }}, '{{ $item['nombre'] }}')"
-                                            class="text-red-600 hover:text-red-800" title="Eliminar documento">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
-                                    @else
-                                        <button onclick="abrirModalSubir('{{ $tipo }}', '{{ $item['nombre'] }}')"
-                                            class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition">
-                                            Subir
-                                        </button>
-                                    @endif
-                                </div>
-                            </div>
+                            @endif
                         @endforeach
                     </div>
                 </div>
@@ -594,6 +683,41 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     fetch('{{ url('incorporaciones/' . $incorporacion->id . '/documento') }}/' + tipo, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json',
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Eliminado',
+                                text: 'El documento ha sido eliminado.',
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => location.reload());
+                        }
+                    });
+                }
+            });
+        }
+
+        function eliminarDocumentoFormacionPuesto(documentoId) {
+            Swal.fire({
+                title: '¿Eliminar documento?',
+                text: 'Esta acción no se puede deshacer.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('{{ url('incorporaciones/' . $incorporacion->id . '/documento') }}/formacion_puesto?documento_id=' + documentoId, {
                         method: 'DELETE',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',

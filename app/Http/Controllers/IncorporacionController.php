@@ -98,11 +98,29 @@ class IncorporacionController extends Controller
         $incorporacion->load(['formaciones', 'documentos.subidoPor', 'logs.usuario', 'creador']);
 
         // Tipos de formación que pueden venir del formulario público
-        $tiposFormacion = ['curso_20h_generico', 'curso_6h_ferralla', 'formacion_generica_puesto', 'formacion_especifica_puesto'];
+        $tiposFormacion = ['curso_20h_generico', 'curso_6h_ferralla', 'formacion_puesto'];
 
         // Preparar checklist de documentos
         $documentosPost = [];
         foreach (Incorporacion::DOCUMENTOS_POST as $tipo => $nombre) {
+            // Caso especial: formacion_puesto permite múltiples archivos
+            if ($tipo === 'formacion_puesto') {
+                $docs = $incorporacion->documentos->where('tipo', $tipo);
+                $formacionesPublicas = $incorporacion->formaciones->where('tipo', $tipo);
+
+                $documentosPost[$tipo] = [
+                    'nombre' => $nombre,
+                    'documentos' => $docs, // Múltiples documentos
+                    'formaciones' => $formacionesPublicas, // Múltiples formaciones del formulario público
+                    'completado' => $docs->count() > 0 || $formacionesPublicas->count() > 0,
+                    'multiple' => true,
+                    'max' => Incorporacion::MAX_FORMACION_PUESTO,
+                    'puede_anadir' => ($docs->count() + $formacionesPublicas->count()) < Incorporacion::MAX_FORMACION_PUESTO,
+                    'total_archivos' => $docs->count() + $formacionesPublicas->count(),
+                ];
+                continue;
+            }
+
             // Primero buscar en documentos post-incorporación
             $doc = $incorporacion->documentos->where('tipo', $tipo)->first();
 
@@ -117,6 +135,7 @@ class IncorporacionController extends Controller
                 'documento' => $doc,
                 'formacion' => $formacionPublica, // Documento subido desde formulario público
                 'completado' => $doc ? $doc->completado : ($formacionPublica ? true : false),
+                'multiple' => false,
             ];
         }
 
@@ -169,25 +188,47 @@ class IncorporacionController extends Controller
             'notas' => 'nullable|string|max:500',
         ]);
 
+        // Caso especial: formacion_puesto permite múltiples archivos (hasta 5)
+        if ($validated['tipo'] === 'formacion_puesto') {
+            $totalActual = $incorporacion->documentos()->where('tipo', 'formacion_puesto')->count();
+            if ($totalActual >= Incorporacion::MAX_FORMACION_PUESTO) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ya has alcanzado el límite de ' . Incorporacion::MAX_FORMACION_PUESTO . ' archivos para Formación del puesto',
+                ], 422);
+            }
+        }
+
         // Guardar archivo en carpeta privada del usuario
         $archivo = $request->file('archivo');
-        $nombreArchivo = $validated['tipo'] . '_' . time() . '.' . $archivo->getClientOriginalExtension();
+        $nombreArchivo = $validated['tipo'] . '_' . time() . '_' . uniqid() . '.' . $archivo->getClientOriginalExtension();
 
         // Obtener carpeta del usuario
         $carpetaUsuario = $this->obtenerCarpetaUsuario($incorporacion);
         $archivo->storeAs("private/documentos/{$carpetaUsuario}", $nombreArchivo);
 
-        // Crear o actualizar documento
-        $documento = $incorporacion->documentos()->updateOrCreate(
-            ['tipo' => $validated['tipo']],
-            [
+        // Crear documento (para formacion_puesto siempre crear nuevo, para otros actualizar o crear)
+        if ($validated['tipo'] === 'formacion_puesto') {
+            $documento = $incorporacion->documentos()->create([
+                'tipo' => $validated['tipo'],
                 'archivo' => $nombreArchivo,
                 'notas' => $validated['notas'] ?? null,
                 'completado' => true,
                 'completado_at' => now(),
                 'subido_por' => auth()->id(),
-            ]
-        );
+            ]);
+        } else {
+            $documento = $incorporacion->documentos()->updateOrCreate(
+                ['tipo' => $validated['tipo']],
+                [
+                    'archivo' => $nombreArchivo,
+                    'notas' => $validated['notas'] ?? null,
+                    'completado' => true,
+                    'completado_at' => now(),
+                    'subido_por' => auth()->id(),
+                ]
+            );
+        }
 
         // Registrar log
         $incorporacion->registrarLog(
@@ -214,7 +255,15 @@ class IncorporacionController extends Controller
 
     public function eliminarDocumento(Request $request, Incorporacion $incorporacion, $tipo)
     {
-        $documento = $incorporacion->documentos()->where('tipo', $tipo)->first();
+        // Para formacion_puesto, se puede pasar un ID específico
+        if ($tipo === 'formacion_puesto' && $request->has('documento_id')) {
+            $documento = $incorporacion->documentos()
+                ->where('tipo', $tipo)
+                ->where('id', $request->input('documento_id'))
+                ->first();
+        } else {
+            $documento = $incorporacion->documentos()->where('tipo', $tipo)->first();
+        }
 
         if (!$documento) {
             return response()->json(['success' => false, 'message' => 'Documento no encontrado'], 404);
@@ -727,6 +776,34 @@ class IncorporacionController extends Controller
 
         // Descargar y luego eliminar el archivo temporal
         return response()->download($zipPath, $nombreZip)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Descargar contrato del usuario autenticado
+     */
+    public function descargarMiContrato()
+    {
+        $user = auth()->user();
+        $incorporacion = $user->incorporacion;
+
+        if (!$incorporacion) {
+            return back()->with('error', 'No se encontró tu incorporación');
+        }
+
+        $documento = $incorporacion->documentos()->where('tipo', 'contrato_trabajo')->first();
+
+        if (!$documento || !$documento->archivo) {
+            return back()->with('error', 'No tienes contrato disponible para descargar');
+        }
+
+        $carpetaUsuario = $this->obtenerCarpetaUsuario($incorporacion);
+        $rutaArchivo = "private/documentos/{$carpetaUsuario}/{$documento->archivo}";
+
+        if (!Storage::exists($rutaArchivo)) {
+            return back()->with('error', 'El archivo no existe');
+        }
+
+        return Storage::download($rutaArchivo, 'contrato_' . $user->dni . '.pdf');
     }
 
     /**
