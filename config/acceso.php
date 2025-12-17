@@ -22,6 +22,7 @@ return [
         'entradas.',       // ✅ acceso permitido
         'movimientos.',    // ✅ acceso permitido
         'ubicaciones.',
+        'incorporaciones.descargarMiContrato', // ✅ acceso para descargar su contrato
     ],
 
     // 📌 Prefijos que deben salir en el dashboard para operarios
@@ -60,6 +61,7 @@ return [
         'usuarios.imagen',
         'usuarios.editarSubirImagen',
         'nominas.crearDescargarMes',
+        'incorporaciones.descargarMiContrato', // ✅ descargar mi contrato
         'turno.cambiarMaquina',
         'salida.completarDesdeMovimiento',
         'alertas.index',
@@ -71,6 +73,7 @@ return [
         'vacaciones.solicitar',
         'users.verEventos-turnos',
         'users.verResumen-asistencia',
+        'api.mapaNave', // ✅ mapa de nave (usado en grúa y otras vistas)
     ],
 
     // 📌 Correos con acceso total

@@ -15,6 +15,7 @@ class Movimiento extends Model
     protected $fillable = [
         'tipo',
         'producto_id',
+        'producto_consumido_id', // ID del producto que fue consumido automáticamente
         'producto_base_id',
         'paquete_id',
         'pedido_id',
@@ -47,6 +48,12 @@ class Movimiento extends Model
     {
         return $this->belongsTo(Producto::class, 'producto_id');
     }
+
+    public function productoConsumido()
+    {
+        return $this->belongsTo(Producto::class, 'producto_consumido_id');
+    }
+
     public function productoBase()
     {
         return $this->belongsTo(ProductoBase::class, 'producto_base_id');

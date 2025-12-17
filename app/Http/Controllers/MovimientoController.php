@@ -559,6 +559,21 @@ class MovimientoController extends Controller
                             throw new \Exception('No se pudo resolver el producto base.');
                         }
 
+                        // Validar compatibilidad de tipo de material entre producto y máquina
+                        $tipoMaquina = strtolower(trim($maquina->tipo_material ?? ''));
+                        $tipoProducto = strtolower(trim($productoBase->tipo ?? ''));
+
+                        if ($tipoMaquina !== '' && $tipoProducto !== '' && $tipoMaquina !== $tipoProducto) {
+                            Log::warning('⚠️ Tipo de material incompatible al solicitar recarga', [
+                                'maquina_id' => $maquina->id,
+                                'maquina_nombre' => $maquina->nombre,
+                                'tipo_maquina' => $tipoMaquina,
+                                'tipo_producto' => $tipoProducto,
+                                'producto_base_id' => $productoBase->id,
+                            ]);
+                            throw new \Exception("La máquina '{$maquina->nombre}' solo acepta material tipo '{$tipoMaquina}', pero el producto solicitado es tipo '{$tipoProducto}'.");
+                        }
+
                         $tipo = strtolower($productoBase->tipo ?? 'N/A');
                         $diametro = $productoBase->diametro ?? '?';
                         $longitud = $productoBase->longitud ?? '?';
@@ -789,25 +804,19 @@ class MovimientoController extends Controller
                         // Si hay máquina
                         if ($maquinaDetectada) {
 
-                            $tipoMaquina = strtolower($maquinaDetectada->tipo_material);
-                            $tipoProducto = strtolower($tipoBase); // viene de productoBase->tipo
+                            $tipoMaquina = strtolower(trim($maquinaDetectada->tipo_material ?? ''));
+                            $tipoProducto = strtolower(trim($tipoBase ?? '')); // viene de productoBase->tipo
 
-                            if ($tipoMaquina === 'encarretado' && $tipoProducto === 'barras') {
-                                Log::warning('⚠️ Máquina solo acepta productos encarretados', [
+                            // Validar compatibilidad de tipo de material si la máquina tiene tipo definido
+                            if ($tipoMaquina !== '' && $tipoProducto !== '' && $tipoMaquina !== $tipoProducto) {
+                                Log::warning('⚠️ Tipo de material incompatible entre producto y máquina', [
                                     'maquina' => $maquinaDetectada->codigo,
+                                    'maquina_nombre' => $maquinaDetectada->nombre,
+                                    'tipo_maquina' => $tipoMaquina,
                                     'tipo_producto' => $tipoProducto,
                                     'codigo_producto' => $codigo,
                                 ]);
-                                throw new \Exception('La máquina seleccionada solo acepta productos de tipo encarretado.');
-                            }
-
-                            if ($tipoMaquina === 'barra' && $tipoProducto === 'encarretado') {
-                                Log::warning('⚠️ Máquina solo acepta productos tipo barra', [
-                                    'maquina' => $maquinaDetectada->codigo,
-                                    'tipo_producto' => $tipoProducto,
-                                    'codigo_producto' => $codigo,
-                                ]);
-                                throw new \Exception('La máquina seleccionada solo acepta productos de tipo barra.');
+                                throw new \Exception("La máquina '{$maquinaDetectada->nombre}' solo acepta material tipo '{$tipoMaquina}', pero el producto es tipo '{$tipoProducto}'.");
                             }
 
                             if (
@@ -824,6 +833,7 @@ class MovimientoController extends Controller
                                 ->latest()
                                 ->first();
 
+                            $movimientoActual = null;
                             if ($movPend) {
                                 $movPend->update([
                                     'producto_id'      => $producto->id,
@@ -831,10 +841,10 @@ class MovimientoController extends Controller
                                     'estado'           => 'completado',
                                     'fecha_ejecucion'  => now(),
                                     'ejecutado_por'    => auth()->id(),
-                                    // opcional: 'descripcion' => $descripcion,
                                 ]);
+                                $movimientoActual = $movPend;
                             } else {
-                                Movimiento::create([
+                                $movimientoActual = Movimiento::create([
                                     'tipo'               => 'movimiento libre',
                                     'producto_id'        => $producto->id,
                                     'producto_base_id'   => $producto->producto_base_id,
@@ -849,7 +859,8 @@ class MovimientoController extends Controller
                                 ]);
                             }
 
-                            // Consumir producto anterior del mismo tipo que estaba fabricando en esta máquina
+                            // Consumir producto anterior del mismo producto_base que estaba fabricando en esta máquina
+                            // (mismo tipo, diámetro y longitud)
                             $productoAnterior = Producto::where('producto_base_id', $producto->producto_base_id)
                                 ->where('id', '!=', $producto->id)
                                 ->where('maquina_id', $maquinaDetectada->id)
@@ -867,7 +878,13 @@ class MovimientoController extends Controller
                                     'producto_anterior_id' => $productoAnterior->id,
                                     'producto_nuevo_id'    => $producto->id,
                                     'maquina_id'           => $maquinaDetectada->id,
+                                    'producto_base_id'     => $producto->producto_base_id,
                                 ]);
+
+                                // Guardar referencia del producto consumido en el movimiento
+                                if ($movimientoActual) {
+                                    $movimientoActual->update(['producto_consumido_id' => $productoAnterior->id]);
+                                }
                             }
 
                             // Actualiza producto a máquina
@@ -1339,19 +1356,20 @@ class MovimientoController extends Controller
         try {
             // Obtener el movimiento que será eliminado
             $movimiento = Movimiento::findOrFail($id);
+            $productoConsumidoRecuperado = null;
+
             if ($movimiento->producto_id) {
                 // Obtener el producto asociado al movimiento
                 $producto = Producto::findOrFail($movimiento->producto_id);
 
                 // Revertir la ubicación y máquina del producto al origen del movimiento
                 $producto->ubicacion_id = $movimiento->ubicacion_origen ?: null;
-                $producto->maquina_id = $movimiento->maquina_origen ?: null; // Asegúrate de tener este campo en tu modelo Movimiento
+                $producto->maquina_id = $movimiento->maquina_origen ?: null;
 
                 // Actualizar el estado del producto basado en la ubicación de origen
                 if ($movimiento->ubicacion_origen) {
                     $ubicacion = Ubicacion::find($movimiento->ubicacion_origen);
                     if ($ubicacion) {
-
                         $producto->estado = 'almacenado';
                     }
                 } elseif ($movimiento->maquina_origen) {
@@ -1363,6 +1381,25 @@ class MovimientoController extends Controller
                 }
                 // Guardar los cambios en el producto
                 $producto->save();
+
+                // Si hay un producto consumido asociado, recuperarlo
+                if ($movimiento->producto_consumido_id) {
+                    $productoConsumido = Producto::find($movimiento->producto_consumido_id);
+                    if ($productoConsumido && $productoConsumido->estado === 'consumido') {
+                        $productoConsumido->update([
+                            'estado'          => 'fabricando',
+                            'maquina_id'      => $movimiento->maquina_destino,
+                            'fecha_consumido' => null,
+                            'consumido_by'    => null,
+                        ]);
+                        $productoConsumidoRecuperado = $productoConsumido;
+                        Log::info('Producto consumido recuperado al eliminar movimiento', [
+                            'producto_consumido_id' => $productoConsumido->id,
+                            'movimiento_id'         => $movimiento->id,
+                            'maquina_destino'       => $movimiento->maquina_destino,
+                        ]);
+                    }
+                }
             }
 
             if ($movimiento->paquete_id) {
@@ -1382,6 +1419,19 @@ class MovimientoController extends Controller
             // Confirmar la transacción
             DB::commit();
 
+            // Si es petición AJAX, devolver JSON
+            if (request()->expectsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Movimiento eliminado correctamente.',
+                    'producto_consumido_recuperado' => $productoConsumidoRecuperado ? true : false,
+                    'producto_recuperado' => $productoConsumidoRecuperado ? [
+                        'id' => $productoConsumidoRecuperado->id,
+                        'codigo' => $productoConsumidoRecuperado->codigo,
+                    ] : null,
+                ]);
+            }
+
             // Redirigir con un mensaje de éxito
             return redirect()->route('movimientos.index')->with('success', 'Movimiento eliminado correctamente.');
         } catch (\Throwable $e) {
@@ -1393,6 +1443,14 @@ class MovimientoController extends Controller
                 'message' => $e->getMessage(),
                 'stack' => $e->getTraceAsString(),
             ]);
+
+            // Si es petición AJAX, devolver JSON con error
+            if (request()->expectsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ocurrió un error al eliminar el movimiento.',
+                ], 500);
+            }
 
             // Redirigir con un mensaje de error genérico
             return redirect()->back()->with('error', 'Ocurrió un error al eliminar el movimiento. Inténtalo nuevamente.');
