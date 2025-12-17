@@ -72,8 +72,7 @@ class Incorporacion extends Model
         // Documentos de formación
         'curso_20h_generico' => 'Curso 20H modalidad genérica',
         'curso_6h_ferralla' => 'Curso 6H Ferralla',
-        'formacion_generica_puesto' => 'Formación genérica del puesto',
-        'formacion_especifica_puesto' => 'Formación específica del puesto',
+        'formacion_puesto' => 'Formación del puesto', // Permite múltiples archivos (hasta 5)
         // Documentos administrativos
         'info_preventiva' => 'Información materia preventiva',
         'art_19' => 'Art. 19 específica del puesto',
@@ -84,6 +83,9 @@ class Incorporacion extends Model
         'huella_sepe' => 'Huella contrato (SEPE)',
         'ta2' => 'TA2 (Alta trabajador)',
     ];
+
+    // Número máximo de archivos para formación del puesto
+    const MAX_FORMACION_PUESTO = 5;
 
     protected static function boot()
     {
@@ -190,12 +192,12 @@ class Incorporacion extends Model
     {
         $total = count(self::DOCUMENTOS_POST);
 
-        // Contar documentos post-incorporación completados
-        $documentosPost = $this->documentos()->where('completado', true)->pluck('tipo')->toArray();
+        // Contar documentos post-incorporación completados (tipos únicos)
+        $documentosPost = $this->documentos()->where('completado', true)->pluck('tipo')->unique()->toArray();
 
         // Contar formaciones del formulario público que coinciden con tipos de DOCUMENTOS_POST
-        $tiposFormacion = ['curso_20h_generico', 'curso_6h_ferralla', 'formacion_generica_puesto', 'formacion_especifica_puesto'];
-        $formacionesPublicas = $this->formaciones()->whereIn('tipo', $tiposFormacion)->pluck('tipo')->toArray();
+        $tiposFormacion = ['curso_20h_generico', 'curso_6h_ferralla', 'formacion_puesto'];
+        $formacionesPublicas = $this->formaciones()->whereIn('tipo', $tiposFormacion)->pluck('tipo')->unique()->toArray();
 
         // Unir ambos arrays y eliminar duplicados
         $completados = array_unique(array_merge($documentosPost, $formacionesPublicas));
@@ -205,17 +207,33 @@ class Incorporacion extends Model
 
     public function documentosFaltantes()
     {
-        // Documentos post-incorporación subidos
-        $documentosPost = $this->documentos()->pluck('tipo')->toArray();
+        // Documentos post-incorporación subidos (tipos únicos)
+        $documentosPost = $this->documentos()->pluck('tipo')->unique()->toArray();
 
         // Formaciones del formulario público
-        $tiposFormacion = ['curso_20h_generico', 'curso_6h_ferralla', 'formacion_generica_puesto', 'formacion_especifica_puesto'];
-        $formacionesPublicas = $this->formaciones()->whereIn('tipo', $tiposFormacion)->pluck('tipo')->toArray();
+        $tiposFormacion = ['curso_20h_generico', 'curso_6h_ferralla', 'formacion_puesto'];
+        $formacionesPublicas = $this->formaciones()->whereIn('tipo', $tiposFormacion)->pluck('tipo')->unique()->toArray();
 
         // Unir ambos
         $subidos = array_unique(array_merge($documentosPost, $formacionesPublicas));
 
         return array_diff(array_keys(self::DOCUMENTOS_POST), $subidos);
+    }
+
+    /**
+     * Obtiene los documentos de formación del puesto (hasta 5)
+     */
+    public function documentosFormacionPuesto()
+    {
+        return $this->documentos()->where('tipo', 'formacion_puesto')->get();
+    }
+
+    /**
+     * Verifica si se puede añadir más documentos de formación del puesto
+     */
+    public function puedeAnadirFormacionPuesto()
+    {
+        return $this->documentos()->where('tipo', 'formacion_puesto')->count() < self::MAX_FORMACION_PUESTO;
     }
 
     public function registrarLog($accion, $descripcion = null, $datosAnteriores = null, $datosNuevos = null)
