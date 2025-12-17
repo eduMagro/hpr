@@ -222,6 +222,12 @@ class User extends Authenticatable
     {
         return $this->hasOne(Modelo145::class);
     }
+
+    public function incorporacion()
+    {
+        return $this->hasOne(Incorporacion::class);
+    }
+
     public function esOperario()
     {
         return $this->rol === 'operario';

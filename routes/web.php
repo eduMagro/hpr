@@ -803,6 +803,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->name('incorporaciones.editarResubirArchivo');
     Route::post('/incorporaciones/{incorporacion}/actualizar-campo', [\App\Http\Controllers\IncorporacionController::class, 'actualizarCampo'])
         ->name('incorporaciones.editarActualizarCampo');
+    Route::get('/mi-contrato/descargar', [\App\Http\Controllers\IncorporacionController::class, 'descargarMiContrato'])
+        ->name('incorporaciones.descargarMiContrato');
 });
 
 // === RUTAS PÚBLICAS - FORMULARIO INCORPORACIÓN (sin autenticación) ===

@@ -683,15 +683,19 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
         <script src="{{ asset('js/imprimirQrS.js') }}"></script>
 
-        {{-- Script del sistema de resumen de etiquetas (debe cargar antes del botón Reagrupar) --}}
-        <script src="{{ asset('js/resumir-etiquetas.js') }}"></script>
+        {{-- Script del sistema de resumen de etiquetas (NO necesario para grúa) --}}
+        @if ($maquina->tipo !== 'grua')
+            <script src="{{ asset('js/resumir-etiquetas.js') }}"></script>
+        @endif
 
         <script>
+            @if ($maquina->tipo !== 'grua')
             window.SUGERENCIAS = @json($sugerenciasPorElemento ?? []);
             window.elementosAgrupadosScript = @json($elementosAgrupadosScript ?? null);
             window.gruposResumenData = @json($gruposResumen ?? []);
             window.etiquetasEnGrupos = @json($etiquetasEnGrupos ?? []);
             window.rutaDividirElemento = "{{ route('elementos.dividir') }}";
+            @endif
 
             window.etiquetasData = @json($etiquetasData);
             window.pesosElementos = @json($pesosElementos);
@@ -913,11 +917,11 @@
             // Nota: El listener DOMContentLoaded previo se ha movido a initMaquinasShowPage
         </script>
 
-        <!-- ✅ Vite: Bundle de máquinas -->
-        @vite(['resources/js/maquinaJS/maquina-bundle.js'])
-        <script src="{{ asset('js/maquinaJS/sl28/cortes.js') }}?v={{ time() }}"></script>
-        {{-- <script src="{{ asset('js/maquinaJS/crearPaquetes.js') }}" defer></script> --}}
-        {{-- Al final del archivo Blade --}}
+        <!-- ✅ Vite: Bundle de máquinas (NO necesario para grúa) -->
+        @if ($maquina->tipo !== 'grua')
+            @vite(['resources/js/maquinaJS/maquina-bundle.js'])
+            <script src="{{ asset('js/maquinaJS/sl28/cortes.js') }}?v={{ time() }}"></script>
+        @endif
 
         <script>
             // Variable global para controladores
@@ -1306,8 +1310,10 @@
             }
         </script>
 
-        {{-- Script para dibujar figuras de elementos --}}
-        <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
+        {{-- Script para dibujar figuras de elementos (NO necesario para grúa) --}}
+        @if ($maquina->tipo !== 'grua')
+            <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
+        @endif
 
         {{-- Script de atajos de teclado para control de columnas --}}
         <script>

@@ -615,6 +615,14 @@
 
 
         const w = window.open('', '_blank');
+        if (!w) {
+            Swal.fire({
+                icon: 'error',
+                title: 'No se pudo abrir la ventana de impresión',
+                text: 'Por favor, desactiva el bloqueador de ventanas emergentes para este sitio e inténtalo de nuevo.',
+            });
+            return;
+        }
         w.document.open();
         w.document.write(`
           <html>
