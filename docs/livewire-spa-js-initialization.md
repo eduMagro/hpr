@@ -167,9 +167,9 @@ Para mantener consistencia, usar el siguiente patrón:
     -   **Ruta:** `/movimientos/create` → `movimientos.create`
 -   [ ] `resources/views/epis/index.blade.php` - **NO REQUIERE** (usa Alpine.js, se reinicializa automáticamente)
     -   **Ruta:** `/epis` → `epis.index`
--   [ ] `resources/views/entradas/index.blade.php` (Albaranes) - **Pendiente integración SPA** (eliminar reload)
--   [ ] `resources/views/openai/index.blade.php`
--   [ ] `resources/views/proveedores/index.blade.php`
+-   [x] `resources/views/entradas/index.blade.php` (Albaranes) ✅ **MIGRADO** (2025-12-18 11:30) (Refactored `entradas-table.blade.php` to use AlpineJS)
+-   [ ] `resources/views/openai/index.blade.php` - **OMITIDO** (Pertenece a otra rama)
+-   [ ] `resources/views/proveedores/index.blade.php` - **OMITIDO** (No se encuentra / Desconocido)
 -   [x] `resources/views/productos/index.blade.php` ✅ **MIGRADO** (2025-12-17 09:30)
     -   **Ruta:** `/productos` → `productos.index`
 -   [x] `resources/views/vacaciones/index.blade.php` ✅ **MIGRADO** (2025-12-17 09:15)
@@ -179,8 +179,8 @@ Para mantener consistencia, usar el siguiente patrón:
     -   **Ruta:** `/produccion/maquinas` → `produccion.verMaquinas`
     -   Implements global singleton pattern for polling (`window._maquinasPollingInterval`) and event listeners (`window._maquinasListenerAdded`).
 -   [x] `resources/views/movimientos/index.blade.php` ✅ **MIGRADO** (2025-12-17 12:45)
--   [ ] `resources/views/livewire/etiquetas-table.blade.php`
--   [ ] `resources/views/livewire/elementos-table.blade.php`
+-   [x] `resources/views/livewire/etiquetas-table.blade.php` ✅ **MIGRADO** (Initialized listeners properly)
+-   [x] `resources/views/livewire/elementos-table.blade.php` ✅ **MIGRADO** (Refactored to global functions)
 
 ## 🧠 Notas Técnicas y Lecciones Aprendidas (Latest Session)
 

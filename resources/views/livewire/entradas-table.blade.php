@@ -5,12 +5,17 @@
         <table class="w-full border text-sm text-center">
             <thead class="bg-blue-600 text-white uppercase text-xs">
                 <tr>
-                    <x-tabla.encabezado-ordenable campo="pedido_producto_id" :sortActual="$sort" :orderActual="$order" texto="Código Línea" padding="px-3 py-2" />
-                    <x-tabla.encabezado-ordenable campo="albaran" :sortActual="$sort" :orderActual="$order" texto="Albarán" padding="px-3 py-2" />
-                    <x-tabla.encabezado-ordenable campo="codigo_sage" :sortActual="$sort" :orderActual="$order" texto="Código SAGE" padding="px-3 py-2" />
-                    <x-tabla.encabezado-ordenable campo="nave_id" :sortActual="$sort" :orderActual="$order" texto="Nave" padding="px-3 py-2" />
+                    <x-tabla.encabezado-ordenable campo="pedido_producto_id" :sortActual="$sort" :orderActual="$order"
+                        texto="Código Línea" padding="px-3 py-2" />
+                    <x-tabla.encabezado-ordenable campo="albaran" :sortActual="$sort" :orderActual="$order" texto="Albarán"
+                        padding="px-3 py-2" />
+                    <x-tabla.encabezado-ordenable campo="codigo_sage" :sortActual="$sort" :orderActual="$order"
+                        texto="Código SAGE" padding="px-3 py-2" />
+                    <x-tabla.encabezado-ordenable campo="nave_id" :sortActual="$sort" :orderActual="$order" texto="Nave"
+                        padding="px-3 py-2" />
                     <th class="px-3 py-2 border">Producto Base</th>
-                    <x-tabla.encabezado-ordenable campo="created_at" :sortActual="$sort" :orderActual="$order" texto="Fecha" padding="px-3 py-2" />
+                    <x-tabla.encabezado-ordenable campo="created_at" :sortActual="$sort" :orderActual="$order" texto="Fecha"
+                        padding="px-3 py-2" />
                     <th class="px-3 py-2 border">Nº Productos</th>
                     <th class="px-3 py-2 border">Peso Total</th>
                     <th class="px-3 py-2 border">Estado</th>
@@ -22,8 +27,7 @@
                 <tr>
                     {{-- Pedido Código --}}
                     <th class="border p-1">
-                        <input type="text" wire:model.live.debounce.300ms="pedido_codigo"
-                            placeholder="PC25/0001"
+                        <input type="text" wire:model.live.debounce.300ms="pedido_codigo" placeholder="PC25/0001"
                             class="bg-white text-gray-800 border border-gray-300 rounded text-xs text-center w-full h-6">
                     </th>
 
@@ -32,22 +36,18 @@
 
                     {{-- Nave --}}
                     <th class="border p-1">
-                        <input type="text" wire:model.live.debounce.300ms="nave_id"
-                            placeholder="Nave"
+                        <input type="text" wire:model.live.debounce.300ms="nave_id" placeholder="Nave"
                             class="bg-white text-gray-800 border border-gray-300 rounded text-xs text-center w-full h-6">
                     </th>
 
                     {{-- FILTRO PARA PRODUCTO BASE CON 3 MINI INPUTS --}}
                     <th class="py-1 px-0 border">
                         <div class="flex gap-2 justify-center">
-                            <input type="text" wire:model.live.debounce.300ms="producto_tipo"
-                                placeholder="T"
+                            <input type="text" wire:model.live.debounce.300ms="producto_tipo" placeholder="T"
                                 class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
-                            <input type="text" wire:model.live.debounce.300ms="producto_diametro"
-                                placeholder="Ø"
+                            <input type="text" wire:model.live.debounce.300ms="producto_diametro" placeholder="Ø"
                                 class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
-                            <input type="text" wire:model.live.debounce.300ms="producto_longitud"
-                                placeholder="L"
+                            <input type="text" wire:model.live.debounce.300ms="producto_longitud" placeholder="L"
                                 class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
                         </div>
                     </th>
@@ -59,8 +59,7 @@
 
                     {{-- Usuario --}}
                     <th class="border p-1">
-                        <input type="text" wire:model.live.debounce.300ms="usuario"
-                            placeholder="Usuario"
+                        <input type="text" wire:model.live.debounce.300ms="usuario" placeholder="Usuario"
                             class="bg-white text-gray-800 border border-gray-300 rounded text-xs text-center w-full h-6">
                     </th>
 
@@ -73,8 +72,8 @@
                             <button wire:click="limpiarFiltros" type="button"
                                 class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
                                 title="Restablecer filtros">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round"
                                         d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
                                 </svg>
@@ -95,17 +94,64 @@
                             peso_total: @js($entrada->peso_total),
                             estado: @js($entrada->estado),
                         },
-                        original: {}
+                        original: {},
+                        guardar() {
+                            fetch('{{ route('entradas.update', $entrada->id) }}', {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']').getAttribute('content'),
+                                        'Accept': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        albaran: this.fila.albaran,
+                                        codigo_sage: this.fila.codigo_sage,
+                                        peso_total: this.fila.peso_total,
+                                        estado: this.fila.estado
+                                    })
+                                })
+                                .then(async (response) => {
+                                    const contentType = response.headers.get('content-type');
+                                    let data = {};
+                                    if (contentType && contentType.includes('application/json')) {
+                                        data = await response.json();
+                                    } else {
+                                        const text = await response.text();
+                                        throw new Error('Respuesta inesperada del servidor: ' + text.slice(0, 200));
+                                    }
+                    
+                                    if (response.ok && data.success) {
+                                        this.editando = false;
+                                        $wire.$refresh();
+                                    } else {
+                                        let errorMsg = data.message || 'Error al actualizar.';
+                                        if (data.errors) {
+                                            errorMsg = Object.values(data.errors).flat().join('<br>');
+                                        }
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Error al actualizar',
+                                            html: errorMsg
+                                        });
+                                    }
+                                })
+                                .catch((err) => {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error de conexión',
+                                        text: err.message || 'No se pudo actualizar la entrada.'
+                                    });
+                                });
+                        }
                     }" x-init="original = JSON.parse(JSON.stringify(fila))"
                         @dblclick="if(!$event.target.closest('input,select,textarea,button,a')){ editando = !editando; if(!editando){ fila = JSON.parse(JSON.stringify(original)); }}"
-                        @keydown.enter.stop="guardarEntrada(fila); editando = false"
-                        :class="{ 'bg-yellow-100': editando }"
+                        @keydown.enter.stop="guardar()" :class="{ 'bg-yellow-100': editando }"
                         class="border-b hover:bg-blue-50 text-sm text-center">
 
                         <!-- Código Línea -->
                         <td class="px-3 py-2 text-center">
-                            <a href="{{ route('pedidos.index', ['pedido_producto_id' => $entrada->pedido_producto_id]) }}" wire:navigate
-                                class="text-blue-600 hover:underline font-medium">
+                            <a href="{{ route('pedidos.index', ['pedido_producto_id' => $entrada->pedido_producto_id]) }}"
+                                wire:navigate class="text-blue-600 hover:underline font-medium">
                                 {{ $entrada->pedidoProducto->codigo ?? 'N/A' }}
                             </a>
                         </td>
@@ -151,8 +197,8 @@
                         <!-- Nº Productos -->
                         <td class="px-3 py-2">
                             @if ($entrada->productos_count > 0)
-                                <a href="{{ route('productos.index', ['entrada_id' => $entrada->id, 'mostrar_todos' => 1]) }}" wire:navigate
-                                    class="text-blue-600 hover:underline">
+                                <a href="{{ route('productos.index', ['entrada_id' => $entrada->id, 'mostrar_todos' => 1]) }}"
+                                    wire:navigate class="text-blue-600 hover:underline">
                                     {{ $entrada->productos_count }}
                                 </a>
                             @else
@@ -178,11 +224,13 @@
                         <td class="px-3 py-2">
                             @if ($entrada->pdf_albaran)
                                 <div class="flex justify-center gap-1">
-                                    <a href="{{ route('entradas.crearDescargarPdf', $entrada->id) }}" target="_blank" rel="noopener noreferrer"
+                                    <a href="{{ route('entradas.crearDescargarPdf', $entrada->id) }}" target="_blank"
+                                        rel="noopener noreferrer"
                                         class="text-white bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded text-[10px] font-semibold transition">
                                         Ver
                                     </a>
-                                    <a href="{{ route('entradas.crearDescargarPdf', $entrada->id) }}?download=1" download
+                                    <a href="{{ route('entradas.crearDescargarPdf', $entrada->id) }}?download=1"
+                                        download
                                         class="text-blue-700 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded text-[10px] font-semibold transition">
                                         Descargar
                                     </a>
@@ -196,8 +244,7 @@
                         <td class="px-2 py-2 border text-xs font-bold">
                             <div class="flex items-center space-x-2 justify-center">
                                 <!-- Guardar / Cancelar cuando editando -->
-                                <x-tabla.boton-guardar x-show="editando"
-                                    @click="guardarEntrada(fila); editando = false" />
+                                <x-tabla.boton-guardar x-show="editando" @click="guardar()" />
                                 <x-tabla.boton-cancelar-edicion x-show="editando"
                                     @click="fila = JSON.parse(JSON.stringify(original)); editando=false" />
 
@@ -208,9 +255,8 @@
                                         <button @click="$dispatch('abrir-modal-adjuntar', { entradaId: fila.id })"
                                             class="w-6 h-6 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center justify-center"
                                             title="Adjuntar albarán PDF">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
-                                                fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                                stroke-width="2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round"
                                                     d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l7.07-7.07a4 4 0 00-5.657-5.657L6.343 11.343a6 6 0 008.485 8.485l.707-.707" />
                                             </svg>
@@ -220,9 +266,8 @@
                                             class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
                                             title="Editar">
                                             <!-- ícono lápiz -->
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
-                                                fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                                stroke-width="2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round"
                                                     d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                                             </svg>
@@ -272,54 +317,5 @@
         </div>
     </div>
 
-    <script>
-        function guardarEntrada(fila) {
-            fetch(`{{ route('entradas.update', '') }}/${fila.id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        albaran: fila.albaran,
-                        codigo_sage: fila.codigo_sage,
-                        peso_total: fila.peso_total,
-                        estado: fila.estado
-                    })
-                })
-                .then(async (response) => {
-                    const contentType = response.headers.get('content-type');
-                    let data = {};
-                    if (contentType && contentType.includes('application/json')) {
-                        data = await response.json();
-                    } else {
-                        const text = await response.text();
-                        throw new Error("Respuesta inesperada del servidor: " + text.slice(0, 200));
-                    }
 
-                    if (response.ok && data.success) {
-                        // refresca para ver ordenables / totales recalculados si aplica
-                        window.location.reload();
-                    } else {
-                        let errorMsg = data.message || "Error al actualizar la entrada.";
-                        if (data.errors) {
-                            errorMsg = Object.values(data.errors).flat().join("<br>");
-                        }
-                        Swal.fire({
-                            icon: "error",
-                            title: "Error al actualizar",
-                            html: errorMsg
-                        });
-                    }
-                })
-                .catch((err) => {
-                    Swal.fire({
-                        icon: "error",
-                        title: "Error de conexión",
-                        text: err.message || "No se pudo actualizar la entrada."
-                    });
-                });
-        }
-    </script>
 </div>
