@@ -181,6 +181,12 @@ Para mantener consistencia, usar el siguiente patrón:
 -   [x] `resources/views/movimientos/index.blade.php` ✅ **MIGRADO** (2025-12-17 12:45)
 -   [x] `resources/views/livewire/etiquetas-table.blade.php` ✅ **MIGRADO** (Initialized listeners properly)
 -   [x] `resources/views/livewire/elementos-table.blade.php` ✅ **MIGRADO** (Refactored to global functions)
+-   [x] `resources/views/livewire/coladas-table.blade.php` ✅ **MIGRADO** (2025-12-18 12:45)
+-   [ ] `resources/views/ubicaciones/inventario.blade.php` (Uses custom Alpine factory & data-navigate-reload - needs review)
+-   [ ] `resources/views/salidasAlmacen/index.blade.php`
+-   [ ] `resources/views/mapa_paquetes/Mapalocalizaciones.blade.php`
+-   [ ] `resources/views/localizaciones/create.blade.php`
+-   [ ] `resources/views/alertas/index.blade.php`
 
 ## 🧠 Notas Técnicas y Lecciones Aprendidas (Latest Session)
 

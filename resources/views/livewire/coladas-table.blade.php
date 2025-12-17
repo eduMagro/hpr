@@ -6,7 +6,9 @@
                 <a href="{{ route('productos.index') }}"
                     class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2.5 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                        <path fill-rule="evenodd"
+                            d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
+                            clip-rule="evenodd" />
                     </svg>
                     Volver a Materiales
                 </a>
@@ -15,7 +17,9 @@
             <button onclick="abrirModalCrear()"
                 class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    <path fill-rule="evenodd"
+                        d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                        clip-rule="evenodd" />
                 </svg>
                 Nueva Colada
             </button>
@@ -52,13 +56,19 @@
             <table class="w-full min-w-[900px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-10">
                     <tr class="text-center text-xs uppercase">
-                        <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
-                        <x-tabla.encabezado-ordenable campo="numero_colada" :sortActual="$sort" :orderActual="$order" texto="N Colada" />
-                        <x-tabla.encabezado-ordenable campo="producto_base" :sortActual="$sort" :orderActual="$order" texto="Producto Base" />
-                        <x-tabla.encabezado-ordenable campo="fabricante" :sortActual="$sort" :orderActual="$order" texto="Fabricante" />
-                        <x-tabla.encabezado-ordenable campo="codigo_adherencia" :sortActual="$sort" :orderActual="$order" texto="Cod. Adherencia" />
+                        <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order"
+                            texto="ID" />
+                        <x-tabla.encabezado-ordenable campo="numero_colada" :sortActual="$sort" :orderActual="$order"
+                            texto="N Colada" />
+                        <x-tabla.encabezado-ordenable campo="producto_base" :sortActual="$sort" :orderActual="$order"
+                            texto="Producto Base" />
+                        <x-tabla.encabezado-ordenable campo="fabricante" :sortActual="$sort" :orderActual="$order"
+                            texto="Fabricante" />
+                        <x-tabla.encabezado-ordenable campo="codigo_adherencia" :sortActual="$sort" :orderActual="$order"
+                            texto="Cod. Adherencia" />
                         <th class="p-2 border">Documento</th>
-                        <x-tabla.encabezado-ordenable campo="created_at" :sortActual="$sort" :orderActual="$order" texto="Fecha Creacion" />
+                        <x-tabla.encabezado-ordenable campo="created_at" :sortActual="$sort" :orderActual="$order"
+                            texto="Fecha Creacion" />
                         <th class="p-2 border">Acciones</th>
                     </tr>
 
@@ -121,10 +131,10 @@
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-center text-gray-700">
-                                @if($colada->productoBase)
+                                @if ($colada->productoBase)
                                     {{ strtoupper($colada->productoBase->tipo) }} |
                                     {{ $colada->productoBase->diametro }} mm
-                                    @if($colada->productoBase->longitud)
+                                    @if ($colada->productoBase->longitud)
                                         | {{ $colada->productoBase->longitud }} m
                                     @endif
                                 @else
@@ -138,11 +148,14 @@
                                 {{ $colada->codigo_adherencia ?? '-' }}
                             </td>
                             <td class="px-4 py-3 text-center">
-                                @if($colada->documento)
+                                @if ($colada->documento)
                                     <a href="{{ route('coladas.descargar', $colada) }}"
                                         class="inline-flex items-center gap-1 text-green-600 hover:text-green-800 font-medium">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20"
+                                            fill="currentColor">
+                                            <path fill-rule="evenodd"
+                                                d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                                                clip-rule="evenodd" />
                                         </svg>
                                         PDF
                                     </a>
@@ -155,11 +168,13 @@
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex justify-center gap-2">
-                                    <button onclick="abrirModalEditar({{ $colada->id }}, '{{ $colada->numero_colada }}', {{ $colada->producto_base_id }}, {{ $colada->fabricante_id ?? 'null' }}, '{{ addslashes($colada->codigo_adherencia ?? '') }}', '{{ addslashes($colada->observaciones ?? '') }}')"
+                                    <button
+                                        onclick="abrirModalEditar({{ $colada->id }}, '{{ $colada->numero_colada }}', {{ $colada->producto_base_id }}, {{ $colada->fabricante_id ?? 'null' }}, '{{ addslashes($colada->codigo_adherencia ?? '') }}', '{{ addslashes($colada->observaciones ?? '') }}')"
                                         class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors">
                                         Editar
                                     </button>
-                                    <form action="{{ route('coladas.destroy', $colada) }}" method="POST" class="inline form-eliminar">
+                                    <form action="{{ route('coladas.destroy', $colada) }}" method="POST"
+                                        class="inline form-eliminar">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit"
@@ -174,11 +189,14 @@
                         <tr>
                             <td colspan="8" class="text-center py-8">
                                 <div class="flex flex-col items-center gap-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                                     </svg>
                                     <span class="text-gray-500 font-medium">No hay coladas registradas</span>
-                                    <button onclick="abrirModalCrear()" class="mt-2 text-blue-600 hover:text-blue-800 font-medium">
+                                    <button onclick="abrirModalCrear()"
+                                        class="mt-2 text-blue-600 hover:text-blue-800 font-medium">
                                         Crear primera colada
                                     </button>
                                 </div>
@@ -196,29 +214,35 @@
     </div>
 
     <!-- Modal Crear Colada -->
-    <div id="modalCrear" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center" wire:ignore.self>
+    <div id="modalCrear" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center"
+        wire:ignore.self>
         <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg relative">
             <h2 class="text-xl font-semibold mb-4">Nueva Colada</h2>
 
-            <form action="{{ route('coladas.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+            <form action="{{ route('coladas.store') }}" method="POST" enctype="multipart/form-data"
+                class="space-y-4">
                 @csrf
 
                 <div>
-                    <label for="numero_colada" class="block text-sm font-medium text-gray-700 mb-1">Numero de Colada *</label>
+                    <label for="numero_colada" class="block text-sm font-medium text-gray-700 mb-1">Numero de Colada
+                        *</label>
                     <input type="text" id="numero_colada" name="numero_colada" required
                         class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Ej: ABC123456">
                 </div>
 
                 <div>
-                    <label for="producto_base_id" class="block text-sm font-medium text-gray-700 mb-1">Producto Base *</label>
+                    <label for="producto_base_id" class="block text-sm font-medium text-gray-700 mb-1">Producto Base
+                        *</label>
                     <select id="producto_base_id" name="producto_base_id" required
                         class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">Seleccione un producto base</option>
                         @foreach ($productosBase as $producto)
                             <option value="{{ $producto->id }}">
                                 {{ strtoupper($producto->tipo) }} | {{ $producto->diametro }} mm
-                                @if($producto->longitud) | {{ $producto->longitud }} m @endif
+                                @if ($producto->longitud)
+                                    | {{ $producto->longitud }} m
+                                @endif
                             </option>
                         @endforeach
                     </select>
@@ -236,7 +260,8 @@
                 </div>
 
                 <div>
-                    <label for="codigo_adherencia" class="block text-sm font-medium text-gray-700 mb-1">Codigo de Adherencia</label>
+                    <label for="codigo_adherencia" class="block text-sm font-medium text-gray-700 mb-1">Codigo de
+                        Adherencia</label>
                     <input type="text" id="codigo_adherencia" name="codigo_adherencia"
                         class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Ej: ADH-2024-001">
@@ -250,7 +275,8 @@
                 </div>
 
                 <div>
-                    <label for="observaciones" class="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+                    <label for="observaciones"
+                        class="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
                     <textarea id="observaciones" name="observaciones" rows="3"
                         class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Notas adicionales..."></textarea>
@@ -271,7 +297,8 @@
     </div>
 
     <!-- Modal Editar Colada -->
-    <div id="modalEditar" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center" wire:ignore.self>
+    <div id="modalEditar" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center"
+        wire:ignore.self>
         <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg relative">
             <h2 class="text-xl font-semibold mb-4">Editar Colada</h2>
 
@@ -280,27 +307,32 @@
                 @method('PUT')
 
                 <div>
-                    <label for="edit_numero_colada" class="block text-sm font-medium text-gray-700 mb-1">Numero de Colada *</label>
+                    <label for="edit_numero_colada" class="block text-sm font-medium text-gray-700 mb-1">Numero de
+                        Colada *</label>
                     <input type="text" id="edit_numero_colada" name="numero_colada" required
                         class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
 
                 <div>
-                    <label for="edit_producto_base_id" class="block text-sm font-medium text-gray-700 mb-1">Producto Base *</label>
+                    <label for="edit_producto_base_id" class="block text-sm font-medium text-gray-700 mb-1">Producto
+                        Base *</label>
                     <select id="edit_producto_base_id" name="producto_base_id" required
                         class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">Seleccione un producto base</option>
                         @foreach ($productosBase as $producto)
                             <option value="{{ $producto->id }}">
                                 {{ strtoupper($producto->tipo) }} | {{ $producto->diametro }} mm
-                                @if($producto->longitud) | {{ $producto->longitud }} m @endif
+                                @if ($producto->longitud)
+                                    | {{ $producto->longitud }} m
+                                @endif
                             </option>
                         @endforeach
                     </select>
                 </div>
 
                 <div>
-                    <label for="edit_fabricante_id" class="block text-sm font-medium text-gray-700 mb-1">Fabricante</label>
+                    <label for="edit_fabricante_id"
+                        class="block text-sm font-medium text-gray-700 mb-1">Fabricante</label>
                     <select id="edit_fabricante_id" name="fabricante_id"
                         class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">Seleccione un fabricante</option>
@@ -311,21 +343,24 @@
                 </div>
 
                 <div>
-                    <label for="edit_codigo_adherencia" class="block text-sm font-medium text-gray-700 mb-1">Codigo de Adherencia</label>
+                    <label for="edit_codigo_adherencia" class="block text-sm font-medium text-gray-700 mb-1">Codigo de
+                        Adherencia</label>
                     <input type="text" id="edit_codigo_adherencia" name="codigo_adherencia"
                         class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Ej: ADH-2024-001">
                 </div>
 
                 <div>
-                    <label for="edit_documento" class="block text-sm font-medium text-gray-700 mb-1">Documento PDF (dejar vacio para mantener actual)</label>
+                    <label for="edit_documento" class="block text-sm font-medium text-gray-700 mb-1">Documento PDF
+                        (dejar vacio para mantener actual)</label>
                     <input type="file" id="edit_documento" name="documento" accept=".pdf"
                         class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     <p class="text-xs text-gray-500 mt-1">Maximo 10MB. Solo archivos PDF.</p>
                 </div>
 
                 <div>
-                    <label for="edit_observaciones" class="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+                    <label for="edit_observaciones"
+                        class="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
                     <textarea id="edit_observaciones" name="observaciones" rows="3"
                         class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
                 </div>
@@ -359,104 +394,157 @@
     </div>
 
     @push('scripts')
-    <script>
-        // Modal Crear
-        function abrirModalCrear() {
-            document.getElementById('modalCrear').classList.remove('hidden');
-            document.getElementById('modalCrear').classList.add('flex');
-        }
-
-        function cerrarModalCrear() {
-            document.getElementById('modalCrear').classList.remove('flex');
-            document.getElementById('modalCrear').classList.add('hidden');
-        }
-
-        // Modal Editar
-        function abrirModalEditar(id, numeroColada, productoBaseId, fabricanteId, codigoAdherencia, observaciones) {
-            document.getElementById('formEditar').action = '/coladas/' + id;
-            document.getElementById('edit_numero_colada').value = numeroColada;
-            document.getElementById('edit_producto_base_id').value = productoBaseId;
-            document.getElementById('edit_fabricante_id').value = fabricanteId || '';
-            document.getElementById('edit_codigo_adherencia').value = codigoAdherencia || '';
-            document.getElementById('edit_observaciones').value = observaciones;
-
-            document.getElementById('modalEditar').classList.remove('hidden');
-            document.getElementById('modalEditar').classList.add('flex');
-        }
-
-        function cerrarModalEditar() {
-            document.getElementById('modalEditar').classList.remove('flex');
-            document.getElementById('modalEditar').classList.add('hidden');
-        }
-
-        // Cerrar con ESC
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                cerrarModalCrear();
-                cerrarModalEditar();
-            }
-        });
-
-        // Cerrar al hacer clic fuera
-        window.addEventListener('click', function(event) {
-            const modalCrear = document.getElementById('modalCrear');
-            const modalEditar = document.getElementById('modalEditar');
-            if (event.target === modalCrear) cerrarModalCrear();
-            if (event.target === modalEditar) cerrarModalEditar();
-        });
-
-        // Confirmar eliminacion
-        document.querySelectorAll('.form-eliminar').forEach(form => {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-
-                Swal.fire({
-                    title: 'Estas seguro?',
-                    text: "Esta accion eliminara la colada de forma permanente.",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonColor: '#6b7280',
-                    confirmButtonText: 'Si, eliminar',
-                    cancelButtonText: 'Cancelar'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        form.submit();
+        <script>
+            (function() {
+                // Definir funciones en window para que sean accesibles globalmente
+                window.abrirModalCrear = function() {
+                    const modal = document.getElementById('modalCrear');
+                    if (modal) {
+                        modal.classList.remove('hidden');
+                        modal.classList.add('flex');
                     }
-                });
-            });
-        });
+                };
 
-        // Re-inicializar event listeners después de que Livewire actualice
-        document.addEventListener('livewire:navigated', initDeleteForms);
-        document.addEventListener('livewire:morph', initDeleteForms);
+                window.cerrarModalCrear = function() {
+                    const modal = document.getElementById('modalCrear');
+                    if (modal) {
+                        modal.classList.remove('flex');
+                        modal.classList.add('hidden');
+                    }
+                };
 
-        function initDeleteForms() {
-            document.querySelectorAll('.form-eliminar').forEach(form => {
-                // Evitar duplicar listeners
-                if (!form.dataset.listenerAttached) {
-                    form.dataset.listenerAttached = 'true';
-                    form.addEventListener('submit', function(e) {
-                        e.preventDefault();
+                window.abrirModalEditar = function(id, numeroColada, productoBaseId, fabricanteId, codigoAdherencia,
+                    observaciones) {
+                    const form = document.getElementById('formEditar');
+                    const modal = document.getElementById('modalEditar');
 
-                        Swal.fire({
-                            title: 'Estas seguro?',
-                            text: "Esta accion eliminara la colada de forma permanente.",
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonColor: '#dc2626',
-                            cancelButtonColor: '#6b7280',
-                            confirmButtonText: 'Si, eliminar',
-                            cancelButtonText: 'Cancelar'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                form.submit();
-                            }
+                    if (form && modal) {
+                        form.action = '/coladas/' + id;
+                        const inputs = {
+                            'edit_numero_colada': numeroColada,
+                            'edit_producto_base_id': productoBaseId,
+                            'edit_fabricante_id': fabricanteId || '',
+                            'edit_codigo_adherencia': codigoAdherencia || '',
+                            'edit_observaciones': observaciones
+                        };
+
+                        Object.entries(inputs).forEach(([id, value]) => {
+                            const el = document.getElementById(id);
+                            if (el) el.value = value;
+                        });
+
+                        modal.classList.remove('hidden');
+                        modal.classList.add('flex');
+                    }
+                };
+
+                window.cerrarModalEditar = function() {
+                    const modal = document.getElementById('modalEditar');
+                    if (modal) {
+                        modal.classList.remove('flex');
+                        modal.classList.add('hidden');
+                    }
+                };
+
+                function handleKeydown(event) {
+                    if (event.key === 'Escape') {
+                        window.cerrarModalCrear();
+                        window.cerrarModalEditar();
+                    }
+                }
+
+                function handleOutsideClick(event) {
+                    const modalCrear = document.getElementById('modalCrear');
+                    const modalEditar = document.getElementById('modalEditar');
+                    if (event.target === modalCrear) window.cerrarModalCrear();
+                    if (event.target === modalEditar) window.cerrarModalEditar();
+                }
+
+                function initDeleteForms() {
+                    document.querySelectorAll('.form-eliminar').forEach(form => {
+                        // Evitar duplicar listeners
+                        if (form.dataset.listenerAttached === 'true') return;
+
+                        form.dataset.listenerAttached = 'true';
+                        form.addEventListener('submit', function(e) {
+                            e.preventDefault();
+
+                            Swal.fire({
+                                title: '¿Estás seguro?',
+                                text: "Esta acción eliminará la colada de forma permanente.",
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonColor: '#dc2626',
+                                cancelButtonColor: '#6b7280',
+                                confirmButtonText: 'Sí, eliminar',
+                                cancelButtonText: 'Cancelar'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    form.submit();
+                                }
+                            });
                         });
                     });
                 }
-            });
-        }
-    </script>
+
+                // Función de inicialización de la página
+                function initColadasTablePage() {
+                    // Verificar si ya se inicializó
+                    if (document.body.dataset.coladasTablePageInit === 'true') return;
+
+                    console.log('Inicializando Coladas Table Page');
+
+                    // Agregar listeners globales
+                    document.addEventListener('keydown', handleKeydown);
+                    window.addEventListener('click', handleOutsideClick);
+
+                    // Inicializar formularios
+                    initDeleteForms();
+
+                    // Hook para reinicializar formularios después de actualizaciones de Livewire (morph)
+                    // Livewire 3 usa 'livewire:morph' o simplemente re-renders. 
+                    // Siendo un componente, livewire:navigated se dispara una vez.
+                    // Para actualizaciones parciales, necesitamos hooks.
+                    // Pero como este script corre una vez por navegación (gracias al flag),
+                    // necesitamos asegurarnos de que initDeleteForms se llame si el DOM cambia.
+                    // Usaremos un hook de Livewire si está disponible.
+                    if (typeof Livewire !== 'undefined' && Livewire.hook) {
+                        Livewire.hook('morph.updated', ({
+                            el,
+                            component
+                        }) => {
+                            initDeleteForms();
+                        });
+                    }
+
+                    // Marcar como inicializado
+                    document.body.dataset.coladasTablePageInit = 'true';
+                }
+
+                // Registrar en el sistema global de limpieza
+                window.pageInitializers = window.pageInitializers || [];
+                window.pageInitializers.push(() => {
+                    document.removeEventListener('keydown', handleKeydown);
+                    window.removeEventListener('click', handleOutsideClick);
+                    // No necesitamos limpiar initDeleteForms porque los nodos se destruyen
+                    document.body.dataset.coladasTablePageInit = 'false';
+                });
+
+                // Inicializar
+                initColadasTablePage();
+
+                // Listeners para navegación
+                document.addEventListener('livewire:navigated', initColadasTablePage);
+                document.addEventListener('DOMContentLoaded', initColadasTablePage);
+
+                // Limpieza específica al navegar fuera
+                document.addEventListener('livewire:navigating', () => {
+                    document.body.dataset.coladasTablePageInit = 'false';
+                    document.removeEventListener('keydown', handleKeydown);
+                    window.removeEventListener('click', handleOutsideClick);
+                });
+
+            })();
+        </script>
     @endpush
 </div>
