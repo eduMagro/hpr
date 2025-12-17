@@ -418,11 +418,30 @@
                 }
             }
 
-            // Ejecutar en carga inicial
-            document.addEventListener('DOMContentLoaded', inicializarPaquetes);
+            function initPaquetesTablePage() {
+                // Prevenir doble inicialización
+                if (document.body.dataset.paquetesTablePageInit === 'true') return;
 
-            // Ejecutar después de navegación SPA con Livewire
-            document.addEventListener('livewire:navigated', inicializarPaquetes);
+                console.log('🔍 Inicializando tabla de paquetes...');
+
+                // Llamar a la función de inicialización
+                if (typeof inicializarPaquetes === 'function') inicializarPaquetes();
+
+                // Marcar como inicializado
+                document.body.dataset.paquetesTablePageInit = 'true';
+            }
+
+            // Registrar en el sistema global
+            window.pageInitializers.push(initPaquetesTablePage);
+
+            // Configurar listeners
+            document.addEventListener('livewire:navigated', initPaquetesTablePage);
+            document.addEventListener('DOMContentLoaded', initPaquetesTablePage);
+
+            // Limpiar flag antes de navegar
+            document.addEventListener('livewire:navigating', () => {
+                document.body.dataset.paquetesTablePageInit = 'false';
+            });
         </script>
     @endpush
 

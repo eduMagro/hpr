@@ -1020,17 +1020,36 @@ Inesperados: ${inesperados.join(', ') || ''}
     // Reforzar tras navegaciones Livewire
     document.addEventListener('livewire:navigated', initInventarioStore);
 
-    // Forzar cierre de modal de inventario tras recargas/navegaciones/HMR
-    const forceCloseInvModal = () => {
+    // Función de inicialización robusta
+    function initUbicacionesPage() {
+        // Prevenir doble inicialización
+        if (document.body.dataset.ubicacionesPageInit === 'true') return;
+
+        console.log('🔍 Inicializando página de ubicaciones...');
+
+        // Forzar cierre de modal de inventario tras recargas/navegaciones/HMR
         if (window.Alpine && Alpine.store('inv')) {
             Alpine.store('inv').modalInventario = false;
         }
         if (window.$store && window.$store.inv) {
             window.$store.inv.modalInventario = false;
         }
-    };
-    document.addEventListener('DOMContentLoaded', forceCloseInvModal);
-    document.addEventListener('livewire:navigated', forceCloseInvModal);
+
+        // Marcar como inicializado
+        document.body.dataset.ubicacionesPageInit = 'true';
+    }
+
+    // Registrar en el sistema global
+    window.pageInitializers.push(initUbicacionesPage);
+
+    // Configurar listeners
+    document.addEventListener('livewire:navigated', initUbicacionesPage);
+    document.addEventListener('DOMContentLoaded', initUbicacionesPage);
+
+    // Limpiar flag antes de navegar
+    document.addEventListener('livewire:navigating', () => {
+        document.body.dataset.ubicacionesPageInit = 'false';
+    });
 
     window.paginaUbicaciones = function() {
         return {

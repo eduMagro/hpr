@@ -62,20 +62,25 @@
         .bg-select-range {
             background: rgba(99, 102, 241, 0.25) !important;
         }
+
         .bg-select-endpoint {
             background: rgba(99, 102, 241, 0.45) !important;
         }
+
         .bg-select-endpoint-left {
             border-top-left-radius: 12px;
             border-bottom-left-radius: 12px;
         }
+
         .bg-select-endpoint-right {
             border-top-right-radius: 12px;
             border-bottom-right-radius: 12px;
         }
+
         .fc .fc-daygrid-day-bg {
             overflow: visible;
         }
+
         .fc .bg-select-range,
         .fc .bg-select-endpoint {
             pointer-events: none !important;
@@ -91,38 +96,47 @@
             align-items: center;
             transition: background-color 0.15s;
         }
+
         .usuario-item:hover {
             background-color: #f3f4f6;
         }
+
         .usuario-item.selected {
             background-color: #dbeafe;
             border-color: #3b82f6;
         }
+
         .usuario-item:last-child {
             border-bottom: none;
         }
+
         .usuario-nombre {
             font-weight: 500;
             color: #1f2937;
         }
+
         .usuario-vacaciones {
             font-size: 12px;
             padding: 2px 8px;
             border-radius: 9999px;
             font-weight: 600;
         }
+
         .vacaciones-ok {
             background-color: #d1fae5;
             color: #065f46;
         }
+
         .vacaciones-warning {
             background-color: #fef3c7;
             color: #92400e;
         }
+
         .vacaciones-full {
             background-color: #fee2e2;
             color: #991b1b;
         }
+
         .lista-usuarios {
             max-height: 300px;
             overflow-y: auto;
@@ -130,6 +144,7 @@
             border-radius: 8px;
             margin-top: 12px;
         }
+
         .buscador-usuarios {
             width: 100%;
             padding: 10px 14px;
@@ -138,10 +153,12 @@
             font-size: 14px;
             transition: border-color 0.2s;
         }
+
         .buscador-usuarios:focus {
             outline: none;
             border-color: #3b82f6;
         }
+
         .info-seleccion {
             background: linear-gradient(135deg, #1e3a5f 0%, #111827 100%);
             color: white;
@@ -185,8 +202,9 @@
             // Funciones auxiliares para el highlight de selección
             function eachDayStr(aStr, bStr) {
                 const days = [];
-                let a = new Date(aStr), b = new Date(bStr);
-                if (a > b) [a, b] = [b, a];
+                let a = new Date(aStr),
+                    b = new Date(bStr);
+                if (a > b)[a, b] = [b, a];
                 for (let d = new Date(a); d <= b; d.setDate(d.getDate() + 1)) {
                     days.push(d.toISOString().split('T')[0]);
                 }
@@ -221,8 +239,10 @@
 
                         if (isFirst || isLast) {
                             classes.push('bg-select-endpoint');
-                            if (isFirst) classes.push(forward ? 'bg-select-endpoint-left' : 'bg-select-endpoint-right');
-                            if (isLast) classes.push(forward ? 'bg-select-endpoint-right' : 'bg-select-endpoint-left');
+                            if (isFirst) classes.push(forward ? 'bg-select-endpoint-left' :
+                                'bg-select-endpoint-right');
+                            if (isLast) classes.push(forward ? 'bg-select-endpoint-right' :
+                                'bg-select-endpoint-left');
                         } else {
                             classes.push('bg-select-range');
                         }
@@ -257,7 +277,10 @@
                 const usuarios = usuariosCache[grupo];
                 const esMismoDia = fechaInicio === fechaFin;
 
-                const { value: usuarioSeleccionado, isConfirmed } = await Swal.fire({
+                const {
+                    value: usuarioSeleccionado,
+                    isConfirmed
+                } = await Swal.fire({
                     title: null,
                     html: `
                         <div style="text-align: left;">
@@ -317,10 +340,12 @@
                             listaContainer.querySelectorAll('.usuario-item').forEach(item => {
                                 item.addEventListener('click', () => {
                                     // Quitar selección anterior
-                                    listaContainer.querySelectorAll('.usuario-item').forEach(i => i.classList.remove('selected'));
+                                    listaContainer.querySelectorAll('.usuario-item')
+                                        .forEach(i => i.classList.remove('selected'));
                                     // Añadir selección
                                     item.classList.add('selected');
-                                    document.getElementById('usuario-seleccionado-id').value = item.dataset.userId;
+                                    document.getElementById('usuario-seleccionado-id')
+                                        .value = item.dataset.userId;
                                 });
                             });
                         }
@@ -526,13 +551,17 @@
                                                 info.event.remove();
                                                 // Invalidar cache
                                                 delete usuariosCache[grupo];
-                                                Swal.fire('Eliminado', 'Vacaciones eliminadas correctamente.', 'success');
+                                                Swal.fire('Eliminado',
+                                                    'Vacaciones eliminadas correctamente.',
+                                                    'success');
                                             } else {
-                                                Swal.fire("Error", data.error || "No se pudo eliminar", "error");
+                                                Swal.fire("Error", data.error ||
+                                                    "No se pudo eliminar", "error");
                                             }
                                         })
                                         .catch(() => {
-                                            Swal.fire("Error", "Error de conexión", "error");
+                                            Swal.fire("Error", "Error de conexión",
+                                            "error");
                                         });
                                 }
                             });
@@ -567,7 +596,8 @@
                 return calendar;
             }
 
-            const calendarioMaquinistas = crearCalendario('calendario-maquinistas', @json($eventosMaquinistas), 'maquinistas');
+            const calendarioMaquinistas = crearCalendario('calendario-maquinistas', @json($eventosMaquinistas),
+                'maquinistas');
             const calendarioFerrallas = crearCalendario('calendario-ferrallas', @json($eventosFerrallas), 'ferrallas');
             const calendarioOficina = crearCalendario('calendario-oficina', @json($eventosOficina), 'oficina');
 
@@ -585,11 +615,30 @@
             }
         }
 
-        // Ejecutar en carga inicial
-        document.addEventListener('DOMContentLoaded', inicializarCalendarios);
+        function initVacacionesPage() {
+            // Prevenir doble inicialización
+            if (document.body.dataset.vacacionesPageInit === 'true') return;
 
-        // Ejecutar después de navegación SPA con Livewire
-        document.addEventListener('livewire:navigated', inicializarCalendarios);
+            console.log('🔍 Inicializando página de vacaciones...');
+
+            // Ejecutar inicialización de calendarios
+            inicializarCalendarios();
+
+            // Marcar como inicializado
+            document.body.dataset.vacacionesPageInit = 'true';
+        }
+
+        // Registrar en el sistema global
+        window.pageInitializers.push(initVacacionesPage);
+
+        // Configurar listeners
+        document.addEventListener('livewire:navigated', initVacacionesPage);
+        document.addEventListener('DOMContentLoaded', initVacacionesPage);
+
+        // Limpiar flag antes de navegar
+        document.addEventListener('livewire:navigating', () => {
+            document.body.dataset.vacacionesPageInit = 'false';
+        });
     </script>
 
 

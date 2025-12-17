@@ -404,14 +404,36 @@
 
     </div>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        function initDashboardPage() {
+            // Prevenir doble inicialización
+            if (document.body.dataset.dashboardPageInit === 'true') return;
+
+            console.log('🔍 Inicializando Dashboard...');
+
             // Puedes usar esta condición desde el backend con una variable tipo Blade
             const debeAceptarPoliticas = {{ auth()->user()->acepta_politica_privacidad ? 'false' : 'true' }};
 
             if (debeAceptarPoliticas) {
                 const modal = document.getElementById('modal-politicas');
-                modal.classList.remove('hidden');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                }
             }
+
+            // Marcar como inicializado
+            document.body.dataset.dashboardPageInit = 'true';
+        }
+
+        // Registrar en el sistema global
+        window.pageInitializers.push(initDashboardPage);
+
+        // Configurar listeners
+        document.addEventListener('livewire:navigated', initDashboardPage);
+        document.addEventListener('DOMContentLoaded', initDashboardPage);
+
+        // Limpiar flag antes de navegar
+        document.addEventListener('livewire:navigating', () => {
+            document.body.dataset.dashboardPageInit = 'false';
         });
     </script>
 

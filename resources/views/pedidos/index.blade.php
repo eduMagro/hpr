@@ -152,7 +152,8 @@
                 <div class="bg-white p-6 rounded-lg w-full max-w-5xl shadow-xl">
                     <h3 class="text-lg font-semibold mb-4 text-gray-800 text-left">Confirmar pedido</h3>
 
-                    <form id="formularioPedido" action="{{ route('pedidos.store') }}" method="POST" class="space-y-4">
+                    <form id="formularioPedido" action="{{ route('pedidos.store') }}" method="POST"
+                        class="space-y-4">
                         @csrf
 
                         <div class="text-left">
@@ -960,7 +961,7 @@
                         icon: 'error',
                         title: 'Revisa los datos',
                         html: '<ul style="text-align:left;">' + errores.map(e => `<li>• ${e}</li>`).join(
-                            '') +
+                                '') +
                             '</ul>'
                     });
                     return false;
@@ -1450,5 +1451,36 @@
         // Inicializar en carga normal y después de navegación con wire:navigate
         document.addEventListener('DOMContentLoaded', initColadasModal);
         document.addEventListener('livewire:navigated', initColadasModal);
+    </script>
+
+    {{-- Inicialización maestra con patrón robusto --}}
+    <script>
+        function initPedidosPage() {
+            // Prevenir doble inicialización
+            if (document.body.dataset.pedidosPageInit === 'true') return;
+
+            console.log('🔍 Inicializando página de Pedidos...');
+
+            // Llamar a todas las funciones de inicialización
+            if (typeof initModalPedidoListeners === 'function') initModalPedidoListeners();
+            if (typeof initFormularioPedidoValidacion === 'function') initFormularioPedidoValidacion();
+            if (typeof initStockSelect === 'function') initStockSelect();
+            if (typeof initColadasModal === 'function') initColadasModal();
+
+            // Marcar como inicializado
+            document.body.dataset.pedidosPageInit = 'true';
+        }
+
+        // Registrar en el sistema global
+        window.pageInitializers.push(initPedidosPage);
+
+        // Configurar listeners
+        document.addEventListener('livewire:navigated', initPedidosPage);
+        document.addEventListener('DOMContentLoaded', initPedidosPage);
+
+        // Limpiar flag antes de navegar
+        document.addEventListener('livewire:navigating', () => {
+            document.body.dataset.pedidosPageInit = 'false';
+        });
     </script>
 </x-app-layout>

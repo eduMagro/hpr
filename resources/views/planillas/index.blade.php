@@ -221,7 +221,8 @@
                                     class="px-2 py-1 rounded-lg bg-amber-200 text-amber-900 hover:bg-amber-300">
                                     Reimportar
                                 </button>
-                                <button type="button" onclick="resetearPlanilla({{ $planilla->id }}, '{{ $planilla->codigo }}')"
+                                <button type="button"
+                                    onclick="resetearPlanilla({{ $planilla->id }}, '{{ $planilla->codigo }}')"
                                     class="px-2 py-1 rounded-lg bg-orange-200 text-orange-900 hover:bg-orange-300">
                                     Resetear
                                 </button>
@@ -323,7 +324,6 @@
                 </form>
             </div>
         </div>
-
     @endpush
 
     <script>
@@ -499,7 +499,9 @@
                 });
                 confirmado = result.isConfirmed;
             } else {
-                confirmado = confirm(`¿Resetear planilla ${codigoPlanilla}? Se resetearán todos los elementos, etiquetas y se eliminarán los paquetes.`);
+                confirmado = confirm(
+                    `¿Resetear planilla ${codigoPlanilla}? Se resetearán todos los elementos, etiquetas y se eliminarán los paquetes.`
+                    );
             }
 
             if (!confirmado) return;
@@ -735,26 +737,36 @@
             }
         }
 
-        // Inicializar al cargar el DOM
-        document.addEventListener('DOMContentLoaded', function() {
-            initModal();
-            initCompletarTodas();
-        });
+        function initPlanillasPage() {
+            // Prevenir doble inicialización
+            if (document.body.dataset.planillasPageInit === 'true') return;
 
-        // Reinicializar después de actualizaciones de Livewire
-        document.addEventListener('livewire:navigated', function() {
-            console.log('Livewire navegó, reinicializando...');
+            console.log('🔍 Inicializando página de planillas...');
+
+            // Resetear flag de modal para permitir reinicialización
             modalInitialized = false;
             window.modalInitialized = false;
-            initModal();
-            initCompletarTodas();
-        });
 
-        // Para Livewire v2 (si es el caso)
-        document.addEventListener('livewire:load', function() {
-            console.log('Livewire cargado, inicializando...');
+            // Inicializar componentes
             initModal();
             initCompletarTodas();
+
+            // Marcar como inicializado
+            document.body.dataset.planillasPageInit = 'true';
+        }
+
+        // Registrar en el sistema global
+        window.pageInitializers = window.pageInitializers || [];
+        window.pageInitializers.push(initPlanillasPage);
+
+        // Configurar listeners
+        document.addEventListener('livewire:navigated', initPlanillasPage);
+        document.addEventListener('DOMContentLoaded', initPlanillasPage);
+        document.addEventListener('livewire:load', initPlanillasPage); // Compatibilidad Livewire v2
+
+        // Limpiar flag antes de navegar
+        document.addEventListener('livewire:navigating', () => {
+            document.body.dataset.planillasPageInit = 'false';
         });
     </script>
 </x-app-layout>

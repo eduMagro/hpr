@@ -186,7 +186,7 @@
 
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto bg-neutral-100 dark:bg-gray-900 transition-colors">
-                <div class="py-2 md:px-2 h-full">
+                <div class="py-4 md:px-6 h-full">
                     <!-- Breadcrumbs -->
                     <x-breadcrumbs />
 
@@ -212,6 +212,20 @@
     @livewireScripts(['navigate' => true])
 
     @stack('scripts')
+
+    <!-- Sistema de limpieza global para Livewire SPA - Previene acumulación de listeners -->
+    <script data-navigate-once>
+        // Sistema de limpieza global para inicializadores de JavaScript
+        window.pageInitializers = window.pageInitializers || [];
+
+        document.addEventListener('livewire:navigating', () => {
+            // Limpiar todos los inicializadores registrados antes de navegar
+            window.pageInitializers.forEach(init => {
+                document.removeEventListener('livewire:navigated', init);
+            });
+            window.pageInitializers = [];
+        });
+    </script>
 
     <!-- Firebase Cloud Messaging -->
     <script src="{{ asset('js/firebase-push.js') }}" defer></script>
