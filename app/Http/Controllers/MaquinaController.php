@@ -666,8 +666,12 @@ class MaquinaController extends Controller
 
     private function cargarContextoBase(Maquina $maquina): array
     {
-        $ubicacion = Ubicacion::where('descripcion', 'like', "%{$maquina->codigo}%")->first();
-        $maquinas  = Maquina::orderBy('nombre')->get();
+        // OPTIMIZADO: Buscar por código exacto primero, luego LIKE solo si es necesario
+        $ubicacion = Ubicacion::where('descripcion', $maquina->codigo)->first()
+            ?? Ubicacion::where('descripcion', 'like', "%{$maquina->codigo}%")->first();
+
+        // OPTIMIZADO: Solo cargar máquinas de la misma nave
+        $maquinas = Maquina::where('obra_id', $maquina->obra_id)->orderBy('nombre')->get();
 
         // Buscar productos base compatibles con la máquina
         $tipoMaterial = strtolower($maquina->tipo_material ?? '');
@@ -838,15 +842,22 @@ class MaquinaController extends Controller
             ];
         });
 
-        // Ubicaciones disponibles por producto base (como ya tenías)
-        foreach ($movimientosPendientes as $mov) {
-            if ($mov->producto_base_id) {
-                $productosCompatibles = Producto::with('ubicacion:id,nombre')
-                    ->where('producto_base_id', $mov->producto_base_id)
-                    ->where('estado', 'almacenado')
-                    ->get();
+        // Ubicaciones disponibles por producto base - OPTIMIZADO: una sola query
+        $productosBaseIds = $movimientosPendientes
+            ->pluck('producto_base_id')
+            ->filter()
+            ->unique()
+            ->values();
 
-                $ubicaciones = $productosCompatibles->filter(fn($p) => $p->ubicacion)
+        if ($productosBaseIds->isNotEmpty()) {
+            $productosCompatibles = Producto::with('ubicacion:id,nombre')
+                ->whereIn('producto_base_id', $productosBaseIds)
+                ->where('estado', 'almacenado')
+                ->get()
+                ->groupBy('producto_base_id');
+
+            foreach ($productosCompatibles as $productoBaseId => $productos) {
+                $ubicaciones = $productos->filter(fn($p) => $p->ubicacion)
                     ->map(fn($p) => [
                         'id'          => $p->ubicacion->id,
                         'nombre'      => $p->ubicacion->nombre,
@@ -854,20 +865,23 @@ class MaquinaController extends Controller
                         'codigo'      => $p->codigo,
                     ])->unique('id')->values()->toArray();
 
-                $ubicacionesDisponiblesPorProductoBase[$mov->producto_base_id] = $ubicaciones;
+                $ubicacionesDisponiblesPorProductoBase[$productoBaseId] = $ubicaciones;
             }
         }
 
-        // Pedidos activos (de la misma nave)
-        $pedidosActivos = Pedido::where('estado', 'activo')
-            ->whereHas('pedidoProductos', function ($query) use ($obraId) {
-                $query->where('obra_id', $obraId);
-            })
-            ->with(['pedidoProductos' => function ($query) use ($obraId) {
-                $query->where('obra_id', $obraId);
-            }])
-            ->orderBy('updated_at', 'desc')
-            ->get();
+        // Pedidos activos (de la misma nave) - OPTIMIZADO: whereIn en lugar de whereHas
+        $pedidoIdsConProductosEnNave = \DB::table('pedido_productos')
+            ->where('obra_id', $obraId)
+            ->distinct()
+            ->pluck('pedido_id');
+
+        $pedidosActivos = $pedidoIdsConProductosEnNave->isNotEmpty()
+            ? Pedido::where('estado', 'activo')
+                ->whereIn('id', $pedidoIdsConProductosEnNave)
+                ->with(['pedidoProductos' => fn($q) => $q->where('obra_id', $obraId)])
+                ->orderBy('updated_at', 'desc')
+                ->get()
+            : collect();
 
         // 👉 Devolvemos tanto las colecciones Eloquent (si las usas en Blade) como los JSON ligeros para JS
         $mapaData = $this->obtenerDatosMapaParaNave($obraId);
@@ -944,9 +958,11 @@ class MaquinaController extends Controller
                 ];
             })->values()->toArray();
 
-        $paquetesConLocalizacion = Paquete::with('localizacionPaquete')
-            ->where('nave_id', $naveId)
-            ->whereHas('localizacionPaquete')
+        // OPTIMIZADO: join en lugar de whereHas para evitar subconsulta EXISTS
+        $paquetesConLocalizacion = Paquete::select('paquetes.*')
+            ->join('localizaciones_paquetes', 'paquetes.id', '=', 'localizaciones_paquetes.paquete_id')
+            ->where('paquetes.nave_id', $naveId)
+            ->with('localizacionPaquete')
             ->get()
             ->map(function ($paquete) {
                 $loc = $paquete->localizacionPaquete;
