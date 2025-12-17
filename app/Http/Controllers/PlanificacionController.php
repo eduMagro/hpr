@@ -239,10 +239,10 @@ class PlanificacionController extends Controller
             ->get();
 
         return $salidas->map(function ($salida) use ($viewType) {
-            $empresa    = optional($salida->empresaTransporte)->nombre;
-            $camion     = optional($salida->camion)->modelo;
+            $empresa = optional($salida->empresaTransporte)->nombre;
+            $camion = optional($salida->camion)->modelo;
             // Calcular peso real de los paquetes (desde paquete.peso o suma de etiquetas)
-            $pesoTotal  = round($salida->paquetes->sum(function ($paquete) {
+            $pesoTotal = round($salida->paquetes->sum(function ($paquete) {
                 if ($paquete->peso && $paquete->peso > 0) {
                     return $paquete->peso;
                 }
@@ -252,9 +252,9 @@ class PlanificacionController extends Controller
 
             // En vista mensual, hacer eventos de día completo para que no se extiendan
             $isMonthView = $viewType === 'dayGridMonth';
-            $fechaFin   = $isMonthView ? null : $fechaInicio->copy()->addHours(3);
+            $fechaFin = $isMonthView ? null : $fechaInicio->copy()->addHours(3);
 
-            $color      = $salida->estado === 'completada' ? '#4CAF50' : '#3B82F6';
+            $color = $salida->estado === 'completada' ? '#4CAF50' : '#3B82F6';
             $codigoSage = $salida->codigo_sage ? " - {$salida->codigo_sage}" : '';
 
             // Recopilar todas las obras y clientes únicos de esta salida
@@ -264,16 +264,16 @@ class PlanificacionController extends Controller
             if ($salida->salidaClientes->isNotEmpty()) {
                 foreach ($salida->salidaClientes as $relacion) {
                     // Priorizar cliente de la relación, sino el de la obra
-                    $clienteNombre = optional($relacion->cliente)->empresa
-                        ?? optional($relacion->obra->cliente)->empresa
+                    $clienteNombre = $relacion->cliente?->empresa
+                        ?? $relacion->obra?->cliente?->empresa
                         ?? 'Cliente desconocido';
                     $clienteId = $relacion->cliente_id
-                        ?? optional($relacion->obra)->cliente_id;
+                        ?? $relacion->obra?->cliente_id;
 
                     $obrasClientes->push([
                         'obra_id' => $relacion->obra_id,
-                        'obra' => optional($relacion->obra)->obra ?? 'Obra desconocida',
-                        'cod_obra' => optional($relacion->obra)->cod_obra ?? '',
+                        'obra' => $relacion->obra?->obra ?? 'Obra desconocida',
+                        'cod_obra' => $relacion->obra?->cod_obra ?? '',
                         'cliente' => $clienteNombre,
                         'cliente_id' => $clienteId,
                     ]);
@@ -283,7 +283,7 @@ class PlanificacionController extends Controller
             // 2. Desde paquetes (pueden tener obras diferentes)
             if ($salida->paquetes->isNotEmpty()) {
                 foreach ($salida->paquetes as $paquete) {
-                    if ($paquete->planilla && $paquete->planilla->obra) {
+                    if ($paquete->planilla?->obra) {
                         $obra = $paquete->planilla->obra;
                         // Solo agregar si no existe ya
                         if (!$obrasClientes->where('obra_id', $obra->id)->count()) {
@@ -291,8 +291,8 @@ class PlanificacionController extends Controller
                                 'obra_id' => $obra->id,
                                 'obra' => $obra->obra,
                                 'cod_obra' => $obra->cod_obra ?? '',
-                                'cliente' => optional($obra->cliente)->empresa ?? 'Cliente desconocido',
-                                'cliente_id' => optional($obra->cliente)->id,
+                                'cliente' => $obra->cliente?->empresa ?? 'Cliente desconocido',
+                                'cliente_id' => $obra->cliente?->id,
                             ]);
                         }
                     }
@@ -336,31 +336,31 @@ class PlanificacionController extends Controller
             }
 
             $evento = [
-                'title'        => $titulo,
-                'id'           => (string) $salida->id,
-                'start'        => $isMonthView ? $fechaInicio->toDateString() : $fechaInicio->toIso8601String(),
-                'tipo'         => 'salida',
+                'title' => $titulo,
+                'id' => (string) $salida->id,
+                'start' => $isMonthView ? $fechaInicio->toDateString() : $fechaInicio->toIso8601String(),
+                'tipo' => 'salida',
                 'backgroundColor' => $color,
-                'borderColor'     => $color,
+                'borderColor' => $color,
                 'extendedProps' => [
-                    'tipo'         => 'salida',
-                    'salida_id'    => $salida->id,
+                    'tipo' => 'salida',
+                    'salida_id' => $salida->id,
                     'codigo_salida' => $salida->codigo_salida,
-                    'codigo_sage'  => $salida->codigo_sage,
-                    'obras'        => $obrasClientes->map(fn($oc) => [
+                    'codigo_sage' => $salida->codigo_sage,
+                    'obras' => $obrasClientes->map(fn($oc) => [
                         'id' => $oc['obra_id'],
                         'nombre' => $oc['obra'],
                         'codigo' => $oc['cod_obra'],
                     ])->toArray(),
-                    'clientes'     => $obrasClientes->map(fn($oc) => [
+                    'clientes' => $obrasClientes->map(fn($oc) => [
                         'id' => $oc['cliente_id'],
                         'nombre' => $oc['cliente'],
                     ])->unique('id')->filter(fn($c) => $c['nombre'])->values()->toArray(),
-                    'empresa'      => $empresa,
-                    'empresa_id'   => $salida->empresa_id,
-                    'camion'       => $camion,
-                    'comentario'   => $salida->comentario ?? '',
-                    'peso_total'   => $pesoTotal,
+                    'empresa' => $empresa,
+                    'empresa_id' => $salida->empresa_id,
+                    'camion' => $camion,
+                    'comentario' => $salida->comentario ?? '',
+                    'peso_total' => $pesoTotal,
                 ],
             ];
 
@@ -423,9 +423,9 @@ class PlanificacionController extends Controller
         foreach ($grupos as $key => $grupo) {
             $obraId = $grupo->first()->obra_id;
             $obra = $grupo->first()->obra;
-            $nombreObra = optional($obra)->obra ?? 'Obra desconocida';
-            $codObra = optional($obra)->cod_obra ?? 'Código desconocido';
-            $clienteNombre = optional($obra->cliente)->empresa ?? 'Sin cliente';
+            $nombreObra = $obra?->obra ?? 'Obra desconocida';
+            $codObra = $obra?->cod_obra ?? 'Código desconocido';
+            $clienteNombre = $obra?->cliente?->empresa ?? 'Sin cliente';
             $fechaBase = Carbon::parse($grupo->first()->getRawOriginal('fecha_estimada_entrega'));
 
             $planillasIds = $grupo->pluck('id')->toArray();
@@ -518,8 +518,8 @@ class PlanificacionController extends Controller
             $elementosConFechaPropiaDelGrupo = $grupo->flatMap(function ($p) use ($startDate, $endDate) {
                 return $p->elementos->filter(function ($e) use ($startDate, $endDate) {
                     return $e->fecha_entrega &&
-                           $e->fecha_entrega->gte($startDate) &&
-                           $e->fecha_entrega->lte($endDate);
+                        $e->fecha_entrega->gte($startDate) &&
+                        $e->fecha_entrega->lte($endDate);
                 });
             });
 
@@ -561,9 +561,9 @@ class PlanificacionController extends Controller
             $evento = $this->crearEventoPlanillasConPeso(
                 collect([$planilla]),
                 $planilla->obra_id,
-                optional($obra)->cod_obra ?? 'Código desconocido',
-                optional($obra)->obra ?? 'Obra desconocida',
-                optional($obra->cliente)->empresa ?? 'Sin cliente',
+                $obra?->cod_obra ?? 'Código desconocido',
+                $obra?->obra ?? 'Obra desconocida',
+                $obra?->cliente?->empresa ?? 'Sin cliente',
                 $primerElemento->fecha_entrega,
                 $isDayView,
                 null,
@@ -702,7 +702,7 @@ class PlanificacionController extends Controller
         }
 
         // Agregar recurso especial para salidas sin obra asignada
-        $tieneSalidasSinObra = $eventos->contains(function($evento) {
+        $tieneSalidasSinObra = $eventos->contains(function ($evento) {
             return isset($evento['resourceId']) && $evento['resourceId'] === '_sin_obra_';
         });
 

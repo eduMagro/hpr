@@ -9,18 +9,13 @@
                     Gestionar Salidas para Planillas
                 </h1>
 
-                <a href="{{ route('planificacion.index') }}" wire:navigate
-                   wire:navigate
-                   class="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors group flex-shrink-0"
-                   title="Volver a Planificación de Portes">
-                    <svg class="w-5 h-5 transform group-hover:-translate-x-1 transition-transform"
-                         fill="none"
-                         stroke="currentColor"
-                         viewBox="0 0 24 24">
-                        <path stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                <a href="{{ route('planificacion.index') }}" wire:navigate wire:navigate
+                    class="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors group flex-shrink-0"
+                    title="Volver a Planificación de Portes">
+                    <svg class="w-5 h-5 transform group-hover:-translate-x-1 transition-transform" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                     </svg>
                 </a>
             </div>
@@ -33,11 +28,31 @@
         @php
             $estadosCounts = $planillas->groupBy('estado')->map->count();
             $estadosConfig = [
-                'pendiente' => ['label' => 'Pendiente', 'icon' => '⏳', 'color' => 'bg-yellow-100 text-yellow-800 border-yellow-200'],
-                'fabricando' => ['label' => 'Fabricando', 'icon' => '🏭', 'color' => 'bg-blue-100 text-blue-800 border-blue-200'],
-                'fabricada' => ['label' => 'Fabricada', 'icon' => '✅', 'color' => 'bg-green-100 text-green-800 border-green-200'],
-                'enviada' => ['label' => 'Enviada', 'icon' => '🚚', 'color' => 'bg-purple-100 text-purple-800 border-purple-200'],
-                'entregada' => ['label' => 'Entregada', 'icon' => '📦', 'color' => 'bg-teal-100 text-teal-800 border-teal-200'],
+                'pendiente' => [
+                    'label' => 'Pendiente',
+                    'icon' => '⏳',
+                    'color' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                ],
+                'fabricando' => [
+                    'label' => 'Fabricando',
+                    'icon' => '🏭',
+                    'color' => 'bg-blue-100 text-blue-800 border-blue-200',
+                ],
+                'fabricada' => [
+                    'label' => 'Fabricada',
+                    'icon' => '✅',
+                    'color' => 'bg-green-100 text-green-800 border-green-200',
+                ],
+                'enviada' => [
+                    'label' => 'Enviada',
+                    'icon' => '🚚',
+                    'color' => 'bg-purple-100 text-purple-800 border-purple-200',
+                ],
+                'entregada' => [
+                    'label' => 'Entregada',
+                    'icon' => '📦',
+                    'color' => 'bg-teal-100 text-teal-800 border-teal-200',
+                ],
             ];
         @endphp
 
@@ -60,7 +75,7 @@
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2 mb-1">
                                 <div class="h-2 rounded-full transition-all duration-300 {{ str_replace(['text-', 'border-'], ['bg-', 'bg-'], $config['color']) }}"
-                                     style="width: {{ $porcentaje }}%"></div>
+                                    style="width: {{ $porcentaje }}%"></div>
                             </div>
                             <p class="text-xs text-gray-600 text-center">{{ $porcentaje }}%</p>
                         </div>
@@ -71,18 +86,19 @@
 
         {{-- Resumen de Planillas --}}
         <div class="bg-blue-50 border border-blue-200 rounded-lg mb-6">
-            <button type="button"
-                    onclick="toggleResumenPlanillas()"
-                    class="w-full p-4 flex items-center justify-between hover:bg-blue-100 transition-colors rounded-lg">
+            <button type="button" onclick="toggleResumenPlanillas()"
+                class="w-full p-4 flex items-center justify-between hover:bg-blue-100 transition-colors rounded-lg">
                 <div class="flex items-center gap-3">
-                    <svg id="icono-toggle-planillas" class="w-5 h-5 text-blue-900 transform transition-transform duration-200"
-                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    <svg id="icono-toggle-planillas"
+                        class="w-5 h-5 text-blue-900 transform transition-transform duration-200" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                     </svg>
                     <h2 class="text-xl font-semibold text-blue-900">Resumen de Planillas Seleccionadas</h2>
                 </div>
                 <div class="text-sm font-semibold text-blue-900">
-                    {{ $planillas->count() }} planillas | {{ $paquetesDisponibles->count() }} paquetes | {{ number_format($planillas->sum('peso_total'), 2) }} kg
+                    {{ $planillas->count() }} planillas | {{ $paquetesDisponibles->count() }} paquetes |
+                    {{ number_format($planillas->sum('peso_total'), 2) }} kg
                 </div>
             </button>
 
@@ -92,7 +108,9 @@
                         @php
                             $pesoTotal = $planilla->peso_total ?? 0;
                             $etiquetas = $planilla->etiquetas;
-                            $pesoCompletado = $etiquetas->whereIn('estado', ['completada', 'fabricada', 'en-paquete', 'ensamblada', 'soldada'])->sum('peso');
+                            $pesoCompletado = $etiquetas
+                                ->whereIn('estado', ['completada', 'fabricada', 'en-paquete', 'ensamblada', 'soldada'])
+                                ->sum('peso');
                             $pesoFabricando = $etiquetas->where('estado', 'fabricando')->sum('peso');
                             $pesoPendiente = $etiquetas->where('estado', 'pendiente')->sum('peso');
                             $porcentajeCompletado = $pesoTotal > 0 ? round(($pesoCompletado / $pesoTotal) * 100) : 0;
@@ -115,26 +133,34 @@
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-green-600">✅ Completado:</span>
-                                    <span class="font-semibold text-green-600">{{ number_format($pesoCompletado, 2, ',', '.') }} kg</span>
+                                    <span
+                                        class="font-semibold text-green-600">{{ number_format($pesoCompletado, 2, ',', '.') }}
+                                        kg</span>
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-blue-600">🔄 Fabricando:</span>
-                                    <span class="font-semibold text-blue-600">{{ number_format($pesoFabricando, 2, ',', '.') }} kg</span>
+                                    <span
+                                        class="font-semibold text-blue-600">{{ number_format($pesoFabricando, 2, ',', '.') }}
+                                        kg</span>
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-gray-500">⏳ Pendiente:</span>
-                                    <span class="font-semibold text-gray-500">{{ number_format($pesoPendiente, 2, ',', '.') }} kg</span>
+                                    <span
+                                        class="font-semibold text-gray-500">{{ number_format($pesoPendiente, 2, ',', '.') }}
+                                        kg</span>
                                 </div>
                                 {{-- Barra de progreso --}}
                                 <div class="mt-1">
                                     <div class="w-full bg-gray-200 rounded-full h-2">
-                                        <div class="bg-green-500 h-2 rounded-full" style="width: {{ $porcentajeCompletado }}%"></div>
+                                        <div class="bg-green-500 h-2 rounded-full"
+                                            style="width: {{ $porcentajeCompletado }}%"></div>
                                     </div>
                                     <span class="text-gray-500 text-xs">{{ $porcentajeCompletado }}% completado</span>
                                 </div>
                             </div>
 
-                            <p class="text-sm text-gray-600 mt-2">Paquetes disponibles: {{ $planilla->paquetes->count() }}</p>
+                            <p class="text-sm text-gray-600 mt-2">Paquetes disponibles:
+                                {{ $planilla->paquetes->count() }}</p>
                             <p class="text-sm text-gray-600">Entrega: {{ $planilla->fecha_estimada_entrega }}</p>
                         </div>
                     @endforeach
@@ -163,7 +189,7 @@
                     <button type="button" id="btn-crear-salidas-rapido"
                         class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-semibold flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
                         Crear Salidas
                     </button>
@@ -184,253 +210,286 @@
                     Arrastra los paquetes desde "Paquetes Disponibles" hacia las salidas correspondientes.
                 </p>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-{{ min($salidasExistentes->count() + 1, 4) }} gap-4">
-                        {{-- Columnas de Salidas --}}
-                        @foreach ($salidasExistentes as $salida)
-                            <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 min-h-[400px]">
-                                <div class="font-semibold text-blue-900 mb-3">
-                                    <div class="flex items-start justify-between mb-2">
-                                        <div class="flex-1">
-                                            <p class="text-sm">🚚 {{ $salida->codigo_salida }}</p>
-                                        </div>
-                                        <div class="flex items-center gap-1">
-                                            <button onclick="vaciarSalida({{ $salida->id }})"
-                                                    class="text-orange-600 hover:text-orange-800 hover:bg-orange-100 rounded p-1 transition-colors"
-                                                    title="Vaciar salida (devolver paquetes a disponibles)">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
-                                                </svg>
-                                            </button>
-                                            <button onclick="eliminarSalida({{ $salida->id }})"
-                                                    class="text-red-600 hover:text-red-800 hover:bg-red-100 rounded p-1 transition-colors"
-                                                    title="Eliminar salida">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                                </svg>
-                                            </button>
-                                        </div>
+                <div class="grid grid-cols-1 lg:grid-cols-{{ min($salidasExistentes->count() + 1, 4) }} gap-4">
+                    {{-- Columnas de Salidas --}}
+                    @foreach ($salidasExistentes as $salida)
+                        <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 min-h-[400px]">
+                            <div class="font-semibold text-blue-900 mb-3">
+                                <div class="flex items-start justify-between mb-2">
+                                    <div class="flex-1">
+                                        <p class="text-sm">🚚 {{ $salida->codigo_salida }}</p>
                                     </div>
-                                    <div class="mb-2">
-                                        <label class="block text-xs text-gray-600 mb-1">📅 Fecha de salida</label>
-                                        <input type="date"
-                                               value="{{ \Carbon\Carbon::parse($salida->fecha_salida)->format('Y-m-d') }}"
-                                               onchange="actualizarFechaSalida({{ $salida->id }}, this.value)"
-                                               class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                    </div>
-                                    <div class="text-xs text-gray-600 space-y-1">
-                                        @php
-                                            // Recopilar obras y clientes desde dos fuentes:
-                                            // 1. Desde salidaClientes (relación directa)
-                                            $obrasDesdeRelacion = $salida->salidaClientes->pluck('obra.obra')->filter();
-                                            $clientesDesdeRelacion = $salida->salidaClientes->pluck('cliente.empresa')->filter();
-
-                                            // 2. Desde paquetes asignados
-                                            $obrasDesPaquetes = $salida->paquetes->pluck('planilla.obra.obra')->filter();
-                                            $clientesDesdePaquetes = $salida->paquetes->pluck('planilla.cliente.empresa')->filter();
-
-                                            // Combinar ambas fuentes y eliminar duplicados
-                                            $obras = $obrasDesdeRelacion->concat($obrasDesPaquetes)->unique()->filter();
-                                            $clientes = $clientesDesdeRelacion->concat($clientesDesdePaquetes)->unique()->filter();
-                                        @endphp
-                                        @if($obras->isNotEmpty())
-                                            <p class="truncate" title="{{ $obras->implode(', ') }}">🏗️ {{ $obras->implode(', ') }}</p>
-                                        @else
-                                            <p class="text-gray-400 italic text-xs">Sin obra asignada</p>
-                                        @endif
-                                        @if($clientes->isNotEmpty())
-                                            <p class="truncate" title="{{ $clientes->implode(', ') }}">👤 {{ $clientes->implode(', ') }}</p>
-                                        @else
-                                            <p class="text-gray-400 italic text-xs">Sin cliente asignado</p>
-                                        @endif
-                                        <p>{{ $salida->empresaTransporte->nombre ?? 'Sin empresa' }}</p>
-                                        <p>{{ $salida->camion->modelo ?? 'Sin camión' }}</p>
-                                        <p class="bg-blue-200 px-2 py-1 rounded inline-block peso-total-salida"
-                                           data-salida-id="{{ $salida->id }}">0 kg</p>
+                                    <div class="flex items-center gap-1">
+                                        <button onclick="vaciarSalida({{ $salida->id }})"
+                                            class="text-orange-600 hover:text-orange-800 hover:bg-orange-100 rounded p-1 transition-colors"
+                                            title="Vaciar salida (devolver paquetes a disponibles)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5"
+                                                viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd"
+                                                    d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                                                    clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
+                                        <button onclick="eliminarSalida({{ $salida->id }})"
+                                            class="text-red-600 hover:text-red-800 hover:bg-red-100 rounded p-1 transition-colors"
+                                            title="Eliminar salida">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5"
+                                                viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd"
+                                                    d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                                    clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
                                     </div>
                                 </div>
+                                <div class="mb-2">
+                                    <label class="block text-xs text-gray-600 mb-1">📅 Fecha de salida</label>
+                                    <input type="date"
+                                        value="{{ \Carbon\Carbon::parse($salida->fecha_salida)->format('Y-m-d') }}"
+                                        onchange="actualizarFechaSalida({{ $salida->id }}, this.value)"
+                                        class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                </div>
+                                <div class="text-xs text-gray-600 space-y-1">
+                                    @php
+                                        // Recopilar obras y clientes desde dos fuentes:
+                                        // 1. Desde salidaClientes (relación directa)
+                                        $obrasDesdeRelacion = $salida->salidaClientes->pluck('obra.obra')->filter();
+                                        $clientesDesdeRelacion = $salida->salidaClientes
+                                            ->pluck('cliente.empresa')
+                                            ->filter();
 
-                                <div class="paquetes-zona drop-zone bg-white rounded border-2 border-dashed border-blue-300 p-2 min-h-[300px]"
-                                    data-salida-id="{{ $salida->id }}">
-                                    {{-- Paquetes asignados a esta salida --}}
-                                    @foreach ($salida->paquetes as $paquete)
-                                        <div class="paquete-item bg-white border border-gray-300 rounded p-2 mb-2 cursor-move hover:shadow-md transition-shadow"
-                                            draggable="true" data-paquete-id="{{ $paquete->id }}"
-                                            data-peso="{{ $paquete->peso }}">
-                                            <div class="flex items-center justify-between text-xs">
-                                                <span class="font-medium">📦 {{ $paquete->codigo }}</span>
-                                                <button onclick="mostrarDibujo({{ $paquete->id }}); event.stopPropagation();"
-                                                    class="text-blue-500 hover:underline text-xs">
-                                                    👁️ Ver
-                                                </button>
-                                            </div>
-                                            <div class="flex items-center justify-between text-xs mt-1">
-                                                <span class="text-gray-500">{{ $paquete->planilla->codigo ?? 'N/A' }}</span>
-                                                <span class="text-gray-600">{{ number_format($paquete->peso, 2) }} kg</span>
-                                            </div>
-                                            <div class="text-xs text-gray-500 mt-1 border-t border-gray-200 pt-1">
-                                                <div class="truncate" title="{{ $paquete->planilla->obra->obra ?? 'N/A' }}">🏗️ {{ $paquete->planilla->obra->obra ?? 'N/A' }}</div>
-                                                <div class="truncate" title="{{ $paquete->planilla->cliente->empresa ?? 'N/A' }}">👤 {{ $paquete->planilla->cliente->empresa ?? 'N/A' }}</div>
-                                                @if($paquete->nave)
-                                                    <div class="truncate text-blue-600 font-medium" title="{{ $paquete->nave->obra }}">📍 {{ $paquete->nave->obra }}</div>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    @endforeach
+                                        // 2. Desde paquetes asignados
+                                        $obrasDesPaquetes = $salida->paquetes->pluck('planilla.obra.obra')->filter();
+                                        $clientesDesdePaquetes = $salida->paquetes
+                                            ->pluck('planilla.cliente.empresa')
+                                            ->filter();
+
+                                        // Combinar ambas fuentes y eliminar duplicados
+                                        $obras = $obrasDesdeRelacion->concat($obrasDesPaquetes)->unique()->filter();
+                                        $clientes = $clientesDesdeRelacion
+                                            ->concat($clientesDesdePaquetes)
+                                            ->unique()
+                                            ->filter();
+                                    @endphp
+                                    @if ($obras->isNotEmpty())
+                                        <p class="truncate" title="{{ $obras->implode(', ') }}">🏗️
+                                            {{ $obras->implode(', ') }}</p>
+                                    @else
+                                        <p class="text-gray-400 italic text-xs">Sin obra asignada</p>
+                                    @endif
+                                    @if ($clientes->isNotEmpty())
+                                        <p class="truncate" title="{{ $clientes->implode(', ') }}">👤
+                                            {{ $clientes->implode(', ') }}</p>
+                                    @else
+                                        <p class="text-gray-400 italic text-xs">Sin cliente asignado</p>
+                                    @endif
+                                    <p>{{ $salida->empresaTransporte->nombre ?? 'Sin empresa' }}</p>
+                                    <p>{{ $salida->camion->modelo ?? 'Sin camión' }}</p>
+                                    <p class="bg-blue-200 px-2 py-1 rounded inline-block peso-total-salida"
+                                        data-salida-id="{{ $salida->id }}">0 kg</p>
                                 </div>
                             </div>
-                        @endforeach
 
-                        {{-- Columna de Paquetes Disponibles --}}
-                        <div class="bg-gray-50 border-2 border-gray-300 rounded-lg p-4 min-h-[400px]">
-                            <div class="mb-3">
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="font-semibold text-gray-900">📋 Paquetes Disponibles</div>
-                                    <button type="button" id="btn-toggle-paquetes"
-                                            onclick="event.preventDefault(); event.stopPropagation(); toggleFiltroPaquetes();"
-                                            title="{{ $mostrarTodosPaquetes ? 'Mostrar solo paquetes de las ' . $planillas->count() . ' planillas que estás gestionando' : 'Mostrar también paquetes pendientes de otras planillas (para mezclar salidas)' }}"
-                                            class="text-xs px-3 py-1.5 rounded-md transition-colors shadow-sm font-medium {{ $mostrarTodosPaquetes ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white' }}">
-                                        @if($mostrarTodosPaquetes)
-                                            <span class="flex items-center gap-1">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                                                </svg>
-                                                Solo estas planillas
-                                            </span>
-                                        @else
-                                            <span class="flex items-center gap-1">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                                </svg>
-                                                Incluir otros paquetes
-                                            </span>
-                                        @endif
-                                    </button>
-                                </div>
-                                <div class="bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mb-3">
-                                    <p class="text-xs text-blue-800">
-                                        @if($mostrarTodosPaquetes)
-                                            <strong>🌐 Mostrando:</strong> Todos los paquetes pendientes sin asignar ({{ $paquetesTodos->count() }} total)
-                                        @else
-                                            <strong>📋 Mostrando:</strong> Solo paquetes de las {{ $planillas->count() }} planillas seleccionadas ({{ $paquetesFiltrados->count() }} paquetes)
-                                        @endif
-                                    </p>
-                                </div>
-
-                                {{-- Filtros adicionales --}}
-                                <div class="space-y-2 mb-3" wire:ignore>
-                                    {{-- Filtro por Obra --}}
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-700 mb-1">🏗️ Filtrar por Obra</label>
-                                        <select id="filtro-obra"
-                                                onchange="aplicarFiltros()"
-                                                class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                            <option value="">-- Todas las obras --</option>
-                                        </select>
-                                    </div>
-
-                                    {{-- Filtro por Cliente --}}
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-700 mb-1">👤 Filtrar por Cliente</label>
-                                        <select id="filtro-cliente"
-                                                onchange="aplicarFiltros()"
-                                                class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                            <option value="">-- Todos los clientes --</option>
-                                        </select>
-                                    </div>
-
-                                    {{-- Filtro por Planilla --}}
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-700 mb-1">📄 Filtrar por Planilla</label>
-                                        <select id="filtro-planilla"
-                                                onchange="aplicarFiltros()"
-                                                class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                            <option value="">-- Todas las planillas --</option>
-                                        </select>
-                                    </div>
-
-                                    {{-- Botón limpiar filtros --}}
-                                    <button type="button"
-                                            onclick="event.preventDefault(); limpiarFiltros();"
-                                            class="w-full text-xs px-2 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors">
-                                        🔄 Limpiar Filtros
-                                    </button>
-                                </div>
-
-                                {{-- Sumatorio de peso y botón volcar --}}
-                                <div class="bg-gray-100 border border-gray-300 rounded-md px-3 py-2 mb-3">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-sm font-semibold text-gray-700">
-                                            ⚖️ Peso total: <span id="peso-total-disponibles" class="text-blue-600">0 kg</span>
-                                        </span>
-                                        <span class="text-xs text-gray-500">
-                                            (<span id="count-paquetes-disponibles">0</span> paquetes)
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {{-- Botón volcar todos a una salida --}}
-                                @if($salidasExistentes->count() > 0)
-                                <div class="flex items-center gap-2 mb-3">
-                                    <select id="select-salida-destino" class="flex-1 text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                        @foreach($salidasExistentes as $salida)
-                                            <option value="{{ $salida->id }}">{{ $salida->codigo_salida }}</option>
-                                        @endforeach
-                                    </select>
-                                    <button type="button"
-                                            onclick="volcarTodosASalida()"
-                                            class="text-xs px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-colors font-medium whitespace-nowrap">
-                                        📥 Volcar todos
-                                    </button>
-                                </div>
-                                @endif
-                            </div>
-                            <div class="paquetes-zona drop-zone bg-white rounded border-2 border-dashed border-gray-400 p-2 min-h-[300px]"
-                                data-salida-id="null"
-                                wire:ignore.self>
-                                @foreach ($paquetesDisponibles as $paquete)
+                            <div class="paquetes-zona drop-zone bg-white rounded border-2 border-dashed border-blue-300 p-2 min-h-[300px]"
+                                data-salida-id="{{ $salida->id }}">
+                                {{-- Paquetes asignados a esta salida --}}
+                                @foreach ($salida->paquetes as $paquete)
                                     <div class="paquete-item bg-white border border-gray-300 rounded p-2 mb-2 cursor-move hover:shadow-md transition-shadow"
-                                        draggable="true"
-                                        data-paquete-id="{{ $paquete->id }}"
-                                        data-peso="{{ $paquete->peso }}"
-                                        data-obra="{{ $paquete->planilla->obra->obra ?? '' }}"
-                                        data-obra-id="{{ $paquete->planilla->obra_id ?? '' }}"
-                                        data-cliente="{{ $paquete->planilla->cliente->empresa ?? '' }}"
-                                        data-cliente-id="{{ $paquete->planilla->cliente_id ?? '' }}"
-                                        data-planilla="{{ $paquete->planilla->codigo ?? '' }}"
-                                        data-planilla-id="{{ $paquete->planilla_id ?? '' }}"
-                                        data-nave="{{ $paquete->nave->obra ?? '' }}"
-                                        data-nave-id="{{ $paquete->nave_id ?? '' }}">
+                                        draggable="true" data-paquete-id="{{ $paquete->id }}"
+                                        data-peso="{{ $paquete->peso }}">
                                         <div class="flex items-center justify-between text-xs">
                                             <span class="font-medium">📦 {{ $paquete->codigo }}</span>
-                                            <button onclick="mostrarDibujo({{ $paquete->id }}); event.stopPropagation();"
+                                            <button
+                                                onclick="mostrarDibujo({{ $paquete->id }}); event.stopPropagation();"
                                                 class="text-blue-500 hover:underline text-xs">
                                                 👁️ Ver
                                             </button>
                                         </div>
                                         <div class="flex items-center justify-between text-xs mt-1">
-                                            <span class="text-gray-500">{{ $paquete->planilla->codigo ?? 'N/A' }}</span>
-                                            <span class="text-gray-600">{{ number_format($paquete->peso, 2) }} kg</span>
+                                            <span
+                                                class="text-gray-500">{{ $paquete->planilla->codigo ?? 'N/A' }}</span>
+                                            <span class="text-gray-600">{{ number_format($paquete->peso, 2) }}
+                                                kg</span>
                                         </div>
                                         <div class="text-xs text-gray-500 mt-1 border-t border-gray-200 pt-1">
-                                            <div class="truncate" title="{{ $paquete->planilla->obra->obra ?? 'N/A' }}">🏗️ {{ $paquete->planilla->obra->obra ?? 'N/A' }}</div>
-                                            <div class="truncate" title="{{ $paquete->planilla->cliente->empresa ?? 'N/A' }}">👤 {{ $paquete->planilla->cliente->empresa ?? 'N/A' }}</div>
-                                            @if($paquete->nave)
-                                                <div class="truncate text-blue-600 font-medium" title="{{ $paquete->nave->obra }}">📍 {{ $paquete->nave->obra }}</div>
+                                            <div class="truncate"
+                                                title="{{ $paquete->planilla->obra->obra ?? 'N/A' }}">🏗️
+                                                {{ $paquete->planilla->obra->obra ?? 'N/A' }}</div>
+                                            <div class="truncate"
+                                                title="{{ $paquete->planilla->cliente->empresa ?? 'N/A' }}">👤
+                                                {{ $paquete->planilla->cliente->empresa ?? 'N/A' }}</div>
+                                            @if ($paquete->nave)
+                                                <div class="truncate text-blue-600 font-medium"
+                                                    title="{{ $paquete->nave->obra }}">📍 {{ $paquete->nave->obra }}
+                                                </div>
                                             @endif
                                         </div>
                                     </div>
                                 @endforeach
                             </div>
                         </div>
-                    </div>
+                    @endforeach
 
-                    <div class="mt-6 text-center">
-                        <button type="button" id="btn-guardar-asignaciones"
-                            class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md font-semibold">
-                            💾 Guardar Asignaciones de Paquetes
-                        </button>
+                    {{-- Columna de Paquetes Disponibles --}}
+                    <div class="bg-gray-50 border-2 border-gray-300 rounded-lg p-4 min-h-[400px]">
+                        <div class="mb-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="font-semibold text-gray-900">📋 Paquetes Disponibles</div>
+                                <button type="button" id="btn-toggle-paquetes"
+                                    onclick="event.preventDefault(); event.stopPropagation(); toggleFiltroPaquetes();"
+                                    title="{{ $mostrarTodosPaquetes ? 'Mostrar solo paquetes de las ' . $planillas->count() . ' planillas que estás gestionando' : 'Mostrar también paquetes pendientes de otras planillas (para mezclar salidas)' }}"
+                                    class="text-xs px-3 py-1.5 rounded-md transition-colors shadow-sm font-medium {{ $mostrarTodosPaquetes ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white' }}">
+                                    @if ($mostrarTodosPaquetes)
+                                        <span class="flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                            </svg>
+                                            Solo estas planillas
+                                        </span>
+                                    @else
+                                        <span class="flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 4v16m8-8H4" />
+                                            </svg>
+                                            Incluir otros paquetes
+                                        </span>
+                                    @endif
+                                </button>
+                            </div>
+                            <div class="bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mb-3">
+                                <p class="text-xs text-blue-800">
+                                    @if ($mostrarTodosPaquetes)
+                                        <strong>🌐 Mostrando:</strong> Todos los paquetes pendientes sin asignar
+                                        ({{ $paquetesTodos->count() }} total)
+                                    @else
+                                        <strong>📋 Mostrando:</strong> Solo paquetes de las {{ $planillas->count() }}
+                                        planillas seleccionadas ({{ $paquetesFiltrados->count() }} paquetes)
+                                    @endif
+                                </p>
+                            </div>
+
+                            {{-- Filtros adicionales --}}
+                            <div class="space-y-2 mb-3" wire:ignore>
+                                {{-- Filtro por Obra --}}
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">🏗️ Filtrar por
+                                        Obra</label>
+                                    <select id="filtro-obra" onchange="aplicarFiltros()"
+                                        class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="">-- Todas las obras --</option>
+                                    </select>
+                                </div>
+
+                                {{-- Filtro por Cliente --}}
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">👤 Filtrar por
+                                        Cliente</label>
+                                    <select id="filtro-cliente" onchange="aplicarFiltros()"
+                                        class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="">-- Todos los clientes --</option>
+                                    </select>
+                                </div>
+
+                                {{-- Filtro por Planilla --}}
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">📄 Filtrar por
+                                        Planilla</label>
+                                    <select id="filtro-planilla" onchange="aplicarFiltros()"
+                                        class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="">-- Todas las planillas --</option>
+                                    </select>
+                                </div>
+
+                                {{-- Botón limpiar filtros --}}
+                                <button type="button" onclick="event.preventDefault(); limpiarFiltros();"
+                                    class="w-full text-xs px-2 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors">
+                                    🔄 Limpiar Filtros
+                                </button>
+                            </div>
+
+                            {{-- Sumatorio de peso y botón volcar --}}
+                            <div class="bg-gray-100 border border-gray-300 rounded-md px-3 py-2 mb-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-semibold text-gray-700">
+                                        ⚖️ Peso total: <span id="peso-total-disponibles" class="text-blue-600">0
+                                            kg</span>
+                                    </span>
+                                    <span class="text-xs text-gray-500">
+                                        (<span id="count-paquetes-disponibles">0</span> paquetes)
+                                    </span>
+                                </div>
+                            </div>
+
+                            {{-- Botón volcar todos a una salida --}}
+                            @if ($salidasExistentes->count() > 0)
+                                <div class="flex items-center gap-2 mb-3">
+                                    <select id="select-salida-destino"
+                                        class="flex-1 text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        @foreach ($salidasExistentes as $salida)
+                                            <option value="{{ $salida->id }}">{{ $salida->codigo_salida }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" onclick="volcarTodosASalida()"
+                                        class="text-xs px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-colors font-medium whitespace-nowrap">
+                                        📥 Volcar todos
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
+                        <div class="paquetes-zona drop-zone bg-white rounded border-2 border-dashed border-gray-400 p-2 min-h-[300px]"
+                            data-salida-id="null" wire:ignore.self>
+                            @foreach ($paquetesDisponibles as $paquete)
+                                <div class="paquete-item bg-white border border-gray-300 rounded p-2 mb-2 cursor-move hover:shadow-md transition-shadow"
+                                    draggable="true" data-paquete-id="{{ $paquete->id }}"
+                                    data-peso="{{ $paquete->peso }}"
+                                    data-obra="{{ $paquete->planilla->obra->obra ?? '' }}"
+                                    data-obra-id="{{ $paquete->planilla->obra_id ?? '' }}"
+                                    data-cliente="{{ $paquete->planilla->cliente->empresa ?? '' }}"
+                                    data-cliente-id="{{ $paquete->planilla->cliente_id ?? '' }}"
+                                    data-planilla="{{ $paquete->planilla->codigo ?? '' }}"
+                                    data-planilla-id="{{ $paquete->planilla_id ?? '' }}"
+                                    data-nave="{{ $paquete->nave->obra ?? '' }}"
+                                    data-nave-id="{{ $paquete->nave_id ?? '' }}">
+                                    <div class="flex items-center justify-between text-xs">
+                                        <span class="font-medium">📦 {{ $paquete->codigo }}</span>
+                                        <button onclick="mostrarDibujo({{ $paquete->id }}); event.stopPropagation();"
+                                            class="text-blue-500 hover:underline text-xs">
+                                            👁️ Ver
+                                        </button>
+                                    </div>
+                                    <div class="flex items-center justify-between text-xs mt-1">
+                                        <span class="text-gray-500">{{ $paquete->planilla->codigo ?? 'N/A' }}</span>
+                                        <span class="text-gray-600">{{ number_format($paquete->peso, 2) }} kg</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1 border-t border-gray-200 pt-1">
+                                        <div class="truncate" title="{{ $paquete->planilla->obra->obra ?? 'N/A' }}">
+                                            🏗️ {{ $paquete->planilla->obra->obra ?? 'N/A' }}</div>
+                                        <div class="truncate"
+                                            title="{{ $paquete->planilla->cliente->empresa ?? 'N/A' }}">👤
+                                            {{ $paquete->planilla->cliente->empresa ?? 'N/A' }}</div>
+                                        @if ($paquete->nave)
+                                            <div class="truncate text-blue-600 font-medium"
+                                                title="{{ $paquete->nave->obra }}">📍 {{ $paquete->nave->obra }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
                 </div>
+
+                <div class="mt-6 text-center">
+                    <button type="button" id="btn-guardar-asignaciones"
+                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md font-semibold">
+                        💾 Guardar Asignaciones de Paquetes
+                    </button>
+                </div>
+            </div>
         @else
             <div class="bg-white shadow-md rounded-lg p-6">
                 <h2 class="text-2xl font-semibold text-gray-800 mb-4">Gestionar Paquetes de las Salidas</h2>
@@ -448,7 +507,8 @@
     </div>
 
     {{-- Modal para visualizar elementos del paquete --}}
-    <div id="modal-dibujo" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center p-4">
+    <div id="modal-dibujo"
+        class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center p-4">
         <div
             class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-[800px] md:w-[900px] lg:w-[1000px] max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative">
             <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">
@@ -468,7 +528,7 @@
         $fechaEstimadaEntrega = $planillas
             ->pluck('fecha_estimada_entrega')
             ->filter()
-            ->map(function($f) {
+            ->map(function ($f) {
                 // Intentar parsear con diferentes formatos
                 try {
                     // Si ya es un objeto Carbon
@@ -494,17 +554,21 @@
             'empresas' => $empresas,
             'camiones' => $camiones,
             'mostrarTodosPaquetes' => $mostrarTodosPaquetes,
-            'fechaEstimadaEntrega' => $fechaEstimadaEntrega ? $fechaEstimadaEntrega->format('Y-m-d') : now()->format('Y-m-d'),
+            'fechaEstimadaEntrega' => $fechaEstimadaEntrega
+                ? $fechaEstimadaEntrega->format('Y-m-d')
+                : now()->format('Y-m-d'),
             'routes' => [
                 'crearSalidasVacias' => route('salidas.crearSalidasVaciasMasivo'),
                 'guardarAsignacionesPaquetes' => route('planificacion.guardarAsignacionesPaquetes'),
-                'recargarVista' => route('salidas-ferralla.gestionar-salidas', ['planillas' => implode(',', $planillas->pluck('id')->toArray())]),
+                'recargarVista' => route('salidas-ferralla.gestionar-salidas', [
+                    'planillas' => implode(',', $planillas->pluck('id')->toArray()),
+                ]),
                 'actualizarFechaSalida' => route('salidas.actualizarFechaSalida'),
             ],
         ];
 
         // Función para mapear paquetes con elementos (igual que en PaquetesTable)
-        $mapearPaqueteConElementos = function($paquete) {
+        $mapearPaqueteConElementos = function ($paquete) {
             $etiquetas = [];
             foreach ($paquete->etiquetas ?? [] as $etiqueta) {
                 $elementos = [];
@@ -537,9 +601,10 @@
         $paquetesTodosJS = $paquetesTodos->map($mapearPaqueteConElementos);
 
         // Combinar todos los paquetes (disponibles + asignados a salidas) con sus elementos
-        $todosPaquetes = $paquetesDisponibles->concat($salidasExistentes->flatMap->paquetes)
+        $todosPaquetes = $paquetesDisponibles
+            ->concat($salidasExistentes->flatMap->paquetes)
             ->unique('id')
-            ->map(function($paquete) use ($mapearPaqueteConElementos) {
+            ->map(function ($paquete) use ($mapearPaqueteConElementos) {
                 return $mapearPaqueteConElementos($paquete);
             });
 
@@ -615,7 +680,11 @@
     {{-- Debug y inicialización de filtros --}}
     <script data-navigate-once>
         function initGestionSalidasPage() {
+            // Prevenir doble inicialización
+            if (document.body.dataset.gestionSalidasPageInit === 'true') return;
+
             console.log('🔍 DEBUG: Verificando elementos...');
+
 
             const selectObra = document.getElementById('filtro-obra');
             const selectCliente = document.getElementById('filtro-cliente');
@@ -645,10 +714,22 @@
                     console.error('❌ Función inicializarFiltros no disponible');
                 }
             }, 500);
+
+            // Marcar como inicializado
+            document.body.dataset.gestionSalidasPageInit = 'true';
         }
 
-        // Ejecutar en DOMContentLoaded y en navegación de Livewire
-        document.addEventListener('DOMContentLoaded', initGestionSalidasPage);
+        // Registrar en el sistema global
+        window.pageInitializers = window.pageInitializers || [];
+        window.pageInitializers.push(initGestionSalidasPage);
+
+        // Configurar listeners
         document.addEventListener('livewire:navigated', initGestionSalidasPage);
+        document.addEventListener('DOMContentLoaded', initGestionSalidasPage);
+
+        // Limpiar flag antes de navegar
+        document.addEventListener('livewire:navigating', () => {
+            document.body.dataset.gestionSalidasPageInit = 'false';
+        });
     </script>
 </x-app-layout>

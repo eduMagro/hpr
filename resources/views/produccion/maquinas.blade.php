@@ -156,7 +156,7 @@
             </div>
             <!-- Por esta versión con transición -->
             <div id="contenedor-calendario"
-                class="bg-white shadow rounded-lg p-2 transition-all duration-300 relative">
+                class="bg-white shadow rounded-lg p-2 transition-all duration-300 relative pt-10">
                 <!-- Botones en esquina superior izquierda -->
                 <div class="absolute top-4 left-4 z-10 flex gap-2">
                     <!-- Botón de optimizar planillas -->
@@ -337,8 +337,8 @@
 
         <script>
             // Variables globales para el panel de planificación
-            let panelPlanillaActual = null;
-            let panelMaquinaActual = null;
+            window.panelPlanillaActual = null;
+            window.panelMaquinaActual = null;
 
             // Función para resumir etiquetas desde el panel lateral
             function resumirEtiquetasPanel() {
@@ -355,13 +355,14 @@
             }
 
             // Actualizar variables cuando se abre el panel (hook para el código existente)
-            const originalAbrirPanel = window.abrirPanelElementos;
-            if (typeof originalAbrirPanel === 'function') {
+            var originalAbrirPanel = window.abrirPanelElementos;
+            if (typeof originalAbrirPanel === 'function' && !originalAbrirPanel.isMyWrapper) {
                 window.abrirPanelElementos = function(planillaId, maquinaId, ...args) {
-                    panelPlanillaActual = planillaId;
-                    panelMaquinaActual = maquinaId;
+                    window.panelPlanillaActual = planillaId;
+                    window.panelMaquinaActual = maquinaId;
                     return originalAbrirPanel(planillaId, maquinaId, ...args);
                 };
+                window.abrirPanelElementos.isMyWrapper = true;
             }
         </script>
 
@@ -1234,6 +1235,7 @@
                     opacity: 0;
                     transform: scale(0.96);
                 }
+
                 to {
                     opacity: 1;
                     transform: scale(1);
@@ -1241,7 +1243,7 @@
             }
 
             /* Panel de filtros */
-            #produccion-maquinas-container > .py-2 > .mt-2 {
+            #produccion-maquinas-container>.py-2>.mt-2 {
                 opacity: 0;
                 animation: fadeInUp 0.4s ease-out 0.1s forwards;
             }
@@ -1251,6 +1253,7 @@
                     opacity: 0;
                     transform: translateY(8px);
                 }
+
                 to {
                     opacity: 1;
                     transform: translateY(0);
@@ -1802,7 +1805,7 @@
                     resourceLabelContent: function(arg) {
                         return {
                             html: `
-                            <div class="flex flex-col gap-2 w-full py-1">
+                            <div class="flex flex-col justify-between h-full w-full py-1">
                                 <a href="/maquinas/${arg.resource.id}"
                                    wire:navigate
                                    class="text-blue-600 hover:text-blue-800 hover:underline font-semibold maquina-nombre"
@@ -1879,10 +1882,7 @@
                     // ✅ CAMBIO: Usar endpoints dinámicos en lugar de datos estáticos
                     resources: {
                         url: '{{ route('api.produccion.recursos') }}',
-                        failure: function(error) {
-                            console.error('❌ Error al cargar recursos:', error);
-                            alert('Error al cargar las máquinas. Revisa la consola.');
-                        }
+                        // failure: eliminado porque provoca warnings en FullCalendar
                     },
                     resourceOrder: false,
                     events: {
@@ -4284,7 +4284,8 @@
                 // ========================================
 
                 let ultimoTimestamp = new Date().toISOString();
-                let intervaloPolling = null;
+                // Usar window para persistir el intervalo entre navegaciones/recargas de script
+                window._maquinasPollingInterval = window._maquinasPollingInterval || null;
                 let calendarioVisible = true;
                 let actualizacionesRecibidas = 0;
 
@@ -4293,16 +4294,35 @@
                     calendarioVisible = !document.hidden;
 
                     if (calendarioVisible) {
-                        iniciarPolling();
+                        // Solo reiniciar si estamos en la página correcta
+                        const isMaquinasPage = document.getElementById('calendario-maquinas-data') &&
+                            document.querySelector('#calendario[data-calendar-type="maquinas"]');
+                        if (isMaquinasPage) {
+                            iniciarPolling();
+                        }
                     } else {
                         detenerPolling();
                     }
                 });
 
                 function iniciarPolling() {
-                    if (intervaloPolling) return; // Ya está activo
+                    // Si ya existe un intervalo global activo, no crear otro
+                    if (window._maquinasPollingInterval) return;
 
-                    intervaloPolling = setInterval(async () => {
+                    console.log('🔄 Iniciando polling de actualizaciones de máquinas...');
+
+                    window._maquinasPollingInterval = setInterval(async () => {
+                        // 🛡️ PROTECCIÓN SPA: Verificar si seguimos en la página
+                        const isMaquinasPage = document.getElementById('calendario-maquinas-data') &&
+                            document.querySelector('#calendario[data-calendar-type="maquinas"]');
+
+                        if (!isMaquinasPage) {
+                            // Si no estamos en la página, DETENER inmediatamente
+                            console.log('⏸️ Auto-limpieza de polling (cambio de vista detectado)');
+                            detenerPolling();
+                            return;
+                        }
+
                         try {
                             const url =
                                 `/produccion/maquinas/actualizaciones?timestamp=${encodeURIComponent(ultimoTimestamp)}`;
@@ -4317,9 +4337,13 @@
                             });
 
                             if (!response.ok) {
-                                console.error(`❌ Error HTTP: ${response.status} ${response.statusText}`);
-                                const text = await response.text();
-                                console.error('Respuesta:', text.substring(0, 200));
+                                // Si hay error 500, pausar para no saturar errores
+                                if (response.status === 500 || response.status === 404) {
+                                    console.warn(
+                                        `⚠️ Polling pausado por error del servidor (${response.status})`);
+                                    detenerPolling();
+                                    return;
+                                }
                                 return;
                             }
 
@@ -4335,18 +4359,20 @@
                             }
                         } catch (error) {
                             console.error('❌ Error al obtener actualizaciones:', error);
-                            console.error('Stack:', error.stack);
                         }
                     }, 5000); // Cada 5 segundos
                 }
 
                 function detenerPolling() {
-                    if (intervaloPolling) {
-                        clearInterval(intervaloPolling);
-                        intervaloPolling = null;
-                        console.log('⏸️ Polling detenido');
+                    if (window._maquinasPollingInterval) {
+                        clearInterval(window._maquinasPollingInterval);
+                        window._maquinasPollingInterval = null;
+                        console.log('⏸️ Polling de máquinas detenido correctamente');
                     }
                 }
+
+                // EXPOSICIÓN GLOBAL para la limpieza SPA
+                window.stopPolling = detenerPolling;
 
                 function aplicarActualizaciones(actualizaciones) {
                     actualizaciones.forEach(upd => {
@@ -4530,12 +4556,14 @@
                 }, 60000);
             }
 
-            // Inicializar en carga inicial
+            // Inicialización antigua comentada para evitar conflictos con SPA
+            /*
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', inicializarCalendarioMaquinas);
             } else {
                 inicializarCalendarioMaquinas();
             }
+            */
 
             // Nota: La reinicialización en livewire:navigated se maneja desde el layout principal (app.blade.php)
             // para evitar problemas de timing con la carga de scripts
@@ -5566,7 +5594,7 @@
             }
 
             // Debounce para evitar múltiples ejecuciones seguidas
-            let _debounceGraficoBalanceado = null;
+            window._debounceGraficoBalanceado = null;
 
             // Función para calcular y mostrar distribución después de los cambios
             function actualizarGraficoBalanceado() {
@@ -6552,5 +6580,46 @@
             }
 
             // ============================================================
+            // 🚀 INICIALIZACIÓN ROBUSTA SPA / LIVEWIRE
+            // ============================================================
+
+            window.initProduccionMaquinasPage = function() {
+                // Verificar si estamos estrictamente en la página de máquinas
+                // Buscamos el elemento de datos específico o el atributo de tipo
+                const isMaquinasPage = document.getElementById('calendario-maquinas-data') &&
+                    document.querySelector('#calendario[data-calendar-type="maquinas"]');
+
+                if (!isMaquinasPage) {
+                    // Si no estamos en la página de máquinas, detener cualquier polling activo
+                    if (typeof window.stopPolling === 'function') {
+                        // Solo loguear si realmente había algo que detener
+                        if (window._maquinasPollingInterval) {
+                            console.log('⏸️ Deteniendo polling de máquinas por navegación');
+                        }
+                        window.stopPolling();
+                    }
+                    return;
+                }
+
+                if (typeof window.inicializarCalendarioMaquinas === 'function') {
+                    window.inicializarCalendarioMaquinas();
+                } else {
+                    console.error('❌ window.inicializarCalendarioMaquinas no encontrada');
+                }
+            };
+
+            // Ejecutar en carga inicial
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', window.initProduccionMaquinasPage);
+            } else {
+                window.initProduccionMaquinasPage();
+            }
+
+            // Ejecutar en navegación SPA - Asegurar Listener Único Global
+            if (!window._maquinasListenerAdded) {
+                document.addEventListener('livewire:navigated', window.initProduccionMaquinasPage);
+                window._maquinasListenerAdded = true;
+                // console.log('✅ Listener SPA de [Máquinas] registrado por primera vez');
+            }
         </script>
 </x-app-layout>

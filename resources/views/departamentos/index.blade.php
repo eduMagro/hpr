@@ -526,14 +526,16 @@
                     </svg>
                     Configuración del Dashboard
                 </h3>
-                <p class="text-orange-100 text-sm mt-1">Arrastra las secciones para cambiar el orden en el dashboard</p>
+                <p class="text-orange-100 text-sm mt-1">Arrastra las secciones para cambiar el orden en el dashboard
+                </p>
             </div>
 
             <div class="p-6">
                 <!-- Secciones del Dashboard con Drag & Drop -->
                 <div class="mb-6">
                     <h4 class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                         </svg>
@@ -593,17 +595,20 @@
                 @if ($departamentoOperarios)
                     <div class="border-t pt-6 mt-6">
                         <h4 class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                             </svg>
                             Secciones visibles para Operarios
-                            <span class="text-sm font-normal text-gray-500">(Departamento: {{ $departamentoOperarios->nombre }})</span>
+                            <span class="text-sm font-normal text-gray-500">(Departamento:
+                                {{ $departamentoOperarios->nombre }})</span>
                         </h4>
 
                         <p class="text-sm text-gray-600 mb-4">
                             Las secciones marcadas serán visibles en el dashboard de los usuarios con rol "operario".
-                            <a href="#" @click.prevent="openModalSecciones = true; departamentoId = {{ $departamentoOperarios->id }}"
+                            <a href="#"
+                                @click.prevent="openModalSecciones = true; departamentoId = {{ $departamentoOperarios->id }}"
                                 class="text-blue-600 hover:underline">Editar secciones</a>
                         </p>
 
@@ -617,7 +622,8 @@
                                     {{ $seccion->nombre }}
                                 </span>
                             @empty
-                                <span class="text-gray-500 italic">No hay secciones asignadas al departamento Operarios</span>
+                                <span class="text-gray-500 italic">No hay secciones asignadas al departamento
+                                    Operarios</span>
                             @endforelse
                         </div>
                     </div>
@@ -631,9 +637,11 @@
                                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                                 <div>
-                                    <h5 class="font-semibold text-yellow-800">Departamento "Operarios" no encontrado</h5>
+                                    <h5 class="font-semibold text-yellow-800">Departamento "Operarios" no encontrado
+                                    </h5>
                                     <p class="text-sm text-yellow-700 mt-1">
-                                        Para configurar las secciones visibles para operarios, primero crea un departamento llamado
+                                        Para configurar las secciones visibles para operarios, primero crea un
+                                        departamento llamado
                                         exactamente "Operarios".
                                     </p>
                                     <button type="button" @click="openNuevoDepartamentoModal = true"
@@ -651,7 +659,12 @@
         <!-- Script para Drag & Drop con SortableJS -->
         <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
         <script>
-            document.addEventListener('DOMContentLoaded', function() {
+            function initDepartamentosPage() {
+                // Prevenir doble inicialización
+                if (document.body.dataset.departamentosPageInit === 'true') return;
+
+                console.log('🔍 Inicializando página de departamentos...');
+
                 const sortableContainer = document.getElementById('sortable-secciones');
                 if (sortableContainer) {
                     new Sortable(sortableContainer, {
@@ -670,52 +683,75 @@
                 }
 
                 // Guardar orden
-                document.getElementById('btn-guardar-orden')?.addEventListener('click', function() {
-                    const items = document.querySelectorAll('.seccion-item');
-                    const orden = Array.from(items).map(item => parseInt(item.dataset.id));
-                    const statusEl = document.getElementById('orden-status');
+                const btnGuardar = document.getElementById('btn-guardar-orden');
+                if (btnGuardar) {
+                    // Clonar para limpiar listeners anteriores
+                    const newBtn = btnGuardar.cloneNode(true);
+                    btnGuardar.replaceWith(newBtn);
 
-                    statusEl.classList.remove('hidden');
-                    this.disabled = true;
+                    newBtn.addEventListener('click', function() {
+                        const items = document.querySelectorAll('.seccion-item');
+                        const orden = Array.from(items).map(item => parseInt(item.dataset.id));
+                        const statusEl = document.getElementById('orden-status');
 
-                    fetch('{{ route('secciones.actualizarOrden') }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                            },
-                            body: JSON.stringify({
-                                orden: orden
+                        statusEl.classList.remove('hidden');
+                        this.disabled = true;
+
+                        fetch('{{ route('secciones.actualizarOrden') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                },
+                                body: JSON.stringify({
+                                    orden: orden
+                                })
                             })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            statusEl.classList.add('hidden');
-                            this.disabled = false;
+                            .then(response => response.json())
+                            .then(data => {
+                                statusEl.classList.add('hidden');
+                                this.disabled = false;
 
-                            if (data.success) {
+                                if (data.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Orden guardado',
+                                        text: 'El orden de las secciones se ha actualizado correctamente.',
+                                        timer: 2000,
+                                        showConfirmButton: false
+                                    });
+                                } else {
+                                    throw new Error(data.message || 'Error al guardar');
+                                }
+                            })
+                            .catch(error => {
+                                statusEl.classList.add('hidden');
+                                this.disabled = false;
+
                                 Swal.fire({
-                                    icon: 'success',
-                                    title: 'Orden guardado',
-                                    text: 'El orden de las secciones se ha actualizado correctamente.',
-                                    timer: 2000,
-                                    showConfirmButton: false
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: error.message || 'No se pudo guardar el orden.'
                                 });
-                            } else {
-                                throw new Error(data.message || 'Error al guardar');
-                            }
-                        })
-                        .catch(error => {
-                            statusEl.classList.add('hidden');
-                            this.disabled = false;
-
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: error.message || 'No se pudo guardar el orden.'
                             });
-                        });
-                });
+                    });
+                }
+
+                // Marcar como inicializado
+                document.body.dataset.departamentosPageInit = 'true';
+            }
+
+            // Registrar en el sistema global
+            window.pageInitializers = window.pageInitializers || [];
+            window.pageInitializers.push(initDepartamentosPage);
+
+            // Configurar listeners
+            document.addEventListener('livewire:navigated', initDepartamentosPage);
+            document.addEventListener('DOMContentLoaded', initDepartamentosPage);
+
+            // Limpiar flag antes de navegar
+            document.addEventListener('livewire:navigating', () => {
+                document.body.dataset.departamentosPageInit = 'false';
             });
         </script>
 

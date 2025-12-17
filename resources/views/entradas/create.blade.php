@@ -40,17 +40,42 @@
 
     @if ($errors->any())
         <script>
-            document.addEventListener('DOMContentLoaded', () => {
+            function initEntradasCreatePage() {
+                // Prevenir doble inicialización
+                if (document.body.dataset.entradasCreatePageInit === 'true') return;
+
+                console.log('🔍 Inicializando página de creación de entradas...');
+
                 const errores = `{!! implode('<br>', $errors->all()) !!}`;
 
-                Swal.fire({
-                    title: '⚠️ Errores de validación',
-                    html: errores,
-                    icon: 'error',
-                    confirmButtonText: 'OK'
-                }).then(() => {
-                    iniciarRegistro();
-                });
+                if (errores) {
+                    Swal.fire({
+                        title: '⚠️ Errores de validación',
+                        html: errores,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    }).then(() => {
+                        if (typeof iniciarRegistro === 'function') {
+                            iniciarRegistro();
+                        }
+                    });
+                }
+
+                // Marcar como inicializado
+                document.body.dataset.entradasCreatePageInit = 'true';
+            }
+
+            // Registrar en el sistema global
+            window.pageInitializers = window.pageInitializers || [];
+            window.pageInitializers.push(initEntradasCreatePage);
+
+            // Configurar listeners
+            document.addEventListener('livewire:navigated', initEntradasCreatePage);
+            document.addEventListener('DOMContentLoaded', initEntradasCreatePage);
+
+            // Limpiar flag antes de navegar
+            document.addEventListener('livewire:navigating', () => {
+                document.body.dataset.entradasCreatePageInit = 'false';
             });
         </script>
     @endif

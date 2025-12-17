@@ -201,7 +201,7 @@
                     @endisset
 
                     <!-- Main Content -->
-                    <div class="page-content">
+                    <div class="page-content pb-4">
                         {{ $slot }}
                     </div>
                 </div>

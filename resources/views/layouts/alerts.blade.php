@@ -20,182 +20,9 @@
     </script>
 @endif
 
-@if ($errors->any())
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            let erroresHtml = '';
-            let erroresTexto = '';
-            @foreach ($errors->all() as $error)
-                erroresHtml += '<li>{{ $error }}<\/li>';
-                erroresTexto += '- {{ $error }}\n';
-            @endforeach
 
-            Swal.fire({
-                icon: 'error',
-                title: 'Errores encontrados',
-                html: '<ul>' + erroresHtml + '</ul>',
-                confirmButtonColor: '#d33',
-                showCancelButton: true,
-                cancelButtonText: "Reportar Error"
-            }).then((result) => {
-                if (result.dismiss === Swal.DismissReason.cancel) {
-                    notificarProgramador(erroresTexto);
-                }
-            });
-        });
-    </script>
-@endif
+{{-- Los listeners de alertas ahora están consolidados en initAlertsPage() al final del archivo --}}
 
-
-@if (session('error'))
-    <script>
-        (function() {
-            const nombreArchivo = @json(session('nombre_archivo', null));
-            let errorMensaje = @json(session('error'));
-
-            // ✅ Si hay nombre de archivo y no está en el mensaje, añadirlo
-            if (nombreArchivo && !errorMensaje.includes(nombreArchivo)) {
-                errorMensaje = `📄 Archivo: ${nombreArchivo}\n\n${errorMensaje}`;
-            }
-
-            function mostrarError() {
-                console.log('🔴 Mostrando error:', errorMensaje);
-                // Determinar título según el tipo de error
-                let titulo = 'Error';
-                if (nombreArchivo) {
-                    titulo = 'Error de importación';
-                } else if (errorMensaje.toLowerCase().includes('acceso') || errorMensaje.toLowerCase().includes('permiso')) {
-                    titulo = 'Acceso denegado';
-                }
-                Swal.fire({
-                    icon: 'error',
-                    title: titulo,
-                    text: errorMensaje,
-                    confirmButtonColor: '#d33'
-                }).then((result) => {
-                    if (result.dismiss === Swal.DismissReason.cancel) {
-                        notificarProgramador(errorMensaje, 'Error reportado');
-                    }
-                });
-            }
-
-            // Esperar a que Swal esté disponible
-            function esperarSwal(intentos) {
-                if (typeof Swal !== 'undefined') {
-                    mostrarError();
-                } else if (intentos < 50) {
-                    setTimeout(function() { esperarSwal(intentos + 1); }, 100);
-                } else {
-                    alert(errorMensaje);
-                }
-            }
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', function() { esperarSwal(0); });
-            } else {
-                esperarSwal(0);
-            }
-        })();
-    </script>
-@endif
-
-@if (session('success'))
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const mensaje = @json(session('success'));
-            const esImportacion = @json(session('import_report', false));
-            const tieneAdvertencias = @json(session('tiene_advertencias', false));
-            const nombreArchivo = @json(session('nombre_archivo', null));
-
-            // ✅ SI ES IMPORTACIÓN → Formato especial con HTML
-            if (esImportacion) {
-                // Convertir saltos de línea a <br> para mostrar en HTML
-                const mensajeHtml = mensaje.replace(/\n/g, '<br>');
-
-                // Configuración especial para importaciones
-                const config = {
-                    icon: 'success',
-                    html: '<div style="text-align: left; font-family: monospace; white-space: pre-wrap;">' +
-                        mensajeHtml + '</div>',
-                    confirmButtonColor: '#28a745',
-                    width: '650px',
-                };
-
-                // Si tiene advertencias, añadir botón de reportar
-                if (tieneAdvertencias) {
-                    config.showCancelButton = true;
-                    config.cancelButtonText = '⚠️ Reportar Advertencias';
-                    config.confirmButtonText = 'Aceptar';
-                    config.cancelButtonColor = '#f59e0b';
-                }
-
-                Swal.fire(config).then((result) => {
-                    // Si clickeó en "Reportar Advertencias"
-                    if (result.dismiss === Swal.DismissReason.cancel && tieneAdvertencias) {
-                        // Incluir nombre de archivo en el asunto
-                        const asunto = nombreArchivo ?
-                            `Advertencias en importación: ${nombreArchivo}` :
-                            'Advertencias en importación de planillas';
-
-                        notificarProgramador(mensaje, asunto);
-                    }
-                });
-            }
-            // ✅ SI NO ES IMPORTACIÓN → Formato simple (como antes)
-            else {
-                Swal.fire({
-                    icon: 'success',
-                    text: mensaje, // ← Texto simple sin formateo
-                    confirmButtonColor: '#28a745'
-                }).then(() => {
-                    console.log('Operación exitosa:', mensaje);
-                });
-            }
-        });
-    </script>
-@endif
-
-@if (session('info'))
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            Swal.fire({
-                icon: 'info',
-                title: 'Información',
-                text: @json(session('info')),
-                confirmButtonColor: '#3B82F6' // azul Tailwind
-            });
-        });
-    </script>
-@endif
-
-@if (session('warning'))
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Atención',
-                text: @json(session('warning')),
-                confirmButtonColor: '#FBBF24' // amarillo Tailwind
-            });
-        });
-    </script>
-@endif
-
-@if (session('warnings'))
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            @foreach (session('warnings') as $warning)
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Atención',
-                    text: "{{ $warning }}",
-                    timer: 5000,
-                    showConfirmButton: false
-                });
-            @endforeach
-        });
-    </script>
-@endif
 
 
 <!-- Función para notificar a programadores -->
@@ -258,4 +85,128 @@ Navegador: ${navigator.userAgent}`;
                 });
             });
     }
+</script>
+
+<script>
+    function initAlertsPage() {
+        // Prevenir doble inicialización
+        if (document.body.dataset.alertsPageInit === 'true') return;
+
+        console.log('🔍 Inicializando sistema de alertas...');
+
+        // Procesar errores de validación
+        @if ($errors->any())
+            let erroresHtml = '';
+            let erroresTexto = '';
+            @foreach ($errors->all() as $error)
+                erroresHtml += '<li>{{ $error }}<\/li>';
+                erroresTexto += '- {{ $error }}\n';
+            @endforeach
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Errores encontrados',
+                html: '<ul>' + erroresHtml + '</ul>',
+                confirmButtonColor: '#d33',
+                showCancelButton: true,
+                cancelButtonText: "Reportar Error"
+            }).then((result) => {
+                if (result.dismiss === Swal.DismissReason.cancel) {
+                    notificarProgramador(erroresTexto);
+                }
+            });
+        @endif
+
+        // Procesar mensaje de éxito
+        @if (session('success'))
+            const mensaje = @json(session('success'));
+            const esImportacion = @json(session('import_report', false));
+            const tieneAdvertencias = @json(session('tiene_advertencias', false));
+            const nombreArchivo = @json(session('nombre_archivo', null));
+
+            if (esImportacion) {
+                const mensajeHtml = mensaje.replace(/\n/g, '<br>');
+                const config = {
+                    icon: 'success',
+                    html: '<div style="text-align: left; font-family: monospace; white-space: pre-wrap;">' +
+                        mensajeHtml + '</div>',
+                    confirmButtonColor: '#28a745',
+                    width: '650px',
+                };
+
+                if (tieneAdvertencias) {
+                    config.showCancelButton = true;
+                    config.cancelButtonText = '⚠️ Reportar Advertencias';
+                    config.confirmButtonText = 'Aceptar';
+                    config.cancelButtonColor = '#f59e0b';
+                }
+
+                Swal.fire(config).then((result) => {
+                    if (result.dismiss === Swal.DismissReason.cancel && tieneAdvertencias) {
+                        const asunto = nombreArchivo ?
+                            `Advertencias en importación: ${nombreArchivo}` :
+                            'Advertencias en importación de planillas';
+                        notificarProgramador(mensaje, asunto);
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'success',
+                    text: mensaje,
+                    confirmButtonColor: '#28a745'
+                }).then(() => {
+                    console.log('Operación exitosa:', mensaje);
+                });
+            }
+        @endif
+
+        // Procesar mensaje de info
+        @if (session('info'))
+            Swal.fire({
+                icon: 'info',
+                title: 'Información',
+                text: @json(session('info')),
+                confirmButtonColor: '#3B82F6'
+            });
+        @endif
+
+        // Procesar mensaje de warning
+        @if (session('warning'))
+            Swal.fire({
+                icon: 'warning',
+                title: 'Atención',
+                text: @json(session('warning')),
+                confirmButtonColor: '#FBBF24'
+            });
+        @endif
+
+        // Procesar múltiples warnings
+        @if (session('warnings'))
+            @foreach (session('warnings') as $warning)
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Atención',
+                    text: "{{ $warning }}",
+                    timer: 5000,
+                    showConfirmButton: false
+                });
+            @endforeach
+        @endif
+
+        // Marcar como inicializado
+        document.body.dataset.alertsPageInit = 'true';
+    }
+
+    // Registrar en el sistema global
+    window.pageInitializers = window.pageInitializers || [];
+    window.pageInitializers.push(initAlertsPage);
+
+    // Configurar listeners
+    document.addEventListener('livewire:navigated', initAlertsPage);
+    document.addEventListener('DOMContentLoaded', initAlertsPage);
+
+    // Limpiar flag antes de navegar
+    document.addEventListener('livewire:navigating', () => {
+        document.body.dataset.alertsPageInit = 'false';
+    });
 </script>

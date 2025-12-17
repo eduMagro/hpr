@@ -1040,7 +1040,9 @@ Inesperados: ${inesperados.join(', ') || ''}
     }
 
     // Registrar en el sistema global
+    window.pageInitializers = window.pageInitializers || [];
     window.pageInitializers.push(initUbicacionesPage);
+
 
     // Configurar listeners
     document.addEventListener('livewire:navigated', initUbicacionesPage);

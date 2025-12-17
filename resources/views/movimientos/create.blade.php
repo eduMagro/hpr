@@ -4,13 +4,8 @@
         @php
             $menu = \App\Services\MenuService::getContextMenu('movimientos');
         @endphp
-        <x-navigation.context-menu
-            :items="$menu['items']"
-            :colorBase="$menu['config']['colorBase']"
-            :style="$menu['config']['style']"
-            :mobileLabel="$menu['config']['mobileLabel']"
-            checkRole="no-operario"
-        />
+        <x-navigation.context-menu :items="$menu['items']" :colorBase="$menu['config']['colorBase']" :style="$menu['config']['style']" :mobileLabel="$menu['config']['mobileLabel']"
+            checkRole="no-operario" />
     @endif
     <div class="max-w-3xl mx-auto mt-10">
         <div class="bg-white rounded-lg shadow-lg overflow-hidden">
@@ -53,7 +48,12 @@
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        function initMovimientosCreatePage() {
+            // Prevenir doble inicialización
+            if (document.body.dataset.movimientosCreatePageInit === 'true') return;
+
+            console.log('🔍 Inicializando página de crear movimiento...');
+
             const form = document.getElementById("form-movimiento");
             const submitBtn = document.getElementById("submit-btn");
 
@@ -63,28 +63,33 @@
             const maquinaSection = document.getElementById("maquina-section");
 
             function toggleFields() {
+                if (!tipoMovimiento) return;
                 const tipo = tipoMovimiento.value;
 
                 if (tipo === "producto") {
-                    productoSection.style.display = "block";
-                    paqueteSection.style.display = "none";
-                    maquinaSection.style.display = "block";
+                    if (productoSection) productoSection.style.display = "block";
+                    if (paqueteSection) paqueteSection.style.display = "none";
+                    if (maquinaSection) maquinaSection.style.display = "block";
                 } else if (tipo === "paquete") {
-                    productoSection.style.display = "none";
-                    paqueteSection.style.display = "block";
-                    maquinaSection.style.display = "none";
+                    if (productoSection) productoSection.style.display = "none";
+                    if (paqueteSection) paqueteSection.style.display = "block";
+                    if (maquinaSection) maquinaSection.style.display = "none";
                 }
             }
 
             if (tipoMovimiento) {
+                // Remover listener previo clonando si fuera necesario, pero data-init protege
                 tipoMovimiento.addEventListener("change", toggleFields);
-                toggleFields(); // Ejecutar una vez al cargar
+                toggleFields();
             }
 
             if (form) {
+                // Clonar form para limpieza de listeners es más seguro aquí
+                // O mejor aún, usamos la protección de init para no tener que clonar
+
                 form.addEventListener("submit", function(event) {
                     event.preventDefault();
-                    submitBtn.disabled = true;
+                    if (submitBtn) submitBtn.disabled = true;
 
                     const formData = new FormData(form);
 
@@ -123,8 +128,8 @@
                                         confirmButtonText: "Aceptar"
                                     });
                                 }
-                                submitBtn.disabled = false;
-                                return; // 👈 no sigas al bloque de éxito
+                                if (submitBtn) submitBtn.disabled = false;
+                                return;
                             }
 
                             // ✅ Éxito
@@ -135,11 +140,10 @@
                                     icon: "success",
                                     confirmButtonText: "Aceptar"
                                 }).then(() => {
-                                    window.location.href =
-                                        "{{ route('movimientos.index') }}";
+                                    window.location.href = "{{ route('movimientos.index') }}";
                                 });
                             }
-                            submitBtn.disabled = false;
+                            if (submitBtn) submitBtn.disabled = false;
                         })
                         .catch(error => {
                             console.error("Error en fetch:", error);
@@ -149,11 +153,27 @@
                                 text: "Hubo un problema con la solicitud. Inténtelo otra vez.",
                                 confirmButtonText: "Aceptar"
                             });
-                            submitBtn.disabled = false;
+                            if (submitBtn) submitBtn.disabled = false;
                         });
 
                 });
             }
+
+            // Marcar como inicializado
+            document.body.dataset.movimientosCreatePageInit = 'true';
+        }
+
+        // Registrar en el sistema global
+        window.pageInitializers = window.pageInitializers || [];
+        window.pageInitializers.push(initMovimientosCreatePage);
+
+        // Configurar listeners
+        document.addEventListener('livewire:navigated', initMovimientosCreatePage);
+        document.addEventListener('DOMContentLoaded', initMovimientosCreatePage);
+
+        // Limpiar flag antes de navegar
+        document.addEventListener('livewire:navigating', () => {
+            document.body.dataset.movimientosCreatePageInit = 'false';
         });
     </script>
 

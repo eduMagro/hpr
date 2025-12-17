@@ -18,7 +18,9 @@
                 class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 inline-flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                    <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+                    <path fill-rule="evenodd"
+                        d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                        clip-rule="evenodd" />
                 </svg>
                 Gestion de Coladas
             </a>
@@ -26,7 +28,8 @@
             <button onclick="abrirModal()"
                 class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hidden md:inline-flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                    <path
+                        d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
                 </svg>
                 Generar Códigos QR
             </button>
@@ -135,8 +138,7 @@
                                 class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">
                                 Cancelar
                             </button>
-                            <button type="button" onclick="generarEImprimir()"
-                                id="btnImprimir"
+                            <button type="button" onclick="generarEImprimir()" id="btnImprimir"
                                 class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
                                 Generar e Imprimir
                             </button>
@@ -152,8 +154,11 @@
                 <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg relative">
                     <div class="flex items-center mb-4">
                         <div class="bg-yellow-100 rounded-full p-2 mr-3">
-                            <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                                </path>
                             </svg>
                         </div>
                         <h2 class="text-xl font-semibold text-gray-800">Servicio de Impresion No Detectado</h2>
@@ -167,21 +172,25 @@
 
                         <div class="bg-gray-50 rounded-lg p-4 space-y-3">
                             <div class="flex items-start">
-                                <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">1</span>
+                                <span
+                                    class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">1</span>
                                 <div>
                                     <p class="font-medium text-gray-800">Descarga el instalador</p>
                                     <p class="text-sm text-gray-500">Haz clic en el boton de abajo para descargar</p>
                                 </div>
                             </div>
                             <div class="flex items-start">
-                                <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">2</span>
+                                <span
+                                    class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">2</span>
                                 <div>
                                     <p class="font-medium text-gray-800">Ejecuta el archivo descargado</p>
-                                    <p class="text-sm text-gray-500">Doble clic en <code class="bg-gray-200 px-1 rounded">setup_and_start.bat</code></p>
+                                    <p class="text-sm text-gray-500">Doble clic en <code
+                                            class="bg-gray-200 px-1 rounded">setup_and_start.bat</code></p>
                                 </div>
                             </div>
                             <div class="flex items-start">
-                                <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">3</span>
+                                <span
+                                    class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">3</span>
                                 <div>
                                     <p class="font-medium text-gray-800">Manten la ventana abierta</p>
                                     <p class="text-sm text-gray-500">El servicio debe estar corriendo para imprimir</p>
@@ -292,7 +301,8 @@
                     const estadoDiv = document.getElementById('estadoImpresion');
                     const mensajeP = document.getElementById('mensajeEstado');
 
-                    estadoDiv.classList.remove('hidden', 'bg-blue-50', 'border-blue-200', 'bg-green-50', 'border-green-200', 'bg-red-50', 'border-red-200');
+                    estadoDiv.classList.remove('hidden', 'bg-blue-50', 'border-blue-200', 'bg-green-50', 'border-green-200',
+                        'bg-red-50', 'border-red-200');
                     mensajeP.classList.remove('text-blue-800', 'text-green-800', 'text-red-800');
 
                     if (tipo === 'success') {
@@ -330,7 +340,9 @@
                                 'Content-Type': 'application/json',
                                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
                             },
-                            body: JSON.stringify({ cantidad: cantidad })
+                            body: JSON.stringify({
+                                cantidad: cantidad
+                            })
                         });
 
                         if (!response.ok) {
@@ -357,7 +369,9 @@
                                 headers: {
                                     'Content-Type': 'application/json',
                                 },
-                                body: JSON.stringify({ codigos: data.codigos }),
+                                body: JSON.stringify({
+                                    codigos: data.codigos
+                                }),
                                 mode: 'cors',
                                 signal: printController.signal
                             });
@@ -439,8 +453,10 @@
                     <div class="flex justify-between items-center">
                         <div class="flex items-center gap-3">
                             <div class="bg-blue-600 p-2 rounded-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                 </svg>
                             </div>
                             <div>
@@ -451,15 +467,20 @@
                         <div class="flex items-center gap-2">
                             <button onclick="abrirModalProductoBase()"
                                 class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4v16m8-8H4" />
                                 </svg>
                                 Añadir
                             </button>
                             <button @click="open = !open"
                                 class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :class="{'rotate-180': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="transition: transform 0.2s;">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :class="{ 'rotate-180': open }"
+                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                    style="transition: transform 0.2s;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7" />
                                 </svg>
                                 <span x-show="!open">Mostrar</span>
                                 <span x-show="open">Ocultar</span>
@@ -468,15 +489,14 @@
                     </div>
                 </div>
 
-                <div x-show="open"
-                     x-transition:enter="transition ease-out duration-200"
-                     x-transition:enter-start="opacity-0 transform scale-95"
-                     x-transition:enter-end="opacity-100 transform scale-100"
-                     x-transition:leave="transition ease-in duration-150"
-                     x-transition:leave-start="opacity-100 transform scale-100"
-                     x-transition:leave-end="opacity-0 transform scale-95"
-                     class="mt-3 bg-white shadow-lg rounded-lg border border-gray-200 p-4">
-                    @if($productosBase->count() > 0)
+                <div x-show="open" x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 transform scale-95"
+                    x-transition:enter-end="opacity-100 transform scale-100"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100 transform scale-100"
+                    x-transition:leave-end="opacity-0 transform scale-95"
+                    class="mt-3 bg-white shadow-lg rounded-lg border border-gray-200 p-4">
+                    @if ($productosBase->count() > 0)
                         @php
                             $barras = $productosBase->where('tipo', 'barra')->sortBy('diametro');
                             $barrasAgrupadas = $barras->groupBy('diametro');
@@ -486,25 +506,31 @@
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {{-- Barras --}}
                             <div class="bg-blue-50 rounded-lg p-3 border border-blue-100">
-                                <h4 class="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2 border-b border-blue-200 pb-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                                <h4
+                                    class="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2 border-b border-blue-200 pb-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M20 12H4" />
                                     </svg>
                                     BARRAS
-                                    <span class="ml-auto text-xs font-normal text-blue-600">({{ $barras->count() }})</span>
+                                    <span
+                                        class="ml-auto text-xs font-normal text-blue-600">({{ $barras->count() }})</span>
                                 </h4>
-                                @if($barras->count() > 0)
+                                @if ($barras->count() > 0)
                                     <div class="space-y-2">
                                         @foreach ($barrasAgrupadas as $diametro => $barrasPorDiametro)
                                             <div class="flex items-center gap-2">
-                                                <span class="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded min-w-[50px] text-center">
+                                                <span
+                                                    class="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded min-w-[50px] text-center">
                                                     Ø{{ $diametro }}
                                                 </span>
                                                 <div class="flex flex-wrap gap-1">
                                                     @foreach ($barrasPorDiametro->sortBy('longitud') as $barra)
-                                                        <span class="bg-white border border-blue-300 text-blue-700 text-xs px-2 py-0.5 rounded cursor-pointer hover:bg-red-100 hover:border-red-400 hover:text-red-700 transition-colors"
-                                                              title="ID: {{ $barra->id }} - Click para eliminar"
-                                                              onclick="eliminarProductoBase({{ $barra->id }}, 'Barra Ø{{ $diametro }} {{ $barra->longitud ? $barra->longitud . 'm' : 'S/L' }}')">
+                                                        <span
+                                                            class="bg-white border border-blue-300 text-blue-700 text-xs px-2 py-0.5 rounded cursor-pointer hover:bg-red-100 hover:border-red-400 hover:text-red-700 transition-colors"
+                                                            title="ID: {{ $barra->id }} - Click para eliminar"
+                                                            onclick="eliminarProductoBase({{ $barra->id }}, 'Barra Ø{{ $diametro }} {{ $barra->longitud ? $barra->longitud . 'm' : 'S/L' }}')">
                                                             {{ $barra->longitud ? $barra->longitud . 'm' : 'S/L' }}
                                                         </span>
                                                     @endforeach
@@ -519,19 +545,24 @@
 
                             {{-- Encarretados --}}
                             <div class="bg-green-50 rounded-lg p-3 border border-green-100">
-                                <h4 class="text-sm font-bold text-green-800 mb-3 flex items-center gap-2 border-b border-green-200 pb-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                <h4
+                                    class="text-sm font-bold text-green-800 mb-3 flex items-center gap-2 border-b border-green-200 pb-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                     </svg>
                                     ENCARRETADOS
-                                    <span class="ml-auto text-xs font-normal text-green-600">({{ $encarretados->count() }})</span>
+                                    <span
+                                        class="ml-auto text-xs font-normal text-green-600">({{ $encarretados->count() }})</span>
                                 </h4>
-                                @if($encarretados->count() > 0)
+                                @if ($encarretados->count() > 0)
                                     <div class="flex flex-wrap gap-2">
                                         @foreach ($encarretados as $enc)
-                                            <span class="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded cursor-pointer hover:bg-red-600 transition-colors"
-                                                  title="ID: {{ $enc->id }} - Click para eliminar"
-                                                  onclick="eliminarProductoBase({{ $enc->id }}, 'Encarretado Ø{{ $enc->diametro }}')">
+                                            <span
+                                                class="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded cursor-pointer hover:bg-red-600 transition-colors"
+                                                title="ID: {{ $enc->id }} - Click para eliminar"
+                                                onclick="eliminarProductoBase({{ $enc->id }}, 'Encarretado Ø{{ $enc->diametro }}')">
                                                 Ø{{ $enc->diametro }}
                                             </span>
                                         @endforeach
@@ -638,34 +669,34 @@
 
                         @if ($esOficina || $esGruista)
                             <div class="flex flex-wrap gap-2 mt-4 w-full">
-                                    <a href="{{ route('productos.show', $producto->id) }}" wire:navigate
-                                        class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
-                                        Ver
-                                    </a>
-                                    <a href="{{ route('productos.edit', $producto->id) }}" wire:navigate
-                                        class="flex-1 bg-blue-400 hover:bg-blue-500 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
-                                        Editar
-                                    </a>
-                                    <button onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')"
-                                        class="flex-1 bg-green-500 hover:bg-green-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
-                                        Mover
+                                <a href="{{ route('productos.show', $producto->id) }}" wire:navigate
+                                    class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
+                                    Ver
+                                </a>
+                                <a href="{{ route('productos.edit', $producto->id) }}" wire:navigate
+                                    class="flex-1 bg-blue-400 hover:bg-blue-500 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
+                                    Editar
+                                </a>
+                                <button onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')"
+                                    class="flex-1 bg-green-500 hover:bg-green-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
+                                    Mover
+                                </button>
+
+                                <a href="{{ route('productos.editarConsumir', $producto->id) }}" wire:navigate
+                                    data-consumir="{{ route('productos.editarConsumir', $producto->id) }}"
+                                    class="btn-consumir flex-1 bg-red-500 hover:bg-red-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
+                                    Consumir
+                                </a>
+
+                                <form action="{{ route('productos.destroy', $producto->id) }}" method="POST"
+                                    class="form-eliminar flex-1">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit"
+                                        class="btn-eliminar w-full bg-gray-500 hover:bg-gray-600 text-white text-sm font-semibold py-2 px-2 rounded shadow">
+                                        Eliminar
                                     </button>
-
-                                    <a href="{{ route('productos.editarConsumir', $producto->id) }}" wire:navigate
-                                        data-consumir="{{ route('productos.editarConsumir', $producto->id) }}"
-                                        class="btn-consumir flex-1 bg-red-500 hover:bg-red-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
-                                        Consumir
-                                    </a>
-
-                                    <form action="{{ route('productos.destroy', $producto->id) }}" method="POST"
-                                        class="form-eliminar flex-1">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit"
-                                            class="btn-eliminar w-full bg-gray-500 hover:bg-gray-600 text-white text-sm font-semibold py-2 px-2 rounded shadow">
-                                            Eliminar
-                                        </button>
-                                    </form>
+                                </form>
 
                             </div>
                         @endif
@@ -678,7 +709,12 @@
         </div>
 
         <script>
-            document.addEventListener('DOMContentLoaded', function() {
+            function initProductosPage() {
+                // Prevenir doble inicialización
+                if (document.body.dataset.productosPageInit === 'true') return;
+
+                console.log('🔍 Inicializando página de productos...');
+
                 // Delegación de eventos para botones "Consumir"
                 document.body.addEventListener('click', async (e) => {
                     const btn = e.target.closest('.btn-consumir');
@@ -759,131 +795,149 @@
                         });
                     });
                 });
+
+                // Marcar como inicializado
+                document.body.dataset.productosPageInit = 'true';
+            }
+
+            // Registrar en el sistema global
+            window.pageInitializers = window.pageInitializers || [];
+            window.pageInitializers.push(initProductosPage);
+
+            // Configurar listeners
+            document.addEventListener('livewire:navigated', initProductosPage);
+            document.addEventListener('DOMContentLoaded', initProductosPage);
+
+            // Limpiar flag antes de navegar
+            document.addEventListener('livewire:navigating', () => {
+                document.body.dataset.productosPageInit = 'false';
             });
         </script>
 
         <!-- Formulario oculto para eliminar Producto Base -->
         <form id="formEliminarProductoBase" method="POST" class="hidden">
             @csrf
-            @method('DELETE')
-        </form>
 
-        <!-- Modal Crear Producto Base -->
-        <div id="modalProductoBase" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
-            <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
-                <h2 class="text-xl font-semibold mb-4">Nuevo Producto Base</h2>
+            <!-- Modal Crear Producto Base -->
+            <div id="modalProductoBase"
+                class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+                <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+                    <h2 class="text-xl font-semibold mb-4">Nuevo Producto Base</h2>
 
-                <form action="{{ route('productos-base.store') }}" method="POST" class="space-y-4">
-                    @csrf
-                    <input type="hidden" name="redirect_to" value="productos">
+                    <form action="{{ route('productos-base.store') }}" method="POST" class="space-y-4">
+                        @csrf
+                        <input type="hidden" name="redirect_to" value="productos">
 
-                    <div>
-                        <label for="pb_tipo" class="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
-                        <select id="pb_tipo" name="tipo" required onchange="toggleLongitud()"
-                            class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">Seleccione tipo</option>
-                            <option value="barra">Barra</option>
-                            <option value="encarretado">Encarretado</option>
-                        </select>
-                    </div>
+                        <div>
+                            <label for="pb_tipo" class="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
+                            <select id="pb_tipo" name="tipo" required onchange="toggleLongitud()"
+                                class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Seleccione tipo</option>
+                                <option value="barra">Barra</option>
+                                <option value="encarretado">Encarretado</option>
+                            </select>
+                        </div>
 
-                    <div>
-                        <label for="pb_diametro" class="block text-sm font-medium text-gray-700 mb-1">Diametro (mm) *</label>
-                        <input type="number" id="pb_diametro" name="diametro" required min="1"
-                            class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Ej: 12">
-                    </div>
+                        <div>
+                            <label for="pb_diametro" class="block text-sm font-medium text-gray-700 mb-1">Diametro
+                                (mm) *</label>
+                            <input type="number" id="pb_diametro" name="diametro" required min="1"
+                                class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Ej: 12">
+                        </div>
 
-                    <div id="pb_longitud_container">
-                        <label for="pb_longitud" class="block text-sm font-medium text-gray-700 mb-1">Longitud (m)</label>
-                        <input type="number" id="pb_longitud" name="longitud" min="1"
-                            class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Ej: 12 (solo para barras)">
-                    </div>
+                        <div id="pb_longitud_container">
+                            <label for="pb_longitud" class="block text-sm font-medium text-gray-700 mb-1">Longitud
+                                (m)</label>
+                            <input type="number" id="pb_longitud" name="longitud" min="1"
+                                class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Ej: 12 (solo para barras)">
+                        </div>
 
-                    <div>
-                        <label for="pb_descripcion" class="block text-sm font-medium text-gray-700 mb-1">Descripcion</label>
-                        <textarea id="pb_descripcion" name="descripcion" rows="2"
-                            class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Descripcion opcional..."></textarea>
-                    </div>
+                        <div>
+                            <label for="pb_descripcion"
+                                class="block text-sm font-medium text-gray-700 mb-1">Descripcion</label>
+                            <textarea id="pb_descripcion" name="descripcion" rows="2"
+                                class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Descripcion opcional..."></textarea>
+                        </div>
 
-                    <div class="flex justify-end gap-2 pt-4">
-                        <button type="button" onclick="cerrarModalProductoBase()"
-                            class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors">
-                            Cancelar
-                        </button>
-                        <button type="submit"
-                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                            Guardar
-                        </button>
-                    </div>
-                </form>
+                        <div class="flex justify-end gap-2 pt-4">
+                            <button type="button" onclick="cerrarModalProductoBase()"
+                                class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors">
+                                Cancelar
+                            </button>
+                            <button type="submit"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                Guardar
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
-        </div>
 
-        <script>
-            function abrirModalProductoBase() {
-                document.getElementById('modalProductoBase').classList.remove('hidden');
-                document.getElementById('modalProductoBase').classList.add('flex');
-            }
-
-            function cerrarModalProductoBase() {
-                document.getElementById('modalProductoBase').classList.remove('flex');
-                document.getElementById('modalProductoBase').classList.add('hidden');
-                // Limpiar formulario
-                document.getElementById('pb_tipo').value = '';
-                document.getElementById('pb_diametro').value = '';
-                document.getElementById('pb_longitud').value = '';
-                document.getElementById('pb_descripcion').value = '';
-            }
-
-            function toggleLongitud() {
-                const tipo = document.getElementById('pb_tipo').value;
-                const container = document.getElementById('pb_longitud_container');
-                const input = document.getElementById('pb_longitud');
-
-                if (tipo === 'encarretado') {
-                    container.style.display = 'none';
-                    input.value = '';
-                } else {
-                    container.style.display = 'block';
+            <script>
+                function abrirModalProductoBase() {
+                    document.getElementById('modalProductoBase').classList.remove('hidden');
+                    document.getElementById('modalProductoBase').classList.add('flex');
                 }
-            }
 
-            function eliminarProductoBase(id, nombre) {
-                Swal.fire({
-                    title: '¿Eliminar producto base?',
-                    html: `<p class="text-gray-600">Se eliminará: <strong>${nombre}</strong></p><p class="text-xs text-gray-400 mt-1">ID: ${id}</p>`,
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonColor: '#6b7280',
-                    confirmButtonText: 'Sí, eliminar',
-                    cancelButtonText: 'Cancelar'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        const form = document.getElementById('formEliminarProductoBase');
-                        form.action = `/productos-base/${id}`;
-                        form.submit();
+                function cerrarModalProductoBase() {
+                    document.getElementById('modalProductoBase').classList.remove('flex');
+                    document.getElementById('modalProductoBase').classList.add('hidden');
+                    // Limpiar formulario
+                    document.getElementById('pb_tipo').value = '';
+                    document.getElementById('pb_diametro').value = '';
+                    document.getElementById('pb_longitud').value = '';
+                    document.getElementById('pb_descripcion').value = '';
+                }
+
+                function toggleLongitud() {
+                    const tipo = document.getElementById('pb_tipo').value;
+                    const container = document.getElementById('pb_longitud_container');
+                    const input = document.getElementById('pb_longitud');
+
+                    if (tipo === 'encarretado') {
+                        container.style.display = 'none';
+                        input.value = '';
+                    } else {
+                        container.style.display = 'block';
+                    }
+                }
+
+                function eliminarProductoBase(id, nombre) {
+                    Swal.fire({
+                        title: '¿Eliminar producto base?',
+                        html: `<p class="text-gray-600">Se eliminará: <strong>${nombre}</strong></p><p class="text-xs text-gray-400 mt-1">ID: ${id}</p>`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#dc2626',
+                        cancelButtonColor: '#6b7280',
+                        confirmButtonText: 'Sí, eliminar',
+                        cancelButtonText: 'Cancelar'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            const form = document.getElementById('formEliminarProductoBase');
+                            form.action = `/productos-base/${id}`;
+                            form.submit();
+                        }
+                    });
+                }
+
+                // Cerrar modal con ESC
+                document.addEventListener('keydown', function(event) {
+                    if (event.key === 'Escape') {
+                        cerrarModalProductoBase();
                     }
                 });
-            }
 
-            // Cerrar modal con ESC
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') {
-                    cerrarModalProductoBase();
-                }
-            });
-
-            // Cerrar al hacer clic fuera
-            window.addEventListener('click', function(event) {
-                const modal = document.getElementById('modalProductoBase');
-                if (event.target === modal) {
-                    cerrarModalProductoBase();
-                }
-            });
-        </script>
+                // Cerrar al hacer clic fuera
+                window.addEventListener('click', function(event) {
+                    const modal = document.getElementById('modalProductoBase');
+                    if (event.target === modal) {
+                        cerrarModalProductoBase();
+                    }
+                });
+            </script>
 
 </x-app-layout>

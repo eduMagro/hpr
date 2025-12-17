@@ -10,7 +10,12 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        function initSeleccionarMaquinaPage() {
+            // Prevenir doble inicialización
+            if (document.body.dataset.seleccionarMaquinaPageInit === 'true') return;
+
+            console.log('🔍 Inicializando selección de máquina...');
+
             const maquinas = @json($maquinas);
 
             // Construir opciones del select
@@ -47,6 +52,22 @@
                     window.location.href = `/maquinas/${result.value}`;
                 }
             });
+
+            // Marcar como inicializado
+            document.body.dataset.seleccionarMaquinaPageInit = 'true';
+        }
+
+        // Registrar en el sistema global
+        window.pageInitializers = window.pageInitializers || [];
+        window.pageInitializers.push(initSeleccionarMaquinaPage);
+
+        // Configurar listeners
+        document.addEventListener('livewire:navigated', initSeleccionarMaquinaPage);
+        document.addEventListener('DOMContentLoaded', initSeleccionarMaquinaPage);
+
+        // Limpiar flag antes de navegar
+        document.addEventListener('livewire:navigating', () => {
+            document.body.dataset.seleccionarMaquinaPageInit = 'false';
         });
     </script>
 </x-app-layout>

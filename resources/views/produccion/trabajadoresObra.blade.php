@@ -1,12 +1,11 @@
-<x-app-layout>
+﻿<x-app-layout>
     <x-slot name="title">Planificación por Obra</x-slot>
 
     <div id="lista-trabajadores" class="p-4 bg-white border rounded shadow w-full mt-4">
         {{-- Filtro de búsqueda --}}
         <div class="mb-4">
-            <input type="text" id="filtro-trabajadores"
-                   placeholder="Buscar trabajador..."
-                   class="w-full md:w-64 border border-gray-300 rounded px-3 py-2 text-sm focus:ring focus:ring-blue-300 focus:border-blue-500">
+            <input type="text" id="filtro-trabajadores" placeholder="Buscar trabajador..."
+                class="w-full md:w-64 border border-gray-300 rounded px-3 py-2 text-sm focus:ring focus:ring-blue-300 focus:border-blue-500">
         </div>
         {{-- hpr servicios --}}
         <details class="mb-4" open>
@@ -17,20 +16,22 @@
                         data-id="{{ $t->id }}" data-title="{{ $t->nombre_completo }}"
                         data-categoria="{{ $t->categoria?->nombre }}" data-especialidad="{{ $t->maquina?->nombre }}"
                         data-dias-asignados="0">
-                        @if($t->ruta_imagen)
+                        @if ($t->ruta_imagen)
                             <img src="{{ $t->ruta_imagen }}"
                                 class="w-10 h-10 rounded-full object-cover mx-auto mb-1 ring-2 ring-blue-300">
                         @else
-                            <div class="w-10 h-10 rounded-full bg-gray-300 mx-auto mb-1 ring-2 ring-blue-300 flex items-center justify-center">
+                            <div
+                                class="w-10 h-10 rounded-full bg-gray-300 mx-auto mb-1 ring-2 ring-blue-300 flex items-center justify-center">
                                 <svg class="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                    <path
+                                        d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                                 </svg>
                             </div>
                         @endif
                         {{ $t->nombre_completo }}
                         <div class="text-[10px] text-gray-600">
                             {{ $t->categoria?->nombre }} @if ($t->maquina)
-                                · {{ $t->maquina?->nombre }}
+                                Â· {{ $t->maquina?->nombre }}
                             @endif
                         </div>
                     </div>
@@ -47,20 +48,22 @@
                         data-id="{{ $t->id }}" data-title="{{ $t->nombre_completo }}"
                         data-categoria="{{ $t->categoria?->nombre }}" data-especialidad="{{ $t->maquina?->nombre }}"
                         data-dias-asignados="0">
-                        @if($t->ruta_imagen)
+                        @if ($t->ruta_imagen)
                             <img src="{{ $t->ruta_imagen }}"
                                 class="w-10 h-10 rounded-full object-cover mx-auto mb-1 ring-2 ring-blue-300">
                         @else
-                            <div class="w-10 h-10 rounded-full bg-gray-300 mx-auto mb-1 ring-2 ring-blue-300 flex items-center justify-center">
+                            <div
+                                class="w-10 h-10 rounded-full bg-gray-300 mx-auto mb-1 ring-2 ring-blue-300 flex items-center justify-center">
                                 <svg class="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                    <path
+                                        d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                                 </svg>
                             </div>
                         @endif
                         {{ $t->nombre_completo }}
                         <div class="text-[10px] text-gray-600">
                             {{ $t->categoria?->nombre }} @if ($t->maquina)
-                                · {{ $t->maquina?->nombre }}
+                                Â· {{ $t->maquina?->nombre }}
                             @endif
                         </div>
                     </div>
@@ -84,16 +87,21 @@
                 <div id="external-events-ficticios" class="grid grid-cols-2 md:grid-cols-6 gap-2">
                     @foreach ($trabajadoresFicticios as $t)
                         <div class="fc-event fc-event-ficticio px-3 py-2 text-xs bg-gray-200 rounded cursor-pointer text-center shadow relative group"
-                            data-id="ficticio-{{ $t->id }}" data-title="{{ $t->nombre }}" data-ficticio="true">
-                            <button type="button" class="btn-eliminar-trabajador-ficticio absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                            data-id="ficticio-{{ $t->id }}" data-title="{{ $t->nombre }}"
+                            data-ficticio="true">
+                            <button type="button"
+                                class="btn-eliminar-trabajador-ficticio absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
                                 data-id="{{ $t->id }}">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                        d="M6 18L18 6M6 6l12 12"></path>
                                 </svg>
                             </button>
-                            <div class="w-10 h-10 rounded-full bg-gray-400 mx-auto mb-1 ring-2 ring-gray-500 flex items-center justify-center">
+                            <div
+                                class="w-10 h-10 rounded-full bg-gray-400 mx-auto mb-1 ring-2 ring-gray-500 flex items-center justify-center">
                                 <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                    <path
+                                        d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                                 </svg>
                             </div>
                             {{ $t->nombre }}
@@ -112,28 +120,32 @@
         <div class="w-full bg-white">
             <div class="flex flex-wrap items-center justify-between gap-4 my-4 px-4">
                 {{-- Panel de eventos seleccionados --}}
-                <div id="panelEventosSeleccionados" class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded px-3 py-2" style="display: none;">
+                <div id="panelEventosSeleccionados"
+                    class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded px-3 py-2"
+                    style="display: none;">
                     <span class="text-sm text-blue-800">
                         <strong id="contadorEventos">0</strong> eventos seleccionados
                     </span>
-                    <select id="selectObraMover" class="border border-gray-300 rounded px-2 py-1 text-sm focus:ring focus:ring-blue-300">
+                    <select id="selectObraMover"
+                        class="border border-gray-300 rounded px-2 py-1 text-sm focus:ring focus:ring-blue-300">
                         <option value="">-- Mover a obra --</option>
                     </select>
                     <button id="btnMoverEventos"
                         class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         disabled>
-                        📦 Mover
+                        Mover
                     </button>
                     <button id="btnDeseleccionarTodos"
                         class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded text-sm">
-                        ✖ Limpiar
+                        Limpiar
                     </button>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-4">
                     {{-- Repetir obra específica --}}
                     <div class="flex items-center gap-2">
-                        <select id="selectObraRepetir" class="border border-gray-300 rounded px-3 py-2 text-sm focus:ring focus:ring-yellow-300">
+                        <select id="selectObraRepetir"
+                            class="border border-gray-300 rounded px-3 py-2 text-sm focus:ring focus:ring-yellow-300">
                             <option value="">-- Seleccionar obra --</option>
                         </select>
                         <button id="btnRepetirObraEspecifica"
@@ -164,15 +176,14 @@
             </div>
             {{-- Filtro de búsqueda de eventos --}}
             <div class="mb-2 mt-2">
-                <input type="text" id="filtro-eventos"
-                       placeholder="Buscar trabajador en calendario..."
-                       class="w-full md:w-64 border border-gray-300 rounded px-3 py-2 text-sm focus:ring focus:ring-blue-300 focus:border-blue-500">
+                <input type="text" id="filtro-eventos" placeholder="Buscar trabajador en calendario..."
+                    class="w-full md:w-64 border border-gray-300 rounded px-3 py-2 text-sm focus:ring focus:ring-blue-300 focus:border-blue-500">
             </div>
             <div id="calendario-obras" class="w-full"></div>
         </div>
     </div>
-    <div class="max-w-xl mx-auto mt-10 bg-white shadow-md rounded-lg p-6">
-        <h2 class="text-xl font-semibold text-gray-800 mb-4">🔧 Cambiar tipo de una obra</h2>
+    <div class="max-w-xl mx-auto mt-4 bg-white shadow-md rounded-lg p-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">🤔 Cambiar tipo de una obra</h2>
 
         <form action="{{ route('obras.updateTipo') }}" method="POST">
             @csrf
@@ -211,7 +222,7 @@
             <div class="flex justify-end">
                 <button type="submit"
                     class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow">
-                    💾 Actualizar tipo
+                    Actualizar tipo
                 </button>
             </div>
         </form>
@@ -233,13 +244,17 @@
 
         // Inicializar event listeners para selección de fichas de trabajadores
         function inicializarFichasTrabajadores() {
-            document.querySelectorAll('#external-events-servicios .fc-event, #external-events-hpr .fc-event, #external-events-ficticios .fc-event').forEach(eventEl => {
+            document.querySelectorAll(
+                '#external-events-servicios .fc-event, #external-events-hpr .fc-event, #external-events-ficticios .fc-event'
+            ).forEach(eventEl => {
                 // Remover listeners anteriores si existen
                 eventEl.replaceWith(eventEl.cloneNode(true));
             });
 
             // Agregar listeners a las fichas (normales y ficticias)
-            document.querySelectorAll('#external-events-servicios .fc-event, #external-events-hpr .fc-event, #external-events-ficticios .fc-event').forEach(eventEl => {
+            document.querySelectorAll(
+                '#external-events-servicios .fc-event, #external-events-hpr .fc-event, #external-events-ficticios .fc-event'
+            ).forEach(eventEl => {
                 eventEl.addEventListener('click', (e) => {
                     // Ignorar si se hace click en botón eliminar
                     if (e.target.closest('.btn-eliminar-trabajador-ficticio')) return;
@@ -250,8 +265,62 @@
             });
         }
 
-        document.addEventListener('click', function(e) {
-            // Eliminar evento ficticio
+        // Handler unificado para clicks globales en esta página
+        window.handleObrasClicks = function(e) {
+            // 1. Eliminar trabajador ficticio de la LISTA LATERAL (lógica traída del listener inferior)
+            const btnEliminarTrabajador = e.target.closest('.btn-eliminar-trabajador-ficticio');
+            if (btnEliminarTrabajador) {
+                e.stopPropagation();
+                e.preventDefault();
+
+                const trabajadorId = btnEliminarTrabajador.dataset.id;
+
+                Swal.fire({
+                    title: '¿Eliminar trabajador ficticio?',
+                    text: "Se eliminarán también todos sus eventos en el calendario.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(`/trabajadores-ficticios/${trabajadorId}`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                }
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    // Eliminar ficha del DOM
+                                    const ficha = btnEliminarTrabajador.closest('.fc-event-ficticio');
+                                    if (ficha) ficha.remove();
+
+                                    // Recargar eventos del calendario
+                                    if (window.calendarioObras) window.calendarioObras.refetchEvents();
+
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Eliminado',
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    });
+                                } else {
+                                    Swal.fire('âŒ Error', data.message, 'error');
+                                }
+                            })
+                            .catch(err => {
+                                console.error(err);
+                                Swal.fire('âŒ Error', 'No se pudo eliminar.', 'error');
+                            });
+                    }
+                });
+                return;
+            }
+
+            // 2. Eliminar evento ficticio DEL CALENDARIO
             const btnEliminarFicticio = e.target.closest('.btn-eliminar-ficticio');
             if (btnEliminarFicticio) {
                 e.stopPropagation();
@@ -278,7 +347,8 @@
                             .then(res => res.json())
                             .then(data => {
                                 if (data.success) {
-                                    const evento = window.calendarioObras.getEventById('ficticio-' + ficticioId);
+                                    const evento = window.calendarioObras.getEventById('ficticio-' +
+                                        ficticioId);
                                     if (evento) evento.remove();
                                     Swal.fire({
                                         icon: 'success',
@@ -288,18 +358,19 @@
                                         showConfirmButton: false
                                     });
                                 } else {
-                                    Swal.fire('❌ Error', data.message, 'error');
+                                    Swal.fire('âŒ Error', data.message, 'error');
                                 }
                             })
                             .catch(err => {
                                 console.error(err);
-                                Swal.fire('❌ Error', 'No se pudo eliminar.', 'error');
+                                Swal.fire('âŒ Error', 'No se pudo eliminar.', 'error');
                             });
                     }
                 });
                 return;
             }
 
+            // 3. Eliminar asignación de obra (Evento Normal)
             const btnEliminar = e.target.closest('.btn-eliminar');
             if (btnEliminar) {
                 e.stopPropagation();
@@ -333,17 +404,17 @@
                                     // Actualizar estado de fichas
                                     setTimeout(() => actualizarEstadoFichasTrabajadores(), 100);
                                 } else {
-                                    Swal.fire('❌ Error', data.message, 'error');
+                                    Swal.fire('âŒ Error', data.message, 'error');
                                 }
                             })
                             .catch(err => {
                                 console.error(err);
-                                Swal.fire('❌ Error', 'No se pudo quitar la obra.', 'error');
+                                Swal.fire('âŒ Error', 'No se pudo quitar la obra.', 'error');
                             });
                     }
                 });
             }
-        });
+        };
 
         window.calendarioObras = window.calendarioObras || null;
 
@@ -403,7 +474,8 @@
                 if (resource.id !== 'sin-obra') {
                     const option = document.createElement('option');
                     option.value = resource.id;
-                    option.textContent = resource.codigo ? `${resource.codigo} - ${resource.title}` : resource.title;
+                    option.textContent = resource.codigo ? `${resource.codigo} - ${resource.title}` : resource
+                        .title;
                     select.appendChild(option);
                 }
             });
@@ -417,12 +489,12 @@
             const obraId = selectObra.value;
 
             if (!obraId) {
-                Swal.fire('⚠️', 'Selecciona una obra destino', 'warning');
+                Swal.fire('⚠️', 'Selecciona una obra destino', 'warning');
                 return;
             }
 
             if (window.eventosSeleccionados.size === 0) {
-                Swal.fire('⚠️', 'No hay eventos seleccionados', 'warning');
+                Swal.fire('⚠️', 'No hay eventos seleccionados', 'warning');
                 return;
             }
 
@@ -431,7 +503,8 @@
 
             // Separar IDs de eventos normales y ficticios
             const idsNormales = ids.filter(id => id.startsWith('turno-'));
-            const idsFicticios = ids.filter(id => id.startsWith('ficticio-')).map(id => parseInt(id.replace('ficticio-', '')));
+            const idsFicticios = ids.filter(id => id.startsWith('ficticio-')).map(id => parseInt(id.replace('ficticio-',
+                '')));
 
             Swal.fire({
                 title: '¿Mover eventos?',
@@ -479,28 +552,28 @@
                     }
 
                     Promise.all(promesas)
-                    .then(results => {
-                        const todoOk = results.every(r => r.success);
-                        if (todoOk) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: '✅ Eventos movidos',
-                                timer: 2000,
-                                showConfirmButton: false
-                            });
+                        .then(results => {
+                            const todoOk = results.every(r => r.success);
+                            if (todoOk) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: '✅ Eventos movidos',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
 
-                            // Limpiar selección y recargar eventos
-                            deseleccionarTodosEventos();
-                            window.calendarioObras.refetchEvents();
-                            setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
-                        } else {
-                            Swal.fire('❌ Error', 'Algunos eventos no se pudieron mover.', 'error');
-                        }
-                    })
-                    .catch(error => {
-                        console.error(error);
-                        Swal.fire('❌ Error', 'No se pudieron mover los eventos.', 'error');
-                    });
+                                // Limpiar selección y recargar eventos
+                                deseleccionarTodosEventos();
+                                window.calendarioObras.refetchEvents();
+                                setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
+                            } else {
+                                Swal.fire('âŒ Error', 'Algunos eventos no se pudieron mover.', 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error(error);
+                            Swal.fire('âŒ Error', 'No se pudieron mover los eventos.', 'error');
+                        });
                 }
             });
         }
@@ -633,7 +706,9 @@
             const end = currentView.currentEnd.toISOString().split('T')[0];
 
             try {
-                const response = await fetch(`{{ route('asignaciones-turnos.ocupacionCruzada') }}?start=${start}&end=${end}&calendario=obras`);
+                const response = await fetch(
+                    `{{ route('asignaciones-turnos.ocupacionCruzada') }}?start=${start}&end=${end}&calendario=obras`
+                );
                 const data = await response.json();
 
                 if (!data.success) return;
@@ -641,48 +716,53 @@
                 const ocupados = data.ocupados;
 
                 // Actualizar todas las fichas
-                document.querySelectorAll('#external-events-servicios .fc-event, #external-events-hpr .fc-event').forEach(ficha => {
-                    const userId = ficha.dataset.id;
+                document.querySelectorAll('#external-events-servicios .fc-event, #external-events-hpr .fc-event')
+                    .forEach(ficha => {
+                        const userId = ficha.dataset.id;
 
-                    // Remover clases anteriores
-                    ficha.classList.remove('ocupado-taller');
-                    const badgeAnterior = ficha.querySelector('.badge-taller');
-                    if (badgeAnterior) badgeAnterior.remove();
+                        // Remover clases anteriores
+                        ficha.classList.remove('ocupado-taller');
+                        const badgeAnterior = ficha.querySelector('.badge-taller');
+                        if (badgeAnterior) badgeAnterior.remove();
 
-                    if (ocupados[userId]) {
-                        const diasOcupado = ocupados[userId].total_dias;
-                        const diasRaw = ocupados[userId].dias || [];
-                        // Convertir a array si es objeto
-                        const diasLista = Array.isArray(diasRaw) ? diasRaw : Object.values(diasRaw);
+                        if (ocupados[userId]) {
+                            const diasOcupado = ocupados[userId].total_dias;
+                            const diasRaw = ocupados[userId].dias || [];
+                            // Convertir a array si es objeto
+                            const diasLista = Array.isArray(diasRaw) ? diasRaw : Object.values(diasRaw);
 
-                        // Formatear los días para mostrar
-                        const diasFormateados = diasLista.map(fecha => {
-                            // Asegurar formato correcto YYYY-MM-DD
-                            const partes = fecha.split('-');
-                            if (partes.length === 3) {
-                                const d = new Date(partes[0], partes[1] - 1, partes[2]);
-                                return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' });
-                            }
-                            return fecha;
-                        }).join(', ');
+                            // Formatear los días para mostrar
+                            const diasFormateados = diasLista.map(fecha => {
+                                // Asegurar formato correcto YYYY-MM-DD
+                                const partes = fecha.split('-');
+                                if (partes.length === 3) {
+                                    const d = new Date(partes[0], partes[1] - 1, partes[2]);
+                                    return d.toLocaleDateString('es-ES', {
+                                        weekday: 'short',
+                                        day: 'numeric'
+                                    });
+                                }
+                                return fecha;
+                            }).join(', ');
 
-                        // Marcar como ocupado en taller
-                        ficha.classList.add('ocupado-taller');
+                            // Marcar como ocupado en taller
+                            ficha.classList.add('ocupado-taller');
 
-                        // Añadir badge indicador en esquina inferior izquierda
-                        const badge = document.createElement('span');
-                        badge.className = 'badge-taller';
-                        badge.title = `En taller: ${diasFormateados}`;
-                        badge.textContent = `🏭${diasOcupado}`;
-                        badge.style.cssText = 'position:absolute; bottom:-4px; left:-4px; background:#f97316; color:white; font-size:9px; font-weight:bold; padding:2px 6px; border-radius:9999px; box-shadow:0 1px 3px rgba(0,0,0,0.3); z-index:10;';
-                        ficha.style.position = 'relative';
-                        ficha.appendChild(badge);
+                            // Añadir badge indicador en esquina inferior izquierda
+                            const badge = document.createElement('span');
+                            badge.className = 'badge-taller';
+                            badge.title = `En taller: ${diasFormateados}`;
+                            badge.textContent = `🏭 ${diasOcupado}`;
+                            badge.style.cssText =
+                                'position:absolute; bottom:-4px; left:-4px; background:#f97316; color:white; font-size:9px; font-weight:bold; padding:2px 6px; border-radius:9999px; box-shadow:0 1px 3px rgba(0,0,0,0.3); z-index:10;';
+                            ficha.style.position = 'relative';
+                            ficha.appendChild(badge);
 
-                        // Actualizar tooltip con días específicos
-                        const tooltipActual = ficha.title || '';
-                        ficha.title = `${tooltipActual} | Taller: ${diasFormateados}`;
-                    }
-                });
+                            // Actualizar tooltip con días específicos
+                            const tooltipActual = ficha.title || '';
+                            ficha.title = `${tooltipActual} | Taller: ${diasFormateados}`;
+                        }
+                    });
             } catch (error) {
                 console.error('Error verificando ocupación cruzada:', error);
             }
@@ -744,12 +824,20 @@
                     eventoTemporal.remove();
                     setTimeout(() => actualizarEstadoFichasTrabajadores(), 100);
                 } else {
-                    Swal.fire({ icon: 'error', title: 'Error', text: data.message });
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message
+                    });
                     eventoTemporal.remove();
                 }
             } catch (error) {
-                console.error('❌ Error en la solicitud:', error);
-                Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo completar la solicitud.' });
+                console.error('âŒ Error en la solicitud:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de red',
+                    text: 'No se pudo completar la solicitud.'
+                });
                 eventoTemporal.remove();
             }
         }
@@ -890,11 +978,11 @@
                             // Actualizar estado de fichas
                             setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
                         } else {
-                            Swal.fire('❌ Error al asignar');
+                            Swal.fire('âŒ Error al asignar');
                         }
                     }).catch(err => {
                         console.error('Error en asignación:', err);
-                        Swal.fire('❌ Error al asignar');
+                        Swal.fire('âŒ Error al asignar');
                     });
                 },
                 events: {
@@ -908,7 +996,9 @@
                         const trabajadores = events.filter(e => e.id?.startsWith('turno-')).length;
                         const ficticios = events.filter(e => e.id?.startsWith('ficticio-')).length;
                         const festivos = events.filter(e => e.id?.startsWith('festivo-')).length;
-                        console.log(`Eventos cargados: ${trabajadores} trabajadores, ${ficticios} ficticios, ${festivos} festivos`);
+                        console.log(
+                            `Eventos cargados: ${trabajadores} trabajadores, ${ficticios} ficticios, ${festivos} festivos`
+                        );
                         return events;
                     }
                 },
@@ -922,7 +1012,8 @@
                 },
                 eventClick(info) {
                     // Si es click en botón eliminar (normal o ficticio), no hacer nada aquí
-                    if (info.jsEvent && (info.jsEvent.target.closest('.btn-eliminar') || info.jsEvent.target.closest('.btn-eliminar-ficticio'))) {
+                    if (info.jsEvent && (info.jsEvent.target.closest('.btn-eliminar') || info.jsEvent.target
+                            .closest('.btn-eliminar-ficticio'))) {
                         return;
                     }
 
@@ -987,40 +1078,40 @@
                         });
 
                         fetch('{{ route('eventos-ficticios-obra.store') }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                                'Accept': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                trabajador_ficticio_id: trabajadorFicticioId,
-                                obra_id: obraId,
-                                fecha: fecha
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    trabajador_ficticio_id: trabajadorFicticioId,
+                                    obra_id: obraId,
+                                    fecha: fecha
+                                })
                             })
-                        })
-                        .then(res => res.json())
-                        .then(data => {
-                            eventoTemporal.remove();
-                            if (data.success) {
-                                window.calendarioObras.addEvent(data.evento);
-                            } else {
+                            .then(res => res.json())
+                            .then(data => {
+                                eventoTemporal.remove();
+                                if (data.success) {
+                                    window.calendarioObras.addEvent(data.evento);
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error',
+                                        text: data.message
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('âŒ Error:', error);
+                                eventoTemporal.remove();
                                 Swal.fire({
                                     icon: 'error',
-                                    title: 'Error',
-                                    text: data.message
+                                    title: 'Error de red',
+                                    text: 'No se pudo crear el evento.'
                                 });
-                            }
-                        })
-                        .catch(error => {
-                            console.error('❌ Error:', error);
-                            eventoTemporal.remove();
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error de red',
-                                text: 'No se pudo crear el evento.'
                             });
-                        });
 
                         return;
                     }
@@ -1032,20 +1123,21 @@
                     // Verificar conflictos con taller antes de asignar
                     (async () => {
                         try {
-                            const conflictosResp = await fetch('/asignaciones-turno/verificar-conflictos', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                                    'Accept': 'application/json'
-                                },
-                                body: JSON.stringify({
-                                    user_id: userId,
-                                    fecha_inicio: fecha,
-                                    fecha_fin: fecha,
-                                    destino: 'obra' // Va hacia obra externa
-                                })
-                            });
+                            const conflictosResp = await fetch(
+                                '/asignaciones-turno/verificar-conflictos', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Accept': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        user_id: userId,
+                                        fecha_inicio: fecha,
+                                        fecha_fin: fecha,
+                                        destino: 'obra' // Va hacia obra externa
+                                    })
+                                });
 
                             const conflictos = await conflictosResp.json();
 
@@ -1120,11 +1212,10 @@
                         const haySeleccionados = numSeleccionados > 0;
 
                         // Obtener IDs de los seleccionados (solo turnos normales, no ficticios)
-                        const idsSeleccionados = haySeleccionados
-                            ? Array.from(window.eventosSeleccionados.keys())
-                                .filter(id => id.startsWith('turno-'))
-                                .map(id => id.replace('turno-', ''))
-                            : [asignacionId];
+                        const idsSeleccionados = haySeleccionados ?
+                            Array.from(window.eventosSeleccionados.keys())
+                            .filter(id => id.startsWith('turno-'))
+                            .map(id => id.replace('turno-', '')) : [asignacionId];
 
                         // Cerrar menú contextual anterior si existe
                         const menuAnterior = document.getElementById('menuContextualObra');
@@ -1133,29 +1224,30 @@
                         // Crear menú contextual
                         const menu = document.createElement('div');
                         menu.id = 'menuContextualObra';
-                        menu.className = 'fixed bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-[9999] min-w-[220px]';
+                        menu.className =
+                            'fixed bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-[9999] min-w-[220px]';
                         menu.style.left = e.pageX + 'px';
                         menu.style.top = e.pageY + 'px';
 
                         // Cabecera diferente si hay selección múltiple
-                        const cabecera = haySeleccionados
-                            ? `<div class="px-3 py-2 border-b border-gray-100 text-xs font-medium bg-blue-50 text-blue-700">
+                        const cabecera = haySeleccionados ?
+                            `<div class="px-3 py-2 border-b border-gray-100 text-xs font-medium bg-blue-50 text-blue-700">
                                    <span class="inline-flex items-center gap-1">
                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                        ${numSeleccionados} eventos seleccionados
                                    </span>
-                               </div>`
-                            : `<div class="px-3 py-2 border-b border-gray-100 text-xs text-gray-500 font-medium">${info.event.title}</div>`;
+                               </div>` :
+                            `<div class="px-3 py-2 border-b border-gray-100 text-xs text-gray-500 font-medium">${info.event.title}</div>`;
 
                         menu.innerHTML = `
                             ${cabecera}
                             ${!haySeleccionados ? `
-                            <button class="w-full text-left px-4 py-2 hover:bg-blue-50 flex items-center gap-2 text-sm text-gray-700" data-action="perfil">
-                                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                </svg>
-                                Ir a su perfil
-                            </button>` : ''}
+                                                                                    <button class="w-full text-left px-4 py-2 hover:bg-blue-50 flex items-center gap-2 text-sm text-gray-700" data-action="perfil">
+                                                                                        <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                                                                        </svg>
+                                                                                        Ir a su perfil
+                                                                                    </button>` : ''}
                             <button class="w-full text-left px-4 py-2 hover:bg-yellow-50 flex items-center gap-2 text-sm text-gray-700" data-action="estado">
                                 <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
@@ -1195,13 +1287,14 @@
                                 if (userId) {
                                     window.open(`/users/${userId}`, '_blank');
                                 } else {
-                                    Swal.fire('Info', 'No se encontró el perfil del trabajador', 'info');
+                                    Swal.fire('Info', 'No se encontró el perfil del trabajador',
+                                        'info');
                                 }
                             } else if (action === 'estado') {
                                 // Mostrar modal para cambiar estado
-                                const textoInfo = haySeleccionados
-                                    ? `Se cambiará el estado de <strong>${idsSeleccionados.length} asignaciones</strong>`
-                                    : `Trabajador: <strong>${info.event.title}</strong>`;
+                                const textoInfo = haySeleccionados ?
+                                    `Se cambiará el estado de <strong>${idsSeleccionados.length} asignaciones</strong>` :
+                                    `Trabajador: <strong>${info.event.title}</strong>`;
 
                                 Swal.fire({
                                     title: 'Cambiar estado de asignación',
@@ -1211,7 +1304,7 @@
                                             <option value="activo" ${estadoActual === 'activo' ? 'selected' : ''}>⏱️ Activo</option>
                                             <option value="curso" ${estadoActual === 'curso' ? 'selected' : ''}>🎓 Cursos</option>
                                             <option value="vacaciones" ${estadoActual === 'vacaciones' ? 'selected' : ''}>🏖️ Vacaciones</option>
-                                            <option value="baja" ${estadoActual === 'baja' ? 'selected' : ''}>🤒 Baja</option>
+                                            <option value="baja" ${estadoActual === 'baja' ? 'selected' : ''}>🤕 Baja</option>
                                             <option value="justificada" ${estadoActual === 'justificada' ? 'selected' : ''}>✅ Justificada</option>
                                             <option value="injustificada" ${estadoActual === 'injustificada' ? 'selected' : ''}>❌ Injustificada</option>
                                         </select>
@@ -1220,7 +1313,8 @@
                                     confirmButtonText: 'Guardar',
                                     cancelButtonText: 'Cancelar',
                                     preConfirm: () => {
-                                        return document.getElementById('swal-estado').value;
+                                        return document.getElementById('swal-estado')
+                                            .value;
                                     }
                                 }).then((result) => {
                                     if (result.isConfirmed) {
@@ -1234,41 +1328,50 @@
                                                     'Content-Type': 'application/json',
                                                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                                                 },
-                                                body: JSON.stringify({ estado: nuevoEstado })
+                                                body: JSON.stringify({
+                                                    estado: nuevoEstado
+                                                })
                                             }).then(res => res.json())
                                         );
 
                                         Promise.all(promesas)
-                                        .then(results => {
-                                            const exitosos = results.filter(r => r.success).length;
-                                            if (exitosos > 0) {
-                                                Swal.fire({
-                                                    icon: 'success',
-                                                    title: 'Estado actualizado',
-                                                    text: `Se actualizaron ${exitosos} asignaciones`,
-                                                    timer: 1500,
-                                                    showConfirmButton: false
-                                                });
-                                                // Limpiar selección y recargar
-                                                deseleccionarTodosEventos();
-                                                window.calendarioObras.refetchEvents();
-                                            } else {
-                                                Swal.fire('Error', 'No se pudo actualizar ninguna asignación', 'error');
-                                            }
-                                        })
-                                        .catch(err => {
-                                            console.error(err);
-                                            Swal.fire('Error', 'No se pudo actualizar el estado', 'error');
-                                        });
+                                            .then(results => {
+                                                const exitosos = results.filter(r => r
+                                                    .success).length;
+                                                if (exitosos > 0) {
+                                                    Swal.fire({
+                                                        icon: 'success',
+                                                        title: 'Estado actualizado',
+                                                        text: `Se actualizaron ${exitosos} asignaciones`,
+                                                        timer: 1500,
+                                                        showConfirmButton: false
+                                                    });
+                                                    // Limpiar selección y recargar
+                                                    deseleccionarTodosEventos();
+                                                    window.calendarioObras
+                                                        .refetchEvents();
+                                                } else {
+                                                    Swal.fire('Error',
+                                                        'No se pudo actualizar ninguna asignación',
+                                                        'error');
+                                                }
+                                            })
+                                            .catch(err => {
+                                                console.error(err);
+                                                Swal.fire('Error',
+                                                    'No se pudo actualizar el estado',
+                                                    'error');
+                                            });
                                     }
                                 });
                             } else if (action === 'eliminar') {
-                                const textoEliminar = haySeleccionados
-                                    ? `Se eliminarán ${idsSeleccionados.length} asignaciones`
-                                    : 'Esto quitará la obra del trabajador en ese turno.';
+                                const textoEliminar = haySeleccionados ?
+                                    `Se eliminarán ${idsSeleccionados.length} asignaciones` :
+                                    'Esto quitará la obra del trabajador en ese turno.';
 
                                 Swal.fire({
-                                    title: haySeleccionados ? '¿Eliminar asignaciones?' : '¿Eliminar asignación?',
+                                    title: haySeleccionados ? '¿Eliminar asignaciones?' :
+                                        '¿Eliminar asignación?',
                                     text: textoEliminar,
                                     icon: 'warning',
                                     showCancelButton: true,
@@ -1279,37 +1382,45 @@
                                 }).then((result) => {
                                     if (result.isConfirmed) {
                                         const promesas = idsSeleccionados.map(id =>
-                                            fetch(`/asignaciones-turno/${id}/quitar-obra`, {
-                                                method: 'PUT',
-                                                headers: {
-                                                    'Content-Type': 'application/json',
-                                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                                                }
-                                            }).then(res => res.json())
+                                            fetch(
+                                                `/asignaciones-turno/${id}/quitar-obra`, {
+                                                    method: 'PUT',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                                    }
+                                                }).then(res => res.json())
                                         );
 
                                         Promise.all(promesas)
-                                        .then(results => {
-                                            const exitosos = results.filter(r => r.success).length;
-                                            if (exitosos > 0) {
-                                                Swal.fire({
-                                                    icon: 'success',
-                                                    title: 'Eliminadas',
-                                                    text: `Se eliminaron ${exitosos} asignaciones`,
-                                                    timer: 1500,
-                                                    showConfirmButton: false
-                                                });
-                                                deseleccionarTodosEventos();
-                                                window.calendarioObras.refetchEvents();
-                                                setTimeout(() => actualizarEstadoFichasTrabajadores(), 100);
-                                            } else {
-                                                Swal.fire('Error', 'No se pudo eliminar ninguna asignación', 'error');
-                                            }
-                                        })
-                                        .catch(err => {
-                                            console.error(err);
-                                            Swal.fire('Error', 'No se pudo eliminar', 'error');
-                                        });
+                                            .then(results => {
+                                                const exitosos = results.filter(r => r
+                                                    .success).length;
+                                                if (exitosos > 0) {
+                                                    Swal.fire({
+                                                        icon: 'success',
+                                                        title: 'Eliminadas',
+                                                        text: `Se eliminaron ${exitosos} asignaciones`,
+                                                        timer: 1500,
+                                                        showConfirmButton: false
+                                                    });
+                                                    deseleccionarTodosEventos();
+                                                    window.calendarioObras
+                                                        .refetchEvents();
+                                                    setTimeout(() =>
+                                                        actualizarEstadoFichasTrabajadores(),
+                                                        100);
+                                                } else {
+                                                    Swal.fire('Error',
+                                                        'No se pudo eliminar ninguna asignación',
+                                                        'error');
+                                                }
+                                            })
+                                            .catch(err => {
+                                                console.error(err);
+                                                Swal.fire('Error',
+                                                    'No se pudo eliminar', 'error');
+                                            });
                                     }
                                 });
                             }
@@ -1338,7 +1449,8 @@
 
                     // Si es ficticio, mostrar con estilo diferente y botón eliminar
                     if (props.es_ficticio) {
-                        const notasTexto = props.notas ? `<div class="text-[10px] opacity-80 italic">${props.notas}</div>` : '';
+                        const notasTexto = props.notas ?
+                            `<div class="text-[10px] opacity-80 italic">${props.notas}</div>` : '';
                         return {
                             html: `
                 <div class="relative px-2 py-1 text-xs font-semibold group">
@@ -1349,14 +1461,14 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
-                    <div>👤 ${arg.event.title}</div>
+                    <div>${arg.event.title}</div>
                     ${notasTexto}
                 </div>
             `
                         };
                     }
 
-                    // 👇 Texto de estado si existe
+                    // Texto de estado si existe
                     const estadoTexto = props.estado ? `<div class="text-[10px] opacity-80">${props.estado}</div>` :
                         '';
 
@@ -1409,7 +1521,8 @@
 
                         // Separar IDs de eventos normales y ficticios
                         const idsNormales = ids.filter(id => id.startsWith('turno-'));
-                        const idsFicticios = ids.filter(id => id.startsWith('ficticio-')).map(id => parseInt(id.replace('ficticio-', '')));
+                        const idsFicticios = ids.filter(id => id.startsWith('ficticio-')).map(id => parseInt(id
+                            .replace('ficticio-', '')));
 
                         const promesas = [];
 
@@ -1448,32 +1561,32 @@
                         }
 
                         Promise.all(promesas)
-                        .then(results => {
-                            const todoOk = results.every(r => r.success);
-                            if (todoOk) {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: '✅ Eventos movidos',
-                                    toast: true,
-                                    position: 'top-end',
-                                    timer: 2000,
-                                    showConfirmButton: false
-                                });
+                            .then(results => {
+                                const todoOk = results.every(r => r.success);
+                                if (todoOk) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: '✅ Eventos movidos',
+                                        toast: true,
+                                        position: 'top-end',
+                                        timer: 2000,
+                                        showConfirmButton: false
+                                    });
 
-                                // Limpiar selección y recargar eventos
-                                deseleccionarTodosEventos();
-                                window.calendarioObras.refetchEvents();
-                                setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
-                            } else {
+                                    // Limpiar selección y recargar eventos
+                                    deseleccionarTodosEventos();
+                                    window.calendarioObras.refetchEvents();
+                                    setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
+                                } else {
+                                    info.revert();
+                                    Swal.fire('âŒ Error', 'Algunos eventos no se pudieron mover.', 'error');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('âŒ Error:', error);
                                 info.revert();
-                                Swal.fire('❌ Error', 'Algunos eventos no se pudieron mover.', 'error');
-                            }
-                        })
-                        .catch(error => {
-                            console.error('❌ Error:', error);
-                            info.revert();
-                            Swal.fire('❌ Error', 'No se pudieron mover los eventos.', 'error');
-                        });
+                                Swal.fire('âŒ Error', 'No se pudieron mover los eventos.', 'error');
+                            });
 
                         return; // Salir, ya procesamos el drop múltiple
                     }
@@ -1484,31 +1597,31 @@
                         const ficticioId = eventoId.replace('ficticio-', '');
 
                         fetch(`/eventos-ficticios-obra/${ficticioId}`, {
-                            method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                            },
-                            body: JSON.stringify({
-                                obra_id: nuevaObraId === '' ? null : nuevaObraId,
-                                fecha: nuevaFecha
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify({
+                                    obra_id: nuevaObraId === '' ? null : nuevaObraId,
+                                    fecha: nuevaFecha
+                                })
                             })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (!data.success) {
-                                throw new Error(data.message ?? 'Error inesperado');
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error en actualización de evento ficticio:', error);
-                            info.revert();
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error al actualizar',
-                                text: error.message
+                            .then(response => response.json())
+                            .then(data => {
+                                if (!data.success) {
+                                    throw new Error(data.message ?? 'Error inesperado');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error en actualización de evento ficticio:', error);
+                                info.revert();
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error al actualizar',
+                                    text: error.message
+                                });
                             });
-                        });
                     } else {
                         // Evento normal individual
                         const asignacionId = eventoId.replace('turno-', '');
@@ -1620,7 +1733,8 @@
                             const nombre = (t.dataset.title || t.textContent || '').toLowerCase();
                             const categoria = (t.dataset.categoria || '').toLowerCase();
                             const especialidad = (t.dataset.especialidad || '').toLowerCase();
-                            const coincide = nombre.includes(texto) || categoria.includes(texto) || especialidad.includes(texto);
+                            const coincide = nombre.includes(texto) || categoria.includes(texto) ||
+                                especialidad.includes(texto);
                             t.style.display = coincide ? '' : 'none';
                         });
                     });
@@ -1654,97 +1768,44 @@
             }
         }
 
-        // Inicializar según el contexto
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', inicializarTodo);
-        } else {
-            // DOM ya está listo (navegación SPA)
-            inicializarTodo();
-        }
+        // Configuración de eventos UI
+        function setupObrasUIEvents() {
+            // Poblar selects iniciales
+            setTimeout(poblarSelectObras, 100);
+            if (typeof poblarSelectObrasMover === 'function') setTimeout(poblarSelectObrasMover, 100);
 
-        // Configurar listeners de Livewire solo una vez
-        if (!window._calendarioObrasListenersConfigured) {
-            window._calendarioObrasListenersConfigured = true;
-
-            // Re-inicializar al navegar a esta página
-            document.addEventListener('livewire:navigated', function() {
-                // Pequeño delay para asegurar que el DOM esté listo
-                setTimeout(inicializarTodo, 50);
-            });
-
-            // Limpiar al salir de la página
-            document.addEventListener('livewire:navigating', function() {
-                if (window.calendarioObras) {
-                    try {
-                        window.calendarioObras.destroy();
-                        window.calendarioObras = null;
-                    } catch (e) {
-                        console.warn('Error al limpiar calendario:', e);
-                    }
+            // Helper para limpiar listeners previos mediante clonación
+            const cleanListener = (id, event, handler) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    const newEl = el.cloneNode(true);
+                    el.parentNode.replaceChild(newEl, el);
+                    newEl.addEventListener(event, handler);
                 }
+            };
+
+            // 1. Panel Mover
+            cleanListener('selectObraMover', 'change', function() {
+                const btn = document.getElementById('btnMoverEventos');
+                if (btn) btn.disabled = !this.value || window.eventosSeleccionados.size === 0;
             });
-        }
+            cleanListener('btnMoverEventos', 'click', moverEventosAObra);
+            cleanListener('btnDeseleccionarTodos', 'click', deseleccionarTodosEventos);
 
-        // Poblar el select de obras con los resources (excluyendo 'sin-obra')
-        function poblarSelectObras() {
-            const select = document.getElementById('selectObraRepetir');
-            if (!select || !window.obrasResources) return;
-
-            // Limpiar opciones existentes
-            select.innerHTML = '<option value="">-- Seleccionar obra --</option>';
-
-            // Añadir obras desde los resources
-            window.obrasResources.forEach(resource => {
-                if (resource.id !== 'sin-obra') {
-                    const option = document.createElement('option');
-                    option.value = resource.id;
-                    option.textContent = resource.codigo ? `${resource.codigo} - ${resource.title}` : resource.title;
-                    select.appendChild(option);
-                }
-            });
-        }
-
-        // Llamar después de inicializar el calendario
-        setTimeout(poblarSelectObras, 100);
-        setTimeout(poblarSelectObrasMover, 100);
-
-        // Event listeners para el panel de eventos seleccionados
-        const selectObraMover = document.getElementById('selectObraMover');
-        const btnMoverEventos = document.getElementById('btnMoverEventos');
-        const btnDeseleccionarTodos = document.getElementById('btnDeseleccionarTodos');
-
-        if (selectObraMover) {
-            selectObraMover.addEventListener('change', function() {
-                const btnMover = document.getElementById('btnMoverEventos');
-                btnMover.disabled = !this.value || window.eventosSeleccionados.size === 0;
-            });
-        }
-
-        if (btnMoverEventos) {
-            btnMoverEventos.addEventListener('click', moverEventosAObra);
-        }
-
-        if (btnDeseleccionarTodos) {
-            btnDeseleccionarTodos.addEventListener('click', deseleccionarTodosEventos);
-        }
-
-        // Habilitar/deshabilitar botón según selección
-        const selectObraRepetir = document.getElementById('selectObraRepetir');
-        const btnRepetirObraEspecifica = document.getElementById('btnRepetirObraEspecifica');
-
-        if (selectObraRepetir && btnRepetirObraEspecifica) {
-            selectObraRepetir.addEventListener('change', function() {
-                btnRepetirObraEspecifica.disabled = !this.value;
+            // 2. Repetir Obra Específica
+            cleanListener('selectObraRepetir', 'change', function() {
+                const btn = document.getElementById('btnRepetirObraEspecifica');
+                if (btn) btn.disabled = !this.value;
             });
 
-            // Botón repetir obra específica
-            btnRepetirObraEspecifica.addEventListener('click', function() {
-                const obraId = selectObraRepetir.value;
-                const obraTexto = selectObraRepetir.options[selectObraRepetir.selectedIndex].text;
+            cleanListener('btnRepetirObraEspecifica', 'click', function() {
+                const select = document.getElementById('selectObraRepetir');
+                const obraId = select.value;
+                const obraTexto = select.options[select.selectedIndex].text;
                 const fechaInicio = document.getElementById('btnRepetirSemana').dataset.fecha;
 
                 if (!obraId) {
-                    Swal.fire('❌ Error', 'Debes seleccionar una obra', 'error');
+                    Swal.fire('âŒ Error', 'Debes seleccionar una obra', 'error');
                     return;
                 }
 
@@ -1771,28 +1832,25 @@
                             .then(res => res.json())
                             .then(data => {
                                 if (data.success) {
-                                    Swal.fire('✅ Obra copiada correctamente', data.message || '', 'success');
+                                    Swal.fire('✅ Obra copiada correctamente', data.message || '',
+                                        'success');
                                     window.calendarioObras.refetchEvents();
                                     setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
                                 } else {
-                                    Swal.fire('❌ Error', data.message, 'error');
+                                    Swal.fire('âŒ Error', data.message, 'error');
                                 }
                             })
                             .catch(error => {
                                 console.error(error);
-                                Swal.fire('❌ Error', 'No se pudo completar la solicitud.', 'error');
+                                Swal.fire('âŒ Error', 'No se pudo completar la solicitud.', 'error');
                             });
                     }
                 });
             });
-        }
 
-        // Botón repetir todas las obras
-        const btnRepetirSemana = document.getElementById('btnRepetirSemana');
-        if (btnRepetirSemana) {
-            btnRepetirSemana.addEventListener('click', function() {
+            // 3. Repetir Semana Completa
+            cleanListener('btnRepetirSemana', 'click', function() {
                 const fechaInicio = this.dataset.fecha;
-
                 Swal.fire({
                     title: '¿Repetir semana anterior?',
                     text: 'Se copiarán TODAS las asignaciones de la semana pasada a la actual.',
@@ -1817,28 +1875,22 @@
                                 if (data.success) {
                                     Swal.fire('✅ Semana copiada correctamente');
                                     window.calendarioObras.refetchEvents();
-
-                                    // Actualizar estado de fichas
                                     setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
                                 } else {
-                                    Swal.fire('❌ Error', data.message, 'error');
+                                    Swal.fire('âŒ Error', data.message, 'error');
                                 }
                             })
                             .catch(error => {
                                 console.error(error);
-                                Swal.fire('❌ Error', 'No se pudo completar la solicitud.', 'error');
+                                Swal.fire('âŒ Error', 'No se pudo completar la solicitud.', 'error');
                             });
                     }
                 });
             });
-        }
 
-        // Botón limpiar semana
-        const btnLimpiarSemana = document.getElementById('btnLimpiarSemana');
-        if (btnLimpiarSemana) {
-            btnLimpiarSemana.addEventListener('click', function() {
+            // 4. Limpiar Semana
+            cleanListener('btnLimpiarSemana', 'click', function() {
                 const fechaInicio = document.getElementById('btnRepetirSemana').dataset.fecha;
-
                 Swal.fire({
                     title: '¿Limpiar semana actual?',
                     html: `
@@ -1862,196 +1914,184 @@
                     confirmButtonText: 'Sí, limpiar',
                     cancelButtonText: 'Cancelar',
                     didOpen: () => {
-                        // Poblar select de obras
                         const selectObra = document.getElementById('selectObraLimpiar');
                         window.obrasResources.forEach(resource => {
                             if (resource.id !== 'sin-obra') {
                                 const option = document.createElement('option');
                                 option.value = resource.id;
-                                option.textContent = resource.codigo ? `${resource.codigo} - ${resource.title}` : resource.title;
+                                option.textContent = resource.codigo ?
+                                    `${resource.codigo} - ${resource.title}` : resource.title;
                                 selectObra.appendChild(option);
                             }
                         });
-
-                        // Toggle para mostrar/ocultar select
                         document.getElementById('limpiarTodas').addEventListener('change', function() {
-                            const container = document.getElementById('selectObraLimpiarContainer');
+                            const container = document.getElementById(
+                                'selectObraLimpiarContainer');
                             container.classList.toggle('hidden', this.checked);
                         });
                     },
                     preConfirm: () => {
                         const limpiarTodas = document.getElementById('limpiarTodas').checked;
                         const obraId = document.getElementById('selectObraLimpiar').value;
-                        return { limpiarTodas, obraId };
+                        return {
+                            limpiarTodas,
+                            obraId
+                        };
                     }
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        const { limpiarTodas, obraId } = result.value;
-
+                        const {
+                            limpiarTodas,
+                            obraId
+                        } = result.value;
                         fetch('{{ route('asignaciones-turnos.limpiarSemana') }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                            },
-                            body: JSON.stringify({
-                                fecha_actual: fechaInicio,
-                                obra_id: limpiarTodas ? null : obraId
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify({
+                                    fecha_actual: fechaInicio,
+                                    obra_id: limpiarTodas ? null : obraId
+                                })
                             })
-                        })
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.success) {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Semana limpiada',
-                                    text: data.message,
-                                    timer: 2000,
-                                    showConfirmButton: false
-                                });
-                                window.calendarioObras.refetchEvents();
-                                setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
-                            } else {
-                                Swal.fire('❌ Error', data.message, 'error');
-                            }
-                        })
-                        .catch(error => {
-                            console.error(error);
-                            Swal.fire('❌ Error', 'No se pudo completar la solicitud.', 'error');
-                        });
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Semana limpiada',
+                                        text: data.message,
+                                        timer: 2000,
+                                        showConfirmButton: false
+                                    });
+                                    window.calendarioObras.refetchEvents();
+                                    setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
+                                } else {
+                                    Swal.fire('âŒ Error', data.message, 'error');
+                                }
+                            })
+                            .catch(error => {
+                                console.error(error);
+                                Swal.fire('âŒ Error', 'No se pudo completar la solicitud.', 'error');
+                            });
                     }
                 });
             });
-        }
 
-        // Event listener para crear trabajador ficticio
-        const btnCrearTrabajadorFicticio = document.getElementById('btnCrearTrabajadorFicticio');
-        if (btnCrearTrabajadorFicticio) {
-            btnCrearTrabajadorFicticio.addEventListener('click', function() {
+            // 5. Crear Trabajador Ficticio
+            cleanListener('btnCrearTrabajadorFicticio', 'click', function() {
                 const nombre = document.getElementById('ficticio_nombre').value.trim();
-
                 if (!nombre) {
-                    Swal.fire('⚠️ Error', 'Debes introducir un nombre', 'warning');
+                    Swal.fire('⚠️ Error', 'Debes introducir un nombre', 'warning');
                     return;
                 }
-
                 fetch('{{ route('trabajadores-ficticios.store') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({ nombre: nombre })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        // Añadir ficha al contenedor
-                        const container = document.getElementById('external-events-ficticios');
-                        const ficha = document.createElement('div');
-                        ficha.className = 'fc-event fc-event-ficticio px-3 py-2 text-xs bg-gray-200 rounded cursor-pointer text-center shadow relative group';
-                        ficha.dataset.id = 'ficticio-' + data.trabajador.id;
-                        ficha.dataset.title = data.trabajador.nombre;
-                        ficha.dataset.ficticio = 'true';
-                        ficha.innerHTML = `
-                            <button type="button" class="btn-eliminar-trabajador-ficticio absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                data-id="${data.trabajador.id}">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            nombre: nombre
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            const container = document.getElementById('external-events-ficticios');
+                            const ficha = document.createElement('div');
+                            ficha.className =
+                                'fc-event fc-event-ficticio px-3 py-2 text-xs bg-gray-200 rounded cursor-pointer text-center shadow relative group';
+                            ficha.dataset.id = 'ficticio-' + data.trabajador.id;
+                            ficha.dataset.title = data.trabajador.nombre;
+                            ficha.dataset.ficticio = 'true';
+                            ficha.innerHTML = `
+                            <button type="button" class="btn-eliminar-trabajador-ficticio absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity" data-id="${data.trabajador.id}">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
                             </button>
                             <div class="w-10 h-10 rounded-full bg-gray-400 mx-auto mb-1 ring-2 ring-gray-500 flex items-center justify-center">
-                                <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                                </svg>
+                                <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                             </div>
                             ${data.trabajador.nombre}
                             <div class="text-[10px] text-gray-500">Ficticio</div>
                         `;
-
-                        // Añadir listener de click para selección
-                        ficha.addEventListener('click', (e) => {
-                            if (e.target.closest('.btn-eliminar-trabajador-ficticio')) return;
-                            e.stopPropagation();
-                            ficha.classList.toggle('bg-yellow-300');
-                            ficha.classList.toggle('seleccionado');
-                        });
-
-                        container.appendChild(ficha);
-
-                        // Limpiar input
-                        document.getElementById('ficticio_nombre').value = '';
-
-                        Swal.fire({
-                            icon: 'success',
-                            title: '✅ Trabajador ficticio creado',
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        Swal.fire('❌ Error', data.message, 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error(error);
-                    Swal.fire('❌ Error', 'No se pudo crear el trabajador.', 'error');
-                });
+                            ficha.addEventListener('click', (e) => {
+                                if (e.target.closest('.btn-eliminar-trabajador-ficticio')) return;
+                                e.stopPropagation();
+                                ficha.classList.toggle('bg-yellow-300');
+                                ficha.classList.toggle('seleccionado');
+                            });
+                            container.appendChild(ficha);
+                            document.getElementById('ficticio_nombre').value = '';
+                            Swal.fire({
+                                icon: 'success',
+                                title: '✅ Trabajador ficticio creado',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            Swal.fire('âŒ Error', data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        Swal.fire('âŒ Error', 'No se pudo crear el trabajador.', 'error');
+                    });
             });
         }
 
-        // Event listener para eliminar trabajador ficticio
-        document.addEventListener('click', function(e) {
-            const btnEliminar = e.target.closest('.btn-eliminar-trabajador-ficticio');
-            if (btnEliminar) {
-                e.stopPropagation();
-                e.preventDefault();
+        // --- INIT PRINCIPAL ROBUSTO ---
+        function initProduccionTrabajadoresObraPage() {
+            if (document.body.dataset.produccionTrabajadoresObraPageInit === 'true') return;
 
-                const trabajadorId = btnEliminar.dataset.id;
+            inicializarTodo();
+            setupObrasUIEvents();
 
-                Swal.fire({
-                    title: '¿Eliminar trabajador ficticio?',
-                    text: "Se eliminarán también todos sus eventos en el calendario.",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, eliminar',
-                    cancelButtonText: 'Cancelar'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        fetch(`/trabajadores-ficticios/${trabajadorId}`, {
-                            method: 'DELETE',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                            }
-                        })
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.success) {
-                                // Eliminar ficha del DOM
-                                const ficha = btnEliminar.closest('.fc-event-ficticio');
-                                if (ficha) ficha.remove();
+            document.removeEventListener('click', window.handleObrasClicks);
+            document.addEventListener('click', window.handleObrasClicks);
 
-                                // Recargar eventos del calendario
-                                window.calendarioObras.refetchEvents();
+            document.body.dataset.produccionTrabajadoresObraPageInit = 'true';
+        }
 
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Eliminado',
-                                    timer: 1500,
-                                    showConfirmButton: false
-                                });
-                            } else {
-                                Swal.fire('❌ Error', data.message, 'error');
-                            }
-                        })
-                        .catch(err => {
-                            console.error(err);
-                            Swal.fire('❌ Error', 'No se pudo eliminar.', 'error');
-                        });
-                    }
-                });
+        window.pageInitializers = window.pageInitializers || [];
+        window.pageInitializers.push(initProduccionTrabajadoresObraPage);
+
+        document.addEventListener('livewire:navigated', initProduccionTrabajadoresObraPage);
+        document.addEventListener('DOMContentLoaded', initProduccionTrabajadoresObraPage);
+
+        document.addEventListener('livewire:navigating', () => {
+            document.body.dataset.produccionTrabajadoresObraPageInit = 'false';
+            document.removeEventListener('click', window.handleObrasClicks);
+            if (window.calendarioObras) {
+                try {
+                    window.calendarioObras.destroy();
+                    window.calendarioObras = null;
+                } catch (e) {
+                    console.warn(e);
+                }
             }
         });
+
+        // Poblar el select de obras con los resources (excluyendo 'sin-obra')
+        function poblarSelectObras() {
+            const select = document.getElementById('selectObraRepetir');
+            if (!select || !window.obrasResources) return;
+
+            // Limpiar opciones existentes
+            select.innerHTML = '<option value="">-- Seleccionar obra --</option>';
+
+            // Añadir obras desde los resources
+            window.obrasResources.forEach(resource => {
+                if (resource.id !== 'sin-obra') {
+                    const option = document.createElement('option');
+                    option.value = resource.id;
+                    option.textContent = resource.codigo ? `${resource.codigo} - ${resource.title}` : resource
+                        .title;
+                    select.appendChild(option);
+                }
+            });
+        }
     </script>
     <style>
         /* ============================================
@@ -2067,7 +2107,8 @@
         /* Header del calendario - mismo color que sidebar */
         .fc .fc-toolbar {
             padding: 1rem;
-            background: #111827; /* gray-900 */
+            background: #111827;
+            /* gray-900 */
             border-radius: 12px 12px 0 0;
             margin-bottom: 0 !important;
         }
@@ -2246,7 +2287,7 @@
             border-radius: 4px !important;
             font-weight: bold !important;
             z-index: 100 !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
             line-height: 1.2 !important;
             display: block !important;
             pointer-events: none !important;
@@ -2277,8 +2318,15 @@
         }
 
         @keyframes pulse-badge {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
         }
 
         .btn-eliminar {

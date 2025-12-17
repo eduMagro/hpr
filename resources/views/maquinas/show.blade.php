@@ -18,8 +18,7 @@
                         <select id="posicion_1" name="posicion_1" onchange="cambiarPosicionesPlanillas()">
                             <option value="0" {{ empty($posicion1) ? 'selected' : '' }}>0</option>
                             @foreach ($posicionesDisponibles as $pos)
-                                <option value="{{ $pos }}"
-                                    {{ $posicion1 == $pos ? 'selected' : '' }}>
+                                <option value="{{ $pos }}" {{ $posicion1 == $pos ? 'selected' : '' }}>
                                     {{ $pos }} - {{ $codigosPorPosicion[$pos] ?? '' }}
                                 </option>
                             @endforeach
@@ -30,8 +29,7 @@
                         <select id="posicion_2" name="posicion_2" onchange="cambiarPosicionesPlanillas()">
                             <option value="0" {{ empty($posicion2) ? 'selected' : '' }}>0</option>
                             @foreach ($posicionesDisponibles as $pos)
-                                <option value="{{ $pos }}"
-                                    {{ $posicion2 == $pos ? 'selected' : '' }}>
+                                <option value="{{ $pos }}" {{ $posicion2 == $pos ? 'selected' : '' }}>
                                     {{ $pos }} - {{ $codigosPorPosicion[$pos] ?? '' }}
                                 </option>
                             @endforeach
@@ -203,7 +201,9 @@
                             try {
                                 // Fetch AJAX
                                 const response = await fetch(newUrl, {
-                                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
                                 });
                                 const html = await response.text();
 
@@ -282,11 +282,14 @@
                                                 try {
                                                     const grupoData = {
                                                         id: parseInt(contenedorSvgId),
-                                                        etiqueta: { id: parseInt(contenedorSvgId) },
+                                                        etiqueta: {
+                                                            id: parseInt(contenedorSvgId)
+                                                        },
                                                         elementos: elementos
                                                     };
                                                     window.renderizarGrupoSVG(grupoData, parseInt(grupoId));
-                                                    console.log('✅ Grupo', grupoId, 'renderizado con', elementos.length, 'elementos');
+                                                    console.log('✅ Grupo', grupoId, 'renderizado con', elementos.length,
+                                                        'elementos');
                                                 } catch (e) {
                                                     console.warn('Error renderizando grupo resumen', grupoId, e);
                                                 }
@@ -304,7 +307,8 @@
 
                                     // Re-aplicar clases de columnas
                                     if (window.updateGridClasses) {
-                                        const numPlanillas = gridActual.querySelectorAll('.planilla-section, section.bg-gradient-to-br').length;
+                                        const numPlanillas = gridActual.querySelectorAll('.planilla-section, section.bg-gradient-to-br')
+                                            .length;
                                         if (numPlanillas >= 2) {
                                             gridActual.classList.remove('una-planilla');
                                             gridActual.classList.add('dos-planillas');
@@ -396,7 +400,8 @@
                                     'bg-yellow-500 border-yellow-600 text-white': filtroEstado === 'fabricando',
                                     'bg-green-500 border-green-600 text-white': filtroEstado === 'completada'
                                 }">
-                                <span x-text="{
+                                <span
+                                    x-text="{
                                     'todos': 'Todas',
                                     'sin-paquete': 'Sin paquete',
                                     'en-paquete': 'En paquete',
@@ -404,14 +409,18 @@
                                     'fabricando': 'Fabricando',
                                     'completada': 'Completadas'
                                 }[filtroEstado]"></span>
-                                <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': open }" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
                             <div x-show="open" x-transition:enter="transition ease-out duration-100"
-                                x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                                x-transition:enter-start="opacity-0 scale-95"
+                                x-transition:enter-end="opacity-100 scale-100"
                                 x-transition:leave="transition ease-in duration-75"
-                                x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                                x-transition:leave-start="opacity-100 scale-100"
+                                x-transition:leave-end="opacity-0 scale-95"
                                 class="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
                                 <button @click="setFiltroEstado('todos'); open = false" type="button"
                                     class="w-full px-3 py-2 text-left text-sm font-medium bg-white hover:bg-gray-100 text-gray-800 border-b border-gray-100">
@@ -494,7 +503,7 @@
                             title="Reagrupar: Vuelve a agrupar etiquetas que fueron desagrupadas manualmente">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                             Reagrupar
                         </button>
@@ -546,29 +555,38 @@
                         visibility: hidden;
                         transition: opacity 0.4s ease, visibility 0.4s ease;
                     }
+
                     #overlay-cambiar-maquina.active {
                         opacity: 1;
                         visibility: visible;
                     }
+
                     #overlay-cambiar-maquina .overlay-bg {
                         opacity: 0;
                         transition: opacity 0.4s ease;
                     }
+
                     #overlay-cambiar-maquina.active .overlay-bg {
                         opacity: 1;
                     }
+
                     #overlay-cambiar-maquina .loader-card {
                         opacity: 0;
                         transform: scale(0.9) translateY(20px);
                         transition: opacity 0.4s ease 0.1s, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s;
                     }
+
                     #overlay-cambiar-maquina.active .loader-card {
                         opacity: 1;
                         transform: scale(1) translateY(0);
                     }
+
                     @keyframes spin-smooth {
-                        to { transform: rotate(360deg); }
+                        to {
+                            transform: rotate(360deg);
+                        }
                     }
+
                     .spinner-ring {
                         animation: spin-smooth 1s linear infinite;
                     }
@@ -582,7 +600,9 @@
                             {{-- Spinner elegante --}}
                             <div class="relative w-16 h-16">
                                 <div class="absolute inset-0 border-4 border-blue-100 rounded-full"></div>
-                                <div class="absolute inset-0 border-4 border-transparent border-t-blue-600 rounded-full spinner-ring"></div>
+                                <div
+                                    class="absolute inset-0 border-4 border-transparent border-t-blue-600 rounded-full spinner-ring">
+                                </div>
                             </div>
                             {{-- Texto --}}
                             <div class="text-center">
@@ -646,8 +666,8 @@
                 @else
                     <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementos-agrupados="$elementosAgrupados" :productos-base-compatibles="$productosBaseCompatibles"
                         :producto-base-solicitados="$productoBaseSolicitados" :planillas-activas="$planillasActivas" :elementos-por-planilla="$elementosPorPlanilla" :es-barra="$esBarra" :longitudes-por-diametro="$longitudesPorDiametro"
-                        :diametro-por-etiqueta="$diametroPorEtiqueta" :elementos-agrupados-script="$elementosAgrupadosScript" :posiciones-disponibles="$posicionesDisponibles" :posicion1="$posicion1"
-                        :posicion2="$posicion2" :grupos-resumen="$gruposResumen ?? collect()" :etiquetas-en-grupos="$etiquetasEnGrupos ?? []" />
+                        :diametro-por-etiqueta="$diametroPorEtiqueta" :elementos-agrupados-script="$elementosAgrupadosScript" :posiciones-disponibles="$posicionesDisponibles" :posicion1="$posicion1" :posicion2="$posicion2"
+                        :grupos-resumen="$gruposResumen ?? collect()" :etiquetas-en-grupos="$etiquetasEnGrupos ?? []" />
 
                     @include('components.maquinas.modales.normal.modales-normal')
 
@@ -800,7 +820,8 @@
                         setTimeout(() => {
                             // Re-renderizar SVGs de etiquetas individuales
                             if (window.elementosAgrupadosScript && window.renderizarGrupoSVG) {
-                                console.log('🎨 Re-renderizando', window.elementosAgrupadosScript.length, 'etiquetas individuales...');
+                                console.log('🎨 Re-renderizando', window.elementosAgrupadosScript
+                                    .length, 'etiquetas individuales...');
                                 window.elementosAgrupadosScript.forEach((grupo, gidx) => {
                                     window.renderizarGrupoSVG(grupo, gidx);
                                 });
@@ -809,7 +830,8 @@
                             // Re-renderizar SVGs de grupos de resumen (usando data attributes del DOM)
                             const gruposResumenCards = document.querySelectorAll('.grupo-resumen-card');
                             if (gruposResumenCards.length > 0 && window.renderizarGrupoSVG) {
-                                console.log('🎨 Re-renderizando', gruposResumenCards.length, 'grupos de resumen desde DOM...');
+                                console.log('🎨 Re-renderizando', gruposResumenCards.length,
+                                    'grupos de resumen desde DOM...');
                                 gruposResumenCards.forEach((card) => {
                                     const contenedorSvgId = card.dataset.contenedorSvgId;
                                     const grupoId = card.dataset.grupoId;
@@ -823,7 +845,9 @@
                                     if (contenedorSvgId && elementos.length > 0) {
                                         const grupoData = {
                                             id: parseInt(contenedorSvgId),
-                                            etiqueta: { id: parseInt(contenedorSvgId) },
+                                            etiqueta: {
+                                                id: parseInt(contenedorSvgId)
+                                            },
                                             elementos: elementos
                                         };
                                         window.renderizarGrupoSVG(grupoData, parseInt(grupoId));
@@ -877,18 +901,16 @@
                 console.log(`🔍 Filtro aplicado: ${estado}`);
             };
 
-            // Escuchar cambios en el filtro de estado
-            window.addEventListener('filtroEstadoChanged', function(e) {
-                window.aplicarFiltroEstadoEtiquetas(e.detail);
-            });
+            // Escuchar cambios en el filtro de estado (con limpieza previa idealmente, o función nombrada)
+            window.handleFiltroEstadoChanged = function(e) {
+                if (window.aplicarFiltroEstadoEtiquetas) window.aplicarFiltroEstadoEtiquetas(e.detail);
+            };
 
-            // Aplicar filtro inicial al cargar la página
-            document.addEventListener('DOMContentLoaded', function() {
-                const filtroInicial = localStorage.getItem('filtroEstadoEtiqueta') ?? 'todos';
-                setTimeout(() => {
-                    window.aplicarFiltroEstadoEtiquetas(filtroInicial);
-                }, 500); // Esperar a que se rendericen las etiquetas
-            });
+            // Remover para evitar duplicados si el script se vuelve a ejecutar
+            window.removeEventListener('filtroEstadoChanged', window.handleFiltroEstadoChanged);
+            window.addEventListener('filtroEstadoChanged', window.handleFiltroEstadoChanged);
+
+            // Nota: El listener DOMContentLoaded previo se ha movido a initMaquinasShowPage
         </script>
 
         <!-- ✅ Vite: Bundle de máquinas -->
@@ -898,23 +920,21 @@
         {{-- Al final del archivo Blade --}}
 
         <script>
-            // Bloquea el menú contextual solo dentro de .proceso (tu tarjeta de etiqueta)
-            document.addEventListener('contextmenu', function(e) {
-                if (e.target.closest('.proceso')) {
-                    e.preventDefault();
-                }
-            }, {
-                capture: true
-            });
+            // Variable global para controladores
+            window.maquinasShowHandlers = window.maquinasShowHandlers || {};
 
-            // Validación de posiciones de planillas en el header (compatible con Livewire Navigate)
+            // Validación de posiciones de planillas en el header
             function initValidacionPosicionesPlanillasHeader() {
                 const form = document.getElementById('form-posiciones-planillas-header');
-                if (!form || form.dataset.validacionInit === '1') return;
-                form.dataset.validacionInit = '1';
+                if (!form) return;
 
-                const select1 = form.querySelector('select[name="posicion_1"]');
-                const select2 = form.querySelector('select[name="posicion_2"]');
+                // Limpiar listeners anteriores clonando
+                const newForm = form.cloneNode(true);
+                form.replaceWith(newForm);
+
+                // Re-seleccionar elementos en el nuevo formulario
+                const select1 = newForm.querySelector('select[name="posicion_1"]');
+                const select2 = newForm.querySelector('select[name="posicion_2"]');
                 if (!select1 || !select2) return;
 
                 function validar() {
@@ -936,15 +956,69 @@
 
                 select1.addEventListener('change', validar);
                 select2.addEventListener('change', validar);
-                form.addEventListener('submit', (e) => !validar() && e.preventDefault());
+                newForm.addEventListener('submit', (e) => !validar() && e.preventDefault());
             }
 
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', initValidacionPosicionesPlanillasHeader);
-            } else {
+            // Función principal de inicialización
+            function initMaquinasShowPage() {
+                if (document.body.dataset.maquinasShowPageInit === 'true') return;
+                console.log('🔍 Inicializando página de visualización de máquina...');
+
+                // 1. Context Menu
+                const ctxHandler = function(e) {
+                    if (e.target.closest('.proceso')) {
+                        e.preventDefault();
+                    }
+                };
+                // Limpiar previo
+                if (window.maquinasShowHandlers.ctx) {
+                    document.removeEventListener('contextmenu', window.maquinasShowHandlers.ctx, {
+                        capture: true
+                    });
+                }
+                window.maquinasShowHandlers.ctx = ctxHandler;
+                document.addEventListener('contextmenu', ctxHandler, {
+                    capture: true
+                });
+
+                // 2. Validación Header
                 initValidacionPosicionesPlanillasHeader();
+
+                // 3. Shortcuts (si están cargados)
+                if (typeof window.initMaquinasShortcuts === 'function') {
+                    window.initMaquinasShortcuts();
+                }
+
+                // 4. Filtros
+                const filtroInicial = localStorage.getItem('filtroEstadoEtiqueta') ?? 'todos';
+                setTimeout(() => {
+                    if (window.aplicarFiltroEstadoEtiquetas) window.aplicarFiltroEstadoEtiquetas(filtroInicial);
+                }, 500);
+
+                document.body.dataset.maquinasShowPageInit = 'true';
             }
-            document.addEventListener('livewire:navigated', initValidacionPosicionesPlanillasHeader);
+
+            // Registrar en el sistema global
+            window.pageInitializers = window.pageInitializers || [];
+            window.pageInitializers.push(initMaquinasShowPage);
+
+            // Listeners
+            document.addEventListener('livewire:navigated', initMaquinasShowPage);
+            document.addEventListener('DOMContentLoaded', initMaquinasShowPage);
+
+            // Cleanup
+            document.addEventListener('livewire:navigating', () => {
+                document.body.dataset.maquinasShowPageInit = 'false';
+                if (window.maquinasShowHandlers.ctx) {
+                    document.removeEventListener('contextmenu', window.maquinasShowHandlers.ctx, {
+                        capture: true
+                    });
+                }
+                // Shortcuts se limpian en su propia lógica o aquí si tenemos acceso al handler
+                if (window.maquinasShowHandlers.keydown) {
+                    document.removeEventListener('keydown', window.maquinasShowHandlers.keydown);
+                }
+            });
 
             // Función para completar planilla actual
             function completarPlanillaActual() {
@@ -1074,7 +1148,9 @@
                                     'Content-Type': 'application/json',
                                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                                 },
-                                body: JSON.stringify({ posiciones: posiciones }),
+                                body: JSON.stringify({
+                                    posiciones: posiciones
+                                }),
                                 signal: controller.signal
                             })
                             .then(response => {
@@ -1170,7 +1246,9 @@
                                     'Content-Type': 'application/json',
                                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                                 },
-                                body: JSON.stringify({ posiciones: posiciones }),
+                                body: JSON.stringify({
+                                    posiciones: posiciones
+                                }),
                                 signal: controller.signal
                             })
                             .then(response => {
@@ -1226,7 +1304,6 @@
                     }
                 });
             }
-
         </script>
 
         {{-- Script para dibujar figuras de elementos --}}
@@ -1234,96 +1311,83 @@
 
         {{-- Script de atajos de teclado para control de columnas --}}
         <script>
-            (function() {
-                // Estado del header (se guarda en localStorage)
-                let showHeader = JSON.parse(localStorage.getItem('showHeader') ?? 'true');
+            // Definir funciones globalmente para acceso
+            window.showHeader = JSON.parse(localStorage.getItem('showHeader') ?? 'true');
 
-                // Aplicar estado inicial del header
-                function aplicarEstadoHeader() {
-                    const header = document.querySelector('main header.mb-6');
-                    if (header) {
-                        header.style.display = showHeader ? '' : 'none';
-                        header.style.transition = 'all 0.2s ease-in-out';
-                    }
+            window.aplicarEstadoHeader = function() {
+                const header = document.querySelector('main header.mb-6');
+                if (header) {
+                    header.style.display = window.showHeader ? '' : 'none';
+                    header.style.transition = 'all 0.2s ease-in-out';
                 }
+            };
 
-                // Toggle header visibility
-                function toggleHeader() {
-                    showHeader = !showHeader;
-                    localStorage.setItem('showHeader', JSON.stringify(showHeader));
-                    aplicarEstadoHeader();
-                    console.log('🎯 Header:', showHeader ? 'visible' : 'oculto');
-                }
+            window.toggleMaquinaHeader = function() {
+                window.showHeader = !window.showHeader;
+                localStorage.setItem('showHeader', JSON.stringify(window.showHeader));
+                window.aplicarEstadoHeader();
+                console.log('🎯 Header:', window.showHeader ? 'visible' : 'oculto');
+            };
+
+            // Función de inicialización de shortcuts
+            window.initMaquinasShortcuts = function() {
+                window.aplicarEstadoHeader();
 
                 // Listener de teclas de dirección
-                document.addEventListener('keydown', function(e) {
-                    // No activar si el usuario está escribiendo en un input, select o textarea
+                const keydownHandler = function(e) {
+                    // No activar si el usuario está escribiendo
                     const activeElement = document.activeElement;
                     const isTyping = activeElement.tagName === 'INPUT' ||
-                                    activeElement.tagName === 'TEXTAREA' ||
-                                    activeElement.tagName === 'SELECT' ||
-                                    activeElement.isContentEditable;
+                        activeElement.tagName === 'TEXTAREA' ||
+                        activeElement.tagName === 'SELECT' ||
+                        activeElement.isContentEditable;
 
                     if (isTyping) return;
-
-                    // Solo procesar teclas de dirección
                     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
 
-                    e.preventDefault(); // Evitar scroll de página
+                    e.preventDefault();
 
                     switch (e.key) {
                         case 'ArrowLeft':
-                            // Toggle columna izquierda (materia prima)
-                            // Actualizar localStorage PRIMERO para que Alpine.js lea el valor correcto
                             const showLeftActual = JSON.parse(localStorage.getItem('showLeft') ?? 'true');
                             localStorage.setItem('showLeft', JSON.stringify(!showLeftActual));
-                            // Luego disparar evento para que Alpine.js se sincronice
                             window.dispatchEvent(new CustomEvent('toggleLeft'));
                             console.log('⬅️ Columna izquierda:', !showLeftActual ? 'visible' : 'oculta');
                             break;
 
                         case 'ArrowRight':
-                            // Toggle columna derecha (paquetes)
-                            // Actualizar localStorage PRIMERO para que Alpine.js lea el valor correcto
                             const showRightActual = JSON.parse(localStorage.getItem('showRight') ?? 'true');
                             localStorage.setItem('showRight', JSON.stringify(!showRightActual));
-                            // Luego disparar evento para que Alpine.js se sincronice
                             window.dispatchEvent(new CustomEvent('toggleRight'));
                             console.log('➡️ Columna derecha:', !showRightActual ? 'visible' : 'oculta');
                             break;
 
                         case 'ArrowUp':
-                            // Toggle header (nombre máquina, botones reagrupar, etc.)
-                            toggleHeader();
+                            window.toggleMaquinaHeader();
                             break;
 
                         case 'ArrowDown':
-                            // Modo solo: ocultar todo excepto columna central
                             window.dispatchEvent(new CustomEvent('solo'));
                             localStorage.setItem('showLeft', 'false');
                             localStorage.setItem('showRight', 'false');
-                            // También ocultar header
-                            showHeader = false;
+                            window.showHeader = false;
                             localStorage.setItem('showHeader', 'false');
-                            aplicarEstadoHeader();
+                            window.aplicarEstadoHeader();
                             console.log('⬇️ Modo solo: solo columna central visible');
                             break;
                     }
-                });
+                };
 
-                // Aplicar estado del header al cargar
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', aplicarEstadoHeader);
-                } else {
-                    aplicarEstadoHeader();
+                // Remover listener previo si existe para evitar duplicados en re-init
+                if (window.maquinasShowHandlers && window.maquinasShowHandlers.keydown) {
+                    document.removeEventListener('keydown', window.maquinasShowHandlers.keydown);
                 }
 
-                // Re-aplicar después de navegación Livewire
-                document.addEventListener('livewire:navigated', aplicarEstadoHeader);
-
-                // Exponer función para uso externo si es necesario
-                window.toggleMaquinaHeader = toggleHeader;
-            })();
+                // Registrar nuevo
+                window.maquinasShowHandlers = window.maquinasShowHandlers || {};
+                window.maquinasShowHandlers.keydown = keydownHandler;
+                document.addEventListener('keydown', keydownHandler);
+            };
         </script>
 
 </x-app-layout>
