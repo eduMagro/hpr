@@ -6,8 +6,7 @@
             <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <h1 class="text-2xl font-semibold text-gray-900">EPIs por trabajador</h1>
-                    <p class="text-sm text-gray-600 mt-1">Agenda de usuarios con EPIs en posesión (sin detallar en la
-                        lista).</p>
+                    <p class="text-sm text-gray-600 mt-1">Agenda de usuarios con EPIs en posesión.</p>
                 </div>
 
                 <div class="flex gap-2 items-end">
@@ -654,8 +653,6 @@
                                         <input type="file" accept="image/*"
                                             @change="epiCreateFile = $event.target.files?.[0] || null"
                                             class="w-full text-sm" />
-                                        <p class="text-xs text-gray-500 mt-1">Se guarda en `storage/app/public/epis`.
-                                        </p>
                                     </div>
                                     <div class="sm:col-span-6 flex justify-end">
                                         <button type="button"
