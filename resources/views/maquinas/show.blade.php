@@ -373,21 +373,11 @@
                             this.filtroEstado = estado;
                             localStorage.setItem('filtroEstadoEtiqueta', estado);
                             window.dispatchEvent(new CustomEvent('filtroEstadoChanged', { detail: estado }));
-                        },
-                        init() {
-                            // Escuchar eventos de teclado para sincronizar estado visual de botones
-                            window.addEventListener('toggleLeft', () => {
-                                this.showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'true');
-                            });
-                            window.addEventListener('toggleRight', () => {
-                                this.showRight = JSON.parse(localStorage.getItem('showRight') ?? 'true');
-                            });
-                            window.addEventListener('solo', () => {
-                                this.showLeft = false;
-                                this.showRight = false;
-                            });
                         }
-                    }">
+                    }"
+                        @toggle-left.window="showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'true')"
+                        @toggle-right.window="showRight = JSON.parse(localStorage.getItem('showRight') ?? 'true')"
+                        @solo.window="showLeft = false; showRight = false">
                         {{-- Filtros de estado de etiquetas - Select personalizado --}}
                         <div class="relative" x-data="{ open: false }">
                             <button @click="open = !open" @click.away="open = false" type="button"
@@ -613,33 +603,7 @@
                     </div>
                 </div>
 
-                <script>
-                    document.getElementById('select-cambiar-maquina').addEventListener('change', function() {
-                        const overlay = document.getElementById('overlay-cambiar-maquina');
-                        const nombreMaquina = document.getElementById('loader-maquina-nombre');
-                        const hiddenInput = document.getElementById('hidden-nueva-maquina-id');
-                        const select = this;
 
-                        // Guardar valor en campo hidden antes de deshabilitar
-                        hiddenInput.value = select.value;
-
-                        // Obtener nombre de la máquina seleccionada
-                        const selectedOption = select.options[select.selectedIndex];
-                        nombreMaquina.textContent = selectedOption.text;
-
-                        // Activar overlay con animación suave
-                        overlay.classList.add('active');
-
-                        // Deshabilitar select visualmente
-                        select.disabled = true;
-                        select.classList.add('opacity-50');
-
-                        // Enviar formulario después de que se vea la animación
-                        setTimeout(() => {
-                            document.getElementById('form-cambiar-maquina').submit();
-                        }, 300);
-                    });
-                </script>
             </div>
         </div>
     </x-slot>
@@ -690,11 +654,11 @@
 
         <script>
             @if ($maquina->tipo !== 'grua')
-            window.SUGERENCIAS = @json($sugerenciasPorElemento ?? []);
-            window.elementosAgrupadosScript = @json($elementosAgrupadosScript ?? null);
-            window.gruposResumenData = @json($gruposResumen ?? []);
-            window.etiquetasEnGrupos = @json($etiquetasEnGrupos ?? []);
-            window.rutaDividirElemento = "{{ route('elementos.dividir') }}";
+                window.SUGERENCIAS = @json($sugerenciasPorElemento ?? []);
+                window.elementosAgrupadosScript = @json($elementosAgrupadosScript ?? null);
+                window.gruposResumenData = @json($gruposResumen ?? []);
+                window.etiquetasEnGrupos = @json($etiquetasEnGrupos ?? []);
+                window.rutaDividirElemento = "{{ route('elementos.dividir') }}";
             @endif
 
             window.etiquetasData = @json($etiquetasData);
@@ -1335,11 +1299,43 @@
                 console.log('🎯 Header:', window.showHeader ? 'visible' : 'oculto');
             };
 
-            // Función de inicialización de shortcuts
-            window.initMaquinasShortcuts = function() {
+            // Migración a patrón de inicialización SPA Livewire
+            window.initMaquinasShowPage = function() {
+                if (document.body.dataset.maquinasShowPageInit === 'true') return;
+                console.log('Inicializando Maquinas Show Page');
+
+                // 1. Inicializar Header
                 window.aplicarEstadoHeader();
 
-                // Listener de teclas de dirección
+                // 2. Listener para selector de máquina
+                const selectCambiar = document.getElementById('select-cambiar-maquina');
+                const handleChangeMaquina = function() {
+                    const overlay = document.getElementById('overlay-cambiar-maquina');
+                    const nombreMaquina = document.getElementById('loader-maquina-nombre');
+                    const hiddenInput = document.getElementById('hidden-nueva-maquina-id');
+                    const select = this;
+
+                    if (hiddenInput) hiddenInput.value = select.value;
+
+                    const selectedOption = select.options[select.selectedIndex];
+                    if (nombreMaquina) nombreMaquina.textContent = selectedOption.text;
+
+                    if (overlay) overlay.classList.add('active');
+
+                    select.disabled = true;
+                    select.classList.add('opacity-50');
+
+                    setTimeout(() => {
+                        const form = document.getElementById('form-cambiar-maquina');
+                        if (form) form.submit();
+                    }, 300);
+                };
+
+                if (selectCambiar) {
+                    selectCambiar.addEventListener('change', handleChangeMaquina);
+                }
+
+                // 3. Shortcuts de teclado
                 const keydownHandler = function(e) {
                     // No activar si el usuario está escribiendo
                     const activeElement = document.activeElement;
@@ -1384,16 +1380,38 @@
                     }
                 };
 
-                // Remover listener previo si existe para evitar duplicados en re-init
-                if (window.maquinasShowHandlers && window.maquinasShowHandlers.keydown) {
-                    document.removeEventListener('keydown', window.maquinasShowHandlers.keydown);
-                }
-
-                // Registrar nuevo
-                window.maquinasShowHandlers = window.maquinasShowHandlers || {};
-                window.maquinasShowHandlers.keydown = keydownHandler;
                 document.addEventListener('keydown', keydownHandler);
+
+                // --- Cleanup ---
+                document.body.dataset.maquinasShowPageInit = 'true';
+
+                const cleanup = () => {
+                    if (selectCambiar) {
+                        selectCambiar.removeEventListener('change', handleChangeMaquina);
+                    }
+                    document.removeEventListener('keydown', keydownHandler);
+                    document.body.dataset.maquinasShowPageInit = 'false';
+                };
+
+                document.addEventListener('livewire:navigating', cleanup, {
+                    once: true
+                });
             };
+
+            // Registrar en sistema global
+            window.pageInitializers = window.pageInitializers || [];
+            window.pageInitializers.push(window.initMaquinasShowPage);
+
+            // Listeners iniciales
+            if (typeof Livewire !== 'undefined') {
+                document.addEventListener('livewire:navigated', window.initMaquinasShowPage);
+            }
+            document.addEventListener('DOMContentLoaded', window.initMaquinasShowPage);
+
+            // Ejecutar si ya cargó
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                window.initMaquinasShowPage();
+            }
         </script>
 
 </x-app-layout>

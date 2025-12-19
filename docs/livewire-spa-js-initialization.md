@@ -187,6 +187,10 @@ Para mantener consistencia, usar el siguiente patrón:
 -   [x] `resources/views/mapa_paquetes/Mapalocalizaciones.blade.php` ✅ **MIGRADO** (2025-12-19 14:40) (Refactored scripts to named function & cleanups) (URL: `/mapa-paquetes`)
 -   [x] `resources/views/localizaciones/create.blade.php` ✅ **MIGRADO** (2025-12-19 15:10) (Consolidated multiple scripts into initLocalizacionesCreatePage) (URL: `/localizaciones/create`)
 -   [x] `resources/views/alertas/index.blade.php` ✅ **MIGRADO** (2025-12-19 15:00) (Refactored to global window functions and flex toggling) (URL: `/alertas`)
+-   [x] `resources/views/maquinas/index.blade.php` ✅ **MIGRADO** (2025-12-19 15:20) (URL: `/maquinas`)
+-   [x] `resources/views/produccion/cargas-maquinas.blade.php` ✅ **MIGRADO** (2025-12-19 15:25) (URL: `/produccion/cargas-maquinas`)
+-   [x] `resources/views/planificacion/index.blade.php` ✅ **MIGRADO** (2025-12-19 15:30) (URL: `/planificacion`)
+-   [x] `resources/views/maquinas/show.blade.php` ✅ **MIGRADO** (2025-12-19 15:45) (Complex file: encapsulated shortcuts, cleanup listeners, fixed Alpine window bindings) (URL: `/maquinas/{id}`)
 
 ## 🧠 Notas Técnicas y Lecciones Aprendidas (Latest Session)
 
