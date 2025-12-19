@@ -557,7 +557,7 @@
         </div>
 
         <!-- Modal de dibujo -->
-        <div id="modal-dibujo" class="hidden fixed inset-0 flex justify-end items-center pr-96 pointer-events-none"
+        <div id="modal-dibujo" class="hidden fixed inset-0 justify-end items-center pr-96 pointer-events-none"
             wire:ignore @mouseenter="window.mantenerModalAbierto()" @mouseleave="window.cerrarModal()">
             <div
                 class="bg-white rounded-lg p-5 w-3/4 max-w-lg relative pointer-events-auto shadow-lg border border-gray-300">
@@ -588,7 +588,7 @@
         <!-- Vite: elementos-bundle -->
         @vite(['resources/js/elementosJs/elementos-bundle.js'])
         <!-- <script src="{{ asset('js/elementosJs/guardarCambios.js') }}" defer></script>
-                        <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script> -->
+                            <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script> -->
         <script>
             function actualizarCampoElemento(input) {
                 const id = input.dataset.id;

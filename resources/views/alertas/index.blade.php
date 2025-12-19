@@ -198,7 +198,8 @@
                                                 {!! $alerta->mensaje !!}
                                             </p>
                                             @if (strlen($alerta->mensaje_completo) > strlen($alerta->mensaje_corto))
-                                                <span class="text-xs text-blue-600 hover:text-blue-800 font-medium lg:hidden">
+                                                <span
+                                                    class="text-xs text-blue-600 hover:text-blue-800 font-medium lg:hidden">
                                                     Clic para ver completo...
                                                 </span>
                                             @endif
@@ -769,7 +770,7 @@
 
     <!-- Modal de mensaje -->
     <div id="modalVerMensaje"
-        class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-end md:items-center justify-center z-50 transition-opacity duration-300 p-0 md:p-4"
+        class="fixed inset-0 bg-black bg-opacity-60 hidden items-end md:items-center justify-center z-50 transition-opacity duration-300 p-0 md:p-4"
         onclick="cerrarModalMensaje()">
         <div class="bg-white rounded-t-2xl md:rounded-xl shadow-2xl w-full md:max-w-2xl max-h-[90vh] md:max-h-[85vh] overflow-y-auto transform transition-all duration-300"
             onclick="event.stopPropagation()">
@@ -839,8 +840,7 @@
                 </div>
 
                 <!-- Botones de acción -->
-                <div class="flex flex-col sm:flex-row justify-end gap-2 md:gap-3 mt-4 md:mt-6 hidden"
-                    id="botonesEdicion">
+                <div class="flex-col sm:flex-row justify-end gap-2 md:gap-3 mt-4 md:mt-6 hidden" id="botonesEdicion">
                     <button onclick="iniciarEdicionAlerta()"
                         class="inline-flex items-center justify-center px-4 md:px-5 py-2.5 md:py-2.5 bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 text-white font-medium rounded-lg transition-colors duration-150 shadow-md active:scale-95"
                         id="botonEditar">
@@ -851,7 +851,7 @@
                         Editar
                     </button>
 
-                    <div id="botonesGuardarCancelar" class="hidden flex flex-col sm:flex-row gap-2 md:gap-3">
+                    <div id="botonesGuardarCancelar" class="hidden flex-col sm:flex-row gap-2 md:gap-3">
                         <button onclick="guardarEdicionAlerta()"
                             class="inline-flex items-center justify-center px-4 md:px-5 py-2.5 md:py-2.5 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-medium rounded-lg transition-colors duration-150 shadow-md active:scale-95">
                             <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -874,7 +874,7 @@
 
                 <!-- Botones de respuesta (para mensajes entrantes) -->
                 <div id="botonesRespuesta"
-                    class="flex flex-col sm:flex-row justify-end gap-2 md:gap-3 mt-4 md:mt-6 hidden">
+                    class="flex-col sm:flex-row justify-end gap-2 md:gap-3 mt-4 md:mt-6 hidden">
                     <button onclick="activarRespuesta()"
                         class="inline-flex items-center justify-center px-4 md:px-5 py-2.5 md:py-2.5 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-medium rounded-lg transition-colors duration-150 shadow-md active:scale-95"
                         id="botonContestar">
@@ -885,7 +885,7 @@
                         Contestar
                     </button>
 
-                    <div id="botonesEnviarCancelarRespuesta" class="flex flex-col sm:flex-row gap-2 md:gap-3 hidden">
+                    <div id="botonesEnviarCancelarRespuesta" class="flex-col sm:flex-row gap-2 md:gap-3 hidden">
                         <button onclick="cancelarRespuesta()"
                             class="inline-flex items-center justify-center px-4 md:px-5 py-2.5 md:py-2.5 bg-gray-500 hover:bg-gray-600 active:bg-gray-700 text-white font-medium rounded-lg transition-colors duration-150 shadow-md active:scale-95">
                             <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -911,7 +911,7 @@
 
     <!-- Modal Confirmación Cambio de Máquina -->
     <div id="modalConfirmacionCambio"
-        class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-end md:items-center justify-center z-50 transition-opacity duration-300 p-0 md:p-4"
+        class="fixed inset-0 bg-black bg-opacity-60 hidden items-end md:items-center justify-center z-50 transition-opacity duration-300 p-0 md:p-4"
         onclick="cerrarModalConfirmacion()">
         <div class="bg-white rounded-t-2xl md:rounded-xl shadow-2xl w-full md:max-w-md transform transition-all duration-300"
             onclick="event.stopPropagation()">
@@ -997,323 +997,323 @@
         </div>
     </div>
     <script>
-        let nuevasAlertas = [];
+        // Definir la función de inicialización globalmente
+        window.initAlertasIndexPage = function() {
+            // Protección contra doble inicialización
+            if (document.body.dataset.alertasIndexPageInit === 'true') return;
 
-        document.addEventListener("DOMContentLoaded", function() {
+            // Variables globales de estado (reiniciarlas)
+            window.nuevasAlertas = [];
+            window.alertaActualId = null;
+            window.alertaActualEsSaliente = false;
+            window.esMensajeEntrante = false;
+
+            // --- Lógica de inicialización (antes DOMContentLoaded) ---
             // Detectar nuevas alertas tanto en tabla (tr) como en cards (div)
             document.querySelectorAll("tr.bg-yellow-50, div.ring-2.ring-yellow-400").forEach(elemento => {
                 const id = elemento.dataset.alertaId;
-                if (id) nuevasAlertas.push(id);
+                if (id) window.nuevasAlertas.push(id);
             });
-            console.log("Nuevas alertas detectadas:", nuevasAlertas);
+            console.log("Nuevas alertas detectadas (SPA):", window.nuevasAlertas);
 
-            // Cerrar modales con tecla ESC
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    const modalMensaje = document.getElementById('modalVerMensaje');
-                    const modalConfirmacion = document.getElementById('modalConfirmacionCambio');
+            // --- Definición de funciones globales para onclick ---
 
-                    if (modalMensaje && !modalMensaje.classList.contains('hidden')) {
-                        cerrarModalMensaje();
-                    }
-                    if (modalConfirmacion && !modalConfirmacion.classList.contains('hidden')) {
-                        cerrarModalConfirmacion();
-                    }
+            window.cerrarModalMensaje = function() {
+                const modal = document.getElementById('modalVerMensaje');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
                 }
-            });
-        });
-
-        let alertaActualId = null;
-        let alertaActualEsSaliente = false;
-
-        function cerrarModalMensaje() {
-            document.getElementById('modalVerMensaje').classList.add('hidden');
-            document.getElementById('seccionRespuesta').classList.add('hidden');
-            document.getElementById('textoRespuesta').value = '';
-        }
-
-        function eliminarAlerta(alertaId = null) {
-            // Usar el ID pasado como parámetro o el ID actual
-            const idAEliminar = alertaId || alertaActualId;
-
-            if (!idAEliminar) {
-                Swal.fire('Error', 'No se pudo identificar la alerta a eliminar.', 'error');
-                return;
+                const seccion = document.getElementById('seccionRespuesta');
+                if (seccion) seccion.classList.add('hidden');
+                const texto = document.getElementById('textoRespuesta');
+                if (texto) texto.value = '';
             }
 
-            Swal.fire({
-                title: '¿Eliminar mensaje?',
-                text: "Esta acción no se puede deshacer.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#EF4444',
-                cancelButtonColor: '#6B7280',
-                confirmButtonText: 'Sí, eliminar',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch(`/alertas/${idAEliminar}`, {
-                        method: 'DELETE',
+            window.eliminarAlerta = function(alertaId = null) {
+                const idAEliminar = alertaId || window.alertaActualId;
+                if (!idAEliminar) {
+                    Swal.fire('Error', 'No se pudo identificar la alerta a eliminar.', 'error');
+                    return;
+                }
+
+                Swal.fire({
+                    title: '¿Eliminar mensaje?',
+                    text: "Esta acción no se puede deshacer.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#EF4444',
+                    cancelButtonColor: '#6B7280',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(`/alertas/${idAEliminar}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            }
+                        }).then(response => {
+                            if (response.ok) {
+                                Swal.fire({
+                                    title: 'Eliminado',
+                                    text: 'El mensaje fue eliminado correctamente.',
+                                    icon: 'success',
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    // Recargar componente o página
+                                    // window.location.reload(); preferiblemente usar livewire refresh si posible, 
+                                    // pero aquí es DELETE directo.
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire('Error', 'No se pudo eliminar el mensaje.', 'error');
+                            }
+                        }).catch(error => {
+                            Swal.fire('Error', 'Error de conexión al eliminar el mensaje.',
+                                'error');
+                        });
+                    }
+                });
+            }
+
+            window.iniciarEdicionAlerta = function() {
+                document.getElementById('hiloConversacion').classList.add('hidden');
+                document.getElementById('textareaMensaje').classList.remove('hidden');
+                document.getElementById('botonEditar').classList.add('hidden');
+                const btnGuardar = document.getElementById('botonesGuardarCancelar');
+                btnGuardar.classList.remove('hidden');
+                btnGuardar.classList.add('flex');
+            }
+
+            window.cancelarEdicionAlerta = function() {
+                document.getElementById('textareaMensaje').classList.add('hidden');
+                document.getElementById('hiloConversacion').classList.remove('hidden');
+                document.getElementById('botonEditar').classList.remove('hidden');
+                const btnGuardar = document.getElementById('botonesGuardarCancelar');
+                btnGuardar.classList.add('hidden');
+                btnGuardar.classList.remove('flex');
+            }
+
+            window.guardarEdicionAlerta = function() {
+                const nuevoMensaje = document.getElementById('textareaMensaje').value.trim();
+                if (!nuevoMensaje) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Mensaje vacío',
+                        text: 'Debes escribir un mensaje antes de guardar.'
+                    });
+                    return;
+                }
+                window.guardarAlerta({
+                    id: window.alertaActualId,
+                    mensaje: nuevoMensaje
+                });
+            }
+
+            window.guardarAlerta = function(alerta) {
+                fetch(`/alertas/${alerta.id}`, {
+                        method: 'PUT',
                         headers: {
+                            'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        }
-                    }).then(response => {
-                        if (response.ok) {
+                        },
+                        body: JSON.stringify({
+                            mensaje: alerta.mensaje
+                        })
+                    })
+                    .then(async response => {
+                        const data = await response.json().catch(() => ({}));
+                        if (response.ok && data.success) {
                             Swal.fire({
-                                title: 'Eliminado',
-                                text: 'El mensaje fue eliminado correctamente.',
                                 icon: 'success',
+                                title: 'Mensaje actualizado',
                                 timer: 1500,
                                 showConfirmButton: false
                             }).then(() => location.reload());
                         } else {
-                            Swal.fire('Error', 'No se pudo eliminar el mensaje.', 'error');
+                            let mensaje = data.error || 'Error inesperado';
+                            if (typeof mensaje === 'object') {
+                                mensaje = Object.values(mensaje).flat().join('\n');
+                            }
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: mensaje
+                            });
                         }
-                    }).catch(error => {
-                        Swal.fire('Error', 'Error de conexión al eliminar el mensaje.', 'error');
-                    });
-                }
-            });
-        }
-
-        function iniciarEdicionAlerta() {
-            document.getElementById('hiloConversacion').classList.add('hidden');
-            document.getElementById('textareaMensaje').classList.remove('hidden');
-            document.getElementById('botonEditar').classList.add('hidden');
-            document.getElementById('botonesGuardarCancelar').classList.remove('hidden');
-        }
-
-        function cancelarEdicionAlerta() {
-            document.getElementById('textareaMensaje').classList.add('hidden');
-            document.getElementById('hiloConversacion').classList.remove('hidden');
-            document.getElementById('botonEditar').classList.remove('hidden');
-            document.getElementById('botonesGuardarCancelar').classList.add('hidden');
-        }
-
-        function guardarEdicionAlerta() {
-            const nuevoMensaje = document.getElementById('textareaMensaje').value.trim();
-
-            if (!nuevoMensaje) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Mensaje vacío',
-                    text: 'Debes escribir un mensaje antes de guardar.'
-                });
-                return;
-            }
-
-            guardarAlerta({
-                id: alertaActualId,
-                mensaje: nuevoMensaje
-            });
-        }
-
-        function guardarAlerta(alerta) {
-            fetch(`/alertas/${alerta.id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({
-                        mensaje: alerta.mensaje
                     })
-                })
-                .then(async response => {
-                    const data = await response.json().catch(() => ({}));
-                    if (response.ok && data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Mensaje actualizado',
-                            timer: 1500,
-                            showConfirmButton: false
-                        }).then(() => location.reload());
-                    } else {
-                        let mensaje = data.error || 'Error inesperado';
-                        if (typeof mensaje === 'object') {
-                            mensaje = Object.values(mensaje).flat().join('\n');
-                        }
+                    .catch(error => {
                         Swal.fire({
                             icon: 'error',
-                            title: 'Error',
-                            text: mensaje
+                            title: 'Error de conexión',
+                            text: error.message || 'No se pudo actualizar la alerta.'
                         });
-                    }
-                })
-                .catch(error => {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error de conexión',
-                        text: error.message || 'No se pudo actualizar la alerta.'
                     });
-                });
-        }
-
-        function abrirModalAceptarCambio(elementoId, origen, destino, maquinaDestinoId = null, alertaId = null) {
-            document.getElementById('elementoModal').textContent = elementoId;
-            document.getElementById('origenModal').textContent = origen;
-            document.getElementById('destinoModal').textContent = destino;
-            document.getElementById('nueva_maquina_id').value = maquinaDestinoId;
-
-            if (!maquinaDestinoId) {
-                alert("ID de máquina destino no válido");
-                return;
             }
 
-            const form = document.getElementById('formAceptarCambio');
-            form.action = `/elementos/${elementoId}/cambio-maquina?alerta_id=${alertaId}`;
+            window.abrirModalAceptarCambio = function(elementoId, origen, destino, maquinaDestinoId = null, alertaId =
+                null) {
+                document.getElementById('elementoModal').textContent = elementoId;
+                document.getElementById('origenModal').textContent = origen;
+                document.getElementById('destinoModal').textContent = destino;
+                document.getElementById('nueva_maquina_id').value = maquinaDestinoId;
 
-            document.getElementById('modalConfirmacionCambio').classList.remove('hidden');
-        }
+                if (!maquinaDestinoId) {
+                    alert("ID de máquina destino no válido");
+                    return;
+                }
 
-        // Función para ver mensaje completo en modal (desde tabla admin)
-        function verMensajeCompleto(mensaje) {
-            Swal.fire({
-                title: 'Mensaje Completo',
-                html: `<div class="text-left whitespace-pre-wrap text-gray-700 p-4">${mensaje}</div>`,
-                icon: 'info',
-                confirmButtonColor: '#3B82F6',
-                confirmButtonText: 'Cerrar',
-                width: '600px'
-            });
-        }
+                const form = document.getElementById('formAceptarCambio');
+                form.action = `/elementos/${elementoId}/cambio-maquina?alerta_id=${alertaId}`;
 
-        function cerrarModalConfirmacion() {
-            document.getElementById('modalConfirmacionCambio').classList.add('hidden');
-        }
+                const modal = document.getElementById('modalConfirmacionCambio');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
 
-        // Variables globales para el modal
-        let esMensajeEntrante = false;
+            window.verMensajeCompleto = function(mensaje) {
+                Swal.fire({
+                    title: 'Mensaje Completo',
+                    html: `<div class="text-left whitespace-pre-wrap text-gray-700 p-4">${mensaje}</div>`,
+                    icon: 'info',
+                    confirmButtonColor: '#3B82F6',
+                    confirmButtonText: 'Cerrar',
+                    width: '600px'
+                });
+            }
 
-        function marcarAlertaLeida(alertaId, elemento, mensaje, esSaliente) {
-            esMensajeEntrante = !esSaliente;
-            alertaActualId = alertaId;
+            window.cerrarModalConfirmacion = function() {
+                const modal = document.getElementById('modalConfirmacionCambio');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
 
-            // Siempre intentar marcar como leída si es un mensaje entrante
-            // Esto incluye mensajes no leídos y mensajes que fueron marcados como no leídos por nuevas respuestas
-            if (!esSaliente) {
-                const data = new FormData();
-                data.append('_token', '{{ csrf_token() }}');
-                data.append('alerta_ids[]', alertaId);
+            window.marcarAlertaLeida = function(alertaId, elemento, mensaje, esSaliente) {
+                window.esMensajeEntrante = !esSaliente;
+                window.alertaActualId = alertaId;
 
-                fetch("{{ route('alertas.verMarcarLeidas') }}", {
-                        method: 'POST',
-                        body: data
-                    })
-                    .then(res => {
-                        if (!res.ok) {
-                            console.error('Error marcando alerta como leída');
-                        }
-                        return res.json();
-                    })
+                if (!esSaliente) {
+                    const data = new FormData();
+                    data.append('_token', '{{ csrf_token() }}');
+                    data.append('alerta_ids[]', alertaId);
+
+                    fetch("{{ route('alertas.verMarcarLeidas') }}", {
+                            method: 'POST',
+                            body: data
+                        })
+                        .then(res => {
+                            if (!res.ok) console.error('Error marcando alerta como leída');
+                            return res.json();
+                        })
+                        .then(data => {
+                            console.log('Respuesta del servidor:', data);
+                            if (elemento) {
+                                elemento.classList.remove('bg-yellow-50', 'border-l-4', 'border-yellow-400');
+                                elemento.classList.add('bg-white');
+                                const badgeNuevo = elemento.querySelector('.animate-pulse');
+                                if (badgeNuevo) badgeNuevo.remove();
+                            }
+                            actualizarContadorAlertas();
+                        })
+                        .catch(err => console.error('Error en fetch marcarLeida:', err));
+                }
+
+                document.getElementById('textareaMensaje').value = mensaje;
+                cargarHiloConversacion(alertaId);
+
+                const btnEdicion = document.getElementById('botonesEdicion');
+                if (esSaliente) {
+                    btnEdicion.classList.remove('hidden');
+                    btnEdicion.classList.add('flex');
+                } else {
+                    btnEdicion.classList.add('hidden');
+                    btnEdicion.classList.remove('flex');
+                }
+
+                const btnRespuesta = document.getElementById('botonesRespuesta');
+                if (!esSaliente) {
+                    btnRespuesta.classList.remove('hidden');
+                    btnRespuesta.classList.add('flex');
+                } else {
+                    btnRespuesta.classList.add('hidden');
+                    btnRespuesta.classList.remove('flex');
+                }
+
+                document.getElementById('textareaMensaje').classList.add('hidden');
+                document.getElementById('botonEditar').classList.remove('hidden');
+
+                const btnGuardar = document.getElementById('botonesGuardarCancelar');
+                btnGuardar.classList.add('hidden');
+                btnGuardar.classList.remove('flex');
+
+                document.getElementById('seccionRespuesta').classList.add('hidden');
+                document.getElementById('botonContestar').classList.remove('hidden');
+
+                const btnEnvResp = document.getElementById('botonesEnviarCancelarRespuesta');
+                btnEnvResp.classList.add('hidden');
+                btnEnvResp.classList.remove('flex');
+
+                const modal = document.getElementById('modalVerMensaje');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+
+            window.actualizarContadorAlertas = function() {
+                fetch("{{ route('alertas.verSinLeer') }}")
+                    .then(res => res.json())
                     .then(data => {
-                        console.log('Respuesta del servidor:', data);
-
-                        // Quitar visualmente el badge de "Nuevo" sin recargar
-                        elemento.classList.remove('bg-yellow-50', 'border-l-4', 'border-yellow-400');
-                        elemento.classList.add('bg-white');
-                        const badgeNuevo = elemento.querySelector('.animate-pulse');
-                        if (badgeNuevo) {
-                            badgeNuevo.remove();
+                        const badge = document.getElementById('alerta-count');
+                        if (badge) {
+                            if (data.cantidad > 0) {
+                                badge.textContent = data.cantidad;
+                                badge.classList.remove('hidden');
+                            } else {
+                                badge.classList.add('hidden');
+                            }
                         }
-
-                        // Actualizar el contador de alertas sin leer
-                        actualizarContadorAlertas();
                     })
-                    .catch(err => {
-                        console.error('Error en fetch marcarLeida:', err);
-                    });
+                    .catch(err => console.error('Error actualizando contador:', err));
             }
 
-            document.getElementById('textareaMensaje').value = mensaje;
+            window.cargarHiloConversacion = function(alertaId) {
+                fetch(`/alertas/${alertaId}/hilo`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.hilo) {
+                            const hiloContenido = document.getElementById('hiloContenido');
+                            hiloContenido.innerHTML = '';
+                            mostrarMensajePadre(data.hilo);
+                            const totalRespuestas = data.hilo.respuestas ? contarRespuestas(data.hilo
+                                .respuestas) : 0;
+                            const totalMensajes = totalRespuestas + 1;
+                            document.getElementById('contadorRespuestas').textContent =
+                                `${totalMensajes} ${totalMensajes === 1 ? 'mensaje' : 'mensajes'}`;
 
-            // Cargar el hilo de conversación (esto también cargará el mensaje padre)
-            cargarHiloConversacion(alertaId);
-
-            // Mostrar u ocultar los controles según tipo
-            document.getElementById('botonesEdicion').classList.toggle('hidden', !esSaliente);
-            document.getElementById('botonesRespuesta').classList.toggle('hidden', esSaliente);
-            document.getElementById('textareaMensaje').classList.add('hidden');
-            document.getElementById('botonEditar').classList.remove('hidden');
-            document.getElementById('botonesGuardarCancelar').classList.add('hidden');
-
-            // Ocultar sección de respuesta al abrir
-            document.getElementById('seccionRespuesta').classList.add('hidden');
-            document.getElementById('botonContestar').classList.remove('hidden');
-            document.getElementById('botonesEnviarCancelarRespuesta').classList.add('hidden');
-
-            document.getElementById('modalVerMensaje').classList.remove('hidden');
-        }
-
-        // Función para actualizar el contador de alertas en la campanita
-        function actualizarContadorAlertas() {
-            fetch("{{ route('alertas.verSinLeer') }}")
-                .then(res => res.json())
-                .then(data => {
-                    // Actualizar el badge de la campanita en el header
-                    const badge = document.getElementById('alerta-count');
-                    if (badge) {
-                        if (data.cantidad > 0) {
-                            badge.textContent = data.cantidad;
-                            badge.classList.remove('hidden');
-                        } else {
-                            badge.classList.add('hidden');
+                            if (data.hilo.respuestas && data.hilo.respuestas.length > 0) {
+                                mostrarHilo(data.hilo.respuestas, 0);
+                            }
+                            setTimeout(() => {
+                                hiloContenido.scrollTop = hiloContenido.scrollHeight;
+                            }, 100);
                         }
-                    }
-                })
-                .catch(err => {
-                    console.error('Error actualizando contador:', err);
-                });
-        }
+                    })
+                    .catch(error => console.error('Error al cargar hilo:', error));
+            }
 
-        function cargarHiloConversacion(alertaId) {
-            fetch(`/alertas/${alertaId}/hilo`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.hilo) {
-                        const hiloContenido = document.getElementById('hiloContenido');
-                        hiloContenido.innerHTML = '';
+            window.mostrarMensajePadre = function(mensaje) {
+                const hiloContenido = document.getElementById('hiloContenido');
+                const esPropio = mensaje.es_propio;
+                const alineacion = esPropio ? 'justify-end' : 'justify-start';
+                const bgColor = esPropio ? 'bg-blue-500' : 'bg-green-500';
+                const textColor = 'text-white';
+                const borderRadius = esPropio ? 'rounded-l-2xl rounded-tr-2xl rounded-br-md' :
+                    'rounded-r-2xl rounded-tl-2xl rounded-bl-md';
 
-                        // Insertar el mensaje padre DENTRO del historial
-                        mostrarMensajePadre(data.hilo);
-
-                        // Contar total de respuestas (recursivo)
-                        const totalRespuestas = data.hilo.respuestas ? contarRespuestas(data.hilo.respuestas) : 0;
-
-                        // Actualizar contador (mensaje original + respuestas)
-                        const totalMensajes = totalRespuestas + 1;
-                        document.getElementById('contadorRespuestas').textContent =
-                            `${totalMensajes} ${totalMensajes === 1 ? 'mensaje' : 'mensajes'}`;
-
-                        // Si hay respuestas, mostrarlas después del mensaje padre
-                        if (data.hilo.respuestas && data.hilo.respuestas.length > 0) {
-                            mostrarHilo(data.hilo.respuestas, 0);
-                        }
-
-                        // Scroll al final para ver el mensaje más reciente
-                        setTimeout(() => {
-                            hiloContenido.scrollTop = hiloContenido.scrollHeight;
-                        }, 100);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error al cargar hilo:', error);
-                });
-        }
-
-        function mostrarMensajePadre(mensaje) {
-            const hiloContenido = document.getElementById('hiloContenido');
-            const esPropio = mensaje.es_propio;
-
-            // Estilo chat - Mensajes propios a la derecha (azul), ajenos a la izquierda (verde)
-            const alineacion = esPropio ? 'justify-end' : 'justify-start';
-            const bgColor = esPropio ? 'bg-blue-500' : 'bg-green-500';
-            const textColor = 'text-white';
-            const borderRadius = esPropio ? 'rounded-l-2xl rounded-tr-2xl rounded-br-md' : 'rounded-r-2xl rounded-tl-2xl rounded-bl-md';
-
-            const mensajeDiv = document.createElement('div');
-            mensajeDiv.className = `flex ${alineacion} mb-4 animate-fade-in`;
-            mensajeDiv.innerHTML = `
+                const mensajeDiv = document.createElement('div');
+                mensajeDiv.className = `flex ${alineacion} mb-4 animate-fade-in`;
+                mensajeDiv.innerHTML = `
                 <div class="flex flex-col max-w-[75%]">
                     <div class="${bgColor} ${textColor} ${borderRadius} px-4 py-3 shadow-md">
                         <div class="flex items-center gap-2 mb-1">
@@ -1327,34 +1327,33 @@
                     <span class="text-xs text-gray-500 mt-1 ${esPropio ? 'text-right' : 'text-left'} px-2">${mensaje.created_at}</span>
                 </div>
             `;
+                hiloContenido.appendChild(mensajeDiv);
+            }
 
-            hiloContenido.appendChild(mensajeDiv);
-        }
+            window.contarRespuestas = function(respuestas) {
+                let total = respuestas.length;
+                respuestas.forEach(respuesta => {
+                    if (respuesta.respuestas && respuesta.respuestas.length > 0) {
+                        total += contarRespuestas(respuesta.respuestas);
+                    }
+                });
+                return total;
+            }
 
-        function contarRespuestas(respuestas) {
-            let total = respuestas.length;
-            respuestas.forEach(respuesta => {
-                if (respuesta.respuestas && respuesta.respuestas.length > 0) {
-                    total += contarRespuestas(respuesta.respuestas);
-                }
-            });
-            return total;
-        }
+            window.mostrarMensajeEnHilo = function(mensaje, nivel, esRaiz = false) {
+                const hiloContenido = document.getElementById('hiloContenido');
+                const margenIzquierdo = nivel * 20;
+                const esPropio = mensaje.es_propio;
+                const colorBorde = esPropio ? 'border-blue-500' : 'border-green-500';
+                const colorFondo = esPropio ? 'bg-blue-50' : 'bg-green-50';
+                const etiquetaRaiz = esRaiz ?
+                    '<span class="ml-2 px-2 py-0.5 bg-gray-200 text-gray-700 text-xs rounded-full font-medium">Mensaje original</span>' :
+                    '';
 
-        function mostrarMensajeEnHilo(mensaje, nivel, esRaiz = false) {
-            const hiloContenido = document.getElementById('hiloContenido');
-            const margenIzquierdo = nivel * 20;
-            const esPropio = mensaje.es_propio;
-            const colorBorde = esPropio ? 'border-blue-500' : 'border-green-500';
-            const colorFondo = esPropio ? 'bg-blue-50' : 'bg-green-50';
-            const etiquetaRaiz = esRaiz ?
-                '<span class="ml-2 px-2 py-0.5 bg-gray-200 text-gray-700 text-xs rounded-full font-medium">Mensaje original</span>' :
-                '';
-
-            const mensajeDiv = document.createElement('div');
-            mensajeDiv.className = `border-l-4 ${colorBorde} ${colorFondo} rounded-r-lg p-3 mb-2 shadow-sm`;
-            mensajeDiv.style.marginLeft = `${margenIzquierdo}px`;
-            mensajeDiv.innerHTML = `
+                const mensajeDiv = document.createElement('div');
+                mensajeDiv.className = `border-l-4 ${colorBorde} ${colorFondo} rounded-r-lg p-3 mb-2 shadow-sm`;
+                mensajeDiv.style.marginLeft = `${margenIzquierdo}px`;
+                mensajeDiv.innerHTML = `
                 <div class="flex items-start justify-between mb-1">
                     <p class="text-xs font-bold ${esPropio ? 'text-blue-700' : 'text-green-700'}">
                         ${mensaje.emisor}${etiquetaRaiz}
@@ -1363,27 +1362,24 @@
                 </div>
                 <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">${mensaje.mensaje}</p>
             `;
+                hiloContenido.appendChild(mensajeDiv);
+            }
 
-            hiloContenido.appendChild(mensajeDiv);
-        }
+            window.mostrarHilo = function(respuestas, nivel = 0) {
+                const hiloContenido = document.getElementById('hiloContenido');
+                respuestas.forEach(respuesta => {
+                    const esPropio = respuesta.es_propio;
+                    const alineacion = esPropio ? 'justify-end' : 'justify-start';
+                    const bgColor = esPropio ? 'bg-blue-500' : 'bg-green-500';
+                    const textColor = 'text-white';
+                    const borderRadius = esPropio ? 'rounded-l-2xl rounded-tr-2xl rounded-br-md' :
+                        'rounded-r-2xl rounded-tl-2xl rounded-bl-md';
 
-        function mostrarHilo(respuestas, nivel = 0) {
-            const hiloContenido = document.getElementById('hiloContenido');
+                    const respuestaDiv = document.createElement('div');
+                    respuestaDiv.className = `flex ${alineacion} mb-3 animate-fade-in`;
+                    respuestaDiv.style.marginLeft = `${nivel * 12}px`;
 
-            respuestas.forEach(respuesta => {
-                const esPropio = respuesta.es_propio;
-
-                // Estilo chat - Mensajes propios a la derecha (azul), ajenos a la izquierda (verde)
-                const alineacion = esPropio ? 'justify-end' : 'justify-start';
-                const bgColor = esPropio ? 'bg-blue-500' : 'bg-green-500';
-                const textColor = 'text-white';
-                const borderRadius = esPropio ? 'rounded-l-2xl rounded-tr-2xl rounded-br-md' : 'rounded-r-2xl rounded-tl-2xl rounded-bl-md';
-
-                const respuestaDiv = document.createElement('div');
-                respuestaDiv.className = `flex ${alineacion} mb-3 animate-fade-in`;
-                respuestaDiv.style.marginLeft = `${nivel * 12}px`;
-
-                respuestaDiv.innerHTML = `
+                    respuestaDiv.innerHTML = `
                     <div class="flex flex-col max-w-[75%]">
                         <div class="${bgColor} ${textColor} ${borderRadius} px-4 py-2.5 shadow-md hover:shadow-lg transition-shadow">
                             <div class="flex items-center gap-2 mb-1">
@@ -1394,94 +1390,136 @@
                         <span class="text-xs text-gray-500 mt-1 ${esPropio ? 'text-right' : 'text-left'} px-2">${respuesta.created_at}</span>
                     </div>
                 `;
+                    hiloContenido.appendChild(respuestaDiv);
 
-                hiloContenido.appendChild(respuestaDiv);
-
-                // Recursivamente mostrar respuestas anidadas
-                if (respuesta.respuestas && respuesta.respuestas.length > 0) {
-                    mostrarHilo(respuesta.respuestas, nivel + 1);
-                }
-            });
-        }
-
-        function activarRespuesta() {
-            document.getElementById('seccionRespuesta').classList.remove('hidden');
-            document.getElementById('botonContestar').classList.add('hidden');
-            document.getElementById('botonesEnviarCancelarRespuesta').classList.remove('hidden');
-            document.getElementById('textoRespuesta').focus();
-        }
-
-        function cancelarRespuesta() {
-            document.getElementById('seccionRespuesta').classList.add('hidden');
-            document.getElementById('botonContestar').classList.remove('hidden');
-            document.getElementById('botonesEnviarCancelarRespuesta').classList.add('hidden');
-            document.getElementById('textoRespuesta').value = '';
-        }
-
-        function enviarRespuesta() {
-            const mensajeRespuesta = document.getElementById('textoRespuesta').value.trim();
-
-            if (!mensajeRespuesta) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Mensaje vacío',
-                    text: 'Debes escribir una respuesta antes de enviar.'
+                    if (respuesta.respuestas && respuesta.respuestas.length > 0) {
+                        mostrarHilo(respuesta.respuestas, nivel + 1);
+                    }
                 });
-                return;
             }
 
-            const datos = {
-                mensaje: mensajeRespuesta,
-                parent_id: alertaActualId
-            };
+            window.activarRespuesta = function() {
+                document.getElementById('seccionRespuesta').classList.remove('hidden');
+                document.getElementById('botonContestar').classList.add('hidden');
 
-            fetch("{{ route('alertas.store') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify(datos)
-                })
-                .then(async response => {
-                    const contentType = response.headers.get('content-type');
-                    if (!contentType || !contentType.includes('application/json')) {
-                        const text = await response.text();
-                        console.error('Respuesta no es JSON:', text.substring(0, 500));
-                        throw new Error('La respuesta del servidor no es JSON válido');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Respuesta enviada',
-                            text: data.message || 'Tu respuesta ha sido enviada correctamente',
-                            timer: 1500,
-                            showConfirmButton: false
-                        }).then(() => {
-                            cerrarModalMensaje();
-                            location.reload();
-                        });
-                    } else {
+                const btnEnvResp = document.getElementById('botonesEnviarCancelarRespuesta');
+                btnEnvResp.classList.remove('hidden');
+                btnEnvResp.classList.add('flex');
+
+                document.getElementById('textoRespuesta').focus();
+            }
+
+            window.cancelarRespuesta = function() {
+                document.getElementById('seccionRespuesta').classList.add('hidden');
+                document.getElementById('botonContestar').classList.remove('hidden');
+
+                const btnEnvResp = document.getElementById('botonesEnviarCancelarRespuesta');
+                btnEnvResp.classList.add('hidden');
+                btnEnvResp.classList.remove('flex');
+
+                document.getElementById('textoRespuesta').value = '';
+            }
+
+            window.enviarRespuesta = function() {
+                const mensajeRespuesta = document.getElementById('textoRespuesta').value.trim();
+                if (!mensajeRespuesta) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Mensaje vacío',
+                        text: 'Debes escribir una respuesta antes de enviar.'
+                    });
+                    return;
+                }
+
+                const datos = {
+                    mensaje: mensajeRespuesta,
+                    parent_id: window.alertaActualId
+                };
+
+                fetch("{{ route('alertas.store') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify(datos)
+                    })
+                    .then(async response => {
+                        const contentType = response.headers.get('content-type');
+                        if (!contentType || !contentType.includes('application/json')) {
+                            const text = await response.text();
+                            console.error('Respuesta no es JSON:', text.substring(0, 500));
+                            throw new Error('La respuesta del servidor no es JSON válido');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Respuesta enviada',
+                                text: data.message || 'Tu respuesta ha sido enviada correctamente',
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => {
+                                cerrarModalMensaje();
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'No se pudo enviar la respuesta'
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error completo:', error);
                         Swal.fire({
                             icon: 'error',
-                            title: 'Error',
-                            text: data.message || 'No se pudo enviar la respuesta'
+                            title: 'Error de conexión',
+                            text: error.message || 'No se pudo enviar la respuesta. Intenta de nuevo.'
                         });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error completo:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error de conexión',
-                        text: error.message || 'No se pudo enviar la respuesta. Intenta de nuevo.'
                     });
-                });
+            }
+
+            // Manejador de evento ESC (local)
+            const handleEscKey = function(e) {
+                if (e.key === 'Escape') {
+                    const modalMensaje = document.getElementById('modalVerMensaje');
+                    const modalConfirmacion = document.getElementById('modalConfirmacionCambio');
+
+                    if (modalMensaje && !modalMensaje.classList.contains('hidden')) {
+                        cerrarModalMensaje();
+                    }
+                    if (modalConfirmacion && !modalConfirmacion.classList.contains('hidden')) {
+                        cerrarModalConfirmacion();
+                    }
+                }
+            };
+
+            document.addEventListener('keydown', handleEscKey);
+
+            // Cleanup
+            window.pageInitializers = window.pageInitializers || [];
+            window.pageInitializers.push(() => {
+                document.body.dataset.alertasIndexPageInit = 'false';
+                document.removeEventListener('keydown', handleEscKey);
+            });
+
+            // Marcar inicialización completa
+            document.body.dataset.alertasIndexPageInit = 'true';
+        };
+
+        // Eliminar listener previo
+        if (window.initAlertasIndexPage) {
+            document.removeEventListener('livewire:navigated', window.initAlertasIndexPage);
         }
+
+        // Registrar y ejecutar
+        window.initAlertasIndexPage();
+        document.addEventListener('livewire:navigated', window.initAlertasIndexPage);
     </script>
     <style>
         /* Animación para mensajes estilo chat */
@@ -1490,6 +1528,7 @@
                 opacity: 0;
                 transform: translateY(10px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
