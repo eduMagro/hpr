@@ -163,16 +163,16 @@ class VacacionesController extends Controller
             // 1) Validación (si falla lanza ValidationException con 422 automáticamente)
             $validated = $request->validate([
                 'fecha_inicio' => 'required|date',
-                'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
+                'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
             ]);
 
             // 2) Crear la solicitud dentro de una transacción
             $solicitud = DB::transaction(function () use ($validated) {
                 return \App\Models\VacacionesSolicitud::create([
-                    'user_id'      => auth()->id(),
+                    'user_id' => auth()->id(),
                     'fecha_inicio' => $validated['fecha_inicio'],
-                    'fecha_fin'    => $validated['fecha_fin'],
-                    'estado'       => 'pendiente',
+                    'fecha_fin' => $validated['fecha_fin'],
+                    'estado' => 'pendiente',
                 ]);
             });
 
@@ -183,35 +183,35 @@ class VacacionesController extends Controller
 
                 if ($rrhh) {
                     \App\Models\Alerta::create([
-                        'user_id_1'      => auth()->id(),
+                        'user_id_1' => auth()->id(),
                         'destinatario_id' => $rrhh->id,
-                        'mensaje'        => auth()->user()->name . ' ha solicitado vacaciones del ' .
+                        'mensaje' => auth()->user()->name . ' ha solicitado vacaciones del ' .
                             $validated['fecha_inicio'] . ' al ' . $validated['fecha_fin'],
-                        'tipo'           => 'vacaciones',
-                        'created_at'     => now(),
-                        'updated_at'     => now(),
+                        'tipo' => 'vacaciones',
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ]);
                     $alertaEnviada = true;
                 } else {
                     Log::warning('RRHH no encontrado para alerta de vacaciones.', [
                         'email_rrhh' => 'josemanuel.amuedo@pacoreyes.com',
-                        'user_id'    => auth()->id(),
+                        'user_id' => auth()->id(),
                         'solicitud_id' => $solicitud->id ?? null,
                     ]);
                 }
             } catch (Throwable $e) {
                 // No rompemos la solicitud si falla la alerta
                 Log::warning('Fallo creando la alerta de RRHH para vacaciones.', [
-                    'error'        => $e->getMessage(),
-                    'user_id'      => auth()->id(),
+                    'error' => $e->getMessage(),
+                    'user_id' => auth()->id(),
                     'solicitud_id' => $solicitud->id ?? null,
                 ]);
             }
 
             // 4) Respuesta OK
             return response()->json([
-                'success'        => 'Solicitud registrada correctamente.',
-                'solicitud_id'   => $solicitud->id,
+                'success' => 'Solicitud registrada correctamente.',
+                'solicitud_id' => $solicitud->id,
                 'alerta_enviada' => $alertaEnviada,
             ], 201);
         } catch (ValidationException $e) {
@@ -220,8 +220,8 @@ class VacacionesController extends Controller
         } catch (Throwable $e) {
             // Cualquier otro error inesperado
             Log::error('Error al registrar la solicitud de vacaciones.', [
-                'error'   => $e->getMessage(),
-                'trace'   => $e->getTraceAsString(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'user_id' => auth()->id(),
                 'payload' => $request->only(['fecha_inicio', 'fecha_fin']),
             ]);
@@ -264,7 +264,7 @@ class VacacionesController extends Controller
             }
         }
 
-        $tope = $user->vacaciones_totales ?? 22;
+        $tope = $user->vacaciones_correspondientes;
 
         if (($diasYaAsignados + $diasNuevos) > $tope) {
             return redirect()->back()->with('error', "No se puede aprobar la solicitud. El usuario ya tiene {$diasYaAsignados} días asignados y esta solicitud añade {$diasNuevos}, superando el tope de {$tope} días.");
@@ -280,7 +280,7 @@ class VacacionesController extends Controller
 
             $asignacion = AsignacionTurno::firstOrNew([
                 'user_id' => $user->id,
-                'fecha'   => $fechaStr,
+                'fecha' => $fechaStr,
             ]);
 
             $estadoAnterior = $asignacion->estado;
@@ -298,12 +298,12 @@ class VacacionesController extends Controller
 
         // ✔️ Alerta
         Alerta::create([
-            'user_id_1'       => auth()->id(),
+            'user_id_1' => auth()->id(),
             'destinatario_id' => $user->id,
-            'mensaje'         => "Tus vacaciones del {$solicitud->fecha_inicio} al {$solicitud->fecha_fin} han sido aprobadas.",
-            'tipo'            => 'vacaciones',
-            'created_at'      => now(),
-            'updated_at'      => now(),
+            'mensaje' => "Tus vacaciones del {$solicitud->fecha_inicio} al {$solicitud->fecha_fin} han sido aprobadas.",
+            'tipo' => 'vacaciones',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         return redirect()->back()->with('success', "Solicitud aprobada. Se asignaron {$diasNuevos} días de vacaciones.");
@@ -319,12 +319,12 @@ class VacacionesController extends Controller
 
         // 🛑 Alerta al trabajador
         Alerta::create([
-            'user_id_1'       => auth()->id(), // quien deniega
+            'user_id_1' => auth()->id(), // quien deniega
             'destinatario_id' => $user->id,    // quien recibe
-            'mensaje'         => "Tu solicitud de vacaciones del {$solicitud->fecha_inicio} al {$solicitud->fecha_fin} ha sido denegada.",
-            'tipo'            => 'vacaciones',
-            'created_at'      => now(),
-            'updated_at'      => now(),
+            'mensaje' => "Tu solicitud de vacaciones del {$solicitud->fecha_inicio} al {$solicitud->fecha_fin} ha sido denegada.",
+            'tipo' => 'vacaciones',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         return redirect()->back()->with('success', 'Solicitud denegada y alerta enviada.');
@@ -486,14 +486,14 @@ class VacacionesController extends Controller
             ->pluck('total_vacaciones', 'user_id');
 
         $resultado = $usuarios->map(function ($user) use ($vacacionesPorUsuario) {
-            $tope = $user->vacaciones_totales ?? 22;
+            $tope = $user->vacaciones_correspondientes;
             $usadas = $vacacionesPorUsuario[$user->id] ?? 0;
             return [
                 'id' => $user->id,
                 'nombre_completo' => $user->nombre_completo,
                 'vacaciones_usadas' => $usadas,
                 'vacaciones_totales' => $tope,
-                'vacaciones_restantes' => $tope - $usadas,
+                'vacaciones_restantes' => max(0, $tope - $usadas),
             ];
         });
 
@@ -550,7 +550,7 @@ class VacacionesController extends Controller
                 ], 400);
             }
 
-            $tope = $user->vacaciones_totales ?? 22;
+            $tope = $user->vacaciones_correspondientes;
             if (($diasYaAsignados + $diasNuevos) > $tope) {
                 return response()->json([
                     'error' => "El usuario ya tiene {$diasYaAsignados} días asignados. Añadir {$diasNuevos} días supera el tope de {$tope}."

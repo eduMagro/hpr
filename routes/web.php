@@ -3,6 +3,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DocumentoEmpleadoController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PapeleraController;
 use App\Http\Controllers\VacacionesController;
@@ -282,6 +283,13 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         return response()->file($path); // envía con Content-Type correcto
     })->name('usuarios.imagen');
     Route::get('/mi-perfil/{user}', [PerfilController::class, 'show'])->name('usuarios.show');
+
+    // === DOCUMENTOS EMPLEADO ===
+    Route::post('/documentos-empleado/{user}', [DocumentoEmpleadoController::class, 'store'])->name('documentos-empleado.store');
+    Route::delete('/documentos-empleado/{documento}', [DocumentoEmpleadoController::class, 'destroy'])->name('documentos-empleado.destroy');
+    Route::get('/documentos-empleado/{documento}/descargar', [DocumentoEmpleadoController::class, 'download'])->name('documentos-empleado.download');
+    Route::post('/usuarios/{user}/fecha-incorporacion', [DocumentoEmpleadoController::class, 'updateFechaIncorporacion'])->name('usuarios.updateFechaIncorporacion');
+    Route::get('/api/usuarios/{user}/documentos', [DocumentoEmpleadoController::class, 'index'])->name('api.usuarios.documentos');
 
     // Rutas específicas de vacaciones (DEBEN ir ANTES del resource)
     Route::get('/vacaciones/usuarios-con-vacaciones', [VacacionesController::class, 'usuariosConVacaciones'])->name('vacaciones.usuariosConVacaciones');
@@ -817,4 +825,4 @@ Route::post('/incorporacion/{token}', [\App\Http\Controllers\IncorporacionPublic
 require __DIR__ . '/auth.php';
 
 // DEBUG STOCK
-require __DIR__.'/debug-stock.php';
+require __DIR__ . '/debug-stock.php';
