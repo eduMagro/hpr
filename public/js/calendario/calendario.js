@@ -107,6 +107,15 @@
             turnos = [], // opcional
             userId = null,
         } = cfg;
+        
+        let {
+            fechaIncorporacion = null,
+            diasVacacionesAsignados = 0,
+        } = cfg;
+
+        if (typeof fechaIncorporacion === 'undefined') fechaIncorporacion = null; // Safety check
+        
+        console.log('🔧 Config Calendario:', { userId, permissions, fechaIncorporacion, diasVacacionesAsignados });
 
         // Estado de selección “clic-clic”
         let startClick = null;
@@ -142,7 +151,17 @@
             });
         }
 
+        function clearVacationBadges() {
+            // Limpiar modal INFERIOR
+            const modal = document.getElementById('vacation-bottom-modal');
+            if (modal) {
+                modal.classList.remove('translate-y-0');
+                modal.classList.add('translate-y-full');
+            }
+        }
+
         function clearTempHighlight(calendar) {
+            clearVacationBadges(); 
             if (!hoverDayEvs.length) return;
             calendar.batchRendering(() =>
                 hoverDayEvs.forEach((ev) => ev.remove())
@@ -643,8 +662,71 @@
                 if (!startClick) {
                     startClick = clicked;
                     updateTempHighlight(calendar, clicked, clicked); // pinta sólo ese día
-                    return;
-                }
+
+                // --- AJAX Fetch para datos frescos ---
+                const fetchUrl = routes.vacationDataUrl || `/api/usuarios/${userId}/vacation-data`;
+                fetch(fetchUrl)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.error) throw new Error(data.error);
+                        
+                        // Actualizar vars locales
+                        fechaIncorporacion = data.fecha_incorporacion;
+                        diasVacacionesAsignados = data.dias_asignados;
+
+                        // --- Cálculo de vacaciones estimadas ---
+                        if (fechaIncorporacion) {
+                            const incorpDate = new Date(fechaIncorporacion);
+                            const clickDate = new Date(clicked);
+                            
+                            // Solo si fecha click >= fecha incorporación
+                            if (clickDate >= incorpDate) {
+                                const diffTime = Math.abs(clickDate - incorpDate);
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                                
+                                // 2.5 días por mes (30 días)
+                                const generadas = (diffDays / 30) * 2.5;
+                                const disponibles = generadas - diasVacacionesAsignados;
+
+                                console.log('🏖️ Cálculo Vacaciones:', {
+                                    incorpDate,
+                                    clickDate,
+                                    diffDays,
+                                    generadas,
+                                    diasVacacionesAsignados,
+                                    disponibles
+                                });
+
+                                // Actualizar modal INFERIOR
+                                const modal = document.getElementById('vacation-bottom-modal');
+                                const content = document.getElementById('vacation-bottom-content');
+                                
+                                if (modal && content) {
+                                    // Resetear clases por si acaso
+                                    modal.classList.remove('translate-y-full');
+                                    modal.classList.add('translate-y-0');
+                                    
+                                    const colorClass = disponibles >= 0 ? 'text-green-400' : 'text-red-400';
+                                    content.innerHTML = `
+                                        <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm">
+                                            <span class="text-gray-400">
+                                                (Generadas: ${generadas.toFixed(0)} - Usadas: ${diasVacacionesAsignados})
+                                            </span>
+                                            <span class="${colorClass} font-bold text-lg">
+                                                ${disponibles.toFixed(0)} días disponibles
+                                            </span>
+                                        </div>
+                                    `;
+                                } else {
+                                    console.error('❌ Modal de vacaciones no encontrado en el DOM (vacation-bottom-modal)');
+                                }
+                            }
+                        }
+                    })
+                    .catch(e => console.error("Error fetching vacation data:", e));
+
+                return;
+            }
 
                 // ✅ segundo clic en el mismo día → seleccionar 1 solo día
                 if (clicked === startClick) {
@@ -791,6 +873,7 @@
             if (ev.key === "Escape" && startClick) {
                 startClick = null;
                 clearTempHighlight(calendar);
+                // clearVacationBadges() is already called inside clearTempHighlight
             }
         });
 

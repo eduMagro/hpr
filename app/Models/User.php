@@ -79,6 +79,7 @@ class User extends Authenticatable
         'password' => 'hashed',
         'puede_usar_asistente' => 'boolean',
         'puede_modificar_bd' => 'boolean',
+        'fecha_incorporacion' => 'date',
     ];
     public function getRutaImagenAttribute()
     {
@@ -105,6 +106,11 @@ class User extends Authenticatable
         return trim("{$this->name} {$this->primer_apellido} {$this->segundo_apellido}");
     }
 
+    public function getFechaIncorporacionEfectivaAttribute()
+    {
+        return $this->incorporacion?->fecha_incorporacion ?? $this->fecha_incorporacion;
+    }
+
     /**
      * Calcular días de vacaciones correspondientes al año actual
      * basado en la fecha de incorporación.
@@ -118,12 +124,14 @@ class User extends Authenticatable
 
         $diasPorAnio = 22; // Base estándar
 
-        // 2. Si no hay fecha de incorporación, asumimos año completo
-        if (!$this->fecha_incorporacion) {
+        // 2. Determinar la fecha de incorporación efectiva
+        $inicio = $this->fecha_incorporacion_efectiva;
+
+        // Si no hay fecha de incorporación, asumimos año completo
+        if (!$inicio) {
             return $diasPorAnio;
         }
 
-        $inicio = $this->fecha_incorporacion;
         $now = now();
         $finAnio = $now->copy()->endOfYear();
 

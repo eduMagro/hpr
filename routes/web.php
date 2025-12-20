@@ -285,6 +285,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/mi-perfil/{user}', [PerfilController::class, 'show'])->name('usuarios.show');
 
     // === DOCUMENTOS EMPLEADO ===
+    Route::get('/api/usuarios/{user}/vacation-data', [ProfileController::class, 'getVacationData'])->name('usuarios.getVacationData');
     Route::post('/documentos-empleado/{user}', [DocumentoEmpleadoController::class, 'store'])->name('documentos-empleado.store');
     Route::delete('/documentos-empleado/{documento}', [DocumentoEmpleadoController::class, 'destroy'])->name('documentos-empleado.destroy');
     Route::get('/documentos-empleado/{documento}/descargar', [DocumentoEmpleadoController::class, 'download'])->name('documentos-empleado.download');
@@ -785,6 +786,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->parameters(['incorporaciones' => 'incorporacion']);
     Route::post('/incorporaciones/{incorporacion}/subir-documento', [\App\Http\Controllers\IncorporacionController::class, 'subirDocumento'])
         ->name('incorporaciones.crearSubirDocumento');
+    Route::post('/incorporaciones/{incorporacion}/update-fecha', [\App\Http\Controllers\IncorporacionController::class, 'updateFechaIncorporacion'])
+        ->name('incorporaciones.updateFecha');
     Route::delete('/incorporaciones/{incorporacion}/documento/{tipo}', [\App\Http\Controllers\IncorporacionController::class, 'eliminarDocumento'])
         ->name('incorporaciones.eliminarDocumento');
     Route::post('/incorporaciones/{incorporacion}/cambiar-estado', [\App\Http\Controllers\IncorporacionController::class, 'cambiarEstado'])
@@ -811,6 +814,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->name('incorporaciones.editarResubirArchivo');
     Route::post('/incorporaciones/{incorporacion}/actualizar-campo', [\App\Http\Controllers\IncorporacionController::class, 'actualizarCampo'])
         ->name('incorporaciones.editarActualizarCampo');
+    Route::get('/api/users/buscar-para-incorporacion', [\App\Http\Controllers\IncorporacionController::class, 'buscarUsuarios'])
+        ->name('incorporaciones.buscarUsuarios');
     Route::get('/mi-contrato/descargar', [\App\Http\Controllers\IncorporacionController::class, 'descargarMiContrato'])
         ->name('incorporaciones.descargarMiContrato');
 });

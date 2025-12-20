@@ -18,7 +18,7 @@
     <div class="max-w-7xl mx-auto">
 
         {{-- Header con banner degradado --}}
-        <div class="bg-gray-900 dark:bg-gray-950 rounded-2xl sm:rounded-3xl shadow-2xl mb-8 overflow-visible relative">
+        <div class="bg-gray-900 dark:bg-gray-950 rounded sm:rounded-3xl shadow-2xl mb-8 overflow-visible relative">
             <div
                 class="relative bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm rounded-2xl sm:rounded-3xl">
                 <div class="absolute inset-0 bg-black/10 rounded-2xl sm:rounded-3xl"></div>
@@ -256,6 +256,28 @@
                 </div>
             @endif
 
+            {{-- Contratos y Documentos (Solo Oficina) --}}
+            @if (auth()->check() && auth()->user()->rol === 'oficina')
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <button @click="$dispatch('open-docs-modal')"
+                        class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
+                        <div class="flex items-center gap-2">
+                            <div class="bg-blue-100 rounded-lg p-1.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">Contratos y Documentos</span>
+                        </div>
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+            @endif
+
             {{-- Solicitar nómina --}}
             @if (auth()->check() && auth()->id() === $user->id)
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -310,17 +332,23 @@
 
                 {{-- Descargar Contrato --}}
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <button @click="seccionContrato = !seccionContrato" class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
+                    <button @click="seccionContrato = !seccionContrato"
+                        class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
                         <div class="flex items-center gap-2">
                             <div class="bg-indigo-100 rounded-lg p-1.5">
-                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                             </div>
                             <span class="text-sm font-semibold text-gray-900">Descargar Contrato</span>
                         </div>
-                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': seccionContrato }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
+                            :class="{ 'rotate-180': seccionContrato }" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
                         </svg>
                     </button>
                     <div x-cloak x-show="seccionContrato" x-collapse>
@@ -331,7 +359,8 @@
                             <a href="{{ route('incorporaciones.descargarMiContrato') }}"
                                 class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                                 Descargar PDF
                             </a>
