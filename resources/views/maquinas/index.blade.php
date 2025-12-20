@@ -24,7 +24,8 @@
 
             <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 {{-- Filtro de nave --}}
-                <select id="naveFilter" class="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                <select id="naveFilter"
+                    class="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
                     <option value="">Todas las naves</option>
                     @foreach ($obras as $obra)
                         <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
@@ -32,7 +33,8 @@
                 </select>
 
                 {{-- Filtro de máquina --}}
-                <select id="machineFilter" class="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                <select id="machineFilter"
+                    class="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
                     <option value="">Todas las máquinas ({{ $registrosMaquina->count() }})</option>
                     @foreach ($registrosMaquina as $maquina)
                         <option value="{{ $maquina->id }}">{{ $maquina->codigo }} — {{ $maquina->nombre }}</option>
@@ -47,13 +49,16 @@
         </div>
 
         {{-- Grid responsive para las tarjetas --}}
-        <div id="machinesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+        <div id="machinesGrid"
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
             @forelse($registrosMaquina as $maquina)
-                <div id="maquina-{{ $maquina->id }}" data-machine-id="{{ $maquina->id }}" data-obra-id="{{ $maquina->obra_id }}"
+                <div id="maquina-{{ $maquina->id }}" data-machine-id="{{ $maquina->id }}"
+                    data-obra-id="{{ $maquina->obra_id }}"
                     class="machine-card bg-white border border-gray-200 rounded-xl shadow-md overflow-hidden flex flex-col h-full">
 
                     {{-- Imagen responsive --}}
-                    <div class="w-full h-48 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center flex-shrink-0">
+                    <div
+                        class="w-full h-48 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center flex-shrink-0">
                         @if ($maquina->imagen)
                             <img src="{{ asset($maquina->imagen) }}" alt="Imagen de {{ $maquina->nombre }}"
                                 class="object-contain h-full w-full p-4">
@@ -140,7 +145,8 @@
                                                     clip-rule="evenodd"></path>
                                             </svg>
                                             <span class="truncate flex-1">{{ $asig->user->name }}</span>
-                                            <span class="ml-1 text-[10px] text-gray-500 bg-white px-1.5 py-0.5 rounded flex-shrink-0">
+                                            <span
+                                                class="ml-1 text-[10px] text-gray-500 bg-white px-1.5 py-0.5 rounded flex-shrink-0">
                                                 {{ substr(ucfirst(data_get($asig, 'turno.nombre', 'Sin')), 0, 1) }}
                                             </span>
                                         </li>
@@ -156,10 +162,13 @@
                             @method('PUT')
 
                             <details class="group">
-                                <summary class="text-xs font-semibold text-blue-600 cursor-pointer hover:text-blue-700 list-none flex items-center justify-between">
+                                <summary
+                                    class="text-xs font-semibold text-blue-600 cursor-pointer hover:text-blue-700 list-none flex items-center justify-between">
                                     <span>Actualizar imagen</span>
-                                    <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 9l-7 7-7-7"></path>
                                     </svg>
                                 </summary>
                                 <div class="flex flex-col gap-2 mt-2">
@@ -250,7 +259,8 @@
                     </div>
 
                     <div>
-                        <label for="edit-obra_id" class="block text-sm font-semibold text-gray-700 mb-2">Obra asignada</label>
+                        <label for="edit-obra_id" class="block text-sm font-semibold text-gray-700 mb-2">Obra
+                            asignada</label>
                         <select id="edit-obra_id" name="obra_id"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white">
                             <option value="">Sin asignar</option>
@@ -275,37 +285,43 @@
                     </div>
 
                     <div>
-                        <label for="edit-diametro_min" class="block text-sm font-semibold text-gray-700 mb-2">Diámetro mínimo (mm)</label>
+                        <label for="edit-diametro_min" class="block text-sm font-semibold text-gray-700 mb-2">Diámetro
+                            mínimo (mm)</label>
                         <input id="edit-diametro_min" name="diametro_min" type="number"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
                     <div>
-                        <label for="edit-diametro_max" class="block text-sm font-semibold text-gray-700 mb-2">Diámetro máximo (mm)</label>
+                        <label for="edit-diametro_max" class="block text-sm font-semibold text-gray-700 mb-2">Diámetro
+                            máximo (mm)</label>
                         <input id="edit-diametro_max" name="diametro_max" type="number"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
                     <div>
-                        <label for="edit-peso_min" class="block text-sm font-semibold text-gray-700 mb-2">Peso mínimo</label>
+                        <label for="edit-peso_min" class="block text-sm font-semibold text-gray-700 mb-2">Peso
+                            mínimo</label>
                         <input id="edit-peso_min" name="peso_min" type="number"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
                     <div>
-                        <label for="edit-peso_max" class="block text-sm font-semibold text-gray-700 mb-2">Peso máximo</label>
+                        <label for="edit-peso_max" class="block text-sm font-semibold text-gray-700 mb-2">Peso
+                            máximo</label>
                         <input id="edit-peso_max" name="peso_max" type="number"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
                     <div>
-                        <label for="edit-ancho_m" class="block text-sm font-semibold text-gray-700 mb-2">Ancho (m)</label>
+                        <label for="edit-ancho_m" class="block text-sm font-semibold text-gray-700 mb-2">Ancho
+                            (m)</label>
                         <input id="edit-ancho_m" name="ancho_m" type="number" step="0.01"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
                     <div>
-                        <label for="edit-largo_m" class="block text-sm font-semibold text-gray-700 mb-2">Largo (m)</label>
+                        <label for="edit-largo_m" class="block text-sm font-semibold text-gray-700 mb-2">Largo
+                            (m)</label>
                         <input id="edit-largo_m" name="largo_m" type="number" step="0.01"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
@@ -326,10 +342,19 @@
     </div>
 
     <script>
-        (function() {
+        // Migración a patrón de inicialización SPA Livewire
+        window.initMaquinasIndexPage = function() {
+            if (document.body.dataset.maquinasIndexPageInit === 'true') return;
+            console.log('Inicializando Maquinas Index Page');
+
             const machineFilter = document.getElementById('machineFilter');
             const naveFilter = document.getElementById('naveFilter');
             const allMachineCards = document.querySelectorAll('.machine-card');
+            const modal = document.getElementById('editModal');
+            const closeBtn = document.getElementById('closeModal');
+            const form = document.getElementById('editMaquinaForm');
+
+            // --- Handlers ---
 
             // Función para aplicar ambos filtros
             function applyFilters() {
@@ -337,7 +362,8 @@
                 const selectedNaveId = naveFilter.value;
 
                 allMachineCards.forEach(card => {
-                    const matchesMachine = selectedMachineId === '' || card.dataset.machineId === selectedMachineId;
+                    const matchesMachine = selectedMachineId === '' || card.dataset.machineId ===
+                        selectedMachineId;
                     const matchesNave = selectedNaveId === '' || card.dataset.obraId === selectedNaveId;
 
                     if (matchesMachine && matchesNave) {
@@ -349,114 +375,165 @@
 
                 // Scroll al top si se filtró
                 if (selectedMachineId || selectedNaveId) {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                    });
                 }
             }
 
-            // Filtrar máquinas por select
-            machineFilter.addEventListener('change', applyFilters);
-
-            // Filtrar por nave
-            naveFilter.addEventListener('change', applyFilters);
-
-            // Modal de edición
-            const modal = document.getElementById('editModal');
-            const closeBtn = document.getElementById('closeModal');
-
             function openModal() {
+                if (!modal) return;
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
                 document.body.style.overflow = 'hidden';
             }
 
             function closeModal() {
+                if (!modal) return;
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
                 document.body.style.overflow = '';
             }
 
-            document.querySelectorAll('.open-edit-modal').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const id = this.dataset.id;
-
-                    fetch(`/maquinas/${id}/json`)
-                        .then(res => res.json())
-                        .then(data => {
-                            document.getElementById('edit-id').value = data.id ?? '';
-                            ['codigo', 'nombre', 'diametro_min', 'diametro_max', 'peso_min',
-                                'peso_max', 'ancho_m', 'largo_m', 'tipo'
-                            ].forEach(f => {
-                                const el = document.getElementById(`edit-${f}`);
-                                if (el) el.value = (data[f] ?? '');
-                            });
-
-                            const obraSelect = document.getElementById('edit-obra_id');
-                            if (obraSelect) {
-                                const obraId = data.obra_id ?? '';
-                                let opt = obraSelect.querySelector(`option[value="${obraId}"]`);
-                                if (!opt && obraId) {
-                                    opt = document.createElement('option');
-                                    opt.value = obraId;
-                                    opt.textContent = (data.obra && data.obra.obra) ? data.obra.obra : `Obra #${obraId}`;
-                                    obraSelect.appendChild(opt);
-                                }
-                                obraSelect.value = opt ? obraId : '';
-                            }
-
-                            openModal();
-                        })
-                        .catch(err => {
-                            console.error('Error al cargar datos de la máquina:', err);
-                            alert('No se pudieron cargar los datos de la máquina.');
-                        });
-                });
-            });
-
-            if (closeBtn) {
-                closeBtn.addEventListener('click', closeModal);
-            }
-
-            modal.addEventListener('click', (e) => {
+            function handleModalClick(e) {
                 if (e.target === modal) {
                     closeModal();
                 }
-            });
+            }
 
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+            function handleEscKey(e) {
+                if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
                     closeModal();
                 }
-            });
+            }
 
-            document.getElementById('editMaquinaForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                const id = document.getElementById('edit-id').value;
-                const formData = new FormData(this);
-                formData.append('_method', 'PUT');
+            function handleEditClick(e) {
+                const btn = e.target.closest('.open-edit-modal');
+                if (!btn) return;
 
-                fetch(`/maquinas/${id}`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': formData.get('_token'),
-                            'Accept': 'application/json'
-                        },
-                        body: formData
-                    })
-                    .then(response => {
-                        if (response.ok) {
-                            closeModal();
-                            location.reload();
-                        } else {
-                            return response.json().then(data => {
-                                alert(data.message || 'Error al actualizar la máquina.');
-                            });
+                const id = btn.dataset.id;
+                fetch(`/maquinas/${id}/json`)
+                    .then(res => res.json())
+                    .then(data => {
+                        document.getElementById('edit-id').value = data.id ?? '';
+                        ['codigo', 'nombre', 'diametro_min', 'diametro_max', 'peso_min',
+                            'peso_max', 'ancho_m', 'largo_m', 'tipo'
+                        ].forEach(f => {
+                            const el = document.getElementById(`edit-${f}`);
+                            if (el) el.value = (data[f] ?? '');
+                        });
+
+                        const obraSelect = document.getElementById('edit-obra_id');
+                        if (obraSelect) {
+                            const obraId = data.obra_id ?? '';
+                            let opt = obraSelect.querySelector(`option[value="${obraId}"]`);
+                            if (!opt && obraId) {
+                                opt = document.createElement('option');
+                                opt.value = obraId;
+                                opt.textContent = (data.obra && data.obra.obra) ? data.obra.obra :
+                                `Obra #${obraId}`;
+                                obraSelect.appendChild(opt);
+                            }
+                            obraSelect.value = opt ? obraId : '';
                         }
+                        openModal();
                     })
-                    .catch(error => {
-                        console.error('Error en la actualización:', error);
-                        alert('Error inesperado. Revisa la consola.');
+                    .catch(err => {
+                        console.error('Error al cargar datos de la máquina:', err);
+                        alert('No se pudieron cargar los datos de la máquina.');
                     });
+            }
+
+            // --- Event Listeners ---
+
+            if (machineFilter) machineFilter.addEventListener('change', applyFilters);
+            if (naveFilter) naveFilter.addEventListener('change', applyFilters);
+
+            // Usamos delegación de eventos para los botones de editar (mejor performance y menos listeners)
+            const machinesGrid = document.getElementById('machinesGrid');
+            if (machinesGrid) {
+                machinesGrid.addEventListener('click', handleEditClick);
+            }
+
+            if (closeBtn) closeBtn.addEventListener('click', closeModal);
+            if (modal) modal.addEventListener('click', handleModalClick);
+            document.addEventListener('keydown', handleEscKey);
+
+            if (form) {
+                // Removemos el listener previo si existiera (aunque livewire reemplaza el DOM, es buena práctica)
+                // form.removeEventListener('submit', ...); 
+                // Pero aquí definimos el handler inline wrapper
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const id = document.getElementById('edit-id').value;
+                    const formData = new FormData(this);
+                    formData.append('_method', 'PUT');
+
+                    fetch(`/maquinas/${id}`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': formData.get('_token'),
+                                'Accept': 'application/json'
+                            },
+                            body: formData
+                        })
+                        .then(response => {
+                            if (response.ok) {
+                                closeModal();
+                                location.reload();
+                            } else {
+                                return response.json().then(data => {
+                                    alert(data.message || 'Error al actualizar la máquina.');
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error en la actualización:', error);
+                            alert('Error inesperado. Revisa la consola.');
+                        });
+                });
+            }
+
+            // --- Cleanup Function ---
+            // Exportamos una función de limpieza específica si fuera necesario
+            // Pero usamos el sistema global:
+
+            // Registrar limpio
+            document.body.dataset.maquinasIndexPageInit = 'true';
+
+            // Definir función de limpieza para este init
+            const cleanup = () => {
+                if (machineFilter) machineFilter.removeEventListener('change', applyFilters);
+                if (naveFilter) naveFilter.removeEventListener('change', applyFilters);
+                if (machinesGrid) machinesGrid.removeEventListener('click', handleEditClick);
+                if (closeBtn) closeBtn.removeEventListener('click', closeModal);
+                if (modal) modal.removeEventListener('click', handleModalClick);
+                document.removeEventListener('keydown', handleEscKey);
+                document.body.dataset.maquinasIndexPageInit = 'false';
+
+                // Removerse a sí mismo de los initializers (opcional pero limpio)
+            };
+
+            // Hookear limpieza al evento de navegación global
+            document.addEventListener('livewire:navigating', cleanup, {
+                once: true
             });
-        })();
+        };
+
+        // Registrar en sistema global
+        window.pageInitializers = window.pageInitializers || [];
+        window.pageInitializers.push(window.initMaquinasIndexPage);
+
+        // Listeners iniciales
+        if (typeof Livewire !== 'undefined') {
+            document.addEventListener('livewire:navigated', window.initMaquinasIndexPage);
+        }
+        document.addEventListener('DOMContentLoaded', window.initMaquinasIndexPage);
+
+        // Ejecutar inmediatamente si ya cargó (caso edge)
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            window.initMaquinasIndexPage();
+        }
     </script>
 </x-app-layout>

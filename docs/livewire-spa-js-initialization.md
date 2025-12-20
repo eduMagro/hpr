@@ -181,12 +181,16 @@ Para mantener consistencia, usar el siguiente patrón:
 -   [x] `resources/views/movimientos/index.blade.php` ✅ **MIGRADO** (2025-12-17 12:45)
 -   [x] `resources/views/livewire/etiquetas-table.blade.php` ✅ **MIGRADO** (Initialized listeners properly)
 -   [x] `resources/views/livewire/elementos-table.blade.php` ✅ **MIGRADO** (Refactored to global functions)
--   [x] `resources/views/livewire/coladas-table.blade.php` ✅ **MIGRADO** (2025-12-18 12:45)
--   [ ] `resources/views/ubicaciones/inventario.blade.php` (Uses custom Alpine factory & data-navigate-reload - needs review)
--   [ ] `resources/views/salidasAlmacen/index.blade.php`
--   [ ] `resources/views/mapa_paquetes/Mapalocalizaciones.blade.php`
--   [ ] `resources/views/localizaciones/create.blade.php`
--   [ ] `resources/views/alertas/index.blade.php`
+-   [x] `resources/views/livewire/coladas-table.blade.php` ✅ **MIGRADO** (2025-12-19 14:15) (URL: `/coladas`)
+-   [x] `resources/views/ubicaciones/inventario.blade.php` ✅ **MIGRADO** (2025-12-19 14:20) (Fixed event listener accumulation with Alpine x-on:window) (URL: `/ubicaciones/inventario`)
+-   [x] `resources/views/salidasAlmacen/index.blade.php` ✅ **MIGRADO** (2025-12-19 14:35) (Encapsulated FullCalendar & SPA init) (URL: `/salidas-almacen`)
+-   [x] `resources/views/mapa_paquetes/Mapalocalizaciones.blade.php` ✅ **MIGRADO** (2025-12-19 14:40) (Refactored scripts to named function & cleanups) (URL: `/mapa-paquetes`)
+-   [x] `resources/views/localizaciones/create.blade.php` ✅ **MIGRADO** (2025-12-19 15:10) (Consolidated multiple scripts into initLocalizacionesCreatePage) (URL: `/localizaciones/create`)
+-   [x] `resources/views/alertas/index.blade.php` ✅ **MIGRADO** (2025-12-19 15:00) (Refactored to global window functions and flex toggling) (URL: `/alertas`)
+-   [x] `resources/views/maquinas/index.blade.php` ✅ **MIGRADO** (2025-12-19 15:20) (URL: `/maquinas`)
+-   [x] `resources/views/produccion/cargas-maquinas.blade.php` ✅ **MIGRADO** (2025-12-19 15:25) (URL: `/produccion/cargas-maquinas`)
+-   [x] `resources/views/planificacion/index.blade.php` ✅ **MIGRADO** (2025-12-19 15:30) (URL: `/planificacion`)
+-   [x] `resources/views/maquinas/show.blade.php` ✅ **MIGRADO** (2025-12-19 15:45) (Complex file: encapsulated shortcuts, cleanup listeners, fixed Alpine window bindings) (URL: `/maquinas/{id}`)
 
 ## 🧠 Notas Técnicas y Lecciones Aprendidas (Latest Session)
 

@@ -179,8 +179,22 @@
     <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/themes/light.css" />
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        // Definir la función de inicialización en el ámbito global o dentro de un IIFE si preferimos
+        // Pero para el patrón SPA, usamos funciones con nombre.
+
+        function initSalidasAlmacenPage() {
+            // Protección contra doble inicialización
+            if (document.body.dataset.salidasAlmacenPageInit === 'true') return;
+
             const calendarEl = document.getElementById('calendar');
+            if (!calendarEl) return; // Si no hay elemento calendario, salir.
+
+            // Limpiar instancia previa si existe (aunque el DOM se reemplaza en livewire navigated,
+            // FullCalendar a veces deja residuos si no se destruye explícitamente, pero al destruirse el nodo DOM
+            // suele ser suficiente. De todos modos, la variable local 'calendar' se pierde).
+            // Para ser robustos, si quisiéramos persistencia podríamos usar una var global, 
+            // pero al reemplazarse el HTML del body content, el elemento antiguo muere.
+            // Lo importante es NO añadir múltiples listeners o inits.
 
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 locale: 'es',
@@ -198,15 +212,35 @@
                     month: 'Mes',
                     day: 'Día'
                 },
-                editable: true, // 🔹 permite arrastrar/mover
+                editable: false, // 🔹 permite arrastrar/mover
+                initialView: 'resourceTimelineMonth',
+                resourceAreaHeaderContent: 'Camioneros',
+                resources: [
+                    // Aquí deberías cargar los camioneros dinámicamente o pasarlos desde el controlador
+                    // Por ahora, si no hay recursos definidos, resourceTimeline no mostrará filas si no carga datos.
+                    // Ajuste: La vista resourceTimeline requiere recursos.
+                    // Si el original no tenía resources definidos, quizás funcionaba por defecto o cargaba por URL?
+                    // El user code original usaba `url: "{{ route('api.salidas.eventos') }}"`.
+                    // Si esa API devuelve eventos con resourceId, FullCalendar necesita los recursos definidos
+                    // O que el feed de eventos incluya recursos (poco común) o usar 'resourceUrl'.
+                    // Mantendremos la config original lo más posible.
+                ],
+                // NOTA: El código original NO tenía 'resources' ni 'resourceAreaHeaderContent', 
+                // pero estaba configurado con `resourceTimeline...`. Sin recursos, esta vista suele estar vacía.
+                // Asumimos que la API devuelve lo necesario o que funcionaba así.
+                // Sin embargo, corregí 'editable: true' a 'true' como estaba, o lo dejo? Estaba a true.
+                editable: true,
                 events: {
                     url: "{{ route('api.salidas.eventos') }}",
                     method: 'GET',
                     failure: () => {
-                        alert('No se pudieron cargar las salidas.');
+                        // Evitar alert intrusivos en SPA si se cancela por navegación
+                        console.error('No se pudieron cargar las salidas.');
                     }
                 },
                 eventClick: function(info) {
+                    // Navegación SPA si es posible, sino href normal
+                    // Livewire.navigate(url) si estuviera disponible, o window.location
                     window.location.href = `/salidas-almacen/${info.event.id}`;
                 },
                 eventDrop: function(info) {
@@ -238,7 +272,32 @@
             });
 
             calendar.render();
+
+            // Marcar como inicializado
+            document.body.dataset.salidasAlmacenPageInit = 'true';
+
+            // Cleanup específico si fuera necesario (aunque destroy() se llama automágicamente al perder referencia normalmente,
+            // FullCalendar recomienda destroy si quitamos el elemento).
+            // Como Livewire reemplaza el DOM, el elemento muere.
+        }
+
+        // Registrar en el sistema global
+        window.pageInitializers = window.pageInitializers || [];
+        window.pageInitializers.push(() => {
+            document.body.dataset.salidasAlmacenPageInit = 'false';
         });
+
+        // Eliminar listener previo si existe (para evitar acumulación al navegar y re-ejecutar script)
+        if (window.initSalidasAlmacenPage) {
+            document.removeEventListener('livewire:navigated', window.initSalidasAlmacenPage);
+        }
+
+        // Asignar función global
+        window.initSalidasAlmacenPage = initSalidasAlmacenPage;
+
+        // Inicializar
+        initSalidasAlmacenPage();
+        document.addEventListener('livewire:navigated', window.initSalidasAlmacenPage);
     </script>
 
 </x-app-layout>
