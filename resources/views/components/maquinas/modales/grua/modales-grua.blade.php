@@ -250,8 +250,10 @@
                         </div>
                         <input type="text" name="codigo_general" id="modal_producto_id"
                             class="w-full pl-16 pr-6 py-6 bg-slate-50 border-2 border-slate-100 rounded-[2rem] text-xl font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all uppercase"
-                            placeholder="ESCANEE EL QR..." inputmode="none" autocomplete="off" required>
+                            placeholder="ESCANEE EL QR..." inputmode="text" autocomplete="off">
                     </div>
+                    {{-- Contenedor Chips Recarga --}}
+                    <div id="mostrar_qrs_recarga" class="flex flex-wrap gap-2 mt-2"></div>
                 </div>
 
                 {{-- Botones --}}
@@ -275,22 +277,112 @@
         const form = document.getElementById('form-ejecutar-movimiento');
         const inputQR = document.getElementById('modal_producto_id');
         const hiddenLista = document.getElementById('modal_lista_qrs');
+        const containerChips = document.getElementById('mostrar_qrs_recarga');
+        const yaEscaneados = new Set();
 
+        // 1. Manejo de Enter para escanear y verificar
+        inputQR.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const codigo = inputQR.value.trim().toUpperCase();
+                if (!codigo) return;
+
+                if (yaEscaneados.has(codigo)) {
+                    // Feedback visual duplicado
+                    const chip = containerChips.querySelector(`[data-code="${codigo}"]`);
+                    if (chip) {
+                        chip.style.transform = "scale(1.1)";
+                        chip.style.borderColor = "red";
+                        setTimeout(() => {
+                            chip.style.transform = "scale(1)";
+                            chip.style.borderColor = "transparent";
+                        }, 300);
+                    }
+                    inputQR.value = '';
+                    return;
+                }
+
+                agregarChipRecarga(codigo);
+                inputQR.value = '';
+            }
+        });
+
+        async function agregarChipRecarga(codigo) {
+            // Añadir al estado
+            yaEscaneados.add(codigo);
+            actualizarHidden();
+
+            // Crear Chip Visual (Loading)
+            const pill = document.createElement("span");
+            pill.className = "qr-chip loading";
+            pill.textContent = codigo;
+            pill.dataset.code = codigo;
+            pill.title = "Click para eliminar";
+            pill.onclick = () => {
+                yaEscaneados.delete(codigo);
+                actualizarHidden();
+                pill.remove();
+            };
+            containerChips.appendChild(pill);
+
+            // Verificar API
+            try {
+                const res = await fetch(`/api/codigos/info?code=${encodeURIComponent(codigo)}`);
+                const data = await res.json();
+
+                pill.classList.remove("loading");
+                if (!data || data.ok === false) {
+                    pill.classList.add("error");
+                    pill.textContent = `${codigo} ⚠️ Error`;
+                } else {
+                    // Formatear Info
+                    const partes = [];
+                    if (data.sigla) partes.push(data.sigla);
+                    partes.push(data.codigo);
+                    if (data.diametro) partes.push(`Ø${data.diametro}`);
+                    if (data.longitud && !String(data.tipo).toLowerCase().includes('encarretado'))
+                        partes.push(`L:${data.longitud}`);
+
+                    pill.textContent = partes.join(" · ");
+                    pill.classList.add("bg-emerald-100", "text-emerald-800", "border-emerald-200");
+                }
+            } catch (err) {
+                console.error(err);
+                pill.classList.remove("loading");
+                pill.classList.add("error");
+                pill.textContent = `${codigo} ⚠️ Error conexión`;
+            }
+        }
+
+        function actualizarHidden() {
+            hiddenLista.value = JSON.stringify(Array.from(yaEscaneados));
+        }
+
+        // 2. Submit del Formulario
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const valor = inputQR.value.trim();
-            if (valor) {
-                hiddenLista.value = JSON.stringify([valor]);
-            } else {
-                hiddenLista.value = '';
+            // Si hay texto en el input que no se ha dado Enter, intentamos agregarlo
+            const textoPendiente = inputQR.value.trim().toUpperCase();
+            if (textoPendiente && !yaEscaneados.has(textoPendiente)) {
+                // Agregamos síncronamente al array para enviar, aunque la info visual cargue después
+                yaEscaneados.add(textoPendiente);
+                actualizarHidden();
+            }
+
+            if (yaEscaneados.size === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Falta escanear',
+                    text: 'Por favor, escanea al menos un código de material.'
+                });
+                return;
             }
 
             const formData = new FormData(form);
             const submitBtn = form.querySelector('button[type="submit"]');
             const originalBtnContent = submitBtn.innerHTML;
 
-            // Deshabilitar botón
             submitBtn.disabled = true;
             submitBtn.innerHTML =
                 '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> REGISTRANDO...';
@@ -311,7 +403,6 @@
                 const result = await response.json();
 
                 if (response.ok) {
-                    // SUCCESS
                     Swal.fire({
                         toast: true,
                         position: 'top',
@@ -319,52 +410,45 @@
                         timer: 2000,
                         timerProgressBar: true,
                         icon: 'success',
-                        title: 'Recarga registrada correctamente',
+                        title: 'Recarga registrada',
                         background: '#f0fdf4',
                         color: '#166534'
                     });
 
-                    // 1. Cerrar Modal
+                    // Limpieza
                     cerrarModalRecargaMateriaPrima();
+                    yaEscaneados.clear();
+                    containerChips.innerHTML = '';
+                    actualizarHidden();
+                    inputQR.value = '';
 
-                    // 2. Eliminar de pendientes
+                    // Actualizar UI
                     const movimientoId = document.getElementById('modal_movimiento_id').value;
                     const cardPendiente = document.getElementById(
                         `movimiento-pendiente-${movimientoId}`);
                     if (cardPendiente) {
-                        cardPendiente.style.transition = 'all 0.3s ease';
                         cardPendiente.style.opacity = '0';
-                        cardPendiente.style.transform = 'scale(0.95)';
                         setTimeout(() => cardPendiente.remove(), 300);
-
-                        // Actualizar contador
                         const contador = document.getElementById('contador-tareas-pendientes');
-                        if (contador) {
-                            const actual = parseInt(contador.innerText) || 0;
-                            contador.innerText = `${Math.max(0, actual - 1)} tareas`;
-                        }
+                        if (contador) contador.innerText =
+                            `${Math.max(0, (parseInt(contador.innerText)||0) - 1)} tareas`;
                     }
 
-                    // 3. Agregar al historial (recargando el contenedor)
                     if (typeof window.refrescarHistorialGrua === 'function') {
                         window.refrescarHistorialGrua();
                     } else {
-                        // Fallback: recargar la página si no hay función de refresco
                         setTimeout(() => window.location.reload(), 2000);
                     }
 
                 } else {
-                    // ERROR DE VALIDACIÓN O BACKEND
-                    throw new Error(result.message || 'Error al registrar la recarga');
+                    throw new Error(result.message || 'Error al registrar');
                 }
             } catch (error) {
-                console.error('Error AJAX:', error);
+                console.error(error);
                 Swal.fire({
                     icon: 'error',
-                    title: '¡Ups!',
-                    text: error.message ||
-                        'No se pudo completar la operación. Por favor, inténtelo de nuevo.',
-                    confirmButtonColor: '#059669' // Emerald 600
+                    title: 'Error',
+                    text: error.message
                 });
             } finally {
                 submitBtn.disabled = false;
@@ -372,6 +456,14 @@
                 if (window.lucide) lucide.createIcons();
             }
         });
+
+        // Exponer función de limpieza por si se cierra modal manualmente
+        window.limpiarModalRecarga = () => {
+            yaEscaneados.clear();
+            containerChips.innerHTML = '';
+            actualizarHidden();
+            inputQR.value = '';
+        };
     });
 </script>
 
@@ -446,6 +538,7 @@
     function cerrarModalRecargaMateriaPrima() {
         document.getElementById('modalMovimiento').classList.add('hidden');
         document.getElementById('modalMovimiento').classList.remove('flex');
+        if (window.limpiarModalRecarga) window.limpiarModalRecarga();
     }
 
     function abrirModalMovimientoLibre(codigo = null) {
