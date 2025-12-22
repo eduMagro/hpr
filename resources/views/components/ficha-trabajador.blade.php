@@ -256,8 +256,8 @@
                 </div>
             @endif
 
-            {{-- Contratos y Documentos (Solo Oficina) --}}
-            @if (auth()->check() && auth()->user()->rol === 'oficina')
+            {{-- Contratos y Documentos --}}
+            @if (auth()->check() && (auth()->user()->rol === 'oficina' || auth()->id() === $user->id))
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     <button @click="$dispatch('open-docs-modal')"
                         class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">

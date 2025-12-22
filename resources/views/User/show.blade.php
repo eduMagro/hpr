@@ -1,5 +1,5 @@
 @php
-    // Usamos el $config enviado desde el controlador
+    $esOficina = Auth::check() && Auth::user()->rol === 'oficina';
 @endphp
 
 
@@ -28,7 +28,7 @@
         <x-ficha-trabajador :user="$user" :resumen="$resumen" />
     </div>
 
-    @if ($esOficina)
+    @if ($esOficina || auth()->id() === $user->id)
         <div class="container mx-auto md:px-4 pb-4" x-data="documentosManager({{ $user->id }})" @open-docs-modal.window="openModal()">
 
             <!-- Modal -->
@@ -74,12 +74,18 @@
                                         </template>
                                         <template x-if="!hasIncorporacion">
                                             <div>
-                                                <div class="flex gap-2">
-                                                    <input type="date" x-model="fechaIncorporacion"
-                                                        class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                                                    <button @click="updateFechaIncorporacion()"
-                                                        class="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 text-sm">Guardar</button>
-                                                </div>
+                                                @if (auth()->user()->rol === 'oficina')
+                                                    <div class="flex gap-2">
+                                                        <input type="date" x-model="fechaIncorporacion"
+                                                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                                                        <button @click="updateFechaIncorporacion()"
+                                                            class="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 text-sm">Guardar</button>
+                                                    </div>
+                                                @else
+                                                    <div class="p-2 bg-white border border-gray-200 rounded-md text-gray-700 sm:text-sm"
+                                                        x-text="fechaIncorporacion ? formatDate(fechaIncorporacion) : 'No definida'">
+                                                    </div>
+                                                @endif
                                                 <p class="text-xs text-gray-500 mt-1">Usada para el cálculo de
                                                     vacaciones.
                                                 </p>
@@ -185,13 +191,19 @@
                     },
                     formatDate(dateStr) {
                         if (!dateStr) return '';
-                        // Fix for date parsing to avoid timezone offset issues when just string
+
+                        // Si es un formato ISO completo (contiene T), usamos new Date()
+                        if (dateStr.includes('T')) {
+                            const date = new Date(dateStr);
+                            return date.toLocaleDateString('es-ES');
+                        }
+
+                        // Para formato YYYY-MM-DD puro (evita desfases de zona horaria)
                         const parts = dateStr.split('-');
                         if (parts.length === 3) {
                             return `${parts[2]}/${parts[1]}/${parts[0]}`;
                         }
-                        const date = new Date(dateStr);
-                        return date.toLocaleDateString('es-ES');
+                        return dateStr;
                     },
                     async updateFechaIncorporacion() {
                         try {
