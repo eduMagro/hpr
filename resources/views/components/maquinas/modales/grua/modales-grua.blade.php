@@ -10,56 +10,109 @@
 @endphp
 
 {{-- 🔄 MODAL MOVIMIENTO GENERAL --}}
-<div id="modalMovimientoLibre" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
-    <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-lg">
-        <h2 class="text-lg sm:text-xl font-bold mb-4 text-center text-gray-800">
-            ➕ Nuevo Movimiento
-        </h2>
+{{-- 🔄 MODAL MOVIMIENTO GENERAL (PREMIUM) --}}
+<div id="modalMovimientoLibre"
+    class="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 font-outfit">
+    {{-- z-[60] para estar POR ENCIMA del header, items-center para centrado total --}}
+    <div
+        class="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-y-auto overflow-x-hidden max-h-full border border-slate-100 flex flex-col transform transition-all">
 
-        <form method="POST" action="{{ route('movimientos.store') }}" id="form-movimiento-general">
-            @csrf
-            <input type="hidden" name="tipo" value="movimiento libre">
-
-            <!-- Producto -->
-            <x-tabla.input-movil type="text" id="codigo_general_general" label="Escanear Producto o Paquete"
-                placeholder="Escanea QR Ferralla" autocomplete="off" inputmode="text" />
-
-            <div id="mostrar_qrs" data-api-info-url="{{ route('api.codigos.info') }}"></div>
-            <input type="hidden" name="lista_qrs" id="lista_qrs">
-
-
-            <!-- Ubicación destino (campo libre) -->
-            <div class="mt-4">
-                <x-tabla.input-movil name="ubicacion_destino" id="ubicacion_destino_general"
-                    label="Escanear Ubicación destino" placeholder="Escanea ubicación o escribe Nº"
-                    autocomplete="off" />
-
+        {{-- Header con Estilo Premium y padding reducido --}}
+        <div
+            class="bg-gradient-to-br from-cyan-600 to-cyan-800 px-8 py-6 text-white relative flex-shrink-0 overflow-hidden">
+            <div class="relative z-10 flex flex-col items-center text-center">
+                <div
+                    class="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-3 border border-white/30 shadow-lg">
+                    {{-- Icono principal SVG --}}
+                    <i data-lucide="arrow-right-left" class="w-7 h-7 text-white"></i>
+                </div>
+                <h2 class="text-2xl font-black tracking-tight mb-2 uppercase">Movimiento Libre</h2>
+                <div class="flex items-center gap-2 px-4 py-1.5 bg-black/20 rounded-full border border-white/10">
+                    <i data-lucide="package" class="w-4 h-4 text-cyan-300"></i>
+                    <span class="text-xs font-bold tracking-wide">MOVER MATERIAL / PAQUETE</span>
+                </div>
             </div>
-
-            <!-- Máquina destino (select filtrado por obra_id de la grúa) -->
-            <div class="mt-4">
-                <label for="maquina_destino" class="block text-sm font-medium text-gray-700">Máquina
-                    destino</label>
-                <select name="maquina_destino" id="maquina_destino"
-                    class="w-full border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;">
-                    <option value="">-- Selecciona máquina --</option>
-                    @foreach ($maquinasDisponibles as $maq)
-                        <option value="{{ $maq->id }}">
-                            {{ $maq->nombre }}
-                        </option>
-                    @endforeach
-                </select>
+            {{-- Decoraciones de fondo --}}
+            <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 w-24 h-24 bg-cyan-400/20 rounded-full -ml-12 -mb-12 blur-2xl">
             </div>
+        </div>
 
-            <!-- Botones -->
-            <div class="flex justify-end gap-3 mt-6">
-                <button id="cancelar_btn" type="button" onclick="cerrarModalMovimientoLibre()"
-                    class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
-                <button type="submit"
-                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Registrar</button>
-            </div>
-        </form>
+        <div class="p-6 sm:p-8">
+            <form method="POST" action="{{ route('movimientos.store') }}" id="form-movimiento-general"
+                class="space-y-6">
+                @csrf
+                <input type="hidden" name="tipo" value="movimiento libre">
+
+                {{-- Input Producto --}}
+                <div class="space-y-2">
+                    <label class="label-pill ml-2 text-slate-500 font-bold text-xs uppercase tracking-wider">Material /
+                        Paquete</label>
+                    <div class="relative">
+                        <div
+                            class="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="qr-code" class="w-6 h-6"></i>
+                        </div>
+                        <input type="text" id="codigo_general_general" name="codigo_general"
+                            class="w-full pl-16 pr-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-lg font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 transition-all uppercase"
+                            placeholder="ESCANEA QR..." autocomplete="off" inputmode="text">
+                    </div>
+                    {{-- Contenedor para chips de QRs --}}
+                    <div id="mostrar_qrs" data-api-info-url="{{ route('api.codigos.info') }}"></div>
+                    <input type="hidden" name="lista_qrs" id="lista_qrs">
+                </div>
+
+                {{-- Input Ubicación Destino --}}
+                <div class="space-y-2">
+                    <label class="label-pill ml-2 text-slate-500 font-bold text-xs uppercase tracking-wider">Ubicación
+                        Destino</label>
+                    <div class="relative">
+                        <div
+                            class="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="map-pin" class="w-6 h-6"></i>
+                        </div>
+                        <input type="text" name="ubicacion_destino" id="ubicacion_destino_general"
+                            class="w-full pl-16 pr-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-lg font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 transition-all uppercase"
+                            placeholder="UBICACIÓN O Nº..." autocomplete="off">
+                    </div>
+                </div>
+
+                {{-- Select Máquina Destino --}}
+                <div class="space-y-2">
+                    <label class="label-pill ml-2 text-slate-500 font-bold text-xs uppercase tracking-wider">O Máquina
+                        Destino</label>
+                    <div class="relative">
+                        <div
+                            class="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="factory" class="w-6 h-6"></i>
+                        </div>
+                        <select name="maquina_destino" id="maquina_destino"
+                            class="w-full pl-16 pr-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-lg font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 transition-all appearance-none cursor-pointer">
+                            <option value="">-- Selecciona máquina --</option>
+                            @foreach ($maquinasDisponibles as $maq)
+                                <option value="{{ $maq->id }}">{{ $maq->nombre }}</option>
+                            @endforeach
+                        </select>
+                        <div
+                            class="absolute inset-y-0 right-0 pr-6 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="chevron-down" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Botones --}}
+                <div class="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-3 pt-4">
+                    <button type="button" onclick="cerrarModalMovimientoLibre()"
+                        class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="x" class="w-5 h-5"></i> CANCELAR
+                    </button>
+                    <button type="submit"
+                        class="flex-1 sm:flex-[2] bg-cyan-600 hover:bg-cyan-700 text-white py-4 rounded-2xl font-bold shadow-lg shadow-cyan-600/20 transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="check" class="w-6 h-6"></i> REGISTRAR
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 <script>
@@ -118,26 +171,29 @@
 </div>
 {{-- 🔄 MODAL RECARGA MP --}}
 <div id="modalMovimiento"
-    class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 font-outfit">
+    class="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 font-outfit">
+    {{-- z-[60] para estar POR ENCIMA del header, items-center para centrado total --}}
     <div
-        class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col transform transition-all">
+        class="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-y-auto overflow-x-hidden max-h-full border border-slate-100 flex flex-col transform transition-all">
 
-        {{-- Header con Estilo Premium --}}
-        <div class="bg-gradient-to-br from-emerald-600 to-emerald-800 px-8 py-10 text-white relative">
+        {{-- Header con Estilo Premium y padding reducido --}}
+        <div
+            class="bg-gradient-to-br from-emerald-600 to-emerald-800 px-8 py-6 text-white relative flex-shrink-0 overflow-hidden">
             <div class="relative z-10 flex flex-col items-center text-center">
                 <div
-                    class="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-4 border border-white/30 shadow-lg">
-                    <i data-lucide="zap" class="w-8 h-8 text-white"></i>
+                    class="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-3 border border-white/30 shadow-lg">
+                    <i data-lucide="zap" class="w-7 h-7 text-white"></i>
                 </div>
-                <h2 class="text-3xl font-black tracking-tight mb-2 uppercase">Recargar Máquina</h2>
+                <h2 class="text-2xl font-black tracking-tight mb-2 uppercase">Recargar Máquina</h2>
                 <div class="flex items-center gap-2 px-4 py-1.5 bg-black/20 rounded-full border border-white/10">
                     <i data-lucide="factory" class="w-4 h-4 text-emerald-300"></i>
-                    <span id="maquina-nombre-destino" class="text-sm font-bold tracking-wide">MÁQUINA DESTINO</span>
+                    <span id="maquina-nombre-destino" class="text-xs font-bold tracking-wide">MÁQUINA DESTINO</span>
                 </div>
             </div>
             {{-- Decoraciones de fondo --}}
             <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-            <div class="absolute bottom-0 left-0 w-24 h-24 bg-emerald-400/20 rounded-full -ml-12 -mb-12 blur-2xl"></div>
+            <div class="absolute bottom-0 left-0 w-24 h-24 bg-emerald-400/20 rounded-full -ml-12 -mb-12 blur-2xl">
+            </div>
         </div>
 
         <div class="p-6 sm:p-8">
