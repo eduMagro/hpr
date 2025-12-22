@@ -10,43 +10,35 @@
 @endphp
 
 {{-- 🔄 MODAL MOVIMIENTO GENERAL --}}
-<div id="modalMovimientoLibre"
-    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+<div id="modalMovimientoLibre" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
     <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-lg">
         <h2 class="text-lg sm:text-xl font-bold mb-4 text-center text-gray-800">
             ➕ Nuevo Movimiento
         </h2>
 
-        <form method="POST" action="{{ route('movimientos.store') }}"
-            id="form-movimiento-general">
+        <form method="POST" action="{{ route('movimientos.store') }}" id="form-movimiento-general">
             @csrf
             <input type="hidden" name="tipo" value="movimiento libre">
 
             <!-- Producto -->
-            <x-tabla.input-movil type="text" id="codigo_general_general"
-                label="Escanear Producto o Paquete"
-                placeholder="Escanea QR Ferralla" autocomplete="off"
-                inputmode="text" />
+            <x-tabla.input-movil type="text" id="codigo_general_general" label="Escanear Producto o Paquete"
+                placeholder="Escanea QR Ferralla" autocomplete="off" inputmode="text" />
 
-            <div id="mostrar_qrs"
-                data-api-info-url="{{ route('api.codigos.info') }}"></div>
+            <div id="mostrar_qrs" data-api-info-url="{{ route('api.codigos.info') }}"></div>
             <input type="hidden" name="lista_qrs" id="lista_qrs">
 
 
             <!-- Ubicación destino (campo libre) -->
             <div class="mt-4">
-                <x-tabla.input-movil name="ubicacion_destino"
-                    id="ubicacion_destino_general"
-                    label="Escanear Ubicación destino"
-                    placeholder="Escanea ubicación o escribe Nº"
+                <x-tabla.input-movil name="ubicacion_destino" id="ubicacion_destino_general"
+                    label="Escanear Ubicación destino" placeholder="Escanea ubicación o escribe Nº"
                     autocomplete="off" />
 
             </div>
 
             <!-- Máquina destino (select filtrado por obra_id de la grúa) -->
             <div class="mt-4">
-                <label for="maquina_destino"
-                    class="block text-sm font-medium text-gray-700">Máquina
+                <label for="maquina_destino" class="block text-sm font-medium text-gray-700">Máquina
                     destino</label>
                 <select name="maquina_destino" id="maquina_destino"
                     class="w-full border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -62,8 +54,7 @@
 
             <!-- Botones -->
             <div class="flex justify-end gap-3 mt-6">
-                <button id="cancelar_btn" type="button"
-                    onclick="cerrarModalMovimientoLibre()"
+                <button id="cancelar_btn" type="button" onclick="cerrarModalMovimientoLibre()"
                     class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
                 <button type="submit"
                     class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Registrar</button>
@@ -107,19 +98,17 @@
             <input type="hidden" name="paquete_id" id="paquete_id">
             <input type="hidden" name="ubicacion_origen" id="ubicacion_origen">
             <!-- Escanear paquete -->
-            <x-tabla.input-movil id="codigo_general" name="codigo_general"
-                placeholder="ESCANEA PAQUETE" inputmode="none"
-                autocomplete="off" />
+            <x-tabla.input-movil id="codigo_general" name="codigo_general" placeholder="ESCANEA PAQUETE"
+                inputmode="none" autocomplete="off" />
             <p id="estado_verificacion" class="text-sm mt-1"></p>
 
             <!-- Ubicación destino -->
-            <x-tabla.input-movil id="ubicacion_destino" name="ubicacion_destino"
-                placeholder="ESCANEA UBICACIÓN" required />
+            <x-tabla.input-movil id="ubicacion_destino" name="ubicacion_destino" placeholder="ESCANEA UBICACIÓN"
+                required />
 
             <!-- Botones -->
             <div class="flex justify-end gap-3 mt-6">
-                <button type="button" id="cancelar_btn"
-                    onclick="cerrarModalBajadaPaquete()"
+                <button type="button" id="cancelar_btn" onclick="cerrarModalBajadaPaquete()"
                     class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
                 <button type="submit"
                     class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Registrar</button>
@@ -129,114 +118,126 @@
 </div>
 {{-- 🔄 MODAL RECARGA MP --}}
 <div id="modalMovimiento"
-    class="fixed inset-0 z-50 bg-black bg-opacity-50 hidden items-center justify-center">
+    class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 font-outfit">
     <div
-        class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md mx-0 sm:mx-0">
+        class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col transform transition-all">
 
-        <h2 class="text-lg sm:text-xl font-bold mb-4 text-center text-gray-800">
-            RECARGAR MÁQUINA
-        </h2>
-
-        <!-- Información tipo tabla -->
-        <div
-            class="grid grid-cols-2 gap-3 mb-4 text-sm sm:text-base text-gray-700">
-            <div class="bg-gray-100 rounded-lg p-3 shadow-sm">
-                <p class="font-semibold text-gray-600 text-xs sm:text-sm"><i
-                        class="fas fa-industry"></i>
-                    {{-- fa-industry --}}
-                </p>
-                <p id="maquina-nombre-destino"
-                    class="text-green-700 font-bold text-lg sm:text-xl mt-1">
-                </p>
+        {{-- Header con Estilo Premium --}}
+        <div class="bg-gradient-to-br from-emerald-600 to-emerald-800 px-8 py-10 text-white relative">
+            <div class="relative z-10 flex flex-col items-center text-center">
+                <div
+                    class="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-4 border border-white/30 shadow-lg">
+                    <i data-lucide="zap" class="w-8 h-8 text-white"></i>
+                </div>
+                <h2 class="text-3xl font-black tracking-tight mb-2 uppercase">Recargar Máquina</h2>
+                <div class="flex items-center gap-2 px-4 py-1.5 bg-black/20 rounded-full border border-white/10">
+                    <i data-lucide="monitor" class="w-4 h-4 text-emerald-300"></i>
+                    <span id="maquina-nombre-destino" class="text-sm font-bold tracking-wide">MÁQUINA DESTINO</span>
+                </div>
             </div>
-            <div class="bg-gray-100 rounded-lg p-3 shadow-sm">
-                <p class="font-semibold text-gray-600 text-xs sm:text-sm">🧱
-                    Tipo</p>
-                <p id="producto-tipo"
-                    class="text-gray-800 font-bold text-xl mt-1"></p>
-            </div>
-            <div class="bg-gray-100 rounded-lg p-3 shadow-sm">
-                <p class="font-semibold text-gray-600 text-xs sm:text-sm">⌀
-                    Diámetro</p>
-                <p id="producto-diametro"
-                    class="text-gray-800 font-bold text-lg sm:text-xl mt-1">
-                </p>
-            </div>
-            <div class="bg-gray-100 rounded-lg p-3 shadow-sm">
-                <p class="font-semibold text-gray-600 text-xs sm:text-sm">📏
-                    Longitud</p>
-                <p id="producto-longitud"
-                    class="text-gray-800 font-bold text-lg sm:text-xl mt-1">
-                </p>
-            </div>
+            {{-- Decoraciones de fondo --}}
+            <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 w-24 h-24 bg-emerald-400/20 rounded-full -ml-12 -mb-12 blur-2xl"></div>
         </div>
 
-        <!-- Ubicaciones sugeridas -->
-        <div id="ubicaciones-actuales" class="mb-4 hidden">
-            <div class="border-t pt-3">
-                <label
-                    class="font-semibold block mb-2 text-gray-700 text-sm sm:text-base">
-                    📍 Ubicaciones con producto disponible
-                </label>
-                <ul id="ubicaciones-lista"
-                    class="list-disc list-inside text-gray-700 text-sm pl-4 space-y-1">
-                </ul>
+        <div class="p-6 sm:p-8">
+            {{-- Grid de Especificaciones --}}
+            <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
+                <div class="bg-slate-50 border border-slate-100 rounded-2xl sm:rounded-3xl p-3 sm:p-4 text-center">
+                    <p class="label-pill mb-1">Tipo</p>
+                    <p id="producto-tipo" class="font-bold text-slate-800 text-base sm:text-lg leading-none">---</p>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-100 rounded-2xl sm:rounded-3xl p-3 sm:p-4 text-center">
+                    <p class="label-pill mb-1 text-emerald-600">Ø Diám.</p>
+                    <p id="producto-diametro" class="font-bold text-emerald-900 text-base sm:text-lg leading-none">---
+                    </p>
+                </div>
+                <div class="bg-slate-50 border border-slate-100 rounded-2xl sm:rounded-3xl p-3 sm:p-4 text-center">
+                    <p class="label-pill mb-1">Long.</p>
+                    <p id="producto-longitud" class="font-bold text-slate-800 text-base sm:text-lg leading-none">---
+                    </p>
+                </div>
             </div>
+
+            {{-- Ubicaciones Sugeridas --}}
+            <div id="ubicaciones-actuales" class="mb-8 hidden group">
+                <div class="bg-amber-50 rounded-3xl p-6 border border-amber-100/50">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-5 h-5 bg-amber-500 rounded-lg flex items-center justify-center shadow-sm">
+                            <i data-lucide="map-pin" class="w-3 h-3 text-white"></i>
+                        </div>
+                        <span class="text-xs font-black text-amber-800 uppercase tracking-wider">Ubicaciones
+                            Disponibles</span>
+                    </div>
+                    <ul id="ubicaciones-lista" class="grid grid-cols-1 gap-2">
+                        {{-- Se rellena por JS --}}
+                    </ul>
+                </div>
+            </div>
+
+            {{-- Formulario de Escaneo --}}
+            <form method="POST" action="{{ route('movimientos.store') }}" id="form-ejecutar-movimiento"
+                class="space-y-6">
+                @csrf
+                <input type="hidden" name="tipo" id="modal_tipo">
+                <input type="hidden" name="producto_base_id" id="modal_producto_base_id">
+                <input type="hidden" name="maquina_destino" id="modal_maquina_id">
+                <input type="hidden" name="lista_qrs" id="modal_lista_qrs">
+
+                <div class="space-y-2">
+                    <label class="label-pill ml-2">Escanear Materia Prima</label>
+                    <div class="relative">
+                        <div
+                            class="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-400 group-focus-within:text-emerald-500 transition-colors">
+                            <i data-lucide="qr-code" class="w-6 h-6"></i>
+                        </div>
+                        <input type="text" name="codigo_general" id="modal_producto_id"
+                            class="w-full pl-16 pr-6 py-6 bg-slate-50 border-2 border-slate-100 rounded-[2rem] text-xl font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all uppercase"
+                            placeholder="ESCANEE EL QR..." inputmode="none" autocomplete="off" required>
+                    </div>
+                </div>
+
+                {{-- Botones --}}
+                <div class="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+                    <button type="button" onclick="cerrarModalRecargaMateriaPrima()"
+                        class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-4 sm:py-5 rounded-2xl sm:rounded-3xl font-bold transition-all shadow-md shadow-black/20 flex items-center justify-center gap-2">
+                        <i data-lucide="x" class="w-5 h-5"></i> CANCELAR
+                    </button>
+                    <button type="submit"
+                        class="flex-1 sm:flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white py-4 sm:py-5 rounded-2xl sm:rounded-3xl font-bold shadow-md shadow-black/20 transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="check" class="w-6 h-6"></i> REGISTRAR RECARGA
+                    </button>
+                </div>
+            </form>
         </div>
-
-        <!-- Formulario -->
-        <form method="POST" action="{{ route('movimientos.store') }}"
-            id="form-ejecutar-movimiento">
-            @csrf
-            <input type="hidden" name="tipo" id="modal_tipo">
-            <input type="hidden" name="producto_base_id"
-                id="modal_producto_base_id">
-            <input type="hidden" name="maquina_destino"
-                id="modal_maquina_id">
-
-            <x-tabla.input-movil type="text" name="codigo_general"
-                id="modal_producto_id" placeholder="ESCANEA QR MATERIA PRIMA"
-                inputmode="none" autocomplete="off" required />
-            <input type="hidden" name="lista_qrs" id="modal_lista_qrs">
-
-            <!-- Botones -->
-            <div class="flex justify-end gap-3 mt-6">
-                <button type="button"
-                    onclick="cerrarModalRecargaMateriaPrima()"
-                    class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
-                <button type="submit"
-                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Registrar</button>
-            </div>
-
-        </form>
     </div>
+</div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const form = document.getElementById(
-                'form-ejecutar-movimiento');
-            const inputQR = document.getElementById('modal_producto_id');
-            const hiddenLista = document.getElementById('modal_lista_qrs');
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById(
+            'form-ejecutar-movimiento');
+        const inputQR = document.getElementById('modal_producto_id');
+        const hiddenLista = document.getElementById('modal_lista_qrs');
 
-            form.addEventListener('submit', (e) => {
-                const valor = inputQR.value.trim();
+        form.addEventListener('submit', (e) => {
+            const valor = inputQR.value.trim();
 
-                if (valor) {
-                    // Convertimos el valor en array JSON (aunque sea uno solo)
-                    hiddenLista.value = JSON.stringify([valor]);
-                } else {
-                    // Si está vacío, lo dejamos vacío para que el backend valide
-                    hiddenLista.value = '';
-                }
-            });
+            if (valor) {
+                // Convertimos el valor en array JSON (aunque sea uno solo)
+                hiddenLista.value = JSON.stringify([valor]);
+            } else {
+                // Si está vacío, lo dejamos vacío para que el backend valide
+                hiddenLista.value = '';
+            }
         });
-    </script>
+    });
+</script>
 
 
 </div>
 {{-- 🔄 MODAL DESCARGA MATERIA PRIMA --}}
-<div id="modal-ver-pedido"
-    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+<div id="modal-ver-pedido" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
     <div class="bg-white w-full max-w-2xl rounded shadow-lg p-6 relative">
         <button onclick="cerrarModalPedido()"
             class="absolute top-2 right-2 text-gray-500 hover:text-black text-xl">&times;</button>
@@ -276,17 +277,23 @@
                 'hidden');
             ubicacionesSugeridas.forEach(u => {
                 const li = document.createElement('li');
-                li.textContent = `${u.nombre} (Código: ${u.codigo})`;
-
+                li.className =
+                    'flex justify-between items-center bg-white px-4 py-2.5 rounded-2xl border border-amber-200/50 shadow-sm';
+                li.innerHTML = `
+                    <span class="font-bold text-slate-800">${u.nombre}</span>
+                    <span class="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg uppercase tracking-tight">${u.codigo}</span>
+                `;
                 lista.appendChild(li);
             });
         } else {
-            document.getElementById('ubicaciones-actuales').classList.add(
-                'hidden');
+            document.getElementById('ubicaciones-actuales').classList.add('hidden');
         }
 
         document.getElementById('modalMovimiento').classList.remove('hidden');
         document.getElementById('modalMovimiento').classList.add('flex');
+
+        // Re-inicializar iconos de Lucide para el nuevo contenido del modal
+        if (typeof lucide !== 'undefined') lucide.createIcons();
 
         // Focus en el campo QR
         setTimeout(() => {
@@ -319,7 +326,9 @@
                     if (inputQR) inputQR.focus();
                 } else if (intentos >= maxIntentos) {
                     clearInterval(intervalo);
-                    console.warn('[abrirModalMovimientoLibre] Función agregarQRMovimientoLibre no disponible después de', maxIntentos * 100, 'ms');
+                    console.warn(
+                        '[abrirModalMovimientoLibre] Función agregarQRMovimientoLibre no disponible después de',
+                        maxIntentos * 100, 'ms');
                     // Fallback: poner el valor en el input para que el usuario presione Enter
                     if (inputQR) {
                         inputQR.value = code;
@@ -535,12 +544,10 @@
 {{-- 📦 MODAL MOVER PAQUETE (3 pasos: escanear, validar, ubicar en mapa) --}}
 <div id="modal-mover-paquete"
     class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div
-        class="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-6xl max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
+    <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-6xl max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
         data-modal-ajustable-grid="true">
         {{-- Header --}}
-        <div
-            class="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex justify-between items-center">
+        <div class="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex justify-between items-center">
             <h2 class="text-lg sm:text-xl font-bold">📦 Mover Paquete a Nueva
                 Ubicación</h2>
             <button onclick="cerrarModalMoverPaquete()"
@@ -559,25 +566,22 @@
 
                     <div class="flex flex-col gap-2">
                         <div class="flex-1">
-                            <x-tabla.input-movil type="text"
-                                id="codigo_paquete_mover" label="Código de Etiqueta o Paquete"
+                            <x-tabla.input-movil type="text" id="codigo_paquete_mover"
+                                label="Código de Etiqueta o Paquete"
                                 placeholder="Escanea código de etiqueta (ETQ...) o paquete (PAQ...)"
                                 autocomplete="off" inputmode="text" />
                         </div>
-                        <button onclick="buscarPaqueteParaMover()" 
+                        <button onclick="buscarPaqueteParaMover()"
                             class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow mb-[2px]">
                             Buscar
                         </button>
                     </div>
 
-                    <div id="error-paquete-mover"
-                        class="hidden mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+                    <div id="error-paquete-mover" class="hidden mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
                     </div>
-                    <div id="loading-paquete-mover"
-                        class="hidden mt-2 text-sm text-gray-600">
+                    <div id="loading-paquete-mover" class="hidden mt-2 text-sm text-gray-600">
                         <div class="flex items-center gap-2">
-                            <div
-                                class="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600">
+                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600">
                             </div>
                             <span>Buscando paquete...</span>
                         </div>
@@ -585,28 +589,27 @@
                 </div>
 
                 {{-- Info del paquete (se muestra despuÃ©s de validar) --}}
-                <div id="info-paquete-validado"
-                    class="hidden bg-green-50 border border-green-200 rounded-lg p-4">
+                <div id="info-paquete-validado" class="hidden bg-green-50 border border-green-200 rounded-lg p-4">
                     <h3 class="font-semibold text-green-800 mb-3">✓ Paquete
                         Encontrado</h3>
-                    <div
-                        class="flex flex-col md:flex-row justify-start gap-3 text-sm">
+                    <div class="flex flex-col md:flex-row justify-start gap-3 text-sm">
                         <div class="bg-white p-2 rounded border">
                             <p class="text-gray-600 text-xs">Código Paquete</p>
-                            <p id="paquete-codigo-info"
-                                class="font-bold text-gray-800"></p>
+                            <p id="paquete-codigo-info" class="font-bold text-gray-800"></p>
                         </div>
                         <div class="bg-white p-2 rounded border">
                             <p class="text-gray-600 text-xs">Etiquetas /
                                 Elementos</p>
-                            <p id="paquete-peso-info"
-                                class="font-bold text-gray-800"></p>
+                            <p id="paquete-peso-info" class="font-bold text-gray-800"></p>
                         </div>
                     </div>
                     {{-- Mensaje de advertencia si no tiene localización --}}
-                    <div id="warning-sin-localizacion" class="hidden mt-3 p-3 bg-blue-50 border border-blue-300 rounded-lg">
-                        <p class="text-blue-800 text-sm font-medium">📍 Este paquete no tiene ubicación asignada en el mapa.</p>
-                        <p class="text-blue-700 text-xs mt-1">Se mostrará un ghost para que puedas arrastrarlo a la ubicación deseada.</p>
+                    <div id="warning-sin-localizacion"
+                        class="hidden mt-3 p-3 bg-blue-50 border border-blue-300 rounded-lg">
+                        <p class="text-blue-800 text-sm font-medium">📍 Este paquete no tiene ubicación asignada en el
+                            mapa.</p>
+                        <p class="text-blue-700 text-xs mt-1">Se mostrará un ghost para que puedas arrastrarlo a la
+                            ubicación deseada.</p>
                     </div>
                     <button onclick="mostrarPasoMapa()"
                         class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow">
@@ -618,7 +621,8 @@
             {{-- PASO 2: Seleccionar ubicación en mapa --}}
             <div id="paso-mapa-paquete" class="hidden space-y-2 h-full">
                 {{-- Información del paquete seleccionado --}}
-                <div class="bg-green-50 border border-green-300 rounded-lg p-3 flex items-center justify-between gap-3">
+                <div
+                    class="bg-green-50 border border-green-300 rounded-lg p-3 flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
                         <span class="text-2xl">📦</span>
                         <div>
@@ -633,7 +637,8 @@
                 </div>
 
                 {{-- Componente de mapa simplificado --}}
-                <div class="bg-white p-2 rounded-lg border flex-1 overflow-hidden relative" style="height: calc(100% - 70px);">
+                <div class="bg-white p-2 rounded-lg border flex-1 overflow-hidden relative"
+                    style="height: calc(100% - 70px);">
                     <x-mapa-simple :nave-id="$naveIdMapa" :modo-edicion="true" class="h-full w-full" />
                 </div>
             </div>
@@ -652,6 +657,7 @@
 {{-- Scripts para el modal de mover paquete --}}
 <script>
     let paqueteMoverData = null;
+
     function ajustarModalSegunGrid(modalId) {
         const modal = document.getElementById(modalId);
         if (!modal) return;
@@ -857,7 +863,9 @@
                     if (resultado === false) {
                         // El paquete no existe en el DOM del mapa
                         console.warn('Paquete no encontrado en el mapa:', codigoPaquete);
-                        mostrarMensajeEnMapa(modal, 'El paquete no tiene ubicación registrada en este mapa. Puedes asignarle una nueva ubicación.', 'warning');
+                        mostrarMensajeEnMapa(modal,
+                            'El paquete no tiene ubicación registrada en este mapa. Puedes asignarle una nueva ubicación.',
+                            'warning');
                     } else {
                         if (typeof fnAutoclick === 'function') {
                             // Asegurar flujo de clic tras mostrar y centrar
@@ -895,7 +903,8 @@
         };
 
         const div = document.createElement('div');
-        div.className = `mensaje-mapa-flotante absolute top-2 left-2 right-2 z-50 p-3 rounded-lg border text-sm ${colores[tipo] || colores.info}`;
+        div.className =
+            `mensaje-mapa-flotante absolute top-2 left-2 right-2 z-50 p-3 rounded-lg border text-sm ${colores[tipo] || colores.info}`;
         div.innerHTML = `<p>${mensaje}</p>`;
         contenedorMapa.appendChild(div);
 
@@ -962,7 +971,8 @@
 {{-- 🚛 MODAL EJECUTAR SALIDA (con mapa y escaneo de paquetes) --}}
 <div id="modal-ejecutar-salida"
     class="fixed inset-x-0 top-14 bottom-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
-    <div class="bg-white sm:rounded-2xl shadow-xl w-full h-full sm:w-[90vw] sm:max-h-[calc(100vh-5rem)] overflow-hidden flex flex-col">
+    <div
+        class="bg-white sm:rounded-2xl shadow-xl w-full h-full sm:w-[90vw] sm:max-h-[calc(100vh-5rem)] overflow-hidden flex flex-col">
         {{-- Header --}}
         <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-4 flex justify-between items-center">
             <div>
@@ -982,13 +992,14 @@
                     </label>
                     <input type="text" id="codigo_etiqueta_salida"
                         class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                        placeholder="Escanea el código de la etiqueta..."
-                        autocomplete="off">
+                        placeholder="Escanea el código de la etiqueta..." autocomplete="off">
                 </div>
                 <div class="flex items-end gap-2">
                     <div class="text-sm">
-                        <p class="text-gray-600">Paquetes validados: <span id="contador-escaneadas" class="font-bold text-purple-600">0</span></p>
-                        <p class="text-gray-600">Total paquetes: <span id="contador-total" class="font-bold">0</span></p>
+                        <p class="text-gray-600">Paquetes validados: <span id="contador-escaneadas"
+                                class="font-bold text-purple-600">0</span></p>
+                        <p class="text-gray-600">Total paquetes: <span id="contador-total" class="font-bold">0</span>
+                        </p>
                     </div>
                 </div>
             </div>
@@ -998,8 +1009,9 @@
         {{-- Contenido principal: Mapa + Lista --}}
         <div class="flex-1 overflow-hidden flex flex-col lg:flex-row relative">
             {{-- MAPA (Izquierda) --}}
-            <div id="contenedor-mapa-ejecutar-salida" class="hidden lg:block w-full lg:flex-1 h-full p-4 overflow-hidden bg-white absolute inset-0 lg:static z-20 lg:z-auto">
-                <button onclick="ocultarMapaMovil()" 
+            <div id="contenedor-mapa-ejecutar-salida"
+                class="hidden lg:block w-full lg:flex-1 h-full p-4 overflow-hidden bg-white absolute inset-0 lg:static z-20 lg:z-auto">
+                <button onclick="ocultarMapaMovil()"
                     class="lg:hidden absolute top-5 right-5 bg-white text-gray-800 px-4 py-2 rounded-full shadow-lg border z-50 font-bold flex items-center gap-2 hover:bg-gray-50">
                     <span>✕</span> Volver
                 </button>
@@ -1007,7 +1019,8 @@
             </div>
 
             {{-- LISTA DE PAQUETES (Derecha) --}}
-            <div id="contenedor-lista-paquetes" class="w-full lg:w-96 border-t lg:border-t-0 lg:border-l bg-gray-50 flex flex-col h-full overflow-hidden">
+            <div id="contenedor-lista-paquetes"
+                class="w-full lg:w-96 border-t lg:border-t-0 lg:border-l bg-gray-50 flex flex-col h-full overflow-hidden">
                 <div class="p-4 border-b bg-white">
                     <h3 class="font-semibold text-gray-800">Paquetes de la Salida</h3>
                     <p class="text-xs text-gray-500 mt-1">Haz clic para ver ubicación en el mapa</p>
@@ -1186,16 +1199,20 @@
             const div = document.createElement('div');
             const isSeleccionado = paqueteSeleccionadoId === paquete.id;
             let claseEstado = 'bg-white border-gray-200 hover:border-purple-300';
-            if (isLocalizado) claseEstado = 'bg-purple-50 border-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.2)]';
-            if (isSeleccionado) claseEstado = 'bg-purple-50 border-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.2)]';
+            if (isLocalizado) claseEstado =
+                'bg-purple-50 border-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.2)]';
+            if (isSeleccionado) claseEstado =
+                'bg-purple-50 border-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.2)]';
 
             div.className = `p-3 rounded-lg border-2 cursor-pointer transition-all ${claseEstado}`;
             // Click en paquete → mostrar/centrar y ocultar otros en el mapa, marcar selección
             div.addEventListener('click', () => {
-                const mapa = document.querySelector('#contenedor-mapa-ejecutar-salida [data-mapa-simple]');
+                const mapa = document.querySelector(
+                    '#contenedor-mapa-ejecutar-salida [data-mapa-simple]');
                 if (mapa) {
                     const grid = mapa.querySelector('.cuadricula-mapa');
-                    if (grid) grid.querySelectorAll('.loc-paquete').forEach(p => p.style.display = 'none');
+                    if (grid) grid.querySelectorAll('.loc-paquete').forEach(p => p.style.display =
+                        'none');
                     if (typeof mapa.mostrarPaquete === 'function') {
                         mapa.mostrarPaquete(paquete.codigo, false);
                     }
@@ -1349,7 +1366,8 @@
                 mostrarToastSwal('Salida completada con éxito', 'success');
                 cerrarModalEjecutarSalida();
             } else {
-                mostrarToastSwal('Error al completar la salida: ' + (data.message || 'Respuesta no válida'), 'error');
+                mostrarToastSwal('Error al completar la salida: ' + (data.message || 'Respuesta no válida'),
+                    'error');
             }
         } catch (error) {
             console.error('Error al completar salida:', error);
@@ -1372,6 +1390,7 @@
             alert(mensaje);
         }
     }
+
     function mostrarMapaMovil() {
         const mapa = document.getElementById('contenedor-mapa-ejecutar-salida');
         if (mapa) {
