@@ -28,7 +28,7 @@ class MovimientoController extends Controller
     {
         // Helpers locales
         $like = function ($term) {
-            $term = trim((string)$term);
+            $term = trim((string) $term);
             return $term === '' ? null : '%' . str_replace(['%', '_'], ['\%', '\_'], $term) . '%';
         };
 
@@ -39,7 +39,7 @@ class MovimientoController extends Controller
             // Caso A: AAAA-N (1..6)  → pad a 6 dígitos
             if (preg_match('/^(\d{4})-(\d{1,6})$/', $codigo, $m)) {
                 $anio = $m[1];
-                $num  = str_pad($m[2], 6, '0', STR_PAD_LEFT);
+                $num = str_pad($m[2], 6, '0', STR_PAD_LEFT);
                 // contains estricto del formato completo
                 $pats[] = "%{$anio}-{$num}%";
                 // por si el usuario escribió con ceros pero quiere contains
@@ -95,13 +95,16 @@ class MovimientoController extends Controller
         if ($request->filled('producto_tipo') || $request->filled('producto_diametro') || $request->filled('producto_longitud')) {
             $query->whereHas('productoBase', function ($q) use ($request, $like) {
                 if ($request->filled('producto_tipo')) {
-                    if ($v = $like($request->producto_tipo)) $q->where('tipo', 'like', $v);
+                    if ($v = $like($request->producto_tipo))
+                        $q->where('tipo', 'like', $v);
                 }
                 if ($request->filled('producto_diametro')) {
-                    if ($v = $like($request->producto_diametro)) $q->where('diametro', 'like', $v);
+                    if ($v = $like($request->producto_diametro))
+                        $q->where('diametro', 'like', $v);
                 }
                 if ($request->filled('producto_longitud')) {
-                    if ($v = $like($request->producto_longitud)) $q->where('longitud', 'like', $v);
+                    if ($v = $like($request->producto_longitud))
+                        $q->where('longitud', 'like', $v);
                 }
             });
         }
@@ -132,7 +135,7 @@ class MovimientoController extends Controller
                 $query->where(function ($q) use ($v, $request) {
                     $q->where('prioridad', 'like', $v);
                     if (is_numeric($request->prioridad)) {
-                        $q->orWhere('prioridad', (int)$request->prioridad);
+                        $q->orWhere('prioridad', (int) $request->prioridad);
                     }
                 });
             }
@@ -200,11 +203,13 @@ class MovimientoController extends Controller
             $query->where(function ($q) use ($pats) {
                 $q->whereHas('producto', function ($p) use ($pats) {
                     $p->where(function ($x) use ($pats) {
-                        foreach ($pats as $pat) $x->orWhere('codigo', 'like', $pat);
+                        foreach ($pats as $pat)
+                            $x->orWhere('codigo', 'like', $pat);
                     });
                 })->orWhereHas('paquete', function ($p) use ($pats) {
                     $p->where(function ($x) use ($pats) {
-                        foreach ($pats as $pat) $x->orWhere('codigo', 'like', $pat);
+                        foreach ($pats as $pat)
+                            $x->orWhere('codigo', 'like', $pat);
                     });
                 });
             });
@@ -288,17 +293,19 @@ class MovimientoController extends Controller
                 $filtros[] = 'Nave: <strong>' . e($obra->obra) . '</strong>';
             }
         }
-        if ($request->filled('origen'))   $filtros[] = 'Origen: <strong>'   . $request->origen   . '</strong>';
-        if ($request->filled('destino'))  $filtros[] = 'Destino: <strong>'  . $request->destino  . '</strong>';
+        if ($request->filled('origen'))
+            $filtros[] = 'Origen: <strong>' . $request->origen . '</strong>';
+        if ($request->filled('destino'))
+            $filtros[] = 'Destino: <strong>' . $request->destino . '</strong>';
 
         /* ─── 2. Prioridad ───────────────────────────────── */
         if ($request->filled('prioridad')) {
             $prioridades = [
-                1         => 'Normal',
-                2         => 'Alta',
-                3         => 'Urgente',
-                'normal'  => 'Normal',
-                'alta'    => 'Alta',
+                1 => 'Normal',
+                2 => 'Alta',
+                3 => 'Urgente',
+                'normal' => 'Normal',
+                'alta' => 'Alta',
                 'urgente' => 'Urgente',
             ];
             $texto = $prioridades[$request->prioridad] ?? $request->prioridad;
@@ -338,19 +345,23 @@ class MovimientoController extends Controller
         }
 
         /* ─── 6. Fechas ─────────────────────────────────── */
-        if ($request->filled('fecha_solicitud'))    $filtros[] = 'Fecha solicitud: <strong>'    . $request->fecha_solicitud    . '</strong>';
-        if ($request->filled('fecha_ejecucion'))    $filtros[] = 'Fecha ejecución: <strong>'    . $request->fecha_ejecucion    . '</strong>';
-        if ($request->filled('fecha_inicio'))       $filtros[] = 'Desde: <strong>'              . $request->fecha_inicio       . '</strong>';
-        if ($request->filled('fecha_finalizacion')) $filtros[] = 'Hasta: <strong>'              . $request->fecha_finalizacion . '</strong>';
+        if ($request->filled('fecha_solicitud'))
+            $filtros[] = 'Fecha solicitud: <strong>' . $request->fecha_solicitud . '</strong>';
+        if ($request->filled('fecha_ejecucion'))
+            $filtros[] = 'Fecha ejecución: <strong>' . $request->fecha_ejecucion . '</strong>';
+        if ($request->filled('fecha_inicio'))
+            $filtros[] = 'Desde: <strong>' . $request->fecha_inicio . '</strong>';
+        if ($request->filled('fecha_finalizacion'))
+            $filtros[] = 'Hasta: <strong>' . $request->fecha_finalizacion . '</strong>';
 
         /* ─── 7. Orden y paginación ─────────────────────── */
         if ($request->filled('sort')) {
             $sorts = [
-                'prioridad'        => 'Prioridad',
-                'estado'           => 'Estado',
-                'fecha_solicitud'  => 'Fecha solicitud',
-                'fecha_ejecucion'  => 'Fecha ejecución',
-                'id'               => 'ID',
+                'prioridad' => 'Prioridad',
+                'estado' => 'Estado',
+                'fecha_solicitud' => 'Fecha solicitud',
+                'fecha_ejecucion' => 'Fecha ejecución',
+                'id' => 'ID',
             ];
             $orden = $request->order == 'desc' ? 'descendente' : 'ascendente';
             $filtros[] = 'Ordenado por <strong>' . ($sorts[$request->sort] ?? $request->sort)
@@ -366,10 +377,10 @@ class MovimientoController extends Controller
 
     private function getOrdenamiento(string $columna, string $titulo): string
     {
-        $currentSort  = request('sort');
+        $currentSort = request('sort');
         $currentOrder = request('order');
-        $isSorted     = $currentSort === $columna;
-        $nextOrder    = ($isSorted && $currentOrder === 'asc') ? 'desc' : 'asc';
+        $isSorted = $currentSort === $columna;
+        $nextOrder = ($isSorted && $currentOrder === 'asc') ? 'desc' : 'asc';
 
         $icon = $isSorted
             ? ($currentOrder === 'asc' ? '▲' : '▼')
@@ -399,7 +410,7 @@ class MovimientoController extends Controller
         ];
 
 
-        $sort  = $request->input('sort', 'created_at');
+        $sort = $request->input('sort', 'created_at');
         $order = $request->input('order', 'desc');
 
         // Sanitiza: si la columna no es válida, cae al fallback
@@ -443,17 +454,17 @@ class MovimientoController extends Controller
         $registrosMovimientos = $query->paginate($perPage)->appends($request->except('page'));
 
         $ordenables = [
-            'id'                 => $this->getOrdenamiento('id', 'ID'),
-            'producto_id'        => $this->getOrdenamiento('producto_id', 'Producto Solicitado'),
-            'tipo'               => $this->getOrdenamiento('tipo', 'Tipo'),
-            'descripcion'        => $this->getOrdenamiento('descripcion', 'Descripción'),
-            'nave'               => $this->getOrdenamiento('nave', 'Nave'),
-            'prioridad'          => $this->getOrdenamiento('prioridad', 'Prioridad'),
-            'solicitado_por'     => $this->getOrdenamiento('solicitado_por', 'Solicitado por'),
-            'ejecutado_por'      => $this->getOrdenamiento('ejecutado_por', 'Ejecutado por'),
-            'estado'             => $this->getOrdenamiento('estado', 'Estado'),
-            'fecha_solicitud'    => $this->getOrdenamiento('fecha_solicitud', 'Fecha Solicitud'),
-            'fecha_ejecucion'    => $this->getOrdenamiento('fecha_ejecucion', 'Fecha Ejecución'),
+            'id' => $this->getOrdenamiento('id', 'ID'),
+            'producto_id' => $this->getOrdenamiento('producto_id', 'Producto Solicitado'),
+            'tipo' => $this->getOrdenamiento('tipo', 'Tipo'),
+            'descripcion' => $this->getOrdenamiento('descripcion', 'Descripción'),
+            'nave' => $this->getOrdenamiento('nave', 'Nave'),
+            'prioridad' => $this->getOrdenamiento('prioridad', 'Prioridad'),
+            'solicitado_por' => $this->getOrdenamiento('solicitado_por', 'Solicitado por'),
+            'ejecutado_por' => $this->getOrdenamiento('ejecutado_por', 'Ejecutado por'),
+            'estado' => $this->getOrdenamiento('estado', 'Estado'),
+            'fecha_solicitud' => $this->getOrdenamiento('fecha_solicitud', 'Fecha Solicitud'),
+            'fecha_ejecucion' => $this->getOrdenamiento('fecha_ejecucion', 'Fecha Ejecución'),
             'pedido_producto_id' => $this->getOrdenamiento('pedido_producto_id', 'Línea Pedido'),
         ];
 
@@ -592,17 +603,17 @@ class MovimientoController extends Controller
                         }
 
                         Movimiento::create([
-                            'tipo'              => 'Recarga materia prima',
-                            'nave_id'           => $naveId,              // <<<<<<
-                            'maquina_origen'    => null,
-                            'maquina_destino'   => $maquina->id,
-                            'producto_id'       => null,
-                            'producto_base_id'  => $productoBase->id,
-                            'estado'            => 'pendiente',
-                            'descripcion'       => $descripcion,
-                            'prioridad'         => 1,
-                            'fecha_solicitud'   => now(),
-                            'solicitado_por'    => auth()->id(),
+                            'tipo' => 'Recarga materia prima',
+                            'nave_id' => $naveId,              // <<<<<<
+                            'maquina_origen' => null,
+                            'maquina_destino' => $maquina->id,
+                            'producto_id' => null,
+                            'producto_base_id' => $productoBase->id,
+                            'estado' => 'pendiente',
+                            'descripcion' => $descripcion,
+                            'prioridad' => 1,
+                            'fecha_solicitud' => now(),
+                            'solicitado_por' => auth()->id(),
                         ]);
                         break;
 
@@ -633,18 +644,18 @@ class MovimientoController extends Controller
                         $descripcion = "Se solicita mover el paquete #{$paquete->codigo} desde {$nombreUbicacion}";
 
                         Movimiento::create([
-                            'tipo'               => 'Movimiento de paquete',
-                            'nave_id'            => $naveId,                 // <<<<<<
-                            'paquete_id'         => $paquete->id,
-                            'ubicacion_origen'   => $paquete->ubicacion_id,
-                            'maquina_origen'     => $paquete->maquina_id,
-                            'ubicacion_destino'  => $request->ubicacion_destino, // si aplicara
-                            'maquina_destino'    => $request->maquina_id,        // si aplicara
-                            'estado'             => 'pendiente',
-                            'prioridad'          => 3,
-                            'fecha_solicitud'    => now(),
-                            'solicitado_por'     => auth()->id(),
-                            'descripcion'        => $descripcion,
+                            'tipo' => 'Movimiento de paquete',
+                            'nave_id' => $naveId,                 // <<<<<<
+                            'paquete_id' => $paquete->id,
+                            'ubicacion_origen' => $paquete->ubicacion_id,
+                            'maquina_origen' => $paquete->maquina_id,
+                            'ubicacion_destino' => $request->ubicacion_destino, // si aplicara
+                            'maquina_destino' => $request->maquina_id,        // si aplicara
+                            'estado' => 'pendiente',
+                            'prioridad' => 3,
+                            'fecha_solicitud' => now(),
+                            'solicitado_por' => auth()->id(),
+                            'descripcion' => $descripcion,
                         ]);
                         break;
 
@@ -673,21 +684,22 @@ class MovimientoController extends Controller
         // 1) Validación (lista_qrs JSON) + destinos opcionales
         try {
             $validated = $request->validate([
-                'lista_qrs'         => 'required|string', // JSON string con array de códigos
+                'lista_qrs' => 'required|string', // JSON string con array de códigos
                 'ubicacion_destino' => 'nullable|exists:ubicaciones,id',
-                'maquina_destino'   => 'nullable|exists:maquinas,id',
-                'tipo'              => 'nullable|string'
+                'maquina_destino' => 'nullable|exists:maquinas,id',
+                'tipo' => 'nullable|string',
+                'movimiento_id' => 'nullable|exists:movimientos,id'
             ], [
-                'lista_qrs.required'       => 'Debes escanear al menos un código.',
+                'lista_qrs.required' => 'Debes escanear al menos un código.',
                 'ubicacion_destino.exists' => 'Ubicación no válida.',
-                'maquina_destino.exists'   => 'Máquina no válida.',
+                'maquina_destino.exists' => 'Máquina no válida.',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Errores de validación',
-                    'errors'  => $e->errors(),
+                    'errors' => $e->errors(),
                 ], 422);
             }
             throw $e;
@@ -703,7 +715,7 @@ class MovimientoController extends Controller
         }
         // normaliza
         $lista = array_values(array_unique(array_filter(array_map(
-            fn($c) => strtoupper(trim((string)$c)),
+            fn($c) => strtoupper(trim((string) $c)),
             $lista
         ))));
         if (!$lista) {
@@ -714,12 +726,12 @@ class MovimientoController extends Controller
         }
 
         // 3) Variables base de destino
-        $maquinaId   = $validated['maquina_destino'] ?? null;
+        $maquinaId = $validated['maquina_destino'] ?? null;
         $ubicacionId = $validated['ubicacion_destino'] ?? null;
-        $esRecarga   = $maquinaId !== null;
+        $esRecarga = $maquinaId !== null;
 
         $maquinaDetectada = $esRecarga ? Maquina::find($maquinaId) : null;
-        $ubicacion        = $esRecarga ? null : ($ubicacionId ? Ubicacion::find($ubicacionId) : null);
+        $ubicacion = $esRecarga ? null : ($ubicacionId ? Ubicacion::find($ubicacionId) : null);
 
         if (!$maquinaDetectada && $ubicacion) {
             $maquinaDetectada = Maquina::where('codigo', $ubicacion->descripcion)->first();
@@ -769,12 +781,12 @@ class MovimientoController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($lista, $ubicacion, $maquinaDetectada, $naveId) {
+            DB::transaction(function () use ($lista, $ubicacion, $maquinaDetectada, $naveId, $request) {
 
                 foreach ($lista as $codigo) {
                     // Cargamos uno a uno y si falla cualquiera → excepción (se revierte todo)
                     $producto = null;
-                    $paquete  = null;
+                    $paquete = null;
                     $tipoMovimiento = null;
 
                     if (str_starts_with($codigo, 'MP')) {
@@ -792,14 +804,14 @@ class MovimientoController extends Controller
                         $tipoBase = strtolower($producto->productoBase->tipo);
                         $diametro = $producto->productoBase->diametro;
                         $longitud = $producto->productoBase->longitud;
-                        $origen   = $producto->ubicacion->nombre ?? 'origen desconocido';
+                        $origen = $producto->ubicacion->nombre ?? 'origen desconocido';
 
                         // Descripción PLANA (con Código). L solo si NO es encarretado.
                         $descripcion = "Movemos {$tipoBase} (Código: {$codigo}) Ø{$diametro} mm"
                             . ($tipoBase !== 'encarretado' ? " L:{$longitud} mm" : "")
                             . " de {$origen}"
                             . " a " . ($maquinaDetectada ? 'máquina ' . $maquinaDetectada->nombre
-                                : 'ubicación ' . ($ubicacion->nombre ?? 'destino desconocido'));
+                            : 'ubicación ' . ($ubicacion->nombre ?? 'destino desconocido'));
 
                         // Si hay máquina
                         if ($maquinaDetectada) {
@@ -826,36 +838,48 @@ class MovimientoController extends Controller
                                 throw new \Exception('El diámetro del producto no está dentro del rango aceptado por la máquina.');
                             }
 
-                            // Movimiento pendiente
-                            $movPend = Movimiento::where('producto_base_id', $producto->producto_base_id)
-                                ->where('maquina_destino', $maquinaDetectada->id)
-                                ->where('estado', 'pendiente')
-                                ->latest()
-                                ->first();
+                            // Movimiento pendiente: priorizar el ID enviado desde el modal
+                            $movPend = null;
+                            if ($request->filled('movimiento_id')) {
+                                $targetMov = Movimiento::find($request->movimiento_id);
+                                // Validar que el movimiento siga pendiente y coincida con el destino buscado
+                                if ($targetMov && $targetMov->estado === 'pendiente' && $targetMov->maquina_destino == $maquinaDetectada->id) {
+                                    $movPend = $targetMov;
+                                }
+                            }
+
+                            // Si no hay ID o no coincide, buscar por heurística
+                            if (!$movPend) {
+                                $movPend = Movimiento::where('producto_base_id', $producto->producto_base_id)
+                                    ->where('maquina_destino', $maquinaDetectada->id)
+                                    ->where('estado', 'pendiente')
+                                    ->latest()
+                                    ->first();
+                            }
 
                             $movimientoActual = null;
                             if ($movPend) {
                                 $movPend->update([
-                                    'producto_id'      => $producto->id,
+                                    'producto_id' => $producto->id,
                                     'ubicacion_origen' => $producto->ubicacion_id,
-                                    'estado'           => 'completado',
-                                    'fecha_ejecucion'  => now(),
-                                    'ejecutado_por'    => auth()->id(),
+                                    'estado' => 'completado',
+                                    'fecha_ejecucion' => now(),
+                                    'ejecutado_por' => auth()->id(),
                                 ]);
                                 $movimientoActual = $movPend;
                             } else {
                                 $movimientoActual = Movimiento::create([
-                                    'tipo'               => 'movimiento libre',
-                                    'producto_id'        => $producto->id,
-                                    'producto_base_id'   => $producto->producto_base_id,
-                                    'ubicacion_origen'   => $producto->ubicacion_id,
-                                    'maquina_origen'     => $producto->maquina_id,
-                                    'maquina_destino'    => $maquinaDetectada->id,
-                                    'estado'             => 'completado',
-                                    'descripcion'        => $descripcion,
-                                    'nave_id'            => $naveId,
-                                    'fecha_ejecucion'    => now(),
-                                    'ejecutado_por'      => auth()->id(),
+                                    'tipo' => $maquinaDetectada ? 'Recarga materia prima' : 'movimiento libre',
+                                    'producto_id' => $producto->id,
+                                    'producto_base_id' => $producto->producto_base_id,
+                                    'ubicacion_origen' => $producto->ubicacion_id,
+                                    'maquina_origen' => $producto->maquina_id,
+                                    'maquina_destino' => $maquinaDetectada->id,
+                                    'estado' => 'completado',
+                                    'descripcion' => $descripcion,
+                                    'nave_id' => $naveId,
+                                    'fecha_ejecucion' => now(),
+                                    'ejecutado_por' => auth()->id(),
                                 ]);
                             }
 
@@ -869,16 +893,16 @@ class MovimientoController extends Controller
 
                             if ($productoAnterior) {
                                 $productoAnterior->update([
-                                    'estado'          => 'consumido',
-                                    'maquina_id'      => null,
+                                    'estado' => 'consumido',
+                                    'maquina_id' => null,
                                     'fecha_consumido' => now(),
-                                    'consumido_by'    => auth()->id(),
+                                    'consumido_by' => auth()->id(),
                                 ]);
                                 Log::info('Producto anterior consumido automáticamente', [
                                     'producto_anterior_id' => $productoAnterior->id,
-                                    'producto_nuevo_id'    => $producto->id,
-                                    'maquina_id'           => $maquinaDetectada->id,
-                                    'producto_base_id'     => $producto->producto_base_id,
+                                    'producto_nuevo_id' => $producto->id,
+                                    'maquina_id' => $maquinaDetectada->id,
+                                    'producto_base_id' => $producto->producto_base_id,
                                 ]);
 
                                 // Guardar referencia del producto consumido en el movimiento
@@ -890,32 +914,32 @@ class MovimientoController extends Controller
                             // Actualiza producto a máquina
                             $producto->update([
                                 'ubicacion_id' => null,
-                                'obra_id'      => $naveId,
-                                'maquina_id'   => $maquinaDetectada->id,
-                                'estado'       => 'fabricando',
+                                'obra_id' => $naveId,
+                                'maquina_id' => $maquinaDetectada->id,
+                                'estado' => 'fabricando',
                             ]);
                         } else {
                             // A ubicación
                             Movimiento::create([
-                                'tipo'               => 'movimiento libre',
-                                'producto_id'        => $producto->id,
-                                'producto_base_id'   => $producto->producto_base_id,
-                                'ubicacion_origen'   => $producto->ubicacion_id,
-                                'maquina_origen'     => $producto->maquina_id,
-                                'ubicacion_destino'  => $ubicacion->id,
-                                'maquina_destino'    => null,
-                                'estado'             => 'completado',
-                                'descripcion'        => $descripcion,
-                                'nave_id'            => $naveId,
-                                'fecha_ejecucion'    => now(),
-                                'ejecutado_por'      => auth()->id(),
+                                'tipo' => 'movimiento libre',
+                                'producto_id' => $producto->id,
+                                'producto_base_id' => $producto->producto_base_id,
+                                'ubicacion_origen' => $producto->ubicacion_id,
+                                'maquina_origen' => $producto->maquina_id,
+                                'ubicacion_destino' => $ubicacion->id,
+                                'maquina_destino' => null,
+                                'estado' => 'completado',
+                                'descripcion' => $descripcion,
+                                'nave_id' => $naveId,
+                                'fecha_ejecucion' => now(),
+                                'ejecutado_por' => auth()->id(),
                             ]);
 
                             $producto->update([
                                 'ubicacion_id' => $ubicacion->id,
-                                'obra_id'      => $naveId,
-                                'maquina_id'   => null,
-                                'estado'       => 'almacenado',
+                                'obra_id' => $naveId,
+                                'maquina_id' => null,
+                                'estado' => 'almacenado',
                             ]);
                         }
                     }
@@ -927,48 +951,58 @@ class MovimientoController extends Controller
                         $descripcion = "Movemos paquete (Código: {$codigo})"
                             . " de {$origen}"
                             . " a " . ($maquinaDetectada ? 'máquina ' . $maquinaDetectada->nombre
-                                : 'ubicación ' . ($ubicacion->nombre ?? 'destino desconocido'));
+                            : 'ubicación ' . ($ubicacion->nombre ?? 'destino desconocido'));
 
-                        $movPend = Movimiento::where('paquete_id', $paquete->id)
-                            ->where(function ($q) use ($ubicacion, $maquinaDetectada) {
-                                if ($ubicacion) {
-                                    $q->where('ubicacion_destino', $ubicacion->id);
-                                }
-                                if ($maquinaDetectada) {
-                                    $q->orWhere('maquina_destino', $maquinaDetectada->id);
-                                }
-                            })
-                            ->where('estado', 'pendiente')
-                            ->latest()
-                            ->first();
+                        $movPend = null;
+                        if ($request->filled('movimiento_id')) {
+                            $targetMov = Movimiento::find($request->movimiento_id);
+                            if ($targetMov && $targetMov->estado === 'pendiente' && $targetMov->paquete_id == $paquete->id) {
+                                $movPend = $targetMov;
+                            }
+                        }
+
+                        if (!$movPend) {
+                            $movPend = Movimiento::where('paquete_id', $paquete->id)
+                                ->where(function ($q) use ($ubicacion, $maquinaDetectada) {
+                                    if ($ubicacion) {
+                                        $q->where('ubicacion_destino', $ubicacion->id);
+                                    }
+                                    if ($maquinaDetectada) {
+                                        $q->orWhere('maquina_destino', $maquinaDetectada->id);
+                                    }
+                                })
+                                ->where('estado', 'pendiente')
+                                ->latest()
+                                ->first();
+                        }
 
                         if ($movPend) {
                             $movPend->update([
-                                'estado'          => 'completado',
+                                'estado' => 'completado',
                                 'fecha_ejecucion' => now(),
-                                'ejecutado_por'   => auth()->id(),
+                                'ejecutado_por' => auth()->id(),
                                 // opcional: 'descripcion' => $descripcion,
                             ]);
                         } else {
                             Movimiento::create([
-                                'tipo'               => 'movimiento libre',
-                                'paquete_id'         => $paquete->id,
-                                'ubicacion_origen'   => $paquete->ubicacion_id,
-                                'maquina_origen'     => $paquete->maquina_id,
-                                'ubicacion_destino'  => $ubicacion?->id,
-                                'maquina_destino'    => $maquinaDetectada?->id,
-                                'estado'             => 'completado',
-                                'descripcion'        => $descripcion,
-                                'nave_id'            => $naveId,
-                                'fecha_ejecucion'    => now(),
-                                'ejecutado_por'      => auth()->id(),
+                                'tipo' => 'movimiento libre',
+                                'paquete_id' => $paquete->id,
+                                'ubicacion_origen' => $paquete->ubicacion_id,
+                                'maquina_origen' => $paquete->maquina_id,
+                                'ubicacion_destino' => $ubicacion?->id,
+                                'maquina_destino' => $maquinaDetectada?->id,
+                                'estado' => 'completado',
+                                'descripcion' => $descripcion,
+                                'nave_id' => $naveId,
+                                'fecha_ejecucion' => now(),
+                                'ejecutado_por' => auth()->id(),
                             ]);
                         }
 
                         $paquete->update([
                             'ubicacion_id' => $ubicacion?->id,
-                            'obra_id'      => $naveId,
-                            'maquina_id'   => $maquinaDetectada?->id,
+                            'obra_id' => $naveId,
+                            'maquina_id' => $maquinaDetectada?->id,
                         ]);
                     }
                 } // foreach
@@ -987,7 +1021,7 @@ class MovimientoController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => $mensajeError,
-                    'error'   => app()->environment('local') ? $e->getMessage() : null,
+                    'error' => app()->environment('local') ? $e->getMessage() : null,
                 ], 500);
             }
             return back()->withInput()->with('error', $mensajeError);
@@ -998,7 +1032,7 @@ class MovimientoController extends Controller
     // --- API: devolver info rápida de un código (para chips asíncronos) ---
     public function infoCodigo(Request $request)
     {
-        $code = strtoupper(trim((string)$request->query('code', '')));
+        $code = strtoupper(trim((string) $request->query('code', '')));
 
         if ($code === '' || strlen($code) < 2) {
             return response()->json(['ok' => false, 'error' => 'Código vacío o inválido'], 422);
@@ -1020,19 +1054,19 @@ class MovimientoController extends Controller
 
             // Sigla según tu enum real en productos_base (barra / encarretado)
             $sigla = match ($tipoBase) {
-                'barra'       => 'B',
+                'barra' => 'B',
                 'encarretado' => 'E',
-                default       => mb_strtoupper(mb_substr($tipoBase, 0, 1)),
+                default => mb_strtoupper(mb_substr($tipoBase, 0, 1)),
             };
 
             return response()->json([
-                'ok'        => true,
-                'clase'     => 'producto',
-                'codigo'    => $code,
-                'sigla'     => $sigla,
-                'tipo'      => $tipoBase,                                  // barra | encarretado
-                'diametro'  => (int) $prod->productoBase->diametro,        // Ø (int)
-                'longitud'  => $tipoBase === 'encarretado'
+                'ok' => true,
+                'clase' => 'producto',
+                'codigo' => $code,
+                'sigla' => $sigla,
+                'tipo' => $tipoBase,                                  // barra | encarretado
+                'diametro' => (int) $prod->productoBase->diametro,        // Ø (int)
+                'longitud' => $tipoBase === 'encarretado'
                     ? null
                     : ($prod->productoBase->longitud ?? null), // L solo si NO es encarretado
                 'ubicacion' => $prod->ubicacion->nombre ?? null,
@@ -1047,13 +1081,13 @@ class MovimientoController extends Controller
             }
 
             return response()->json([
-                'ok'        => true,
-                'clase'     => 'paquete',
-                'codigo'    => $code,
-                'sigla'     => 'PAQ',
-                'tipo'      => 'paquete',
-                'diametro'  => null,
-                'longitud'  => null,
+                'ok' => true,
+                'clase' => 'paquete',
+                'codigo' => $code,
+                'sigla' => 'PAQ',
+                'tipo' => 'paquete',
+                'diametro' => null,
+                'longitud' => null,
                 'ubicacion' => $paq->ubicacion->nombre ?? null,
             ]);
         }
@@ -1199,7 +1233,7 @@ class MovimientoController extends Controller
             // Función para ordenar por etiqueta_sub_id
             $ordenSub = function ($grupo, $subId) {
                 if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
-                    return sprintf('%s-%010d', $m[1], (int)$m[2]);
+                    return sprintf('%s-%010d', $m[1], (int) $m[2]);
                 }
                 return $subId . '-0000000000';
             };
@@ -1230,16 +1264,16 @@ class MovimientoController extends Controller
                     ],
                     'elementos' => $grupo->map(function ($e) {
                         return [
-                            'id'          => $e->id,
-                            'codigo'      => $e->codigo,
+                            'id' => $e->id,
+                            'codigo' => $e->codigo,
                             'dimensiones' => $e->dimensiones,
-                            'estado'      => $e->estado,
-                            'peso'        => $e->peso_kg,
-                            'diametro'    => $e->diametro_mm,
-                            'longitud'    => $e->longitud_cm,
-                            'barras'      => $e->barras,
-                            'figura'      => $e->figura,
-                            'coladas'     => [
+                            'estado' => $e->estado,
+                            'peso' => $e->peso_kg,
+                            'diametro' => $e->diametro_mm,
+                            'longitud' => $e->longitud_cm,
+                            'barras' => $e->barras,
+                            'figura' => $e->figura,
+                            'coladas' => [
                                 'colada1' => $e->producto ? $e->producto->n_colada : null,
                                 'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
                                 'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
@@ -1316,7 +1350,7 @@ class MovimientoController extends Controller
 
             // Filtrar solo etiquetas con elementos sin elaborar
             $etiquetasConElementosSinElaborar = $etiquetas->filter(function ($etiqueta) {
-                return $etiqueta->elementos->contains(fn($e) => (int)($e->elaborado ?? 1) === 0);
+                return $etiqueta->elementos->contains(fn($e) => (int) ($e->elaborado ?? 1) === 0);
             });
 
             // Renderizar las etiquetas como HTML
@@ -1387,16 +1421,16 @@ class MovimientoController extends Controller
                     $productoConsumido = Producto::find($movimiento->producto_consumido_id);
                     if ($productoConsumido && $productoConsumido->estado === 'consumido') {
                         $productoConsumido->update([
-                            'estado'          => 'fabricando',
-                            'maquina_id'      => $movimiento->maquina_destino,
+                            'estado' => 'fabricando',
+                            'maquina_id' => $movimiento->maquina_destino,
                             'fecha_consumido' => null,
-                            'consumido_by'    => null,
+                            'consumido_by' => null,
                         ]);
                         $productoConsumidoRecuperado = $productoConsumido;
                         Log::info('Producto consumido recuperado al eliminar movimiento', [
                             'producto_consumido_id' => $productoConsumido->id,
-                            'movimiento_id'         => $movimiento->id,
-                            'maquina_destino'       => $movimiento->maquina_destino,
+                            'movimiento_id' => $movimiento->id,
+                            'maquina_destino' => $movimiento->maquina_destino,
                         ]);
                     }
                 }

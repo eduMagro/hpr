@@ -45,7 +45,8 @@
                     <i data-lucide="list-todo" class="w-6 h-6 text-red-500"></i>
                     Tareas Pendientes
                 </h2>
-                <span class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold ring-4 ring-red-50">
+                <span id="contador-tareas-pendientes"
+                    class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold ring-4 ring-red-50">
                     {{ $movimientosPendientes->count() }} tareas
                 </span>
             </div>
@@ -80,7 +81,8 @@
                                 $urlRecepcion = "/pedidos/{$mov->pedido->id}/recepcion/{$productoBaseId}?movimiento_id={$mov->id}&maquina_id={$maquina->id}";
                             @endphp
 
-                            <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 card-hover">
+                            <div id="movimiento-pendiente-{{ $mov->id }}"
+                                class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 card-hover">
                                 <div class="flex justify-between items-start mb-6">
                                     <span
                                         class="px-3 py-1 bg-blue-50 text-blue-700 rounded-xl text-[10px] font-bold uppercase tracking-widest">Entrada
@@ -160,7 +162,8 @@
                                     $mov->maquinaDestino?->nombre ?? ($mov->maquina_destino ?? 'No especificada');
                             @endphp
 
-                            <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 card-hover">
+                            <div id="movimiento-pendiente-{{ $mov->id }}"
+                                class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 card-hover">
                                 <div class="flex justify-between items-start mb-6">
                                     <span
                                         class="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-xl text-[10px] font-bold uppercase tracking-widest">Recarga
@@ -213,7 +216,8 @@
                             </div>
                         @else
                             {{-- OTROS TIPOS DE PENDIENTES --}}
-                            <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 card-hover">
+                            <div id="movimiento-pendiente-{{ $mov->id }}"
+                                class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 card-hover">
                                 <div class="flex justify-between items-start mb-6">
                                     @php
                                         $badgeClass = 'bg-slate-50 text-slate-700';
@@ -1225,4 +1229,34 @@
     }
 
     window.eliminarMovimientoGrua = eliminarMovimientoGrua;
+
+    // Función para refrescar el historial dinámicamente
+    async function refrescarHistorialGrua() {
+        try {
+            const response = await fetch(window.location.href);
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            const nuevoContenido = doc.getElementById('contenedor-movimientos-completados');
+            const nuevoContador = doc.getElementById('contador-tareas-pendientes');
+
+            if (nuevoContenido) {
+                const actual = document.getElementById('contenedor-movimientos-completados');
+                actual.innerHTML = nuevoContenido.innerHTML;
+                if (window.lucide) lucide.createIcons();
+                if (typeof reiniciarPaginacionCompletados === 'function') {
+                    reiniciarPaginacionCompletados();
+                }
+            }
+
+            if (nuevoContador) {
+                const contadorActual = document.getElementById('contador-tareas-pendientes');
+                if (contadorActual) contadorActual.innerHTML = nuevoContador.innerHTML;
+            }
+        } catch (error) {
+            console.error('Error al refrescar historial:', error);
+        }
+    }
+    window.refrescarHistorialGrua = refrescarHistorialGrua;
 </script>

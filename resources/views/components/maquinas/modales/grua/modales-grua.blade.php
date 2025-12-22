@@ -179,6 +179,7 @@
             <form method="POST" action="{{ route('movimientos.store') }}" id="form-ejecutar-movimiento"
                 class="space-y-6">
                 @csrf
+                <input type="hidden" name="movimiento_id" id="modal_movimiento_id">
                 <input type="hidden" name="tipo" id="modal_tipo">
                 <input type="hidden" name="producto_base_id" id="modal_producto_base_id">
                 <input type="hidden" name="maquina_destino" id="modal_maquina_id">
@@ -215,20 +216,104 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const form = document.getElementById(
-            'form-ejecutar-movimiento');
+        const form = document.getElementById('form-ejecutar-movimiento');
         const inputQR = document.getElementById('modal_producto_id');
         const hiddenLista = document.getElementById('modal_lista_qrs');
 
-        form.addEventListener('submit', (e) => {
-            const valor = inputQR.value.trim();
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
 
+            const valor = inputQR.value.trim();
             if (valor) {
-                // Convertimos el valor en array JSON (aunque sea uno solo)
                 hiddenLista.value = JSON.stringify([valor]);
             } else {
-                // Si está vacío, lo dejamos vacío para que el backend valide
                 hiddenLista.value = '';
+            }
+
+            const formData = new FormData(form);
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalBtnContent = submitBtn.innerHTML;
+
+            // Deshabilitar botón
+            submitBtn.disabled = true;
+            submitBtn.innerHTML =
+                '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> REGISTRANDO...';
+            if (window.lucide) lucide.createIcons();
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                            .content
+                    }
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // SUCCESS
+                    Swal.fire({
+                        toast: true,
+                        position: 'top',
+                        showConfirmButton: false,
+                        timer: 2000,
+                        timerProgressBar: true,
+                        icon: 'success',
+                        title: 'Recarga registrada correctamente',
+                        background: '#f0fdf4',
+                        color: '#166534'
+                    });
+
+                    // 1. Cerrar Modal
+                    cerrarModalRecargaMateriaPrima();
+
+                    // 2. Eliminar de pendientes
+                    const movimientoId = document.getElementById('modal_movimiento_id').value;
+                    const cardPendiente = document.getElementById(
+                        `movimiento-pendiente-${movimientoId}`);
+                    if (cardPendiente) {
+                        cardPendiente.style.transition = 'all 0.3s ease';
+                        cardPendiente.style.opacity = '0';
+                        cardPendiente.style.transform = 'scale(0.95)';
+                        setTimeout(() => cardPendiente.remove(), 300);
+
+                        // Actualizar contador
+                        const contador = document.getElementById('contador-tareas-pendientes');
+                        if (contador) {
+                            const actual = parseInt(contador.innerText) || 0;
+                            contador.innerText = `${Math.max(0, actual - 1)} tareas`;
+                        }
+                    }
+
+                    // 3. Agregar al historial (recargando el contenedor)
+                    if (typeof window.refrescarHistorialGrua === 'function') {
+                        window.refrescarHistorialGrua();
+                    } else {
+                        // Fallback: recargar la página si no hay función de refresco
+                        setTimeout(() => window.location.reload(), 2000);
+                    }
+
+                } else {
+                    // ERROR DE VALIDACIÓN O BACKEND
+                    throw new Error(result.message || 'Error al registrar la recarga');
+                }
+            } catch (error) {
+                console.error('Error AJAX:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: '¡Ups!',
+                    text: error.message ||
+                        'No se pudo completar la operación. Por favor, inténtelo de nuevo.',
+                    confirmButtonColor: '#059669' // Emerald 600
+                });
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnContent;
+                if (window.lucide) lucide.createIcons();
             }
         });
     });
@@ -254,6 +339,7 @@
         productoBaseId, ubicacionesSugeridas,
         maquinaNombre, tipoBase, diametroBase, longitudBase) {
 
+        document.getElementById('modal_movimiento_id').value = id;
         document.getElementById('modal_tipo').value = tipo;
         document.getElementById('modal_maquina_id').value = maquinaId;
         document.getElementById('modal_producto_id').value =
