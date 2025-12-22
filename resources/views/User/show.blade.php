@@ -1,28 +1,5 @@
 @php
-    $esOficina = Auth::check() && Auth::user()->rol === 'oficina';
-
-    $config = [
-        'locale' => 'es',
-        'csrfToken' => csrf_token(),
-        'routes' => [
-            'eventosUrl' => route('users.verEventos-turnos', $user->id),
-            'resumenUrl' => route('users.verResumen-asistencia', ['user' => $user->id]),
-            'vacacionesStoreUrl' => route('vacaciones.solicitar'),
-            'storeUrl' => route('asignaciones-turnos.store'),
-            'destroyUrl' => route('asignaciones-turnos.destroy'),
-        ],
-        'enableListMonth' => true,
-        'mobileBreakpoint' => 768,
-        'permissions' => [
-            'canRequestVacations' => !$esOficina,
-            'canEditHours' => false,
-            'canAssignShifts' => $esOficina, // si quieres permitir asignar turnos
-            'canAssignStates' => $esOficina, // estados: vacaciones/baja/etc
-        ],
-        // Opcional: si quieres permitir asignar turnos por nombre
-        'turnos' => $turnos->map(fn($t) => ['nombre' => $t->nombre])->values()->toArray(),
-        'userId' => $user->id,
-    ];
+    // Usamos el $config enviado desde el controlador
 @endphp
 
 
