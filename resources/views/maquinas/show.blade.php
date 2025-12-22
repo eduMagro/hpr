@@ -513,14 +513,15 @@
                     @endif
                 @endif
 
-                <form method="POST" action="{{ route('turno.cambiarMaquina') }}" id="form-cambiar-maquina">
+                <form method="POST" class="max-md:w-full" action="{{ route('turno.cambiarMaquina') }}"
+                    id="form-cambiar-maquina">
                     @csrf
                     <input type="hidden" name="asignacion_id" value="{{ $turnoHoy->id ?? '' }}">
                     <input type="hidden" name="nueva_maquina_id" id="hidden-nueva-maquina-id" value="">
 
                     <div class="relative">
                         <select id="select-cambiar-maquina"
-                            class="appearance-none bg-white border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
+                            class="appearance-none bg-white border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer max-md:w-full">
                             @foreach ($maquinas as $m)
                                 <option value="{{ $m->id }}"
                                     {{ $m->id == ($turnoHoy->maquina_id ?? $maquina->id) ? 'selected' : '' }}>
