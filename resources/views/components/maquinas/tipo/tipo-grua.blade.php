@@ -142,6 +142,75 @@
                                     <i data-lucide="play-circle" class="w-5 h-5"></i> INICIAR RECEPCIÓN
                                 </a>
                             </div>
+                        @elseif (str_contains(strtolower($mov->tipo), 'recarga'))
+                            {{-- RECARGA MATERIA PRIMA PREMIUM --}}
+                            @php
+                                $productoBase = $mov->productoBase;
+                                $descProducto = $productoBase
+                                    ? sprintf(
+                                        '%s Ø%s%s',
+                                        ucfirst($productoBase->tipo),
+                                        $productoBase->diametro,
+                                        $productoBase->tipo === 'barra' && $productoBase->longitud
+                                            ? ' x ' . $productoBase->longitud . 'm'
+                                            : '',
+                                    )
+                                    : 'Materia Prima';
+                                $maquinaDestino =
+                                    $mov->maquinaDestino?->nombre ?? ($mov->maquina_destino ?? 'No especificada');
+                            @endphp
+
+                            <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 card-hover">
+                                <div class="flex justify-between items-start mb-6">
+                                    <span
+                                        class="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-xl text-[10px] font-bold uppercase tracking-widest">Recarga
+                                        de Máquina</span>
+                                    <div class="flex items-center gap-1 text-slate-400">
+                                        <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                                        <span class="text-xs font-medium">{{ $mov->created_at->format('H:i') }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-y-6 gap-x-4 mb-8">
+                                    <div class="col-span-1">
+                                        <p class="label-pill mb-1">Destino</p>
+                                        <div class="flex items-center gap-2">
+                                            <div
+                                                class="w-6 h-6 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
+                                                <i data-lucide="monitor" class="w-3.5 h-3.5"></i>
+                                            </div>
+                                            <p
+                                                class="font-bold text-slate-900 border-l-2 border-emerald-200 pl-2 leading-none py-1">
+                                                {{ $maquinaDestino }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-span-1">
+                                        <p class="label-pill mb-1">Solicita</p>
+                                        <div class="flex items-center gap-2">
+                                            <div
+                                                class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                                                {{ strtoupper(substr($mov->solicitadoPor->nombre ?? 'N', 0, 1)) }}
+                                            </div>
+                                            <p class="font-semibold text-slate-700 text-sm truncate">
+                                                {{ optional($mov->solicitadoPor)->nombre_completo ?? 'N/A' }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-span-2">
+                                        <p class="label-pill mb-2">Detalles del Material</p>
+                                        <div class="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                                            <p class="font-bold text-emerald-900 text-lg mb-1">{{ $descProducto }}</p>
+                                            <p class="text-[11px] text-slate-500 font-medium leading-relaxed italic">
+                                                {{ $mov->descripcion }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onclick="abrirModalRecargaMateriaPrima({{ json_encode($mov->id) }}, {{ json_encode($mov->tipo) }}, {{ json_encode(optional($mov->producto)->codigo) }}, {{ json_encode($mov->maquina_destino) }}, {{ json_encode($mov->producto_base_id) }}, {{ json_encode($ubicacionesDisponiblesPorProductoBase[$mov->producto_base_id] ?? []) }}, {{ json_encode(optional($mov->maquinaDestino)->nombre ?? 'Máquina desconocida') }}, {{ json_encode(optional($mov->productoBase)->tipo ?? '') }}, {{ json_encode(optional($mov->productoBase)->diametro ?? '') }}, {{ json_encode(optional($mov->productoBase)->longitud ?? '') }})"
+                                    class="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-4 rounded-2xl font-bold text-sm shadow-lg transition-all flex items-center justify-center gap-2">
+                                    <i data-lucide="zap" class="w-5 h-5"></i> CONFIRMAR RECARGA
+                                </button>
+                            </div>
                         @else
                             {{-- OTROS TIPOS DE PENDIENTES --}}
                             <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 card-hover">
