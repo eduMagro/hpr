@@ -70,10 +70,16 @@
                         </option>
                     </select>
                 </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" name="no_asignado" id="no_asignado" value="1"
+                        {{ request('no_asignado') ? 'checked' : '' }}
+                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                    <label for="no_asignado" class="text-sm text-gray-700">Sin asignar</label>
+                </div>
                 <button type="submit" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
                     Filtrar
                 </button>
-                @if (request()->hasAny(['buscar', 'estado', 'empresa']))
+                @if (request()->hasAny(['buscar', 'estado', 'empresa', 'no_asignado']))
                     <a href="{{ route('incorporaciones.index') }}" class="px-4 py-2 text-gray-600 hover:text-gray-800">
                         Limpiar
                     </a>
@@ -107,6 +113,7 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Documentos
                                 </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones
                                 </th>
@@ -152,6 +159,21 @@
                                             <span
                                                 class="text-sm text-gray-600">{{ $inc->porcentajeDocumentosPost() }}%</span>
                                         </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        @if ($inc->user_id)
+                                            <span
+                                                class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                <div class="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                                                Asignado
+                                            </span>
+                                        @else
+                                            <span
+                                                class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                <div class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                                                Sin asignar
+                                            </span>
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-500">
                                         {{ $inc->created_at->format('d/m/Y') }}

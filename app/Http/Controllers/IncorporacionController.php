@@ -36,6 +36,10 @@ class IncorporacionController extends Controller
             $query->where('empresa_destino', $request->empresa);
         }
 
+        if ($request->boolean('no_asignado')) {
+            $query->whereNull('user_id');
+        }
+
         if ($request->filled('buscar')) {
             $buscar = $request->buscar;
             $query->where(function ($q) use ($buscar) {
