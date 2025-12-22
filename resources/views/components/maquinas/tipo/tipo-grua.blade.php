@@ -618,16 +618,25 @@
                                 // DEFAULT
                                 $mainHighlight = Str::limit($mov->descripcion, 50);
                             }
+                            // Definir colores del icono por defecto (basados en el tema)
+                            $iconBg = "bg-{$theme}-100"; // User changed 50 to 100 recently
+                            $iconColor = "text-{$theme}-600";
+
+                            if ($theme === 'cyan') {
+                                // Personalización específica para Movimiento Libre: Fondo grisáceo / Icono negro
+                                $iconBg = 'bg-slate-200';
+                                $iconColor = 'text-slate-900';
+                            }
                         @endphp
 
-                        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/60 relative group movimiento-completado mb-4"
+                        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/60 relative group movimiento-completado mb-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1"
                             data-movimiento-id="{{ $mov->id }}">
 
                             {{-- Header --}}
                             <div class="flex items-start justify-between mb-4">
                                 <div class="flex items-center gap-3">
                                     <div
-                                        class="w-10 h-10 rounded-2xl bg-{{ $theme }}-50 flex items-center justify-center text-{{ $theme }}-600">
+                                        class="w-10 h-10 rounded-2xl {{ $iconBg }} flex items-center justify-center {{ $iconColor }}">
                                         @if ($customIcon)
                                             {!! $customIcon !!}
                                         @else

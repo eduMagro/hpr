@@ -131,7 +131,7 @@
                 </div>
                 <h2 class="text-3xl font-black tracking-tight mb-2 uppercase">Recargar Máquina</h2>
                 <div class="flex items-center gap-2 px-4 py-1.5 bg-black/20 rounded-full border border-white/10">
-                    <i data-lucide="monitor" class="w-4 h-4 text-emerald-300"></i>
+                    <i data-lucide="factory" class="w-4 h-4 text-emerald-300"></i>
                     <span id="maquina-nombre-destino" class="text-sm font-bold tracking-wide">MÁQUINA DESTINO</span>
                 </div>
             </div>
