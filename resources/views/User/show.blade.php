@@ -11,13 +11,13 @@
     <div class="container mx-auto px-4 pb-4">
         <div class="flex justify-center items-center gap-4">
             <button onclick="registrarFichaje('entrada')"
-                class="py-3 px-8 bg-green-600 hover:bg-green-700 text-white text-lg font-semibold rounded-lg shadow-lg transition duration-200 btn-cargando w-full">
+                class="py-3 px-8 bg-green-600 hover:bg-green-700 text-white text-lg font-semibold rounded-lg shadow-lg transition duration-200 btn-cargando max-md:w-full">
                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                 <span class="texto">Entrada</span>
             </button>
 
             <button onclick="registrarFichaje('salida')"
-                class="py-3 px-8 bg-red-600 hover:bg-red-700 text-white text-lg font-semibold rounded-lg shadow-lg transition duration-200 btn-cargando w-full">
+                class="py-3 px-8 bg-red-600 hover:bg-red-700 text-white text-lg font-semibold rounded-lg shadow-lg transition duration-200 btn-cargando max-md:w-full">
                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                 <span class="texto">Salida</span>
             </button>
