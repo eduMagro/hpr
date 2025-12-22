@@ -180,7 +180,7 @@
                                         <div class="flex items-center gap-2">
                                             <div
                                                 class="w-6 h-6 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
-                                                <i data-lucide="monitor" class="w-3.5 h-3.5"></i>
+                                                <i data-lucide="factory" class="w-3.5 h-3.5"></i>
                                             </div>
                                             <p
                                                 class="font-bold text-slate-900 border-l-2 border-emerald-200 pl-2 leading-none py-1">
@@ -432,26 +432,64 @@
                     </div>
                 @else
                     @foreach ($movimientosCompletados as $mov)
-                        @if (str_contains(strtolower($mov->tipo), 'entrada') || str_contains(strtolower($mov->tipo), 'recepcion'))
-                            @php
-                                // 1. Recuperar Producto Base (Prioridad: Movimiento -> PedidoProducto -> Producto)
+                        @php
+                            // 1. Configuración Visual Dinámica (Colores e Iconos)
+                            $tipoLower = strtolower($mov->tipo);
+                            $theme = 'slate';
+                            $iconName = 'activity';
+                            $customIcon = null;
+                            $titulo = ucfirst($mov->tipo);
+
+                            if (str_contains($tipoLower, 'entrada') || str_contains($tipoLower, 'recepcion')) {
+                                $theme = 'blue';
+                                $iconName = 'arrow-down-to-line';
+                            } elseif (str_contains($tipoLower, 'recarga')) {
+                                $theme = 'emerald';
+                                $iconName = 'zap';
+                                $titulo = 'Recarga Máquina';
+                            } elseif (str_contains($tipoLower, 'salida')) {
+                                $theme = 'purple';
+                                $iconName = 'truck';
+                                $titulo = 'Salida';
+                            } elseif (str_contains($tipoLower, 'bajada')) {
+                                $theme = 'amber';
+                                $iconName = 'arrow-down-circle';
+                                $titulo = 'Bajada Paquete';
+                            } elseif (str_contains($tipoLower, 'preparaci')) {
+                                $theme = 'orange';
+                                $iconName = 'package-open';
+                            } elseif (
+                                str_contains($tipoLower, 'movimiento') ||
+                                str_contains($tipoLower, 'traslado') ||
+                                str_contains($tipoLower, 'libre')
+                            ) {
+                                // Movimiento Libre / Traslado
+                                $theme = 'cyan'; // Color distintivo para movimiento libre
+                                $titulo = 'Movimiento Libre';
+                                $customIcon =
+                                    '<svg viewBox="0 0 32 32" class="w-6 h-6 fill-current" xmlns="http://www.w3.org/2000/svg"><path d="M24,20l-1.41,1.41L26.17,25H10a4,4,0,0,1,0-8H22A6,6,0,0,0,22,5H5.83L9.41,1.41,8,0,2,6l6,6,1.41-1.41L5.83,7H22a4,4,0,0,1,0,8H10a6,6,0,0,0,0,12H26.17l-3.58,3.59L24,32l6-6Z"></path></svg>';
+                            }
+
+                            // 2. Lógica de Extracción de Datos (Preservando la robustez de Entrada)
+                            $bodyContent = []; // Array key-value para mostrar en el cuerpo
+                            $mainHighlight = null; // Dato destacado (ej. Código)
+
+                            if ($theme === 'blue') {
+                                // ENTRADA
+                                // ... Lógica robusta de Entrada ...
                                 $productoBase =
                                     $mov->productoBase ??
                                     (optional($mov->pedidoProducto)->productoBase ??
                                         optional($mov->producto)->productoBase);
-
-                                // 2. Obtener texto de descripción para parsing auxiliar
                                 $descRaw = $mov->descripcion;
 
-                                // 3. Determinar CÓDIGO (Pedido, Albarán o Lote)
                                 $codigoMostrar =
                                     optional($mov->producto)->codigo ??
                                     (optional($mov->pedidoProducto)->codigo ?? optional($mov->entrada)->albaran);
 
-                                // Si no hay código relacional, buscar patrones en la descripción (ej: PC25/0001, Lote 123)
                                 if (!$codigoMostrar) {
                                     if (preg_match('/(PC\d{2}\/\d{4}(?:-\d{3})?)/i', $descRaw, $matches)) {
-                                        $codigoMostrar = $matches[1]; // Captura PC25/0001
+                                        $codigoMostrar = $matches[1];
                                     } elseif (preg_match('/albar[áa]n\s+([A-Z0-9\-\.]+)/i', $descRaw, $matches)) {
                                         $codigoMostrar = $matches[1];
                                     } else {
@@ -459,228 +497,221 @@
                                     }
                                 }
 
-                                // 4. Determinar PROVEEDOR
                                 $proveedorNombre =
                                     optional(optional($mov->producto)->fabricante)->nombre ??
-                                    (optional($productoBase?->fabricante)->nombre ??
-                                        optional(optional(optional($mov->pedidoProducto)->pedido)->fabricante)->nombre);
+                                    (optional($productoBase?->fabricante)->nombre ?? '---');
 
-                                // Parsing fallback para proveedor si sigue siendo nulo
                                 if (
-                                    !$proveedorNombre &&
+                                    $proveedorNombre === '---' &&
                                     preg_match('/proveedor[:\s]+([A-Za-z0-9\s\.]+)/i', $descRaw, $matches)
                                 ) {
                                     $proveedorNombre = trim($matches[1]);
                                 }
-                                $proveedorNombre = $proveedorNombre ?? '---';
 
-                                // 5. Determinar DESCRIPCIÓN DEL PRODUCTO
                                 $descProducto = '---';
                                 if ($productoBase) {
-                                    // Si existe objeto producto base, formatearlo bonito
-                                    $tipo = ucfirst(strtolower($productoBase->tipo ?? ''));
-                                    $diam = $productoBase->diametro ? "Ø{$productoBase->diametro} mm" : '';
-                                    $long = $productoBase->longitud ? "x {$productoBase->longitud} m" : '';
-
-                                    if ($productoBase->nombre) {
-                                        $descProducto = $productoBase->nombre;
-                                    } else {
-                                        $descProducto = trim("$tipo $diam $long");
-                                    }
-                                } else {
-                                    // Fallback: intentar sacar info básica de la descripción (ej: "barra Ø12")
-                                    if (
-                                        preg_match(
-                                            '/(barra|rollo|encarretado)\s+(?:Ø|diametro|d)?\s*(\d+)/i',
-                                            $descRaw,
-                                            $matches,
-                                        )
-                                    ) {
-                                        $descProducto = ucfirst($matches[1]) . ' Ø' . $matches[2] . ' mm';
-                                    }
+                                    $descProducto = $productoBase->nombre
+                                        ? $productoBase->nombre
+                                        : ($productoBase->tipo ?? '') .
+                                            ' Ø' .
+                                            ($productoBase->diametro ?? '') .
+                                            ' mm x ' .
+                                            ($productoBase->longitud ?? '') .
+                                            ' m';
+                                } elseif (
+                                    preg_match(
+                                        '/(barra|rollo|encarretado)\s+(?:Ø|diametro|d)?\s*(\d+)/i',
+                                        $descRaw,
+                                        $matches,
+                                    )
+                                ) {
+                                    $descProducto = ucfirst($matches[1]) . ' Ø' . $matches[2] . ' mm';
                                 }
 
-                                // 6. Determinar PESO
                                 $pesoMostrar =
-                                    optional($mov->producto)->peso_inicial ??
-                                    (optional($mov->producto)->peso ??
-                                        (optional($mov->pedidoProducto)->cantidad ??
-                                            (optional($mov->entrada)->peso_total ?? 0)));
-
-                                // Si el peso es 0, intentar buscar en descripción (ej: "25000 kg" o "cantidad 200")
-                                if ($pesoMostrar <= 0) {
-                                    // Busca patrones como "25.000 kg", "25000kg", "cantidad: 2400"
-                                    if (
-                                        preg_match(
-                                            '/(?:peso|cantidad|cant\.?)[:\s]+([\d\.,]+)\s*(?:kg)?/i',
-                                            $descRaw,
-                                            $matches,
-                                        )
-                                    ) {
-                                        // Limpiar string numérico (1.000,00 -> 1000.00 o 25.000 -> 25000)
-                                        $numStr = str_replace('.', '', $matches[1]); // Quitar puntos de miles
-                                        $numStr = str_replace(',', '.', $numStr); // Cambiar coma decimal por punto
-                                        $pesoMostrar = floatval($numStr);
-                                    }
+                                    optional($mov->producto)->peso_inicial ?? (optional($mov->producto)->peso ?? 0);
+                                if (
+                                    $pesoMostrar <= 0 &&
+                                    preg_match(
+                                        '/(?:peso|cantidad|cant\.?)[:\s]+([\d\.,]+)\s*(?:kg)?/i',
+                                        $descRaw,
+                                        $matches,
+                                    )
+                                ) {
+                                    $numStr = str_replace(['.', ','], ['', '.'], $matches[1]);
+                                    $pesoMostrar = floatval($numStr);
                                 }
-                            @endphp
 
-                            {{-- DISEÑO TIPO "RECARGA" ADAPTADO A ENTRADA --}}
-                            <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/60 relative group movimiento-completado mb-4"
-                                data-movimiento-id="{{ $mov->id }}">
+                                $mainHighlight = $codigoMostrar;
+                                $bodyContent = [
+                                    'Proveedor' => $proveedorNombre,
+                                    'Producto' => $descProducto,
+                                    'Peso' => number_format($pesoMostrar, 0, ',', '.') . ' kg',
+                                ];
+                            } elseif ($theme === 'emerald') {
+                                // RECARGA
+                                $mainHighlight = optional($mov->maquinaDestino)->nombre ?? 'Máquina Desconocida';
+                                $descProducto = optional($mov->productoBase)->nombre ?? ($mov->descripcion ?? '---');
+                                // Intentar limpiar descripción si es muy larga
+                                if (strlen($descProducto) > 50 && $mov->productoBase) {
+                                    $descProducto = $mov->productoBase->tipo . ' Ø' . $mov->productoBase->diametro;
+                                }
+                                $bodyContent = [
+                                    'Material' => $descProducto,
+                                    'Ubicación' => $mov->ubicacion_origen ?? '---',
+                                ];
+                            } elseif ($theme === 'purple') {
+                                // SALIDA
+                                $pattern = '/^([^\.]+)\. Se solicita carga del camión \((.*?)\)/';
+                                if (preg_match($pattern, $mov->descripcion, $match)) {
+                                    $mainHighlight = $match[1]; // Código Salida
+                                    $bodyContent['Transporte'] = $match[2];
+                                } else {
+                                    $mainHighlight = 'Salida Material';
+                                    $bodyContent['Descripción'] = Str::limit($mov->descripcion, 60);
+                                }
+                            } elseif ($theme === 'cyan') {
+                                // MOVIMIENTO LIBRE
+                                // Regex muy flexible para capturar datos independientemente de pequeños cambios en formato
+                                // Captura: 1:Material, 2:Código, 3:Diámetro, 4:Longitud, 5:Origen, 6:Destino
+                                // Pattern actualizado para soportar opcionalmente la longitud (caso Encarretado vs Barra)
+                                // 1:Material, 2:Código, 3:Diámetro, 4:Longitud (Opcional), 5:Origen, 6:Destino
+                                $pattern =
+                                    '/Movemos\s+(.+?)\s+\(Cód.+?:\s*([^\)]+)\).*?([\d\.,]+)\s*mm(?:.*?L.*?:.*?([\d\.,]+)\s*mm)?\s+de\s+(.+?)\s+a\s+.*ubicaci[oó]n\s+(.*)/iu';
 
-                                {{-- Header --}}
-                                <div class="flex items-start justify-between mb-4">
-                                    <div class="flex items-center gap-3">
-                                        <div
-                                            class="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-                                            {{-- Icono específico para entrada --}}
-                                            <i data-lucide="arrow-down-to-line" class="w-6 h-6"></i>
-                                        </div>
-                                        <div>
-                                            <h3 class="font-bold text-slate-900">Entrada</h3>
-                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                                                {{ $mov->updated_at->format('d/m/Y H:i') }}
-                                            </p>
-                                        </div>
+                                if (preg_match($pattern, $mov->descripcion, $match)) {
+                                    $cleanCode = trim($match[2]);
+                                    $cleanDiam = trim($match[3]);
+                                    $cleanLong = !empty($match[4]) ? ' L:' . trim($match[4]) : ''; // Longitud opcional
+
+                                    $mainHighlight = "$cleanCode Ø$cleanDiam$cleanLong";
+
+                                    // Resolver nombres de ubicación si son IDs numéricos
+                                    $origenVal = trim($match[5]);
+                                    $destinoVal = trim($match[6]);
+
+                                    if (is_numeric($origenVal)) {
+                                        $ubi = \App\Models\Ubicacion::find($origenVal);
+                                        if ($ubi) {
+                                            $origenVal = $ubi->nombre;
+                                        }
+                                    }
+
+                                    if (is_numeric($destinoVal)) {
+                                        $ubi = \App\Models\Ubicacion::find($destinoVal);
+                                        if ($ubi) {
+                                            $destinoVal = $ubi->nombre;
+                                        }
+                                    }
+
+                                    $bodyContent = [
+                                        'Material' => ucfirst(trim($match[1])),
+                                        'Origen' => $origenVal,
+                                        'Destino' => $destinoVal,
+                                    ];
+                                } else {
+                                    // Fallback
+                                    $mainHighlight = 'Movimiento de Material';
+                                    $bodyContent['Detalle'] = $mov->descripcion;
+                                }
+                            } else {
+                                // DEFAULT
+                                $mainHighlight = Str::limit($mov->descripcion, 50);
+                            }
+                        @endphp
+
+                        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/60 relative group movimiento-completado mb-4"
+                            data-movimiento-id="{{ $mov->id }}">
+
+                            {{-- Header --}}
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div
+                                        class="w-10 h-10 rounded-2xl bg-{{ $theme }}-50 flex items-center justify-center text-{{ $theme }}-600">
+                                        @if ($customIcon)
+                                            {!! $customIcon !!}
+                                        @else
+                                            <i data-lucide="{{ $iconName }}" class="w-6 h-6"></i>
+                                        @endif
                                     </div>
-
-                                    <button
-                                        onclick="eliminarMovimientoGrua({{ $mov->id }}, '{{ $mov->producto_consumido_id ? optional($mov->productoConsumido)->codigo ?? '' : '' }}')"
-                                        class="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-red-500 transition-all">
-                                        <i data-lucide="trash-2" class="w-5 h-5"></i>
-                                    </button>
+                                    <div>
+                                        <h3 class="font-bold text-slate-900">{{ $titulo }}</h3>
+                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                            {{ $mov->updated_at->format('d/m/Y H:i') }}
+                                        </p>
+                                    </div>
                                 </div>
 
-                                {{-- Body (Datos de entrada en bloque gris claro estándar) --}}
-                                <div class="bg-slate-50 rounded-2xl p-4 mb-4 border border-slate-100/50">
+                                <button
+                                    onclick="eliminarMovimientoGrua({{ $mov->id }}, '{{ $mov->producto_consumido_id ? optional($mov->productoConsumido)->codigo ?? '' : '' }}')"
+                                    class="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-red-500 transition-all">
+                                    <i data-lucide="trash-2" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+
+                            {{-- Body Estándar --}}
+                            <div class="bg-slate-50 rounded-2xl p-4 mb-4 border border-slate-100/50">
+                                @if ($mainHighlight)
                                     <div class="mb-2">
-                                        <span class="text-blue-600 font-bold text-base block mb-1">
-                                            {{ $codigoMostrar }}
+                                        <span
+                                            class="text-{{ $theme === 'cyan' ? 'slate-800' : $theme . '-600' }} font-bold text-base block mb-1">
+                                            {{ $mainHighlight }}
                                         </span>
                                     </div>
+                                @endif
 
-                                    <div class="text-sm text-slate-600 space-y-1 font-medium">
-                                        <p><span class="text-slate-400 text-xs uppercase mr-1">Proveedor:</span> <span
-                                                class="text-slate-800">{{ $proveedorNombre }}</span></p>
-                                        <p><span class="text-slate-400 text-xs uppercase mr-1">Producto:</span> <span
-                                                class="text-slate-800">{{ $descProducto }}</span></p>
-                                        <p><span class="text-slate-400 text-xs uppercase mr-1">Peso:</span> <span
-                                                class="text-slate-800">{{ number_format($pesoMostrar, 0, ',', '.') }}
-                                                kg</span></p>
-                                    </div>
-                                </div>
-
-                                {{-- Footer Usuarios (Estilo Recarga idéntico) --}}
-                                <div class="grid grid-cols-2 gap-4">
-                                    {{-- Solicitó --}}
+                                @if (!empty($bodyContent))
                                     <div
-                                        class="flex items-center gap-2 px-3 py-2 bg-blue-50/50 rounded-xl border border-blue-100/50">
-                                        <div
-                                            class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[8px] font-bold">
-                                            {{ strtoupper(substr($mov->solicitadoPor->name ?? ($mov->solicitadoPor->nombre_completo ?? 'N'), 0, 1)) }}
-                                        </div>
-                                        <div>
-                                            <p class="text-[8px] text-blue-600 font-bold uppercase">Solicitó</p>
-                                            <p class="text-[10px] font-bold text-slate-700 truncate w-20">
-                                                {{ explode(' ', trim($mov->solicitadoPor->name ?? ($mov->solicitadoPor->nombre_completo ?? 'N/A')))[0] }}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {{-- Ejecutó --}}
-                                    <div
-                                        class="flex items-center gap-2 px-3 py-2 bg-emerald-50/50 rounded-xl border border-emerald-100/50">
-                                        <div
-                                            class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[8px] font-bold">
-                                            {{ strtoupper(substr($mov->ejecutadoPor->name ?? ($mov->ejecutadoPor->nombre_completo ?? 'S'), 0, 1)) }}
-                                        </div>
-                                        <div>
-                                            <p class="text-[8px] text-emerald-600 font-bold uppercase">Ejecutó</p>
-                                            <p class="text-[10px] font-bold text-slate-700 truncate w-20">
-                                                {{ explode(' ', trim($mov->ejecutadoPor->name ?? ($mov->ejecutadoPor->nombre_completo ?? 'N/A')))[0] }}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        @else
-                            {{-- DISEÑO ESTÁNDAR PARA OTROS MOVIMIENTOS --}}
-                            <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/60 relative group movimiento-completado"
-                                data-movimiento-id="{{ $mov->id }}">
-                                <div class="flex items-start justify-between mb-4">
-                                    <div class="flex items-center gap-3">
-                                        <div
-                                            class="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-                                            <i data-lucide="check-circle" class="w-6 h-6"></i>
-                                        </div>
-                                        <div>
-                                            <h3 class="font-bold text-slate-900">{{ ucfirst($mov->tipo) }}</h3>
-                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                                                {{ $mov->updated_at->format('d/m/Y H:i') }}</p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onclick="eliminarMovimientoGrua({{ $mov->id }}, '{{ $mov->producto_consumido_id ? optional($mov->productoConsumido)->codigo ?? '' : '' }}')"
-                                        class="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-red-500 transition-all">
-                                        <i data-lucide="trash-2" class="w-5 h-5"></i>
-                                    </button>
-                                </div>
-
-                                <div class="bg-slate-50 rounded-2xl p-4 mb-4 border border-slate-100/50">
-                                    <div class="text-sm text-slate-600 leading-relaxed font-medium italic">
-                                        {!! $mov->descripcion_html !!}
-                                    </div>
-                                </div>
-
-                                <div class="grid grid-cols-2 gap-4 {{ $mov->producto_consumido_id ? 'mb-4' : '' }}">
-                                    <div
-                                        class="flex items-center gap-2 px-3 py-2 bg-blue-50/50 rounded-xl border border-blue-100/50">
-                                        <div
-                                            class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[8px] font-bold">
-                                            {{ strtoupper(substr($mov->solicitadoPor->nombre ?? 'N', 0, 1)) }}
-                                        </div>
-                                        <div>
-                                            <p class="text-[8px] text-blue-600 font-bold uppercase">Solicitó</p>
-                                            <p class="text-[10px] font-bold text-slate-700 truncate w-20">
-                                                {{ optional($mov->solicitadoPor)->nombre_completo ?? 'N/A' }}</p>
-                                        </div>
-                                    </div>
-                                    <div
-                                        class="flex items-center gap-2 px-3 py-2 bg-emerald-50/80 rounded-xl border border-emerald-100">
-                                        <div
-                                            class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[8px] font-bold">
-                                            {{ strtoupper(substr($mov->ejecutadoPor->nombre ?? 'E', 0, 1)) }}
-                                        </div>
-                                        <div>
-                                            <p class="text-[8px] text-emerald-600 font-bold uppercase">Ejecutó</p>
-                                            <p class="text-[10px] font-bold text-slate-700 truncate w-20">
-                                                {{ optional($mov->ejecutadoPor)->nombre_completo ?? 'N/A' }}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                @if ($mov->producto_consumido_id)
-                                    <div
-                                        class="bg-slate-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between">
-                                        <div class="flex items-center gap-3">
+                                        class="text-sm text-slate-600 space-y-{{ $theme === 'cyan' ? '3' : '1' }} font-medium">
+                                        @foreach ($bodyContent as $label => $value)
                                             <div
-                                                class="w-9 h-9 bg-amber-500 rounded-xl flex items-center justify-center shadow-md">
-                                                <i data-lucide="refresh-cw" class="w-5 h-5 text-white"></i>
-                                            </div>
-                                            <div>
+                                                class="{{ $theme === 'cyan' ? 'border-l-2 border-slate-200 pl-2' : '' }}">
                                                 <p
-                                                    class="text-[10px] font-black text-amber-800 uppercase leading-none mb-1">
-                                                    Aviso Trazabilidad</p>
-                                                <p class="text-xs font-semibold text-slate-700">Producto <span
-                                                        class="bg-white px-1 rounded font-mono border border-slate-200">{{ optional($mov->productoConsumido)->codigo ?? 'N/A' }}</span>
-                                                    consumido</p>
+                                                    class="text-slate-400 text-xs uppercase {{ $theme === 'cyan' ? 'mb-0.5' : 'mr-1 inline' }}">
+                                                    {{ $label }}{{ $theme === 'cyan' ? '' : ':' }}</p>
+                                                <p
+                                                    class="{{ $theme === 'cyan' ? 'text-slate-800 block text-[10px]' : 'text-slate-800 inline text-[10px]' }}">
+                                                    {{ $value }}</p>
                                             </div>
-                                        </div>
-                                        <div class="text-[10px] font-bold text-slate-400 opacity-60">RECUPERABLE</div>
+                                        @endforeach
                                     </div>
+                                @else
+                                    <p class="text-xs text-slate-500 italic">{{ $mov->descripcion }}</p>
                                 @endif
                             </div>
-                        @endif
+
+                            {{-- Footer Usuarios --}}
+                            <div class="grid grid-cols-2 gap-4">
+                                {{-- Solicitó --}}
+                                <div
+                                    class="flex items-center gap-2 px-3 py-2 bg-blue-50/50 rounded-xl border border-blue-100/50">
+                                    <div
+                                        class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[8px] font-bold">
+                                        {{ strtoupper(substr($mov->solicitadoPor->name ?? ($mov->solicitadoPor->nombre_completo ?? 'N'), 0, 1)) }}
+                                    </div>
+                                    <div>
+                                        <p class="text-[8px] text-blue-600 font-bold uppercase">Solicitó</p>
+                                        <p class="text-[10px] font-bold text-slate-700 truncate w-20">
+                                            {{ explode(' ', trim($mov->solicitadoPor->name ?? ($mov->solicitadoPor->nombre_completo ?? 'N/A')))[0] }}
+                                        </p>
+                                    </div>
+                                </div>
+                                {{-- Ejecutó --}}
+                                <div
+                                    class="flex items-center gap-2 px-3 py-2 bg-emerald-50/50 rounded-xl border border-emerald-100/50">
+                                    <div
+                                        class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[8px] font-bold">
+                                        {{ strtoupper(substr($mov->ejecutadoPor->name ?? ($mov->ejecutadoPor->nombre_completo ?? 'S'), 0, 1)) }}
+                                    </div>
+                                    <div>
+                                        <p class="text-[8px] text-emerald-600 font-bold uppercase">Ejecutó</p>
+                                        <p class="text-[10px] font-bold text-slate-700 truncate w-20">
+                                            {{ explode(' ', trim($mov->ejecutadoPor->name ?? ($mov->ejecutadoPor->nombre_completo ?? 'N/A')))[0] }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     @endforeach
                 @endif
             </div>
