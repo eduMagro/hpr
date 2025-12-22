@@ -529,7 +529,8 @@
                                 }
 
                                 $pesoMostrar =
-                                    optional($mov->producto)->peso_inicial ?? (optional($mov->producto)->peso ?? 0);
+                                    optional($mov->producto)->peso_inicial ??
+                                    (optional($mov->producto)->peso ?? (optional($mov->pedidoProducto)->cantidad ?? 0));
                                 if (
                                     $pesoMostrar <= 0 &&
                                     preg_match(
@@ -549,16 +550,37 @@
                                     'Peso' => number_format($pesoMostrar, 0, ',', '.') . ' kg',
                                 ];
                             } elseif ($theme === 'emerald') {
-                                // RECARGA
-                                $mainHighlight = optional($mov->maquinaDestino)->nombre ?? 'Máquina Desconocida';
-                                $descProducto = optional($mov->productoBase)->nombre ?? ($mov->descripcion ?? '---');
-                                // Intentar limpiar descripción si es muy larga
-                                if (strlen($descProducto) > 50 && $mov->productoBase) {
-                                    $descProducto = $mov->productoBase->tipo . ' Ø' . $mov->productoBase->diametro;
+                                // RECARGA - Updated to match Movimiento Libre style
+                                $pb = $mov->productoBase;
+                                $prod = $mov->producto;
+
+                                // Construct Highlight String (Main Title)
+                                if ($prod) {
+                                    $mainHighlight =
+                                        $prod->codigo .
+                                        ($pb ? " Ø{$pb->diametro}" : '') .
+                                        ($pb && $pb->longitud ? " L:{$pb->longitud}" : '');
+                                } elseif ($pb) {
+                                    $mainHighlight =
+                                        ucfirst($pb->tipo) .
+                                        " Ø{$pb->diametro}" .
+                                        ($pb->longitud ? " L:{$pb->longitud}" : '');
+                                } else {
+                                    $mainHighlight = $mov->descripcion ?? 'Material Recarga';
                                 }
+
+                                $origenNombre = $mov->ubicacion_origen ?? '---';
+                                if (is_numeric($origenNombre)) {
+                                    $ubi = \App\Models\Ubicacion::find($origenNombre);
+                                    if ($ubi) {
+                                        $origenNombre = $ubi->nombre;
+                                    }
+                                }
+
                                 $bodyContent = [
-                                    'Material' => $descProducto,
-                                    'Ubicación' => $mov->ubicacion_origen ?? '---',
+                                    'Material' => $pb ? ucfirst($pb->tipo) : 'Material',
+                                    'Origen' => $origenNombre,
+                                    'Destino' => optional($mov->maquinaDestino)->nombre ?? '---',
                                 ];
                             } elseif ($theme === 'purple') {
                                 // SALIDA
@@ -662,24 +684,28 @@
                             <div class="bg-slate-50 rounded-2xl p-4 mb-4 border border-slate-100/50">
                                 @if ($mainHighlight)
                                     <div class="mb-2">
+                                        {{-- Use dark text for Cyan and Emerald (Recarga), colored for others --}}
                                         <span
-                                            class="text-{{ $theme === 'cyan' ? 'slate-800' : $theme . '-600' }} font-bold text-base block mb-1">
+                                            class="text-{{ in_array($theme, ['cyan', 'emerald']) ? 'slate-800' : $theme . '-600' }} font-bold text-base block mb-1">
                                             {{ $mainHighlight }}
                                         </span>
                                     </div>
                                 @endif
 
                                 @if (!empty($bodyContent))
+                                    @php
+                                        // Use vertical layout (like Movimiento Libre) for Cyan and Emerald
+                                        $isVertical = in_array($theme, ['cyan', 'emerald']);
+                                    @endphp
                                     <div
-                                        class="text-sm text-slate-600 space-y-{{ $theme === 'cyan' ? '3' : '1' }} font-medium">
+                                        class="text-sm text-slate-600 space-y-{{ $isVertical ? '3' : '1' }} font-medium">
                                         @foreach ($bodyContent as $label => $value)
-                                            <div
-                                                class="{{ $theme === 'cyan' ? 'border-l-2 border-slate-200 pl-2' : '' }}">
+                                            <div class="{{ $isVertical ? 'border-l-2 border-slate-200 pl-2' : '' }}">
                                                 <p
-                                                    class="text-slate-400 text-xs uppercase {{ $theme === 'cyan' ? 'mb-0.5' : 'mr-1 inline' }}">
-                                                    {{ $label }}{{ $theme === 'cyan' ? '' : ':' }}</p>
+                                                    class="text-slate-400 text-xs uppercase {{ $isVertical ? 'mb-0.5' : 'mr-1 inline' }}">
+                                                    {{ $label }}{{ $isVertical ? '' : ':' }}</p>
                                                 <p
-                                                    class="{{ $theme === 'cyan' ? 'text-slate-800 block text-[10px]' : 'text-slate-800 inline text-[10px]' }}">
+                                                    class="{{ $isVertical ? 'text-slate-800 block text-[10px]' : 'text-slate-800 inline text-[10px]' }}">
                                                     {{ $value }}</p>
                                             </div>
                                         @endforeach
