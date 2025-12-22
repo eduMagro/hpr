@@ -214,6 +214,114 @@
                                     <i data-lucide="zap" class="w-5 h-5"></i> CONFIRMAR RECARGA
                                 </button>
                             </div>
+                        @elseif (str_contains(strtolower($mov->tipo), 'salida'))
+                            {{-- VISTA PREMIUM PARA SALIDAS --}}
+                            @php
+                                $d = $mov->descripcion;
+                                // Regex para extraer datos clave del texto (mantenemos el parseo por si se necesita para otros campos)
+                                $pattern =
+                                    '/^([^\.]+)\. Se solicita carga del camión \((.*?)\) - \((.*?)\) para \[(.*?)\], tiene que estar listo a las (.*)$/';
+                                $match = [];
+                                $isStructured = preg_match($pattern, $d, $match);
+
+                                if ($isStructured) {
+                                    $codigoSalida = $match[1];
+                                    $camion = $match[2];
+                                    $transp = $match[3];
+                                    $destino = $match[4];
+                                }
+
+                                // Cálculo de paquetes asociados
+                                $paquetesCount = 0;
+                                if ($mov->salida_id && $mov->salida) {
+                                    $paquetesCount = $mov->salida->paquetes->count();
+                                } elseif ($mov->salida_almacen_id && $mov->salidaAlmacen) {
+                                    // Para salidas de almacén, sumamos las líneas de los albaranes relacionados
+                                    $paquetesCount = $mov->salidaAlmacen->albaranes->flatMap->lineas->count();
+                                }
+                            @endphp
+
+                            <div id="movimiento-pendiente-{{ $mov->id }}"
+                                class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 card-hover">
+                                <div class="flex justify-between items-start mb-6">
+                                    <span
+                                        class="px-3 py-1 bg-purple-50 text-purple-700 rounded-xl text-[10px] font-bold uppercase tracking-widest">Salida
+                                        de Material</span>
+                                    <div class="flex items-center gap-1 text-slate-400">
+                                        <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                                        <span class="text-xs font-medium">{{ $mov->created_at->format('H:i') }}</span>
+                                    </div>
+                                </div>
+
+                                @if ($isStructured)
+                                    <div class="space-y-4 mb-8">
+                                        {{-- Fila 1: Código y Cantidad de Paquetes --}}
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div class="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                                                <p class="label-pill mb-1">Referencia</p>
+                                                <p class="font-bold text-slate-900 leading-none text-sm">
+                                                    {{ $codigoSalida }}</p>
+                                            </div>
+                                            <div class="bg-blue-50 rounded-2xl p-3 border border-blue-100">
+                                                <p class="label-pill mb-1 text-blue-600">Paquetes</p>
+                                                <div
+                                                    class="flex items-center gap-1.5 font-black text-blue-800 leading-none">
+                                                    <i data-lucide="package" class="w-4 h-4"></i>
+                                                    <span class="text-base">{{ $paquetesCount }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {{-- Fila 2: Camión --}}
+                                        <div class="bg-purple-50 rounded-2xl p-4 border border-purple-100">
+                                            <p class="label-pill mb-2 text-purple-600">Transporte</p>
+                                            <div class="flex items-center gap-3">
+                                                <div
+                                                    class="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-purple-600">
+                                                    <i data-lucide="truck" class="w-6 h-6"></i>
+                                                </div>
+                                                <div>
+                                                    <p class="font-bold text-purple-900 leading-tight">
+                                                        {{ $camion }}</p>
+                                                    <p class="text-[10px] font-bold text-purple-400 uppercase">
+                                                        {{ $transp }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {{-- Fila 3: Destino --}}
+                                        <div class="px-4 py-3 bg-slate-50 rounded-2xl border border-slate-100">
+                                            <p class="label-pill mb-1">Destino / Proyecto</p>
+                                            <div class="flex items-start gap-2">
+                                                <i data-lucide="map-pin" class="w-4 h-4 text-slate-400 mt-0.5"></i>
+                                                <p class="font-semibold text-slate-700 text-xs leading-relaxed">
+                                                    {{ $destino }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="mb-8">
+                                        <p class="label-pill mb-1">Descripción / Referencia</p>
+                                        <h3 class="text-lg font-bold text-slate-900 leading-tight">
+                                            {{ $mov->descripcion }}</h3>
+                                    </div>
+                                @endif
+
+                                <div class="flex items-center gap-2 mb-6 text-slate-500 text-sm font-medium">
+                                    <div
+                                        class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400">
+                                        {{ strtoupper(substr($mov->solicitadoPor->nombre ?? 'N', 0, 1)) }}
+                                    </div>
+                                    <span>Solicita:
+                                        {{ optional($mov->solicitadoPor)->nombre_completo ?? 'N/A' }}</span>
+                                </div>
+
+                                <button
+                                    onclick="@if (strtolower($mov->tipo) === 'salida') ejecutarSalida({{ json_encode($mov->id) }}, {{ json_encode($mov->salida_id) }}) @else ejecutarSalidaAlmacen({{ json_encode($mov->id) }}) @endif"
+                                    class="w-full bg-purple-600 hover:bg-purple-700 text-white px-6 py-4 rounded-2xl font-bold text-sm shadow-lg shadow-black/10 transition-all flex items-center justify-center gap-2">
+                                    <i data-lucide="truck" class="w-5 h-5"></i> EJECUTAR SALIDA
+                                </button>
+                            </div>
                         @else
                             {{-- OTROS TIPOS DE PENDIENTES --}}
                             <div id="movimiento-pendiente-{{ $mov->id }}"

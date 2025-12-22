@@ -42,8 +42,8 @@ class MaquinaController extends Controller
         $usuario = auth()->user();
 
         /* ───────────────────────────────────────────
-     * 1️⃣  RUTA OPERARIO (igual que la tuya)
-     * ─────────────────────────────────────────── */
+         * 1️⃣  RUTA OPERARIO (igual que la tuya)
+         * ─────────────────────────────────────────── */
         if ($usuario->rol === 'operario') {
             $hoy = Carbon::today();
             $maniana = Carbon::tomorrow();
@@ -67,7 +67,7 @@ class MaquinaController extends Controller
             // Si tiene máquina asignada, redirigir a ella
             if ($asignacion) {
                 $maquinaId = $asignacion->maquina_id;
-                $turnoId   = $asignacion->turno_id;
+                $turnoId = $asignacion->turno_id;
 
                 // Buscar compañero
                 $compañero = AsignacionTurno::where('maquina_id', $maquinaId)
@@ -107,8 +107,8 @@ class MaquinaController extends Controller
         }
 
         /* ───────────────────────────────────────────
-     * 2️⃣  RESTO DE USUARIOS
-     * ─────────────────────────────────────────── */
+         * 2️⃣  RESTO DE USUARIOS
+         * ─────────────────────────────────────────── */
 
         // ▸ 2.1 Consulta de máquinas + conteos
         $query = Maquina::with('productos')
@@ -118,7 +118,7 @@ class MaquinaController extends Controller
         ) as elementos_ensambladora')
             ->withCount([
                 'elementos as elementos_count' => fn($q) =>
-                $q->where('estado', '!=', 'fabricado')
+                    $q->where('estado', '!=', 'fabricado')
             ]);
 
         if ($request->filled('nombre')) {
@@ -126,7 +126,7 @@ class MaquinaController extends Controller
         }
 
         $sortBy = $request->input('sort_by', 'created_at');
-        $order  = $request->input('order', 'desc');
+        $order = $request->input('order', 'desc');
         if (Schema::hasColumn('maquinas', $sortBy)) {
             $query->orderBy($sortBy, $order);
         }
@@ -202,10 +202,10 @@ class MaquinaController extends Controller
             return view('maquinas.show', array_merge(
                 $base,
                 [
-                    'maquina'          => $maquina,
+                    'maquina' => $maquina,
                     'elementosMaquina' => collect(),
-                    'pesosElementos'   => [],
-                    'etiquetasData'    => collect(),
+                    'pesosElementos' => [],
+                    'etiquetasData' => collect(),
                 ],
                 $grua // ← prioridad para movimientos* y demás de la grúa
             ));
@@ -245,8 +245,8 @@ class MaquinaController extends Controller
 
         // Filtrar posiciones válidas (mayores a 0)
         $posiciones = collect([$posicion1, $posicion2])
-            ->filter(fn($p) => !is_null($p) && (int)$p > 0)
-            ->map(fn($p) => (int)$p)
+            ->filter(fn($p) => !is_null($p) && (int) $p > 0)
+            ->map(fn($p) => (int) $p)
             ->unique()
             ->values();
 
@@ -265,7 +265,7 @@ class MaquinaController extends Controller
 
         $ordenSub = function ($grupo, $subId) {
             if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
-                return sprintf('%s-%010d', $m[1], (int)$m[2]);
+                return sprintf('%s-%010d', $m[1], (int) $m[2]);
             }
             return $subId . '-0000000000';
         };
@@ -280,7 +280,7 @@ class MaquinaController extends Controller
             ->groupBy('etiqueta_sub_id')
             ->sortBy($ordenSub)
             ->map(fn($grupo, $subId) => [
-                'codigo'    => (string)$subId,
+                'codigo' => (string) $subId,
                 'elementos' => $grupo->pluck('id')->toArray(),
                 'pesoTotal' => $grupo->sum('peso'),
             ])
@@ -295,24 +295,24 @@ class MaquinaController extends Controller
         $elementosAgrupadosScript = $elementosAgrupados->map(function ($grupo) {
             $etiqueta = $grupo->first()->etiquetaRelacion;
             return [
-                'etiqueta'  => $etiqueta,
-                'planilla'  => $grupo->first()->planilla,
+                'etiqueta' => $etiqueta,
+                'planilla' => $grupo->first()->planilla,
                 // Coladas de la etiqueta (asignadas en primer y segundo clic)
-                'colada_etiqueta'   => $etiqueta?->producto?->n_colada,
+                'colada_etiqueta' => $etiqueta?->producto?->n_colada,
                 'colada_etiqueta_2' => $etiqueta?->producto2?->n_colada,
                 'elementos' => $grupo->map(fn($e) => [
-                    'id'          => $e->id,
-                    'codigo'      => $e->codigo,
+                    'id' => $e->id,
+                    'codigo' => $e->codigo,
                     'dimensiones' => $e->dimensiones,
-                    'estado'      => $e->estado,
-                    'peso'        => $e->peso_kg,
-                    'diametro'    => $e->diametro_mm,
-                    'longitud'    => $e->longitud_cm,
-                    'barras'      => $e->barras,
-                    'figura'      => $e->figura,
-                    'paquete_id'  => $e->paquete_id,
+                    'estado' => $e->estado,
+                    'peso' => $e->peso_kg,
+                    'diametro' => $e->diametro_mm,
+                    'longitud' => $e->longitud_cm,
+                    'barras' => $e->barras,
+                    'figura' => $e->figura,
+                    'paquete_id' => $e->paquete_id,
                     // Incluimos las coladas para mostrarlas en la leyenda del SVG
-                    'coladas'     => [
+                    'coladas' => [
                         'colada1' => $e->producto ? $e->producto->n_colada : null,
                         'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
                         'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
@@ -341,11 +341,11 @@ class MaquinaController extends Controller
         // 8) Sugerencias de corte (sobre elementos filtrados y PB barra)
         $productosBaseCompatibles = collect($base['productosBaseCompatibles'] ?? []);
         $productosBarra = $productosBaseCompatibles->filter(function ($pb) {
-            $tipo = strtolower((string)($pb->tipo ?? ''));
+            $tipo = strtolower((string) ($pb->tipo ?? ''));
             if (str_contains($tipo, 'barra') || str_contains($tipo, 'varilla') || str_contains($tipo, 'corrug')) {
                 return true;
             }
-            $v = (float)str_replace(',', '.', (string)($pb->longitud ?? 0));
+            $v = (float) str_replace(',', '.', (string) ($pb->longitud ?? 0));
             return $v > 1 && $v < 50; // metros razonables
         })->values();
         if ($productosBarra->isEmpty()) {
@@ -353,9 +353,9 @@ class MaquinaController extends Controller
         }
 
         $planillasOrden = $elementosFiltrados->pluck('planilla_id')->unique()->values();
-        $idxPlanilla    = $planillasOrden->flip();
+        $idxPlanilla = $planillasOrden->flip();
         $colegasDe = function ($el) use ($elementosFiltrados, $planillasOrden, $idxPlanilla) {
-            $i   = (int)($idxPlanilla[$el->planilla_id] ?? 0);
+            $i = (int) ($idxPlanilla[$el->planilla_id] ?? 0);
             $ids = $planillasOrden->slice($i, 3); // actual + 2 siguientes
             return $elementosFiltrados->whereIn('planilla_id', $ids)->values();
         };
@@ -372,18 +372,18 @@ class MaquinaController extends Controller
 
         $longitudesPorDiametro = $esBarra
             ? $productosBaseCompatibles
-            ->filter(fn($pb) => strtoupper($pb->tipo) === 'BARRA')
-            ->groupBy(fn($pb) => (int)$pb->diametro)
-            ->map(
-                fn($g) => $g->pluck('longitud')
-                    ->filter(fn($L) => is_numeric($L) && $L > 0)
-                    ->map(fn($L) => (float)$L)
-                    ->unique()
-                    ->sort()
-                    ->values()
-                    ->all()
-            )
-            ->toArray()
+                ->filter(fn($pb) => strtoupper($pb->tipo) === 'BARRA')
+                ->groupBy(fn($pb) => (int) $pb->diametro)
+                ->map(
+                    fn($g) => $g->pluck('longitud')
+                        ->filter(fn($L) => is_numeric($L) && $L > 0)
+                        ->map(fn($L) => (float) $L)
+                        ->unique()
+                        ->sort()
+                        ->values()
+                        ->all()
+                )
+                ->toArray()
             : [];
 
         // 10) Diámetro por subetiqueta (desde elementos FILTRADOS)
@@ -392,7 +392,7 @@ class MaquinaController extends Controller
             ->filter(fn($e) => !empty($e->etiqueta_sub_id))
             ->groupBy('etiqueta_sub_id')
             ->map(function ($els) {
-                $c = collect($els)->pluck('diametro')->filter()->map(fn($d) => (int)$d);
+                $c = collect($els)->pluck('diametro')->filter()->map(fn($d) => (int) $d);
                 return (int) $c->countBy()->sortDesc()->keys()->first();
             })
             ->toArray();
@@ -491,23 +491,23 @@ class MaquinaController extends Controller
         $elementosAgrupadosScriptSinGrupos = $elementosAgrupadosSinGrupos->map(function ($grupo) {
             $etiqueta = $grupo->first()->etiquetaRelacion;
             return [
-                'etiqueta'  => $etiqueta,
-                'planilla'  => $grupo->first()->planilla,
+                'etiqueta' => $etiqueta,
+                'planilla' => $grupo->first()->planilla,
                 // Coladas de la etiqueta (asignadas en primer y segundo clic)
-                'colada_etiqueta'   => $etiqueta?->producto?->n_colada,
+                'colada_etiqueta' => $etiqueta?->producto?->n_colada,
                 'colada_etiqueta_2' => $etiqueta?->producto2?->n_colada,
                 'elementos' => $grupo->map(fn($e) => [
-                    'id'          => $e->id,
-                    'codigo'      => $e->codigo,
+                    'id' => $e->id,
+                    'codigo' => $e->codigo,
                     'dimensiones' => $e->dimensiones,
-                    'estado'      => $e->estado,
-                    'peso'        => $e->peso_kg,
-                    'diametro'    => $e->diametro_mm,
-                    'longitud'    => $e->longitud_cm,
-                    'barras'      => $e->barras,
-                    'figura'      => $e->figura,
-                    'paquete_id'  => $e->paquete_id,
-                    'coladas'     => [
+                    'estado' => $e->estado,
+                    'peso' => $e->peso_kg,
+                    'diametro' => $e->diametro_mm,
+                    'longitud' => $e->longitud_cm,
+                    'barras' => $e->barras,
+                    'figura' => $e->figura,
+                    'paquete_id' => $e->paquete_id,
+                    'coladas' => [
                         'colada1' => $e->producto ? $e->producto->n_colada : null,
                         'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
                         'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
@@ -522,38 +522,38 @@ class MaquinaController extends Controller
             'maquina' => $maquina,
 
             // cola / filtrados
-            'planillasActivas'      => $planillasActivas,
-            'elementosFiltrados'    => $elementosFiltrados,
-            'elementosPorPlanilla'  => $elementosPorPlanilla,
+            'planillasActivas' => $planillasActivas,
+            'elementosFiltrados' => $elementosFiltrados,
+            'elementosPorPlanilla' => $elementosPorPlanilla,
             'posicionesDisponibles' => $posicionesDisponibles,
-            'codigosPorPosicion'    => $codigosPorPosicion,
-            'posicion1'             => $posicion1,
-            'posicion2'             => $posicion2,
+            'codigosPorPosicion' => $codigosPorPosicion,
+            'posicion1' => $posicion1,
+            'posicion2' => $posicion2,
             // datasets UI
-            'elementosMaquina'         => $elementosMaquina,
-            'pesosElementos'           => $pesosElementos,
-            'etiquetasData'            => $etiquetasData,
-            'elementosReempaquetados'  => $elementosReempaquetados,
-            'elementosAgrupados'       => $elementosAgrupadosSinGrupos,
+            'elementosMaquina' => $elementosMaquina,
+            'pesosElementos' => $pesosElementos,
+            'etiquetasData' => $etiquetasData,
+            'elementosReempaquetados' => $elementosReempaquetados,
+            'elementosAgrupados' => $elementosAgrupadosSinGrupos,
             'elementosAgrupadosScript' => $elementosAgrupadosScriptSinGrupos,
-            'sugerenciasPorElemento'   => $sugerenciasPorElemento,
+            'sugerenciasPorElemento' => $sugerenciasPorElemento,
 
             // grupos de resumen
-            'gruposResumen'         => $gruposResumenData,
-            'etiquetasEnGrupos'     => $etiquetasEnGrupos,
+            'gruposResumen' => $gruposResumenData,
+            'etiquetasEnGrupos' => $etiquetasEnGrupos,
 
             // extra contexto
-            'turnoHoy'                             => $turnoHoy,
-            'movimientosPendientes'                => $movimientosPendientes,
-            'movimientosCompletados'               => $movimientosCompletados,
+            'turnoHoy' => $turnoHoy,
+            'movimientosPendientes' => $movimientosPendientes,
+            'movimientosCompletados' => $movimientosCompletados,
             'ubicacionesDisponiblesPorProductoBase' => $ubicacionesDisponiblesPorProductoBase,
-            'pedidosActivos'                       => $pedidosActivos,
-            'productoBaseSolicitados'              => $productoBaseSolicitados,
+            'pedidosActivos' => $pedidosActivos,
+            'productoBaseSolicitados' => $productoBaseSolicitados,
 
             // barra
-            'esBarra'               => $esBarra,
+            'esBarra' => $esBarra,
             'longitudesPorDiametro' => $longitudesPorDiametro,
-            'diametroPorEtiqueta'   => $diametroPorEtiqueta,
+            'diametroPorEtiqueta' => $diametroPorEtiqueta,
         ]));
     }
 
@@ -649,18 +649,18 @@ class MaquinaController extends Controller
 
     private function esGrua(Maquina $m): bool
     {
-        return stripos((string)$m->tipo, 'grua') !== false || stripos((string)$m->nombre, 'grua') !== false;
+        return stripos((string) $m->tipo, 'grua') !== false || stripos((string) $m->nombre, 'grua') !== false;
     }
 
     // Si tienes un campo explícito para “segunda” úsalo aquí.
     // Por defecto asumo “segunda” = máquinas que trabajan como post-proceso, p.ej. ensambladora.
     private function esSegundaMaquina(Maquina $m): bool
     {
-        $tipo = strtolower((string)$m->tipo);
+        $tipo = strtolower((string) $m->tipo);
 
         return str_contains($tipo, 'ensambladora')
             || str_contains($tipo, 'dobladora manual')   // 👈 añade esto
-            || (property_exists($m, 'orden') && (int)$m->orden === 2);
+            || (property_exists($m, 'orden') && (int) $m->orden === 2);
     }
 
 
@@ -693,7 +693,8 @@ class MaquinaController extends Controller
         $usuario2 = null;
         if (Session::has('compañero_id')) {
             $usuario2 = User::find(Session::get('compañero_id'));
-            if ($usuario2) $usuario2->name = html_entity_decode($usuario2->name, ENT_QUOTES, 'UTF-8');
+            if ($usuario2)
+                $usuario2->name = html_entity_decode($usuario2->name, ENT_QUOTES, 'UTF-8');
         }
 
         // ✅ turnoHoy común a todos los flujos (incluida grúa)
@@ -731,6 +732,8 @@ class MaquinaController extends Controller
             'pedido.distribuidor:id,nombre',
             'pedidoProducto:id,pedido_id,codigo,producto_base_id,cantidad,cantidad_recepcionada,obra_id,estado,fecha_estimada_entrega',
             'pedidoProducto.coladas', // ✅ Cargar las coladas asociadas a la línea de pedido
+            'salida.paquetes',
+            'salidaAlmacen.albaranes.lineas',
         ])
             ->where('estado', 'pendiente')
             ->where('nave_id', $obraId)              // ⬅️ solo movimientos de la misma nave
@@ -755,53 +758,53 @@ class MaquinaController extends Controller
 
         // JSON compacto para el front (incluye LA LÍNEA)
         $movsPendJson = $movimientosPendientes->map(function ($m) {
-            $linea  = $m->pedidoProducto;
+            $linea = $m->pedidoProducto;
             $pedido = $m->pedido;
-            $pb     = $m->productoBase;
+            $pb = $m->productoBase;
 
             $cantidad = (float) ($linea->cantidad ?? 0);
-            $recep    = (float) ($linea->cantidad_recepcionada ?? 0);
+            $recep = (float) ($linea->cantidad_recepcionada ?? 0);
             $restante = max(0.0, $cantidad - $recep);
 
             return [
-                'id'                 => $m->id,
-                'tipo'               => $m->tipo,
-                'estado'             => $m->estado,
-                'prioridad'          => $m->prioridad,
-                'pedido_id'          => $pedido?->id,
+                'id' => $m->id,
+                'tipo' => $m->tipo,
+                'estado' => $m->estado,
+                'prioridad' => $m->prioridad,
+                'pedido_id' => $pedido?->id,
                 'pedido_producto_id' => $linea?->id,
-                'producto_base_id'   => $pb?->id,
+                'producto_base_id' => $pb?->id,
 
                 'pedido' => [
-                    'id'            => $pedido?->id,
-                    'codigo'        => $pedido?->codigo,
-                    'peso_total'    => $pedido?->peso_total,
+                    'id' => $pedido?->id,
+                    'codigo' => $pedido?->codigo,
+                    'peso_total' => $pedido?->peso_total,
                     'fabricante_id' => $pedido?->fabricante_id,
-                    'fabricante'    => ['nombre' => $pedido?->fabricante?->nombre],
-                    'distribuidor'  => ['nombre' => $pedido?->distribuidor?->nombre],
+                    'fabricante' => ['nombre' => $pedido?->fabricante?->nombre],
+                    'distribuidor' => ['nombre' => $pedido?->distribuidor?->nombre],
                 ],
 
                 // 🔹 LÍNEA DE PEDIDO (lo que pide el modal)
                 'pedido_producto' => [
-                    'id'                     => $linea?->id,
-                    'cantidad'               => $cantidad,
-                    'cantidad_recepcionada'  => $recep,
-                    'restante'               => $restante,
-                    'estado'                 => $linea?->estado,
+                    'id' => $linea?->id,
+                    'cantidad' => $cantidad,
+                    'cantidad_recepcionada' => $recep,
+                    'restante' => $restante,
+                    'estado' => $linea?->estado,
                     'fecha_estimada_entrega' => $linea?->fecha_estimada_entrega,
                 ],
 
                 // Producto base
                 'producto_base' => [
-                    'id'       => $pb?->id,
-                    'tipo'     => $pb?->tipo,
+                    'id' => $pb?->id,
+                    'tipo' => $pb?->tipo,
                     'diametro' => $pb?->diametro,
                     'longitud' => $pb?->longitud, // en m si es barra en tu BD
                 ],
 
                 // Extras útiles para la vista grúa (opcionales)
                 'solicitado_por' => [
-                    'id'   => $m->solicitadoPor?->id,
+                    'id' => $m->solicitadoPor?->id,
                     'name' => $m->solicitadoPor?->name,
                 ],
                 'ubicacion_producto' => [
@@ -811,29 +814,29 @@ class MaquinaController extends Controller
         });
 
         $movsComplJson = $movimientosCompletados->map(function ($m) {
-            $pb    = $m->productoBase;
+            $pb = $m->productoBase;
             $linea = $m->pedidoProducto;
 
             return [
-                'id'            => $m->id,
-                'estado'        => $m->estado,
-                'updated_at'    => $m->updated_at?->toIso8601String(),
+                'id' => $m->id,
+                'estado' => $m->estado,
+                'updated_at' => $m->updated_at?->toIso8601String(),
                 'pedido_producto' => [
-                    'id'     => $linea?->id,
+                    'id' => $linea?->id,
                     'estado' => $linea?->estado,
                 ],
                 'producto_base' => [
-                    'id'       => $pb?->id,
-                    'tipo'     => $pb?->tipo,
+                    'id' => $pb?->id,
+                    'tipo' => $pb?->tipo,
                     'diametro' => $pb?->diametro,
                     'longitud' => $pb?->longitud,
                 ],
                 'solicitado_por' => [
-                    'id'   => $m->solicitadoPor?->id,
+                    'id' => $m->solicitadoPor?->id,
                     'name' => $m->solicitadoPor?->name,
                 ],
                 'ejecutado_por' => [
-                    'id'   => $m->ejecutadoPor?->id,
+                    'id' => $m->ejecutadoPor?->id,
                     'name' => $m->ejecutadoPor?->name,
                 ],
                 'ubicacion_producto' => [
@@ -859,10 +862,10 @@ class MaquinaController extends Controller
             foreach ($productosCompatibles as $productoBaseId => $productos) {
                 $ubicaciones = $productos->filter(fn($p) => $p->ubicacion)
                     ->map(fn($p) => [
-                        'id'          => $p->ubicacion->id,
-                        'nombre'      => $p->ubicacion->nombre,
+                        'id' => $p->ubicacion->id,
+                        'nombre' => $p->ubicacion->nombre,
                         'producto_id' => $p->id,
-                        'codigo'      => $p->codigo,
+                        'codigo' => $p->codigo,
                     ])->unique('id')->values()->toArray();
 
                 $ubicacionesDisponiblesPorProductoBase[$productoBaseId] = $ubicaciones;
@@ -887,14 +890,14 @@ class MaquinaController extends Controller
         $mapaData = $this->obtenerDatosMapaParaNave($obraId);
 
         return [
-            'movimientosPendientes'                 => $movimientosPendientes,
-            'movimientosCompletados'                => $movimientosCompletados,
-            'movimientosPendientesJson'             => $movsPendJson->values(),
-            'movimientosCompletadosJson'            => $movsComplJson->values(),
+            'movimientosPendientes' => $movimientosPendientes,
+            'movimientosCompletados' => $movimientosCompletados,
+            'movimientosPendientesJson' => $movsPendJson->values(),
+            'movimientosCompletadosJson' => $movsComplJson->values(),
             'ubicacionesDisponiblesPorProductoBase' => $ubicacionesDisponiblesPorProductoBase,
-            'pedidosActivos'                        => $pedidosActivos,
-            'maquinasDisponibles'                   => $maquinasDisponibles,
-            'mapaData'                              => $mapaData,
+            'pedidosActivos' => $pedidosActivos,
+            'maquinasDisponibles' => $maquinasDisponibles,
+            'mapaData' => $mapaData,
         ];
     }
 
@@ -915,12 +918,12 @@ class MaquinaController extends Controller
         $filasReales = $largoM * 2;
 
         $ctx = [
-            'naveId'         => $naveId,
+            'naveId' => $naveId,
             'columnasReales' => $columnasReales,
-            'filasReales'    => $filasReales,
-            'estaGirado'     => false,
-            'columnasVista'  => $columnasReales,
-            'filasVista'     => $filasReales,
+            'filasReales' => $filasReales,
+            'estaGirado' => false,
+            'columnasVista' => $columnasReales,
+            'filasVista' => $filasReales,
         ];
 
         $localizaciones = Localizacion::with('maquina:id,nombre')
@@ -933,13 +936,13 @@ class MaquinaController extends Controller
             ->filter(fn($loc) => $loc->maquina)
             ->map(function ($loc) {
                 return [
-                    'id'         => (int) $loc->id,
-                    'x1'         => (int) $loc->x1,
-                    'y1'         => (int) $loc->y1,
-                    'x2'         => (int) $loc->x2,
-                    'y2'         => (int) $loc->y2,
+                    'id' => (int) $loc->id,
+                    'x1' => (int) $loc->x1,
+                    'y1' => (int) $loc->y1,
+                    'x2' => (int) $loc->x2,
+                    'y2' => (int) $loc->y2,
                     'maquina_id' => (int) $loc->maquina_id,
-                    'nombre'     => (string) ($loc->nombre ?: $loc->maquina->nombre),
+                    'nombre' => (string) ($loc->nombre ?: $loc->maquina->nombre),
                 ];
             })->values()->toArray();
 
@@ -948,12 +951,12 @@ class MaquinaController extends Controller
             ->map(function ($loc) {
                 $tipo = str_replace('-', '_', $loc->tipo ?? 'transitable');
                 return [
-                    'id'    => (int) $loc->id,
-                    'x1'    => (int) $loc->x1,
-                    'y1'    => (int) $loc->y1,
-                    'x2'    => (int) $loc->x2,
-                    'y2'    => (int) $loc->y2,
-                    'tipo'  => $loc->tipo ?? 'transitable',
+                    'id' => (int) $loc->id,
+                    'x1' => (int) $loc->x1,
+                    'y1' => (int) $loc->y1,
+                    'x2' => (int) $loc->x2,
+                    'y2' => (int) $loc->y2,
+                    'tipo' => $loc->tipo ?? 'transitable',
                     'nombre' => (string) $loc->nombre,
                 ];
             })->values()->toArray();
@@ -967,31 +970,31 @@ class MaquinaController extends Controller
             ->map(function ($paquete) {
                 $loc = $paquete->localizacionPaquete;
                 return [
-                    'id'             => (int) $paquete->id,
-                    'codigo'         => (string) $paquete->codigo,
-                    'x1'             => (int) $loc->x1,
-                    'y1'             => (int) $loc->y1,
-                    'x2'             => (int) $loc->x2,
-                    'y2'             => (int) $loc->y2,
+                    'id' => (int) $paquete->id,
+                    'codigo' => (string) $paquete->codigo,
+                    'x1' => (int) $loc->x1,
+                    'y1' => (int) $loc->y1,
+                    'x2' => (int) $loc->x2,
+                    'y2' => (int) $loc->y2,
                     'tipo_contenido' => $paquete->getTipoContenido(),
-                    'orientacion'    => $paquete->orientacion ?? 'I',
+                    'orientacion' => $paquete->orientacion ?? 'I',
                 ];
             })->values()->toArray();
 
         $dimensiones = [
             'ancho' => $anchoM,
             'largo' => $largoM,
-            'obra'  => $obra->obra,
+            'obra' => $obra->obra,
         ];
 
         return [
-            'ctx'                      => $ctx,
-            'localizacionesZonas'     => $localizacionesZonas,
-            'localizacionesMaquinas'   => $localizacionesMaquinas,
-            'paquetesConLocalizacion'  => $paquetesConLocalizacion,
-            'dimensiones'              => $dimensiones,
-            'obraActualId'             => $naveId,
-            'mapaId'                   => 'mapa-modal-paquete-' . $naveId,
+            'ctx' => $ctx,
+            'localizacionesZonas' => $localizacionesZonas,
+            'localizacionesMaquinas' => $localizacionesMaquinas,
+            'paquetesConLocalizacion' => $paquetesConLocalizacion,
+            'dimensiones' => $dimensiones,
+            'obraActualId' => $naveId,
+            'mapaId' => 'mapa-modal-paquete-' . $naveId,
         ];
     }
 
@@ -1149,14 +1152,14 @@ class MaquinaController extends Controller
 
                 // ⚡ Crear movimiento nuevo
                 Movimiento::create([
-                    'tipo'            => 'Salida Almacén',
+                    'tipo' => 'Salida Almacén',
                     'salida_almacen_id' => $salida->id,
-                    'nave_id'         => $almacen?->id,
-                    'estado'          => 'pendiente',
+                    'nave_id' => $almacen?->id,
+                    'estado' => 'pendiente',
                     'fecha_solicitud' => now(),
-                    'solicitado_por'  => null,
-                    'prioridad'       => 2,
-                    'descripcion'     => $descripcion,
+                    'solicitado_por' => null,
+                    'prioridad' => 2,
+                    'descripcion' => $descripcion,
                 ]);
             }
         }
@@ -1261,12 +1264,12 @@ class MaquinaController extends Controller
 
             // Crear movimiento
             Movimiento::create([
-                'tipo'            => 'Preparación elementos',
-                'nave_id'         => $grua->obra_id,
-                'estado'          => 'pendiente',
-                'prioridad'       => 1, // Alta prioridad porque es para mañana
+                'tipo' => 'Preparación elementos',
+                'nave_id' => $grua->obra_id,
+                'estado' => 'pendiente',
+                'prioridad' => 1, // Alta prioridad porque es para mañana
                 'fecha_solicitud' => now(),
-                'descripcion'     => $descripcion,
+                'descripcion' => $descripcion,
             ]);
 
             Log::info("✅ Movimiento 'Preparación elementos' creado", [
@@ -1321,7 +1324,7 @@ class MaquinaController extends Controller
 
         $ordenSub = function ($grupo, $subId) {
             if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
-                return sprintf('%s-%010d', $m[1], (int)$m[2]);
+                return sprintf('%s-%010d', $m[1], (int) $m[2]);
             }
             return $subId . '-0000000000';
         };
@@ -1336,7 +1339,7 @@ class MaquinaController extends Controller
             ->groupBy('etiqueta_sub_id')
             ->sortBy($ordenSub)
             ->map(fn($grupo, $subId) => [
-                'codigo'    => (string)$subId,
+                'codigo' => (string) $subId,
                 'elementos' => $grupo->pluck('id')->toArray(),
                 'pesoTotal' => $grupo->sum('peso'),
             ])
@@ -1349,23 +1352,23 @@ class MaquinaController extends Controller
         $elementosAgrupadosScript = $elementosAgrupados->map(function ($grupo) {
             $etiqueta = $grupo->first()->etiquetaRelacion;
             return [
-                'etiqueta'  => $etiqueta,
-                'planilla'  => $grupo->first()->planilla,
+                'etiqueta' => $etiqueta,
+                'planilla' => $grupo->first()->planilla,
                 // Coladas de la etiqueta (asignadas en primer y segundo clic)
-                'colada_etiqueta'   => $etiqueta?->producto?->n_colada,
+                'colada_etiqueta' => $etiqueta?->producto?->n_colada,
                 'colada_etiqueta_2' => $etiqueta?->producto2?->n_colada,
                 'elementos' => $grupo->map(fn($e) => [
-                    'id'          => $e->id,
-                    'codigo'      => $e->codigo,
+                    'id' => $e->id,
+                    'codigo' => $e->codigo,
                     'dimensiones' => $e->dimensiones,
-                    'estado'      => $e->estado,
-                    'peso'        => $e->peso_kg,
-                    'diametro'    => $e->diametro_mm,
-                    'longitud'    => $e->longitud_cm,
-                    'barras'      => $e->barras,
-                    'figura'      => $e->figura,
-                    'paquete_id'  => $e->paquete_id,
-                    'coladas'     => [
+                    'estado' => $e->estado,
+                    'peso' => $e->peso_kg,
+                    'diametro' => $e->diametro_mm,
+                    'longitud' => $e->longitud_cm,
+                    'barras' => $e->barras,
+                    'figura' => $e->figura,
+                    'paquete_id' => $e->paquete_id,
+                    'coladas' => [
                         'colada1' => $e->producto ? $e->producto->n_colada : null,
                         'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
                         'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
@@ -1410,35 +1413,35 @@ class MaquinaController extends Controller
         return view('maquinas.show', array_merge(
             $base,
             [
-                'maquina'                   => $maquina,
-                'elementosMaquina'          => $elementosFiltrados,
-                'pesosElementos'            => $pesosElementos,
-                'etiquetasData'             => $etiquetasData,
-                'elementosAgrupados'        => $elementosAgrupados,
-                'elementosAgrupadosScript'  => $elementosAgrupadosScript,
-                'sugerenciasPorElemento'    => $sugerenciasPorElemento,
-                'planillasActivas'          => collect([$planilla]),
-                'turnoHoy'                  => $turnoHoy,
-                'movimientosPendientes'     => $movimientosPendientes,
-                'movimientosCompletados'    => $movimientosCompletados,
+                'maquina' => $maquina,
+                'elementosMaquina' => $elementosFiltrados,
+                'pesosElementos' => $pesosElementos,
+                'etiquetasData' => $etiquetasData,
+                'elementosAgrupados' => $elementosAgrupados,
+                'elementosAgrupadosScript' => $elementosAgrupadosScript,
+                'sugerenciasPorElemento' => $sugerenciasPorElemento,
+                'planillasActivas' => collect([$planilla]),
+                'turnoHoy' => $turnoHoy,
+                'movimientosPendientes' => $movimientosPendientes,
+                'movimientosCompletados' => $movimientosCompletados,
                 'ubicacionesDisponiblesPorProductoBase' => [],
-                'pedidosActivos'            => collect(),
-                'ordenManual'               => collect(),
-                'posicionesDisponibles'     => collect(),
-                'maquinasDisponibles'       => $maquinasDisponibles,
+                'pedidosActivos' => collect(),
+                'ordenManual' => collect(),
+                'posicionesDisponibles' => collect(),
+                'maquinasDisponibles' => $maquinasDisponibles,
                 // Variables adicionales para tipo-normal
-                'productoBaseSolicitados'   => collect(),
-                'elementosPorPlanilla'      => $elementosPorPlanilla,
-                'esBarra'                   => $esBarra,
-                'longitudesPorDiametro'     => $longitudesPorDiametro,
-                'diametroPorEtiqueta'       => $diametroPorEtiqueta,
-                'posicion1'                 => null,
-                'posicion2'                 => null,
+                'productoBaseSolicitados' => collect(),
+                'elementosPorPlanilla' => $elementosPorPlanilla,
+                'esBarra' => $esBarra,
+                'longitudesPorDiametro' => $longitudesPorDiametro,
+                'diametroPorEtiqueta' => $diametroPorEtiqueta,
+                'posicion1' => null,
+                'posicion2' => null,
                 // Indicador de modo fabricación en grúa
-                'modoFabricacionGrua'       => true,
-                'planillaFabricacion'       => $planilla,
+                'modoFabricacionGrua' => true,
+                'planillaFabricacion' => $planilla,
                 // Ubicación (null para grúa, se asigna después en el mapa)
-                'ubicacion'                 => null,
+                'ubicacion' => null,
             ]
         ));
     }
@@ -1465,14 +1468,14 @@ class MaquinaController extends Controller
         try {
             // Validación de los datos del formulario
             $request->validate([
-                'codigo'       => 'required|string|unique:maquinas,codigo',
-                'nombre'       => 'required|string|max:40|unique:maquinas,nombre',
-                'tipo'         => 'nullable|string|max:50|in:grua,cortadora_dobladora,ensambladora,soldadora,cortadora_manual,dobladora_manual',
-                'obra_id'      => 'nullable|exists:obras,id',
+                'codigo' => 'required|string|unique:maquinas,codigo',
+                'nombre' => 'required|string|max:40|unique:maquinas,nombre',
+                'tipo' => 'nullable|string|max:50|in:grua,cortadora_dobladora,ensambladora,soldadora,cortadora_manual,dobladora_manual',
+                'obra_id' => 'nullable|exists:obras,id',
                 'diametro_min' => 'nullable|integer',
                 'diametro_max' => 'nullable|integer',
-                'peso_min'     => 'nullable|integer',
-                'peso_max'     => 'nullable|integer',
+                'peso_min' => 'nullable|integer',
+                'peso_max' => 'nullable|integer',
                 'ancho_m' => 'nullable|numeric|min:0.01',
                 'largo_m' => 'nullable|numeric|min:0.01',
 
@@ -1480,43 +1483,43 @@ class MaquinaController extends Controller
             ], [
                 // Mensajes personalizados
                 'codigo.required' => 'El campo "código" es obligatorio.',
-                'codigo.string'   => 'El campo "código" debe ser una cadena de texto.',
-                'codigo.unique'   => 'Ya existe una máquina con el mismo código.',
+                'codigo.string' => 'El campo "código" debe ser una cadena de texto.',
+                'codigo.unique' => 'Ya existe una máquina con el mismo código.',
 
                 'nombre.required' => 'El campo "nombre" es obligatorio.',
-                'nombre.string'   => 'El campo "nombre" debe ser una cadena de texto.',
-                'nombre.max'      => 'El campo "nombre" no puede tener más de 40 caracteres.',
-                'nombre.unique'   => 'Ya existe una máquina con el mismo nombre.',
+                'nombre.string' => 'El campo "nombre" debe ser una cadena de texto.',
+                'nombre.max' => 'El campo "nombre" no puede tener más de 40 caracteres.',
+                'nombre.unique' => 'Ya existe una máquina con el mismo nombre.',
 
-                'tipo.string'     => 'El campo "tipo" debe ser una cadena de texto.',
-                'tipo.max'        => 'El campo "tipo" no puede tener más de 50 caracteres.',
-                'tipo.in'         => 'El tipo no está entre los posibles.',
+                'tipo.string' => 'El campo "tipo" debe ser una cadena de texto.',
+                'tipo.max' => 'El campo "tipo" no puede tener más de 50 caracteres.',
+                'tipo.in' => 'El tipo no está entre los posibles.',
 
                 'diametro_min.integer' => 'El campo "diámetro mínimo" debe ser un número entero.',
                 'diametro_max.integer' => 'El campo "diámetro máximo" debe ser un número entero.',
-                'peso_min.integer'     => 'El campo "peso mínimo" debe ser un número entero.',
-                'peso_max.integer'     => 'El campo "peso máximo" debe ser un número entero.',
-                'obra_id.exists'       => 'La obra seleccionada no es válida.',
+                'peso_min.integer' => 'El campo "peso mínimo" debe ser un número entero.',
+                'peso_max.integer' => 'El campo "peso máximo" debe ser un número entero.',
+                'obra_id.exists' => 'La obra seleccionada no es válida.',
 
                 'ancho_m.numeric' => 'El ancho debe ser un número.',
-                'ancho_m.min'     => 'El ancho debe ser mayor que cero.',
+                'ancho_m.min' => 'El ancho debe ser mayor que cero.',
                 'largo_m.numeric' => 'El largo debe ser un número.',
-                'largo_m.min'     => 'El largo debe ser mayor que cero.',
+                'largo_m.min' => 'El largo debe ser mayor que cero.',
 
             ]);
 
             // Crear la nueva máquina en la base de datos
             $maquina = Maquina::create([
-                'codigo'       => $request->codigo,
-                'nombre'       => $request->nombre,
-                'tipo'         => $request->tipo,
-                'obra_id'      => $request->obra_id,
+                'codigo' => $request->codigo,
+                'nombre' => $request->nombre,
+                'tipo' => $request->tipo,
+                'obra_id' => $request->obra_id,
                 'diametro_min' => $request->diametro_min,
                 'diametro_max' => $request->diametro_max,
-                'peso_min'     => $request->peso_min,
-                'peso_max'     => $request->peso_max,
-                'ancho_m'      => $request->ancho_m,
-                'largo_m'      => $request->largo_m,
+                'peso_min' => $request->peso_min,
+                'peso_max' => $request->peso_max,
+                'ancho_m' => $request->ancho_m,
+                'largo_m' => $request->largo_m,
             ]);
 
             $obra = $request->obra_id ? Obra::find($request->obra_id) : null;
@@ -1620,43 +1623,43 @@ class MaquinaController extends Controller
     {
         // Validar los datos del formulario
         $validatedData = $request->validate([
-            'codigo'       => 'required|string|unique:maquinas,codigo,' . $id,
-            'nombre'       => 'required|string|max:40',
-            'tipo'         => 'nullable|string|max:50|in:cortadora_dobladora,ensambladora,soldadora,cortadora manual,dobladora_manual,grua',
-            'obra_id'      => 'nullable|exists:obras,id',
+            'codigo' => 'required|string|unique:maquinas,codigo,' . $id,
+            'nombre' => 'required|string|max:40',
+            'tipo' => 'nullable|string|max:50|in:cortadora_dobladora,ensambladora,soldadora,cortadora manual,dobladora_manual,grua',
+            'obra_id' => 'nullable|exists:obras,id',
             'diametro_min' => 'nullable|integer',
             'diametro_max' => 'nullable|integer',
-            'peso_min'     => 'nullable|integer',
-            'peso_max'     => 'nullable|integer',
-            'ancho_m'      => 'nullable|numeric|min:0.01',
-            'largo_m'      => 'nullable|numeric|min:0.01',
-            'estado'       => 'nullable|string|in:activa,en mantenimiento,inactiva',
+            'peso_min' => 'nullable|integer',
+            'peso_max' => 'nullable|integer',
+            'ancho_m' => 'nullable|numeric|min:0.01',
+            'largo_m' => 'nullable|numeric|min:0.01',
+            'estado' => 'nullable|string|in:activa,en mantenimiento,inactiva',
         ], [
-            'codigo.required'   => 'El campo "código" es obligatorio.',
-            'codigo.string'     => 'El campo "código" debe ser una cadena de texto.',
-            'codigo.unique'     => 'El código ya existe, por favor ingrese otro diferente.',
+            'codigo.required' => 'El campo "código" es obligatorio.',
+            'codigo.string' => 'El campo "código" debe ser una cadena de texto.',
+            'codigo.unique' => 'El código ya existe, por favor ingrese otro diferente.',
 
-            'nombre.required'   => 'El campo "nombre" es obligatorio.',
-            'nombre.string'     => 'El campo "nombre" debe ser una cadena de texto.',
-            'nombre.max'        => 'El campo "nombre" no puede tener más de 40 caracteres.',
+            'nombre.required' => 'El campo "nombre" es obligatorio.',
+            'nombre.string' => 'El campo "nombre" debe ser una cadena de texto.',
+            'nombre.max' => 'El campo "nombre" no puede tener más de 40 caracteres.',
 
-            'tipo.string'       => 'El campo "tipo" debe ser texto.',
-            'tipo.max'          => 'El campo "tipo" no puede tener más de 50 caracteres.',
-            'tipo.in'           => 'El tipo no está entre los posibles.',
+            'tipo.string' => 'El campo "tipo" debe ser texto.',
+            'tipo.max' => 'El campo "tipo" no puede tener más de 50 caracteres.',
+            'tipo.in' => 'El tipo no está entre los posibles.',
 
-            'obra_id.exists'    => 'La obra seleccionada no es válida.',
+            'obra_id.exists' => 'La obra seleccionada no es válida.',
 
             'diametro_min.integer' => 'El "diámetro mínimo" debe ser un número entero.',
             'diametro_max.integer' => 'El "diámetro máximo" debe ser un número entero.',
-            'peso_min.integer'     => 'El "peso mínimo" debe ser un número entero.',
-            'peso_max.integer'     => 'El "peso máximo" debe ser un número entero.',
+            'peso_min.integer' => 'El "peso mínimo" debe ser un número entero.',
+            'peso_max.integer' => 'El "peso máximo" debe ser un número entero.',
 
-            'ancho_m.numeric'   => 'El ancho debe ser un número.',
-            'ancho_m.min'       => 'El ancho debe ser mayor que cero.',
-            'largo_m.numeric'   => 'El largo debe ser un número.',
-            'largo_m.min'       => 'El largo debe ser mayor que cero.',
+            'ancho_m.numeric' => 'El ancho debe ser un número.',
+            'ancho_m.min' => 'El ancho debe ser mayor que cero.',
+            'largo_m.numeric' => 'El largo debe ser un número.',
+            'largo_m.min' => 'El largo debe ser mayor que cero.',
 
-            'estado.in'         => 'El estado debe ser: activa, en mantenimiento o inactiva.',
+            'estado.in' => 'El estado debe ser: activa, en mantenimiento o inactiva.',
         ]);
 
         DB::beginTransaction();
@@ -1697,9 +1700,9 @@ class MaquinaController extends Controller
         ]);
 
         $nombreOriginal = $request->file('imagen')->getClientOriginalName();
-        $nombreLimpio   = Str::slug(pathinfo($nombreOriginal, PATHINFO_FILENAME));
-        $extension      = $request->file('imagen')->getClientOriginalExtension();
-        $nombreFinal    = $nombreLimpio . '.' . $extension;
+        $nombreLimpio = Str::slug(pathinfo($nombreOriginal, PATHINFO_FILENAME));
+        $extension = $request->file('imagen')->getClientOriginalExtension();
+        $nombreFinal = $nombreLimpio . '.' . $extension;
         $directorio = public_path('maquinasImagenes');
         if (!file_exists($directorio)) {
             mkdir($directorio, 0755, true);
@@ -1788,29 +1791,29 @@ class MaquinaController extends Controller
         // 3️⃣ Mapear cada elemento a los campos que necesita el servicio BVBS
         $datos = $elementos->map(fn($el) => [
             'proyecto' => $codigoProyecto,
-            'plano'       => optional($el->etiquetaRelacion)->nombre,
-            'indice'      => $el->indice,
-            'marca'       => $el->etiqueta,
-            'barras'      => (int)$el->barras,
-            'diametro'    => (int)$el->diametro,
-            'dimensiones' => (string)$el->dimensiones,
-            'longitud'    => $el->longitud_total_cm,
-            'peso'        => $el->peso,
-            'mandril_mm'  => $el->mandril_mm, // opcional
-            'calidad'     => 'B500SD',
-            'capa'        => $el->capa,
-            'box'         => $el->box,
+            'plano' => optional($el->etiquetaRelacion)->nombre,
+            'indice' => $el->indice,
+            'marca' => $el->etiqueta,
+            'barras' => (int) $el->barras,
+            'diametro' => (int) $el->diametro,
+            'dimensiones' => (string) $el->dimensiones,
+            'longitud' => $el->longitud_total_cm,
+            'peso' => $el->peso,
+            'mandril_mm' => $el->mandril_mm, // opcional
+            'calidad' => 'B500SD',
+            'capa' => $el->capa,
+            'box' => $el->box,
         ])->all();
 
         // 4) Generar BVBS
         $contenido = $bvbs->exportarLote($datos);
 
         // 5) Nombre de archivo decente
-        $timestamp   = now()->format('Ymd_His');
-        $maquinaTag  = Str::upper(trim($maquina->codigo ?? $maquina->nombre ?? 'MAQUINA'));
-        $maquinaTag  = Str::of($maquinaTag)->replaceMatches('/[^A-Z0-9]+/', '_')->trim('_');
+        $timestamp = now()->format('Ymd_His');
+        $maquinaTag = Str::upper(trim($maquina->codigo ?? $maquina->nombre ?? 'MAQUINA'));
+        $maquinaTag = Str::of($maquinaTag)->replaceMatches('/[^A-Z0-9]+/', '_')->trim('_');
         $proyectoTag = $codigoProyecto ? 'PRJ' . $codigoProyecto : 'SINPRJ';
-        $filename    = "BVBS_{$maquinaTag}_{$proyectoTag}_{$timestamp}.bvbs";
+        $filename = "BVBS_{$maquinaTag}_{$proyectoTag}_{$timestamp}.bvbs";
 
         // 6) Intentar guardar en carpeta compartida MSR20 (ruta principal)
         // IMPORTANTE: La ruta UNC es más fiable que la unidad mapeada para servicios
@@ -1862,7 +1865,7 @@ class MaquinaController extends Controller
             Storage::disk('local')->path($path),
             $filename,
             [
-                'Content-Type'  => 'text/plain; charset=UTF-8',
+                'Content-Type' => 'text/plain; charset=UTF-8',
                 'Cache-Control' => 'no-store, no-cache, must-revalidate',
             ]
         );
@@ -2078,7 +2081,7 @@ class MaquinaController extends Controller
                     ];
                 }
                 $resumen[$nuevaMaquina]['cantidad']++;
-                $resumen[$nuevaMaquina]['peso_total'] += (float)$original['peso'];
+                $resumen[$nuevaMaquina]['peso_total'] += (float) $original['peso'];
             }
 
             // Convertir resumen a array de valores
@@ -2214,8 +2217,8 @@ class MaquinaController extends Controller
 
         // Obtener posiciones del request (array de enteros)
         $posiciones = collect($request->input('posiciones', []))
-            ->filter(fn($p) => is_numeric($p) && (int)$p > 0)
-            ->map(fn($p) => (int)$p)
+            ->filter(fn($p) => is_numeric($p) && (int) $p > 0)
+            ->map(fn($p) => (int) $p)
             ->values()
             ->toArray();
 
@@ -2236,8 +2239,8 @@ class MaquinaController extends Controller
 
         // Obtener posiciones del request (array de enteros)
         $posiciones = collect($request->input('posiciones', []))
-            ->filter(fn($p) => is_numeric($p) && (int)$p > 0)
-            ->map(fn($p) => (int)$p)
+            ->filter(fn($p) => is_numeric($p) && (int) $p > 0)
+            ->map(fn($p) => (int) $p)
             ->values()
             ->toArray();
 
