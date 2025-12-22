@@ -3,6 +3,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DocumentoEmpleadoController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PapeleraController;
 use App\Http\Controllers\VacacionesController;
@@ -282,6 +283,14 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         return response()->file($path); // envía con Content-Type correcto
     })->name('usuarios.imagen');
     Route::get('/mi-perfil/{user}', [PerfilController::class, 'show'])->name('usuarios.show');
+
+    // === DOCUMENTOS EMPLEADO ===
+    Route::get('/api/usuarios/{user}/vacation-data', [ProfileController::class, 'getVacationData'])->name('usuarios.getVacationData');
+    Route::post('/documentos-empleado/{user}', [DocumentoEmpleadoController::class, 'store'])->name('documentos-empleado.store');
+    Route::delete('/documentos-empleado/{documento}', [DocumentoEmpleadoController::class, 'destroy'])->name('documentos-empleado.destroy');
+    Route::get('/documentos-empleado/{documento}/descargar', [DocumentoEmpleadoController::class, 'download'])->name('documentos-empleado.download');
+    Route::post('/usuarios/{user}/fecha-incorporacion', [DocumentoEmpleadoController::class, 'updateFechaIncorporacion'])->name('usuarios.updateFechaIncorporacion');
+    Route::get('/api/usuarios/{user}/documentos', [DocumentoEmpleadoController::class, 'index'])->name('api.usuarios.documentos');
 
     // Rutas específicas de vacaciones (DEBEN ir ANTES del resource)
     Route::get('/vacaciones/usuarios-con-vacaciones', [VacacionesController::class, 'usuariosConVacaciones'])->name('vacaciones.usuariosConVacaciones');
@@ -777,6 +786,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->parameters(['incorporaciones' => 'incorporacion']);
     Route::post('/incorporaciones/{incorporacion}/subir-documento', [\App\Http\Controllers\IncorporacionController::class, 'subirDocumento'])
         ->name('incorporaciones.crearSubirDocumento');
+    Route::post('/incorporaciones/{incorporacion}/update-fecha', [\App\Http\Controllers\IncorporacionController::class, 'updateFechaIncorporacion'])
+        ->name('incorporaciones.updateFecha');
     Route::delete('/incorporaciones/{incorporacion}/documento/{tipo}', [\App\Http\Controllers\IncorporacionController::class, 'eliminarDocumento'])
         ->name('incorporaciones.eliminarDocumento');
     Route::post('/incorporaciones/{incorporacion}/cambiar-estado', [\App\Http\Controllers\IncorporacionController::class, 'cambiarEstado'])
@@ -803,6 +814,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->name('incorporaciones.editarResubirArchivo');
     Route::post('/incorporaciones/{incorporacion}/actualizar-campo', [\App\Http\Controllers\IncorporacionController::class, 'actualizarCampo'])
         ->name('incorporaciones.editarActualizarCampo');
+    Route::get('/api/users/buscar-para-incorporacion', [\App\Http\Controllers\IncorporacionController::class, 'buscarUsuarios'])
+        ->name('incorporaciones.buscarUsuarios');
     Route::get('/mi-contrato/descargar', [\App\Http\Controllers\IncorporacionController::class, 'descargarMiContrato'])
         ->name('incorporaciones.descargarMiContrato');
 });
@@ -817,4 +830,4 @@ Route::post('/incorporacion/{token}', [\App\Http\Controllers\IncorporacionPublic
 require __DIR__ . '/auth.php';
 
 // DEBUG STOCK
-require __DIR__.'/debug-stock.php';
+require __DIR__ . '/debug-stock.php';

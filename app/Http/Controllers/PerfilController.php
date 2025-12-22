@@ -56,26 +56,31 @@ class PerfilController extends Controller
         // Configuración del calendario (para fichajes y visualización)
         $esOficina = Auth::user()->rol === 'oficina';
         $config = [
-            'userId'   => $user->id,
-            'locale'   => 'es',
+            'userId' => $user->id,
+            'locale' => 'es',
             'csrfToken' => csrf_token(),
-            'routes'   => [
-                'eventosUrl'          => route('users.verEventos-turnos', $user->id),
-                'resumenUrl'          => route('users.verResumen-asistencia', ['user' => $user->id]),
-                'vacacionesStoreUrl'  => route('vacaciones.solicitar'),
-                'storeUrl'            => route('asignaciones-turnos.store'),
-                'destroyUrl'          => route('asignaciones-turnos.destroy'),
+            'routes' => [
+                'eventosUrl' => route('users.verEventos-turnos', $user->id),
+                'resumenUrl' => route('users.verResumen-asistencia', ['user' => $user->id]),
+                'vacacionesStoreUrl' => route('vacaciones.solicitar'),
+                'storeUrl' => route('asignaciones-turnos.store'),
+                'destroyUrl' => route('asignaciones-turnos.destroy'),
+                'vacationDataUrl' => route('usuarios.getVacationData', ['user' => $user->id]),
             ],
             'enableListMonth' => true,
             'mobileBreakpoint' => 768,
             'permissions' => [
                 // Todos pueden solicitar vacaciones desde su perfil
                 'canRequestVacations' => true,
-                'canEditHours'        => false,
-                'canAssignShifts'     => false,
-                'canAssignStates'     => false,
+                'canEditHours' => false,
+                'canAssignShifts' => false,
+                'canAssignStates' => false,
             ],
             'turnos' => $turnos->map(fn($t) => ['nombre' => $t->nombre])->values()->toArray(),
+            'fechaIncorporacion' => $user->fecha_incorporacion_efectiva ? $user->fecha_incorporacion_efectiva->format('Y-m-d') : null,
+            'diasVacacionesAsignados' => $user->asignacionesTurnos()
+                ->where('estado', 'vacaciones')
+                ->count(),
         ];
 
         return view('perfil.show', compact(
@@ -97,17 +102,17 @@ class PerfilController extends Controller
             ->pluck('total', 'estado');
 
         return [
-            'diasVacaciones'        => $conteos['vacaciones'] ?? 0,
-            'faltasInjustificadas'  => $conteos['injustificada'] ?? 0,
-            'faltasJustificadas'    => $conteos['justificada'] ?? 0,
-            'diasBaja'              => $conteos['baja'] ?? 0,
+            'diasVacaciones' => $conteos['vacaciones'] ?? 0,
+            'faltasInjustificadas' => $conteos['injustificada'] ?? 0,
+            'faltasJustificadas' => $conteos['justificada'] ?? 0,
+            'diasBaja' => $conteos['baja'] ?? 0,
         ];
     }
     private function getHorasMensuales(User $user): array
     {
         $inicioMes = Carbon::now()->startOfMonth();
-        $hoy       = Carbon::now()->toDateString();
-        $finMes    = Carbon::now()->endOfMonth();
+        $hoy = Carbon::now()->toDateString();
+        $finMes = Carbon::now()->endOfMonth();
 
         // Todas las asignaciones activas del mes
         $asignacionesMes = $user->asignacionesTurnos()
@@ -115,9 +120,9 @@ class PerfilController extends Controller
             ->where('estado', 'activo')
             ->get();
 
-        $horasTrabajadas     = 0;
-        $diasConErrores      = 0;
-        $diasHastaHoy        = 0;
+        $horasTrabajadas = 0;
+        $diasConErrores = 0;
+        $diasHastaHoy = 0;
         $totalAsignacionesMes = $asignacionesMes->count(); // todas las asignaciones activas del mes
 
         foreach ($asignacionesMes as $asignacion) {
@@ -127,7 +132,7 @@ class PerfilController extends Controller
             }
 
             $horaEntrada = $asignacion->entrada ? Carbon::parse($asignacion->entrada) : null;
-            $horaSalida  = $asignacion->salida  ? Carbon::parse($asignacion->salida)  : null;
+            $horaSalida = $asignacion->salida ? Carbon::parse($asignacion->salida) : null;
 
             if ($horaEntrada && $horaSalida) {
                 $horasDia = $horaSalida->diffInMinutes($horaEntrada) / 60;
@@ -150,9 +155,9 @@ class PerfilController extends Controller
         $horasPlanificadasMes = $totalAsignacionesMes * 8;
 
         return [
-            'horas_trabajadas'       => $horasTrabajadas,
-            'horas_deberia_llevar'   => $horasDeberiaLlevar,
-            'dias_con_errores'       => $diasConErrores,
+            'horas_trabajadas' => $horasTrabajadas,
+            'horas_deberia_llevar' => $horasDeberiaLlevar,
+            'dias_con_errores' => $diasConErrores,
             'horas_planificadas_mes' => $horasPlanificadasMes,
         ];
     }

@@ -38,6 +38,7 @@ class Incorporacion extends Model
         'aprobado_ceo',
         'aprobado_ceo_at',
         'aprobado_ceo_by',
+        'fecha_incorporacion',
     ];
 
     public $timestamps = true;
@@ -52,6 +53,7 @@ class Incorporacion extends Model
         'aprobado_rrhh_at' => 'datetime',
         'aprobado_ceo' => 'boolean',
         'aprobado_ceo_at' => 'datetime',
+        'fecha_incorporacion' => 'date',
     ];
 
     // Estados posibles
@@ -86,6 +88,7 @@ class Incorporacion extends Model
 
     // Número máximo de archivos para formación del puesto
     const MAX_FORMACION_PUESTO = 5;
+    const MAX_CONTRATOS = 10;
 
     protected static function boot()
     {
@@ -159,7 +162,7 @@ class Incorporacion extends Model
 
     public function getEstadoBadgeAttribute()
     {
-        return match($this->estado) {
+        return match ($this->estado) {
             self::ESTADO_PENDIENTE => ['color' => 'yellow', 'texto' => 'Pendiente'],
             self::ESTADO_DATOS_RECIBIDOS => ['color' => 'orange', 'texto' => 'Datos recibidos'],
             self::ESTADO_EN_PROCESO => ['color' => 'blue', 'texto' => 'En proceso'],

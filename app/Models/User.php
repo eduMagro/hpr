@@ -79,6 +79,7 @@ class User extends Authenticatable
         'password' => 'hashed',
         'puede_usar_asistente' => 'boolean',
         'puede_modificar_bd' => 'boolean',
+        'fecha_incorporacion' => 'date',
     ];
     public function getRutaImagenAttribute()
     {
@@ -103,6 +104,57 @@ class User extends Authenticatable
     public function getNombreCompletoAttribute()
     {
         return trim("{$this->name} {$this->primer_apellido} {$this->segundo_apellido}");
+    }
+
+    public function getFechaIncorporacionEfectivaAttribute()
+    {
+        return $this->incorporacion?->fecha_incorporacion ?? $this->fecha_incorporacion;
+    }
+
+    /**
+     * Calcular días de vacaciones correspondientes al año actual
+     * basado en la fecha de incorporación.
+     */
+    public function getVacacionesCorrespondientesAttribute()
+    {
+        // 1. Si tiene un manual override, usarlo
+        if ($this->vacaciones_totales) {
+            return $this->vacaciones_totales;
+        }
+
+        $diasPorAnio = 22; // Base estándar
+
+        // 2. Determinar la fecha de incorporación efectiva
+        $inicio = $this->fecha_incorporacion_efectiva;
+
+        // Si no hay fecha de incorporación, asumimos año completo
+        if (!$inicio) {
+            return $diasPorAnio;
+        }
+
+        $now = now();
+        $finAnio = $now->copy()->endOfYear();
+
+        // 3. Si se incorporó en un año anterior, le corresponden todos
+        if ($inicio->year < $now->year) {
+            return $diasPorAnio;
+        }
+
+        // 4. Si se incorpora este año (o en el futuro de este año??), cálculo proporcional
+        // Si la fecha es futura al fin de año actual, 0 días
+        if ($inicio->gt($finAnio)) {
+            return 0;
+        }
+
+        // Días restantes desde la incorporación hasta fin de año
+        $diasTrabajados = $inicio->diffInDays($finAnio) + 1;
+        $diasEnAnio = $now->isLeapYear() ? 366 : 365;
+
+        $correspondientes = ($diasTrabajados / $diasEnAnio) * $diasPorAnio;
+
+        // Redondear a enteros (o 0.5?) - Generalmente se redondea al entero más cercano o superior.
+        // Haremos round estándar por ahora.
+        return round($correspondientes);
     }
 
     // En app/Models/User.php
@@ -238,6 +290,11 @@ class User extends Authenticatable
         return $this->rol === 'oficina' || $this->rol === 'admin';
     }
 
+    public function documentosEmpleado()
+    {
+        return $this->hasMany(DocumentoEmpleado::class);
+    }
+
     /* ============================================
        SCOPES PARA CONSULTAS DE OPERARIOS
        ============================================ */
@@ -300,7 +357,7 @@ class User extends Authenticatable
     {
         return $query->where(function ($q) {
             $q->whereNull('maquina_id')
-              ->orWhereHas('maquina', fn($mq) => $mq->where('tipo', 'ensambladora'));
+                ->orWhereHas('maquina', fn($mq) => $mq->where('tipo', 'ensambladora'));
         });
     }
 
@@ -320,7 +377,7 @@ class User extends Authenticatable
 
                 // Ejemplo 2 - por nombre
                 // $q->orWhere('nombre', 'Administrador');
-
+    
                 // Ejemplo 3 - por rol en el pivot
                 // $q->orWherePivot('rol_departamental', 'administrador');
             })
@@ -335,7 +392,7 @@ class User extends Authenticatable
 
                 // Ejemplo 2 - por nombre
                 // $q->orWhere('nombre', 'Administrador');
-
+    
                 // Ejemplo 3 - por rol en el pivot
                 // $q->orWherePivot('rol_departamental', 'administrador');
             })

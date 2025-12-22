@@ -36,6 +36,10 @@ class IncorporacionController extends Controller
             $query->where('empresa_destino', $request->empresa);
         }
 
+        if ($request->boolean('no_asignado')) {
+            $query->whereNull('user_id');
+        }
+
         if ($request->filled('buscar')) {
             $buscar = $request->buscar;
             $query->where(function ($q) use ($buscar) {
@@ -103,10 +107,12 @@ class IncorporacionController extends Controller
         // Preparar checklist de documentos
         $documentosPost = [];
         foreach (Incorporacion::DOCUMENTOS_POST as $tipo => $nombre) {
-            // Caso especial: formacion_puesto permite múltiples archivos
-            if ($tipo === 'formacion_puesto') {
+            // Caso especial: formacion_puesto o contrato_trabajo permiten múltiples archivos
+            if (in_array($tipo, ['formacion_puesto', 'contrato_trabajo'])) {
                 $docs = $incorporacion->documentos->where('tipo', $tipo);
                 $formacionesPublicas = $incorporacion->formaciones->where('tipo', $tipo);
+
+                $max = $tipo === 'formacion_puesto' ? Incorporacion::MAX_FORMACION_PUESTO : 9999;
 
                 $documentosPost[$tipo] = [
                     'nombre' => $nombre,
@@ -114,8 +120,8 @@ class IncorporacionController extends Controller
                     'formaciones' => $formacionesPublicas, // Múltiples formaciones del formulario público
                     'completado' => $docs->count() > 0 || $formacionesPublicas->count() > 0,
                     'multiple' => true,
-                    'max' => Incorporacion::MAX_FORMACION_PUESTO,
-                    'puede_anadir' => ($docs->count() + $formacionesPublicas->count()) < Incorporacion::MAX_FORMACION_PUESTO,
+                    'max' => $max,
+                    'puede_anadir' => ($docs->count() + $formacionesPublicas->count()) < $max,
                     'total_archivos' => $docs->count() + $formacionesPublicas->count(),
                 ];
                 continue;
@@ -162,6 +168,20 @@ class IncorporacionController extends Controller
             ->with('success', 'Incorporación actualizada correctamente.');
     }
 
+    public function updateFechaIncorporacion(Request $request, Incorporacion $incorporacion)
+    {
+        $validated = $request->validate([
+            'fecha_incorporacion' => 'required|date',
+        ]);
+
+        $incorporacion->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Fecha de incorporación actualizada',
+        ]);
+    }
+
     public function destroy(Incorporacion $incorporacion)
     {
         // Obtener carpeta del usuario
@@ -188,13 +208,15 @@ class IncorporacionController extends Controller
             'notas' => 'nullable|string|max:500',
         ]);
 
-        // Caso especial: formacion_puesto permite múltiples archivos (hasta 5)
-        if ($validated['tipo'] === 'formacion_puesto') {
-            $totalActual = $incorporacion->documentos()->where('tipo', 'formacion_puesto')->count();
-            if ($totalActual >= Incorporacion::MAX_FORMACION_PUESTO) {
+        // Caso especial: formacion_puesto y contrato_trabajo permiten múltiples archivos
+        if (in_array($validated['tipo'], ['formacion_puesto', 'contrato_trabajo'])) {
+            $max = $validated['tipo'] === 'formacion_puesto' ? Incorporacion::MAX_FORMACION_PUESTO : 9999;
+            $totalActual = $incorporacion->documentos()->where('tipo', $validated['tipo'])->count();
+
+            if ($totalActual >= $max) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Ya has alcanzado el límite de ' . Incorporacion::MAX_FORMACION_PUESTO . ' archivos para Formación del puesto',
+                    'message' => 'Ya has alcanzado el límite de ' . $max . ' archivos para este tipo de documento',
                 ], 422);
             }
         }
@@ -207,8 +229,8 @@ class IncorporacionController extends Controller
         $carpetaUsuario = $this->obtenerCarpetaUsuario($incorporacion);
         $archivo->storeAs("private/documentos/{$carpetaUsuario}", $nombreArchivo);
 
-        // Crear documento (para formacion_puesto siempre crear nuevo, para otros actualizar o crear)
-        if ($validated['tipo'] === 'formacion_puesto') {
+        // Crear documento (para múltiples siempre crear nuevo, para otros actualizar o crear)
+        if (in_array($validated['tipo'], ['formacion_puesto', 'contrato_trabajo'])) {
             $documento = $incorporacion->documentos()->create([
                 'tipo' => $validated['tipo'],
                 'archivo' => $nombreArchivo,
@@ -255,8 +277,8 @@ class IncorporacionController extends Controller
 
     public function eliminarDocumento(Request $request, Incorporacion $incorporacion, $tipo)
     {
-        // Para formacion_puesto, se puede pasar un ID específico
-        if ($tipo === 'formacion_puesto' && $request->has('documento_id')) {
+        // Para formacion_puesto o contrato_trabajo, se puede pasar un ID específico
+        if (in_array($tipo, ['formacion_puesto', 'contrato_trabajo']) && $request->has('documento_id')) {
             $documento = $incorporacion->documentos()
                 ->where('tipo', $tipo)
                 ->where('id', $request->input('documento_id'))
@@ -578,40 +600,85 @@ class IncorporacionController extends Controller
     public function actualizarCampo(Request $request, Incorporacion $incorporacion)
     {
         $validated = $request->validate([
-            'campo' => 'required|in:numero_afiliacion_ss',
-            'valor' => 'required|string',
+            'campo' => 'required|in:numero_afiliacion_ss,user_id',
+            'valor' => 'nullable',
         ]);
 
         $campo = $validated['campo'];
         $valor = $validated['valor'];
 
-        // Validaciones específicas por campo
-        if ($campo === 'numero_afiliacion_ss') {
-            if (!preg_match('/^[0-9]{12}$/', $valor)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'El número de afiliación debe tener 12 dígitos',
-                ], 422);
+        if ($campo === 'user_id') {
+            if ($valor) {
+                // Verificar que el usuario existe
+                $user = User::withoutGlobalScopes()->find($valor);
+                if (!$user) {
+                    return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
+                }
+                $incorporacion->update(['user_id' => $valor]);
+                $incorporacion->registrarLog('actualizacion_campo', "Usuario asignado: {$user->nombre_completo}");
+            } else {
+                $incorporacion->update(['user_id' => null]);
+                $incorporacion->registrarLog('actualizacion_campo', "Usuario desasignado");
             }
+        } else {
+            // Validaciones específicas por campo
+            if ($campo === 'numero_afiliacion_ss') {
+                if (!preg_match('/^[0-9]{12}$/', $valor)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El número de afiliación debe tener 12 dígitos',
+                    ], 422);
+                }
+            }
+
+            $incorporacion->update([$campo => $valor]);
+
+            $nombres = [
+                'numero_afiliacion_ss' => 'Número de Afiliación SS',
+            ];
+
+            $incorporacion->registrarLog(
+                'actualizacion_campo',
+                "Campo actualizado: " . ($nombres[$campo] ?? $campo)
+            );
         }
-
-        $valorAnterior = $incorporacion->{$campo};
-        $incorporacion->update([$campo => $valor]);
-
-        // Registrar log
-        $nombres = [
-            'numero_afiliacion_ss' => 'N. Afiliación SS',
-        ];
-
-        $incorporacion->registrarLog(
-            'campo_actualizado',
-            "{$nombres[$campo]} actualizado: {$valorAnterior} → {$valor}"
-        );
 
         return response()->json([
             'success' => true,
             'message' => 'Campo actualizado correctamente',
         ]);
+    }
+
+    /**
+     * Buscar usuarios para asignar a la incorporación
+     */
+    public function buscarUsuarios(Request $request)
+    {
+        $query = $request->get('q');
+
+        $users = User::withoutGlobalScopes()
+            ->where('estado', 'activo')
+            ->where(function ($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                    ->orWhere('primer_apellido', 'like', "%{$query}%")
+                    ->orWhere('segundo_apellido', 'like', "%{$query}%")
+                    ->orWhere('dni', 'like', "%{$query}%")
+                    ->orWhere('email', 'like', "%{$query}%");
+            })
+            ->limit(20)
+            ->get()
+            ->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'nombre_completo' => $user->nombre_completo,
+                    'dni' => $user->dni,
+                    'email' => $user->email,
+                    'imagen_url' => $user->ruta_imagen,
+                    'puesto' => $user->categoria?->nombre ?? 'Sin categoría'
+                ];
+            });
+
+        return response()->json(['users' => $users]);
     }
 
     /**
@@ -932,13 +999,17 @@ class IncorporacionController extends Controller
             $row++;
 
             $documentos = [];
-            if ($incorporacion->dni_frontal) $documentos[] = ['DNI Frontal', '✓'];
-            if ($incorporacion->dni_trasero) $documentos[] = ['DNI Trasero', '✓'];
-            if ($incorporacion->certificado_bancario) $documentos[] = ['Certificado Bancario', '✓'];
+            if ($incorporacion->dni_frontal)
+                $documentos[] = ['DNI Frontal', '✓'];
+            if ($incorporacion->dni_trasero)
+                $documentos[] = ['DNI Trasero', '✓'];
+            if ($incorporacion->certificado_bancario)
+                $documentos[] = ['Certificado Bancario', '✓'];
 
             foreach ($incorporacion->formaciones as $formacion) {
                 $nombre = $formacion->tipo_nombre;
-                if ($formacion->nombre) $nombre .= " - " . $formacion->nombre;
+                if ($formacion->nombre)
+                    $nombre .= " - " . $formacion->nombre;
                 $documentos[] = [$nombre, '✓'];
             }
 

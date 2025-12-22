@@ -60,13 +60,20 @@ class ProfileController extends Controller
     {
         $filtros = [];
 
-        if ($request->filled('id'))              $filtros[] = 'ID: <strong>' . e($request->id) . '</strong>';
-        if ($request->filled('nombre_completo')) $filtros[] = 'Nombre: <strong>' . e($request->nombre_completo) . '</strong>';
-        if ($request->filled('email'))           $filtros[] = 'Email: <strong>' . e($request->email) . '</strong>';
-        if ($request->filled('movil_personal'))  $filtros[] = 'Móvil Personal: <strong>' . e($request->movil_personal) . '</strong>';
-        if ($request->filled('movil_empresa'))   $filtros[] = 'Móvil Empresa: <strong>' . e($request->movil_empresa) . '</strong>';
-        if ($request->filled('numero_corto'))    $filtros[] = 'Nº Corporativo: <strong>' . e($request->numero_corto) . '</strong>';
-        if ($request->filled('dni'))             $filtros[] = 'DNI: <strong>' . e($request->dni) . '</strong>';
+        if ($request->filled('id'))
+            $filtros[] = 'ID: <strong>' . e($request->id) . '</strong>';
+        if ($request->filled('nombre_completo'))
+            $filtros[] = 'Nombre: <strong>' . e($request->nombre_completo) . '</strong>';
+        if ($request->filled('email'))
+            $filtros[] = 'Email: <strong>' . e($request->email) . '</strong>';
+        if ($request->filled('movil_personal'))
+            $filtros[] = 'Móvil Personal: <strong>' . e($request->movil_personal) . '</strong>';
+        if ($request->filled('movil_empresa'))
+            $filtros[] = 'Móvil Empresa: <strong>' . e($request->movil_empresa) . '</strong>';
+        if ($request->filled('numero_corto'))
+            $filtros[] = 'Nº Corporativo: <strong>' . e($request->numero_corto) . '</strong>';
+        if ($request->filled('dni'))
+            $filtros[] = 'DNI: <strong>' . e($request->dni) . '</strong>';
 
         if ($request->filled('empresa_id')) {
             $empresa = \App\Models\Empresa::find($request->empresa_id);
@@ -89,8 +96,10 @@ class ProfileController extends Controller
             $filtros[] = 'Máquina: <strong>' . e($request->maquina) . '</strong>';
         }
 
-        if ($request->filled('turno'))  $filtros[] = 'Turno: <strong>' . e($request->turno) . '</strong>';
-        if ($request->filled('rol'))    $filtros[] = 'Rol: <strong>' . e($request->rol) . '</strong>';
+        if ($request->filled('turno'))
+            $filtros[] = 'Turno: <strong>' . e($request->turno) . '</strong>';
+        if ($request->filled('rol'))
+            $filtros[] = 'Rol: <strong>' . e($request->rol) . '</strong>';
 
         if ($request->filled('estado')) {
             $filtros[] = 'Estado: <strong>' . ucfirst(e($request->estado)) . '</strong>';
@@ -99,16 +108,16 @@ class ProfileController extends Controller
         if ($request->filled('sort')) {
             $sorts = [
                 'nombre_completo' => 'Nombre',
-                'email'           => 'Email',
-                'dni'             => 'DNI',
-                'empresa'         => 'Empresa',
-                'rol'             => 'Rol',
-                'categoria'       => 'Categoría',
-                'maquina_id'      => 'Máquina',
-                'turno'           => 'Turno',
-                'estado'          => 'Estado',
-                'numero_corto'    => 'Nº Corporativo',
-                'id'              => 'ID',
+                'email' => 'Email',
+                'dni' => 'DNI',
+                'empresa' => 'Empresa',
+                'rol' => 'Rol',
+                'categoria' => 'Categoría',
+                'maquina_id' => 'Máquina',
+                'turno' => 'Turno',
+                'estado' => 'Estado',
+                'numero_corto' => 'Nº Corporativo',
+                'id' => 'ID',
             ];
             $orden = strtolower($request->order) === 'desc' ? 'descendente' : 'ascendente';
             $filtros[] = 'Ordenado por <strong>' . e($sorts[$request->sort] ?? $request->sort) . "</strong> en orden <strong>$orden</strong>";
@@ -146,18 +155,18 @@ class ProfileController extends Controller
     {
         // Mapa de orden seguro (añadimos nombres "bonitos" cuando haga falta join)
         $ordenables = [
-            'id'              => 'users.id',
+            'id' => 'users.id',
             'nombre_completo' => DB::raw("CONCAT_WS(' ', users.name, users.primer_apellido, users.segundo_apellido)"),
-            'email'           => 'users.email',
-            'numero_corto'    => DB::raw('CAST(users.numero_corto AS UNSIGNED)'),
-            'dni'             => 'users.dni',
+            'email' => 'users.email',
+            'numero_corto' => DB::raw('CAST(users.numero_corto AS UNSIGNED)'),
+            'dni' => 'users.dni',
             // Por defecto ordena por ID; si quieres ordenar por nombre de empresa/categoría, haremos join abajo
-            'empresa'         => 'empresas.nombre',
-            'rol'             => 'users.rol',
-            'categoria'       => 'categorias.nombre',
-            'maquina_id'      => 'users.maquina_id',
-            'turno'           => 'users.turno',
-            'estado'          => 'users.estado', // si existiera columna; tu "estado" de conexión va en colección
+            'empresa' => 'empresas.nombre',
+            'rol' => 'users.rol',
+            'categoria' => 'categorias.nombre',
+            'maquina_id' => 'users.maquina_id',
+            'turno' => 'users.turno',
+            'estado' => 'users.estado', // si existiera columna; tu "estado" de conexión va en colección
         ];
 
         $query = User::query()->select('users.*');
@@ -242,7 +251,7 @@ class ProfileController extends Controller
         }
 
         // 🔹 ORDENAMIENTO
-        $sort  = $request->input('sort');
+        $sort = $request->input('sort');
         $order = in_array(strtolower($request->input('order', 'asc')), ['asc', 'desc']) ? strtolower($request->input('order', 'asc')) : 'asc';
 
         // Si el orden implica campos de tablas relacionadas, hacemos join (sin romper el select users.*)
@@ -297,24 +306,24 @@ class ProfileController extends Controller
             ->get();
 
         $categorias = Categoria::orderBy('nombre')->get();
-        $empresas   = Empresa::orderBy('nombre')->get();
-        $maquinas   = Maquina::orderBy('nombre')->get();
-        $roles      = User::distinct()->pluck('rol')->filter()->sort();
-        $turnos     = User::distinct()->pluck('turno')->filter()->sort();
+        $empresas = Empresa::orderBy('nombre')->get();
+        $maquinas = Maquina::orderBy('nombre')->get();
+        $roles = User::distinct()->pluck('rol')->filter()->sort();
+        $turnos = User::distinct()->pluck('turno')->filter()->sort();
         $totalSolicitudesPendientes = VacacionesSolicitud::where('estado', 'pendiente')->count();
 
         $ordenables = [
-            'id'              => $this->getOrdenamiento('id', 'ID'),
+            'id' => $this->getOrdenamiento('id', 'ID'),
             'nombre_completo' => $this->getOrdenamiento('nombre_completo', 'Nombre'),
-            'email'           => $this->getOrdenamiento('email', 'Email'),
-            'numero_corto'    => $this->getOrdenamiento('numero_corto', 'Nº Corporativo'),
-            'dni'             => $this->getOrdenamiento('dni', 'DNI'),
-            'empresa'         => $this->getOrdenamiento('empresa', 'Empresa'),
-            'rol'             => $this->getOrdenamiento('rol', 'Rol'),
-            'categoria'       => $this->getOrdenamiento('categoria', 'Categoría'),
-            'maquina_id'      => $this->getOrdenamiento('maquina_id', 'Máquina'),
-            'turno'           => $this->getOrdenamiento('turno', 'Turno'),
-            'estado'          => $this->getOrdenamiento('estado', 'Estado'),
+            'email' => $this->getOrdenamiento('email', 'Email'),
+            'numero_corto' => $this->getOrdenamiento('numero_corto', 'Nº Corporativo'),
+            'dni' => $this->getOrdenamiento('dni', 'DNI'),
+            'empresa' => $this->getOrdenamiento('empresa', 'Empresa'),
+            'rol' => $this->getOrdenamiento('rol', 'Rol'),
+            'categoria' => $this->getOrdenamiento('categoria', 'Categoría'),
+            'maquina_id' => $this->getOrdenamiento('maquina_id', 'Máquina'),
+            'turno' => $this->getOrdenamiento('turno', 'Turno'),
+            'estado' => $this->getOrdenamiento('estado', 'Estado'),
         ];
 
         // Obtener usuarios según filtros (sin paginar aún)
@@ -331,8 +340,8 @@ class ProfileController extends Controller
 
         // Paginar manualmente la colección
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
-        $perPage     = $request->input('per_page', 10);
-        $offset      = ($currentPage - 1) * $perPage;
+        $perPage = $request->input('per_page', 10);
+        $offset = ($currentPage - 1) * $perPage;
 
         $registrosUsuarios = new LengthAwarePaginator(
             $usuarios->slice($offset, $perPage)->values(),
@@ -368,7 +377,7 @@ class ProfileController extends Controller
         $auth = auth()->user();
         $id = $user instanceof User ? $user->id : $user;
 
-        if ($auth->rol !== 'oficina' && (int)$auth->id !== (int)$id) {
+        if ($auth->rol !== 'oficina' && (int) $auth->id !== (int) $id) {
             return back()->with('error', 'No tienes permiso para ver este perfil.');
         }
 
@@ -381,24 +390,31 @@ class ProfileController extends Controller
         $esOficina = $auth->rol === 'oficina';
 
         $config = [
-            'userId'   => $user->id,
-            'locale'   => 'es',
+            'userId' => $user->id,
+            'locale' => 'es',
             'csrfToken' => csrf_token(),
-            'routes'   => [
-                'eventosUrl'          => route('users.verEventos-turnos', $user->id),
-                'resumenUrl'          => route('users.verResumen-asistencia', ['user' => $user->id]),
-                'vacacionesStoreUrl'  => route('vacaciones.solicitar'),
-                // añade más rutas si luego habilitas “asignar turnos/estados”
+            'routes' => [
+                'eventosUrl' => route('users.verEventos-turnos', $user->id),
+                'resumenUrl' => route('users.verResumen-asistencia', ['user' => $user->id]),
+                'vacacionesStoreUrl' => route('vacaciones.solicitar'),
+                'storeUrl' => route('asignaciones-turnos.store'),
+                'destroyUrl' => route('asignaciones-turnos.destroy'),
+                'vacationDataUrl' => route('usuarios.getVacationData', ['user' => $user->id]),
             ],
             'enableListMonth' => true,
             'mobileBreakpoint' => 768,
             'permissions' => [
-                // Oficina puede gestionar/editar; Operario solo pedir vacaciones
                 'canRequestVacations' => !$esOficina,
-                'canEditHours'        => $esOficina,
-                'canAssignShifts'     => false,   // déjalo en false si aún no lo usas
-                'canAssignStates'     => false,   // idem
+                'canEditHours' => $esOficina,
+                'canAssignShifts' => $esOficina,
+                'canAssignStates' => $esOficina,
             ],
+            'turnos' => $turnos->map(fn($t) => ['nombre' => $t->nombre])->values()->toArray(),
+            'fechaIncorporacion' => $user->fecha_incorporacion_efectiva ? $user->fecha_incorporacion_efectiva->format('Y-m-d') : null,
+            'diasVacacionesAsignados' => $user->asignacionesTurnos()
+                ->where('estado', 'vacaciones')
+                // ->whereYear('fecha', now()->year) // Opcional: si solo cuentan las del año en curso
+                ->count(),
         ];
 
         return view('User.show', compact(
@@ -413,8 +429,8 @@ class ProfileController extends Controller
     private function getHorasMensuales(User $user): array
     {
         $inicioMes = Carbon::now()->startOfMonth();
-        $hoy       = Carbon::now()->toDateString();
-        $finMes    = Carbon::now()->endOfMonth();
+        $hoy = Carbon::now()->toDateString();
+        $finMes = Carbon::now()->endOfMonth();
 
         // Todas las asignaciones activas del mes
         $asignacionesMes = $user->asignacionesTurnos()
@@ -422,9 +438,9 @@ class ProfileController extends Controller
             ->where('estado', 'activo')
             ->get();
 
-        $horasTrabajadas     = 0;
-        $diasConErrores      = 0;
-        $diasHastaHoy        = 0;
+        $horasTrabajadas = 0;
+        $diasConErrores = 0;
+        $diasHastaHoy = 0;
         $totalAsignacionesMes = $asignacionesMes->count(); // todas las asignaciones activas del mes
 
         foreach ($asignacionesMes as $asignacion) {
@@ -434,7 +450,7 @@ class ProfileController extends Controller
             }
 
             $horaEntrada = $asignacion->entrada ? Carbon::parse($asignacion->entrada) : null;
-            $horaSalida  = $asignacion->salida  ? Carbon::parse($asignacion->salida)  : null;
+            $horaSalida = $asignacion->salida ? Carbon::parse($asignacion->salida) : null;
 
             if ($horaEntrada && $horaSalida) {
                 $horasDia = $horaSalida->diffInMinutes($horaEntrada) / 60;
@@ -457,9 +473,9 @@ class ProfileController extends Controller
         $horasPlanificadasMes = $totalAsignacionesMes * 8;
 
         return [
-            'horas_trabajadas'       => $horasTrabajadas,
-            'horas_deberia_llevar'   => $horasDeberiaLlevar,
-            'dias_con_errores'       => $diasConErrores,
+            'horas_trabajadas' => $horasTrabajadas,
+            'horas_deberia_llevar' => $horasDeberiaLlevar,
+            'dias_con_errores' => $diasConErrores,
             'horas_planificadas_mes' => $horasPlanificadasMes,
         ];
     }
@@ -560,10 +576,10 @@ class ProfileController extends Controller
                     'allDay' => true,
                     'extendedProps' => [
                         'asignacion_id' => $asignacion->id,
-                        'fecha'         => $asignacion->fecha,
-                        'entrada'       => $asignacion->entrada,
-                        'salida'        => $asignacion->salida,
-                        'es_turno'      => true
+                        'fecha' => $asignacion->fecha,
+                        'entrada' => $asignacion->entrada,
+                        'salida' => $asignacion->salida,
+                        'es_turno' => true
                     ],
                 ];
             }
@@ -587,10 +603,10 @@ class ProfileController extends Controller
                     'allDay' => true,
                     'extendedProps' => [
                         'asignacion_id' => $asignacion->id,
-                        'fecha'         => $asignacion->fecha,
-                        'entrada'       => $asignacion->entrada,
-                        'salida'        => $asignacion->salida,
-                        'es_turno'      => false
+                        'fecha' => $asignacion->fecha,
+                        'entrada' => $asignacion->entrada,
+                        'salida' => $asignacion->salida,
+                        'es_turno' => false
                     ],
                 ];
             }
@@ -853,21 +869,21 @@ class ProfileController extends Controller
 
             // ✅ Validar los datos con mensajes personalizados
             $validationRules = [
-                'name'             => 'required|string|max:50',
-                'primer_apellido'  => 'nullable|string|max:100',
+                'name' => 'required|string|max:50',
+                'primer_apellido' => 'nullable|string|max:100',
                 'segundo_apellido' => 'nullable|string|max:100',
-                'movil_personal'   => 'nullable|string|max:255',
-                'movil_empresa'    => 'nullable|string|max:255',
-                'numero_corto'     => [
+                'movil_personal' => 'nullable|string|max:255',
+                'movil_empresa' => 'nullable|string|max:255',
+                'numero_corto' => [
                     'nullable',
                     'digits:4', // exactamente 4 dígitos
                     'unique:users,numero_corto,' . $id,
                 ],
-                'empresa_id'   => 'nullable|exists:empresas,id',
-                'rol'          => 'required|string|max:50',
+                'empresa_id' => 'nullable|exists:empresas,id',
+                'rol' => 'required|string|max:50',
                 'categoria_id' => 'nullable|exists:categorias,id',
-                'maquina_id'   => 'nullable|exists:maquinas,id',
-                'turno'        => 'nullable|string|in:nocturno,diurno,mañana,flexible',
+                'maquina_id' => 'nullable|exists:maquinas,id',
+                'turno' => 'nullable|string|in:nocturno,diurno,mañana,flexible',
             ];
 
             // Solo programador puede editar email y dni
@@ -894,27 +910,27 @@ class ProfileController extends Controller
             }
 
             // 💡 Normalización
-            $nombre          = ucfirst(mb_strtolower($request->name));
-            $apellido1       = $request->primer_apellido ? ucfirst(mb_strtolower($request->primer_apellido)) : null;
-            $apellido2       = $request->segundo_apellido ? ucfirst(mb_strtolower($request->segundo_apellido)) : null;
-            $movil_personal  = $request->movil_personal ? str_replace(' ', '', $request->movil_personal) : null;
-            $movil_empresa   = $request->movil_empresa ? str_replace(' ', '', $request->movil_empresa) : null;
-            $numero_corto    = $request->numero_corto ? str_pad(preg_replace('/\D/', '', $request->numero_corto), 4, '0', STR_PAD_LEFT) : null;
+            $nombre = ucfirst(mb_strtolower($request->name));
+            $apellido1 = $request->primer_apellido ? ucfirst(mb_strtolower($request->primer_apellido)) : null;
+            $apellido2 = $request->segundo_apellido ? ucfirst(mb_strtolower($request->segundo_apellido)) : null;
+            $movil_personal = $request->movil_personal ? str_replace(' ', '', $request->movil_personal) : null;
+            $movil_empresa = $request->movil_empresa ? str_replace(' ', '', $request->movil_empresa) : null;
+            $numero_corto = $request->numero_corto ? str_pad(preg_replace('/\D/', '', $request->numero_corto), 4, '0', STR_PAD_LEFT) : null;
 
             // Preparar datos de actualización
             $datosActualizar = [
-                'name'            => $nombre,
+                'name' => $nombre,
                 'primer_apellido' => $apellido1,
                 'segundo_apellido' => $apellido2,
-                'movil_personal'  => $movil_personal,
-                'movil_empresa'   => $movil_empresa,
-                'numero_corto'    => $numero_corto,
-                'empresa_id'      => $request->empresa_id,
-                'rol'             => $request->rol,
-                'categoria_id'    => $request->categoria_id,
-                'maquina_id'      => $request->maquina_id,
-                'turno'           => $request->turno,
-                'updated_by'      => auth()->id(),
+                'movil_personal' => $movil_personal,
+                'movil_empresa' => $movil_empresa,
+                'numero_corto' => $numero_corto,
+                'empresa_id' => $request->empresa_id,
+                'rol' => $request->rol,
+                'categoria_id' => $request->categoria_id,
+                'maquina_id' => $request->maquina_id,
+                'turno' => $request->turno,
+                'updated_by' => auth()->id(),
             ];
 
             // Solo programador puede actualizar email y dni
@@ -941,15 +957,15 @@ class ProfileController extends Controller
         } catch (ValidationException $e) {
             Log::error('Error de validación al actualizar usuario ID ' . $id, [
                 'errores' => $e->errors(),
-                'input'   => $request->all()
+                'input' => $request->all()
             ]);
             return response()->json(['error' => $e->errors()], 422);
         } catch (Exception $e) {
             Log::error('Excepción al actualizar usuario ID ' . $id, [
                 'mensaje' => $e->getMessage(),
-                'linea'   => $e->getLine(),
+                'linea' => $e->getLine(),
                 'archivo' => $e->getFile(),
-                'trace'   => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString()
             ]);
             return response()->json(['error' => 'Error inesperado: ' . $e->getMessage()], 500);
         }
@@ -959,14 +975,14 @@ class ProfileController extends Controller
     {
         // IDs de turnos
         $turnoMañanaId = Turno::where('nombre', 'mañana')->value('id');
-        $turnoTardeId  = Turno::where('nombre', 'tarde')->value('id');
-        $turnoNocheId  = Turno::where('nombre', 'noche')->value('id');
+        $turnoTardeId = Turno::where('nombre', 'tarde')->value('id');
+        $turnoNocheId = Turno::where('nombre', 'noche')->value('id');
 
         $obraId = request()->input('obra_id');
 
         // Rango: desde mañana hasta fin de año
         $inicio = Carbon::now()->addDay()->startOfDay();
-        $fin    = Carbon::now()->endOfYear();
+        $fin = Carbon::now()->endOfYear();
 
         // ✅ Festivos desde tu BD por rango (rápido y sin API)
         $festivosArray = Festivo::whereDate('fecha', '>=', $inicio->toDateString())
@@ -998,7 +1014,7 @@ class ProfileController extends Controller
         }
 
         for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
-            $fechaStr  = $fecha->toDateString();
+            $fechaStr = $fecha->toDateString();
             $esViernes = $fecha->dayOfWeek === Carbon::FRIDAY;
 
             // ⛔ Saltar sábados, domingos y festivos (desde BD)
@@ -1029,18 +1045,18 @@ class ProfileController extends Controller
 
             if ($asignacion) {
                 $asignacion->update([
-                    'turno_id'   => $turnoAsignado,
+                    'turno_id' => $turnoAsignado,
                     'maquina_id' => $user->maquina_id,
-                    'obra_id'    => $obraId,
+                    'obra_id' => $obraId,
                 ]);
             } else {
                 AsignacionTurno::create([
-                    'user_id'    => $user->id,
-                    'fecha'      => $fechaStr,
-                    'turno_id'   => $turnoAsignado,
+                    'user_id' => $user->id,
+                    'fecha' => $fechaStr,
+                    'turno_id' => $turnoAsignado,
                     'maquina_id' => $user->maquina_id,
-                    'obra_id'    => $obraId,
-                    'estado'     => 'activo',
+                    'obra_id' => $obraId,
+                    'estado' => 'activo',
                 ]);
             }
 
@@ -1079,12 +1095,12 @@ class ProfileController extends Controller
                     'textColor' => $color['text'],
                     'extendedProps' => [
                         'asignacion_id' => $asig->id,
-                        'fecha'         => $fechaStr,
-                        'entrada'       => $asig->entrada,
-                        'salida'        => $asig->salida,
-                        'es_turno'      => false,
-                        'obra_id'       => $asig->obra_id,
-                        'obra_nombre'   => $asig->obra?->obra,
+                        'fecha' => $fechaStr,
+                        'entrada' => $asig->entrada,
+                        'salida' => $asig->salida,
+                        'es_turno' => false,
+                        'obra_id' => $asig->obra_id,
+                        'obra_nombre' => $asig->obra?->obra,
                     ],
                 ]);
             }
@@ -1109,12 +1125,12 @@ class ProfileController extends Controller
                     'textColor' => $color['text'],
                     'extendedProps' => [
                         'asignacion_id' => $asig->id,
-                        'fecha'         => $fechaStr,
-                        'entrada'       => $asig->entrada,
-                        'salida'        => $asig->salida,
-                        'es_turno'      => true,
-                        'obra_id'       => $asig->obra_id,
-                        'obra_nombre'   => $asig->obra?->obra,
+                        'fecha' => $fechaStr,
+                        'entrada' => $asig->entrada,
+                        'salida' => $asig->salida,
+                        'es_turno' => true,
+                        'obra_id' => $asig->obra_id,
+                        'obra_nombre' => $asig->obra?->obra,
                     ],
                 ]);
             }
@@ -1193,8 +1209,8 @@ class ProfileController extends Controller
             /* —————————  SEGURIDAD ————————— */
             // Desactivar la cuenta
             $user->update([
-                'estado'      => 'despedido',      // o tu campo equivalente
-                'fecha_baja'  => now(),
+                'estado' => 'despedido',      // o tu campo equivalente
+                'fecha_baja' => now(),
             ]);
 
             // Cerrar todas las sesiones guardadas (si usas una tabla custom)
@@ -1227,10 +1243,10 @@ class ProfileController extends Controller
             ->pluck('total', 'estado');
 
         return [
-            'diasVacaciones'        => $conteos['vacaciones'] ?? 0,
-            'faltasInjustificadas'  => $conteos['injustificada'] ?? 0,
-            'faltasJustificadas'    => $conteos['justificada'] ?? 0,
-            'diasBaja'              => $conteos['baja'] ?? 0,
+            'diasVacaciones' => $conteos['vacaciones'] ?? 0,
+            'faltasInjustificadas' => $conteos['injustificada'] ?? 0,
+            'faltasJustificadas' => $conteos['justificada'] ?? 0,
+            'diasBaja' => $conteos['baja'] ?? 0,
         ];
     }
 
@@ -1288,8 +1304,8 @@ class ProfileController extends Controller
 
         // IDs de turnos
         $turnoMañanaId = Turno::where('nombre', 'mañana')->value('id');
-        $turnoTardeId  = Turno::where('nombre', 'tarde')->value('id');
-        $turnoNocheId  = Turno::where('nombre', 'noche')->value('id');
+        $turnoTardeId = Turno::where('nombre', 'tarde')->value('id');
+        $turnoNocheId = Turno::where('nombre', 'noche')->value('id');
 
         // Determinar rango de fechas
         $inicio = Carbon::parse($validated['fecha_inicio'])->startOfDay();
@@ -1321,7 +1337,7 @@ class ProfileController extends Controller
         // Si viene turno_detectado (desde el clic en el calendario), usarlo directamente
         if (!empty($validated['turno_detectado'])) {
             $turnoDetectado = $validated['turno_detectado'];
-            $turnoAsignado = match($turnoDetectado) {
+            $turnoAsignado = match ($turnoDetectado) {
                 'mañana' => $turnoMañanaId,
                 'tarde' => $turnoTardeId,
                 'noche' => $turnoNocheId,
@@ -1351,7 +1367,7 @@ class ProfileController extends Controller
         $eventosCreados = [];
 
         for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
-            $fechaStr  = $fecha->toDateString();
+            $fechaStr = $fecha->toDateString();
             $esViernes = $fecha->dayOfWeek === Carbon::FRIDAY;
 
             // Saltar sábados, domingos, festivos y vacaciones
@@ -1382,19 +1398,19 @@ class ProfileController extends Controller
 
             if ($asignacion) {
                 $asignacion->update([
-                    'turno_id'   => $turnoAsignado,
+                    'turno_id' => $turnoAsignado,
                     'maquina_id' => $validated['maquina_id'],
-                    'obra_id'    => $obraId,
+                    'obra_id' => $obraId,
                 ]);
                 $asignacionActualizada = $asignacion->fresh(['turno', 'obra']);
             } else {
                 $asignacionActualizada = AsignacionTurno::create([
-                    'user_id'    => $user->id,
-                    'fecha'      => $fechaStr,
-                    'turno_id'   => $turnoAsignado,
+                    'user_id' => $user->id,
+                    'fecha' => $fechaStr,
+                    'turno_id' => $turnoAsignado,
                     'maquina_id' => $validated['maquina_id'],
-                    'obra_id'    => $obraId,
-                    'estado'     => 'activo',
+                    'obra_id' => $obraId,
+                    'estado' => 'activo',
                 ]);
                 $asignacionActualizada->load(['turno', 'obra']);
             }
@@ -1437,6 +1453,21 @@ class ProfileController extends Controller
             'message' => 'Turnos generados correctamente',
             'turnos_creados' => $turnosCreados,
             'eventos' => $eventosCreados,
+        ]);
+    }
+    /**
+     * Obtener datos de vacaciones de un usuario para cálculo frontend
+     */
+    public function getVacationData(User $user)
+    {
+        // Solo oficina o el propio usuario
+        if (auth()->user()->rol !== 'oficina' && auth()->id() !== $user->id) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        return response()->json([
+            'fecha_incorporacion' => $user->fecha_incorporacion_efectiva ? $user->fecha_incorporacion_efectiva->format('Y-m-d') : null,
+            'dias_asignados' => $user->asignacionesTurnos()->where('estado', 'vacaciones')->count(),
         ]);
     }
 }
