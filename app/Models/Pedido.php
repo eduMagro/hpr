@@ -56,7 +56,7 @@ class Pedido extends Model
         $prefix = "PC{$año}/";
 
         // Obtener todos los códigos con el prefijo y extraer el número más alto
-        $ultimoNumero = self::where('codigo', 'like', "{$prefix}%")
+        $ultimoNumero = self::withTrashed()->where('codigo', 'like', "{$prefix}%")
             ->get()
             ->map(function ($pedido) {
                 $partes = explode('/', $pedido->codigo);

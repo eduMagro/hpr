@@ -47,17 +47,17 @@
                     </p>
                 </div>
 
-                <nav class="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
+                <nav class="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-200 shadow-inner gap-2">
                     <button @click="activeTab = 'active'"
                         :class="activeTab === 'active' ? 'bg-white shadow-sm text-slate-900' :
-                            'text-slate-50 hover:text-slate-900 hover:bg-white/50'"
+                            'text-slate-50 hover:text-slate-900 hover:bg-white/80'"
                         class="px-8 py-3.5 rounded-xl text-sm font-black transition-all duration-300 flex items-center gap-3">
                         <span class="text-lg">📋</span>
                         Pedidos Activos
                     </button>
                     <button @click="activeTab = 'replenishment'"
                         :class="activeTab === 'replenishment' ? 'bg-white shadow-sm text-slate-900' :
-                            'text-slate-50 hover:text-slate-900 hover:bg-white/50'"
+                            'text-slate-50 hover:text-slate-900 hover:bg-white/80'"
                         class="px-8 py-3.5 rounded-xl text-sm font-black transition-all duration-300 flex items-center gap-3">
                         <span class="text-lg">📈</span>
                         Análisis y Reposición
