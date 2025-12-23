@@ -1,132 +1,71 @@
 <div>
-    <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
+    {{-- Filtros y Herramientas --}}
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-wrap items-center gap-4">
+        <div class="flex-1 min-w-[200px]">
+            <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">🔍</span>
+                <input type="text" wire:model.live.debounce.300ms="codigo" placeholder="Buscar por código de pedido..."
+                    class="w-full pl-10 pr-4 py-2 bg-slate-50 border-0 focus:ring-2 focus:ring-blue-500 rounded-xl text-sm font-medium">
+            </div>
+        </div>
 
-    <div class="overflow-x-auto bg-white shadow rounded-lg">
-        <table class="w-full border-collapse text-sm text-center">
-            <thead class="bg-blue-500 text-white text-10">
-                <tr class="text-center text-xs uppercase">
-                    <th class="p-2 border">Cód. Linea</th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('codigo')">
-                        Código Pedido @if ($sort === 'codigo')
-                            {{ $order === 'asc' ? '↑' : '↓' }}
-                        @endif
-                    </th>
-                    <th class="p-2 border">Pedido Global</th>
-                    <th class="p-2 border">Fabricante</th>
-                    <th class="p-2 border">Distribuidor</th>
-                    <th class="p-2 border">Lugar de entrega</th>
-                    <th class="px-2 py-2 border">Producto</th>
-                    <th class="p-2 border">Cant. Pedida</th>
-                    <th class="p-2 border">Cant. Recep.</th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('fecha_pedido')">
-                        F. Pedido @if ($sort === 'fecha_pedido')
-                            {{ $order === 'asc' ? '↑' : '↓' }}
-                        @endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('fecha_estimada_entrega')">
-                        F. Entrega @if ($sort === 'fecha_estimada_entrega')
-                            {{ $order === 'asc' ? '↑' : '↓' }}
-                        @endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('estado')">
-                        Estado @if ($sort === 'estado')
-                            {{ $order === 'asc' ? '↑' : '↓' }}
-                        @endif
-                    </th>
-                    <th class="p-2 border">Creado por</th>
-                    <th class="p-2 border">Acciones</th>
-                </tr>
+        <div class="flex flex-wrap items-center gap-2">
+            <select wire:model.live="fabricante_id"
+                class="text-xs font-bold text-slate-600 bg-slate-50 border-0 focus:ring-2 focus:ring-blue-500 rounded-xl py-2 pl-3 pr-8">
+                <option value="">Fabricante: Todos</option>
+                @foreach ($fabricantes as $fab)
+                    <option value="{{ $fab->id }}">{{ $fab->nombre }}</option>
+                @endforeach
+            </select>
 
-                <tr class="text-center text-xs uppercase bg-blue-100">
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="codigo_linea" placeholder="Buscar..."
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+            <select wire:model.live="obra_id"
+                class="text-xs font-bold text-slate-600 bg-slate-50 border-0 focus:ring-2 focus:ring-blue-500 rounded-xl py-2 pl-3 pr-8">
+                <option value="">Lugar: Todos</option>
+                @foreach ($obras as $id => $nombre)
+                    <option value="{{ $id }}">{{ $nombre }}</option>
+                @endforeach
+            </select>
+
+            <select wire:model.live="estado"
+                class="text-xs font-bold text-slate-600 bg-slate-50 border-0 focus:ring-2 focus:ring-blue-500 rounded-xl py-2 pl-3 pr-8">
+                <option value="">Estado: Todos</option>
+                <option value="activo">Activo</option>
+                <option value="pendiente">Pendiente</option>
+                <option value="parcial">Parcial</option>
+                <option value="completado">Completado</option>
+            </select>
+
+            <button wire:click="limpiarFiltros"
+                class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl transition-colors"
+                title="Limpiar filtros">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    {{-- Tabla de resultados --}}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <table class="w-full border-collapse text-sm">
+            <thead>
+                <tr class="bg-slate-50 border-b border-slate-200">
+                    <th class="px-6 py-4 text-left font-bold text-slate-500 uppercase tracking-wider text-[10px]">Línea
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="codigo" placeholder="Buscar..."
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
-                    </th>
-                    <th class="p-1 border">
-                        <select wire:model.live="pedido_global_id"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
-                            <option value="">Todos</option>
-                            @foreach ($pedidosGlobales as $pg)
-                                <option value="{{ $pg->id }}">{{ $pg->codigo }}</option>
-                            @endforeach
-                        </select>
-                    </th>
-                    <th class="p-1 border">
-                        <select wire:model.live="fabricante_id"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
-                            <option value="">Todos</option>
-                            @foreach ($fabricantes as $fab)
-                                <option value="{{ $fab->id }}">{{ $fab->nombre }}</option>
-                            @endforeach
-                        </select>
-                    </th>
-                    <th class="p-1 border">
-                        <select wire:model.live="distribuidor_id"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
-                            <option value="">Todos</option>
-                            @foreach ($distribuidores as $dist)
-                                <option value="{{ $dist->id }}">{{ $dist->nombre }}</option>
-                            @endforeach
-                        </select>
-                    </th>
-                    <th class="p-1 border">
-                        <select wire:model.live="obra_id"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
-                            <option value="">Todas</option>
-                            @foreach ($obras as $id => $nombre)
-                                <option value="{{ $id }}">{{ $nombre }}</option>
-                            @endforeach
-                        </select>
-                    </th>
-                    <th class="py-1 px-1 border">
-                        <div class="flex gap-1 justify-center">
-                            <input type="text" wire:model.live.debounce.300ms="producto_tipo" placeholder="Tipo"
-                                class="bg-white text-blue-900 border border-gray-300 rounded text-[10px] text-center w-12 h-6 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
-                            <input type="text" inputmode="numeric" wire:model.live.debounce.300ms="producto_diametro"
-                                placeholder="Ø"
-                                class="bg-white text-blue-900 border border-gray-300 rounded text-[10px] text-center w-12 h-6 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
-                            <input type="text" inputmode="numeric" wire:model.live.debounce.300ms="producto_longitud"
-                                placeholder="L"
-                                class="bg-white text-blue-900 border border-gray-300 rounded text-[10px] text-center w-12 h-6 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
-                        </div>
-                    </th>
-                    <th class="p-1 border"></th>
-                    <th class="p-1 border"></th>
-                    <th class="p-1 border">
-                        <input type="date" wire:model.live="fecha_pedido"
-                            class="w-full text-xs px-1 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
-                    </th>
-                    <th class="p-1 border">
-                        <input type="date" wire:model.live="fecha_entrega"
-                            class="w-full text-xs px-1 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
-                    </th>
-                    <th class="p-1 border">
-                        <select wire:model.live="estado"
-                            class="w-full text-xs px-1 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
-                            <option value="">Todos</option>
-                            <option value="activo">Activo</option>
-                            <option value="pendiente">Pendiente</option>
-                            <option value="parcial">Parcial</option>
-                            <option value="completado">Completado</option>
-                            <option value="cancelado">Cancelado</option>
-                        </select>
-                    </th>
-                    <th class="p-1 border"></th>
-                    <th class="p-1 border text-center align-middle">
-                        <button wire:click="limpiarFiltros"
-                            class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center mx-auto"
-                            title="Restablecer filtros">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
-                            </svg>
-                        </button>
-                    </th>
+                    <th class="px-6 py-4 text-left font-bold text-slate-500 uppercase tracking-wider text-[10px]">
+                        Producto</th>
+                    <th class="px-6 py-4 text-left font-bold text-slate-500 uppercase tracking-wider text-[10px]">
+                        Entrega</th>
+                    <th class="px-6 py-4 text-right font-bold text-slate-500 uppercase tracking-wider text-[10px]">
+                        Pedido</th>
+                    <th class="px-6 py-4 text-right font-bold text-slate-500 uppercase tracking-wider text-[10px]">
+                        Recep.</th>
+                    <th class="px-6 py-4 text-center font-bold text-slate-500 uppercase tracking-wider text-[10px]">F.
+                        Entrega</th>
+                    <th class="px-6 py-4 text-center font-bold text-slate-500 uppercase tracking-wider text-[10px]">
+                        Acciones</th>
                 </tr>
             </thead>
 
@@ -140,52 +79,62 @@
                         $pedidoCompletado = $estadoPedido === 'completado';
                     @endphp
 
-                    {{-- CABECERA DEL PEDIDO --}}
-                    <tr wire:key="pedido-header-{{ $pedidoId }}" class="bg-gray-200 border-t-2 border-gray-400">
-                        <td colspan="14" class="px-3 py-2">
-                            <div class="flex items-center justify-between flex-wrap gap-2">
-                                <div class="flex items-center gap-4 text-sm">
-                                    <span class="font-bold text-gray-800">
-                                        {{ $pedido?->codigo ?? '—' }}
-                                    </span>
-                                    <span class="text-gray-600">
-                                        <strong>Fabricante:</strong> {{ $pedido?->fabricante?->nombre ?? '—' }}
-                                    </span>
-                                    <span class="text-gray-600">
-                                        <strong>Distribuidor:</strong> {{ $pedido?->distribuidor?->nombre ?? '—' }}
-                                    </span>
-                                    <span class="text-gray-600">
-                                        <strong>Fecha:</strong> {{ $pedido?->fecha_pedido_formateada ?? '—' }}
-                                    </span>
+                    {{-- CABECERA DEL PEDIDO (GRUPO) --}}
+                    <tr class="bg-slate-100/50 border-t border-slate-200">
+                        <td colspan="7" class="px-6 py-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-6">
+                                    <div class="flex flex-col">
+                                        <span
+                                            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Cód.
+                                            Pedido</span>
+                                        <span
+                                            class="text-sm font-extrabold text-slate-800">{{ $pedido?->codigo ?? '—' }}</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span
+                                            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Fabricante</span>
+                                        <span
+                                            class="text-sm font-semibold text-slate-700">{{ $pedido?->fabricante?->nombre ?? '—' }}</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span
+                                            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Distribuidor</span>
+                                        <span
+                                            class="text-xs font-medium text-slate-500">{{ $pedido?->distribuidor?->nombre ?? '—' }}</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span
+                                            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Fecha</span>
+                                        <span
+                                            class="text-xs font-medium text-slate-500">{{ $pedido?->fecha_pedido_formateada ?? '—' }}</span>
+                                    </div>
                                     <span
-                                        class="px-2 py-0.5 rounded text-xs font-semibold
-                                        {{ $pedidoCancelado ? 'bg-gray-400 text-white' : '' }}
-                                        {{ $pedidoCompletado ? 'bg-green-500 text-white' : '' }}
-                                        {{ !$pedidoCancelado && !$pedidoCompletado ? 'bg-blue-500 text-white' : '' }}">
-                                        {{ ucfirst($pedido?->estado ?? 'pendiente') }}
+                                        class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider
+                                        {{ $pedidoCancelado ? 'bg-slate-200 text-slate-600' : '' }}
+                                        {{ $pedidoCompletado ? 'bg-green-100 text-green-700 border border-green-200' : '' }}
+                                        {{ !$pedidoCancelado && !$pedidoCompletado ? 'bg-blue-100 text-blue-700 border border-blue-200' : '' }}">
+                                        {{ $pedido?->estado ?? 'pendiente' }}
                                     </span>
                                 </div>
+
                                 <div class="flex items-center gap-2">
                                     @if ($pedido && !$pedidoCancelado && !$pedidoCompletado)
-                                        {{-- Botón Cancelar Pedido --}}
                                         <form method="POST" action="{{ route('pedidos.cancelar', $pedido->id) }}"
-                                            onsubmit="return confirm('¿Estás seguro de cancelar todo el pedido {{ $pedido->codigo }}? Esta acción cancelará todas sus líneas.')">
-                                            @csrf
-                                            @method('PUT')
+                                            onsubmit="return confirm('¿Cancelar pedido {{ $pedido->codigo }}?')">
+                                            @csrf @method('PUT')
                                             <button type="submit"
-                                                class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-3 py-1 rounded shadow transition">
+                                                class="text-slate-400 hover:text-slate-600 text-xs font-bold px-3 py-1 bg-white border border-slate-200 rounded-lg shadow-sm transition-all">
                                                 Cancelar Pedido
                                             </button>
                                         </form>
                                     @endif
                                     @if ($pedido)
-                                        {{-- Botón Eliminar Pedido --}}
                                         <form method="POST" action="{{ route('pedidos.destroy', $pedido->id) }}"
-                                            onsubmit="return confirm('¿Estás seguro de ELIMINAR el pedido {{ $pedido->codigo }}? Esta acción es irreversible.')">
-                                            @csrf
-                                            @method('DELETE')
+                                            onsubmit="return confirm('¿ELIMINAR pedido {{ $pedido->codigo }}?')">
+                                            @csrf @method('DELETE')
                                             <button type="submit"
-                                                class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded shadow transition">
+                                                class="text-red-400 hover:text-red-600 text-xs font-bold px-3 py-1 bg-white border border-slate-200 rounded-lg shadow-sm transition-all">
                                                 Eliminar
                                             </button>
                                         </form>
@@ -199,134 +148,57 @@
                     @foreach ($lineasDelPedido as $linea)
                         @php
                             $estadoLinea = strtolower(trim($linea->estado));
-                            $claseFondo = match ($estadoLinea) {
-                                'facturado' => 'bg-green-500',
-                                'completado' => 'bg-green-100',
-                                'activo' => 'bg-yellow-100',
-                                'cancelado' => 'bg-gray-300 text-gray-500 opacity-70 cursor-not-allowed',
-                                default => 'even:bg-gray-50 odd:bg-white',
+                            $claseLinea = match ($estadoLinea) {
+                                'facturado' => 'bg-green-50/50',
+                                'completado' => 'bg-green-50/30',
+                                'activo' => 'bg-amber-50/30',
+                                'cancelado' => 'opacity-50 grayscale',
+                                default => '',
                             };
                         @endphp
 
-                        <tr wire:key="linea-{{ $linea->id }}" class="text-xs {{ $claseFondo }}">
-                            <td class="border px-2 py-1 text-center">
-                                <div class="flex flex-col">
-                                    @if ($linea->codigo)
-                                        @php
-                                            $partes = explode('–', $linea->codigo);
-                                        @endphp
-                                        <div class="flex items-baseline justify-center gap-0.5">
-                                            <span class="text-sm text-gray-600">{{ $partes[0] ?? '' }}</span>
-                                            <span
-                                                class="text-lg font-bold text-blue-600">–{{ $partes[1] ?? '' }}</span>
-                                        </div>
-                                    @else
-                                        <span class="text-gray-400">—</span>
-                                    @endif
-                                </div>
-                            </td>
-                            <td class="border px-2 py-1 text-center align-middle">
-                                <div class="inline-flex flex-col items-center gap-1">
-                                    <span class="font-semibold">{{ $pedido?->codigo ?? '—' }}</span>
-                                    @if (!empty($linea->id) && $pedido)
-                                        <a href="{{ route('entradas.index', [
-                                            'pedido_codigo' => $pedido->codigo,
-                                            'pedido_producto_id' => $linea->id,
-                                        ]) }}"
-                                            wire:navigate class="text-blue-600 hover:underline text-[11px]">
-                                            Ver entradas
-                                        </a>
-                                    @endif
-                                </div>
-                            </td>
-
-                            <td class="border px-2 py-1">{{ $linea->pedidoGlobal?->codigo ?? '—' }}</td>
-                            <td class="border px-2 py-1">{{ $pedido?->fabricante?->nombre ?? '—' }}</td>
-                            <td class="border px-2 py-1">{{ $pedido?->distribuidor?->nombre ?? '—' }}</td>
-
-                            {{-- CELDA DE LUGAR DE ENTREGA --}}
-                            <td class="border px-2 py-1">
-                                {{-- Vista normal --}}
-                                <div class="lugar-entrega-view-{{ $linea->id }}">
-                                    @if ($linea->obra_id)
-                                        {{ $linea->obra?->obra ?? '—' }}
-                                    @elseif($linea->obra_manual)
-                                        {{ $linea->obra_manual }}
-                                    @else
-                                        —
-                                    @endif
-                                </div>
-
-                                {{-- Vista edición (oculta por defecto) --}}
-                                <div class="lugar-entrega-edit-{{ $linea->id }} hidden">
-                                    <div class="flex flex-col gap-1">
-                                        <select class="obra-hpr-select text-xs border rounded px-1 py-1"
-                                            data-linea-id="{{ $linea->id }}">
-                                            <option value="">Nave HPR</option>
-                                            <option value="sin_obra"
-                                                {{ !$linea->obra_id && !$linea->obra_manual ? 'selected' : '' }}>Sin
-                                                obra</option>
-                                            @foreach ($navesHpr as $nave)
-                                                <option value="{{ $nave->id }}"
-                                                    {{ $linea->obra_id == $nave->id ? 'selected' : '' }}>
-                                                    {{ $nave->obra }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-
-                                        <select class="obra-externa-select text-xs border rounded px-1 py-1"
-                                            data-linea-id="{{ $linea->id }}">
-                                            <option value="">Obra Externa</option>
-                                            <option value="sin_obra"
-                                                {{ !$linea->obra_id && !$linea->obra_manual ? 'selected' : '' }}>Sin
-                                                obra</option>
-                                            @foreach ($obrasExternas as $obra)
-                                                <option value="{{ $obra->id }}"
-                                                    {{ $linea->obra_id == $obra->id ? 'selected' : '' }}>
-                                                    {{ $obra->obra }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-
-                                        <input type="text"
-                                            class="obra-manual-input text-xs border rounded px-1 py-1"
-                                            placeholder="Otra ubicación" value="{{ $linea->obra_manual ?? '' }}"
-                                            data-linea-id="{{ $linea->id }}">
+                        <tr wire:key="linea-{{ $linea->id }}"
+                            class="group hover:bg-slate-50 transition-colors {{ $claseLinea }}">
+                            <td class="px-6 py-4 align-middle">
+                                @if ($linea->codigo)
+                                    <div class="flex items-baseline gap-1">
+                                        <span
+                                            class="text-[10px] font-bold text-slate-400">{{ explode('–', $linea->codigo)[0] ?? '' }}</span>
+                                        <span
+                                            class="text-sm font-extrabold text-blue-600 leading-none">–{{ explode('–', $linea->codigo)[1] ?? '' }}</span>
                                     </div>
-                                </div>
+                                @endif
+                                @if ($pedido)
+                                    <a href="{{ route('entradas.index', ['pedido_codigo' => $pedido->codigo, 'pedido_producto_id' => $linea->id]) }}"
+                                        class="text-[10px] font-bold text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-tighter">
+                                        Ver entradas →
+                                    </a>
+                                @endif
                             </td>
 
-                            {{-- CELDA DE PRODUCTO --}}
-                            <td class="border px-2 py-1 text-center">
-                                {{-- Vista normal --}}
-                                <div class="producto-view-{{ $linea->id }}">
-                                    {{ ucfirst($linea->tipo) }}
-                                    Ø{{ $linea->diametro }}
+                            <td class="px-6 py-4">
+                                <div class="producto-view-{{ $linea->id }} flex items-center gap-2">
+                                    <span class="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">
+                                        {{ ucfirst($linea->tipo) }}
+                                    </span>
+                                    <span class="text-sm font-extrabold text-slate-700">Ø{{ $linea->diametro }}</span>
                                     @if ($linea->tipo === 'barra' && $linea->longitud && $linea->longitud !== '—')
-                                        x {{ $linea->longitud }} m
+                                        <span class="text-xs font-medium text-slate-400">x
+                                            {{ $linea->longitud }}m</span>
                                     @endif
                                 </div>
 
-                                {{-- Vista edición (oculta por defecto) --}}
+                                {{-- Edición Producto --}}
                                 <div class="producto-edit-{{ $linea->id }} hidden">
-                                    <select class="producto-base-select text-xs border rounded px-1 py-1 w-full"
+                                    <select
+                                        class="producto-base-select text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg p-1 w-full"
                                         data-linea-id="{{ $linea->id }}">
-                                        <option value="">Seleccionar producto</option>
-                                        @php
-                                            $productosAgrupados = $productosBase->groupBy('tipo')->sortKeys();
-                                        @endphp
-                                        @foreach ($productosAgrupados as $tipo => $productos)
+                                        @foreach ($productosBase->groupBy('tipo') as $tipo => $prods)
                                             <optgroup label="{{ strtoupper($tipo) }}">
-                                                @foreach ($productos->sortBy('diametro') as $producto)
-                                                    <option value="{{ $producto->id }}"
-                                                        data-tipo="{{ $producto->tipo }}"
-                                                        data-diametro="{{ $producto->diametro }}"
-                                                        data-longitud="{{ $producto->longitud ?? '' }}"
-                                                        {{ $linea->producto_base_id == $producto->id ? 'selected' : '' }}>
-                                                        Ø{{ $producto->diametro }}
-                                                        @if ($producto->longitud)
-                                                            x {{ $producto->longitud }}m
-                                                        @endif
+                                                @foreach ($prods as $p)
+                                                    <option value="{{ $p->id }}"
+                                                        {{ $linea->producto_base_id == $p->id ? 'selected' : '' }}>
+                                                        Ø{{ $p->diametro }}{{ $p->longitud ? ' x ' . $p->longitud . 'm' : '' }}
                                                     </option>
                                                 @endforeach
                                             </optgroup>
@@ -335,187 +207,149 @@
                                 </div>
                             </td>
 
-                            {{-- CELDA DE CANTIDAD PEDIDA --}}
-                            <td class="border px-2 py-1 text-center">
-                                {{ number_format($linea->cantidad ?? 0, 2, ',', '.') }} kg
+                            <td class="px-6 py-4">
+                                <div class="lugar-entrega-view-{{ $linea->id }} text-sm font-semibold text-slate-600 truncate max-w-[150px]"
+                                    title="{{ $linea->obra?->obra ?? $linea->obra_manual }}">
+                                    {{ $linea->obra?->obra ?? ($linea->obra_manual ?? '—') }}
+                                </div>
+
+                                {{-- Edición Lugar --}}
+                                <div class="lugar-entrega-edit-{{ $linea->id }} hidden">
+                                    <div class="flex flex-col gap-1">
+                                        <select
+                                            class="obra-hpr-select text-[10px] font-bold border-slate-200 rounded-lg p-1"
+                                            data-linea-id="{{ $linea->id }}">
+                                            <option value="">Nave HPR...</option>
+                                            @foreach ($navesHpr as $nave)
+                                                <option value="{{ $nave->id }}"
+                                                    {{ $linea->obra_id == $nave->id ? 'selected' : '' }}>
+                                                    {{ $nave->obra }}</option>
+                                            @endforeach
+                                        </select>
+                                        <input type="text"
+                                            class="obra-manual-input text-[10px] font-bold border-slate-200 rounded-lg p-1"
+                                            placeholder="Manual..." value="{{ $linea->obra_manual ?? '' }}"
+                                            data-linea-id="{{ $linea->id }}">
+                                    </div>
+                                </div>
                             </td>
 
-                            {{-- CELDA DE CANTIDAD RECEPCIONADA --}}
-                            <td class="border px-2 py-1 text-center">
+                            <td class="px-6 py-4 text-right">
                                 <span
-                                    class="font-semibold {{ ($linea->cantidad_recepcionada ?? 0) >= ($linea->cantidad ?? 0) ? 'text-green-600' : 'text-gray-700' }}">
-                                    {{ number_format($linea->cantidad_recepcionada ?? 0, 2, ',', '.') }} kg
+                                    class="text-sm font-bold text-slate-800">{{ number_format($linea->cantidad ?? 0, 0, ',', '.') }}</span>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">kg</span>
+                            </td>
+
+                            <td class="px-6 py-4 text-right">
+                                <span
+                                    class="text-sm font-bold {{ ($linea->cantidad_recepcionada ?? 0) >= ($linea->cantidad ?? 0) ? 'text-green-600' : 'text-slate-700' }}">
+                                    {{ number_format($linea->cantidad_recepcionada ?? 0, 0, ',', '.') }}
+                                </span>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">kg</span>
+                            </td>
+
+                            <td class="px-6 py-4 text-center">
+                                <span class="text-xs font-semibold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">
+                                    {{ $linea->fecha_estimada_entrega_formateada ?? '—' }}
                                 </span>
                             </td>
 
-                            {{-- FECHA PEDIDO --}}
-                            <td class="border px-2 py-1 text-center">
-                                {{ $pedido?->fecha_pedido_formateada ?? '—' }}
-                            </td>
-
-                            {{-- FECHA ENTREGA --}}
-                            <td class="border px-2 py-1 text-center">
-                                {{ $linea->fecha_estimada_entrega_formateada ?? '—' }}
-                            </td>
-
-                            {{-- ESTADO LINEA --}}
-                            <td class="border px-2 py-1 text-center capitalize">{{ $linea->estado }}</td>
-
-                            {{-- CREADO POR --}}
-                            <td class="border px-2 py-1 text-center capitalize">
-                                {{ $pedido?->createdBy?->name ?? '—' }}
-                            </td>
-
-                            {{-- COLUMNA DE ACCIONES --}}
-                            <td class="border px-2 py-1 text-center">
-                                <div class="flex flex-col items-center gap-1">
+                            <td class="px-6 py-4">
+                                <div class="flex items-center justify-center gap-2">
                                     @php
                                         $estado = strtolower(trim($linea->estado));
-                                        $esCancelado = $estado === 'cancelado';
-                                        $esCompletado = $estado === 'completado';
-                                        $esFacturado = $estado === 'facturado';
+                                        $esFinalizado = in_array($estado, ['completado', 'facturado', 'cancelado']);
 
                                         $obraLinea = $linea->obra;
-                                        $tieneObraManual = !empty($linea->obra_manual);
                                         $esEntregaDirecta =
-                                            $tieneObraManual || ($obraLinea ? !$obraLinea->es_nave_paco_reyes : false);
-                                        $esAlmacen = $obraLinea
-                                            ? stripos($obraLinea->obra, 'Almacén') !== false
-                                            : false;
-                                        $esNaveA = $obraLinea ? stripos($obraLinea->obra, 'Nave A') !== false : false;
-                                        $esNaveB = $obraLinea ? stripos($obraLinea->obra, 'Nave B') !== false : false;
-                                        $esNaveValida = $esNaveA || $esNaveB;
-                                        $pedidoCompletado = $pedido
-                                            ? strtolower($pedido->estado) === 'completado'
-                                            : false;
+                                            !empty($linea->obra_manual) ||
+                                            ($obraLinea ? !$obraLinea->es_nave_paco_reyes : false);
+                                        $esNavePaco = $obraLinea && $obraLinea->es_nave_paco_reyes;
                                     @endphp
 
-                                    <div class="flex items-center justify-center gap-1 flex-wrap"
-                                        @if ($esCancelado) style="pointer-events:none;opacity:.5" @endif>
-                                        @if ($esCompletado || $esFacturado)
-                                            {{-- Sin acciones para líneas cerradas --}}
-                                        @elseif($esCancelado)
-                                            <button disabled
-                                                class="bg-gray-400 text-white text-xs px-2 py-1 rounded shadow opacity-50 cursor-not-allowed">
-                                                Cancelado
-                                            </button>
-                                        @else
-                                            {{-- BOTONES DE ESTADO DE LÍNEA --}}
-                                            <div
-                                                class="botones-estado-{{ $linea->id }} flex items-center gap-1 flex-nowrap">
-                                                {{-- BOTÓN COMPLETAR (Entrega directa) --}}
-                                                @if (($esEntregaDirecta || $esAlmacen) && !$pedidoCompletado && $pedido)
-                                                    <form method="POST"
-                                                        action="{{ route('pedidos.editarCompletarLineaManual', ['pedido' => $pedido->id, 'linea' => $linea->id]) }}"
-                                                        onsubmit="return confirmarCompletarLinea(this);">
-                                                        @csrf
-                                                        <button type="submit"
-                                                            class="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                            Completar
-                                                        </button>
-                                                    </form>
-                                                @endif
-
-                                                {{-- BOTÓN DESACTIVAR --}}
-                                                @if ($estado === 'activo' && $pedido)
-                                                    <form method="POST"
-                                                        action="{{ route('pedidos.lineas.editarDesactivar', [$pedido->id, $linea->id]) }}">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" title="Desactivar línea"
-                                                            class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                            Desactivar
-                                                        </button>
-                                                    </form>
-                                                @endif
-
-                                                {{-- BOTÓN ACTIVAR --}}
-                                                @if (($estado === 'pendiente' || $estado === 'parcial') && $esNaveValida && $pedido)
-                                                    @php
-                                                        $clienteId =
-                                                            $linea->obra && $linea->obra->cliente
-                                                                ? $linea->obra->cliente->id
-                                                                : 0;
-                                                    @endphp
-                                                    <form method="POST"
-                                                        action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea->id]) }}"
-                                                        class="form-activar-linea"
-                                                        data-cliente-id="{{ $clienteId }}"
-                                                        data-pedido-id="{{ $pedido->id }}"
-                                                        data-linea-id="{{ $linea->id }}" wire:ignore>
-                                                        @csrf
-                                                        @method('PUT')
-                                                        <button type="submit" title="Activar línea"
-                                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition btn-activar-linea">
-                                                            Activar
-                                                        </button>
-                                                    </form>
-                                                @endif
-
-                                                {{-- BOTÓN CANCELAR LÍNEA (oculto) --}}
-                                                @if ($pedido)
-                                                    <form method="POST"
-                                                        action="{{ route('pedidos.lineas.editarCancelar', [$pedido->id, $linea->id]) }}"
-                                                        class="form-cancelar-linea hidden"
-                                                        data-pedido-id="{{ $pedido->id }}"
-                                                        data-linea-id="{{ $linea->id }}">
-                                                        @csrf
-                                                        @method('PUT')
-                                                    </form>
-
-                                                    <button type="button"
-                                                        onclick="confirmarCancelacionLinea({{ $pedido->id }}, {{ $linea->id }})"
-                                                        class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                        Cancelar
+                                    @if (!$esFinalizado && $pedido)
+                                        {{-- BOTONES DE ACCIÓN --}}
+                                        <div class="botones-estado-{{ $linea->id }} flex items-center gap-1">
+                                            @if ($esEntregaDirecta)
+                                                <form method="POST"
+                                                    action="{{ route('pedidos.editarCompletarLineaManual', [$pedido->id, $linea->id]) }}"
+                                                    onsubmit="return confirmarCompletarLinea(this)">
+                                                    @csrf
+                                                    <button type="submit"
+                                                        class="p-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-xl transition-all shadow-sm"
+                                                        title="Finalizar/Recepcionar">
+                                                        🚚
                                                     </button>
-                                                @endif
-
-                                                {{-- BOTÓN EDITAR (dentro de botones-estado) --}}
-                                                @if ($pedido)
-                                                    <button type="button"
-                                                        onclick="abrirEdicionLinea({{ $linea->id }})"
-                                                        class="btn-editar-linea-{{ $linea->id }} bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded shadow transition"
-                                                        title="Editar línea">
-                                                        ✏️
-                                                    </button>
-                                                @endif
-                                            </div>
-
-                                            {{-- BOTONES DE GUARDAR/CANCELAR EDICIÓN (fuera de botones-estado) --}}
-                                            @if ($pedido)
-                                                <div class="flex items-center gap-1">
-                                                    <button type="button"
-                                                        onclick="guardarLinea({{ $linea->id }}, {{ $pedido->id }})"
-                                                        class="btn-guardar-linea-{{ $linea->id }} hidden w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
-                                                        title="Guardar cambios">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
-                                                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2" d="M5 13l4 4L19 7" />
-                                                        </svg>
-                                                    </button>
-
-                                                    <button type="button"
-                                                        onclick="cancelarEdicionLinea({{ $linea->id }})"
-                                                        class="btn-cancelar-edicion-{{ $linea->id }} hidden w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
-                                                        title="Cancelar edición">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
-                                                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
+                                                </form>
                                             @endif
-                                        @endif
-                                    </div>
+
+                                            @if ($estado === 'activo')
+                                                <form method="POST"
+                                                    action="{{ route('pedidos.lineas.editarDesactivar', [$pedido->id, $linea->id]) }}">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit"
+                                                        class="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl transition-all shadow-sm"
+                                                        title="Desactivar">
+                                                        ⏹️
+                                                    </button>
+                                                </form>
+                                            @elseif ($esNavePaco)
+                                                <form method="POST"
+                                                    action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea->id]) }}">
+                                                    @csrf @method('PUT')
+                                                    <button type="submit"
+                                                        class="p-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-xl transition-all shadow-sm"
+                                                        title="Activar">
+                                                        ▶️
+                                                    </button>
+                                                </form>
+                                            @endif
+
+                                            <button type="button" onclick="abrirEdicionLinea({{ $linea->id }})"
+                                                class="btn-editar-linea-{{ $linea->id }} p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition-all shadow-sm"
+                                                title="Editar">
+                                                ✏️
+                                            </button>
+                                        </div>
+
+                                        {{-- BOTONES DE EDICIÓN --}}
+                                        <div class="flex items-center gap-1">
+                                            <button type="button"
+                                                onclick="guardarLinea({{ $linea->id }}, {{ $pedido->id }})"
+                                                class="btn-guardar-linea-{{ $linea->id }} hidden p-2 bg-green-600 text-white rounded-xl shadow-lg shadow-green-100 hover:bg-green-700 transition-all">
+                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                                    stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            </button>
+
+                                            <button type="button"
+                                                onclick="cancelarEdicionLinea({{ $linea->id }})"
+                                                class="btn-cancelar-edicion-{{ $linea->id }} hidden p-2 bg-slate-200 text-slate-600 rounded-xl hover:bg-slate-300 transition-all">
+                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                                    stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    @else
+                                        <span
+                                            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ $estado }}</span>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
                     @endforeach
                 @empty
                     <tr>
-                        <td colspan="14" class="text-center py-4 text-gray-500">No hay líneas de pedido registradas
+                        <td colspan="7" class="px-6 py-12 text-center">
+                            <div class="flex flex-col items-center gap-2">
+                                <span class="text-4xl">🔎</span>
+                                <h3 class="text-sm font-bold text-slate-800">No se encontraron líneas</h3>
+                                <p class="text-xs text-slate-400">Intenta ajustar los filtros de búsqueda</p>
+                            </div>
                         </td>
                     </tr>
                 @endforelse
@@ -524,7 +358,7 @@
     </div>
 
     {{-- Paginación --}}
-    <div class="mt-4">
+    <div class="mt-8">
         {{ $lineas->links() }}
     </div>
 </div>

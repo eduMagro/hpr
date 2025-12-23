@@ -280,19 +280,22 @@
                                     <button onclick="resumirEtiquetas({{ $planilla->id }}, null)"
                                         class="w-6 h-6 bg-teal-100 text-teal-600 rounded hover:bg-teal-200 flex items-center justify-center"
                                         title="Resumir etiquetas con mismo diámetro y dimensiones">
-                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                         </svg>
                                     </button>
 
                                     <!-- Botón Resetear planilla -->
-                                    <button onclick="resetearPlanilla({{ $planilla->id }}, '{{ $planilla->codigo }}')"
+                                    <button
+                                        onclick="resetearPlanilla({{ $planilla->id }}, '{{ $planilla->codigo }}')"
                                         class="w-6 h-6 bg-orange-100 text-orange-600 rounded hover:bg-orange-200 flex items-center justify-center"
                                         title="Resetear planilla">
-                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                         </svg>
                                     </button>
 
@@ -330,8 +333,7 @@
     </div>
 
     {{-- Modal Reimportar Planilla --}}
-    <div id="modal-reimportar"
-        class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div id="modal-reimportar" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 items-center justify-center">
         <div class="bg-white rounded-lg shadow-lg w-11/12 max-w-lg transform transition-all">
             <div class="px-6 py-4">
                 <h2 class="text-lg font-bold text-gray-800 mb-4">Añade modificaciones del cliente</h2>
@@ -376,10 +378,12 @@
             const form = document.getElementById('form-reimportar');
             form.action = `/planillas/${planillaId}/reimportar`;
             modal.classList.remove('hidden');
+            modal.classList.add('flex');
         }
 
         function cerrarModalReimportar() {
             const modal = document.getElementById('modal-reimportar');
+            modal.classList.remove('flex');
             modal.classList.add('hidden');
             planillaIdReimportar = null;
         }

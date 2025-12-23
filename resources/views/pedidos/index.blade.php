@@ -1,120 +1,332 @@
 <x-app-layout>
     <x-slot name="title">Pedidos - {{ config('app.name') }}</x-slot>
 
-    <div class="px-4 py-6">
+    <style>
+        /* Hide increment/decrement buttons on number inputs */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+
+    <div class="max-w-[1600px] mx-auto px-4 py-8" x-data="{
+        activeTab: 'replenishment',
+        cart: [],
+        addToCart(item) {
+            const exists = this.cart.find(i => i.id === item.id);
+            if (!exists) {
+                this.cart.push(item);
+                this.notify('Añadido al pedido');
+            }
+        },
+        removeFromCart(id) {
+            this.cart = this.cart.filter(i => i.id !== id);
+        },
+        get totalWeight() {
+            return this.cart.reduce((sum, item) => {
+                const val = parseFloat(item.cantidad);
+                return sum + (isNaN(val) ? 0 : val);
+            }, 0);
+        },
+        notify(msg) {
+            window.dispatchEvent(new CustomEvent('notify', { detail: msg }));
+        }
+    }">
         @if (auth()->user()->rol === 'oficina')
-            <!-- Tabla pedidos  -->
-            @livewire('pedidos-table')
+            {{-- Header de la sección con Tabs Modernos --}}
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
+                <div>
+                    <h1 class="text-4xl font-black text-slate-800 tracking-tight">Gestión de Pedidos</h1>
+                    <p class="text-slate-500 mt-2 font-medium">Control de adquisiciones, recepciones y optimización de
+                        inventario.</p>
+                </div>
 
-            <hr class="my-6">
+                <nav class="flex bg-slate-200/50 p-1.5 rounded-2xl backdrop-blur-sm border border-slate-200/60">
+                    <button @click="activeTab = 'active'"
+                        :class="activeTab === 'active' ? 'bg-white shadow-md text-blue-600 scale-105' :
+                            'text-slate-500 hover:text-slate-800'"
+                        class="px-8 py-3 rounded-xl text-sm font-black transition-all duration-300 transform">
+                        Pedidos Activos
+                    </button>
+                    <button @click="activeTab = 'replenishment'"
+                        :class="activeTab === 'replenishment' ? 'bg-white shadow-md text-blue-600 scale-105' :
+                            'text-slate-500 hover:text-slate-800'"
+                        class="px-8 py-3 rounded-xl text-sm font-black transition-all duration-300 transform flex items-center gap-2">
+                        Análisis y Reposición
+                        <span x-show="cart.length > 0" class="flex h-2 w-2 rounded-full bg-blue-500"></span>
+                    </button>
+                </nav>
+            </div>
 
-            {{-- SECCIÓN DE STOCK --}}
-            <div class="mb-6">
-                <h2 class="text-2xl font-bold text-gray-800 mt-4">📦 Estado actual de stock, pedidos y necesidades</h2>
+            <!-- CONTENIDO DE TABS -->
+            <div class="flex flex-col lg:flex-row gap-8 items-start">
 
-                <div class="flex flex-wrap items-center gap-4 p-4">
-                    <div>
-                        <label for="obra_id_hpr" class="block text-sm font-medium text-gray-700 mb-1">
-                            Seleccionar obra (Hierros Paco Reyes)
-                        </label>
-                        <select name="obra_id_hpr" id="obra_id_hpr_stock"
-                            class="rounded border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                            <option value="">-- Todas las naves --</option>
-                            @foreach ($obrasHpr as $obra)
-                                <option value="{{ $obra->id }}"
-                                    {{ request('obra_id_hpr') == $obra->id ? 'selected' : '' }}>
-                                    {{ $obra->obra }}
-                                </option>
-                            @endforeach
-                        </select>
+                <!-- ÁREA PRINCIPAL -->
+                <div class="flex-1 w-full min-w-0">
+
+                    <!-- TAB: PEDIDOS ACTIVOS -->
+                    <div x-show="activeTab === 'active'" x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0 translate-y-4"
+                        x-transition:enter-end="opacity-100 translate-y-0">
+                        @livewire('pedidos-table')
                     </div>
-                    <div id="loading-stock" class="hidden">
-                        <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg"
-                            fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                            </path>
-                        </svg>
+
+                    <!-- TAB: ANÁLISIS Y REPOSICIÓN -->
+                    <div x-show="activeTab === 'replenishment'" x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0 translate-y-4"
+                        x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
+
+                        {{-- Filtros de Stock --}}
+                        <div
+                            class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                            <h2 class="text-2xl font-black text-slate-800 flex items-center gap-3">
+                                <span class="p-2.5 bg-blue-50 text-blue-600 rounded-2xl">📊</span>
+                                Análisis de Necesidades
+                            </h2>
+
+                            <div class="flex items-center gap-4">
+                                <div
+                                    class="flex items-center gap-3 bg-slate-50 p-1.5 rounded-2xl border border-slate-200">
+                                    <label for="obra_id_hpr_stock"
+                                        class="pl-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nave:</label>
+                                    <select name="obra_id_hpr" id="obra_id_hpr_stock"
+                                        class="border-0 bg-transparent text-sm font-bold text-slate-700 focus:ring-0 rounded-xl pr-10">
+                                        <option value="">Todas las naves</option>
+                                        @foreach ($obrasHpr as $obra)
+                                            <option value="{{ $obra->id }}"
+                                                {{ request('obra_id_hpr') == $obra->id ? 'selected' : '' }}>
+                                                {{ $obra->obra }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Tabla de Stock con Inyección de Eventos --}}
+                        <div class="relative min-h-[400px]" id="contenedor-stock">
+                            <div id="loading-stock"
+                                class="hidden absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 items-center justify-center rounded-3xl">
+                                <div class="flex flex-col items-center gap-2">
+                                    <svg class="animate-spin h-10 w-10 text-blue-600" fill="none"
+                                        viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10"
+                                            stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor"
+                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                        </path>
+                                    </svg>
+                                    <span
+                                        class="text-xs font-black text-slate-500 uppercase tracking-widest">Actualizando
+                                        Stock...</span>
+                                </div>
+                            </div>
+                            <x-estadisticas.stock :nombre-meses="$nombreMeses" :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro"
+                                :necesario-por-diametro="$necesarioPorDiametro" :total-general="$totalGeneral" :consumo-origen="$consumoOrigen" :consumos-por-mes="$consumosPorMes"
+                                :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase" :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion"
+                                :recomendacion-reposicion="$recomendacionReposicion" :configuracion_vista_stock="$configuracion_vista_stock" />
+                        </div>
                     </div>
                 </div>
 
-                <div id="contenedor-stock">
-                    <x-estadisticas.stock :nombre-meses="$nombreMeses" :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro"
-                        :total-general="$totalGeneral" :consumo-origen="$consumoOrigen" :consumos-por-mes="$consumosPorMes" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase"
-                        :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion" :recomendacion-reposicion="$recomendacionReposicion" :configuracion_vista_stock="$configuracion_vista_stock" />
+                <!-- SIDEBAR: DRAFT ORDER CART -->
+                <aside class="w-full lg:w-[400px] sticky top-10"
+                    x-show="activeTab === 'replenishment' && cart.length > 0"
+                    x-transition:enter="transition ease-out duration-500 translate-x-full"
+                    x-transition:enter-start="translate-x-full opacity-0"
+                    x-transition:enter-end="translate-x-0 opacity-100">
+                    <div
+                        class="bg-slate-900 rounded-[1.5rem] p-5 text-white shadow-2xl shadow-blue-900/20 border border-slate-800 flex flex-col h-[calc(100vh-120px)] max-h-[850px] relative overflow-hidden">
+                        <!-- Background Glow -->
+                        <div class="absolute -top-24 -right-24 w-64 h-64 bg-blue-600/10 rounded-full blur-[80px]"></div>
+
+                        <div class="relative z-10 flex flex-col h-full">
+                            <div class="flex items-center justify-between mb-4 shrink-0">
+                                <h3 class="text-xl font-black tracking-tight">Borrador</h3>
+                                <div class="flex items-center gap-2">
+                                    <span
+                                        class="px-2.5 py-0.5 bg-blue-500 text-white text-[10px] font-black rounded-full"
+                                        x-text="cart.length"></span>
+                                    <button @click="cart = []"
+                                        class="text-[9px] font-black text-slate-500 uppercase hover:text-white transition-colors">Limpiar</button>
+                                </div>
+                            </div>
+
+                            <!-- Cart Items (Scrollable) -->
+                            <div class="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-2 mb-4">
+                                <template x-for="item in cart" :key="item.id">
+                                    <div
+                                        class="p-3 bg-slate-800/40 rounded-xl border border-slate-700/50 hover:bg-slate-800/80 transition-all duration-200">
+                                        <div class="flex flex-col gap-2">
+                                            <div class="flex items-start justify-between">
+                                                <div class="flex flex-col">
+                                                    <span class="text-[11px] font-bold text-slate-200 leading-tight"
+                                                        x-text="item.nombre"></span>
+                                                    <span
+                                                        class="text-[8px] font-black text-slate-500 uppercase tracking-widest"
+                                                        x-text="item.tipo"></span>
+                                                </div>
+                                                <button @click="removeFromCart(item.id)"
+                                                    class="text-slate-500 hover:text-rose-400 transition-colors">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="3" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+
+                                            <div class="relative">
+                                                <input type="number" x-model.number="item.cantidad"
+                                                    class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-2 pr-8 py-1 text-[10px] font-black text-blue-400 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                                                    step="100">
+                                                <span
+                                                    class="absolute right-2 top-1 text-[8px] font-black text-slate-600">KG</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- Totals & Call to Action (Fixed at bottom) -->
+                            <div class="shrink-0 border-t border-slate-800 pt-4 space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <div class="flex flex-col">
+                                        <p class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Peso
+                                            Total</p>
+                                        <div class="flex items-baseline gap-1">
+                                            <p class="text-2xl font-black text-white"
+                                                x-text="totalWeight.toLocaleString()"></p>
+                                            <span class="text-[9px] font-bold text-slate-500 uppercase">kg</span>
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="px-2 py-1 bg-slate-800 rounded-lg border border-slate-700/50 flex items-center gap-1.5">
+                                        <span class="text-[10px]">🚛</span>
+                                        <span class="text-[10px] font-black text-slate-300"
+                                            x-text="Math.ceil(totalWeight / 25000)"></span>
+                                    </div>
+                                </div>
+
+                                <button type="button" @click="mostrarConfirmacion(cart)"
+                                    class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3.5 rounded-xl shadow-lg shadow-blue-900/20 transition-all transform active:scale-95 flex items-center justify-center gap-2 group/btn">
+                                    <span class="text-xs uppercase tracking-wider">Continuar Pedido</span>
+                                    <svg class="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+                <aside class="w-full lg:w-[420px] sticky top-32"
+                    x-show="activeTab === 'replenishment' && cart.length === 0">
+                    <div class="bg-white rounded-[2.5rem] p-12 text-center border-2 border-dashed border-slate-200">
+                        <div
+                            class="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
+                            🛒</div>
+                        <h4 class="text-sm font-black text-slate-400 uppercase tracking-widest">Carrito de Reposición
+                        </h4>
+                        <p class="text-xs text-slate-400 mt-3 font-medium leading-relaxed">Añade productos del análisis
+                            de stock para configurar un nuevo pedido de compra.</p>
+                    </div>
+                </aside>
+            </div>
+
+            <!-- Toast de Éxito Alpine -->
+            <div x-data="{ show: false, message: '' }"
+                @notify.window="message = $event.detail; show = true; setTimeout(() => show = false, 3000)"
+                x-show="show" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-x-12" x-transition:enter-end="opacity-100 translate-x-0"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100 translate-x-0" x-transition:leave-end="opacity-0 translate-x-12"
+                class="fixed bottom-10 right-10 z-[100] bg-slate-800 text-white px-6 py-4 rounded-[1.5rem] shadow-2xl border border-slate-700 flex items-center gap-3"
+                x-cloak>
+                <div class="p-1.5 bg-emerald-500 rounded-lg">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                    </svg>
                 </div>
+                <span class="text-sm font-black tracking-tight" x-text="message"></span>
             </div>
 
             {{-- MODAL COLADAS / BULTOS PARA ACTIVACIÓN --}}
             <div id="modal-coladas-activacion"
-                class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm hidden items-center justify-center z-50 transition-all duration-300">
+                class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-[60] transition-all duration-300">
                 <div
-                    class="bg-white rounded-2xl w-full max-w-3xl shadow-2xl transform transition-all duration-300 overflow-hidden border border-gray-200">
+                    class="bg-white rounded-3xl w-full max-w-3xl shadow-2xl transform transition-all duration-300 overflow-hidden border border-slate-200">
                     {{-- Header --}}
-                    <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-5 border-b border-slate-600">
-                        <h3 class="text-xl font-bold text-white flex items-center gap-3">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            Confirmar activación de línea
-                        </h3>
-                        <p class="text-sm text-slate-300 mt-2">
-                            Registrar coladas y bultos asociados (opcional)
+                    <div class="bg-slate-800 px-8 py-6">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold text-white flex items-center gap-3">
+                                <div class="p-2 bg-slate-700 rounded-xl">
+                                    <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                Confirmar activación de línea
+                            </h3>
+                            <button
+                                onclick="document.getElementById('modal-coladas-activacion').classList.add('hidden')"
+                                class="text-slate-400 hover:text-white transition-colors">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <p class="text-sm text-slate-400 mt-2 ml-14">
+                            Registra coladas y bultos asociados para iniciar la producción.
                         </p>
                     </div>
 
                     {{-- Body --}}
-                    <div class="p-6">
-                        <div class="bg-blue-50 border-l-4 border-blue-500 px-4 py-3 rounded-r mb-5">
-                            <p class="text-sm text-blue-800 leading-relaxed">
-                                <strong class="font-semibold">Información:</strong> Puedes añadir cero o más coladas y
-                                bultos.
-                                Si no necesitas registrar información, deja la tabla vacía y confirma la activación.
-                            </p>
-                        </div>
-
-                        <div class="border border-gray-300 rounded-xl mb-5 shadow-sm bg-white overflow-hidden">
-                            <table class="w-full text-sm table-fixed">
-                                <colgroup>
-                                    <col style="width:30%">
-                                    <col style="width:35%">
-                                    <col style="width:20%">
-                                    <col style="width:15%">
-                                </colgroup>
-                                <thead class="bg-gradient-to-r from-gray-700 to-gray-800 text-white">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
-                                            Colada</th>
-                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
-                                            Fabricante</th>
-                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
-                                            Bultos</th>
-                                        <th
-                                            class="px-4 py-3 text-center font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
-                                            Acciones</th>
-                                    </tr>
-                                </thead>
-                            </table>
-                            <div class="max-h-72 overflow-y-auto">
-                                <table class="w-full text-sm table-fixed">
-                                    <colgroup>
-                                        <col style="width:30%">
-                                        <col style="width:35%">
-                                        <col style="width:20%">
-                                        <col style="width:15%">
-                                    </colgroup>
-                                    <tbody id="tabla-coladas-body" class="divide-y divide-gray-200">
-                                    </tbody>
-                                </table>
+                    <div class="p-8">
+                        <div class="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-xl mb-6">
+                            <div class="flex gap-3">
+                                <span class="text-amber-600">⚠️</span>
+                                <p class="text-sm text-amber-800 leading-relaxed font-medium">
+                                    Puedes añadir coladas y bultos ahora o hacerlo más tarde. Si no necesitas registrar
+                                    esta información, pulsa directamente en confirmar.
+                                </p>
                             </div>
                         </div>
 
-                        <div class="flex justify-between items-center mb-6 pt-2">
+                        <div class="border border-slate-200 rounded-2xl mb-6 shadow-sm bg-white overflow-hidden">
+                            <table class="w-full text-sm">
+                                <thead class="bg-slate-50 text-slate-500 border-b border-slate-200">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left font-bold uppercase tracking-wider text-[10px]">
+                                            Colada</th>
+                                        <th class="px-4 py-3 text-left font-bold uppercase tracking-wider text-[10px]">
+                                            Fabricante</th>
+                                        <th class="px-4 py-3 text-left font-bold uppercase tracking-wider text-[10px]">
+                                            Bultos</th>
+                                        <th
+                                            class="px-4 py-3 text-center font-bold uppercase tracking-wider text-[10px]">
+                                            Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-coladas-body" class="divide-y divide-slate-100">
+                                </tbody>
+                            </table>
+                            <div id="vacio-coladas" class="p-8 text-center hidden">
+                                <p class="text-slate-400 text-sm font-medium">No hay coladas añadidas</p>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-start mb-8">
                             <button type="button" id="btn-agregar-colada"
-                                class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-medium px-4 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5">
+                                class="inline-flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 text-sm font-bold px-4 py-2.5 rounded-xl transition-all duration-200">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                                         d="M12 4v16m8-8H4"></path>
@@ -124,21 +336,13 @@
                         </div>
 
                         {{-- Footer con botones --}}
-                        <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                        <div class="flex justify-end gap-3 pt-6 border-t border-slate-100">
                             <button type="button" id="btn-cancelar-coladas"
-                                class="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 text-sm font-medium px-5 py-2.5 rounded-lg border border-gray-300 transition-all duration-200 shadow-sm hover:shadow">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
+                                class="btn-secundario text-slate-600 font-bold px-6 py-3 rounded-xl hover:bg-slate-100 transition-all">
                                 Cancelar
                             </button>
                             <button type="button" id="btn-confirmar-activacion-coladas"
-                                class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-semibold px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                        d="M5 13l4 4L19 7"></path>
-                                </svg>
+                                class="bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg shadow-green-200 transition-all transform active:scale-95">
                                 Confirmar activación
                             </button>
                         </div>
@@ -148,105 +352,179 @@
 
             {{-- MODAL CONFIRMACIÓN PEDIDO --}}
             <div id="modalConfirmacion"
-                class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-                <div class="bg-white p-6 rounded-lg w-full max-w-5xl shadow-xl">
-                    <h3 class="text-lg font-semibold mb-4 text-gray-800 text-left">Confirmar pedido</h3>
+                class="fixed inset-0 bg-slate-900/60 backdrop-blur-md hidden items-center justify-center z-[70] transition-all duration-300">
+                <div
+                    class="bg-white rounded-[3rem] w-full max-w-6xl shadow-2xl transform transition-all duration-300 overflow-hidden border border-slate-200">
+
+                    {{-- Header --}}
+                    <div class="bg-slate-900 px-10 py-8 flex items-center justify-between relative overflow-hidden">
+                        <div class="absolute -top-12 -right-12 w-48 h-48 bg-blue-600/20 rounded-full blur-[60px]">
+                        </div>
+                        <div class="relative z-10">
+                            <h3 class="text-2xl font-black text-white tracking-tight">Cerrar Pedido de Compra</h3>
+                            <p class="text-slate-400 text-sm font-medium mt-1">Paso 2 de 2: Definición de Logística y
+                                Plazos</p>
+                        </div>
+                        <button onclick="cerrarModalConfirmacion()"
+                            class="relative z-10 p-2 text-slate-400 hover:text-white transition-colors hover:bg-white/10 rounded-xl">
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
 
                     <form id="formularioPedido" action="{{ route('pedidos.store') }}" method="POST"
-                        class="space-y-4">
+                        class="p-10 space-y-8">
                         @csrf
 
-                        <div class="text-left">
-                            <label for="fabricante" class="block text-sm font-medium text-gray-700 mb-1">
-                                Seleccionar fabricante:
-                            </label>
-                            <select name="fabricante_id" id="fabricante"
-                                class="w-full border border-gray-300 rounded px-3 py-2">
-                                <option value="">-- Elige un fabricante --</option>
-                                @foreach ($fabricantes as $fabricante)
-                                    <option value="{{ $fabricante->id }}">{{ $fabricante->nombre }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+                        <div class="grid lg:grid-cols-2 gap-8">
+                            {{-- Columna Izquierda: Entidades --}}
+                            <div class="space-y-6">
+                                <div class="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col gap-4">
+                                    <div class="flex items-center gap-3">
+                                        <span class="p-2 bg-blue-100 text-blue-600 rounded-xl text-lg">🏢</span>
+                                        <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest">
+                                            Proveedor / Intermediario</h4>
+                                    </div>
 
-                        <div class="text-left mt-4">
-                            <label for="distribuidor" class="block text-sm font-medium text-gray-700 mb-1">
-                                Seleccionar distribuidor:
-                            </label>
-                            <select name="distribuidor_id" id="distribuidor"
-                                class="w-full border border-gray-300 rounded px-3 py-2">
-                                <option value="">-- Elige un distribuidor --</option>
-                                @foreach ($distribuidores as $distribuidor)
-                                    <option value="{{ $distribuidor->id }}">{{ $distribuidor->nombre }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+                                    <div class="grid gap-4">
+                                        <div>
+                                            <label for="fabricante"
+                                                class="block text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1 mb-2">Fabricante
+                                                (Directo)</label>
+                                            <select name="fabricante_id" id="fabricante"
+                                                class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-700 focus:ring-4 focus:ring-blue-50 transition-all outline-none">
+                                                <option value="">-- No seleccionado --</option>
+                                                @foreach ($fabricantes as $fabricante)
+                                                    <option value="{{ $fabricante->id }}">{{ $fabricante->nombre }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
 
-                        <div class="text-left">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Lugar de Entrega:</label>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label class="block text-xs text-gray-500 mb-1">Naves de Hierros Paco
-                                        Reyes</label>
-                                    <select name="obra_id_hpr" id="obra_id_hpr_modal"
-                                        class="w-full border border-gray-300 rounded px-3 py-2"
-                                        onchange="limpiarObraManual()">
-                                        <option value="">Seleccionar nave</option>
-                                        @foreach ($navesHpr as $nave)
-                                            <option value="{{ $nave->id }}">{{ $nave->obra }}</option>
-                                        @endforeach
-                                    </select>
+                                        <div class="flex items-center gap-3">
+                                            <div class="h-px flex-1 bg-slate-200"></div>
+                                            <span class="text-[10px] font-black text-slate-300 uppercase italic">o
+                                                bien</span>
+                                            <div class="h-px flex-1 bg-slate-200"></div>
+                                        </div>
+
+                                        <div>
+                                            <label for="distribuidor"
+                                                class="block text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1 mb-2">Distribuidor
+                                                Recomendado</label>
+                                            <select name="distribuidor_id" id="distribuidor"
+                                                class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-700 focus:ring-4 focus:ring-blue-50 transition-all outline-none">
+                                                <option value="">-- No seleccionado --</option>
+                                                @foreach ($distribuidores as $distribuidor)
+                                                    <option value="{{ $distribuidor->id }}">{{ $distribuidor->nombre }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
+                            </div>
 
-                                <div>
-                                    <label class="block text-xs text-gray-500 mb-1">Obras Externas
-                                        (activas)</label>
-                                    <select name="obra_id_externa" id="obra_id_externa_modal"
-                                        class="w-full border border-gray-300 rounded px-3 py-2"
-                                        onchange="limpiarObraManual()">
-                                        <option value="">Seleccionar obra externa</option>
-                                        @foreach ($obrasExternas as $obra)
-                                            <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
+                            {{-- Columna Derecha: Entrega --}}
+                            <div class="space-y-6">
+                                <div class="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col gap-4">
+                                    <div class="flex items-center gap-3">
+                                        <span class="p-2 bg-emerald-100 text-emerald-600 rounded-xl text-lg">📍</span>
+                                        <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest">Lugar
+                                            de Entrega</h4>
+                                    </div>
 
-                                <div>
-                                    <label class="block text-xs text-gray-500 mb-1">Otra ubicación (texto
-                                        libre)</label>
-                                    <input type="text" name="obra_manual" id="obra_manual_modal"
-                                        class="w-full border border-gray-300 rounded px-3 py-2"
-                                        placeholder="Escribir dirección manualmente" oninput="limpiarSelectsObra()"
-                                        value="{{ old('obra_manual') }}">
+                                    <div class="space-y-4">
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label
+                                                    class="block text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1 mb-2">Nave
+                                                    HPR</label>
+                                                <select name="obra_id_hpr" id="obra_id_hpr_modal"
+                                                    class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-4 focus:ring-blue-50 transition-all outline-none"
+                                                    onchange="limpiarObraManual()">
+                                                    <option value="">Elegir nave...</option>
+                                                    @foreach ($navesHpr as $nave)
+                                                        <option value="{{ $nave->id }}">{{ $nave->obra }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label
+                                                    class="block text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1 mb-2">Obra
+                                                    Externa</label>
+                                                <select name="obra_id_externa" id="obra_id_externa_modal"
+                                                    class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-4 focus:ring-blue-50 transition-all outline-none"
+                                                    onchange="limpiarObraManual()">
+                                                    <option value="">Elegir obra...</option>
+                                                    @foreach ($obrasExternas as $obra)
+                                                        <option value="{{ $obra->id }}">{{ $obra->obra }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="block text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1 mb-2">Texto
+                                                Libre / Otra Ubicación</label>
+                                            <input type="text" name="obra_manual" id="obra_manual_modal"
+                                                class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-4 focus:ring-blue-50 transition-all outline-none"
+                                                placeholder="Ingresa dirección manual..."
+                                                oninput="limpiarSelectsObra()">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="max-h-[60vh] overflow-auto rounded-lg shadow-xl border border-gray-300">
-                            <table class="w-full border-collapse text-sm text-center">
-                                <thead class="bg-blue-800 text-white sticky top-0 z-10">
-                                    <tr class="bg-gray-700 text-white">
-                                        <th class="border px-2 py-1">Tipo</th>
-                                        <th class="border px-2 py-1">Diámetro</th>
-                                        <th class="border px-2 py-1">Peso Total (kg)</th>
-                                        <th class="border px-2 py-1">Desglose Camiones</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tablaConfirmacionBody"></tbody>
-                            </table>
+                        {{-- Tabla de Productos --}}
+                        <div class="border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm">
+                            <div class="overflow-x-auto max-h-[45vh] custom-scrollbar">
+                                <table class="w-full text-center">
+                                    <thead class="bg-slate-50 border-b border-slate-100 italic">
+                                        <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            <th class="px-6 py-5 text-left pl-10 border-r border-slate-100">Producto
+                                            </th>
+                                            <th class="px-6 py-5 border-r border-slate-100 font-bold">Variante</th>
+                                            <th class="px-6 py-5 border-r border-slate-100">Peso Estimado</th>
+                                            <th class="px-6 py-5">Sugerencia de Carga</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tablaConfirmacionBody" class="divide-y divide-slate-50"></tbody>
+                                </table>
+                            </div>
                         </div>
 
-                        <div id="mensajesGlobales" class="mt-2 text-sm space-y-1"></div>
+                        <div id="mensajesGlobales"
+                            class="px-4 py-3 bg-rose-50 border border-rose-100 rounded-2xl empty:hidden text-rose-600 text-xs font-bold leading-relaxed">
+                        </div>
 
-                        <div class="text-right pt-4">
-                            <button type="button" onclick="cerrarModalConfirmacion()"
-                                class="mr-2 px-4 py-2 rounded border border-gray-300 hover:bg-gray-100">
-                                Cancelar
-                            </button>
-                            <button type="submit"
-                                class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                                Crear Pedido de Compra
-                            </button>
+                        <div class="flex items-center justify-between pt-6 border-t border-slate-100">
+                            <p
+                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic flex items-center gap-2">
+                                <span class="flex h-2 w-2 rounded-full bg-emerald-400"></span>
+                                El sistema optimiza el número de camiones según la capacidad de carga
+                            </p>
+
+                            <div class="flex items-center gap-4">
+                                <button type="button" onclick="cerrarModalConfirmacion()"
+                                    class="px-6 py-4 text-sm font-black text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-widest">
+                                    Cerrar y Revisar
+                                </button>
+                                <button type="submit"
+                                    class="bg-slate-900 hover:bg-black text-white px-10 py-5 rounded-[1.5rem] text-sm font-black shadow-2xl shadow-slate-200 transition-all transform active:scale-95 flex items-center gap-3">
+                                    Finalizar y Emitir Pedido
+                                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                            d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -751,39 +1029,47 @@
                 });
         }
 
-        // Mostrar modal de confirmación
-        function mostrarConfirmacion() {
-            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+        // Mostrar modal de confirmación basado en el carrito de Alpine.js
+        function mostrarConfirmacion(cartData) {
+            const cart = cartData || [];
+            if (cart.length === 0) {
+                Swal.fire('Atención', 'El carrito está vacío', 'info');
+                return;
+            }
+
             const tbody = document.getElementById('tablaConfirmacionBody');
             tbody.innerHTML = '';
 
-            checkboxes.forEach((cb) => {
-                const clave = cb.value;
-                const tipo = document.querySelector(`input[name="detalles[${clave}][tipo]"]`).value;
-                const diametro = document.querySelector(`input[name="detalles[${clave}][diametro]"]`).value;
-                const cantidad = parseFloat(document.querySelector(`input[name="detalles[${clave}][cantidad]"]`)
-                    .value);
-                const longitudInput = document.querySelector(`input[name="detalles[${clave}][longitud]"]`);
-                const longitud = longitudInput ? longitudInput.value : null;
+            cart.forEach((item) => {
+                const clave = item.id;
+                const tipo = item.tipo;
+                const diametro = item.diametro;
+                const cantidad = parseFloat(item.cantidad);
+                const longitud = item.longitud || null;
+                const productoBaseId = item.producto_base_id;
 
                 const fila = document.createElement('tr');
-                fila.className = "bg-gray-100 border-b-2 border-gray-400";
+                fila.className = "bg-white border-b border-slate-200 transition-colors hover:bg-slate-50";
 
                 fila.innerHTML = `
-                <td class="border px-2 py-2 align-top font-semibold">
+                <td class="px-4 py-4 text-sm font-bold text-slate-700 text-left border-r border-slate-100 italic">
                     ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}
                 </td>
-                <td class="border px-2 py-2 align-top font-semibold">
-                    ${diametro} mm${longitud ? ` / ${longitud} m` : ''}
+                <td class="px-4 py-4 text-sm font-black text-slate-500 border-r border-slate-100">
+                    Ø${diametro}mm${longitud ? ` / ${longitud}m` : ''}
                 </td>
-                <td class="border px-2 py-2 align-top">
-                    <input type="number" class="peso-total w-full px-2 py-1 border rounded font-semibold"
-                           name="detalles[${clave}][cantidad]" value="${cantidad}" step="2500" min="2500">
+                <td class="px-4 py-4 border-r border-slate-100">
+                    <div class="relative">
+                        <input type="number" class="peso-total w-full px-4 py-2 border border-slate-200 rounded-xl font-black text-slate-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                               name="detalles[${clave}][cantidad]" value="${cantidad}" step="100" min="0">
+                        <span class="absolute right-3 top-2.5 text-[10px] font-black text-slate-400">kg</span>
+                    </div>
                 </td>
-                <td class="border px-2 py-2 align-top">
-                    <div class="fechas-camion flex flex-col gap-2 w-full" id="fechas-camion-${clave}"></div>
+                <td class="px-4 py-4">
+                    <div class="fechas-camion flex flex-col gap-3 w-full" id="fechas-camion-${clave}"></div>
                 </td>
                 <input type="hidden" name="seleccionados[]" value="${clave}">
+                <input type="hidden" name="detalles[${clave}][producto_base_id]" value="${productoBaseId}">
                 <input type="hidden" name="detalles[${clave}][tipo]" value="${tipo}">
                 <input type="hidden" name="detalles[${clave}][diametro]" value="${diametro}">
                 ${longitud ? `<input type="hidden" name="detalles[${clave}][longitud]" value="${longitud}">` : ''}
@@ -795,8 +1081,9 @@
             });
 
             dispararSugerirMultiple();
-            document.getElementById('modalConfirmacion').classList.remove('hidden');
-            document.getElementById('modalConfirmacion').classList.add('flex');
+            const modal = document.getElementById('modalConfirmacion');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
         }
 
         // Generar inputs de fecha según el peso
@@ -816,19 +1103,19 @@
                 lineaCamion.id = `linea-camion-${clave}-${i}`;
 
                 lineaCamion.innerHTML = `
-                <div class="flex flex-col gap-1 flex-1">
-                    <label class="text-xs text-gray-600 font-medium">Camión ${i + 1} - ${pesoBloque.toLocaleString('es-ES')} kg</label>
+                <div class="flex flex-col gap-1.5 flex-1">
+                    <label class="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-none">Camión ${i + 1} - ${pesoBloque.toLocaleString('es-ES')} kg</label>
                     <input type="date" 
                            name="productos[${clave}][${i + 1}][fecha]" 
                            required 
-                           class="border px-2 py-1 rounded text-sm w-full">
+                           class="border border-slate-200 px-3 py-2 rounded-xl text-sm font-bold w-full focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none">
                     <input type="hidden" 
                            name="productos[${clave}][${i + 1}][peso]" 
                            value="${pesoBloque}">
                 </div>
                 <div class="flex-1">
-                    <div class="pg-asignacion-${clave}-${i} text-xs p-2 bg-gray-50 rounded border min-h-[60px] flex items-center justify-center">
-                        <span class="text-gray-400">Selecciona fabricante/distribuidor</span>
+                    <div class="pg-asignacion-${clave}-${i} text-[10px] p-3 bg-slate-50 rounded-xl border border-slate-100 min-h-[60px] flex items-center justify-center font-bold text-slate-400">
+                        Selecciona fabricante/distribuidor
                     </div>
                 </div>
             `;
@@ -1029,7 +1316,10 @@
                 const obraId = this.value;
 
                 // Mostrar loading
-                if (loadingIndicator) loadingIndicator.classList.remove('hidden');
+                if (loadingIndicator) {
+                    loadingIndicator.classList.remove('hidden');
+                    loadingIndicator.classList.add('flex');
+                }
                 contenedorStock.style.opacity = '0.5';
                 contenedorStock.style.pointerEvents = 'none';
 
@@ -1052,6 +1342,11 @@
                         if (data.success && data.html) {
                             contenedorStock.innerHTML = data.html;
                             contenedorStock.style.opacity = '1';
+
+                            // Reinicializar Alpine.js en el nuevo contenido inyectado
+                            if (typeof Alpine !== 'undefined') {
+                                Alpine.initTree(contenedorStock);
+                            }
                         } else {
                             throw new Error(data.message || 'Error desconocido');
                         }
@@ -1067,7 +1362,10 @@
                         contenedorStock.style.opacity = '1';
                     })
                     .finally(() => {
-                        if (loadingIndicator) loadingIndicator.classList.add('hidden');
+                        if (loadingIndicator) {
+                            loadingIndicator.classList.remove('flex');
+                            loadingIndicator.classList.add('hidden');
+                        }
                         contenedorStock.style.pointerEvents = 'auto';
                     });
             });
