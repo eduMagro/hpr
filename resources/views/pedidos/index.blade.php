@@ -358,7 +358,7 @@
             <div id="modalConfirmacion"
                 class="fixed inset-0 bg-slate-900/60 backdrop-blur-md hidden items-center justify-center z-[70] transition-all duration-300">
                 <div
-                    class="bg-white rounded-[3rem] w-full max-w-6xl shadow-2xl transform transition-all duration-300 overflow-hidden border border-slate-200">
+                    class="bg-white rounded-[3rem] w-full max-w-6xl max-h-[95vh] flex flex-col shadow-2xl transform transition-all duration-300 overflow-hidden border border-slate-200">
 
                     {{-- Header --}}
                     <div class="bg-slate-900 px-10 py-8 flex items-center justify-between relative overflow-hidden">
@@ -379,7 +379,7 @@
                     </div>
 
                     <form id="formularioPedido" action="{{ route('pedidos.store') }}" method="POST"
-                        class="p-10 space-y-8">
+                        class="p-10 space-y-8 flex-1 overflow-y-auto custom-scrollbar">
                         @csrf
 
                         <div class="grid lg:grid-cols-2 gap-8">
