@@ -6,6 +6,7 @@
             -webkit-appearance: none;
             margin: 0;
         }
+
         input[type=number] {
             -moz-appearance: textfield;
         }
@@ -24,12 +25,18 @@
             <table class="w-full min-w-[1400px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-4">
                     <tr class="text-center text-xs uppercase">
-                        <x-tabla.encabezado-ordenable campo="codigo_salida" :sortActual="$sort" :orderActual="$order" texto="Salida" />
-                        <x-tabla.encabezado-ordenable campo="codigo_sage" :sortActual="$sort" :orderActual="$order" texto="Código Sage" />
-                        <x-tabla.encabezado-ordenable campo="cliente" :sortActual="$sort" :orderActual="$order" texto="Cliente" />
-                        <x-tabla.encabezado-ordenable campo="obra" :sortActual="$sort" :orderActual="$order" texto="Obra" />
-                        <x-tabla.encabezado-ordenable campo="empresa_transporte_id" :sortActual="$sort" :orderActual="$order" texto="E. Transporte" />
-                        <x-tabla.encabezado-ordenable campo="camion_id" :sortActual="$sort" :orderActual="$order" texto="Camión" />
+                        <x-tabla.encabezado-ordenable campo="codigo_salida" :sortActual="$sort" :orderActual="$order"
+                            texto="Salida" />
+                        <x-tabla.encabezado-ordenable campo="codigo_sage" :sortActual="$sort" :orderActual="$order"
+                            texto="Código Sage" />
+                        <x-tabla.encabezado-ordenable campo="cliente" :sortActual="$sort" :orderActual="$order"
+                            texto="Cliente" />
+                        <x-tabla.encabezado-ordenable campo="obra" :sortActual="$sort" :orderActual="$order"
+                            texto="Obra" />
+                        <x-tabla.encabezado-ordenable campo="empresa_transporte_id" :sortActual="$sort" :orderActual="$order"
+                            texto="E. Transporte" />
+                        <x-tabla.encabezado-ordenable campo="camion_id" :sortActual="$sort" :orderActual="$order"
+                            texto="Camión" />
                         <th class="p-2 border">Peso (kg)</th>
                         <th class="p-2 border">H. Paral.</th>
                         <th class="p-2 border">Imp. Paral.</th>
@@ -37,8 +44,10 @@
                         <th class="p-2 border">Imp. Grúa</th>
                         <th class="p-2 border">H. Almacén</th>
                         <th class="p-2 border">Importe</th>
-                        <x-tabla.encabezado-ordenable campo="fecha_salida" :sortActual="$sort" :orderActual="$order" texto="Fecha Entrega" />
-                        <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order" texto="Estado" />
+                        <x-tabla.encabezado-ordenable campo="fecha_salida" :sortActual="$sort" :orderActual="$order"
+                            texto="Fecha Entrega" />
+                        <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order"
+                            texto="Estado" />
                         <th class="p-2 border">Comentario</th>
                         <th class="p-2 border">Acciones</th>
                     </tr>
@@ -119,10 +128,12 @@
                                 <button wire:click="exportar" title="Descargar registros en Excel"
                                     class="bg-green-600 hover:bg-green-700 text-white rounded text-xs flex items-center justify-center">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="h-6 w-8">
-                                        <path fill="#21A366" d="M6 8c0-1.1.9-2 2-2h32c1.1 0 2 .9 2 2v32c0 1.1-.9 2-2 2H8c-1.1 0-2-.9-2-2V8z" />
+                                        <path fill="#21A366"
+                                            d="M6 8c0-1.1.9-2 2-2h32c1.1 0 2 .9 2 2v32c0 1.1-.9 2-2 2H8c-1.1 0-2-.9-2-2V8z" />
                                         <path fill="#107C41" d="M8 8h16v32H8c-1.1 0-2-.9-2-2V10c0-1.1.9-2 2-2z" />
                                         <path fill="#33C481" d="M24 8h16v32H24z" />
-                                        <path fill="#fff" d="M17.2 17h3.6l3.1 5.3 3.1-5.3h3.6l-5.1 8.4 5.3 8.6h-3.7l-3.3-5.6-3.3 5.6h-3.7l5.3-8.6-5.1-8.4z" />
+                                        <path fill="#fff"
+                                            d="M17.2 17h3.6l3.1 5.3 3.1-5.3h3.6l-5.1 8.4 5.3 8.6h-3.7l-3.3-5.6-3.3 5.6h-3.7l5.3-8.6-5.1-8.4z" />
                                     </svg>
                                 </button>
                             </div>
@@ -149,8 +160,7 @@
 
                                 {{-- Código Sage --}}
                                 <td class="p-1 text-center border">
-                                    <input type="text"
-                                        value="{{ $salida->codigo_sage ?? '' }}"
+                                    <input type="text" value="{{ $salida->codigo_sage ?? '' }}"
                                         class="w-full text-xs border-0 bg-transparent text-center focus:bg-white focus:border focus:border-blue-500 focus:rounded px-1 py-0.5"
                                         @blur="guardarCampo(salidaId, 'codigo_sage', $event.target.value)"
                                         @keydown.enter="$event.target.blur()">
@@ -164,13 +174,13 @@
 
                                 {{-- Empresa Transporte --}}
                                 <td class="p-1 text-center border">
-                                    <select
-                                        x-model="empresaId"
+                                    <select x-model="empresaId"
                                         class="w-full text-xs border-0 bg-transparent text-center focus:bg-white focus:border focus:border-blue-500 focus:rounded px-1 py-0.5"
                                         @change="guardarCampo(salidaId, 'empresa_id', empresaId)">
                                         <option value="">-</option>
                                         @foreach ($empresasTransporte as $empresa)
-                                            <option value="{{ $empresa->id }}" {{ $salida->empresa_id == $empresa->id ? 'selected' : '' }}>
+                                            <option value="{{ $empresa->id }}"
+                                                {{ $salida->empresa_id == $empresa->id ? 'selected' : '' }}>
                                                 {{ $empresa->nombre }}
                                             </option>
                                         @endforeach
@@ -184,7 +194,8 @@
                                         @change="guardarCampo(salidaId, 'camion_id', $event.target.value)">
                                         <option value="">-</option>
                                         <template x-for="camion in getCamiones()" :key="camion.id">
-                                            <option :value="camion.id" x-text="camion.modelo" :selected="camion.id == {{ $salida->camion_id ?? 'null' }}"></option>
+                                            <option :value="camion.id" x-text="camion.modelo"
+                                                :selected="camion.id == {{ $salida->camion_id ?? 'null' }}"></option>
                                         </template>
                                     </select>
                                 </td>
@@ -219,8 +230,7 @@
 
                                 {{-- Horas Grúa --}}
                                 <td class="p-1 text-center border">
-                                    <input type="number" step="0.01"
-                                        value="{{ $registro->horas_grua ?? 0 }}"
+                                    <input type="number" step="0.01" value="{{ $registro->horas_grua ?? 0 }}"
                                         class="w-14 text-xs border-0 bg-transparent text-center focus:bg-white focus:border focus:border-blue-500 focus:rounded px-1 py-0.5"
                                         @blur="guardarCampoRegistro(salidaId, clienteId, obraId, 'horas_grua', $event.target.value)"
                                         @keydown.enter="$event.target.blur()">
@@ -228,8 +238,7 @@
 
                                 {{-- Importe Grúa --}}
                                 <td class="p-1 text-center border">
-                                    <input type="number" step="0.01"
-                                        value="{{ $registro->importe_grua ?? 0 }}"
+                                    <input type="number" step="0.01" value="{{ $registro->importe_grua ?? 0 }}"
                                         class="w-14 text-xs border-0 bg-transparent text-center focus:bg-white focus:border focus:border-blue-500 focus:rounded px-1 py-0.5"
                                         @blur="guardarCampoRegistro(salidaId, clienteId, obraId, 'importe_grua', $event.target.value)"
                                         @keydown.enter="$event.target.blur()">
@@ -237,8 +246,7 @@
 
                                 {{-- Horas Almacén --}}
                                 <td class="p-1 text-center border">
-                                    <input type="number" step="0.01"
-                                        value="{{ $registro->horas_almacen ?? 0 }}"
+                                    <input type="number" step="0.01" value="{{ $registro->horas_almacen ?? 0 }}"
                                         class="w-14 text-xs border-0 bg-transparent text-center focus:bg-white focus:border focus:border-blue-500 focus:rounded px-1 py-0.5"
                                         @blur="guardarCampoRegistro(salidaId, clienteId, obraId, 'horas_almacen', $event.target.value)"
                                         @keydown.enter="$event.target.blur()">
@@ -246,8 +254,7 @@
 
                                 {{-- Importe --}}
                                 <td class="p-1 text-center border">
-                                    <input type="number" step="0.01"
-                                        value="{{ $registro->importe ?? 0 }}"
+                                    <input type="number" step="0.01" value="{{ $registro->importe ?? 0 }}"
                                         class="w-14 text-xs border-0 bg-transparent text-center focus:bg-white focus:border focus:border-blue-500 focus:rounded px-1 py-0.5"
                                         @blur="guardarCampoRegistro(salidaId, clienteId, obraId, 'importe', $event.target.value)"
                                         @keydown.enter="$event.target.blur()">
@@ -270,15 +277,21 @@
                                             {{ $salida->estado === 'pendiente' ? 'text-yellow-700 font-semibold' : '' }}
                                             {{ $salida->estado === 'en_transito' ? 'text-blue-700 font-semibold' : '' }}"
                                         @change="guardarCampo(salidaId, 'estado', $event.target.value)">
-                                        <option value="pendiente" {{ $salida->estado === 'pendiente' ? 'selected' : '' }}>Pendiente</option>
-                                        <option value="completada" {{ $salida->estado === 'completada' ? 'selected' : '' }}>Completada</option>
-                                        <option value="en_transito" {{ $salida->estado === 'en_transito' ? 'selected' : '' }}>En tránsito</option>
+                                        <option value="pendiente"
+                                            {{ $salida->estado === 'pendiente' ? 'selected' : '' }}>Pendiente</option>
+                                        <option value="completada"
+                                            {{ $salida->estado === 'completada' ? 'selected' : '' }}>Completada
+                                        </option>
+                                        <option value="en_transito"
+                                            {{ $salida->estado === 'en_transito' ? 'selected' : '' }}>En tránsito
+                                        </option>
                                     </select>
                                 </td>
 
                                 {{-- Comentario --}}
                                 <td class="p-1 border max-w-[200px]">
-                                    <div class="text-xs text-gray-600 truncate" title="{{ $salida->comentario ?? '' }}">
+                                    <div class="text-xs text-gray-600 truncate"
+                                        title="{{ $salida->comentario ?? '' }}">
                                         {{ Str::limit($salida->comentario, 30) ?? '-' }}
                                     </div>
                                 </td>
@@ -358,26 +371,40 @@
                                         @endphp
                                         <tr class="text-xs hover:bg-gray-50">
                                             <td class="py-2 px-4 border-b font-semibold">{{ $empresa }}</td>
-                                            <td class="py-2 px-4 border-b text-center">{{ number_format($data['horas_paralizacion'], 2) }} h</td>
-                                            <td class="py-2 px-4 border-b text-right">{{ number_format($data['importe_paralizacion'], 2) }} €</td>
-                                            <td class="py-2 px-4 border-b text-center">{{ number_format($data['horas_grua'], 2) }} h</td>
-                                            <td class="py-2 px-4 border-b text-right">{{ number_format($data['importe_grua'], 2) }} €</td>
-                                            <td class="py-2 px-4 border-b text-center">{{ number_format($data['horas_almacen'], 2) }} h</td>
-                                            <td class="py-2 px-4 border-b text-right">{{ number_format($data['importe'], 2) }} €</td>
-                                            <td class="py-2 px-4 border-b text-right font-bold text-blue-600">{{ number_format($data['total'], 2) }} €</td>
+                                            <td class="py-2 px-4 border-b text-center">
+                                                {{ number_format($data['horas_paralizacion'], 2) }} h</td>
+                                            <td class="py-2 px-4 border-b text-right">
+                                                {{ number_format($data['importe_paralizacion'], 2) }} €</td>
+                                            <td class="py-2 px-4 border-b text-center">
+                                                {{ number_format($data['horas_grua'], 2) }} h</td>
+                                            <td class="py-2 px-4 border-b text-right">
+                                                {{ number_format($data['importe_grua'], 2) }} €</td>
+                                            <td class="py-2 px-4 border-b text-center">
+                                                {{ number_format($data['horas_almacen'], 2) }} h</td>
+                                            <td class="py-2 px-4 border-b text-right">
+                                                {{ number_format($data['importe'], 2) }} €</td>
+                                            <td class="py-2 px-4 border-b text-right font-bold text-blue-600">
+                                                {{ number_format($data['total'], 2) }} €</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
                                 <tfoot class="bg-gray-100 font-bold">
                                     <tr class="text-xs">
                                         <td class="py-2 px-4 border-t">TOTAL</td>
-                                        <td class="py-2 px-4 border-t text-center">{{ number_format($totales['horas_paralizacion'], 2) }} h</td>
-                                        <td class="py-2 px-4 border-t text-right">{{ number_format($totales['importe_paralizacion'], 2) }} €</td>
-                                        <td class="py-2 px-4 border-t text-center">{{ number_format($totales['horas_grua'], 2) }} h</td>
-                                        <td class="py-2 px-4 border-t text-right">{{ number_format($totales['importe_grua'], 2) }} €</td>
-                                        <td class="py-2 px-4 border-t text-center">{{ number_format($totales['horas_almacen'], 2) }} h</td>
-                                        <td class="py-2 px-4 border-t text-right">{{ number_format($totales['importe'], 2) }} €</td>
-                                        <td class="py-2 px-4 border-t text-right text-green-600">{{ number_format($totales['total'], 2) }} €</td>
+                                        <td class="py-2 px-4 border-t text-center">
+                                            {{ number_format($totales['horas_paralizacion'], 2) }} h</td>
+                                        <td class="py-2 px-4 border-t text-right">
+                                            {{ number_format($totales['importe_paralizacion'], 2) }} €</td>
+                                        <td class="py-2 px-4 border-t text-center">
+                                            {{ number_format($totales['horas_grua'], 2) }} h</td>
+                                        <td class="py-2 px-4 border-t text-right">
+                                            {{ number_format($totales['importe_grua'], 2) }} €</td>
+                                        <td class="py-2 px-4 border-t text-center">
+                                            {{ number_format($totales['horas_almacen'], 2) }} h</td>
+                                        <td class="py-2 px-4 border-t text-right">
+                                            {{ number_format($totales['importe'], 2) }} €</td>
+                                        <td class="py-2 px-4 border-t text-right text-green-600">
+                                            {{ number_format($totales['total'], 2) }} €</td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -431,26 +458,40 @@
                                         @endphp
                                         <tr class="text-xs hover:bg-gray-50">
                                             <td class="py-2 px-4 border-b font-semibold">{{ $clienteObra }}</td>
-                                            <td class="py-2 px-4 border-b text-center">{{ number_format($data['horas_paralizacion'], 2) }} h</td>
-                                            <td class="py-2 px-4 border-b text-right">{{ number_format($data['importe_paralizacion'], 2) }} €</td>
-                                            <td class="py-2 px-4 border-b text-center">{{ number_format($data['horas_grua'], 2) }} h</td>
-                                            <td class="py-2 px-4 border-b text-right">{{ number_format($data['importe_grua'], 2) }} €</td>
-                                            <td class="py-2 px-4 border-b text-center">{{ number_format($data['horas_almacen'], 2) }} h</td>
-                                            <td class="py-2 px-4 border-b text-right">{{ number_format($data['importe'], 2) }} €</td>
-                                            <td class="py-2 px-4 border-b text-right font-bold text-blue-600">{{ number_format($data['total'], 2) }} €</td>
+                                            <td class="py-2 px-4 border-b text-center">
+                                                {{ number_format($data['horas_paralizacion'], 2) }} h</td>
+                                            <td class="py-2 px-4 border-b text-right">
+                                                {{ number_format($data['importe_paralizacion'], 2) }} €</td>
+                                            <td class="py-2 px-4 border-b text-center">
+                                                {{ number_format($data['horas_grua'], 2) }} h</td>
+                                            <td class="py-2 px-4 border-b text-right">
+                                                {{ number_format($data['importe_grua'], 2) }} €</td>
+                                            <td class="py-2 px-4 border-b text-center">
+                                                {{ number_format($data['horas_almacen'], 2) }} h</td>
+                                            <td class="py-2 px-4 border-b text-right">
+                                                {{ number_format($data['importe'], 2) }} €</td>
+                                            <td class="py-2 px-4 border-b text-right font-bold text-blue-600">
+                                                {{ number_format($data['total'], 2) }} €</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
                                 <tfoot class="bg-gray-100 font-bold">
                                     <tr class="text-xs">
                                         <td class="py-2 px-4 border-t">TOTAL</td>
-                                        <td class="py-2 px-4 border-t text-center">{{ number_format($totalesObra['horas_paralizacion'], 2) }} h</td>
-                                        <td class="py-2 px-4 border-t text-right">{{ number_format($totalesObra['importe_paralizacion'], 2) }} €</td>
-                                        <td class="py-2 px-4 border-t text-center">{{ number_format($totalesObra['horas_grua'], 2) }} h</td>
-                                        <td class="py-2 px-4 border-t text-right">{{ number_format($totalesObra['importe_grua'], 2) }} €</td>
-                                        <td class="py-2 px-4 border-t text-center">{{ number_format($totalesObra['horas_almacen'], 2) }} h</td>
-                                        <td class="py-2 px-4 border-t text-right">{{ number_format($totalesObra['importe'], 2) }} €</td>
-                                        <td class="py-2 px-4 border-t text-right text-green-600">{{ number_format($totalesObra['total'], 2) }} €</td>
+                                        <td class="py-2 px-4 border-t text-center">
+                                            {{ number_format($totalesObra['horas_paralizacion'], 2) }} h</td>
+                                        <td class="py-2 px-4 border-t text-right">
+                                            {{ number_format($totalesObra['importe_paralizacion'], 2) }} €</td>
+                                        <td class="py-2 px-4 border-t text-center">
+                                            {{ number_format($totalesObra['horas_grua'], 2) }} h</td>
+                                        <td class="py-2 px-4 border-t text-right">
+                                            {{ number_format($totalesObra['importe_grua'], 2) }} €</td>
+                                        <td class="py-2 px-4 border-t text-center">
+                                            {{ number_format($totalesObra['horas_almacen'], 2) }} h</td>
+                                        <td class="py-2 px-4 border-t text-right">
+                                            {{ number_format($totalesObra['importe'], 2) }} €</td>
+                                        <td class="py-2 px-4 border-t text-right text-green-600">
+                                            {{ number_format($totalesObra['total'], 2) }} €</td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -465,79 +506,84 @@
         // Guardar campo de salida (codigo_sage, empresa_id, camion_id, estado)
         function guardarCampo(salidaId, field, value) {
             fetch(`/salidas-ferralla/${salidaId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ field, value })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Feedback visual breve
-                    mostrarGuardado();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar el cambio.' });
-            });
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        field,
+                        value
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Feedback visual breve
+                        mostrarGuardado();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudo guardar el cambio.'
+                    });
+                });
         }
 
         // Guardar campo de registro (salida_cliente)
         function guardarCampoRegistro(salidaId, clienteId, obraId, field, value) {
             fetch(`/salidas-ferralla/${salidaId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    field,
-                    value,
-                    cliente_id: clienteId,
-                    obra_id: obraId
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        field,
+                        value,
+                        cliente_id: clienteId,
+                        obra_id: obraId
+                    })
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    mostrarGuardado();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar el cambio.' });
-            });
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        mostrarGuardado();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudo guardar el cambio.'
+                    });
+                });
         }
 
-        // Toast de guardado
-        let toastTimeout;
+        // Toast de guardado con SweetAlert
         function mostrarGuardado() {
-            clearTimeout(toastTimeout);
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top',
+                showConfirmButton: false,
+                timer: 1500,
+                timerProgressBar: false,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            });
 
-            let toast = document.getElementById('toast-guardado');
-            if (!toast) {
-                toast = document.createElement('div');
-                toast.id = 'toast-guardado';
-                toast.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg text-sm flex items-center gap-2 z-50 transition-opacity duration-300';
-                toast.innerHTML = `
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                    Guardado
-                `;
-                document.body.appendChild(toast);
-            }
-
-            toast.style.opacity = '1';
-
-            toastTimeout = setTimeout(() => {
-                toast.style.opacity = '0';
-            }, 1500);
+            Toast.fire({
+                icon: 'success',
+                title: 'Guardado'
+            });
         }
     </script>
 </div>
