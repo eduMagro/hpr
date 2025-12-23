@@ -122,6 +122,20 @@
                     
                                     if (response.ok && data.success) {
                                         this.editando = false;
+                    
+                                        const Toast = Swal.mixin({
+                                            toast: true,
+                                            position: 'top',
+                                            showConfirmButton: false,
+                                            timer: 2000,
+                                            timerProgressBar: true,
+                                        });
+                    
+                                        Toast.fire({
+                                            icon: 'success',
+                                            title: 'Entrada actualizada'
+                                        });
+                    
                                         $wire.$refresh();
                                     } else {
                                         let errorMsg = data.message || 'Error al actualizar.';
@@ -292,26 +306,91 @@
     {{ $registrosEntradas->links() }}
 
     {{-- Modal para adjuntar albarán --}}
-    <div x-data="{ mostrar: false, entradaId: null }" @abrir-modal-adjuntar.window="mostrar = true; entradaId = $event.detail.entradaId"
+    <div x-data="{
+        mostrar: false,
+        entradaId: null,
+        subiendo: false,
+        archivoSeleccionado: null,
+        submitForm() {
+            if (!this.archivoSeleccionado) {
+                Swal.fire({ icon: 'warning', title: 'Atención', text: 'Selecciona un archivo primero.' });
+                return;
+            }
+            this.subiendo = true;
+            const formData = new FormData(this.$refs.formSubir);
+    
+            fetch(this.$refs.formSubir.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'top',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                        Toast.fire({
+                            icon: 'success',
+                            title: 'Archivo adjuntado correctamente'
+                        });
+                        this.mostrar = false;
+                        $wire.$refresh();
+                        // Limpiar input
+                        this.$refs.inputArchivo.value = '';
+                        this.archivoSeleccionado = null;
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message || 'Error al subir archivo'
+                        });
+                    }
+                })
+                .catch(err => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error de conexión',
+                        text: 'No se pudo subir el archivo.'
+                    });
+                })
+                .finally(() => {
+                    this.subiendo = false;
+                });
+        }
+    }" @abrir-modal-adjuntar.window="mostrar = true; entradaId = $event.detail.entradaId"
         x-show="mostrar" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
         style="display: none;" x-cloak>
         <div class="bg-white p-6 rounded shadow-lg w-full max-w-lg">
-            <h2 class="text-lg font-semibold mb-4">Adjuntar albarán en PDF</h2>
+            <h2 class="text-lg font-semibold mb-4">Adjuntar albarán (PDF o Imagen)</h2>
             <form method="POST" action="{{ route('entradas.crearImportarAlbaranPdf') }}"
-                enctype="multipart/form-data">
+                enctype="multipart/form-data" @submit.prevent="submitForm()" x-ref="formSubir">
 
                 @csrf
                 <input type="hidden" name="entrada_id" :value="entradaId">
                 <div class="mb-4">
-                    <label for="albaran_pdf" class="block text-sm font-medium text-gray-700 mb-1">Archivo PDF:</label>
-                    <input type="file" name="albaran_pdf" accept="application/pdf" required
-                        class="w-full border rounded px-3 py-2 text-sm">
+                    <label for="albaran_pdf" class="block text-sm font-medium text-gray-700 mb-1">Archivo:</label>
+                    <input type="file" name="albaran_pdf" accept="application/pdf,image/*" required
+                        class="w-full border rounded px-3 py-2 text-sm" x-ref="inputArchivo"
+                        @change="archivoSeleccionado = $event.target.files[0]">
                 </div>
                 <div class="flex justify-end space-x-2">
                     <button type="button" @click="mostrar = false"
-                        class="px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 rounded">Cancelar</button>
+                        class="px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 rounded"
+                        :disabled="subiendo">Cancelar</button>
                     <button type="submit"
-                        class="px-4 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded">Adjuntar</button>
+                        class="px-4 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded flex items-center gap-2"
+                        :disabled="subiendo">
+                        <span x-show="subiendo"
+                            class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                        <span x-text="subiendo ? 'Subiendo...' : 'Adjuntar'"></span>
+                    </button>
                 </div>
             </form>
         </div>

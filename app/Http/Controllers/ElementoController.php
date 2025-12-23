@@ -75,7 +75,7 @@ class ElementoController extends Controller
 
                 if (preg_match('/^(\d{4})-(\d{1,6})$/', $input, $m)) {
                     $anio = $m[1];
-                    $num  = str_pad($m[2], 6, '0', STR_PAD_LEFT);
+                    $num = str_pad($m[2], 6, '0', STR_PAD_LEFT);
                     $codigoFormateado = "{$anio}-{$num}";
                     $q->where('planillas.codigo', 'like', "%{$codigoFormateado}%");
                     return;
@@ -207,7 +207,7 @@ class ElementoController extends Controller
         ];
 
         // Lee los parámetros y sanea
-        $sort  = $request->input('sort', 'created_at');
+        $sort = $request->input('sort', 'created_at');
         $order = strtolower($request->input('order', 'desc')) === 'asc' ? 'asc' : 'desc';
 
         if (!in_array($sort, $columnasPermitidas, true)) {
@@ -278,8 +278,8 @@ class ElementoController extends Controller
 
                 DB::commit();
                 return response()->json([
-                    'ok'        => true,
-                    'campo'     => $campo,
+                    'ok' => true,
+                    'campo' => $campo,
                     'maquina_id' => null
                 ]);
             }
@@ -297,9 +297,9 @@ class ElementoController extends Controller
                 DB::rollBack();
                 return response()->json([
                     'swal' => [
-                        'icon'  => 'error',
+                        'icon' => 'error',
                         'title' => 'Diámetro no válido',
-                        'text'  => $msg,
+                        'text' => $msg,
                     ]
                 ], 422);
             }
@@ -338,8 +338,8 @@ class ElementoController extends Controller
                 // Crear entrada directamente en la última posición
                 $ordenPlanilla = OrdenPlanilla::create([
                     'planilla_id' => $planillaId,
-                    'maquina_id'  => $nuevaMaquinaReal,
-                    'posicion'    => $nuevaPos,
+                    'maquina_id' => $nuevaMaquinaReal,
+                    'posicion' => $nuevaPos,
                 ]);
             }
 
@@ -371,8 +371,8 @@ class ElementoController extends Controller
             DB::commit();
 
             return response()->json([
-                'ok'         => true,
-                'campo'      => $campo,
+                'ok' => true,
+                'campo' => $campo,
                 'maquina_id' => $nuevaMaquina->id,
                 // 'etiqueta_sub_id' => $subDestino, // <- opcional para depurar en el frontend
             ]);
@@ -426,10 +426,14 @@ class ElementoController extends Controller
         $tipo2 = optional($e->maquina_2)->tipo;
         $tipo3 = optional($e->maquina_3)->tipo;
 
-        if ($tipo1 === 'ensambladora') return $e->maquina_id_2;
-        if ($tipo1 === 'soldadora')    return $e->maquina_id_3 ?? $e->maquina_id;
-        if ($tipo1 === 'dobladora_manual') return $e->maquina_id;
-        if ($tipo2 === 'dobladora_manual') return $e->maquina_id_2;
+        if ($tipo1 === 'ensambladora')
+            return $e->maquina_id_2;
+        if ($tipo1 === 'soldadora')
+            return $e->maquina_id_3 ?? $e->maquina_id;
+        if ($tipo1 === 'dobladora_manual')
+            return $e->maquina_id;
+        if ($tipo2 === 'dobladora_manual')
+            return $e->maquina_id_2;
 
         return $e->maquina_id;
     }
@@ -441,7 +445,7 @@ class ElementoController extends Controller
     public function dividirElemento(Request $request)
     {
         $request->validate([
-            'elemento_id'    => 'required|exists:elementos,id',
+            'elemento_id' => 'required|exists:elementos,id',
             'barras_a_mover' => 'required|integer|min:1',
         ]);
 
@@ -454,7 +458,7 @@ class ElementoController extends Controller
                     ->findOrFail($request->elemento_id);
 
                 $barrasAMover = (int) $request->barras_a_mover;
-                $barrasTotal  = (int) ($elemento->barras ?? 0);
+                $barrasTotal = (int) ($elemento->barras ?? 0);
 
                 // Validar que no se muevan todas o más barras
                 if ($barrasAMover >= $barrasTotal) {
@@ -468,19 +472,19 @@ class ElementoController extends Controller
                 $barrasOriginal = $barrasTotal - $barrasAMover;
 
                 // === Reparto proporcional de PESO ===
-                $pesoTotal    = (float) ($elemento->peso ?? 0);
+                $pesoTotal = (float) ($elemento->peso ?? 0);
                 $pesoPorBarra = $barrasTotal > 0 ? $pesoTotal / $barrasTotal : 0;
-                $prec         = 3;
+                $prec = 3;
 
                 $pesoOriginal = round($pesoPorBarra * $barrasOriginal, $prec);
-                $pesoNuevo    = round($pesoTotal - $pesoOriginal, $prec);
+                $pesoNuevo = round($pesoTotal - $pesoOriginal, $prec);
 
                 // === Reparto proporcional de TIEMPO DE FABRICACIÓN ===
-                $tiempoTotal     = (int) ($elemento->tiempo_fabricacion ?? 0);
-                $tiempoPorBarra  = $barrasTotal > 0 ? $tiempoTotal / $barrasTotal : 0;
+                $tiempoTotal = (int) ($elemento->tiempo_fabricacion ?? 0);
+                $tiempoPorBarra = $barrasTotal > 0 ? $tiempoTotal / $barrasTotal : 0;
 
                 $tiempoOriginal = (int) round($tiempoPorBarra * $barrasOriginal);
-                $tiempoNuevo    = $tiempoTotal - $tiempoOriginal;
+                $tiempoNuevo = $tiempoTotal - $tiempoOriginal;
 
                 // === Etiqueta base y sufijos por CODIGO ===
                 $etqOriginal = $elemento->etiquetaRelacion
@@ -496,8 +500,8 @@ class ElementoController extends Controller
                     ->value('max_suf');
 
                 // === 1) Actualiza ORIGINAL con las barras restantes ===
-                $elemento->peso               = $pesoOriginal;
-                $elemento->barras             = $barrasOriginal;
+                $elemento->peso = $pesoOriginal;
+                $elemento->barras = $barrasOriginal;
                 $elemento->tiempo_fabricacion = $tiempoOriginal;
                 $elemento->save();
 
@@ -515,19 +519,19 @@ class ElementoController extends Controller
 
                 // Clonar Etiqueta
                 $nuevaEtiqueta = $etqOriginal->replicate();
-                $nuevaEtiqueta->codigo          = $baseCodigo;
+                $nuevaEtiqueta->codigo = $baseCodigo;
                 $nuevaEtiqueta->etiqueta_sub_id = $nuevoSubId;
-                $nuevaEtiqueta->peso            = $pesoNuevo;
+                $nuevaEtiqueta->peso = $pesoNuevo;
                 $nuevaEtiqueta->save();
 
                 // Clonar Elemento
                 $clon = $elemento->replicate();
-                $clon->codigo              = Elemento::generarCodigo();
-                $clon->peso                = $pesoNuevo;
-                $clon->barras              = $barrasAMover;
-                $clon->tiempo_fabricacion  = $tiempoNuevo;
-                $clon->etiqueta_id         = $nuevaEtiqueta->id;
-                $clon->etiqueta_sub_id     = $nuevaEtiqueta->etiqueta_sub_id;
+                $clon->codigo = Elemento::generarCodigo();
+                $clon->peso = $pesoNuevo;
+                $clon->barras = $barrasAMover;
+                $clon->tiempo_fabricacion = $tiempoNuevo;
+                $clon->etiqueta_id = $nuevaEtiqueta->id;
+                $clon->etiqueta_sub_id = $nuevaEtiqueta->etiqueta_sub_id;
                 $clon->save();
 
                 return response()->json([
@@ -552,8 +556,8 @@ class ElementoController extends Controller
 
     public function solicitarCambioMaquina(Request $request, $elementoId)
     {
-        $motivo     = $request->motivo;
-        $maquinaId  = $request->maquina_id;
+        $motivo = $request->motivo;
+        $maquinaId = $request->maquina_id;
         $horaActual = Carbon::now()->format('H:i:s');
 
         // Obtener el elemento que solicita el cambio
@@ -592,21 +596,21 @@ class ElementoController extends Controller
                 . "Origen: " . ($maquinaOrigen?->nombre ?? 'N/A') . ", Destino: " . ($maquinaDestino?->nombre ?? 'N/A');
 
             Alerta::create([
-                'user_id_1'       => auth()->id(),
-                'user_id_2'       => $usuarioDestino->id,
-                'destino'         => 'produccion',
-                'destinatario'    => $usuarioDestino->name,
+                'user_id_1' => auth()->id(),
+                'user_id_2' => $usuarioDestino->id,
+                'destino' => 'produccion',
+                'destinatario' => $usuarioDestino->name,
                 'destinatario_id' => $usuarioDestino->id,
-                'mensaje'         => $mensaje,
-                'leida'           => false,
-                'completada'      => false,
+                'mensaje' => $mensaje,
+                'leida' => false,
+                'completada' => false,
             ]);
 
             Log::info("Alerta enviada", [
                 'elemento_id' => $elemento->id,
                 'etiqueta_sub_id' => $etiquetaSubId,
-                'usuario_id'  => $usuarioDestino->id,
-                'mensaje'     => $mensaje,
+                'usuario_id' => $usuarioDestino->id,
+                'mensaje' => $mensaje,
             ]);
         }
 
@@ -661,9 +665,9 @@ class ElementoController extends Controller
     public function crearSubEtiqueta(Request $request)
     {
         $request->validate([
-            'elemento_id'     => 'required|exists:elementos,id',
+            'elemento_id' => 'required|exists:elementos,id',
             'etiqueta_sub_id' => 'required|string', // base: ETQ-25-0001.02 -> ETQ-25-0001
-            'partes'          => 'nullable|integer|min:2' // por defecto 2
+            'partes' => 'nullable|integer|min:2' // por defecto 2
         ]);
 
         // columnas REALES
@@ -683,11 +687,13 @@ class ElementoController extends Controller
 
             $etiquetaOriginal = $elemento->etiqueta;
 
-            $pesoTotal   = (float) ($elemento->{$colPesoElem} ?? 0);
-            $barrasTotal = (int)   ($elemento->barras ?? 0);
+            $pesoTotal = (float) ($elemento->{$colPesoElem} ?? 0);
+            $barrasTotal = (int) ($elemento->barras ?? 0);
 
-            if ($pesoTotal <= 0)  return response()->json(['success' => false, 'message' => 'El elemento no tiene peso positivo.'], 422);
-            if ($barrasTotal < 1) return response()->json(['success' => false, 'message' => 'El elemento no tiene barras.'], 422);
+            if ($pesoTotal <= 0)
+                return response()->json(['success' => false, 'message' => 'El elemento no tiene peso positivo.'], 422);
+            if ($barrasTotal < 1)
+                return response()->json(['success' => false, 'message' => 'El elemento no tiene barras.'], 422);
 
             // 1) dividir peso (cuadrando en la segunda parte)
             $pesoA = round($pesoTotal / 2, 3);
@@ -699,7 +705,7 @@ class ElementoController extends Controller
 
             // 3) actualizar elemento original (parte A)
             $elemento->{$colPesoElem} = $pesoA;
-            $elemento->barras         = $barrasA;
+            $elemento->barras = $barrasA;
             $elemento->save();
 
             // 4) generar sub_id para nueva subetiqueta
@@ -717,7 +723,8 @@ class ElementoController extends Controller
                     break;
                 }
             }
-            if (!$nuevoSubId) throw new \RuntimeException('No hay subetiqueta disponible.');
+            if (!$nuevoSubId)
+                throw new \RuntimeException('No hay subetiqueta disponible.');
 
             // 5) crear nueva subetiqueta SIN copiar peso
             $nuevaEtiqueta = $etiquetaOriginal->replicate();
@@ -730,11 +737,11 @@ class ElementoController extends Controller
 
             // 6) crear nuevo elemento (parte B) en la subetiqueta
             $nuevoElemento = $elemento->replicate();
-            $nuevoElemento->etiqueta_id     = $nuevaEtiqueta->id;
+            $nuevoElemento->etiqueta_id = $nuevaEtiqueta->id;
             $nuevoElemento->etiqueta_sub_id = $nuevoSubId;
-            $nuevoElemento->{$colPesoElem}  = $pesoB;
-            $nuevoElemento->barras          = $barrasB;
-            $nuevoElemento->codigo          = \App\Models\Elemento::generarCodigo(); // si aplica
+            $nuevoElemento->{$colPesoElem} = $pesoB;
+            $nuevoElemento->barras = $barrasB;
+            $nuevoElemento->codigo = \App\Models\Elemento::generarCodigo(); // si aplica
             $nuevoElemento->save();
 
             // 7) ajustar pesos de etiquetas **solo con increment/decrement (sin setear)**
@@ -748,14 +755,14 @@ class ElementoController extends Controller
 
             // 8) devolver estado final
             $etiquetaOriginalRefrescada = \App\Models\Etiqueta::find($etiquetaOriginal->id);
-            $nuevaEtiquetaRefrescada    = \App\Models\Etiqueta::find($nuevaEtiqueta->id);
+            $nuevaEtiquetaRefrescada = \App\Models\Etiqueta::find($nuevaEtiqueta->id);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Elemento partido en 2. Solo se resta en la etiqueta original y se suma en la nueva.',
                 'data' => [
                     'elemento_original' => ['barras' => $elemento->barras, 'peso' => $elemento->{$colPesoElem}],
-                    'nuevo_elemento'    => ['barras' => $nuevoElemento->barras, 'peso' => $nuevoElemento->{$colPesoElem}],
+                    'nuevo_elemento' => ['barras' => $nuevoElemento->barras, 'peso' => $nuevoElemento->{$colPesoElem}],
                     'etiqueta_original' => ['id' => $etiquetaOriginal->id, 'peso' => $etiquetaOriginalRefrescada->{$colPesoEtiq}],
                     'subetiqueta_nueva' => ['id' => $nuevaEtiqueta->id, 'sub_id' => $nuevoSubId, 'peso' => $nuevaEtiquetaRefrescada->{$colPesoEtiq}],
                 ]
@@ -878,55 +885,56 @@ class ElementoController extends Controller
 
             // Validar los datos recibidos con mensajes personalizados
             $validated = $request->validate([
-                'planilla_id'   => 'nullable|integer|exists:planillas,id',
-                'etiqueta_id'   => 'nullable|integer|exists:etiquetas,id',
-                'maquina_id'    => 'nullable|integer|exists:maquinas,id',
-                'maquina_id_2'  => 'nullable|integer|exists:maquinas,id',
-                'maquina_id_3'  => 'nullable|integer|exists:maquinas,id',
-                'producto_id'   => 'nullable|integer|exists:productos,id',
+                'planilla_id' => 'nullable|integer|exists:planillas,id',
+                'etiqueta_id' => 'nullable|integer|exists:etiquetas,id',
+                'maquina_id' => 'nullable|integer|exists:maquinas,id',
+                'maquina_id_2' => 'nullable|integer|exists:maquinas,id',
+                'maquina_id_3' => 'nullable|integer|exists:maquinas,id',
+                'producto_id' => 'nullable|integer|exists:productos,id',
                 'producto_id_2' => 'nullable|integer|exists:productos,id',
                 'producto_id_3' => 'nullable|integer|exists:productos,id',
-                'figura'        => 'nullable|string|max:255',
-                'dimensiones'   => 'nullable|string|max:255',
-                'fila'          => 'nullable|string|max:255',
-                'marca'         => 'nullable|string|max:255',
-                'etiqueta'      => 'nullable|string|max:255',
-                'diametro'      => 'nullable|numeric',
-                'peso'      => 'nullable|numeric',
-                'longitud'      => 'nullable|numeric',
-                'estado'        => 'nullable|string|max:50'
+                'figura' => 'nullable|string|max:255',
+                'dimensiones' => 'nullable|string|max:255',
+                'fila' => 'nullable|string|max:255',
+                'marca' => 'nullable|string|max:255',
+                'etiqueta' => 'nullable|string|max:255',
+                'diametro' => 'nullable|numeric',
+                'peso' => 'nullable|numeric',
+                'longitud' => 'nullable|numeric',
+                'barras' => 'nullable|integer',
+                'estado' => 'nullable|string|max:50'
             ], [
-                'planilla_id.integer'   => 'El campo planilla_id debe ser un número entero.',
-                'planilla_id.exists'    => 'La planilla especificada en planilla_id no existe.',
-                'etiqueta_id.integer'   => 'El campo etiqueta_id debe ser un número entero.',
-                'etiqueta_id.exists'    => 'La etiqueta especificada en etiqueta_id no existe.',
-                'maquina_id.integer'    => 'El campo maquina_id debe ser un número entero.',
-                'maquina_id.exists'     => 'La máquina especificada en maquina_id no existe.',
-                'maquina_id_2.integer'  => 'El campo maquina_id_2 debe ser un número entero.',
-                'maquina_id_2.exists'   => 'La máquina especificada en maquina_id_2 no existe.',
-                'maquina_id_3.integer'  => 'El campo maquina_id_3 debe ser un número entero.',
-                'maquina_id_3.exists'   => 'La máquina especificada en maquina_id_3 no existe.',
-                'producto_id.integer'   => 'El campo producto_id debe ser un número entero.',
-                'producto_id.exists'    => 'El producto especificado en producto_id no existe.',
+                'planilla_id.integer' => 'El campo planilla_id debe ser un número entero.',
+                'planilla_id.exists' => 'La planilla especificada en planilla_id no existe.',
+                'etiqueta_id.integer' => 'El campo etiqueta_id debe ser un número entero.',
+                'etiqueta_id.exists' => 'La etiqueta especificada en etiqueta_id no existe.',
+                'maquina_id.integer' => 'El campo maquina_id debe ser un número entero.',
+                'maquina_id.exists' => 'La máquina especificada en maquina_id no existe.',
+                'maquina_id_2.integer' => 'El campo maquina_id_2 debe ser un número entero.',
+                'maquina_id_2.exists' => 'La máquina especificada en maquina_id_2 no existe.',
+                'maquina_id_3.integer' => 'El campo maquina_id_3 debe ser un número entero.',
+                'maquina_id_3.exists' => 'La máquina especificada en maquina_id_3 no existe.',
+                'producto_id.integer' => 'El campo producto_id debe ser un número entero.',
+                'producto_id.exists' => 'El producto especificado en producto_id no existe.',
                 'producto_id_2.integer' => 'El campo producto_id_2 debe ser un número entero.',
-                'producto_id_2.exists'  => 'El producto especificado en producto_id_2 no existe.',
+                'producto_id_2.exists' => 'El producto especificado en producto_id_2 no existe.',
                 'producto_id_3.integer' => 'El campo producto_id_3 debe ser un número entero.',
-                'producto_id_3.exists'  => 'El producto especificado en producto_id_3 no existe.',
-                'figura.string'         => 'El campo figura debe ser una cadena de texto.',
-                'figura.max'            => 'El campo figura no debe tener más de 255 caracteres.',
-                'dimensiones.string'    => 'El campo dimensiones debe ser una cadena de texto.',
-                'dimensiones.max'       => 'El campo dimensiones no debe tener más de 255 caracteres.',
-                'fila.string'           => 'El campo fila debe ser una cadena de texto.',
-                'fila.max'              => 'El campo fila no debe tener más de 255 caracteres.',
-                'marca.string'          => 'El campo marca debe ser una cadena de texto.',
-                'marca.max'             => 'El campo marca no debe tener más de 255 caracteres.',
-                'etiqueta.string'       => 'El campo etiqueta debe ser una cadena de texto.',
-                'etiqueta.max'          => 'El campo etiqueta no debe tener más de 255 caracteres.',
-                'diametro.numeric'      => 'El campo diametro debe ser un número.',
-                'peso.numeric'          => 'El campo peso debe ser un número.',
-                'longitud.numeric'      => 'El campo longitud debe ser un número.',
-                'estado.string'         => 'El campo estado debe ser una cadena de texto.',
-                'estado.max'            => 'El campo estado no debe tener más de 50 caracteres.',
+                'producto_id_3.exists' => 'El producto especificado en producto_id_3 no existe.',
+                'figura.string' => 'El campo figura debe ser una cadena de texto.',
+                'figura.max' => 'El campo figura no debe tener más de 255 caracteres.',
+                'dimensiones.string' => 'El campo dimensiones debe ser una cadena de texto.',
+                'dimensiones.max' => 'El campo dimensiones no debe tener más de 255 caracteres.',
+                'fila.string' => 'El campo fila debe ser una cadena de texto.',
+                'fila.max' => 'El campo fila no debe tener más de 255 caracteres.',
+                'marca.string' => 'El campo marca debe ser una cadena de texto.',
+                'marca.max' => 'El campo marca no debe tener más de 255 caracteres.',
+                'etiqueta.string' => 'El campo etiqueta debe ser una cadena de texto.',
+                'etiqueta.max' => 'El campo etiqueta no debe tener más de 255 caracteres.',
+                'diametro.numeric' => 'El campo diametro debe ser un número.',
+                'peso.numeric' => 'El campo peso debe ser un número.',
+                'longitud.numeric' => 'El campo longitud debe ser un número.',
+                'estado.string' => 'El campo estado debe ser una cadena de texto.',
+                'estado.max' => 'El campo estado no debe tener más de 50 caracteres.',
             ]);
 
             $elemento = Elemento::findOrFail($id);
@@ -1012,7 +1020,7 @@ class ElementoController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Elemento actualizado correctamente',
-                'data'    => $elemento
+                'data' => $elemento
             ], 200);
         } catch (ModelNotFoundException $e) {
             Log::error("Elemento con ID {$id} no encontrado", ['error' => $e->getMessage()]);
@@ -1025,7 +1033,7 @@ class ElementoController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error de validación',
-                'errors'  => $e->errors()
+                'errors' => $e->errors()
             ], 422);
         } catch (Exception $e) {
             Log::error("Error al actualizar el elemento con ID {$id}", ['error' => $e->getMessage()]);

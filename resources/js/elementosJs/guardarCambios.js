@@ -23,6 +23,7 @@ window.guardarCambios = function(elemento) {
         peso: elemento.peso || null,
         diametro: elemento.diametro || null,
         longitud: elemento.longitud || null,
+        barras: elemento.barras || null,
 
         estado: elemento.estado ?? null,
     };
@@ -40,13 +41,36 @@ window.guardarCambios = function(elemento) {
         .then((response) => response.json())
         .then((data) => {
             if (data.success) {
-                window.location.reload(); // Recarga la página tras el mensaje
+                // Actualizar objeto local con los datos del servidor (incluyendo accessors como diametro_mm)
+                if (data.data) {
+                    Object.assign(elemento, data.data);
+                }
+
+                // Notificación Toast en lugar de reload
+                if (typeof Swal !== 'undefined') {
+                    const Toast = Swal.mixin({
+                        toast: true,
+                        position: 'top',
+                        showConfirmButton: false,
+                        timer: 2000,
+                        timerProgressBar: true,
+                        didOpen: (toast) => {
+                            toast.addEventListener('mouseenter', Swal.stopTimer)
+                            toast.addEventListener('mouseleave', Swal.resumeTimer)
+                        }
+                    });
+
+                    Toast.fire({
+                        icon: 'success',
+                        title: 'Elemento actualizado'
+                    });
+                }
             } else {
                 let errorMsg =
                     data.message || "Ha ocurrido un error inesperado.";
                 // Si existen errores de validación, concatenarlos
                 if (data.errors) {
-                    errorMsg = Object.values(data.errors).flat().join(" "); // O puedes usar '\n' para saltos de línea
+                    errorMsg = Object.values(data.errors).flat().join(" ");
                 }
                 Swal.fire({
                     icon: "error",
