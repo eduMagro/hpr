@@ -34,18 +34,19 @@
             if ($esNaveAlmacen) {
                 return '';
             }
+
             if ($tipo === 'barra' && $diametro == 10 && $longitud == 12) {
                 return '';
             }
             if ($tipo === 'encarretado' && in_array($diametro, [25, 32])) {
-                return 'bg-rose-50';
+                return 'bg-slate-800 text-slate-500';
             }
             if ($tipo === 'barra') {
                 if (in_array($diametro, [6, 8, 10])) {
-                    return 'bg-rose-50';
+                    return 'bg-slate-800 text-slate-500';
                 }
                 if ($diametro == 12 && in_array($longitud, [15, 16])) {
-                    return 'bg-rose-50';
+                    return 'bg-slate-800 text-slate-500';
                 }
             }
             return '';
@@ -123,7 +124,7 @@
                                 @endphp
                                 <td
                                     class="px-2 py-2 border-r border-slate-100 {{ $claseRojo }} font-medium text-slate-600">
-                                    {{ $claseRojo ? '—' : number_format($stockVal, 0, ',', '.') }}
+                                    {{ $claseRojo ? '' : number_format($stockVal, 0, ',', '.') }}
                                 </td>
                                 <td class="px-2 py-2 border-r border-slate-200 {{ $claseRojo }}">
                                     @if (!$claseRojo)
@@ -137,7 +138,7 @@
                                                 $cantidadReponer = $pedidoVal;
                                             }
                                         @endphp
-                                        <div class="flex items-center justify-center gap-2">
+                                        <div class="flex items-center justify-between gap-2">
                                             <span
                                                 class="font-bold text-blue-600">{{ number_format($pedidoVal, 0, ',', '.') }}</span>
 
@@ -174,7 +175,7 @@
                                 @endphp
                                 <td
                                     class="px-2 py-2 border-r border-slate-100 {{ $claseRojo }} font-medium text-slate-600">
-                                    {{ $claseRojo ? '—' : number_format($stockVal, 0, ',', '.') }}
+                                    {{ $claseRojo ? '' : number_format($stockVal, 0, ',', '.') }}
                                 </td>
                                 <td class="px-2 py-2 border-r border-slate-200 {{ $claseRojo }}">
                                     @if (!$claseRojo)
@@ -184,7 +185,7 @@
                                                 $cantidadReponer = $pedidoVal;
                                             }
                                         @endphp
-                                        <div class="flex items-center justify-center gap-2">
+                                        <div class="flex items-center justify-between gap-2">
                                             <span
                                                 class="font-bold text-blue-600">{{ number_format($pedidoVal, 0, ',', '.') }}</span>
 
