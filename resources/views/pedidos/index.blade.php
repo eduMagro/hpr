@@ -15,7 +15,7 @@
     </style>
 
     <div class="max-w-[1600px] mx-auto px-4 py-8" x-data="{
-        activeTab: 'replenishment',
+        activeTab: 'active',
         cart: [],
         addToCart(item) {
             const exists = this.cart.find(i => i.id === item.id);
@@ -39,26 +39,30 @@
     }">
         @if (auth()->user()->rol === 'oficina')
             {{-- Header de la sección con Tabs Modernos --}}
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
+            <div
+                class="flex flex-col xl:flex-row xl:items-end justify-between gap-8 mb-12 border-b border-slate-200 pb-10">
                 <div>
-                    <h1 class="text-4xl font-black text-slate-800 tracking-tight">Gestión de Pedidos</h1>
-                    <p class="text-slate-500 mt-2 font-medium">Control de adquisiciones, recepciones y optimización de
-                        inventario.</p>
+                    <h1 class="text-4xl xl:text-5xl font-black text-slate-900 tracking-tight mb-2">Pedidos</h1>
+                    <p class="text-lg text-slate-500 font-medium">Gestión integral de suministros y reaprovechamiento.
+                    </p>
                 </div>
 
-                <nav class="flex bg-slate-200/50 p-1.5 rounded-2xl backdrop-blur-sm border border-slate-200/60">
+                <nav class="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
                     <button @click="activeTab = 'active'"
-                        :class="activeTab === 'active' ? 'bg-white shadow-md text-blue-600 scale-105' :
-                            'text-slate-500 hover:text-slate-800'"
-                        class="px-8 py-3 rounded-xl text-sm font-black transition-all duration-300 transform">
+                        :class="activeTab === 'active' ? 'bg-white shadow-sm text-blue-600' :
+                            'text-slate-500 hover:text-slate-900 hover:bg-white/50'"
+                        class="px-8 py-3.5 rounded-xl text-sm font-black transition-all duration-300 flex items-center gap-3">
+                        <span class="text-lg">📋</span>
                         Pedidos Activos
                     </button>
                     <button @click="activeTab = 'replenishment'"
-                        :class="activeTab === 'replenishment' ? 'bg-white shadow-md text-blue-600 scale-105' :
-                            'text-slate-500 hover:text-slate-800'"
-                        class="px-8 py-3 rounded-xl text-sm font-black transition-all duration-300 transform flex items-center gap-2">
+                        :class="activeTab === 'replenishment' ? 'bg-white shadow-sm text-blue-600' :
+                            'text-slate-500 hover:text-slate-900 hover:bg-white/50'"
+                        class="px-8 py-3.5 rounded-xl text-sm font-black transition-all duration-300 flex items-center gap-3">
+                        <span class="text-lg">📈</span>
                         Análisis y Reposición
-                        <span x-show="cart.length > 0" class="flex h-2 w-2 rounded-full bg-blue-500"></span>
+                        <span x-show="cart.length > 0"
+                            class="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
                     </button>
                 </nav>
             </div>
