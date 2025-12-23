@@ -1,17 +1,18 @@
 <div>
     {{-- Filtros y Herramientas --}}
-    <div class="bg-slate-50 p-4 rounded-3xl border border-slate-200 mb-8 flex flex-wrap items-center gap-4 shadow-inner">
+    <div
+        class="bg-slate-800 p-4 rounded-3xl border border-slate-200 mb-8 flex flex-wrap items-center gap-4 shadow-inner">
         <div class="flex-1 min-w-[250px]">
             <div class="relative group">
                 <span
-                    class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                    class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400 group-focus-within:text-slate-900 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                 </span>
                 <input type="text" wire:model.live.debounce.300ms="codigo" placeholder="ID de Pedido o Referencia..."
-                    class="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-2xl text-sm font-black text-slate-700 transition-all placeholder:text-slate-400">
+                    class="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 focus:border-slate-900 focus:ring-4 focus:ring-slate-900/10 rounded-2xl text-sm font-black text-slate-700 transition-all placeholder:text-slate-400">
             </div>
         </div>
 
@@ -47,6 +48,7 @@
                     <option value="pendiente">Pendiente</option>
                     <option value="parcial">Parcial</option>
                     <option value="completado">Completado</option>
+                    <option value="facturado">Facturado</option>
                 </select>
             </div>
 
@@ -67,25 +69,27 @@
     <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
         <table class="w-full border-collapse text-sm">
             <thead>
-                <tr class="bg-slate-50/80 border-b border-slate-200">
-                    <th
-                        class="px-6 py-5 text-left font-black text-slate-500 uppercase tracking-widest text-[10px] w-48">
+                <tr class="bg-slate-800 border-b border-slate-200">
+                    <th class="px-6 py-5 text-left font-black text-slate-50 uppercase tracking-widest text-[10px] w-48">
                         Línea</th>
-                    <th class="px-6 py-5 text-left font-black text-slate-500 uppercase tracking-widest text-[10px]">
+                    <th class="px-6 py-5 text-left font-black text-slate-50 uppercase tracking-widest text-[10px]">
                         Producto</th>
-                    <th class="px-6 py-5 text-left font-black text-slate-500 uppercase tracking-widest text-[10px]">
+                    <th class="px-6 py-5 text-left font-black text-slate-50 uppercase tracking-widest text-[10px]">
                         Entrega</th>
                     <th
-                        class="px-6 py-5 text-right font-black text-slate-500 uppercase tracking-widest text-[10px] w-32">
+                        class="px-6 py-5 text-right font-black text-slate-50 uppercase tracking-widest text-[10px] w-32">
                         Pedido</th>
                     <th
-                        class="px-6 py-5 text-right font-black text-slate-500 uppercase tracking-widest text-[10px] w-32">
+                        class="px-6 py-5 text-right font-black text-slate-50 uppercase tracking-widest text-[10px] w-32">
                         Recep.</th>
                     <th
-                        class="px-6 py-5 text-center font-black text-slate-500 uppercase tracking-widest text-[10px] w-40">
+                        class="px-6 py-5 text-center font-black text-slate-50 uppercase tracking-widest text-[10px] w-40">
                         F. Entrega</th>
                     <th
-                        class="px-6 py-5 text-right font-black text-slate-500 uppercase tracking-widest text-[10px] w-44">
+                        class="px-6 py-5 text-right font-black text-slate-50 uppercase tracking-widest text-[10px] w-32">
+                        Estado</th>
+                    <th
+                        class="px-6 py-5 text-right font-black text-slate-50 uppercase tracking-widest text-[10px] w-44">
                         Acciones</th>
                 </tr>
             </thead>
@@ -98,86 +102,90 @@
                         $estadoPedido = strtolower(trim($pedido->estado ?? ''));
                         $pedidoCancelado = $estadoPedido === 'cancelado';
                         $pedidoCompletado = $estadoPedido === 'completado';
+                        $pedidoFacturado = $estadoPedido === 'facturado';
                     @endphp
 
                     {{-- CABECERA DEL PEDIDO (GRUPO) --}}
-                    <tr class="bg-slate-50 border-t-2 border-slate-200/60 relative group/row">
-                        <td colspan="7"
-                            class="px-6 py-6 border-l-4 border-slate-900 group-hover/row:border-blue-600 transition-all duration-300">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-10">
-                                    <div class="flex flex-col">
-                                        <div class="flex items-center gap-2 mb-1">
-                                            <span
-                                                class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pedido</span>
-                                            <span
-                                                class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider
-                                                {{ $pedidoCancelado ? 'bg-slate-200 text-slate-600' : '' }}
-                                                {{ $pedidoCompletado ? 'bg-emerald-100 text-emerald-700' : '' }}
-                                                {{ !$pedidoCancelado && !$pedidoCompletado ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : '' }}">
-                                                {{ $pedido?->estado ?? 'pendiente' }}
-                                            </span>
-                                        </div>
-                                        <span
-                                            class="text-lg font-black text-slate-900 tracking-tight">{{ $pedido?->codigo ?? '—' }}</span>
-                                    </div>
+                    <tr class="bg-slate-100 border-t-2 relative group/row">
+                        <td colspan="6" class="px-6 py-6 border-l-4 border-slate-900 transition-all duration-300">
+                            <div class="flex items-center gap-10">
+                                <div class="flex flex-col">
+                                    <span
+                                        class="text-lg font-black text-slate-900 tracking-tight">{{ $pedido?->codigo ?? '—' }}</span>
+                                </div>
 
-                                    <div class="flex flex-col">
+                                <div class="flex flex-col">
+                                    <span
+                                        class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Entorno
+                                        de Suministro</span>
+                                    <div class="flex items-center gap-3">
                                         <span
-                                            class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Entorno
-                                            de Suministro</span>
-                                        <div class="flex items-center gap-3">
+                                            class="text-sm font-black text-slate-800">{{ $pedido?->fabricante?->nombre ?? 'Directo' }}</span>
+                                        @if ($pedido?->distribuidor)
+                                            <svg class="w-3 h-3 text-slate-300" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                                    d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                            </svg>
                                             <span
-                                                class="text-sm font-black text-slate-800">{{ $pedido?->fabricante?->nombre ?? 'Directo' }}</span>
-                                            @if ($pedido?->distribuidor)
-                                                <svg class="w-3 h-3 text-slate-300" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="3" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                                </svg>
-                                                <span
-                                                    class="text-xs font-bold text-slate-500 uppercase tracking-tighter">{{ $pedido->distribuidor->nombre }}</span>
-                                            @endif
-                                        </div>
-                                    </div>
-
-                                    <div class="flex flex-col">
-                                        <span
-                                            class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Fecha
-                                            Emisión</span>
-                                        <span
-                                            class="text-xs font-black text-slate-600 tracking-tight uppercase">{{ $pedido?->fecha_pedido_formateada ?? '—' }}</span>
+                                                class="text-xs font-bold text-slate-500 uppercase tracking-tighter">{{ $pedido->distribuidor->nombre }}</span>
+                                        @endif
                                     </div>
                                 </div>
 
-                                <div class="flex items-center gap-3">
-                                    @if ($pedido && !$pedidoCancelado && !$pedidoCompletado)
-                                        <form method="POST" action="{{ route('pedidos.cancelar', $pedido->id) }}"
-                                            onsubmit="return confirm('¿Cancelar pedido {{ $pedido->codigo }}?')">
-                                            @csrf @method('PUT')
-                                            <button type="submit"
-                                                class="px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest bg-white border border-slate-200 rounded-xl hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all duration-300 shadow-sm">
-                                                Anular Pedido
-                                            </button>
-                                        </form>
-                                    @endif
-                                    @if ($pedido)
-                                        <form method="POST" action="{{ route('pedidos.destroy', $pedido->id) }}"
-                                            onsubmit="return confirm('¿ELIMINAR pedido {{ $pedido->codigo }}?')">
-                                            @csrf @method('DELETE')
-                                            <button type="submit"
-                                                class="p-2.5 text-rose-400 hover:text-white hover:bg-rose-500 border border-transparent hover:border-rose-600 rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-rose-100"
-                                                title="Eliminar Pedido completo">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2.5"
-                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-                                        </form>
-                                    @endif
+                                <div class="flex flex-col">
+                                    <span
+                                        class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Fecha
+                                        Emisión</span>
+                                    <span
+                                        class="text-xs font-black text-slate-600 tracking-tight uppercase">{{ $pedido?->fecha_pedido_formateada ?? '—' }}</span>
                                 </div>
+                            </div>
+                        </td>
+
+                        {{-- ESTADO DEL PEDIDO (GRUPO) --}}
+                        <td class="px-6 py-6 text-right align-middle">
+                            <div class="flex flex-col items-end">
+                                <span
+                                    class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider
+                                    {{ $pedidoCancelado ? 'bg-slate-200 text-slate-600' : '' }}
+                                    {{ $pedidoCompletado ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : '' }}
+                                    {{ $pedidoFacturado ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : '' }}
+                                    {{ !$pedidoCancelado && !$pedidoCompletado && !$pedidoFacturado ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' : '' }}">
+                                    {{ $pedido?->estado ?? 'pendiente' }}
+                                </span>
+                            </div>
+                        </td>
+
+                        {{-- ACCIONES DEL PEDIDO (GRUPO) --}}
+                        <td class="px-6 py-6 text-right align-middle">
+                            <div class="flex items-center justify-end gap-3">
+                                @if ($pedido && !$pedidoCancelado && !$pedidoCompletado)
+                                    <form method="POST" action="{{ route('pedidos.cancelar', $pedido->id) }}"
+                                        onsubmit="return confirm('¿Cancelar pedido {{ $pedido->codigo }}?')">
+                                        @csrf @method('PUT')
+                                        <button type="submit"
+                                            class="px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest bg-white border border-slate-200 rounded-xl hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all duration-300 shadow-sm">
+                                            Anular
+                                        </button>
+                                    </form>
+                                @endif
+                                @if ($pedido)
+                                    <form method="POST" action="{{ route('pedidos.destroy', $pedido->id) }}"
+                                        onsubmit="return confirm('¿ELIMINAR pedido {{ $pedido->codigo }}?')">
+                                        @csrf @method('DELETE')
+                                        <button type="submit"
+                                            class="p-2.5 text-rose-400 hover:text-white hover:bg-rose-500 border border-transparent hover:border-rose-600 rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-rose-100"
+                                            title="Eliminar Pedido completo">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="2.5"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </form>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -187,28 +195,27 @@
                         @php
                             $estadoLinea = strtolower(trim($linea->estado));
                             $claseLinea = match ($estadoLinea) {
-                                'facturado' => 'bg-emerald-50/20',
-                                'completado' => 'bg-emerald-50/10',
-                                'activo' => 'bg-blue-50/10',
+                                'facturado' => 'bg-green-500/50',
+                                'completado' => 'bg-indigo-400/50',
+                                'activo' => 'bg-slate-50',
                                 'cancelado' => 'opacity-50 grayscale bg-slate-50',
                                 default => '',
                             };
                         @endphp
 
-                        <tr wire:key="linea-{{ $linea->id }}"
-                            class="group hover:bg-slate-50/80 transition-all duration-200 {{ $claseLinea }}">
+                        <tr wire:key="linea-{{ $linea->id }}" class="group {{ $claseLinea }}">
                             <td class="px-6 py-5 align-middle border-l-4 border-slate-200 group-hover:border-blue-400">
                                 @if ($linea->codigo)
                                     <div class="flex flex-col gap-1.5">
                                         <div class="flex items-center gap-1">
                                             <span
-                                                class="text-[10px] font-black text-slate-400 tracking-tighter">{{ explode('–', $linea->codigo)[0] ?? '' }}</span>
+                                                class="text-[10px] font-black text-slate-700 tracking-tighter">{{ explode('–', $linea->codigo)[0] ?? '' }}</span>
                                             <span
-                                                class="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-black rounded-md">–{{ explode('–', $linea->codigo)[1] ?? '' }}</span>
+                                                class="px-1.5 py-0.5 bg-slate-100 text-slate-900 text-[10px] font-black rounded-md">–{{ explode('–', $linea->codigo)[1] ?? '' }}</span>
                                         </div>
                                         @if ($pedido)
                                             <a href="{{ route('entradas.index', ['pedido_codigo' => $pedido->codigo, 'pedido_producto_id' => $linea->id]) }}"
-                                                class="inline-flex items-center gap-1.5 text-[9px] font-black text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-widest group/link">
+                                                class="inline-flex items-center gap-1.5 text-[9px] font-black text-slate-700 hover:text-slate-900 hover:underline hover:underline-offset-4 transition-colors uppercase tracking-widest group/link">
                                                 Historial Entradas
                                                 <svg class="w-3 h-3 transform group-hover/link:translate-x-0.5 transition-transform"
                                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -240,7 +247,7 @@
                                 {{-- Edición Producto --}}
                                 <div class="producto-edit-{{ $linea->id }} hidden">
                                     <select
-                                        class="producto-base-select text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg p-2 w-full shadow-sm focus:ring-2 focus:ring-blue-500"
+                                        class="producto-base-select text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg p-2 w-full shadow-sm focus:ring-2 focus:ring-slate-900"
                                         data-linea-id="{{ $linea->id }}">
                                         @foreach ($productosBase->groupBy('tipo') as $tipo => $prods)
                                             <optgroup label="{{ strtoupper($tipo) }}"
@@ -260,7 +267,7 @@
                             <td class="px-6 py-5">
                                 <div class="lugar-entrega-view-{{ $linea->id }} flex items-center gap-2">
                                     <div
-                                        class="w-1.5 h-1.5 rounded-full {{ $linea->obra_id ? 'bg-blue-500' : 'bg-amber-400' }}">
+                                        class="w-1.5 h-1.5 rounded-full {{ $linea->obra_id ? 'bg-slate-900' : 'bg-amber-400' }}">
                                     </div>
                                     <span
                                         class="text-sm font-black text-slate-600 truncate max-w-[150px] tracking-tight"
@@ -293,17 +300,16 @@
                             <td class="px-6 py-5 text-right">
                                 <span
                                     class="text-base font-black text-slate-900 tracking-tighter">{{ number_format($linea->cantidad ?? 0, 0, ',', '.') }}</span>
-                                <span class="text-[10px] font-black text-slate-400 uppercase ml-0.5">kg</span>
+                                <span class="text-[10px] font-black text-slate-700 uppercase ml-0.5">kg</span>
                             </td>
 
                             <td class="px-6 py-5 text-right">
-                                <div class="flex flex-col items-end">
+                                <div class="flex flex-col items-center">
                                     <div class="flex items-baseline gap-1">
-                                        <span
-                                            class="text-base font-black tracking-tighter {{ ($linea->cantidad_recepcionada ?? 0) >= ($linea->cantidad ?? 0) ? 'text-emerald-600' : 'text-slate-800' }}">
+                                        <span class="text-base font-black tracking-tighter text-slate-800">
                                             {{ number_format($linea->cantidad_recepcionada ?? 0, 0, ',', '.') }}
                                         </span>
-                                        <span class="text-[10px] font-black text-slate-400 uppercase">kg</span>
+                                        <span class="text-[10px] font-black text-slate-700 uppercase">kg</span>
                                     </div>
                                     @php
                                         $porcentaje =
@@ -311,8 +317,9 @@
                                                 ? ($linea->cantidad_recepcionada / $linea->cantidad) * 100
                                                 : 0;
                                     @endphp
-                                    <div class="w-20 h-1 bg-slate-100 rounded-full mt-1.5 overflow-hidden">
-                                        <div class="h-full {{ $porcentaje >= 100 ? 'bg-emerald-500' : 'bg-blue-500' }} rounded-full"
+                                    <div
+                                        class="w-20 h-2 bg-slate-200 border {{ $porcentaje >= 100 ? 'border-emerald-700' : 'border-slate-700' }} rounded-full mt-1.5 overflow-hidden">
+                                        <div class="h-full {{ $porcentaje >= 100 ? 'bg-emerald-500' : 'bg-indigo-400' }} rounded-full"
                                             style="width: {{ min(100, $porcentaje) }}%"></div>
                                     </div>
                                 </div>
@@ -323,6 +330,19 @@
                                     <span
                                         class="px-2.5 py-1 bg-slate-100 text-slate-700 text-[11px] font-black rounded-lg tracking-tight shadow-sm border border-slate-200/50">
                                         {{ $linea->fecha_estimada_entrega_formateada ?? 'S/F' }}
+                                    </span>
+                                </div>
+                            </td>
+
+                            <td class="px-6 py-5 text-right">
+                                <div class="flex flex-col items-end">
+                                    <span
+                                        class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider
+                                         {{ $linea->estado === 'cancelado' ? 'bg-slate-200 text-slate-600' : '' }}
+                                         {{ $linea->estado === 'completado' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : '' }}
+                                         {{ $linea->estado === 'facturado' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : '' }}
+                                         {{ in_array($linea->estado, ['activo', 'pendiente', 'parcial']) ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' : '' }}">
+                                        {{ $linea->estado }}
                                     </span>
                                 </div>
                             </td>
@@ -340,10 +360,10 @@
                                         $esNavePaco = $obraLinea && $obraLinea->es_nave_paco_reyes;
                                     @endphp
 
-                                    @if (!$esFinalizado && $pedido)
-                                        {{-- BOTONES DE ACCIÓN --}}
+                                    {{-- BOTONES DE ACCIÓN --}}
+                                    @if ($pedido)
                                         <div
-                                            class="botones-estado-{{ $linea->id }} flex items-center justify-end gap-2">
+                                            class="botones-estado-{{ $linea->id }} flex items-center justify-end gap-2 {{ $esFinalizado ? 'hidden' : '' }}">
                                             @if ($esEntregaDirecta)
                                                 <form method="POST"
                                                     action="{{ route('pedidos.editarCompletarLineaManual', [$pedido->id, $linea->id]) }}"
@@ -394,7 +414,7 @@
                                             @endif
 
                                             <button type="button" onclick="abrirEdicionLinea({{ $linea->id }})"
-                                                class="btn-editar-linea-{{ $linea->id }} w-10 h-10 flex items-center justify-center bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl transition-all duration-300 shadow-sm border border-blue-100"
+                                                class="btn-editar-linea-{{ $linea->id }} w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-800 hover:bg-slate-900 hover:text-white rounded-xl transition-all duration-300 shadow-sm border border-slate-200"
                                                 title="Configurar Línea">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
@@ -409,7 +429,7 @@
                                         <div class="flex items-center gap-2">
                                             <button type="button"
                                                 onclick="guardarLinea({{ $linea->id }}, {{ $pedido->id }})"
-                                                class="btn-guardar-linea-{{ $linea->id }} hidden w-10 h-10 items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all">
+                                                class="btn-guardar-linea-{{ $linea->id }} hidden w-10 h-10 items-center justify-center bg-slate-900 text-white rounded-xl shadow-lg shadow-slate-200 hover:bg-black transition-all">
                                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24"
                                                     stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -427,11 +447,6 @@
                                                 </svg>
                                             </button>
                                         </div>
-                                    @else
-                                        <div class="flex flex-col items-end">
-                                            <span
-                                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ $estado }}</span>
-                                        </div>
                                     @endif
                                 </div>
                             </td>
@@ -439,7 +454,7 @@
                     @endforeach
                 @empty
                     <tr>
-                        <td colspan="7" class="px-6 py-12 text-center">
+                        <td colspan="8" class="px-6 py-12 text-center">
                             <div class="flex flex-col items-center gap-2">
                                 <span class="text-4xl">🔎</span>
                                 <h3 class="text-sm font-bold text-slate-800">No se encontraron líneas</h3>

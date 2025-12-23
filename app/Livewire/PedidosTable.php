@@ -84,9 +84,18 @@ class PedidosTable extends Component
     public function limpiarFiltros()
     {
         $this->reset([
-            'codigo_linea', 'codigo', 'pedido_global_id', 'fabricante_id', 'distribuidor_id',
-            'obra_id', 'producto_tipo', 'producto_diametro', 'producto_longitud',
-            'fecha_pedido', 'fecha_entrega', 'estado'
+            'codigo_linea',
+            'codigo',
+            'pedido_global_id',
+            'fabricante_id',
+            'distribuidor_id',
+            'obra_id',
+            'producto_tipo',
+            'producto_diametro',
+            'producto_longitud',
+            'fecha_pedido',
+            'fecha_entrega',
+            'estado'
         ]);
         $this->resetPage();
     }
@@ -137,22 +146,20 @@ class PedidosTable extends Component
 
     public function aplicarFiltros($query)
     {
-        // Código línea (búsqueda flexible)
+        // Código de línea específico (Contiene)
         if (!empty($this->codigo_linea)) {
             $busqueda = trim($this->codigo_linea);
-
-            if (str_starts_with($busqueda, '=')) {
-                $busqueda = ltrim($busqueda, '=');
-                $query->where('pedido_productos.codigo', $busqueda);
-            } else {
-                $query->where('pedido_productos.codigo', 'like', '%' . $busqueda . '%');
-            }
+            $query->where('pedido_productos.codigo', 'like', '%' . $busqueda . '%');
         }
 
-        // Código del pedido
+        // Buscador Global (Pedido o Referencia de línea) - TIPO CONTAINS
         if (!empty($this->codigo)) {
-            $query->whereHas('pedido', function ($q) {
-                $q->where('codigo', 'like', '%' . trim($this->codigo) . '%');
+            $termino = trim($this->codigo);
+            $query->where(function ($q) use ($termino) {
+                $q->where('pedido_productos.codigo', 'like', '%' . $termino . '%')
+                    ->orWhereHas('pedido', function ($sq) use ($termino) {
+                        $sq->where('codigo', 'like', '%' . $termino . '%');
+                    });
             });
         }
 
@@ -242,7 +249,10 @@ class PedidosTable extends Component
 
         // Aplicar ordenamiento
         $columnasPermitidas = [
-            'codigo', 'fecha_estimada_entrega', 'estado', 'created_at'
+            'codigo',
+            'fecha_estimada_entrega',
+            'estado',
+            'created_at'
         ];
 
         $sortBy = in_array($this->sort, $columnasPermitidas) ? $this->sort : 'created_at';
@@ -251,8 +261,8 @@ class PedidosTable extends Component
         // Para ordenar por campos del pedido padre
         if ($this->sort === 'fecha_pedido') {
             $query->join('pedidos', 'pedido_productos.pedido_id', '=', 'pedidos.id')
-                  ->orderBy('pedidos.fecha_pedido', $orderDir)
-                  ->select('pedido_productos.*');
+                ->orderBy('pedidos.fecha_pedido', $orderDir)
+                ->select('pedido_productos.*');
         } else {
             $query->orderBy($sortBy, $orderDir);
         }

@@ -47,22 +47,22 @@
                     </p>
                 </div>
 
-                <nav class="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
+                <nav class="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
                     <button @click="activeTab = 'active'"
-                        :class="activeTab === 'active' ? 'bg-white shadow-sm text-blue-600' :
-                            'text-slate-500 hover:text-slate-900 hover:bg-white/50'"
+                        :class="activeTab === 'active' ? 'bg-white shadow-sm text-slate-900' :
+                            'text-slate-50 hover:text-slate-900 hover:bg-white/50'"
                         class="px-8 py-3.5 rounded-xl text-sm font-black transition-all duration-300 flex items-center gap-3">
                         <span class="text-lg">📋</span>
                         Pedidos Activos
                     </button>
                     <button @click="activeTab = 'replenishment'"
-                        :class="activeTab === 'replenishment' ? 'bg-white shadow-sm text-blue-600' :
-                            'text-slate-500 hover:text-slate-900 hover:bg-white/50'"
+                        :class="activeTab === 'replenishment' ? 'bg-white shadow-sm text-slate-900' :
+                            'text-slate-50 hover:text-slate-900 hover:bg-white/50'"
                         class="px-8 py-3.5 rounded-xl text-sm font-black transition-all duration-300 flex items-center gap-3">
                         <span class="text-lg">📈</span>
                         Análisis y Reposición
                         <span x-show="cart.length > 0"
-                            class="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+                            class="flex h-2 w-2 rounded-full bg-slate-900 animate-pulse"></span>
                     </button>
                 </nav>
             </div>
@@ -144,7 +144,7 @@
                     x-transition:enter-start="translate-x-full opacity-0"
                     x-transition:enter-end="translate-x-0 opacity-100">
                     <div
-                        class="bg-slate-900 rounded-[1.5rem] p-5 text-white shadow-2xl shadow-blue-900/20 border border-slate-800 flex flex-col h-[calc(100vh-120px)] max-h-[850px] relative overflow-hidden">
+                        class="bg-slate-900 rounded-[1.5rem] p-5 text-white shadow-2xl shadow-blue-900/20 border border-slate-800 flex flex-col h-[calc(100vh-120px)] max-h-[540px] relative overflow-hidden">
                         <!-- Background Glow -->
                         <div class="absolute -top-24 -right-24 w-64 h-64 bg-blue-600/10 rounded-full blur-[80px]"></div>
 
