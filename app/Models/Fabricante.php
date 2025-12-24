@@ -12,6 +12,7 @@ class Fabricante extends Model
 
     protected $fillable = [
         'nombre',
+        'nif',
         'telefono',
         'email',
         'direccion',

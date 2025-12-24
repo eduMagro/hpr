@@ -1,385 +1,447 @@
 <x-app-layout>
-    <x-slot name="title">Proveedores - {{ config('app.name') }}</x-slot>
+    <x-slot name="title">Alianzas Estratégicas - {{ config('app.name') }}</x-slot>
 
-    <div class="px-4 py-4">
-        <div x-data="{ openProveedorModal: false }" class="container mx-auto p-4">
-            <!-- Botón para abrir el modal de añadir empresa -->
-            <div class="flex justify-between mb-6">
-                <button @click="openProveedorModal = true"
-                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    ➕ Añadir Fabricante
-                </button>
-            </div>
+    <style>
+        .font-outfit {
+            font-family: 'Outfit', sans-serif;
+        }
 
-            <!-- Modal para añadir nueva empresa -->
-            <div x-show="openProveedorModal" x-transition x-cloak
-                class="fixed inset-0 flex items-center justify-center z-50 bg-gray-800 bg-opacity-50">
-                <div class="bg-white p-4 rounded-lg w-96">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Añadir Proveedor</h2>
-                    <form action="{{ route('fabricantes.store') }}" method="POST">
-                        @csrf
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
 
-                        <div class="mb-4">
-                            <label for="nombre" class="block text-gray-700">Nombre</label>
-                            <input type="text" id="nombre" name="nombre"
-                                class="w-full p-2 border border-gray-300 rounded-lg" required>
-                        </div>
+        .hover-lift {
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+        }
 
-                        <div class="mb-4">
-                            <label for="nif" class="block text-gray-700">NIF</label>
-                            <input type="text" id="nif" name="nif"
-                                class="w-full p-2 border border-gray-300 rounded-lg" required>
-                        </div>
+        .hover-lift:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
 
-                        <div class="mb-4">
-                            <label for="telefono" class="block text-gray-700">Teléfono</label>
-                            <input type="text" id="telefono" name="telefono"
-                                class="w-full p-2 border border-gray-300 rounded-lg" required>
-                        </div>
+        [contenteditable]:focus {
+            outline: none;
+            background: rgba(79, 70, 229, 0.05);
+            border-radius: 4px;
+        }
+    </style>
 
-                        <div class="mb-4">
-                            <label for="email" class="block text-gray-700">Email</label>
-                            <input type="email" id="email" name="email"
-                                class="w-full p-2 border border-gray-300 rounded-lg" required>
-                        </div>
+    <div class="px-8 py-8" x-data="{ openFabricanteModal: false, openDistribuidorModal: false }">
 
-                        <div class="flex justify-between">
-                            <button type="button" @click="openProveedorModal = false"
-                                class="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500">
-                                Cancelar
-                            </button>
-                            <button type="submit"
-                                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                                Guardar
-                            </button>
-                        </div>
-                    </form>
+        <!-- Header Section -->
+        <div class="max-w-7xl mx-auto mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+                <div class="flex items-center gap-3 mb-2 text-indigo-600">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                        <i data-lucide="handshake" class="w-6 h-6"></i>
+                    </div>
+                    <span class="text-sm font-bold uppercase tracking-[0.2em]">Ecosistema</span>
                 </div>
+                <h1 class="text-4xl font-extrabold text-slate-900 font-outfit tracking-tight">Fabricantes y <span
+                        class="text-indigo-600">Distribuidores</span></h1>
+                <p class="text-slate-500 mt-2 font-medium">Gestiona tu red de socios industriales y de suministro de
+                    forma centralizada.</p>
             </div>
 
-
-            <div class="overflow-x-auto bg-white shadow rounded-lg">
-                <table class="w-full text-sm border-collapse border text-center">
-                    <thead class="bg-blue-500 text-white uppercase text-xs">
-                        <tr>
-                            <th class="px-3 py-2 border">ID</th>
-                            <th class="px-3 py-2 border">Nombre</th>
-                            <th class="px-3 py-2 border">NIF</th>
-                            <th class="px-3 py-2 border">Teléfono</th>
-                            <th class="px-3 py-2 border">Email</th>
-                            <th class="px-3 py-2 border">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($fabricantes as $fabricante)
-                            <tr tabindex="0" x-data="{
-                                editando: false,
-                                fabricante: @js($fabricante),
-                                original: JSON.parse(JSON.stringify(@js($fabricante)))
-                            }"
-                                @dblclick="if(!$event.target.closest('input')) {
-                          if(!editando) {
-                            editando = true;
-                          } else {
-                            fabricante = JSON.parse(JSON.stringify(original));
-                            editando = false;
-                          }
-                        }"
-                                @keydown.enter.stop="guardarCambiosFabricante(fabricante); editando = false"
-                                :class="{ 'bg-yellow-100': editando }"
-                                class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
-
-                                <td class="px-3 py-2" x-text="fabricante.id"></td>
-
-                                <!-- Nombre -->
-                                <td class="p-2 text-center border">
-                                    <template x-if="!editando">
-                                        <span x-text="fabricante.nombre"></span>
-                                    </template>
-                                    <input x-show="editando" type="text" x-model="fabricante.nombre"
-                                        class="form-input w-full">
-                                </td>
-                                <!-- NIF -->
-                                <td class="p-2 text-center border">
-                                    <template x-if="!editando">
-                                        <span x-text="fabricante.nif"></span>
-                                    </template>
-                                    <input x-show="editando" type="text" x-model="fabricante.nif"
-                                        class="form-input w-full">
-                                </td>
-                                <!-- TLFNO -->
-                                <td class="p-2 text-center border">
-                                    <template x-if="!editando">
-                                        <span x-text="fabricante.telefono"></span>
-                                    </template>
-                                    <input x-show="editando" type="text" x-model="fabricante.telefono"
-                                        class="form-input w-full">
-                                </td>
-                                <!-- EMAIL -->
-                                <td class="p-2 text-center border">
-                                    <template x-if="!editando">
-                                        <span x-text="fabricante.email"></span>
-                                    </template>
-                                    <input x-show="editando" type="text" x-model="fabricante.email"
-                                        class="form-input w-full">
-                                </td>
-
-                                <td class="px-3 py-2 space-x-2">
-                                    <x-tabla.boton-eliminar :action="route('fabricantes.destroy', $fabricante->id)" />
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="6" class="py-4 text-gray-500">No hay fabricantes registrados.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div x-data="{ openDistribuidorModal: false }" class="container mx-auto p-4">
-            <!-- Botón para abrir el modal de añadir empresa -->
-            <div class="flex justify-between mb-6">
+            <div class="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
+                <button @click="openFabricanteModal = true"
+                    class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-md shadow-indigo-100 active:scale-95 group">
+                    <i data-lucide="factory" class="w-5 h-5"></i>
+                    Nuevo Fabricante
+                </button>
                 <button @click="openDistribuidorModal = true"
-                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    ➕ Añadir Distribuidor
+                    class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-md shadow-emerald-100 active:scale-95 group">
+                    <i data-lucide="truck" class="w-5 h-5"></i>
+                    Nuevo Distribuidor
                 </button>
-            </div>
-
-            <!-- Modal para añadir nueva empresa -->
-            <div x-show="openDistribuidorModal" x-transition x-cloak
-                class="fixed inset-0 flex items-center justify-center z-50 bg-gray-800 bg-opacity-50">
-                <div class="bg-white p-4 rounded-lg w-96">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Añadir Distribuidor</h2>
-                    <form action="{{ route('distribuidores.store') }}" method="POST">
-                        @csrf
-
-                        <div class="mb-4">
-                            <label for="nombre" class="block text-gray-700">Nombre</label>
-                            <input type="text" id="nombre" name="nombre"
-                                class="w-full p-2 border border-gray-300 rounded-lg" required>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="nif" class="block text-gray-700">NIF</label>
-                            <input type="text" id="nif" name="nif"
-                                class="w-full p-2 border border-gray-300 rounded-lg" required>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="telefono" class="block text-gray-700">Teléfono</label>
-                            <input type="text" id="telefono" name="telefono"
-                                class="w-full p-2 border border-gray-300 rounded-lg" required>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="email" class="block text-gray-700">Email</label>
-                            <input type="email" id="email" name="email"
-                                class="w-full p-2 border border-gray-300 rounded-lg" required>
-                        </div>
-
-                        <div class="flex justify-between">
-                            <button type="button" @click="openDistribuidorModal = false"
-                                class="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500">
-                                Cancelar
-                            </button>
-                            <button type="submit"
-                                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                                Guardar
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-
-            <div class="overflow-x-auto bg-white shadow rounded-lg">
-                <table class="w-full text-sm border-collapse border text-center">
-                    <thead class="bg-blue-500 text-white uppercase text-xs">
-                        <tr>
-                            <th class="px-3 py-2 border">ID</th>
-                            <th class="px-3 py-2 border">Nombre</th>
-                            <th class="px-3 py-2 border">NIF</th>
-                            <th class="px-3 py-2 border">Teléfono</th>
-                            <th class="px-3 py-2 border">Email</th>
-                            <th class="px-3 py-2 border">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($distribuidores as $distribuidor)
-                            <tr tabindex="0" x-data="{
-                                editando: false,
-                                distribuidor: @js($distribuidor),
-                                original: JSON.parse(JSON.stringify(@js($distribuidor)))
-                            }"
-                                @dblclick="if(!$event.target.closest('input')) {
-                          if(!editando) {
-                            editando = true;
-                          } else {
-                            distribuidor = JSON.parse(JSON.stringify(original));
-                            editando = false;
-                          }
-                        }"
-                                @keydown.enter.stop="guardarCambiosDistribuidor(distribuidor); editando = false"
-                                :class="{ 'bg-yellow-100': editando }"
-                                class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
-
-                                <td class="px-3 py-2" x-text="distribuidor.id"></td>
-
-                                <!-- Nombre -->
-                                <td class="p-2 text-center border">
-                                    <template x-if="!editando">
-                                        <span x-text="distribuidor.nombre"></span>
-                                    </template>
-                                    <input x-show="editando" type="text" x-model="distribuidor.nombre"
-                                        class="form-input w-full">
-                                </td>
-                                <!-- NIF -->
-                                <td class="p-2 text-center border">
-                                    <template x-if="!editando">
-                                        <span x-text="distribuidor.nif"></span>
-                                    </template>
-                                    <input x-show="editando" type="text" x-model="distribuidor.nif"
-                                        class="form-input w-full">
-                                </td>
-                                <!-- TLFNO -->
-                                <td class="p-2 text-center border">
-                                    <template x-if="!editando">
-                                        <span x-text="distribuidor.telefono"></span>
-                                    </template>
-                                    <input x-show="editando" type="text" x-model="distribuidor.telefono"
-                                        class="form-input w-full">
-                                </td>
-                                <!-- EMAIL -->
-                                <td class="p-2 text-center border">
-                                    <template x-if="!editando">
-                                        <span x-text="distribuidor.email"></span>
-                                    </template>
-                                    <input x-show="editando" type="text" x-model="distribuidor.email"
-                                        class="form-input w-full">
-                                </td>
-
-                                <td class="px-3 py-2 space-x-2">
-                                    <x-tabla.boton-eliminar :action="route('distribuidores.destroy', $distribuidor->id)" />
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="6" class="py-4 text-gray-500">No hay distribuidores registrados.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
             </div>
         </div>
 
-        {{-- PARA FABRICANTES --}}
-        <script>
-            function guardarCambiosFabricante(fabricante) {
-                fetch(`/fabricantes/${fabricante.id}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        },
-                        body: JSON.stringify(fabricante)
-                    })
-                    .then(async response => {
-                        const contentType = response.headers.get('content-type');
-                        let data = {};
+        <div class="max-w-7xl mx-auto space-y-16">
 
-                        if (contentType?.includes('application/json')) {
-                            data = await response.json();
-                        } else {
-                            const text = await response.text();
-                            throw new Error("Respuesta inesperada del servidor: " + text.slice(0, 100));
-                        }
+            <!-- FABRICANTES SECTION -->
+            <section>
+                <div class="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-indigo-600 shadow-sm">
+                            <i data-lucide="factory" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-900 font-outfit">Fabricantes</h2>
+                            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-0.5">Socios de
+                                Producción</p>
+                        </div>
+                    </div>
+                    <div
+                        class="flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-full text-xs font-bold text-indigo-600">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                        <span id="fabricantes-count">{{ $fabricantes->count() }} Fabricantes Activos</span>
+                    </div>
+                </div>
 
-                        if (!response.ok || !data.success) {
-                            let errorMsg = data.message || "Error inesperado.";
-                            if (data.errors) {
-                                errorMsg = Object.values(data.errors).flat().join("<br>");
-                            }
-                            Swal.fire({
-                                icon: "error",
-                                title: "Error al actualizar fabricante",
-                                html: errorMsg,
-                                confirmButtonText: "OK"
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: "success",
-                                title: "Fabricante actualizado",
-                                text: data.message,
-                                timer: 1200,
-                                showConfirmButton: false
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        Swal.fire({
-                            icon: "error",
-                            title: "Error de conexión",
-                            text: error.message || "No se pudo actualizar.",
-                            confirmButtonText: "OK"
-                        });
-                    });
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="fabricantes-grid">
+                    @foreach ($fabricantes as $fabricante)
+                        @include('fabricantes.partials.fabricante-card', ['fabricante' => $fabricante])
+                    @endforeach
+
+                    <!-- Add Placeholder -->
+                    <div @click="openFabricanteModal = true"
+                        class="border-2 border-dashed border-slate-200 rounded-[2.5rem] p-8 flex flex-col items-center justify-center gap-4 text-slate-400 hover:border-indigo-300 hover:text-indigo-500 transition-all cursor-pointer group">
+                        <div
+                            class="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
+                            <i data-lucide="plus" class="w-8 h-8"></i>
+                        </div>
+                        <span class="font-bold text-sm tracking-widest uppercase">Añadir Fabricante</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- DISTRIBUIDORES SECTION -->
+            <section>
+                <div class="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-emerald-600 shadow-sm">
+                            <i data-lucide="truck" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-900 font-outfit">Distribuidores</h2>
+                            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-0.5">Socios de
+                                Logística</p>
+                        </div>
+                    </div>
+                    <div
+                        class="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-full text-xs font-bold text-emerald-600">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span id="distribuidores-count">{{ $distribuidores->count() }} Distribuidores Activos</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="distribuidores-grid">
+                    @foreach ($distribuidores as $distribuidor)
+                        @include('fabricantes.partials.distribuidor-card', [
+                            'distribuidor' => $distribuidor,
+                        ])
+                    @endforeach
+
+                    <!-- Add Placeholder -->
+                    <div @click="openDistribuidorModal = true"
+                        class="border-2 border-dashed border-slate-200 rounded-[2.5rem] p-8 flex flex-col items-center justify-center gap-4 text-slate-400 hover:border-emerald-300 hover:text-emerald-500 transition-all cursor-pointer group">
+                        <div
+                            class="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center group-hover:bg-emerald-50 transition-colors">
+                            <i data-lucide="plus" class="w-8 h-8"></i>
+                        </div>
+                        <span class="font-bold text-sm tracking-widest uppercase">Añadir Distribuidor</span>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Modal Fabricante -->
+        <div x-show="openFabricanteModal" @close-fabricante-modal.window="openFabricanteModal = false" x-transition
+            x-cloak class="fixed inset-0 flex items-center justify-center z-[60] bg-slate-900/80 backdrop-blur-sm p-4">
+            <div @click.away="openFabricanteModal = false"
+                class="bg-white p-8 rounded-[2.5rem] w-full max-w-md overflow-hidden relative shadow-2xl">
+                <div class="absolute top-0 right-0 p-8 opacity-5">
+                    <i data-lucide="factory" class="w-24 h-24 text-indigo-600"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800 mb-6 font-outfit">Nuevo Fabricante</h2>
+                <form action="{{ route('fabricantes.store') }}" method="POST" id="form-nuevo-fabricante"
+                    class="space-y-4">
+                    @csrf
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Nombre
+                            Comercial</label>
+                        <input type="text" name="nombre"
+                            class="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
+                            placeholder="Ej: Aceros Industriales S.A." required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">NIF / CIF</label>
+                        <input type="text" name="nif"
+                            class="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
+                            placeholder="Ej: B12345678" required>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Teléfono</label>
+                            <input type="text" name="telefono"
+                                class="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
+                                placeholder="912 345 678" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Email</label>
+                            <input type="email" name="email"
+                                class="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
+                                placeholder="contacto@empresa.com" required>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 pt-4">
+                        <button type="button" @click="openFabricanteModal = false"
+                            class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-4 rounded-2xl transition-all">Cancelar</button>
+                        <button type="submit"
+                            class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl shadow-md shadow-indigo-100 transition-all">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal Distribuidor -->
+        <div x-show="openDistribuidorModal" @close-distribuidor-modal.window="openDistribuidorModal = false"
+            x-transition x-cloak
+            class="fixed inset-0 flex items-center justify-center z-[60] bg-slate-900/80 backdrop-blur-sm p-4">
+            <div @click.away="openDistribuidorModal = false"
+                class="bg-white p-8 rounded-[2.5rem] w-full max-w-md overflow-hidden relative shadow-2xl">
+                <div class="absolute top-0 right-0 p-8 opacity-5">
+                    <i data-lucide="truck" class="w-24 h-24 text-emerald-600"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800 mb-6 font-outfit">Nuevo Distribuidor</h2>
+                <form action="{{ route('distribuidores.store') }}" method="POST" id="form-nuevo-distribuidor"
+                    class="space-y-4">
+                    @csrf
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Nombre
+                            Comercial</label>
+                        <input type="text" name="nombre"
+                            class="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-emerald-500 transition-all"
+                            placeholder="Ej: Logística Express" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">NIF / CIF</label>
+                        <input type="text" name="nif"
+                            class="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-emerald-500 transition-all"
+                            placeholder="Ej: B98765432" required>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Teléfono</label>
+                            <input type="text" name="telefono"
+                                class="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-emerald-500 transition-all"
+                                placeholder="934 567 890" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Email</label>
+                            <input type="email" name="email"
+                                class="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-emerald-500 transition-all"
+                                placeholder="ops@distribuidor.es" required>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 pt-4">
+                        <button type="button" @click="openDistribuidorModal = false"
+                            class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-4 rounded-2xl transition-all">Cancelar</button>
+                        <button type="submit"
+                            class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-2xl shadow-md shadow-emerald-100 transition-all">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function initFabricantesPage() {
+            if (document.body.dataset.fabricantesPageInit === 'true') return;
+            console.log('🚀 Inicializando Fabricantes y Distribuidores (Premium)...');
+
+            if (window.lucide) {
+                lucide.createIcons();
             }
-        </script>
 
-        {{-- PARA DISTRIBUIDORES --}}
-        <script>
-            function guardarCambiosDistribuidor(distribuidor) {
-                fetch(`/distribuidores/${distribuidor.id}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        },
-                        body: JSON.stringify(distribuidor)
-                    })
-                    .then(async response => {
-                        const contentType = response.headers.get('content-type');
-                        let data = {};
+            // Delegación para edición en línea (Fabricantes y Distribuidores)
+            if (!document.body.dataset.fabricantesDelegated) {
+                document.addEventListener('keydown', (e) => {
+                    const el = e.target.closest('.editable');
+                    if (el && e.key === 'Enter') {
+                        e.preventDefault();
+                        el.blur();
+                    }
+                });
 
-                        if (contentType?.includes('application/json')) {
-                            data = await response.json();
-                        } else {
-                            const text = await response.text();
-                            throw new Error("Respuesta inesperada del servidor: " + text.slice(0, 100));
-                        }
+                document.addEventListener('blur', (e) => {
+                    const el = e.target.closest('.editable');
+                    if (!el) return;
 
-                        if (!response.ok || !data.success) {
-                            let errorMsg = data.message || "Error inesperado.";
-                            if (data.errors) {
-                                errorMsg = Object.values(data.errors).flat().join("<br>");
+                    const id = el.dataset.id;
+                    const type = el.dataset.type; // fabricante o distribuidor
+                    const field = el.dataset.field;
+                    let value = el.textContent.trim();
+
+                    if (!value) {
+                        console.warn(`El campo ${field} no puede estar vacío.`);
+                        return;
+                    }
+
+                    const url = type === 'fabricante' ? `/fabricantes/${id}` : `/distribuidores/${id}`;
+
+                    fetch(url, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                [field]: value,
+                                nombre: el.closest('.glass-card').querySelector('[data-field="nombre"]')
+                                    .textContent.trim()
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                const Toast = Swal.mixin({
+                                    toast: true,
+                                    position: 'top-end',
+                                    showConfirmButton: false,
+                                    timer: 2000,
+                                    timerProgressBar: true
+                                });
+                                Toast.fire({
+                                    icon: 'success',
+                                    title: 'Actualizado correctamente'
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    text: data.message || 'Error al actualizar.'
+                                });
                             }
-                            Swal.fire({
-                                icon: "error",
-                                title: "Error al actualizar distribuidor",
-                                html: errorMsg,
-                                confirmButtonText: "OK"
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: "success",
-                                title: "Distribuidor actualizado",
-                                text: data.message,
-                                timer: 1200,
-                                showConfirmButton: false
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        Swal.fire({
-                            icon: "error",
-                            title: "Error de conexión",
-                            text: error.message || "No se pudo actualizar.",
-                            confirmButtonText: "OK"
-                        });
-                    });
-            }
-        </script>
+                        })
+                        .catch(err => console.error('Error:', err));
+                }, true);
 
+                document.body.dataset.fabricantesDelegated = 'true';
+            }
+
+            // AJAX para creación de Fabricante
+            const formFabricante = document.getElementById('form-nuevo-fabricante');
+            if (formFabricante && !formFabricante.dataset.ajaxAttached) {
+                formFabricante.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    const data = Object.fromEntries(formData.entries());
+
+                    fetch(this.action, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify(data)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                window.dispatchEvent(new CustomEvent('close-fabricante-modal'));
+
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: data.message,
+                                    timer: 2000,
+                                    showConfirmButton: false,
+                                    toast: true,
+                                    position: 'top-end'
+                                });
+
+                                const countEl = document.getElementById('fabricantes-count');
+                                if (countEl) countEl.textContent = `${data.count} Fabricantes Activos`;
+
+                                const grid = document.getElementById('fabricantes-grid');
+                                const placeholder = grid.lastElementChild;
+                                const tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = data.html;
+                                grid.insertBefore(tempDiv.firstElementChild, placeholder);
+
+                                formFabricante.reset();
+                                if (window.lucide) lucide.createIcons();
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    text: data.message || 'Error al guardar.'
+                                });
+                            }
+                        })
+                        .catch(err => console.error('Error:', err));
+                });
+                formFabricante.dataset.ajaxAttached = 'true';
+            }
+
+            // AJAX para creación de Distribuidor
+            const formDistribuidor = document.getElementById('form-nuevo-distribuidor');
+            if (formDistribuidor && !formDistribuidor.dataset.ajaxAttached) {
+                formDistribuidor.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    const data = Object.fromEntries(formData.entries());
+
+                    fetch(this.action, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify(data)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                window.dispatchEvent(new CustomEvent('close-distribuidor-modal'));
+
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: data.message,
+                                    timer: 2000,
+                                    showConfirmButton: false,
+                                    toast: true,
+                                    position: 'top-end'
+                                });
+
+                                const countEl = document.getElementById('distribuidores-count');
+                                if (countEl) countEl.textContent = `${data.count} Distribuidores Activos`;
+
+                                const grid = document.getElementById('distribuidores-grid');
+                                const placeholder = grid.lastElementChild;
+                                const tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = data.html;
+                                grid.insertBefore(tempDiv.firstElementChild, placeholder);
+
+                                formDistribuidor.reset();
+                                if (window.lucide) lucide.createIcons();
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    text: data.message || 'Error al guardar.'
+                                });
+                            }
+                        })
+                        .catch(err => console.error('Error:', err));
+                });
+                formDistribuidor.dataset.ajaxAttached = 'true';
+            }
+
+            document.body.dataset.fabricantesPageInit = 'true';
+
+            const cleanup = () => {
+                document.body.dataset.fabricantesPageInit = 'false';
+            };
+            document.addEventListener('livewire:navigating', cleanup, {
+                once: true
+            });
+        }
+
+        // Registrar e inicializar
+        window.pageInitializers = window.pageInitializers || [];
+        window.pageInitializers.push(initFabricantesPage);
+        document.addEventListener('livewire:navigated', initFabricantesPage);
+        document.addEventListener('DOMContentLoaded', initFabricantesPage);
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            initFabricantesPage();
+        }
+    </script>
 </x-app-layout>

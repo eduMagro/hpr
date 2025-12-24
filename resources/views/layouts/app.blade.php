@@ -35,6 +35,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- ✅ FullCalendar (solo si es necesario en esta vista) -->
     @stack('calendar') {{-- así solo lo cargas si lo necesitas --}}
@@ -241,6 +242,9 @@
         document.addEventListener('livewire:navigated', () => {
             if (localStorage.getItem('dark_mode') === 'true') {
                 document.documentElement.classList.add('dark');
+            }
+            if (window.lucide) {
+                lucide.createIcons();
             }
         });
 

@@ -7,6 +7,7 @@ use App\Models\Fabricante;
 use App\Models\Distribuidor;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Log;
 
 class FabricanteController extends Controller
 {
@@ -36,31 +37,40 @@ class FabricanteController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nombre'   => 'required|string|max:255',
-            'nif'      => 'required|string|max:255',
+            'nombre' => 'required|string|max:255',
+            'nif' => 'required|string|max:255',
             'telefono' => 'required|string|max:20',
-            'email'    => 'required|email|max:255',
+            'email' => 'required|email|max:255',
         ], [
-            'nombre.required'   => 'El nombre del fabricante es obligatorio.',
-            'nombre.max'        => 'El nombre no puede tener más de 255 caracteres.',
+            'nombre.required' => 'El nombre del fabricante es obligatorio.',
+            'nombre.max' => 'El nombre no puede tener más de 255 caracteres.',
 
-            'nif.required'      => 'El NIF es obligatorio.',
-            'nif.max'           => 'El NIF no puede tener más de 255 caracteres.',
+            'nif.required' => 'El NIF es obligatorio.',
+            'nif.max' => 'El NIF no puede tener más de 255 caracteres.',
 
             'telefono.required' => 'El teléfono es obligatorio.',
-            'telefono.max'      => 'El teléfono no puede tener más de 20 caracteres.',
+            'telefono.max' => 'El teléfono no puede tener más de 20 caracteres.',
 
-            'email.required'    => 'El email es obligatorio.',
-            'email.email'       => 'Introduce un email válido.',
-            'email.max'         => 'El email no puede tener más de 255 caracteres.',
+            'email.required' => 'El email es obligatorio.',
+            'email.email' => 'Introduce un email válido.',
+            'email.max' => 'El email no puede tener más de 255 caracteres.',
         ]);
 
-        Fabricante::create([
-            'nombre'   => $validated['nombre'],
-            'nif'      => $validated['nif'],
+        $fabricante = Fabricante::create([
+            'nombre' => $validated['nombre'],
+            'nif' => $validated['nif'],
             'telefono' => $validated['telefono'],
-            'email'    => $validated['email'],
+            'email' => $validated['email'],
         ]);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Fabricante creado correctamente.',
+                'html' => view('fabricantes.partials.fabricante-card', compact('fabricante'))->render(),
+                'count' => Fabricante::count()
+            ]);
+        }
 
         return redirect()->route('fabricantes.index')->with('success', 'Fabricante creado correctamente.');
     }
@@ -89,29 +99,29 @@ class FabricanteController extends Controller
     {
         try {
             $request->merge([
-                'nif'      => $request->nif ?: null,
+                'nif' => $request->nif ?: null,
                 'telefono' => $request->telefono ?: null,
-                'email'    => $request->email ?: null,
+                'email' => $request->email ?: null,
             ]);
 
             $validatedData = $request->validate([
-                'nombre'   => 'required|string|max:255',
-                'nif'      => 'nullable|string|max:50',
+                'nombre' => 'required|string|max:255',
+                'nif' => 'nullable|string|max:50',
                 'telefono' => 'nullable|string|max:30',
-                'email'    => 'nullable|email|max:100',
+                'email' => 'nullable|email|max:100',
             ], [
                 'nombre.required' => 'El nombre del fabricante es obligatorio.',
-                'nombre.string'   => 'El nombre debe ser una cadena de texto.',
-                'nombre.max'      => 'El nombre no debe superar los 255 caracteres.',
+                'nombre.string' => 'El nombre debe ser una cadena de texto.',
+                'nombre.max' => 'El nombre no debe superar los 255 caracteres.',
 
-                'nif.string'      => 'El NIF debe ser una cadena de texto.',
-                'nif.max'         => 'El NIF no debe superar los 50 caracteres.',
+                'nif.string' => 'El NIF debe ser una cadena de texto.',
+                'nif.max' => 'El NIF no debe superar los 50 caracteres.',
 
                 'telefono.string' => 'El teléfono debe ser una cadena de texto.',
-                'telefono.max'    => 'El teléfono no debe superar los 30 caracteres.',
+                'telefono.max' => 'El teléfono no debe superar los 30 caracteres.',
 
-                'email.email'     => 'El correo electrónico no tiene un formato válido.',
-                'email.max'       => 'El correo no debe superar los 100 caracteres.',
+                'email.email' => 'El correo electrónico no tiene un formato válido.',
+                'email.max' => 'El correo no debe superar los 100 caracteres.',
             ]);
 
             $fabricante->update($validatedData);
@@ -119,13 +129,13 @@ class FabricanteController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Fabricante actualizado correctamente',
-                'data'    => $fabricante->fresh()
+                'data' => $fabricante->fresh()
             ], 200);
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error de validación',
-                'errors'  => $e->errors()
+                'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
