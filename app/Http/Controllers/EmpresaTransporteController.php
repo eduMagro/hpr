@@ -20,7 +20,7 @@ class EmpresaTransporteController extends Controller
     {
         // Validar que se envíen los datos necesarios
         $data = $request->validate([
-            'id'    => 'required|integer',
+            'id' => 'required|integer',
             'field' => 'required|string',
             'value' => 'required|string'
         ]);
@@ -49,7 +49,16 @@ class EmpresaTransporteController extends Controller
 
     public function store(Request $request)
     {
-        EmpresaTransporte::create($request->all());
+        $empresa = EmpresaTransporte::create($request->all());
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Empresa añadida con éxito.',
+                'html' => view('empresas-transporte.partials.company-card', compact('empresa'))->render()
+            ]);
+        }
+
         return redirect()->route('empresas-transporte.index')->with('success', 'Empresa añadida con éxito.');
     }
 

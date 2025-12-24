@@ -128,162 +128,9 @@
         </div>
 
         <!-- Companies Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div id="empresas-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             @foreach ($empresasTransporte as $empresa)
-                <div x-data="{ openCamionModal: false }"
-                    class="glass-card rounded-[2.5rem] overflow-hidden hover-lift group flex flex-col h-full">
-                    <div class="p-8 flex-grow">
-                        <!-- Card Top -->
-                        <div class="flex justify-between items-start mb-6">
-                            <div class="flex items-center gap-4">
-                                <div
-                                    class="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-xl font-bold font-outfit shadow-lg shadow-indigo-200">
-                                    {{ strtoupper(substr($empresa->nombre, 0, 2)) }}
-                                </div>
-                                <div>
-                                    <h2 class="text-xl font-bold text-slate-900 group-hover:text-indigo-600 transition-colors font-outfit editable"
-                                        contenteditable="true" data-id="{{ $empresa->id }}" data-field="nombre">
-                                        {{ $empresa->nombre }}
-                                    </h2>
-                                    <p class="text-slate-400 text-xs flex items-center gap-1 mt-1">
-                                        <i data-lucide="map-pin" class="w-3 h-3"></i>
-                                        <span class="editable" contenteditable="true" data-id="{{ $empresa->id }}"
-                                            data-field="direccion">
-                                            {{ $empresa->direccion }}
-                                        </span>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Contact Quick Info -->
-                        <div class="space-y-3 mb-8">
-                            <div class="flex items-center gap-3 text-slate-600 group/item">
-                                <div
-                                    class="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center group-hover/item:bg-indigo-50 transition-colors">
-                                    <i data-lucide="phone" class="w-4 h-4"></i>
-                                </div>
-                                <span class="text-sm font-medium editable" contenteditable="true"
-                                    data-id="{{ $empresa->id }}" data-field="telefono">
-                                    {{ $empresa->telefono }}
-                                </span>
-                            </div>
-                            <div class="flex items-center gap-3 text-slate-600 group/item">
-                                <div
-                                    class="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center group-hover/item:bg-indigo-50 transition-colors">
-                                    <i data-lucide="mail" class="w-4 h-4"></i>
-                                </div>
-                                <span class="text-sm font-medium editable" contenteditable="true"
-                                    data-id="{{ $empresa->id }}" data-field="email">
-                                    {{ $empresa->email }}
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- Fleet List -->
-                        <div class="bg-slate-50/50 rounded-3xl p-5 border border-slate-100 mb-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Listado de
-                                    Flota</span>
-                                <span
-                                    class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">{{ $empresa->camiones->count() }}
-                                    Camiones</span>
-                            </div>
-
-                            @if ($empresa->camiones->isEmpty())
-                                <p class="text-xs text-slate-400 italic text-center py-2">No hay camiones registrados
-                                </p>
-                            @else
-                                <div class="space-y-3 overflow-y-auto max-h-72 custom-scrollbar pr-2">
-                                    @foreach ($empresa->camiones as $camion)
-                                        <div
-                                            class="flex items-center justify-between p-3 bg-white rounded-2xl border border-slate-100 shadow-sm transition-all hover:border-indigo-200">
-                                            <div class="flex items-center gap-3">
-                                                <div
-                                                    class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
-                                                    <i data-lucide="truck" class="w-4 h-4"></i>
-                                                </div>
-                                                <div>
-                                                    <p class="text-xs font-bold text-slate-700 editable"
-                                                        contenteditable="true" data-id="{{ $camion->id }}"
-                                                        data-field="modelo">
-                                                        {{ $camion->modelo }}
-                                                    </p>
-                                                    <p class="text-[10px] text-slate-400 font-medium">
-                                                        Carga: <span class="editable" contenteditable="true"
-                                                            data-id="{{ $camion->id }}"
-                                                            data-field="capacidad">{{ $camion->capacidad }}</span> kg
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <span
-                                                class="status-badge status-{{ strtolower($camion->estado) }} editable"
-                                                contenteditable="true" data-id="{{ $camion->id }}"
-                                                data-field="estado">
-                                                {{ $camion->estado }}
-                                            </span>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-
-                    <!-- Actions -->
-                    <div class="p-8 pt-0 flex gap-3">
-                        <button @click="openCamionModal = true"
-                            class="flex-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 py-3 rounded-2xl text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2">
-                            <i data-lucide="plus" class="w-4 h-4"></i>
-                            Añadir Camión
-                        </button>
-                    </div>
-
-                    <!-- Modal para añadir camión -->
-                    <div x-show="openCamionModal" x-transition x-cloak
-                        class="fixed inset-0 flex items-center justify-center z-[60] bg-slate-900/80 backdrop-blur-sm p-4">
-                        <div @click.away="openCamionModal = false"
-                            class="glass-card p-8 rounded-[2.5rem] w-full max-w-md">
-                            <h2 class="text-2xl font-bold text-gray-800 mb-6 font-outfit">Añadir Camión</h2>
-                            <form action="{{ route('camiones.store') }}" method="POST" class="space-y-5">
-                                @csrf
-                                <input type="hidden" name="empresa_id" value="{{ $empresa->id }}">
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Modelo /
-                                        Matrícula</label>
-                                    <input type="text" name="modelo" placeholder="Ej: Mercedes Actros - 1234 ABC"
-                                        class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                                        required>
-                                </div>
-
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Capacidad
-                                        (kg)</label>
-                                    <input type="number" name="capacidad" placeholder="Ej: 24000"
-                                        class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                                        required>
-                                </div>
-
-                                <div>
-                                    <label
-                                        class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Estado</label>
-                                    <select name="estado"
-                                        class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none"
-                                        required>
-                                        <option value="activo">Activo</option>
-                                        <option value="inactivo">Inactivo</option>
-                                    </select>
-                                </div>
-
-                                <div class="flex gap-3 pt-2">
-                                    <button type="button" @click="openCamionModal = false"
-                                        class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-4 rounded-2xl font-bold transition-all">Cancelar</button>
-                                    <button type="submit"
-                                        class="flex-1 bg-slate-900 hover:bg-black text-white py-4 rounded-2xl font-bold shadow-lg transition-all">Guardar</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+                @include('empresas-transporte.partials.company-card', ['empresa' => $empresa])
             @endforeach
 
             <!-- Add Company Placeholder -->
@@ -300,47 +147,115 @@
         </div>
 
         <!-- Modal para añadir nueva empresa -->
-        <div x-show="openEmpresaModal" x-transition x-cloak
-            class="fixed inset-0 flex items-center justify-center z-[70] bg-slate-900/80 backdrop-blur-sm p-4">
+        <div x-show="openEmpresaModal" @close-empresa-modal.window="openEmpresaModal = false"
+            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" x-cloak
+            class="fixed inset-0 flex items-center justify-center z-[70] bg-slate-900/50 backdrop-blur-sm p-4">
+
             <div @click.away="openEmpresaModal = false"
-                class="glass-card p-8 rounded-[2.5rem] w-full max-w-md animate-fade-in">
-                <h2 class="text-2xl font-bold text-slate-900 mb-6 font-outfit">Añadir Empresa</h2>
-                <form action="{{ route('empresas-transporte.store') }}" method="POST" class="space-y-5">
+                class="bg-white rounded-[2.5rem] w-full max-w-xl overflow-hidden animate-fade-in border-0 shadow-2xl">
+                <!-- Header with Gradient Area -->
+                <div class="relative h-32 bg-gradient-to-br from-indigo-600 to-emerald-500 flex items-center px-8">
+                    <div class="absolute right-0 top-0 p-8 opacity-20">
+                        <i data-lucide="building-2" class="w-24 h-24 text-white rotate-12"></i>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 shadow-xl">
+                            <i data-lucide="plus" class="w-8 h-8"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-white font-outfit">Socia Logística</h2>
+                            <p class="text-indigo-50/80 text-sm font-medium">Registra una nueva empresa transportista
+                            </p>
+                        </div>
+                    </div>
+                    <button @click="openEmpresaModal = false"
+                        class="absolute top-6 right-6 text-white/70 hover:text-white transition-colors">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <!-- Form Body -->
+                <form id="form-nueva-empresa" action="{{ route('empresas-transporte.store') }}" method="POST"
+                    class="p-8 space-y-6">
                     @csrf
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Nombre</label>
-                        <input type="text" name="nombre"
-                            class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                            required>
-                    </div>
 
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Dirección</label>
-                        <input type="text" name="direccion"
-                            class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                            required>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Teléfono</label>
-                            <input type="text" name="telefono"
-                                class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                                required>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="md:col-span-2">
+                            <label
+                                class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1 tracking-widest">Nombre
+                                de la Empresa</label>
+                            <div class="relative group">
+                                <div
+                                    class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                                    <i data-lucide="briefcase" class="w-5 h-5"></i>
+                                </div>
+                                <input type="text" name="nombre" placeholder="Ej: Transportes del Sur S.A."
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-5 py-3.5 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium text-slate-700 placeholder:text-slate-300"
+                                    required>
+                            </div>
                         </div>
+
+                        <div class="md:col-span-2">
+                            <label
+                                class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1 tracking-widest">Dirección
+                                Principal</label>
+                            <div class="relative group">
+                                <div
+                                    class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                                    <i data-lucide="map-pin" class="w-5 h-5"></i>
+                                </div>
+                                <input type="text" name="direccion" placeholder="Calle, Número, Planta, Ciudad..."
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-5 py-3.5 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium text-slate-700 placeholder:text-slate-300"
+                                    required>
+                            </div>
+                        </div>
+
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Email</label>
-                            <input type="email" name="email"
-                                class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                                required>
+                            <label
+                                class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1 tracking-widest">Teléfono
+                                Directo</label>
+                            <div class="relative group">
+                                <div
+                                    class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                                    <i data-lucide="phone" class="w-5 h-5"></i>
+                                </div>
+                                <input type="text" name="telefono" placeholder="+34 000 000 000"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-5 py-3.5 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium text-slate-700 placeholder:text-slate-300"
+                                    required>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1 tracking-widest">Email
+                                Corporativo</label>
+                            <div class="relative group">
+                                <div
+                                    class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                                    <i data-lucide="mail" class="w-5 h-5"></i>
+                                </div>
+                                <input type="email" name="email" placeholder="contacto@empresa.com"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-5 py-3.5 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium text-slate-700 placeholder:text-slate-300"
+                                    required>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="flex gap-3 pt-4">
+                    <!-- Footer Actions -->
+                    <div class="flex gap-4 pt-6 border-t border-slate-100">
                         <button type="button" @click="openEmpresaModal = false"
-                            class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-4 rounded-2xl font-bold transition-all">Cancelar</button>
+                            class="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-500 py-4 rounded-2xl font-bold transition-all border border-slate-200 active:scale-95">
+                            Descartar
+                        </button>
                         <button type="submit"
-                            class="flex-1 bg-slate-900 hover:bg-black text-white py-4 rounded-2xl font-bold shadow-lg transition-all">Guardar</button>
+                            class="flex-1 bg-slate-900 hover:bg-black text-white py-4 rounded-2xl font-bold shadow-xl shadow-slate-200 transition-all flex items-center justify-center gap-2 active:scale-95 group">
+                            <i data-lucide="check-circle"
+                                class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+                            Dar de Alta
+                        </button>
                     </div>
                 </form>
             </div>
@@ -350,22 +265,26 @@
     <script>
         function initEmpresasTransportePage() {
             if (document.body.dataset.empresasTransportePageInit === 'true') return;
-            console.log('🚀 Inicializando Empresas de Transporte (Premium)...');
+            console.log('🚀 Inicializando Empresas y Camiones (Premium)...');
 
             if (window.lucide) {
                 lucide.createIcons();
             }
 
-            const editables = document.querySelectorAll('.editable');
-            editables.forEach(el => {
-                const handleKeyDown = (e) => {
-                    if (e.key === 'Enter') {
+            // Delegación de eventos para edición en línea (evita duplicados con AJAX)
+            if (!document.body.dataset.empresasTransporteDelegated) {
+                document.addEventListener('keydown', (e) => {
+                    const el = e.target.closest('.editable');
+                    if (el && e.key === 'Enter') {
                         e.preventDefault();
                         el.blur();
                     }
-                };
+                });
 
-                const handleBlur = () => {
+                document.addEventListener('blur', (e) => {
+                    const el = e.target.closest('.editable');
+                    if (!el) return;
+
                     const id = el.dataset.id;
                     const field = el.dataset.field;
                     let value = el.textContent.trim();
@@ -410,13 +329,130 @@
                             }
                         })
                         .catch(err => console.error('Error:', err));
-                };
+                }, true);
 
-                el.addEventListener('keydown', handleKeyDown);
-                el.addEventListener('blur', handleBlur);
-            });
+                document.body.dataset.empresasTransporteDelegated = 'true';
+            }
 
             document.body.dataset.empresasTransportePageInit = 'true';
+
+            // Interceptor de Formulario AJAX
+            const formNuevaEmpresa = document.getElementById('form-nueva-empresa');
+            if (formNuevaEmpresa && !formNuevaEmpresa.dataset.ajaxAttached) {
+                formNuevaEmpresa.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    const data = Object.fromEntries(formData.entries());
+
+                    fetch(this.action, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify(data)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                window.dispatchEvent(new CustomEvent('close-empresa-modal'));
+
+                                const Toast = Swal.mixin({
+                                    toast: true,
+                                    position: 'top-end',
+                                    showConfirmButton: false,
+                                    timer: 2000,
+                                    timerProgressBar: true
+                                });
+                                Toast.fire({
+                                    icon: 'success',
+                                    title: data.message
+                                });
+
+                                const grid = document.getElementById('empresas-grid');
+                                const placeholder = grid.lastElementChild;
+                                const tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = data.html;
+                                const newCard = tempDiv.firstElementChild;
+                                grid.insertBefore(newCard, placeholder);
+
+                                formNuevaEmpresa.reset();
+                                if (window.lucide) lucide.createIcons();
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    text: data.error || 'Error al guardar.'
+                                });
+                            }
+                        })
+                        .catch(err => console.error('Error:', err));
+                });
+                formNuevaEmpresa.dataset.ajaxAttached = 'true';
+            }
+
+            // Interceptor de Formulario AJAX Camiones (Delegado)
+            if (!document.body.dataset.camionesDelegated) {
+                document.addEventListener('submit', (e) => {
+                    const form = e.target.closest('.form-nuevo-camion');
+                    if (!form) return;
+
+                    e.preventDefault();
+                    const formData = new FormData(form);
+                    const data = Object.fromEntries(formData.entries());
+
+                    fetch(form.action, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify(data)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                window.dispatchEvent(new CustomEvent('close-camion-modal'));
+
+                                const Toast = Swal.mixin({
+                                    toast: true,
+                                    position: 'top-end',
+                                    showConfirmButton: false,
+                                    timer: 2000,
+                                    timerProgressBar: true
+                                });
+                                Toast.fire({
+                                    icon: 'success',
+                                    title: data.message
+                                });
+
+                                const list = document.getElementById(`trucks-list-${data.empresa_id}`);
+                                const emptyMsg = document.getElementById(`empty-trucks-${data.empresa_id}`);
+                                const counter = document.getElementById(`trucks-count-${data.empresa_id}`);
+
+                                if (list) {
+                                    const tempDiv = document.createElement('div');
+                                    tempDiv.innerHTML = data.html;
+                                    list.appendChild(tempDiv.firstElementChild);
+                                    list.classList.remove('hidden');
+                                }
+                                if (emptyMsg) emptyMsg.classList.add('hidden');
+                                if (counter) counter.textContent = `${data.count} Camiones`;
+
+                                form.reset();
+                                if (window.lucide) lucide.createIcons();
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    text: data.error || 'Error al guardar.'
+                                });
+                            }
+                        })
+                        .catch(err => console.error('Error:', err));
+                });
+                document.body.dataset.camionesDelegated = 'true';
+            }
 
             // Cleanup function for SPA navigation
             const cleanup = () => {
