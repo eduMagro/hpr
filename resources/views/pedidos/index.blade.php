@@ -416,8 +416,7 @@
 
                                         <div>
                                             <label for="distribuidor"
-                                                class="block text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1 mb-2">Distribuidor
-                                                Recomendado</label>
+                                                class="block text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1 mb-2">Distribuidor</label>
                                             <select name="distribuidor_id" id="distribuidor"
                                                 class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-700 focus:ring-4 focus:ring-blue-50 transition-all outline-none">
                                                 <option value="">-- No seleccionado --</option>
@@ -1166,10 +1165,6 @@
                 distribuidorSelect.addEventListener('change', dispararSugerirMultiple);
             }
         }
-
-        // Inicializar en carga normal y después de navegación con wire:navigate
-        document.addEventListener('DOMContentLoaded', initModalPedidoListeners);
-        document.addEventListener('livewire:navigated', initModalPedidoListeners);
     </script>
 
     {{-- Script: Validación formulario pedido --}}
@@ -1295,10 +1290,6 @@
                 });
             });
         }
-
-        // Inicializar en carga normal y después de navegación con wire:navigate
-        document.addEventListener('DOMContentLoaded', initFormularioPedidoValidacion);
-        document.addEventListener('livewire:navigated', initFormularioPedidoValidacion);
     </script>
     <script>
         function initStockSelect() {
@@ -1311,7 +1302,7 @@
             }
 
             // Evitar registrar el listener múltiples veces
-            if (selectObra.dataset.initialized) {
+            if (!selectObra || selectObra.dataset.initialized) {
                 return;
             }
             selectObra.dataset.initialized = 'true';
@@ -1374,10 +1365,6 @@
                     });
             });
         }
-
-        // Inicializar en carga normal y después de navegación con wire:navigate
-        document.addEventListener('DOMContentLoaded', initStockSelect);
-        document.addEventListener('livewire:navigated', initStockSelect);
     </script>
     <script>
         function initColadasModal() {
@@ -1749,12 +1736,7 @@
                 }
             }, true);
         }
-
-        // Inicializar en carga normal y después de navegación con wire:navigate
-        document.addEventListener('DOMContentLoaded', initColadasModal);
-        document.addEventListener('livewire:navigated', initColadasModal);
     </script>
-
     {{-- Inicialización maestra con patrón robusto --}}
     <script>
         function initPedidosPage() {

@@ -215,13 +215,8 @@
                                         </div>
                                         @if ($pedido)
                                             <a href="{{ route('entradas.index', ['pedido_codigo' => $pedido->codigo, 'pedido_producto_id' => $linea->id]) }}"
-                                                class="inline-flex items-center gap-1.5 text-[9px] font-black text-slate-700 hover:text-slate-900 hover:underline hover:underline-offset-4 transition-colors uppercase tracking-widest group/link !w-content">
+                                                class="flex items-center gap-1 justify-start text-[9px] font-black text-slate-700 hover:text-slate-900 hover:underline hover:underline-offset-4 transition-colors uppercase tracking-widest group/link w-fit">
                                                 Historial Entradas
-                                                <svg class="w-3 h-3 transform group-hover/link:translate-x-0.5 transition-transform"
-                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="3" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                                </svg>
                                             </a>
                                         @endif
                                     </div>

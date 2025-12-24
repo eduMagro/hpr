@@ -149,6 +149,20 @@ Navegador: ${navigator.userAgent}`;
                         notificarProgramador(mensaje, asunto);
                     }
                 });
+            } else if (@json(session('swal_type')) === 'toast') {
+                Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    customClass: {
+                        popup: 'rounded-2xl shadow-xl'
+                    }
+                }).fire({
+                    icon: 'success',
+                    title: mensaje
+                });
             } else {
                 Swal.fire({
                     icon: 'success',
