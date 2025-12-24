@@ -754,12 +754,7 @@
     </div>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        lucide.createIcons();
-        reiniciarPaginacionCompletados();
-    });
-</script>
+{{-- Script consolidado al final del archivo --}}
 
 
 <script>
@@ -804,9 +799,7 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
-        reiniciarPaginacionCompletados();
-    });
+    {{-- Script consolidado al final del archivo --}}
 
     // Escuchar evento de movimiento de paquete para actualizar la lista
     window.addEventListener('movimiento:paquete-creado', async function() {
@@ -1443,19 +1436,7 @@
         }
     }
 
-    // Cerrar modal con Escape
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') cerrarModalPreparacionPaquete();
-    });
-
-    // Cerrar modal al hacer clic fuera
-    document.getElementById('modalPreparacionPaquete')?.addEventListener('click', (e) => {
-        if (e.target.id === 'modalPreparacionPaquete') cerrarModalPreparacionPaquete();
-    });
-
-    window.abrirModalPreparacionPaquete = abrirModalPreparacionPaquete;
-    window.cerrarModalPreparacionPaquete = cerrarModalPreparacionPaquete;
-    window.completarPreparacionDesdeModal = completarPreparacionDesdeModal;
+    {{-- Script consolidado al final del archivo --}}
 </script>
 
 <script>
@@ -1607,4 +1588,56 @@
         }
     }
     window.refrescarHistorialGrua = refrescarHistorialGrua;
+    /**
+     * INICIALIZACIÓN DE COMPONENTE TIPO GRÚA
+     */
+    function initTipoGruaComponent() {
+        if (document.body.dataset.tipoGruaInit === 'true') return;
+
+        console.log('🏗️ Inicializando componente Tipo Grúa...');
+
+        // 1. Iconos y Paginación
+        if (window.lucide) lucide.createIcons();
+        reiniciarPaginacionCompletados();
+
+        // 2. Listeners de Modal Preparación
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') cerrarModalPreparacionPaquete();
+        };
+        document.addEventListener('keydown', handleEsc);
+
+        const modalPrep = document.getElementById('modalPreparacionPaquete');
+        const handleOutsideClick = (e) => {
+            if (e.target.id === 'modalPreparacionPaquete') cerrarModalPreparacionPaquete();
+        };
+        if (modalPrep) modalPrep.addEventListener('click', handleOutsideClick);
+
+        // Exponer funciones globales si es necesario
+        window.abrirModalPreparacionPaquete = abrirModalPreparacionPaquete;
+        window.cerrarModalPreparacionPaquete = cerrarModalPreparacionPaquete;
+        window.completarPreparacionDesdeModal = completarPreparacionDesdeModal;
+        window.refrescarHistorialGrua = refrescarHistorialGrua;
+
+        // Cleanup
+        document.body.dataset.tipoGruaInit = 'true';
+
+        const cleanup = () => {
+            document.removeEventListener('keydown', handleEsc);
+            if (modalPrep) modalPrep.removeEventListener('click', handleOutsideClick);
+            document.body.dataset.tipoGruaInit = 'false';
+        };
+
+        document.addEventListener('livewire:navigating', cleanup, {
+            once: true
+        });
+    }
+
+    // Registrar
+    if (window.pageInitializers) {
+        window.pageInitializers.push(initTipoGruaComponent);
+    }
+
+    // Carga inicial
+    document.addEventListener('DOMContentLoaded', initTipoGruaComponent);
+    document.addEventListener('livewire:navigated', initTipoGruaComponent);
 </script>

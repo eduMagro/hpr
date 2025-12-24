@@ -929,65 +929,7 @@
             }
 
             // Función principal de inicialización
-            function initMaquinasShowPage() {
-                if (document.body.dataset.maquinasShowPageInit === 'true') return;
-                console.log('🔍 Inicializando página de visualización de máquina...');
-
-                // 1. Context Menu
-                const ctxHandler = function(e) {
-                    if (e.target.closest('.proceso')) {
-                        e.preventDefault();
-                    }
-                };
-                // Limpiar previo
-                if (window.maquinasShowHandlers.ctx) {
-                    document.removeEventListener('contextmenu', window.maquinasShowHandlers.ctx, {
-                        capture: true
-                    });
-                }
-                window.maquinasShowHandlers.ctx = ctxHandler;
-                document.addEventListener('contextmenu', ctxHandler, {
-                    capture: true
-                });
-
-                // 2. Validación Header
-                initValidacionPosicionesPlanillasHeader();
-
-                // 3. Shortcuts (si están cargados)
-                if (typeof window.initMaquinasShortcuts === 'function') {
-                    window.initMaquinasShortcuts();
-                }
-
-                // 4. Filtros
-                const filtroInicial = localStorage.getItem('filtroEstadoEtiqueta') ?? 'todos';
-                setTimeout(() => {
-                    if (window.aplicarFiltroEstadoEtiquetas) window.aplicarFiltroEstadoEtiquetas(filtroInicial);
-                }, 500);
-
-                document.body.dataset.maquinasShowPageInit = 'true';
-            }
-
-            // Registrar en el sistema global
-            window.pageInitializers = window.pageInitializers || [];
-            window.pageInitializers.push(initMaquinasShowPage);
-
-            // Listeners
-            document.addEventListener('livewire:navigated', initMaquinasShowPage);
-            document.addEventListener('DOMContentLoaded', initMaquinasShowPage);
-
-            // Cleanup
-            document.addEventListener('livewire:navigating', () => {
-                document.body.dataset.maquinasShowPageInit = 'false';
-                if (window.maquinasShowHandlers.ctx) {
-                    document.removeEventListener('contextmenu', window.maquinasShowHandlers.ctx, {
-                        capture: true
-                    });
-                }
-                // Shortcuts se limpian en su propia lógica o aquí si tenemos acceso al handler
-                if (window.maquinasShowHandlers.keydown) {
-                    document.removeEventListener('keydown', window.maquinasShowHandlers.keydown);
-                }
-            });
+            // La inicialización se ha consolidado al final del archivo en window.initMaquinasShowPage
 
             // Función para completar planilla actual
             function completarPlanillaActual() {
@@ -1303,12 +1245,40 @@
             // Migración a patrón de inicialización SPA Livewire
             window.initMaquinasShowPage = function() {
                 if (document.body.dataset.maquinasShowPageInit === 'true') return;
-                console.log('Inicializando Maquinas Show Page');
+                console.log('🔍 Inicializando Maquinas Show Page...');
 
-                // 1. Inicializar Header
+                // 1. Context Menu
+                const ctxHandler = function(e) {
+                    if (e.target.closest('.proceso')) {
+                        e.preventDefault();
+                    }
+                };
+                // Limpiar previo si existiera
+                if (window.maquinasShowHandlers.ctx) {
+                    document.removeEventListener('contextmenu', window.maquinasShowHandlers.ctx, {
+                        capture: true
+                    });
+                }
+                window.maquinasShowHandlers.ctx = ctxHandler;
+                document.addEventListener('contextmenu', ctxHandler, {
+                    capture: true
+                });
+
+                // 2. Validación Header y Estado Inicial
+                initValidacionPosicionesPlanillasHeader();
                 window.aplicarEstadoHeader();
 
-                // 2. Listener para selector de máquina
+                // 3. Shortcuts y Filtros
+                if (typeof window.initMaquinasShortcuts === 'function') {
+                    window.initMaquinasShortcuts();
+                }
+
+                const filtroInicial = localStorage.getItem('filtroEstadoEtiqueta') ?? 'todos';
+                setTimeout(() => {
+                    if (window.aplicarFiltroEstadoEtiquetas) window.aplicarFiltroEstadoEtiquetas(filtroInicial);
+                }, 500);
+
+                // 4. Listener para selector de máquina
                 const selectCambiar = document.getElementById('select-cambiar-maquina');
                 const handleChangeMaquina = function() {
                     const overlay = document.getElementById('overlay-cambiar-maquina');
@@ -1317,10 +1287,8 @@
                     const select = this;
 
                     if (hiddenInput) hiddenInput.value = select.value;
-
                     const selectedOption = select.options[select.selectedIndex];
                     if (nombreMaquina) nombreMaquina.textContent = selectedOption.text;
-
                     if (overlay) overlay.classList.add('active');
 
                     select.disabled = true;
@@ -1336,9 +1304,8 @@
                     selectCambiar.addEventListener('change', handleChangeMaquina);
                 }
 
-                // 3. Shortcuts de teclado
+                // 5. Shortcuts de teclado (Flechas)
                 const keydownHandler = function(e) {
-                    // No activar si el usuario está escribiendo
                     const activeElement = document.activeElement;
                     const isTyping = activeElement.tagName === 'INPUT' ||
                         activeElement.tagName === 'TEXTAREA' ||
@@ -1349,26 +1316,20 @@
                     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
 
                     e.preventDefault();
-
                     switch (e.key) {
                         case 'ArrowLeft':
                             const showLeftActual = JSON.parse(localStorage.getItem('showLeft') ?? 'true');
                             localStorage.setItem('showLeft', JSON.stringify(!showLeftActual));
                             window.dispatchEvent(new CustomEvent('toggleLeft'));
-                            console.log('⬅️ Columna izquierda:', !showLeftActual ? 'visible' : 'oculta');
                             break;
-
                         case 'ArrowRight':
                             const showRightActual = JSON.parse(localStorage.getItem('showRight') ?? 'true');
                             localStorage.setItem('showRight', JSON.stringify(!showRightActual));
                             window.dispatchEvent(new CustomEvent('toggleRight'));
-                            console.log('➡️ Columna derecha:', !showRightActual ? 'visible' : 'oculta');
                             break;
-
                         case 'ArrowUp':
                             window.toggleMaquinaHeader();
                             break;
-
                         case 'ArrowDown':
                             window.dispatchEvent(new CustomEvent('solo'));
                             localStorage.setItem('showLeft', 'false');
@@ -1376,21 +1337,29 @@
                             window.showHeader = false;
                             localStorage.setItem('showHeader', 'false');
                             window.aplicarEstadoHeader();
-                            console.log('⬇️ Modo solo: solo columna central visible');
                             break;
                     }
                 };
 
                 document.addEventListener('keydown', keydownHandler);
 
-                // --- Cleanup ---
+                // --- Marcar Inicializado ---
                 document.body.dataset.maquinasShowPageInit = 'true';
 
+                // --- Cleanup ---
                 const cleanup = () => {
-                    if (selectCambiar) {
-                        selectCambiar.removeEventListener('change', handleChangeMaquina);
-                    }
+                    if (selectCambiar) selectCambiar.removeEventListener('change', handleChangeMaquina);
                     document.removeEventListener('keydown', keydownHandler);
+
+                    if (window.maquinasShowHandlers.ctx) {
+                        document.removeEventListener('contextmenu', window.maquinasShowHandlers.ctx, {
+                            capture: true
+                        });
+                    }
+                    if (window.maquinasShowHandlers.keydown) {
+                        document.removeEventListener('keydown', window.maquinasShowHandlers.keydown);
+                    }
+
                     document.body.dataset.maquinasShowPageInit = 'false';
                 };
 

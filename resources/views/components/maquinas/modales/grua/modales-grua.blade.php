@@ -115,23 +115,7 @@
         </div>
     </div>
 </div>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Selecciona solo los inputs del modal movimiento general
-        const inputs = document.querySelectorAll(
-            '#modalMovimientoLibre input');
-
-        inputs.forEach(input => {
-            input.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e
-                        .preventDefault(); // ⛔ Bloquea el enter automático del escáner
-                    // No hace ni submit ni salta a otro campo
-                }
-            });
-        });
-    });
-</script>
+{{-- Scripts se consolidan al final del archivo --}}
 
 {{-- 🔄 MODAL BAJADA PAQUETE --}}
 <div id="modal-bajada-paquete"
@@ -272,200 +256,7 @@
     </div>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const form = document.getElementById('form-ejecutar-movimiento');
-        const inputQR = document.getElementById('modal_producto_id');
-        const hiddenLista = document.getElementById('modal_lista_qrs');
-        const containerChips = document.getElementById('mostrar_qrs_recarga');
-        const yaEscaneados = new Set();
-
-        // 1. Manejo de Enter para escanear y verificar
-        inputQR.addEventListener('keydown', async (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const codigo = inputQR.value.trim().toUpperCase();
-                if (!codigo) return;
-
-                if (yaEscaneados.has(codigo)) {
-                    // Feedback visual duplicado
-                    const chip = containerChips.querySelector(`[data-code="${codigo}"]`);
-                    if (chip) {
-                        chip.style.transform = "scale(1.1)";
-                        chip.style.borderColor = "red";
-                        setTimeout(() => {
-                            chip.style.transform = "scale(1)";
-                            chip.style.borderColor = "transparent";
-                        }, 300);
-                    }
-                    inputQR.value = '';
-                    return;
-                }
-
-                agregarChipRecarga(codigo);
-                inputQR.value = '';
-            }
-        });
-
-        async function agregarChipRecarga(codigo) {
-            // Añadir al estado
-            yaEscaneados.add(codigo);
-            actualizarHidden();
-
-            // Crear Chip Visual (Loading)
-            const pill = document.createElement("span");
-            pill.className = "qr-chip loading";
-            pill.textContent = codigo;
-            pill.dataset.code = codigo;
-            pill.title = "Click para eliminar";
-            pill.onclick = () => {
-                yaEscaneados.delete(codigo);
-                actualizarHidden();
-                pill.remove();
-            };
-            containerChips.appendChild(pill);
-
-            // Verificar API
-            try {
-                const res = await fetch(`/api/codigos/info?code=${encodeURIComponent(codigo)}`);
-                const data = await res.json();
-
-                pill.classList.remove("loading");
-                if (!data || data.ok === false) {
-                    pill.classList.add("error");
-                    pill.textContent = `${codigo} ⚠️ Error`;
-                } else {
-                    // Formatear Info
-                    const partes = [];
-                    if (data.sigla) partes.push(data.sigla);
-                    partes.push(data.codigo);
-                    if (data.diametro) partes.push(`Ø${data.diametro}`);
-                    if (data.longitud && !String(data.tipo).toLowerCase().includes('encarretado'))
-                        partes.push(`L:${data.longitud}`);
-
-                    pill.textContent = partes.join(" · ");
-                    pill.classList.add("bg-emerald-100", "text-emerald-800", "border-emerald-200");
-                }
-            } catch (err) {
-                console.error(err);
-                pill.classList.remove("loading");
-                pill.classList.add("error");
-                pill.textContent = `${codigo} ⚠️ Error conexión`;
-            }
-        }
-
-        function actualizarHidden() {
-            hiddenLista.value = JSON.stringify(Array.from(yaEscaneados));
-        }
-
-        // 2. Submit del Formulario
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            // Si hay texto en el input que no se ha dado Enter, intentamos agregarlo
-            const textoPendiente = inputQR.value.trim().toUpperCase();
-            if (textoPendiente && !yaEscaneados.has(textoPendiente)) {
-                // Agregamos síncronamente al array para enviar, aunque la info visual cargue después
-                yaEscaneados.add(textoPendiente);
-                actualizarHidden();
-            }
-
-            if (yaEscaneados.size === 0) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Falta escanear',
-                    text: 'Por favor, escanea al menos un código de material.'
-                });
-                return;
-            }
-
-            const formData = new FormData(form);
-            const submitBtn = form.querySelector('button[type="submit"]');
-            const originalBtnContent = submitBtn.innerHTML;
-
-            submitBtn.disabled = true;
-            submitBtn.innerHTML =
-                '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> REGISTRANDO...';
-            if (window.lucide) lucide.createIcons();
-
-            try {
-                const response = await fetch(form.action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                            .content
-                    }
-                });
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    Swal.fire({
-                        toast: true,
-                        position: 'top',
-                        showConfirmButton: false,
-                        timer: 2000,
-                        timerProgressBar: true,
-                        icon: 'success',
-                        title: 'Recarga registrada',
-                        background: '#f0fdf4',
-                        color: '#166534'
-                    });
-
-                    // Limpieza
-                    cerrarModalRecargaMateriaPrima();
-                    yaEscaneados.clear();
-                    containerChips.innerHTML = '';
-                    actualizarHidden();
-                    inputQR.value = '';
-
-                    // Actualizar UI
-                    const movimientoId = document.getElementById('modal_movimiento_id').value;
-                    const cardPendiente = document.getElementById(
-                        `movimiento-pendiente-${movimientoId}`);
-                    if (cardPendiente) {
-                        cardPendiente.style.opacity = '0';
-                        setTimeout(() => cardPendiente.remove(), 300);
-                        const contador = document.getElementById('contador-tareas-pendientes');
-                        if (contador) contador.innerText =
-                            `${Math.max(0, (parseInt(contador.innerText)||0) - 1)} tareas`;
-                    }
-
-                    if (typeof window.refrescarHistorialGrua === 'function') {
-                        window.refrescarHistorialGrua();
-                    } else {
-                        setTimeout(() => window.location.reload(), 2000);
-                    }
-
-                } else {
-                    throw new Error(result.message || 'Error al registrar');
-                }
-            } catch (error) {
-                console.error(error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: error.message
-                });
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalBtnContent;
-                if (window.lucide) lucide.createIcons();
-            }
-        });
-
-        // Exponer función de limpieza por si se cierra modal manualmente
-        window.limpiarModalRecarga = () => {
-            yaEscaneados.clear();
-            containerChips.innerHTML = '';
-            actualizarHidden();
-            inputQR.value = '';
-        };
-    });
-</script>
+{{-- Scripts se consolidan al final del archivo --}}
 
 
 </div>
@@ -584,24 +375,7 @@
         modal.classList.remove('flex');
     }
 
-    // Mostrar/ocultar campos según tipo
-    document.addEventListener('DOMContentLoaded', function() {
-        const tipoSelect = document.getElementById('tipo');
-        const productoSection = document.getElementById('producto-section');
-        const paqueteSection = document.getElementById('paquete-section');
-
-        if (tipoSelect && productoSection && paqueteSection) {
-            tipoSelect.addEventListener('change', function() {
-                if (this.value === 'producto') {
-                    productoSection.classList.remove('hidden');
-                    paqueteSection.classList.add('hidden');
-                } else if (this.value === 'paquete') {
-                    productoSection.classList.add('hidden');
-                    paqueteSection.classList.remove('hidden');
-                }
-            });
-        }
-    });
+    {{-- Scripts se consolidan al final del archivo --}}
 
     let paqueteEsperadoId = null;
 
@@ -1004,18 +778,7 @@
         paqueteMoverData = null;
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
-        const inputCodigo = document.getElementById(
-            'codigo_paquete_mover');
-        if (inputCodigo) {
-            inputCodigo.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    buscarPaqueteParaMover();
-                }
-            });
-        }
-    });
+    {{-- Scripts se consolidan al final del archivo --}}
 
     async function buscarPaqueteParaMover() {
         const codigo = document.getElementById('codigo_paquete_mover').value
@@ -1643,6 +1406,254 @@
             mapa.classList.add('hidden');
         }
     }
+
+    /**
+     * INICIALIZACIÓN DE COMPONENTES DE MODALES DE GRÚA
+     * Sigue el patrón Livewire SPA para evitar acumulación de listeners
+     */
+    function initModalesGruaComponent() {
+        // Prevenir doble inicialización si el componente ya está activo
+        if (document.body.dataset.modalesGruaComponentInit === 'true') return;
+
+        console.log('📦 Inicializando componentes de Modales Grúa...');
+
+        // 1. Bloqueo de Enter en inputs de Movimiento Libre
+        const inputsMovLibre = document.querySelectorAll('#modalMovimientoLibre input');
+        inputsMovLibre.forEach(input => {
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                }
+            });
+        });
+
+        // 2. Lógica de Recarga de Materia Prima (form-ejecutar-movimiento)
+        const formRecarga = document.getElementById('form-ejecutar-movimiento');
+        const inputQRRecarga = document.getElementById('modal_producto_id');
+        const hiddenListaRecarga = document.getElementById('modal_lista_qrs');
+        const containerChipsRecarga = document.getElementById('mostrar_qrs_recarga');
+
+        if (formRecarga && inputQRRecarga) {
+            const yaEscaneadosRecarga = new Set();
+
+            const handleQRKeydown = async (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const codigo = inputQRRecarga.value.trim().toUpperCase();
+                    if (!codigo) return;
+
+                    if (yaEscaneadosRecarga.has(codigo)) {
+                        const chip = containerChipsRecarga.querySelector(`[data-code="${codigo}"]`);
+                        if (chip) {
+                            chip.style.transform = "scale(1.1)";
+                            chip.style.borderColor = "red";
+                            setTimeout(() => {
+                                chip.style.transform = "scale(1)";
+                                chip.style.borderColor = "transparent";
+                            }, 300);
+                        }
+                        inputQRRecarga.value = '';
+                        return;
+                    }
+
+                    // Función auxiliar local para agregar chip
+                    const agregarChipLocal = async (codigo) => {
+                        yaEscaneadosRecarga.add(codigo);
+                        hiddenListaRecarga.value = JSON.stringify(Array.from(yaEscaneadosRecarga));
+
+                        const pill = document.createElement("span");
+                        pill.className = "qr-chip loading";
+                        pill.textContent = codigo;
+                        pill.dataset.code = codigo;
+                        pill.onclick = () => {
+                            yaEscaneadosRecarga.delete(codigo);
+                            hiddenListaRecarga.value = JSON.stringify(Array.from(
+                                yaEscaneadosRecarga));
+                            pill.remove();
+                        };
+                        containerChipsRecarga.appendChild(pill);
+
+                        try {
+                            const res = await fetch(
+                                `/api/codigos/info?code=${encodeURIComponent(codigo)}`);
+                            const data = await res.json();
+                            pill.classList.remove("loading");
+                            if (!data || data.ok === false) {
+                                pill.classList.add("error");
+                                pill.textContent = `${codigo} ⚠️ Error`;
+                            } else {
+                                const partes = [];
+                                if (data.sigla) partes.push(data.sigla);
+                                partes.push(data.codigo);
+                                if (data.diametro) partes.push(`Ø${data.diametro}`);
+                                if (data.longitud && !String(data.tipo).toLowerCase().includes(
+                                        'encarretado'))
+                                    partes.push(`L:${data.longitud}`);
+                                pill.textContent = partes.join(" · ");
+                                pill.classList.add("bg-emerald-100", "text-emerald-800",
+                                    "border-emerald-200");
+                            }
+                        } catch (err) {
+                            pill.classList.remove("loading");
+                            pill.classList.add("error");
+                            pill.textContent = `${codigo} ⚠️ Error`;
+                        }
+                    };
+
+                    await agregarChipLocal(codigo);
+                    inputQRRecarga.value = '';
+                }
+            };
+
+            inputQRRecarga.addEventListener('keydown', handleQRKeydown);
+
+            formRecarga.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const textoPendiente = inputQRRecarga.value.trim().toUpperCase();
+                if (textoPendiente && !yaEscaneadosRecarga.has(textoPendiente)) {
+                    yaEscaneadosRecarga.add(textoPendiente);
+                    hiddenListaRecarga.value = JSON.stringify(Array.from(yaEscaneadosRecarga));
+                }
+
+                if (yaEscaneadosRecarga.size === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Falta escanear',
+                        text: 'Por favor, escanea al menos un código de material.'
+                    });
+                    return;
+                }
+
+                const formData = new FormData(formRecarga);
+                const submitBtn = formRecarga.querySelector('button[type="submit"]');
+                const originalBtnContent = submitBtn.innerHTML;
+
+                submitBtn.disabled = true;
+                submitBtn.innerHTML =
+                    '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> REGISTRANDO...';
+                if (window.lucide) lucide.createIcons();
+
+                try {
+                    const response = await fetch(formRecarga.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                .content
+                        }
+                    });
+
+                    const result = await response.json();
+                    if (response.ok) {
+                        Swal.fire({
+                            toast: true,
+                            position: 'top',
+                            showConfirmButton: false,
+                            timer: 2000,
+                            timerProgressBar: true,
+                            icon: 'success',
+                            title: 'Recarga registrada',
+                            background: '#f0fdf4',
+                            color: '#166534'
+                        });
+
+                        cerrarModalRecargaMateriaPrima();
+                        yaEscaneadosRecarga.clear();
+                        containerChipsRecarga.innerHTML = '';
+                        hiddenListaRecarga.value = '[]';
+                        inputQRRecarga.value = '';
+
+                        const mId = document.getElementById('modal_movimiento_id').value;
+                        const cardP = document.getElementById(`movimiento-pendiente-${mId}`);
+                        if (cardP) {
+                            cardP.style.opacity = '0';
+                            setTimeout(() => cardP.remove(), 300);
+                            const cont = document.getElementById('contador-tareas-pendientes');
+                            if (cont) cont.innerText =
+                                `${Math.max(0, (parseInt(cont.innerText)||0) - 1)} tareas`;
+                        }
+
+                        if (typeof window.refrescarHistorialGrua === 'function') {
+                            window.refrescarHistorialGrua();
+                        } else {
+                            setTimeout(() => window.location.reload(), 2000);
+                        }
+                    } else {
+                        throw new Error(result.message || 'Error al registrar');
+                    }
+                } catch (error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message
+                    });
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnContent;
+                    if (window.lucide) lucide.createIcons();
+                }
+            });
+
+            window.limpiarModalRecarga = () => {
+                yaEscaneadosRecarga.clear();
+                containerChipsRecarga.innerHTML = '';
+                hiddenListaRecarga.value = '[]';
+                inputQRRecarga.value = '';
+            };
+        }
+
+        // 3. Listener para tipo en algún modal (si existe)
+        const tipoSelect = document.getElementById('tipo');
+        if (tipoSelect) {
+            tipoSelect.addEventListener('change', function() {
+                const pSec = document.getElementById('producto-section');
+                const paSec = document.getElementById('paquete-section');
+                if (pSec && paSec) {
+                    if (this.value === 'producto') {
+                        pSec.classList.remove('hidden');
+                        paSec.classList.add('hidden');
+                    } else if (this.value === 'paquete') {
+                        pSec.classList.add('hidden');
+                        paSec.classList.remove('hidden');
+                    }
+                }
+            });
+        }
+
+        // 4. Enter en buscar paquete para mover
+        const inputMover = document.getElementById('codigo_paquete_mover');
+        if (inputMover) {
+            inputMover.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    buscarPaqueteParaMover();
+                }
+            });
+        }
+
+        // Marcar como inicializado
+        document.body.dataset.modalesGruaComponentInit = 'true';
+
+        // Registro de cleanup para el componente si fuera necesario
+        // (En este caso al ser mayoría listeners de ID específicos, el GC se encarga si el DOM cambia,
+        // pero el flag evita duplicados si el componente sigue en el DOM)
+    }
+
+    // Registrar en el sistema global si existe
+    if (window.pageInitializers) {
+        window.pageInitializers.push(initModalesGruaComponent);
+    }
+
+    // Inicializar en carga directa
+    document.addEventListener('DOMContentLoaded', initModalesGruaComponent);
+    document.addEventListener('livewire:navigated', initModalesGruaComponent);
+
+    // Resetear flag al navegar (importante para Livewire SPA)
+    document.addEventListener('livewire:navigating', () => {
+        document.body.dataset.modalesGruaComponentInit = 'false';
+    });
 </script>
 
 {{-- ETQ2511012.01 --}}
