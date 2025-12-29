@@ -17,7 +17,7 @@
         }
 
         .hover-lift:hover {
-            transform: translateY(-5px);
+            transform: translateY(-2px);
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
 
@@ -78,7 +78,7 @@
                     <div
                         class="flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-full text-xs font-bold text-indigo-600">
                         <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-                        <span id="fabricantes-count">{{ $fabricantes->count() }} Fabricantes Activos</span>
+                        <span id="fabricantes-count">{{ $fabricantes->count() }} Fabricantes</span>
                     </div>
                 </div>
 
@@ -116,7 +116,7 @@
                     <div
                         class="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-full text-xs font-bold text-emerald-600">
                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span id="distribuidores-count">{{ $distribuidores->count() }} Distribuidores Activos</span>
+                        <span id="distribuidores-count">{{ $distribuidores->count() }} Distribuidores</span>
                     </div>
                 </div>
 
@@ -245,7 +245,7 @@
     <script>
         function initFabricantesPage() {
             if (document.body.dataset.fabricantesPageInit === 'true') return;
-            console.log('🚀 Inicializando Fabricantes y Distribuidores (Premium)...');
+            console.log('🚀 Inicializando Fabricantes y Distribuidores...');
 
             if (window.lucide) {
                 lucide.createIcons();
