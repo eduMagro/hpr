@@ -5,6 +5,7 @@ namespace App\Livewire;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\On;
 use App\Models\PedidoGlobal;
 use App\Models\Fabricante;
 use App\Models\Distribuidor;
@@ -15,6 +16,12 @@ class PedidosGlobalesTable extends Component
 
     protected $paginationTheme = 'tailwind';
 
+    // Listener para refrescar cuando se crea un nuevo pedido
+    #[On('pedidoGlobalCreado')]
+    public function refrescarTabla()
+    {
+        $this->resetPage();
+    }
     // Filtros
     #[Url(keep: true)]
     public $codigo = '';
