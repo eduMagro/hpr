@@ -183,6 +183,12 @@ class PedidosGlobalesTable extends Component
         $distribuidores = Distribuidor::select('id', 'nombre')->orderBy('nombre')->get();
         $filtrosActivos = $this->getFiltrosActivos();
 
+        // Contar pedidos por estado para los stats
+        $totalPendientes = PedidoGlobal::whereNotIn('codigo', $codigosPedidosMaquila)
+            ->where('estado', 'pendiente')->count();
+        $totalCompletados = PedidoGlobal::whereNotIn('codigo', $codigosPedidosMaquila)
+            ->where('estado', 'completado')->count();
+
         return view('livewire.pedidos-globales-table', [
             'pedidosGlobales' => $pedidosGlobales,
             'pedidosMaquila' => $pedidosMaquila,
@@ -191,6 +197,8 @@ class PedidosGlobalesTable extends Component
             'fabricantes' => $fabricantes,
             'distribuidores' => $distribuidores,
             'filtrosActivos' => $filtrosActivos,
+            'totalPendientes' => $totalPendientes,
+            'totalCompletados' => $totalCompletados,
         ]);
     }
 }
