@@ -3,6 +3,9 @@
 
     @include('components.maquinas.modales.grua.modales-grua', [
         'maquinasDisponibles' => $maquinasDisponibles,
+        'ubicacionesPorSector' => $ubicacionesPorSector ?? collect(),
+        'sectores' => $sectores ?? [],
+        'sectorPorDefecto' => $sectorPorDefecto ?? null,
     ])
 
     <div class="w-full px-6 py-4">

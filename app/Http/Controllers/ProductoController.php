@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Maquina;
+use Illuminate\Support\Str;
 
 class ProductoController extends Controller
 {
@@ -320,7 +321,31 @@ class ProductoController extends Controller
             ->orderBy('nombre')
             ->get();
 
-        return view('productos.index', compact('registrosProductos', 'productosBase', 'filtrosActivos', 'ordenables', 'totalPesoInicial', 'navesSelect', 'maquinasDisponibles'));
+        // Ubicaciones por sector para el modal de movimiento libre
+        $primeraObraId = array_key_first($navesSelect);
+        $primeraObraNombre = $primeraObraId ? ($navesSelect[$primeraObraId] ?? null) : null;
+        $codigoAlmacen = $primeraObraNombre ? Ubicacion::codigoDesdeNombreNave($primeraObraNombre) : null;
+
+        $ubicacionesPorSector = collect();
+        $sectores = [];
+        $sectorPorDefecto = null;
+
+        if ($codigoAlmacen) {
+            $ubicacionesPorSector = Ubicacion::where('almacen', $codigoAlmacen)
+                ->orderBy('sector', 'asc')
+                ->orderBy('ubicacion', 'asc')
+                ->get()
+                ->map(function ($ubicacion) {
+                    $ubicacion->nombre_sin_prefijo = Str::after($ubicacion->nombre, 'Almacén ');
+                    return $ubicacion;
+                })
+                ->groupBy('sector');
+
+            $sectores = $ubicacionesPorSector->keys()->toArray();
+            $sectorPorDefecto = !empty($sectores) ? $sectores[0] : null;
+        }
+
+        return view('productos.index', compact('registrosProductos', 'productosBase', 'filtrosActivos', 'ordenables', 'totalPesoInicial', 'navesSelect', 'maquinasDisponibles', 'ubicacionesPorSector', 'sectores', 'sectorPorDefecto'));
     }
 
     public function GenerarYExportar(Request $request)

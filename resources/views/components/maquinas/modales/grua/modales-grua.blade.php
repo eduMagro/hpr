@@ -33,14 +33,54 @@
             <input type="hidden" name="lista_qrs" id="lista_qrs">
 
 
-            <!-- Ubicación destino (campo libre) -->
-            <div class="mt-4">
-                <x-tabla.input-movil name="ubicacion_destino"
-                    id="ubicacion_destino_general"
-                    label="Escanear Ubicación destino"
-                    placeholder="Escanea ubicación o escribe Nº"
-                    autocomplete="off" />
+            <!-- Ubicación destino (select de sector + ubicación) -->
+            <div class="mt-4" id="ubicacion-destino-container">
+                <!-- Select de Sector -->
+                <label for="sector_destino" class="block text-sm font-medium text-gray-700 mb-1">
+                    Sector <span class="text-red-500">*</span>
+                </label>
+                <select name="sector_destino" id="sector_destino"
+                    class="w-full border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+                    style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;">
+                    @foreach ($sectores ?? [] as $sector)
+                        <option value="{{ $sector }}" {{ $sector === ($sectorPorDefecto ?? '') ? 'selected' : '' }}>
+                            {{ $sector }}
+                        </option>
+                    @endforeach
+                </select>
 
+                <!-- Select de Ubicación -->
+                <label for="ubicacion_destino_select" class="block text-sm font-medium text-gray-700 mb-1">
+                    Ubicación <span class="text-red-500">*</span>
+                </label>
+                <select name="ubicacion_destino" id="ubicacion_destino_select"
+                    class="w-full border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+                    style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;">
+                    @php
+                        $sectorInicial = $sectorPorDefecto ?? (count($sectores ?? []) > 0 ? $sectores[0] : null);
+                        $ubicacionesIniciales = $sectorInicial && isset($ubicacionesPorSector[$sectorInicial])
+                            ? $ubicacionesPorSector[$sectorInicial]
+                            : collect();
+                    @endphp
+                    @foreach ($ubicacionesIniciales as $ubicacion)
+                        <option value="{{ $ubicacion->id }}">{{ $ubicacion->nombre_sin_prefijo }}</option>
+                    @endforeach
+                </select>
+
+                <!-- Checkbox para escanear ubicación -->
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input type="checkbox" id="scan_ubicacion_checkbox" class="w-5 h-5 cursor-pointer">
+                    <span>Escanear ubicación en su lugar</span>
+                </label>
+
+                <!-- Input de escaneo (oculto por defecto) -->
+                <div id="scan_ubicacion_wrapper" class="hidden mt-2">
+                    <x-tabla.input-movil name="ubicacion_destino_scan"
+                        id="ubicacion_destino_scan"
+                        label=""
+                        placeholder="Escanea el código de ubicación"
+                        autocomplete="off" />
+                </div>
             </div>
 
             <!-- Máquina destino (select filtrado por obra_id de la grúa) -->
@@ -72,6 +112,9 @@
     </div>
 </div>
 <script>
+    // Datos de ubicaciones por sector para el modal de movimiento libre
+    const ubicacionesPorSectorGrua = @json($ubicacionesPorSector ?? []);
+
     document.addEventListener('DOMContentLoaded', function() {
         // Selecciona solo los inputs del modal movimiento general
         const inputs = document.querySelectorAll(
@@ -86,6 +129,62 @@
                 }
             });
         });
+
+        // ===== Lógica para cambio de sector =====
+        const sectorSelect = document.getElementById('sector_destino');
+        const ubicacionSelect = document.getElementById('ubicacion_destino_select');
+
+        if (sectorSelect && ubicacionSelect) {
+            sectorSelect.addEventListener('change', function() {
+                const sectorSeleccionado = this.value;
+                const ubicacionesDelSector = ubicacionesPorSectorGrua[sectorSeleccionado] || [];
+
+                // Limpiar y reconstruir opciones de ubicaciones
+                ubicacionSelect.innerHTML = '';
+
+                ubicacionesDelSector.forEach(ubicacion => {
+                    const option = document.createElement('option');
+                    option.value = ubicacion.id;
+                    option.textContent = ubicacion.nombre_sin_prefijo;
+                    ubicacionSelect.appendChild(option);
+                });
+            });
+        }
+
+        // ===== Lógica para checkbox de escanear ubicación =====
+        const scanCheckbox = document.getElementById('scan_ubicacion_checkbox');
+        const scanWrapper = document.getElementById('scan_ubicacion_wrapper');
+        const scanInput = document.getElementById('ubicacion_destino_scan');
+
+        if (scanCheckbox && scanWrapper && sectorSelect && ubicacionSelect) {
+            scanCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    // Ocultar selects, mostrar input de escaneo
+                    sectorSelect.style.display = 'none';
+                    sectorSelect.previousElementSibling.style.display = 'none'; // label
+                    ubicacionSelect.style.display = 'none';
+                    ubicacionSelect.previousElementSibling.style.display = 'none'; // label
+                    ubicacionSelect.removeAttribute('name'); // quitar name del select
+                    scanWrapper.classList.remove('hidden');
+                    if (scanInput) {
+                        scanInput.setAttribute('name', 'ubicacion_destino');
+                        scanInput.focus();
+                    }
+                } else {
+                    // Mostrar selects, ocultar input de escaneo
+                    sectorSelect.style.display = 'block';
+                    sectorSelect.previousElementSibling.style.display = 'block';
+                    ubicacionSelect.style.display = 'block';
+                    ubicacionSelect.previousElementSibling.style.display = 'block';
+                    ubicacionSelect.setAttribute('name', 'ubicacion_destino');
+                    scanWrapper.classList.add('hidden');
+                    if (scanInput) {
+                        scanInput.removeAttribute('name');
+                        scanInput.value = '';
+                    }
+                }
+            });
+        }
     });
 </script>
 

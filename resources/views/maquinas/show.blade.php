@@ -659,10 +659,10 @@
                 window.gruposResumenData = @json($gruposResumen ?? []);
                 window.etiquetasEnGrupos = @json($etiquetasEnGrupos ?? []);
                 window.rutaDividirElemento = "{{ route('elementos.dividir') }}";
+                window.etiquetasData = @json($etiquetasData ?? []);
+                window.pesosElementos = @json($pesosElementos ?? []);
             @endif
 
-            window.etiquetasData = @json($etiquetasData);
-            window.pesosElementos = @json($pesosElementos);
             window.maquinaId = @json($maquina->id);
             window.MAQUINA_TIPO = @json($maquina->tipo_material);
             window.MAQUINA_CODIGO = @json($maquina->codigo);

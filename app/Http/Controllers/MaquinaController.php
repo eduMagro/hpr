@@ -180,7 +180,7 @@ class MaquinaController extends Controller
             'elementos.producto2',
             'elementos.producto3',
         ])->findOrFail($id);
-        // 1) Contexto común (incluye productosBaseCompatibles en $base)
+        // 1) Contexto común (ubicación, máquinas, usuarios, turno)
         $base = $this->cargarContextoBase($maquina);
 
         // 2) Rama GRÚA: devolver pronto con variables neutras de máquina
@@ -201,13 +201,8 @@ class MaquinaController extends Controller
             $grua = $this->cargarContextoGrua($maquina);
             return view('maquinas.show', array_merge(
                 $base,
-                [
-                    'maquina'          => $maquina,
-                    'elementosMaquina' => collect(),
-                    'pesosElementos'   => [],
-                    'etiquetasData'    => collect(),
-                ],
-                $grua // ← prioridad para movimientos* y demás de la grúa
+                ['maquina' => $maquina],
+                $grua
             ));
         }
 
@@ -338,8 +333,16 @@ class MaquinaController extends Controller
             ->pluck('producto_base_id')
             ->unique() ?? collect();
 
-        // 8) Sugerencias de corte (sobre elementos filtrados y PB barra)
-        $productosBaseCompatibles = collect($base['productosBaseCompatibles'] ?? []);
+        // 8) Productos base compatibles con la máquina (solo para máquinas normales)
+        $tipoMaterial = strtolower($maquina->tipo_material ?? '');
+        $queryPB = ProductoBase::whereBetween('diametro', [$maquina->diametro_min ?? 0, $maquina->diametro_max ?? 100])
+            ->orderBy('diametro');
+        if (!empty($tipoMaterial)) {
+            $queryPB->whereRaw('LOWER(tipo) = ?', [$tipoMaterial]);
+        }
+        $productosBaseCompatibles = $queryPB->get();
+
+        // 9) Sugerencias de corte (sobre elementos filtrados y PB barra)
         $productosBarra = $productosBaseCompatibles->filter(function ($pb) {
             $tipo = strtolower((string)($pb->tipo ?? ''));
             if (str_contains($tipo, 'barra') || str_contains($tipo, 'varilla') || str_contains($tipo, 'corrug')) {
@@ -673,20 +676,6 @@ class MaquinaController extends Controller
         // OPTIMIZADO: Solo cargar máquinas de la misma nave
         $maquinas = Maquina::where('obra_id', $maquina->obra_id)->orderBy('nombre')->get();
 
-        // Buscar productos base compatibles con la máquina
-        $tipoMaterial = strtolower($maquina->tipo_material ?? '');
-
-        $query = ProductoBase::whereBetween('diametro', [$maquina->diametro_min ?? 0, $maquina->diametro_max ?? 100])
-            ->orderBy('diametro');
-
-        // Si la máquina tiene tipo_material definido, filtrar por ese tipo
-        // Si no tiene tipo_material, mostrar todos los productos base compatibles por diámetro
-        if (!empty($tipoMaterial)) {
-            $query->whereRaw('LOWER(tipo) = ?', [$tipoMaterial]);
-        }
-
-        $productosBaseCompatibles = $query->get();
-
         $usuario1 = auth()->user();
         $usuario1->name = html_entity_decode($usuario1->name, ENT_QUOTES, 'UTF-8');
 
@@ -702,7 +691,7 @@ class MaquinaController extends Controller
             ->with('maquina')
             ->first();
 
-        return compact('ubicacion', 'maquinas', 'productosBaseCompatibles', 'usuario1', 'usuario2', 'turnoHoy');
+        return compact('ubicacion', 'maquinas', 'usuario1', 'usuario2', 'turnoHoy');
     }
 
 
@@ -745,102 +734,14 @@ class MaquinaController extends Controller
             'producto.ubicacion:id,nombre',
             'productoBase:id,tipo,diametro,longitud',
             'pedidoProducto:id,pedido_id,producto_base_id,cantidad,cantidad_recepcionada,estado,fecha_estimada_entrega',
+            'productoConsumido:id,codigo', // Para mostrar producto consumido en movimientos completados
         ])
             ->where('estado', 'completado')
             ->where('ejecutado_por', auth()->id())
-            ->where('nave_id', $obraId)              // ⬅️ misma nave
+            ->where('nave_id', $obraId)
             ->orderBy('updated_at', 'desc')
             ->take(20)
             ->get();
-
-        // JSON compacto para el front (incluye LA LÍNEA)
-        $movsPendJson = $movimientosPendientes->map(function ($m) {
-            $linea  = $m->pedidoProducto;
-            $pedido = $m->pedido;
-            $pb     = $m->productoBase;
-
-            $cantidad = (float) ($linea->cantidad ?? 0);
-            $recep    = (float) ($linea->cantidad_recepcionada ?? 0);
-            $restante = max(0.0, $cantidad - $recep);
-
-            return [
-                'id'                 => $m->id,
-                'tipo'               => $m->tipo,
-                'estado'             => $m->estado,
-                'prioridad'          => $m->prioridad,
-                'pedido_id'          => $pedido?->id,
-                'pedido_producto_id' => $linea?->id,
-                'producto_base_id'   => $pb?->id,
-
-                'pedido' => [
-                    'id'            => $pedido?->id,
-                    'codigo'        => $pedido?->codigo,
-                    'peso_total'    => $pedido?->peso_total,
-                    'fabricante_id' => $pedido?->fabricante_id,
-                    'fabricante'    => ['nombre' => $pedido?->fabricante?->nombre],
-                    'distribuidor'  => ['nombre' => $pedido?->distribuidor?->nombre],
-                ],
-
-                // 🔹 LÍNEA DE PEDIDO (lo que pide el modal)
-                'pedido_producto' => [
-                    'id'                     => $linea?->id,
-                    'cantidad'               => $cantidad,
-                    'cantidad_recepcionada'  => $recep,
-                    'restante'               => $restante,
-                    'estado'                 => $linea?->estado,
-                    'fecha_estimada_entrega' => $linea?->fecha_estimada_entrega,
-                ],
-
-                // Producto base
-                'producto_base' => [
-                    'id'       => $pb?->id,
-                    'tipo'     => $pb?->tipo,
-                    'diametro' => $pb?->diametro,
-                    'longitud' => $pb?->longitud, // en m si es barra en tu BD
-                ],
-
-                // Extras útiles para la vista grúa (opcionales)
-                'solicitado_por' => [
-                    'id'   => $m->solicitadoPor?->id,
-                    'name' => $m->solicitadoPor?->name,
-                ],
-                'ubicacion_producto' => [
-                    'nombre' => $m->producto?->ubicacion?->nombre,
-                ],
-            ];
-        });
-
-        $movsComplJson = $movimientosCompletados->map(function ($m) {
-            $pb    = $m->productoBase;
-            $linea = $m->pedidoProducto;
-
-            return [
-                'id'            => $m->id,
-                'estado'        => $m->estado,
-                'updated_at'    => $m->updated_at?->toIso8601String(),
-                'pedido_producto' => [
-                    'id'     => $linea?->id,
-                    'estado' => $linea?->estado,
-                ],
-                'producto_base' => [
-                    'id'       => $pb?->id,
-                    'tipo'     => $pb?->tipo,
-                    'diametro' => $pb?->diametro,
-                    'longitud' => $pb?->longitud,
-                ],
-                'solicitado_por' => [
-                    'id'   => $m->solicitadoPor?->id,
-                    'name' => $m->solicitadoPor?->name,
-                ],
-                'ejecutado_por' => [
-                    'id'   => $m->ejecutadoPor?->id,
-                    'name' => $m->ejecutadoPor?->name,
-                ],
-                'ubicacion_producto' => [
-                    'nombre' => $m->producto?->ubicacion?->nombre,
-                ],
-            ];
-        });
 
         // Ubicaciones disponibles por producto base - OPTIMIZADO: una sola query
         $productosBaseIds = $movimientosPendientes
@@ -869,32 +770,41 @@ class MaquinaController extends Controller
             }
         }
 
-        // Pedidos activos (de la misma nave) - OPTIMIZADO: whereIn en lugar de whereHas
-        $pedidoIdsConProductosEnNave = \DB::table('pedido_productos')
-            ->where('obra_id', $obraId)
-            ->distinct()
-            ->pluck('pedido_id');
-
-        $pedidosActivos = $pedidoIdsConProductosEnNave->isNotEmpty()
-            ? Pedido::where('estado', 'activo')
-                ->whereIn('id', $pedidoIdsConProductosEnNave)
-                ->with(['pedidoProductos' => fn($q) => $q->where('obra_id', $obraId)])
-                ->orderBy('updated_at', 'desc')
-                ->get()
-            : collect();
-
-        // 👉 Devolvemos tanto las colecciones Eloquent (si las usas en Blade) como los JSON ligeros para JS
+        // Datos del mapa para la nave
         $mapaData = $this->obtenerDatosMapaParaNave($obraId);
+
+        // ✅ Ubicaciones por sector para el modal de movimiento libre
+        $nave = Obra::find($obraId);
+        $codigoAlmacen = $nave ? Ubicacion::codigoDesdeNombreNave($nave->obra) : null;
+
+        $ubicacionesPorSector = collect();
+        $sectores = [];
+        $sectorPorDefecto = null;
+
+        if ($codigoAlmacen) {
+            $ubicacionesPorSector = Ubicacion::where('almacen', $codigoAlmacen)
+                ->orderBy('sector', 'asc')
+                ->orderBy('ubicacion', 'asc')
+                ->get()
+                ->map(function ($ubicacion) {
+                    $ubicacion->nombre_sin_prefijo = Str::after($ubicacion->nombre, 'Almacén ');
+                    return $ubicacion;
+                })
+                ->groupBy('sector');
+
+            $sectores = $ubicacionesPorSector->keys()->toArray();
+            $sectorPorDefecto = !empty($sectores) ? $sectores[0] : null;
+        }
 
         return [
             'movimientosPendientes'                 => $movimientosPendientes,
             'movimientosCompletados'                => $movimientosCompletados,
-            'movimientosPendientesJson'             => $movsPendJson->values(),
-            'movimientosCompletadosJson'            => $movsComplJson->values(),
             'ubicacionesDisponiblesPorProductoBase' => $ubicacionesDisponiblesPorProductoBase,
-            'pedidosActivos'                        => $pedidosActivos,
             'maquinasDisponibles'                   => $maquinasDisponibles,
             'mapaData'                              => $mapaData,
+            'ubicacionesPorSector'                  => $ubicacionesPorSector,
+            'sectores'                              => $sectores,
+            'sectorPorDefecto'                      => $sectorPorDefecto,
         ];
     }
 
