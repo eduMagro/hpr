@@ -39,7 +39,7 @@
         @if (auth()->user()->rol === 'oficina')
             {{-- Header de la sección con Tabs Modernos --}}
             <div
-                class="flex flex-col xl:flex-row xl:items-end justify-between gap-8 mb-12 border-b border-slate-200 pb-10">
+                class="flex flex-col xl:flex-row xl:items-end justify-between gap-8 mb-4 border-b border-slate-200 pb-10">
                 <div>
                     <h1 class="text-4xl xl:text-5xl font-black text-slate-900 tracking-tight mb-2">Pedidos</h1>
                     <p class="text-lg text-slate-500 font-medium">Gestión integral de suministros y reaprovechamiento.

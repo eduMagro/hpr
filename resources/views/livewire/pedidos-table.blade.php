@@ -1,7 +1,7 @@
 <div>
     {{-- Filtros y Herramientas --}}
     <div
-        class="bg-slate-800 p-3 rounded-2xl border border-slate-200 mb-4 flex flex-wrap items-center gap-3 shadow-inner">
+        class="bg-gradient-to-r from-indigo-600 to-blue-500 p-3 rounded-2xl mb-4 flex flex-wrap items-center gap-3 shadow-lg shadow-indigo-200">
         <div class="flex-1 min-w-[250px]">
             <div class="relative group">
                 <span
@@ -12,12 +12,12 @@
                     </svg>
                 </span>
                 <input type="text" wire:model.live.debounce.300ms="codigo" placeholder="ID de Pedido o Referencia..."
-                    class="w-full pl-11 pr-4 py-2 bg-white border border-slate-200 focus:border-slate-900 focus:ring-4 focus:ring-slate-900/10 rounded-xl text-xs font-black text-slate-700 transition-all placeholder:text-slate-400">
+                    class="w-full pl-11 pr-4 py-2 bg-white/95 backdrop-blur border-0 focus:ring-4 focus:ring-white/30 rounded-xl text-xs font-black text-slate-700 transition-all placeholder:text-slate-400 shadow-sm">
             </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
-            <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border border-slate-200">
+            <div class="flex items-center gap-2 bg-white/95 backdrop-blur px-3 py-1.5 rounded-xl shadow-sm">
                 <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">Fabricante</span>
                 <select wire:model.live="fabricante_id"
                     class="text-xs font-black text-slate-700 bg-transparent border-0 focus:ring-0 py-1 pl-1 pr-8 cursor-pointer">
@@ -28,7 +28,7 @@
                 </select>
             </div>
 
-            <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border border-slate-200">
+            <div class="flex items-center gap-2 bg-white/95 backdrop-blur px-3 py-1.5 rounded-xl shadow-sm">
                 <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">Destino</span>
                 <select wire:model.live="obra_id"
                     class="text-xs font-black text-slate-700 bg-transparent border-0 focus:ring-0 py-1 pl-1 pr-8 cursor-pointer">
@@ -39,7 +39,7 @@
                 </select>
             </div>
 
-            <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border border-slate-200">
+            <div class="flex items-center gap-2 bg-white/95 backdrop-blur px-3 py-1.5 rounded-xl shadow-sm">
                 <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">Estado</span>
                 <select wire:model.live="estado"
                     class="text-xs font-black text-slate-700 bg-transparent border-0 focus:ring-0 py-1 pl-1 pr-8 cursor-pointer">
@@ -53,7 +53,7 @@
             </div>
 
             <button wire:click="limpiarFiltros"
-                class="p-3 bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-900 border border-slate-200 rounded-2xl transition-all shadow-sm active:scale-95"
+                class="p-2.5 bg-white/20 hover:bg-white/40 text-white border-0 rounded-xl transition-all active:scale-95"
                 title="Limpiar filtros">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor">
@@ -69,7 +69,7 @@
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <table class="w-full border-collapse text-sm">
             <thead>
-                <tr class="bg-slate-800 border-b border-slate-200">
+                <tr class="bg-gradient-to-r from-slate-800 to-slate-700">
                     <th
                         class="px-4 py-2.5 text-left font-black text-slate-50 uppercase tracking-widest text-[10px] w-40">
                         Línea</th>
@@ -107,12 +107,13 @@
                     @endphp
 
                     {{-- CABECERA DEL PEDIDO (GRUPO) --}}
-                    <tr class="bg-slate-100 border-t-2 relative group/row">
-                        <td colspan="6" class="px-4 py-2.5 border-l-4 border-slate-900 transition-all duration-300">
+                    <tr
+                        class="bg-gradient-to-r from-slate-50 to-blue-50 border-t-2 border-indigo-100 relative group/row hover:from-blue-50 hover:to-indigo-50 transition-all">
+                        <td colspan="6" class="px-4 py-2.5 border-l-4 border-indigo-500 transition-all duration-300">
                             <div class="flex items-center gap-6">
                                 <div class="flex flex-col">
                                     <span
-                                        class="text-sm font-black text-slate-900 tracking-tight">{{ $pedido?->codigo ?? '—' }}</span>
+                                        class="text-sm font-black text-indigo-900 tracking-tight">{{ $pedido?->codigo ?? '—' }}</span>
                                 </div>
 
                                 <div class="flex flex-col">
@@ -137,9 +138,9 @@
                                 <span
                                     class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider
                                     {{ $pedidoCancelado ? 'bg-slate-200 text-slate-600' : '' }}
-                                    {{ $pedidoCompletado ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : '' }}
-                                    {{ $pedidoFacturado ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : '' }}
-                                    {{ !$pedidoCancelado && !$pedidoCompletado && !$pedidoFacturado ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' : '' }}">
+                                    {{ $pedidoCompletado ? 'bg-emerald-100 text-emerald-700 border border-emerald-300 ring-2 ring-emerald-100' : '' }}
+                                    {{ $pedidoFacturado ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200' : '' }}
+                                    {{ !$pedidoCancelado && !$pedidoCompletado && !$pedidoFacturado ? 'bg-gradient-to-r from-indigo-500 to-blue-500 text-white shadow-lg shadow-indigo-200' : '' }}">
                                     {{ $pedido?->estado ?? 'pendiente' }}
                                 </span>
                             </div>
@@ -183,16 +184,20 @@
                             $estadoLinea = strtolower(trim($linea->estado));
 
                             $claseLinea = match ($estadoLinea) {
-                                'activo' => 'bg-amber-100',
-                                'facturado' => 'bg-green-500/50',
-                                'completado' => 'bg-indigo-400/50',
+                                'activo'
+                                    => 'bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100',
+                                'facturado'
+                                    => 'bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100',
+                                'completado'
+                                    => 'bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100',
                                 'cancelado' => 'opacity-50 grayscale bg-slate-50',
-                                default => '',
+                                default => 'hover:bg-blue-50/50',
                             };
                         @endphp
 
                         <tr wire:key="linea-{{ $linea->id }}" class="group {{ $claseLinea }}">
-                            <td class="px-4 py-2 align-middle border-l-4 border-slate-200 group-hover:border-blue-400">
+                            <td
+                                class="px-4 py-2 align-middle border-l-4 border-transparent group-hover:border-indigo-400 transition-all">
                                 @if ($linea->codigo)
                                     <div class="flex flex-col gap-0.5">
                                         <div class="flex items-center gap-1">
@@ -320,9 +325,10 @@
                                     <span
                                         class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider
                                          {{ $linea->estado === 'cancelado' ? 'bg-slate-200 text-slate-600' : '' }}
-                                         {{ $linea->estado === 'completado' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : '' }}
-                                         {{ $linea->estado === 'facturado' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : '' }}
-                                         {{ in_array($linea->estado, ['activo', 'pendiente', 'parcial']) ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' : '' }}">
+                                         {{ $linea->estado === 'completado' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md shadow-indigo-200' : '' }}
+                                         {{ $linea->estado === 'facturado' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-200' : '' }}
+                                         {{ $linea->estado === 'activo' ? 'bg-gradient-to-r from-amber-400 to-orange-400 text-white shadow-md shadow-amber-200' : '' }}
+                                         {{ in_array($linea->estado, ['pendiente', 'parcial']) ? 'bg-gradient-to-r from-indigo-600 to-blue-500 text-white shadow-md shadow-indigo-200' : '' }}">
                                         {{ $linea->estado }}
                                     </span>
                                 </div>
