@@ -166,25 +166,12 @@ class MaquinaController extends Controller
 
     public function show($id)
     {
-        // 0) Máquina + relaciones base
-        $maquina = Maquina::with([
-            'elementos.planilla',
-            'elementos.etiquetaRelacion',
-            'elementos.subetiquetas',
-            'elementos.maquina',
-            'elementos.maquina_2',
-            'elementos.maquina_3',
-            'productos',
-            // ✅ COLADAS: Cargar relaciones de productos en elementos (trazabilidad completa)
-            'elementos.producto',
-            'elementos.producto2',
-            'elementos.producto3',
-        ])->findOrFail($id);
-        // 1) Contexto común (ubicación, máquinas, usuarios, turno)
-        $base = $this->cargarContextoBase($maquina);
+        // 0) Primero cargar solo la máquina para verificar el tipo
+        $maquina = Maquina::findOrFail($id);
 
-        // 2) Rama GRÚA: devolver pronto con variables neutras de máquina
+        // 1) Rama GRÚA: cargar contexto mínimo y devolver pronto
         if ($this->esGrua($maquina)) {
+            $base = $this->cargarContextoBase($maquina);
             // ⚠️ IMPORTANTE: Activar movimientos ANTES de cargar el contexto
             // para que los nuevos movimientos aparezcan en la primera carga
             //$this->activarMovimientosSalidasHoy();
@@ -205,6 +192,21 @@ class MaquinaController extends Controller
                 $grua
             ));
         }
+
+        // 2) MÁQUINAS NORMALES: Cargar relaciones pesadas y contexto base
+        $maquina->load([
+            'elementos.planilla',
+            'elementos.etiquetaRelacion',
+            'elementos.subetiquetas',
+            'elementos.maquina',
+            'elementos.maquina_2',
+            'elementos.maquina_3',
+            'productos',
+            'elementos.producto',
+            'elementos.producto2',
+            'elementos.producto3',
+        ]);
+        $base = $this->cargarContextoBase($maquina);
 
         // 3) Elementos de la máquina (primera o segunda)
         if ($this->esSegundaMaquina($maquina)) {
@@ -868,11 +870,11 @@ class MaquinaController extends Controller
                 ];
             })->values()->toArray();
 
-        // OPTIMIZADO: join en lugar de whereHas para evitar subconsulta EXISTS
+        // OPTIMIZADO: join + eager load etiquetas.elementos para evitar N+1 en getTipoContenido()
         $paquetesConLocalizacion = Paquete::select('paquetes.*')
             ->join('localizaciones_paquetes', 'paquetes.id', '=', 'localizaciones_paquetes.paquete_id')
             ->where('paquetes.nave_id', $naveId)
-            ->with('localizacionPaquete')
+            ->with(['localizacionPaquete', 'etiquetas.elementos'])
             ->get()
             ->map(function ($paquete) {
                 $loc = $paquete->localizacionPaquete;
