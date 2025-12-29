@@ -1465,7 +1465,7 @@
                 // Primero verificar discrepancias
                 try {
                     const response = await fetch(
-                    '{{ route('entradas.verificarDiscrepancias', $entradaAbierta->id) }}');
+                        '{{ route('entradas.verificarDiscrepancias', $entradaAbierta->id) }}');
                     const data = await response.json();
 
                     if (data.discrepancias && data.discrepancias.length > 0) {

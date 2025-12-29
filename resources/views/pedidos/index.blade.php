@@ -64,6 +64,9 @@
                         <p class="text-sm text-slate-300 mt-2">
                             Registrar coladas y bultos asociados (opcional)
                         </p>
+                        <p id="modal-linea-info" class="text-sm text-slate-200 mt-1">
+                            Selecciona las coladas y bultos de la línea que estás activando antes de confirmar.
+                        </p>
                     </div>
 
                     {{-- Body --}}
@@ -1098,6 +1101,7 @@
 
             const modal = document.getElementById('modal-coladas-activacion');
             const cuerpoTabla = document.getElementById('tabla-coladas-body');
+            const modalLineaInfo = document.getElementById('modal-linea-info');
             const btnAgregar = document.getElementById('btn-agregar-colada');
             const btnCancelar = document.getElementById('btn-cancelar-coladas');
             const btnConfirmar = document.getElementById('btn-confirmar-activacion-coladas');
@@ -1112,6 +1116,27 @@
             function obtenerFilaLinea(pedidoId, lineaId) {
                 return document.querySelector(
                     `.fila-pedido-linea[data-pedido-id="${pedidoId}"][data-linea-id="${lineaId}"]`);
+            }
+
+            function actualizarLineaInfoEnModal(pedidoId, lineaId) {
+                if (!modalLineaInfo) {
+                    return;
+                }
+
+                const fila = obtenerFilaLinea(pedidoId, lineaId);
+                if (!fila) {
+                    modalLineaInfo.textContent = 'Línea seleccionada: no disponible';
+                    return;
+                }
+
+                const codigo = fila.dataset.lineaCodigo ? `Línea ${fila.dataset.lineaCodigo}` : 'Línea';
+                const producto = fila.dataset.lineaProducto ? fila.dataset.lineaProducto : null;
+                const diametro = fila.dataset.lineaDiametro ? `Ø${fila.dataset.lineaDiametro}` : null;
+                const longitud = fila.dataset.lineaLongitud ? `x${fila.dataset.lineaLongitud.trim()} m` : null;
+                const cantidad = fila.dataset.lineaCantidad ? `${parseFloat(fila.dataset.lineaCantidad).toLocaleString('es-ES', {maximumFractionDigits: 2})} kg` : null;
+
+                const detalles = [producto, diametro, longitud, cantidad].filter(Boolean).join(' • ');
+                modalLineaInfo.textContent = detalles ? `${codigo} • ${detalles}` : codigo;
             }
 
             function actualizarEstadoVisualLinea(pedidoId, lineaId, nuevoEstado, clasesAgregar = [], filaElement =
@@ -1214,6 +1239,7 @@
 
                 cuerpoTabla.innerHTML = '';
                 agregarFilaColada();
+                actualizarLineaInfoEnModal(pedidoId, lineaId);
 
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');

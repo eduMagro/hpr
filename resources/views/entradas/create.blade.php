@@ -26,6 +26,7 @@
             <input type="hidden" name="codigo" id="codigo_input">
             <input type="hidden" name="fabricante_id" id="fabricante_id_input">
             <input type="hidden" name="albaran" id="albaran_input">
+            <input type="hidden" name="pedido_id" id="pedido_id_input">
             <input type="hidden" name="producto_base_id" id="producto_base_id_input">
             <input type="hidden" name="n_colada" id="n_colada_input">
             <input type="hidden" name="n_paquete" id="n_paquete_input">
@@ -884,13 +885,17 @@
                 document.getElementById('cantidad_paquetes_input').value = this.data.paquetes;
                 document.getElementById('codigo_input').value = this.data.codigo;
                 document.getElementById('fabricante_id_input').value = this.data.fabricante_id;
-                document.getElementById('albaran_input').value = 'Entrada manual';
+
+                const albaranHidden = document.getElementById('albaran_input');
+                albaranHidden.value = this.data.albaran || albaranHidden.value || 'Entrada manual';
+
                 document.getElementById('producto_base_id_input').value = this.data.producto_base_id;
                 document.getElementById('n_colada_input').value = this.data.n_colada;
                 document.getElementById('n_paquete_input').value = this.data.n_paquete;
                 document.getElementById('peso_input').value = this.data.peso;
                 document.getElementById('obra_id_input').value = this.data.obra_id;
                 document.getElementById('ubicacion_input').value = this.data.ubicacion;
+                document.getElementById('pedido_id_input').value = this.data.pedido_id || document.getElementById('pedido_id_input').value;
 
                 if (this.data.paquetes === '2') {
                     document.getElementById('codigo_2_input').value = this.data.codigo_2 || '';
@@ -923,6 +928,7 @@
             wizard = new RegistroWizard();
             wizard.start();
         }
+
     </script>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />

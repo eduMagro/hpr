@@ -21,6 +21,7 @@ use App\Http\Controllers\EmpresaTransporteController;
 use App\Http\Controllers\PlanificacionController;
 use App\Http\Controllers\MaquinaController;
 use App\Http\Controllers\MovimientoController;
+use App\Http\Controllers\EntradaOcrController;
 use App\Http\Controllers\PlanillaController;
 use App\Http\Controllers\ProduccionController;
 use App\Http\Controllers\ElementoController;
@@ -56,8 +57,23 @@ use App\Http\Controllers\EpisController;
 use App\Http\Controllers\FcmTokenController;
 use App\Services\PlanillaService;
 use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\OpenAIController;
 
 Route::get('/', [PageController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
+
+// Escaneo de albaranes (producción)
+Route::get('/albaranes/scan', [OpenAIController::class, 'index'])->name('albaranes.scan.index');
+Route::post('/albaranes/scan/procesar', [OpenAIController::class, 'procesar'])->name('albaranes.scan.procesar');
+Route::post('/albaranes/scan/procesar-ajax', [OpenAIController::class, 'procesarAjax'])->name('albaranes.scan.procesar.ajax');
+Route::post('/albaranes/scan/buscar-pedido', [OpenAIController::class, 'buscarPedido'])->name('albaranes.scan.pedido.lookup');
+Route::post('/albaranes/scan/simular', [OpenAIController::class, 'simular'])->name('albaranes.scan.simular');
+
+// Alias legacy (compatibilidad)
+Route::get('/pruebasScanAlbaran', [OpenAIController::class, 'index'])->name('openai.index');
+Route::post('/pruebasScanAlbaran/procesar', [OpenAIController::class, 'procesar'])->name('openai.procesar');
+Route::post('/pruebasScanAlbaran/procesar-ajax', [OpenAIController::class, 'procesarAjax'])->name('openai.procesar.ajax');
+Route::post('/pruebasScanAlbaran/buscar-pedido', [OpenAIController::class, 'buscarPedido'])->name('openai.pedido.lookup');
+Route::post('/pruebasScanAlbaran/simular', [OpenAIController::class, 'simular'])->name('openai.simular');
 
 // Rutas de secciones principales
 Route::get('/produccion', [PageController::class, 'produccion'])->middleware(['auth', 'verified'])->name('secciones.produccion');
@@ -160,6 +176,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/entradas/importar-albaran', [EntradaController::class, 'subirPdf'])
         ->name('entradas.crearImportarAlbaranPdf');
     Route::get('/entradas/pdf/{id}', [EntradaController::class, 'descargarPdf'])->name('entradas.crearDescargarPdf');
+    Route::post('/entradas/ocr/parse', [EntradaOcrController::class, 'parse'])->name('entradas.ocr.parse');
+    Route::post('/entradas/ocr/reject', [EntradaOcrController::class, 'reject'])->name('entradas.ocr.reject');
     Route::get('/pedidos/stock-html', [PedidoController::class, 'obtenerStockHtml'])->name('pedidos.verStockHtml');
     Route::resource('pedidos_globales', PedidoGlobalController::class);
     Route::resource('pedidos', PedidoController::class);

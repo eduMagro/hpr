@@ -20,6 +20,7 @@ class Movimiento extends Model
         'paquete_id',
         'pedido_id',
         'pedido_producto_id',
+        'ocr_log_id',
         'salida_id',
         'salida_almacen_id',
         'ubicacion_origen',

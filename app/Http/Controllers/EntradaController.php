@@ -10,6 +10,7 @@ use App\Models\Producto;
 use App\Models\PedidoProducto;
 use App\Models\PedidoProductoColada;
 use App\Models\Pedido;
+use App\Models\EntradaImportLog;
 use App\Models\Elemento;
 use App\Models\ProductoBase;
 use App\Models\Fabricante;
@@ -375,6 +376,7 @@ class EntradaController extends Controller
                 'ubicacion_id'      => ['nullable', 'integer', 'exists:ubicaciones,id'], // ✅ clave correcta
                 'obra_id'           => ['required', 'integer', 'exists:obras,id'],       // ✅ requerido para ambos productos
                 'otros'             => ['nullable', 'string', 'max:255'],
+                'ocr_log_id'        => ['nullable', 'integer', 'exists:entrada_import_logs,id'],
             ], [
                 'codigo.required'   => 'El código generado es obligatorio.',
                 'codigo.string'     => 'El código debe ser una cadena de texto.',
@@ -425,6 +427,7 @@ class EntradaController extends Controller
 
                 'otros.string'      => 'El campo "otros" debe ser una cadena de texto.',
                 'otros.max'         => 'El campo "otros" no puede tener más de 255 caracteres.',
+                'ocr_log_id.exists' => 'El log de importación OCR indicado no existe.',
             ]);
 
             // 2) Normalizaciones / cálculos
@@ -500,6 +503,20 @@ class EntradaController extends Controller
                     'otros'            => $otrosComun,
                 ]);
             }
+
+            if ($request->filled('ocr_log_id')) {
+                $log = EntradaImportLog::find($request->ocr_log_id);
+                if ($log) {
+                    $log->update([
+                        'entrada_id'      => $entrada->id,
+                        'applied_payload' => $request->except(['_token']),
+                        'status'          => 'applied',
+                        'reviewed_at'     => now(),
+                    ]);
+                }
+            }
+
+            $this->adjuntarArchivoOcrAEntrada($entrada, $request->input('ocr_log_id'));
 
             DB::commit();
 
@@ -630,6 +647,68 @@ class EntradaController extends Controller
         return redirect()->back()->with('success', 'PDF del albarán subido correctamente.');
     }
 
+    /**
+     * Copia el archivo guardado por el OCR (imagen o PDF) al registro de entrada.
+     */
+    private function adjuntarArchivoOcrAEntrada(Entrada $entrada, ?int $logId = null): void
+    {
+        if ($entrada->pdf_albaran) {
+            return;
+        }
+
+        $log = null;
+
+        if ($logId) {
+            $log = EntradaImportLog::find($logId);
+        }
+
+        if (!$log && $entrada->albaran) {
+            $log = EntradaImportLog::whereNull('entrada_id')
+                ->where(function ($q) use ($entrada) {
+                    $q->where('parsed_payload->albaran', $entrada->albaran)
+                        ->orWhere('applied_payload->albaran', $entrada->albaran);
+                })
+                ->orderByDesc('id')
+                ->first();
+        }
+
+        if (!$log || !$log->file_path) {
+            return;
+        }
+
+        $disk = Storage::disk('private');
+        if (!$disk->exists($log->file_path)) {
+            Log::warning('Archivo OCR no encontrado para adjuntar al albaran.', [
+                'log_id' => $log->id ?? null,
+                'file_path' => $log->file_path,
+                'entrada_id' => $entrada->id,
+            ]);
+            return;
+        }
+
+        $extension = pathinfo($log->file_path, PATHINFO_EXTENSION) ?: 'pdf';
+        $destino = 'albaranes_entrada/albaran_' . $entrada->id . '_' . time() . '.' . $extension;
+
+        try {
+            $disk->copy($log->file_path, $destino);
+
+            $entrada->pdf_albaran = basename($destino);
+            $entrada->save();
+
+            $log->entrada_id = $entrada->id;
+            $log->applied_payload = array_merge($log->applied_payload ?? [], ['auto_attached' => true]);
+            $log->status = $log->status ?? 'applied';
+            $log->reviewed_at = $log->reviewed_at ?? now();
+            $log->save();
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo copiar el archivo OCR al albaran.', [
+                'log_id' => $log->id ?? null,
+                'destino' => $destino,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     public function descargarPdf(Request $request, $id)
     {
         $entrada = Entrada::findOrFail($id);
@@ -641,9 +720,13 @@ class EntradaController extends Controller
 
         $forzarDescarga = $request->boolean('download');
         $disposition = $forzarDescarga ? 'attachment' : 'inline';
-        return response()->file(Storage::disk('private')->path($ruta), [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => $disposition . '; filename="Albaran_' . $entrada->id . '.pdf"',
+        $fullPath = Storage::disk('private')->path($ruta);
+        $extension = pathinfo($fullPath, PATHINFO_EXTENSION) ?: 'pdf';
+        $mime = mime_content_type($fullPath) ?: 'application/octet-stream';
+
+        return response()->file($fullPath, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => $disposition . '; filename="Albaran_' . $entrada->id . '.' . $extension . '"',
         ]);
     }
     public function cerrar(Request $request, $id)
