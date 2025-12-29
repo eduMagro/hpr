@@ -1,0 +1,627 @@
+departamentos:3442 🔍 Session check: {error: null, success: null, warning: null, info: null}
+departamentos:3522 🔍 Inicializando sistema de alertas...
+departamentos:9827 🔍 Inicializando página de departamentos...
+installHook.js:1 Alpine Expression Error: Illegal invocation
+
+Expression: "open"
+
+ tr.bg-gray-50
+overrideMethod @ installHook.js:1
+handleError @ livewire.js?id=df3a17f2:1123
+tryCatch @ livewire.js?id=df3a17f2:1118
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+installHook.js:1 Alpine Expression Error: Illegal invocation
+
+Expression: "open"
+
+ tr.bg-gray-50
+overrideMethod @ installHook.js:1
+handleError @ livewire.js?id=df3a17f2:1123
+tryCatch @ livewire.js?id=df3a17f2:1118
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+installHook.js:1 Alpine Expression Error: Illegal invocation
+
+Expression: "open"
+
+ tr.bg-gray-50
+overrideMethod @ installHook.js:1
+handleError @ livewire.js?id=df3a17f2:1123
+tryCatch @ livewire.js?id=df3a17f2:1118
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+installHook.js:1 Alpine Expression Error: Illegal invocation
+
+Expression: "open"
+
+ tr.bg-gray-50
+overrideMethod @ installHook.js:1
+handleError @ livewire.js?id=df3a17f2:1123
+tryCatch @ livewire.js?id=df3a17f2:1118
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+installHook.js:1 Alpine Expression Error: Illegal invocation
+
+Expression: "open"
+
+ tr.bg-gray-50
+overrideMethod @ installHook.js:1
+handleError @ livewire.js?id=df3a17f2:1123
+tryCatch @ livewire.js?id=df3a17f2:1118
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+installHook.js:1 Alpine Expression Error: Illegal invocation
+
+Expression: "open"
+
+ tr.bg-gray-50
+overrideMethod @ installHook.js:1
+handleError @ livewire.js?id=df3a17f2:1123
+tryCatch @ livewire.js?id=df3a17f2:1118
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+installHook.js:1 Alpine Expression Error: Illegal invocation
+
+Expression: "open"
+
+ tr.bg-gray-50
+overrideMethod @ installHook.js:1
+handleError @ livewire.js?id=df3a17f2:1123
+tryCatch @ livewire.js?id=df3a17f2:1118
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+installHook.js:1 Alpine Expression Error: Illegal invocation
+
+Expression: "open"
+
+ tr.bg-gray-50
+overrideMethod @ installHook.js:1
+handleError @ livewire.js?id=df3a17f2:1123
+tryCatch @ livewire.js?id=df3a17f2:1118
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+installHook.js:1 Alpine Expression Error: openPermisosModal is not defined
+
+Expression: "openPermisosModal"
+
+ <div x-show=​"openPermisosModal" class=​"fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" style=​"display:​ none;​">​…​</div>​
+overrideMethod @ installHook.js:1
+handleError @ livewire.js?id=df3a17f2:1123
+(anonymous) @ livewire.js?id=df3a17f2:1196
+Promise.catch
+(anonymous) @ livewire.js?id=df3a17f2:1196
+tryCatch @ livewire.js?id=df3a17f2:1116
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+installHook.js:1 Alpine Expression Error: selectedUserId is not defined
+
+Expression: "selectedUserId"
+
+ <select x-model=​"selectedUserId" class=​"w-full border rounded px-3 py-2">​…​</select>​
+overrideMethod @ installHook.js:1
+handleError @ livewire.js?id=df3a17f2:1123
+(anonymous) @ livewire.js?id=df3a17f2:1196
+Promise.catch
+(anonymous) @ livewire.js?id=df3a17f2:1196
+tryCatch @ livewire.js?id=df3a17f2:1116
+getValue @ livewire.js?id=df3a17f2:3353
+(anonymous) @ livewire.js?id=df3a17f2:3410
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3409
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+installHook.js:1 Alpine Expression Error: selectedUserId is not defined
+
+Expression: "selectedUserId"
+
+ <template x-if=​"selectedUserId">​…​</template>​
+overrideMethod @ installHook.js:1
+handleError @ livewire.js?id=df3a17f2:1123
+(anonymous) @ livewire.js?id=df3a17f2:1196
+Promise.catch
+(anonymous) @ livewire.js?id=df3a17f2:1196
+tryCatch @ livewire.js?id=df3a17f2:1116
+(anonymous) @ livewire.js?id=df3a17f2:3856
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3856
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+livewire.js?id=df3a17f2:1210 Uncaught TypeError: Illegal invocation
+    at runIfTypeOfFunction (livewire.js?id=df3a17f2:1210:26)
+    at livewire.js?id=df3a17f2:1198:11
+    at tryCatch (livewire.js?id=df3a17f2:1116:14)
+    at livewire.js?id=df3a17f2:3626:19
+    at reactiveEffect (livewire.js?id=df3a17f2:2432:18)
+    at Object.effect2 [as effect] (livewire.js?id=df3a17f2:2407:7)
+    at effect (livewire.js?id=df3a17f2:764:35)
+    at wrappedEffect (livewire.js?id=df3a17f2:780:29)
+    at Function.<anonymous> (livewire.js?id=df3a17f2:3626:5)
+    at flushHandlers (livewire.js?id=df3a17f2:1281:48)
+runIfTypeOfFunction @ livewire.js?id=df3a17f2:1210
+(anonymous) @ livewire.js?id=df3a17f2:1198
+tryCatch @ livewire.js?id=df3a17f2:1116
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+livewire.js?id=df3a17f2:1210 Uncaught TypeError: Illegal invocation
+    at runIfTypeOfFunction (livewire.js?id=df3a17f2:1210:26)
+    at livewire.js?id=df3a17f2:1198:11
+    at tryCatch (livewire.js?id=df3a17f2:1116:14)
+    at livewire.js?id=df3a17f2:3626:19
+    at reactiveEffect (livewire.js?id=df3a17f2:2432:18)
+    at Object.effect2 [as effect] (livewire.js?id=df3a17f2:2407:7)
+    at effect (livewire.js?id=df3a17f2:764:35)
+    at wrappedEffect (livewire.js?id=df3a17f2:780:29)
+    at Function.<anonymous> (livewire.js?id=df3a17f2:3626:5)
+    at flushHandlers (livewire.js?id=df3a17f2:1281:48)
+runIfTypeOfFunction @ livewire.js?id=df3a17f2:1210
+(anonymous) @ livewire.js?id=df3a17f2:1198
+tryCatch @ livewire.js?id=df3a17f2:1116
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+livewire.js?id=df3a17f2:1210 Uncaught TypeError: Illegal invocation
+    at runIfTypeOfFunction (livewire.js?id=df3a17f2:1210:26)
+    at livewire.js?id=df3a17f2:1198:11
+    at tryCatch (livewire.js?id=df3a17f2:1116:14)
+    at livewire.js?id=df3a17f2:3626:19
+    at reactiveEffect (livewire.js?id=df3a17f2:2432:18)
+    at Object.effect2 [as effect] (livewire.js?id=df3a17f2:2407:7)
+    at effect (livewire.js?id=df3a17f2:764:35)
+    at wrappedEffect (livewire.js?id=df3a17f2:780:29)
+    at Function.<anonymous> (livewire.js?id=df3a17f2:3626:5)
+    at flushHandlers (livewire.js?id=df3a17f2:1281:48)
+runIfTypeOfFunction @ livewire.js?id=df3a17f2:1210
+(anonymous) @ livewire.js?id=df3a17f2:1198
+tryCatch @ livewire.js?id=df3a17f2:1116
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+livewire.js?id=df3a17f2:1210 Uncaught TypeError: Illegal invocation
+    at runIfTypeOfFunction (livewire.js?id=df3a17f2:1210:26)
+    at livewire.js?id=df3a17f2:1198:11
+    at tryCatch (livewire.js?id=df3a17f2:1116:14)
+    at livewire.js?id=df3a17f2:3626:19
+    at reactiveEffect (livewire.js?id=df3a17f2:2432:18)
+    at Object.effect2 [as effect] (livewire.js?id=df3a17f2:2407:7)
+    at effect (livewire.js?id=df3a17f2:764:35)
+    at wrappedEffect (livewire.js?id=df3a17f2:780:29)
+    at Function.<anonymous> (livewire.js?id=df3a17f2:3626:5)
+    at flushHandlers (livewire.js?id=df3a17f2:1281:48)
+runIfTypeOfFunction @ livewire.js?id=df3a17f2:1210
+(anonymous) @ livewire.js?id=df3a17f2:1198
+tryCatch @ livewire.js?id=df3a17f2:1116
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+livewire.js?id=df3a17f2:1210 Uncaught TypeError: Illegal invocation
+    at runIfTypeOfFunction (livewire.js?id=df3a17f2:1210:26)
+    at livewire.js?id=df3a17f2:1198:11
+    at tryCatch (livewire.js?id=df3a17f2:1116:14)
+    at livewire.js?id=df3a17f2:3626:19
+    at reactiveEffect (livewire.js?id=df3a17f2:2432:18)
+    at Object.effect2 [as effect] (livewire.js?id=df3a17f2:2407:7)
+    at effect (livewire.js?id=df3a17f2:764:35)
+    at wrappedEffect (livewire.js?id=df3a17f2:780:29)
+    at Function.<anonymous> (livewire.js?id=df3a17f2:3626:5)
+    at flushHandlers (livewire.js?id=df3a17f2:1281:48)
+runIfTypeOfFunction @ livewire.js?id=df3a17f2:1210
+(anonymous) @ livewire.js?id=df3a17f2:1198
+tryCatch @ livewire.js?id=df3a17f2:1116
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+livewire.js?id=df3a17f2:1210 Uncaught TypeError: Illegal invocation
+    at runIfTypeOfFunction (livewire.js?id=df3a17f2:1210:26)
+    at livewire.js?id=df3a17f2:1198:11
+    at tryCatch (livewire.js?id=df3a17f2:1116:14)
+    at livewire.js?id=df3a17f2:3626:19
+    at reactiveEffect (livewire.js?id=df3a17f2:2432:18)
+    at Object.effect2 [as effect] (livewire.js?id=df3a17f2:2407:7)
+    at effect (livewire.js?id=df3a17f2:764:35)
+    at wrappedEffect (livewire.js?id=df3a17f2:780:29)
+    at Function.<anonymous> (livewire.js?id=df3a17f2:3626:5)
+    at flushHandlers (livewire.js?id=df3a17f2:1281:48)
+runIfTypeOfFunction @ livewire.js?id=df3a17f2:1210
+(anonymous) @ livewire.js?id=df3a17f2:1198
+tryCatch @ livewire.js?id=df3a17f2:1116
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+livewire.js?id=df3a17f2:1210 Uncaught TypeError: Illegal invocation
+    at runIfTypeOfFunction (livewire.js?id=df3a17f2:1210:26)
+    at livewire.js?id=df3a17f2:1198:11
+    at tryCatch (livewire.js?id=df3a17f2:1116:14)
+    at livewire.js?id=df3a17f2:3626:19
+    at reactiveEffect (livewire.js?id=df3a17f2:2432:18)
+    at Object.effect2 [as effect] (livewire.js?id=df3a17f2:2407:7)
+    at effect (livewire.js?id=df3a17f2:764:35)
+    at wrappedEffect (livewire.js?id=df3a17f2:780:29)
+    at Function.<anonymous> (livewire.js?id=df3a17f2:3626:5)
+    at flushHandlers (livewire.js?id=df3a17f2:1281:48)
+runIfTypeOfFunction @ livewire.js?id=df3a17f2:1210
+(anonymous) @ livewire.js?id=df3a17f2:1198
+tryCatch @ livewire.js?id=df3a17f2:1116
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+livewire.js?id=df3a17f2:1210 Uncaught TypeError: Illegal invocation
+    at runIfTypeOfFunction (livewire.js?id=df3a17f2:1210:26)
+    at livewire.js?id=df3a17f2:1198:11
+    at tryCatch (livewire.js?id=df3a17f2:1116:14)
+    at livewire.js?id=df3a17f2:3626:19
+    at reactiveEffect (livewire.js?id=df3a17f2:2432:18)
+    at Object.effect2 [as effect] (livewire.js?id=df3a17f2:2407:7)
+    at effect (livewire.js?id=df3a17f2:764:35)
+    at wrappedEffect (livewire.js?id=df3a17f2:780:29)
+    at Function.<anonymous> (livewire.js?id=df3a17f2:3626:5)
+    at flushHandlers (livewire.js?id=df3a17f2:1281:48)
+runIfTypeOfFunction @ livewire.js?id=df3a17f2:1210
+(anonymous) @ livewire.js?id=df3a17f2:1198
+tryCatch @ livewire.js?id=df3a17f2:1116
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+livewire.js?id=df3a17f2:1127 Uncaught ReferenceError: openPermisosModal is not defined
+    at [Alpine] openPermisosModal (eval at safeAsyncFunction (livewire.js?id=df3a17f2:1174:21), <anonymous>:3:32)
+    at livewire.js?id=df3a17f2:1196:23
+    at tryCatch (livewire.js?id=df3a17f2:1116:14)
+    at livewire.js?id=df3a17f2:3626:19
+    at reactiveEffect (livewire.js?id=df3a17f2:2432:18)
+    at Object.effect2 [as effect] (livewire.js?id=df3a17f2:2407:7)
+    at effect (livewire.js?id=df3a17f2:764:35)
+    at wrappedEffect (livewire.js?id=df3a17f2:780:29)
+    at Function.<anonymous> (livewire.js?id=df3a17f2:3626:5)
+    at flushHandlers (livewire.js?id=df3a17f2:1281:48)
+[Alpine] openPermisosModal @ VM99302:3
+(anonymous) @ livewire.js?id=df3a17f2:1196
+tryCatch @ livewire.js?id=df3a17f2:1116
+(anonymous) @ livewire.js?id=df3a17f2:3626
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3626
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+livewire.js?id=df3a17f2:1127 Uncaught ReferenceError: selectedUserId is not defined
+    at [Alpine] selectedUserId (eval at safeAsyncFunction (livewire.js?id=df3a17f2:1174:21), <anonymous>:3:32)
+    at livewire.js?id=df3a17f2:1196:23
+    at tryCatch (livewire.js?id=df3a17f2:1116:14)
+    at getValue (livewire.js?id=df3a17f2:3353:7)
+    at livewire.js?id=df3a17f2:3410:19
+    at reactiveEffect (livewire.js?id=df3a17f2:2432:18)
+    at Object.effect2 [as effect] (livewire.js?id=df3a17f2:2407:7)
+    at effect (livewire.js?id=df3a17f2:764:35)
+    at wrappedEffect (livewire.js?id=df3a17f2:780:29)
+    at Function.<anonymous> (livewire.js?id=df3a17f2:3409:5)
+[Alpine] selectedUserId @ VM99304:3
+(anonymous) @ livewire.js?id=df3a17f2:1196
+tryCatch @ livewire.js?id=df3a17f2:1116
+getValue @ livewire.js?id=df3a17f2:3353
+(anonymous) @ livewire.js?id=df3a17f2:3410
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3409
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+livewire.js?id=df3a17f2:1127 Uncaught ReferenceError: selectedUserId is not defined
+    at [Alpine] selectedUserId (eval at safeAsyncFunction (livewire.js?id=df3a17f2:1174:21), <anonymous>:3:32)
+    at livewire.js?id=df3a17f2:1196:23
+    at tryCatch (livewire.js?id=df3a17f2:1116:14)
+    at livewire.js?id=df3a17f2:3856:19
+    at reactiveEffect (livewire.js?id=df3a17f2:2432:18)
+    at Object.effect2 [as effect] (livewire.js?id=df3a17f2:2407:7)
+    at effect (livewire.js?id=df3a17f2:764:35)
+    at wrappedEffect (livewire.js?id=df3a17f2:780:29)
+    at Function.<anonymous> (livewire.js?id=df3a17f2:3856:5)
+    at flushHandlers (livewire.js?id=df3a17f2:1281:48)
+[Alpine] selectedUserId @ VM99304:3
+(anonymous) @ livewire.js?id=df3a17f2:1196
+tryCatch @ livewire.js?id=df3a17f2:1116
+(anonymous) @ livewire.js?id=df3a17f2:3856
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3856
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215
+entradas.png:1  GET http://app.test/imagenes/icono/entradas.png 404 (Not Found)
+Image
+setIfChanged @ livewire.js?id=df3a17f2:2045
+bindAttribute @ livewire.js?id=df3a17f2:2040
+bind @ livewire.js?id=df3a17f2:1984
+(anonymous) @ livewire.js?id=df3a17f2:3537
+mutateDom @ livewire.js?id=df3a17f2:884
+(anonymous) @ livewire.js?id=df3a17f2:3537
+runIfTypeOfFunction @ livewire.js?id=df3a17f2:1219
+(anonymous) @ livewire.js?id=df3a17f2:1198
+tryCatch @ livewire.js?id=df3a17f2:1116
+(anonymous) @ livewire.js?id=df3a17f2:3533
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+handler2 @ livewire.js?id=df3a17f2:3533
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:3838
+(anonymous) @ livewire.js?id=df3a17f2:1909
+(anonymous) @ livewire.js?id=df3a17f2:3838
+mutateDom @ livewire.js?id=df3a17f2:884
+show @ livewire.js?id=df3a17f2:3836
+(anonymous) @ livewire.js?id=df3a17f2:3857
+runIfTypeOfFunction @ livewire.js?id=df3a17f2:1219
+(anonymous) @ livewire.js?id=df3a17f2:1198
+tryCatch @ livewire.js?id=df3a17f2:1116
+(anonymous) @ livewire.js?id=df3a17f2:3856
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3856
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:3838
+(anonymous) @ livewire.js?id=df3a17f2:1909
+(anonymous) @ livewire.js?id=df3a17f2:3838
+mutateDom @ livewire.js?id=df3a17f2:886
+show @ livewire.js?id=df3a17f2:3836
+(anonymous) @ livewire.js?id=df3a17f2:3857
+runIfTypeOfFunction @ livewire.js?id=df3a17f2:1219
+(anonymous) @ livewire.js?id=df3a17f2:1198
+tryCatch @ livewire.js?id=df3a17f2:1116
+(anonymous) @ livewire.js?id=df3a17f2:3856
+reactiveEffect @ livewire.js?id=df3a17f2:2432
+effect2 @ livewire.js?id=df3a17f2:2407
+effect @ livewire.js?id=df3a17f2:764
+wrappedEffect @ livewire.js?id=df3a17f2:780
+(anonymous) @ livewire.js?id=df3a17f2:3856
+flushHandlers @ livewire.js?id=df3a17f2:1281
+stopDeferring @ livewire.js?id=df3a17f2:1286
+deferHandlingDirectives @ livewire.js?id=df3a17f2:1289
+initTree @ livewire.js?id=df3a17f2:1479
+(anonymous) @ livewire.js?id=df3a17f2:1428
+start @ livewire.js?id=df3a17f2:1427
+start2 @ livewire.js?id=df3a17f2:8851
+(anonymous) @ livewire.js?id=df3a17f2:10215

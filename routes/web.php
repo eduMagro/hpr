@@ -57,23 +57,23 @@ use App\Http\Controllers\EpisController;
 use App\Http\Controllers\FcmTokenController;
 use App\Services\PlanillaService;
 use Illuminate\Support\Facades\Log;
-use App\Http\Controllers\OpenAIController;
+use App\Http\Controllers\AlbaranesScanController;
 
 Route::get('/', [PageController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
 // Escaneo de albaranes (producción)
-Route::get('/albaranes/scan', [OpenAIController::class, 'index'])->name('albaranes.scan.index');
-Route::post('/albaranes/scan/procesar', [OpenAIController::class, 'procesar'])->name('albaranes.scan.procesar');
-Route::post('/albaranes/scan/procesar-ajax', [OpenAIController::class, 'procesarAjax'])->name('albaranes.scan.procesar.ajax');
-Route::post('/albaranes/scan/buscar-pedido', [OpenAIController::class, 'buscarPedido'])->name('albaranes.scan.pedido.lookup');
-Route::post('/albaranes/scan/simular', [OpenAIController::class, 'simular'])->name('albaranes.scan.simular');
+Route::get('/albaranes/scan', [AlbaranesScanController::class, 'index'])->name('albaranes.scan.index');
+Route::post('/albaranes/scan/procesar', [AlbaranesScanController::class, 'procesar'])->name('albaranes.scan.procesar');
+Route::post('/albaranes/scan/procesar-ajax', [AlbaranesScanController::class, 'procesarAjax'])->name('albaranes.scan.procesar.ajax');
+Route::post('/albaranes/scan/buscar-pedido', [AlbaranesScanController::class, 'buscarPedido'])->name('albaranes.scan.pedido.lookup');
+Route::post('/albaranes/scan/simular', [AlbaranesScanController::class, 'simular'])->name('albaranes.scan.simular');
 
 // Alias legacy (compatibilidad)
-Route::get('/pruebasScanAlbaran', [OpenAIController::class, 'index'])->name('openai.index');
-Route::post('/pruebasScanAlbaran/procesar', [OpenAIController::class, 'procesar'])->name('openai.procesar');
-Route::post('/pruebasScanAlbaran/procesar-ajax', [OpenAIController::class, 'procesarAjax'])->name('openai.procesar.ajax');
-Route::post('/pruebasScanAlbaran/buscar-pedido', [OpenAIController::class, 'buscarPedido'])->name('openai.pedido.lookup');
-Route::post('/pruebasScanAlbaran/simular', [OpenAIController::class, 'simular'])->name('openai.simular');
+Route::get('/pruebasScanAlbaran', [AlbaranesScanController::class, 'index'])->name('albaranes.scan.legacy.index');
+Route::post('/pruebasScanAlbaran/procesar', [AlbaranesScanController::class, 'procesar'])->name('albaranes.scan.legacy.procesar');
+Route::post('/pruebasScanAlbaran/procesar-ajax', [AlbaranesScanController::class, 'procesarAjax'])->name('albaranes.scan.legacy.procesar.ajax');
+Route::post('/pruebasScanAlbaran/buscar-pedido', [AlbaranesScanController::class, 'buscarPedido'])->name('albaranes.scan.legacy.pedido.lookup');
+Route::post('/pruebasScanAlbaran/simular', [AlbaranesScanController::class, 'simular'])->name('albaranes.scan.legacy.simular');
 
 // Rutas de secciones principales
 Route::get('/produccion', [PageController::class, 'produccion'])->middleware(['auth', 'verified'])->name('secciones.produccion');

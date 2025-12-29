@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-class OpenAIController extends Controller
+class AlbaranesScanController extends Controller
 {
     public function index()
     {
@@ -21,7 +21,7 @@ class OpenAIController extends Controller
             ->values()
             ->toArray();
 
-        return view('openai.index', [
+        return view('albaranes.scan', [
             'distribuidores' => $distribuidores,
         ]);
     }
@@ -100,7 +100,7 @@ class OpenAIController extends Controller
             }
         }
 
-        return view('openai.index', [
+        return view('albaranes.scan', [
             'resultados' => $resultados,
             'proveedor' => $proveedor,
             'distribuidores' => $distribuidores,
@@ -519,7 +519,7 @@ class OpenAIController extends Controller
                     'codigo' => $linea->codigo,
                     'pedido_codigo' => $linea->pedido?->codigo,
                     'pedido_id' => $linea->pedido_id,
-                'codigo_linea' => $linea->codigo ?? null,
+                    'codigo_linea' => $linea->codigo ?? null,
                 ]);
             }
 

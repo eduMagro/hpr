@@ -11,8 +11,11 @@
         openModalSecciones: false,
         openNuevoDepartamentoModal: false,
         openNuevaSeccionModal: false,
+        openPermisosModal: false,
         departamentoId: null,
-        usuariosMarcados: []
+        selectedUserId: null,
+        usuariosMarcados: [],
+        permisos: {}
     }">
 
         <!-- Success/Error Messages -->
@@ -68,120 +71,120 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         @forelse ($departamentos as $departamento)
-                            <tr class="hover:bg-blue-50 transition-colors duration-150" x-data="{ open: false }">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <button @click="open = !open"
-                                        class="flex items-center gap-2 text-left font-semibold text-blue-600 hover:text-blue-800 transition-colors">
-                                        <svg x-show="!open" class="w-4 h-4" fill="none" stroke="currentColor"
+                    <tbody x-data="{ isExpanded: false }" class="divide-y divide-gray-200">
+                        <tr class="hover:bg-blue-50 transition-colors duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <button @click="isExpanded = !isExpanded"
+                                    class="flex items-center gap-2 text-left font-semibold text-blue-600 hover:text-blue-800 transition-colors">
+                                    <svg x-show="!isExpanded" class="w-4 h-4" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 5l7 7-7 7" />
+                                    </svg>
+                                    <svg x-show="isExpanded" class="w-4 h-4" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                    {{ $departamento->nombre }}
+                                </button>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="text-gray-700">{{ $departamento->descripcion ?? '—' }}</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <span
+                                    class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ $departamento->usuarios->count() > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600' }}">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                            d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                                    </svg>
+                                    {{ $departamento->usuarios->count() }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <span
+                                    class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ $departamento->secciones->count() > 0 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600' }}">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                            d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                                    </svg>
+                                    {{ $departamento->secciones->count() }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div class="flex justify-end gap-2">
+                                    <button
+                                        @click="openModalSecciones = true; departamentoId = {{ $departamento->id }};"
+                                        class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm hover:shadow">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M9 5l7 7-7 7" />
+                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
-                                        <svg x-show="open" class="w-4 h-4" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                        {{ $departamento->nombre }}
+                                        Secciones
                                     </button>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <span class="text-gray-700">{{ $departamento->descripcion ?? '—' }}</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center">
-                                    <span
-                                        class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ $departamento->usuarios->count() > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600' }}">
-                                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                            <path
-                                                d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-                                        </svg>
-                                        {{ $departamento->usuarios->count() }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center">
-                                    <span
-                                        class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ $departamento->secciones->count() > 0 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600' }}">
-                                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                            <path
-                                                d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-                                        </svg>
-                                        {{ $departamento->secciones->count() }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div class="flex justify-end gap-2">
-                                        <button
-                                            @click="openModalSecciones = true; departamentoId = {{ $departamento->id }};"
-                                            class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm hover:shadow">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                            Secciones
-                                        </button>
-                                        <button
-                                            @click="openModal = true; departamentoId = {{ $departamento->id }}; usuariosMarcados = {{ $departamento->usuarios->pluck('id') }}"
-                                            class="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm hover:shadow">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                            </svg>
-                                            Usuarios
-                                        </button>
-                                        <a href="{{ route('departamentos.edit', $departamento) }}" wire:navigate
-                                            class="inline-flex items-center px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg text-xs font-medium transition-colors shadow-sm hover:shadow">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                            </svg>
-                                            Editar
-                                        </a>
-                                        <form action="{{ route('departamentos.destroy', $departamento) }}"
-                                            method="POST" class="inline-block"
-                                            onsubmit="return confirm('¿Está seguro de eliminar este departamento? Esta acción no se puede deshacer.')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit"
-                                                class="inline-flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm hover:shadow">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                                Eliminar
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-
-                            <tr x-show="open" class="bg-gray-50">
-                                <td colspan="5" class="px-6 py-4">
-                                    @include('departamentos.partials.detalle-departamento', [
-                                        'departamento' => $departamento,
-                                    ])
-                                </td>
-                            </tr>
-
-                        @empty
-                            <tr>
-                                <td colspan="5" class="px-6 py-8 text-center">
-                                    <div class="flex flex-col items-center justify-center text-gray-500">
-                                        <svg class="w-12 h-12 mb-3 text-gray-400" fill="none"
-                                            stroke="currentColor" viewBox="0 0 24 24">
+                                    <button
+                                        @click="openModal = true; departamentoId = {{ $departamento->id }}; usuariosMarcados = {{ $departamento->usuarios->pluck('id') }}"
+                                        class="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm hover:shadow">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                         </svg>
-                                        <p class="text-lg font-medium">No hay departamentos registrados</p>
-                                        <p class="text-sm mt-1">Crea tu primer departamento para comenzar</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforelse
+                                        Usuarios
+                                    </button>
+                                    <a href="{{ route('departamentos.edit', $departamento) }}" wire:navigate
+                                        class="inline-flex items-center px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg text-xs font-medium transition-colors shadow-sm hover:shadow">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        Editar
+                                    </a>
+                                    <form action="{{ route('departamentos.destroy', $departamento) }}" method="POST"
+                                        class="inline-block"
+                                        onsubmit="return confirm('¿Está seguro de eliminar este departamento? Esta acción no se puede deshacer.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                            class="inline-flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm hover:shadow">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                            Eliminar
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr x-show="isExpanded" class="bg-gray-50" x-cloak>
+                            <td colspan="5" class="px-6 py-4">
+                                @include('departamentos.partials.detalle-departamento', [
+                                    'departamento' => $departamento,
+                                ])
+                            </td>
+                        </tr>
+                    </tbody>
+                @empty
+                    <tr>
+                        <td colspan="5" class="px-6 py-8 text-center">
+                            <div class="flex flex-col items-center justify-center text-gray-500">
+                                <svg class="w-12 h-12 mb-3 text-gray-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                </svg>
+                                <p class="text-lg font-medium">No hay departamentos registrados</p>
+                                <p class="text-sm mt-1">Crea tu primer departamento para comenzar</p>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforelse
                     </tbody>
                 </table>
             </div>
@@ -190,20 +193,20 @@
             <div class="md:hidden space-y-3 p-3">
                 @forelse ($departamentos as $departamento)
                     <div class="border-2 border-gray-200 rounded-xl shadow-md bg-white hover:shadow-lg transition-shadow duration-200"
-                        x-data="{ open: false }">
+                        x-data="{ isExpanded: false }">
                         <!-- Cabecera del card -->
                         <div class="p-4 bg-blue-50 rounded-t-xl">
-                            <button @click="open = !open" class="w-full text-left">
+                            <button @click="isExpanded = !isExpanded" class="w-full text-left">
                                 <div class="flex items-start justify-between gap-2">
                                     <div class="flex-1">
                                         <h3 class="font-bold text-blue-700 text-lg flex items-center gap-2">
-                                            <svg x-show="!open" class="w-5 h-5" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
+                                            <svg x-show="!isExpanded" class="w-5 h-5" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                     d="M9 5l7 7-7 7" />
                                             </svg>
-                                            <svg x-show="open" class="w-5 h-5" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
+                                            <svg x-show="isExpanded" class="w-5 h-5" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                     d="M19 9l-7 7-7-7" />
                                             </svg>
@@ -282,7 +285,7 @@
                         </div>
 
                         <!-- Detalles expandibles -->
-                        <div x-show="open" x-transition class="border-t bg-gray-50 p-4 space-y-4 rounded-b-xl">
+                        <div x-show="isExpanded" x-transition class="border-t bg-gray-50 p-4 space-y-4 rounded-b-xl">
                             @include('departamentos.partials.detalle-departamento', [
                                 'departamento' => $departamento,
                             ])
