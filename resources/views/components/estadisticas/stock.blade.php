@@ -389,11 +389,12 @@
             </div>
 
             <div class="flex flex-col justify-end">
-                <div class="bg-blue-600 rounded-3xl p-8 text-white shadow-xl shadow-blue-200">
+                <div
+                    class="bg-gradient-to-tr from-blue-600 to-blue-500 rounded-3xl p-8 text-white shadow-xl shadow-blue-200">
                     <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
                         <span>💡</span> Inteligencia de Stock
                     </h3>
-                    <div class="space-y-4 text-blue-100 text-sm leading-relaxed">
+                    <div class="space-y-4 text-blue-100 font-semibold leading-relaxed">
                         <p>Calculamos la reposición analizando los consumos de los últimos 3 meses con un
                             <strong>promedio ponderado</strong> (50% mes actual, 30% anterior, 20% hace dos).
                         </p>
