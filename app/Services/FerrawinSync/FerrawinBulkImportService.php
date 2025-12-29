@@ -30,7 +30,8 @@ class FerrawinBulkImportService
     public function __construct(
         protected CodigoEtiqueta $codigoService,
         protected AsignarMaquinaService $asignador,
-        protected OrdenPlanillaService $ordenService
+        protected OrdenPlanillaService $ordenService,
+        protected \App\Services\PlanillaImport\PlanillaProcessor $processor
     ) {}
 
     /**
@@ -184,10 +185,13 @@ class FerrawinBulkImportService
         // 5. Asignar máquinas
         $this->asignador->repartirPlanilla($planilla->id);
 
-        // 6. Crear órdenes
+        // 6. Aplicar política de subetiquetas (igual que importación manual)
+        $this->processor->aplicarPoliticaSubetiquetasPostAsignacion($planilla);
+
+        // 7. Crear órdenes
         $this->ordenService->crearOrdenParaPlanilla($planilla->id);
 
-        // 7. Actualizar tiempo total
+        // 8. Actualizar tiempo total
         $this->actualizarTiempoTotal($planilla);
     }
 
