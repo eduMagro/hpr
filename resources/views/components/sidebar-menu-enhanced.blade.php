@@ -4,6 +4,25 @@
     $currentRoute = request()->route()->getName();
 @endphp
 
+{{-- Script inline que se ejecuta ANTES de Alpine para evitar flash del sidebar --}}
+<script>
+    (function() {
+        if (window.innerWidth >= 768) {
+            var sidebarOpen = localStorage.getItem('sidebar_open') !== 'false';
+            document.documentElement.classList.add(sidebarOpen ? 'sidebar-initially-open' : 'sidebar-initially-closed');
+        } else {
+            document.documentElement.classList.add('sidebar-initially-closed');
+        }
+    })();
+
+    // Remover clases iniciales cuando Alpine esté listo para que no interfieran
+    document.addEventListener('alpine:init', function() {
+        setTimeout(function() {
+            document.documentElement.classList.remove('sidebar-initially-open', 'sidebar-initially-closed');
+        }, 100);
+    });
+</script>
+
 @if(auth()->user()->esOficina())
 <div x-data="{
     open: window.innerWidth >= 768 ? (localStorage.getItem('sidebar_open') !== 'false') : false,
@@ -462,8 +481,7 @@
                x-transition:leave-start="opacity-100 transform translate-y-0"
                x-transition:leave-end="opacity-0 transform -translate-y-16"
                href="{{ route('dashboard') }}" wire:navigate
-               wire:navigate
-               class="flex items-center space-x-3 group relative z-50">
+               class="sidebar-logo flex items-center space-x-3 group relative z-50">
                 <x-application-logo
                     class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
             </a>
@@ -496,7 +514,7 @@
                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z">
                         </path>
                     </svg>
-                    <span x-show="open" x-cloak
+                    <span x-show="open"
                         class="sidebar-text text-gray-400 group-hover:text-white transition">Buscar
                         (Ctrl+K)</span>
                 </button>
@@ -514,18 +532,18 @@
                             d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z">
                         </path>
                     </svg>
-                    <span x-show="open" x-cloak
+                    <span x-show="open"
                         class="sidebar-text text-gray-400 group-hover:text-white transition">Favoritos</span>
-                    <span x-show="open && favorites.length > 0" x-cloak
+                    <span x-show="open && favorites.length > 0"
                         class="sidebar-text ml-auto bg-yellow-600 text-xs px-2 py-0.5 rounded-full"
                         x-text="favorites.length"></span>
-                    <span x-show="!open && favorites.length > 0"
+                    <span x-show="!open && favorites.length > 0" x-cloak
                         class="absolute -top-1 -right-1 bg-yellow-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full"
                         x-text="favorites.length"></span>
                 </button>
 
                 <!-- Panel de Favoritos -->
-                <div x-show="showFavorites" x-transition class="mt-2 space-y-1"
+                <div x-show="showFavorites" x-cloak x-transition class="mt-2 space-y-1"
                     :class="open ? '' :
                         'absolute left-full ml-2 top-0 bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-3 w-64 z-30'">
                     <div class="flex items-center justify-between mb-2"
@@ -580,13 +598,13 @@
                             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z">
                         </path>
                     </svg>
-                    <span x-show="open" x-cloak
+                    <span x-show="open"
                         class="sidebar-text text-gray-400 group-hover:text-white transition">Recientes
                         (Ctrl+H)</span>
                 </button>
 
                 <!-- Panel de Recientes -->
-                <div x-show="showRecent" x-transition class="mt-2 space-y-1"
+                <div x-show="showRecent" x-cloak x-transition class="mt-2 space-y-1"
                     :class="open ? '' :
                         'absolute left-full ml-2 top-0 bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-3 w-64 z-30'">
                     <div class="flex items-center justify-between mb-2">
@@ -619,7 +637,7 @@
         </div>
 
         <!-- Separador si hay favoritos o recientes abiertos -->
-        <div x-show="open && (showFavorites || showRecent)"
+        <div x-show="open && (showFavorites || showRecent)" x-cloak
             class="border-b border-gray-800"></div>
 
         <!-- Navegación principal -->
@@ -755,7 +773,7 @@
                         d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
                     </path>
                 </svg>
-                <span x-show="open" x-cloak
+                <span x-show="open"
                     class="sidebar-text text-gray-400 group-hover:text-white">Dashboard</span>
             </a>
 
@@ -775,7 +793,7 @@
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z">
                     </path>
                 </svg>
-                <span x-show="open" x-cloak
+                <span x-show="open"
                     class="sidebar-text text-gray-400 group-hover:text-white"
                     x-text="darkMode ? 'Modo Claro' : 'Modo Oscuro'"></span>
             </button>
@@ -900,6 +918,48 @@
     /* Animaciones suaves */
     [x-cloak] {
         display: none !important;
+    }
+
+    /* ===== ESTADO INICIAL DEL SIDEBAR (antes de Alpine) ===== */
+    @media (min-width: 768px) {
+        /* Sidebar abierto inicialmente */
+        html.sidebar-initially-open #main-sidebar {
+            width: 16rem !important;
+        }
+        html.sidebar-initially-open #main-sidebar .sidebar-text {
+            display: inline !important;
+            visibility: visible !important;
+        }
+        html.sidebar-initially-open #main-sidebar svg.sidebar-text {
+            display: inline-block !important;
+            visibility: visible !important;
+        }
+
+        /* Sidebar cerrado inicialmente */
+        html.sidebar-initially-closed #main-sidebar {
+            width: 4rem !important;
+        }
+        html.sidebar-initially-closed #main-sidebar .sidebar-text {
+            display: none !important;
+            visibility: hidden !important;
+        }
+        /* Logo del sidebar oculto cuando sidebar cerrado inicialmente */
+        html.sidebar-initially-closed #main-sidebar .sidebar-logo {
+            display: none !important;
+        }
+        /* Logo del sidebar visible cuando sidebar abierto inicialmente */
+        html.sidebar-initially-open #main-sidebar .sidebar-logo {
+            display: flex !important;
+        }
+
+        /* Logo del top-header visible cuando sidebar cerrado inicialmente */
+        html.sidebar-initially-closed .topheader-logo {
+            display: flex !important;
+        }
+        /* Logo del top-header oculto cuando sidebar abierto inicialmente */
+        html.sidebar-initially-open .topheader-logo {
+            display: none !important;
+        }
     }
 
     /* ===== SIDEBAR MÓVIL ===== */

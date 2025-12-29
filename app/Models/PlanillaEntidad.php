@@ -55,6 +55,15 @@ class PlanillaEntidad extends Model
     }
 
     /**
+     * Relación con las etiquetas de ensamblaje.
+     * Cada entidad puede tener múltiples etiquetas (una por cada unidad).
+     */
+    public function etiquetasEnsamblaje()
+    {
+        return $this->hasMany(EtiquetaEnsamblaje::class, 'planilla_entidad_id');
+    }
+
+    /**
      * Obtiene las barras de la composición.
      */
     public function getBarrasAttribute(): array

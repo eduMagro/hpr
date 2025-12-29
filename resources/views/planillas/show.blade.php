@@ -108,9 +108,16 @@
     <div class="w-full sm:px-4 py-6">
         <div class="space-y-6">
             {{-- ========================================= --}}
-            {{-- SECCIÓN DE ENTIDADES/ENSAMBLAJES --}}
+            {{-- SECCIÓN DE ETIQUETAS DE ENSAMBLAJE --}}
             {{-- ========================================= --}}
             @if ($planilla->entidades->isNotEmpty())
+                @php
+                    $etiquetasEns = $planilla->etiquetasEnsamblaje ?? collect();
+                    $totalEtiquetas = $etiquetasEns->count();
+                    $pendientes = $etiquetasEns->where('estado', 'pendiente')->count();
+                    $enProceso = $etiquetasEns->where('estado', 'en_proceso')->count();
+                    $completadas = $etiquetasEns->where('estado', 'completada')->count();
+                @endphp
                 <section class="bg-white border shadow rounded-lg">
                     <header class="p-3 border-b flex items-center justify-between bg-amber-50">
                         <h3 class="font-semibold text-lg text-amber-800">
@@ -120,19 +127,20 @@
                                 <rect x="14" y="14" width="7" height="7"></rect>
                                 <rect x="3" y="14" width="7" height="7"></rect>
                             </svg>
-                            Ensamblajes ({{ $planilla->entidades->count() }})
+                            Etiquetas de Ensamblaje ({{ $totalEtiquetas }})
                         </h3>
-                        <span class="text-sm text-amber-600">
-                            {{ $planilla->entidades->sum('total_barras') }} barras |
-                            {{ $planilla->entidades->sum('total_estribos') }} estribos
-                        </span>
+                        <div class="flex gap-2 text-xs">
+                            <span class="px-2 py-1 bg-gray-200 rounded">{{ $pendientes }} pendientes</span>
+                            <span class="px-2 py-1 bg-yellow-200 rounded">{{ $enProceso }} en proceso</span>
+                            <span class="px-2 py-1 bg-green-200 rounded">{{ $completadas }} completadas</span>
+                        </div>
                     </header>
 
                     <div class="p-3">
-                        {{-- Grid de tarjetas de entidades con visualizacion grafica --}}
+                        {{-- Grid de etiquetas de ensamblaje --}}
                         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                            @foreach ($planilla->entidades as $entidad)
-                                <x-entidad.ensamblaje :entidad="$entidad" :planilla="$planilla" />
+                            @foreach ($etiquetasEns as $etiquetaEns)
+                                <x-entidad.ensamblaje :etiqueta="$etiquetaEns" :planilla="$planilla" />
                             @endforeach
                         </div>
                     </div>
@@ -154,7 +162,7 @@
                         @if ($bloque->isEmpty())
                             <p class="text-sm text-gray-500">No hay etiquetas en esta máquina.</p>
                         @else
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 @foreach ($bloque as $item)
                                     @php $etiqueta = $item['etiqueta'] ?? null; @endphp
                                     @continue(!$etiqueta || !$etiqueta->id) {{-- si no hay id, saltamos --}}
@@ -170,16 +178,46 @@
         </div>
     </div>
     {{-- === Variables que LEE canvasMaquina.js === --}}
-    <script>
+    <script data-navigate-reload>
         // 👇 ESTE nombre es el que usa canvasMaquina.js
         window.elementosAgrupadosScript = @json($elementosAgrupadosScript);
         // otros datasets opcionales que tu script pudiera consultar:
         window.pesosElementos = @json($pesosElementos ?? []);
         window.SUGERENCIAS = window.SUGERENCIAS || {};
+
+        // Función para renderizar todas las etiquetas de esta planilla
+        window._renderizarEtiquetasPlanilla = function() {
+            const grupos = window.elementosAgrupadosScript;
+            if (!grupos || !window.renderizarGrupoSVG) return;
+
+            grupos.forEach(function(grupo, gidx) {
+                window.renderizarGrupoSVG(grupo, gidx);
+            });
+
+            // Mostrar las etiquetas
+            document.querySelectorAll('.proceso').forEach(el => {
+                el.style.opacity = '1';
+            });
+        };
+
+        // Ejecutar inmediatamente si canvasMaquina.js ya está cargado (navegación SPA)
+        // DOMContentLoaded no se dispara en navegación SPA, así que necesitamos esto
+        if (window.renderizarGrupoSVG && document.readyState !== 'loading') {
+            setTimeout(window._renderizarEtiquetasPlanilla, 100);
+        }
     </script>
 
     {{-- Solo los JS necesarios. Ojo al orden: datasets -> canvasMaquina --}}
-    <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
+    <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}" data-navigate-reload></script>
+
+    {{-- Fallback: si canvasMaquina.js se acaba de cargar, renderizar ahora --}}
+    <script data-navigate-reload>
+        // Este script se ejecuta DESPUÉS de canvasMaquina.js
+        // Si DOMContentLoaded ya pasó (navegación SPA), renderizar manualmente
+        if (document.readyState !== 'loading' && window._renderizarEtiquetasPlanilla) {
+            setTimeout(window._renderizarEtiquetasPlanilla, 150);
+        }
+    </script>
     <script src="{{ asset('js/imprimirQrS.js') }}"></script>
 
     {{-- Helper de impresión (mismo flujo que en la vista de máquina) --}}
@@ -586,7 +624,7 @@
         console.log('Sistema de navegación con flechas cargado. Usa ← y → para navegar entre planillas.');
 
         /**
-         * Imprime una tarjeta de entidad/ensamblaje
+         * Imprime una etiqueta de ensamblaje en formato A6
          */
         function imprimirEntidad(entidadId) {
             const contenedor = document.getElementById(entidadId);
@@ -595,37 +633,83 @@
                 return;
             }
 
+            // Buscar la tarjeta dentro del contenedor
+            const tarjeta = contenedor.querySelector('.entidad-card') || contenedor;
+
             // Clonar y limpiar
-            const clone = contenedor.cloneNode(true);
+            const clone = tarjeta.cloneNode(true);
             clone.querySelectorAll('.no-print').forEach(el => el.remove());
 
-            // Expandir el contenido si está colapsado
-            const contenidoExpandible = clone.querySelector('[x-show]');
-            if (contenidoExpandible) {
-                contenidoExpandible.style.display = 'block';
-                contenidoExpandible.removeAttribute('x-show');
-                contenidoExpandible.removeAttribute('x-collapse');
-            }
-
             const css = `
-                @page { size: A4 landscape; margin: 10mm; }
-                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; }
-                .entidad-ensamblaje-card { border: 1px solid #ccc; border-radius: 8px; overflow: hidden; }
-                svg { max-width: 100%; }
+                @page { size: A6 landscape; margin: 0; }
+                html, body {
+                    margin: 0;
+                    padding: 0;
+                    background: #fff;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                }
+                .entidad-card {
+                    width: 148mm;
+                    height: 105mm;
+                    padding: 4mm;
+                    box-sizing: border-box;
+                    border: 0.2mm solid #000;
+                    background: #fff;
+                    overflow: hidden;
+                    position: relative;
+                    display: flex;
+                    flex-direction: column;
+                }
+                .entidad-card h2 {
+                    font-size: 11pt;
+                    margin: 0 0 2mm 0;
+                    line-height: 1.3;
+                }
+                .entidad-card h3 {
+                    font-size: 10pt;
+                    margin: 0 0 2mm 0;
+                }
+                .qr-box {
+                    position: absolute;
+                    top: 4mm;
+                    right: 4mm;
+                    border: 0.2mm solid #000;
+                    padding: 1mm;
+                    background: #fff;
+                }
+                .qr-box img, .qr-box canvas {
+                    width: 20mm !important;
+                    height: 20mm !important;
+                }
+                .qr-label {
+                    font-size: 7pt;
+                    text-align: center;
+                    font-weight: bold;
+                    margin-top: 1mm;
+                }
+                svg {
+                    width: 100%;
+                    height: auto;
+                    flex: 1;
+                }
+                .no-print { display: none !important; }
             `;
 
             const w = window.open('', '_blank');
             w.document.write(`
                 <!DOCTYPE html>
                 <html>
-                <head><title>Imprimir Ensamblaje</title><style>${css}</style></head>
+                <head><title>Etiqueta Ensamblaje</title><style>${css}</style></head>
                 <body>${clone.outerHTML}</body>
                 </html>
             `);
             w.document.close();
             w.onload = () => {
-                w.print();
-                setTimeout(() => w.close(), 500);
+                // Esperar a que el QR se renderice
+                setTimeout(() => {
+                    w.print();
+                    setTimeout(() => w.close(), 500);
+                }, 200);
             };
         }
     </script>

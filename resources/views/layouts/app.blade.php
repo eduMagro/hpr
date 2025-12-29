@@ -59,6 +59,18 @@
             display: none !important;
         }
 
+        /* Asegurar que el top-header nunca desaparezca durante la carga */
+        #top-navigation {
+            visibility: visible !important;
+            opacity: 1 !important;
+            display: block !important;
+        }
+
+        /* Desactivar transition-colors en la carga inicial para evitar flash */
+        html:not(.alpine-ready) #top-navigation {
+            transition: none !important;
+        }
+
         /* Escala global solo en pantallas grandes */
         @media (min-width: 768px) {
             html {
@@ -236,6 +248,11 @@
         if (localStorage.getItem('dark_mode') === 'true') {
             document.documentElement.classList.add('dark');
         }
+
+        // Marcar cuando Alpine está listo para habilitar transiciones
+        document.addEventListener('alpine:init', () => {
+            document.documentElement.classList.add('alpine-ready');
+        });
 
         // Re-aplicar en cada navegación de Livewire
         document.addEventListener('livewire:navigated', () => {
@@ -424,8 +441,17 @@
 
         const navigationOverlay = document.getElementById('navigation-overlay');
         let navigationTimeout = null;
+        let isInitialLoad = true;
+
+        // Marcar que ya no es la carga inicial después de que la página esté lista
+        document.addEventListener('livewire:navigated', () => {
+            isInitialLoad = false;
+        }, { once: true });
 
         document.addEventListener('livewire:navigating', () => {
+            // No mostrar overlay en la carga inicial
+            if (isInitialLoad) return;
+
             navigationTimeout = setTimeout(() => {
                 navigationOverlay?.classList.add('active');
             }, 100);

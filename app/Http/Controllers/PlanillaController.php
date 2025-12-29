@@ -375,7 +375,16 @@ class PlanillaController extends Controller
             'etiquetas',
             'elementos.maquina:id,nombre,tipo',
             'entidades',
+            'etiquetasEnsamblaje.entidad', // Etiquetas de ensamblaje con su entidad
         ])->findOrFail($id);
+
+        // Generar etiquetas de ensamblaje automáticamente si hay entidades pero no etiquetas
+        if ($planilla->entidades->isNotEmpty() && $planilla->etiquetasEnsamblaje->isEmpty()) {
+            $service = app(\App\Services\EtiquetaEnsamblajeService::class);
+            $service->generarParaPlanilla($planilla);
+            // Recargar la relación
+            $planilla->load('etiquetasEnsamblaje.entidad');
+        }
 
         // ------ Color por estado (igual que antes)
         $getColor = fn($s) => match (strtolower(trim($s ?? ''))) {
@@ -485,11 +494,15 @@ class PlanillaController extends Controller
             ])->values(),
         ])->values();
 
+        // Etiquetas de ensamblaje para la sección de ensamblajes
+        $etiquetasEns = $planilla->etiquetasEnsamblaje;
+
         return view('planillas.show', compact(
             'planilla',
             'progreso',
             'maquinas',
             'etiquetasPorMaquina',
+            'etiquetasEns',
             // datasets para canvas/JS (mismo shape que en máquinas)
             'pesosElementos',
             'etiquetasData',

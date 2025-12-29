@@ -58,6 +58,7 @@ use App\Http\Controllers\FcmTokenController;
 use App\Services\PlanillaService;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\AlbaranesScanController;
+use App\Http\Controllers\EtiquetaEnsamblajeController;
 
 Route::get('/', [PageController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -495,6 +496,17 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/planificacion/ejecutar-adelanto', [PlanificacionController::class, 'ejecutarAdelanto'])->name('planificacion.ejecutarAdelanto');
     Route::post('/planillas/completar-todas', [PlanillaController::class, 'completarTodas'])
         ->name('planillas.completarTodas');
+
+    // === ETIQUETAS DE ENSAMBLAJE ===
+    Route::post('/etiquetas-ensamblaje/planilla/{planilla}/generar', [EtiquetaEnsamblajeController::class, 'generar'])
+        ->name('etiquetas-ensamblaje.generar');
+    Route::post('/etiquetas-ensamblaje/{etiqueta}/iniciar', [EtiquetaEnsamblajeController::class, 'iniciar'])
+        ->name('etiquetas-ensamblaje.iniciar');
+    Route::post('/etiquetas-ensamblaje/{etiqueta}/completar', [EtiquetaEnsamblajeController::class, 'completar'])
+        ->name('etiquetas-ensamblaje.completar');
+    Route::post('/etiquetas-ensamblaje/{etiqueta}/marcar-impresa', [EtiquetaEnsamblajeController::class, 'marcarImpresa'])
+        ->name('etiquetas-ensamblaje.marcar-impresa');
+
     // === EMPRESAS TRANSPORTE ===
     Route::resource('empresas-transporte', EmpresaTransporteController::class);
     Route::resource('camiones', CamionController::class);

@@ -113,6 +113,14 @@ class Planilla extends Model
     }
 
     /**
+     * Relación con las etiquetas de ensamblaje.
+     */
+    public function etiquetasEnsamblaje()
+    {
+        return $this->hasMany(EtiquetaEnsamblaje::class, 'planilla_id');
+    }
+
+    /**
      * Relación con la tabla 'users'
      * Una planilla pertenece a un usuario
      */

@@ -68,7 +68,18 @@ return [
         | - 'legacy': Usa el campo tipo_material de la máquina (compatibilidad)
         |
         */
-        'estrategia_subetiquetas_default' => 'agrupada',
+        'estrategia_subetiquetas_default' => 'individual',
+
+        /*
+        |--------------------------------------------------------------------------
+        | Límite de Elementos por Subetiqueta Agrupada
+        |--------------------------------------------------------------------------
+        |
+        | Máximo de elementos que pueden agruparse en una sola subetiqueta
+        | cuando se usa la estrategia 'agrupada'. Por defecto: 5
+        |
+        */
+        'limite_elementos_por_subetiqueta' => 5,
 
         /*
         |--------------------------------------------------------------------------
@@ -129,11 +140,14 @@ return [
             |
             */
 
-            // Todas las cortadoras-dobladoras sin configuración específica
-            'cortadora_dobladora' => 'agrupada',
+            // Todas las cortadoras-dobladoras sin configuración específica → Individual
+            'cortadora_dobladora' => 'individual',
 
-            // Todas las cortadoras sin configuración específica
+            // Todas las cortadoras sin configuración específica → Individual
             'cortadora' => 'individual',
+
+            // Grúas (carro de corte) → Individual (elementos sin elaborar, no se agrupan)
+            'grua' => 'individual',
         ],
 
         /*

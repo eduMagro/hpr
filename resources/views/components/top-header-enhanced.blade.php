@@ -1,4 +1,4 @@
-<nav x-data="{
+<nav id="top-navigation" x-data="{
     open: false,
     notificationsOpen: false,
     userMenuOpen: false,
@@ -45,7 +45,7 @@
                     x-transition:leave="transition-all duration-200"
                     x-transition:leave-start="opacity-100 transform translate-y-0"
                     x-transition:leave-end="opacity-0 transform -translate-y-16" href="{{ route('dashboard') }}" wire:navigate
-                    class="flex items-center space-x-3 group relative z-50">
+                    class="topheader-logo flex items-center space-x-3 group relative z-50">
                     <x-application-logo
                         class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
                 </a>
