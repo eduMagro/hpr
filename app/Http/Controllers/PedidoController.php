@@ -88,15 +88,15 @@ class PedidoController extends Controller
 
         if ($request->filled('sort')) {
             $sorts = [
-                'codigo'        => 'Código',
-                'fecha_pedido'  => 'Fecha pedido',
+                'codigo' => 'Código',
+                'fecha_pedido' => 'Fecha pedido',
                 'fecha_entrega' => 'Entrega estimada',
-                'estado'        => 'Estado',
-                'peso_total'    => 'Peso total',
-                'fabricante'    => 'Fabricante',
-                'distribuidor'  => 'Distribuidor',
-                'created_by'    => 'Creado por',
-                'obra'          => 'Lugar de entrega',
+                'estado' => 'Estado',
+                'peso_total' => 'Peso total',
+                'fabricante' => 'Fabricante',
+                'distribuidor' => 'Distribuidor',
+                'created_by' => 'Creado por',
+                'obra' => 'Lugar de entrega',
             ];
             $orden = strtolower($request->order ?? 'desc') === 'desc' ? 'descendente' : 'ascendente';
             $filtros[] = 'Ordenado por <strong>' . e($sorts[$request->sort] ?? $request->sort) . "</strong> en orden <strong>$orden</strong>";
@@ -173,9 +173,9 @@ class PedidoController extends Controller
 
         // Filtros por producto base de sus líneas
         if ($request->filled('producto_tipo') || $request->filled('producto_diametro') || $request->filled('producto_longitud')) {
-            $tipo      = $request->filled('producto_tipo')      ? mb_strtolower(trim($request->producto_tipo), 'UTF-8') : null;
-            $diametro  = $request->filled('producto_diametro')  ? mb_strtolower(trim($request->producto_diametro), 'UTF-8') : null;
-            $longitud  = $request->filled('producto_longitud')  ? mb_strtolower(trim($request->producto_longitud), 'UTF-8') : null;
+            $tipo = $request->filled('producto_tipo') ? mb_strtolower(trim($request->producto_tipo), 'UTF-8') : null;
+            $diametro = $request->filled('producto_diametro') ? mb_strtolower(trim($request->producto_diametro), 'UTF-8') : null;
+            $longitud = $request->filled('producto_longitud') ? mb_strtolower(trim($request->producto_longitud), 'UTF-8') : null;
 
             $query->whereHas('pedidoProductos', function ($q) use ($tipo, $diametro, $longitud) {
                 $q->whereHas('productoBase', function ($pb) use ($tipo, $diametro, $longitud) {
@@ -231,7 +231,7 @@ class PedidoController extends Controller
 
         // ===== Orden =====
         $sortBy = $request->input('sort', 'created_at');
-        $order  = strtolower($request->input('order', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $order = strtolower($request->input('order', 'desc')) === 'asc' ? 'asc' : 'desc';
 
         $query->reorder();
 
@@ -338,15 +338,15 @@ class PedidoController extends Controller
                         return true;
                     }
 
-                    if ($request->filled('producto_tipo') && (! $pb || ! str_contains($pb->tipo, $request->producto_tipo))) {
+                    if ($request->filled('producto_tipo') && (!$pb || !str_contains($pb->tipo, $request->producto_tipo))) {
                         return false;
                     }
 
-                    if ($request->filled('producto_diametro') && (! $pb || $pb->diametro != $request->producto_diametro)) {
+                    if ($request->filled('producto_diametro') && (!$pb || $pb->diametro != $request->producto_diametro)) {
                         return false;
                     }
 
-                    if ($request->filled('producto_longitud') && (! $pb || $pb->longitud != $request->producto_longitud)) {
+                    if ($request->filled('producto_longitud') && (!$pb || $pb->longitud != $request->producto_longitud)) {
                         return false;
                     }
 
@@ -361,7 +361,7 @@ class PedidoController extends Controller
 
                     if ($request->filled('estado')) {
                         $estadoReq = mb_strtolower(trim($request->estado), 'UTF-8');
-                        if (mb_strtolower(trim((string)$linea->estado), 'UTF-8') !== $estadoReq) {
+                        if (mb_strtolower(trim((string) $linea->estado), 'UTF-8') !== $estadoReq) {
                             return false;
                         }
                     }
@@ -373,7 +373,7 @@ class PedidoController extends Controller
                     //         return false;
                     //     }
                     // }
-
+    
                     return true;
                 })
                 ->values(); // devolvemos colección de modelos PedidoProducto
@@ -382,19 +382,19 @@ class PedidoController extends Controller
         });
 
         $filtrosActivos = $this->filtrosActivosPedidos($request);
-        $fabricantes    = Fabricante::select('id', 'nombre')->get();
+        $fabricantes = Fabricante::select('id', 'nombre')->get();
         $distribuidores = Distribuidor::select('id', 'nombre')->get();
 
         $ordenables = [
-            'codigo'         => $this->getOrdenamientoPedidos('codigo', 'Código'),
-            'fabricante'     => $this->getOrdenamientoPedidos('fabricante', 'Fabricante'),
-            'distribuidor'   => $this->getOrdenamientoPedidos('distribuidor', 'Distribuidor'),
-            'obra'           => $this->getOrdenamientoPedidos('obra', 'Lugar de entrega'),
-            'peso_total'     => $this->getOrdenamientoPedidos('peso_total', 'Peso total'),
-            'fecha_pedido'   => $this->getOrdenamientoPedidos('fecha_pedido', 'F. Pedido'),
-            'fecha_entrega'  => $this->getOrdenamientoPedidos('fecha_entrega', 'F. Entrega'),
-            'estado'         => $this->getOrdenamientoPedidos('estado', 'Estado'),
-            'created_by'     => $this->getOrdenamientoPedidos('created_by', 'Creado por'),
+            'codigo' => $this->getOrdenamientoPedidos('codigo', 'Código'),
+            'fabricante' => $this->getOrdenamientoPedidos('fabricante', 'Fabricante'),
+            'distribuidor' => $this->getOrdenamientoPedidos('distribuidor', 'Distribuidor'),
+            'obra' => $this->getOrdenamientoPedidos('obra', 'Lugar de entrega'),
+            'peso_total' => $this->getOrdenamientoPedidos('peso_total', 'Peso total'),
+            'fecha_pedido' => $this->getOrdenamientoPedidos('fecha_pedido', 'F. Pedido'),
+            'fecha_entrega' => $this->getOrdenamientoPedidos('fecha_entrega', 'F. Entrega'),
+            'estado' => $this->getOrdenamientoPedidos('estado', 'Estado'),
+            'created_by' => $this->getOrdenamientoPedidos('created_by', 'Creado por'),
         ];
 
         // ===== Cargar obras de HPR para el <select> =====
@@ -425,27 +425,27 @@ class PedidoController extends Controller
             ->get();
         // ===== Filtro para el cálculo del StockService =====
         $obraIdSeleccionada = $request->input('obra_id_hpr');
-        $soloHpr            = $request->boolean('solo_hpr');
+        $soloHpr = $request->boolean('solo_hpr');
 
-        $obraIds     = $obraIdSeleccionada ? [(int)$obraIdSeleccionada] : null;
+        $obraIds = $obraIdSeleccionada ? [(int) $obraIdSeleccionada] : null;
         $clienteLike = (!$obraIds && $soloHpr) ? '%Hierros Paco Reyes%' : null;
 
         $datosStock = $stockService->obtenerDatosStock($obraIds, $clienteLike);
 
         return view('pedidos.index', array_merge([
-            'pedidos'        => $pedidos,
-            'navesHpr'       => $navesHpr,
-            'fabricantes'    => $fabricantes,
+            'pedidos' => $pedidos,
+            'navesHpr' => $navesHpr,
+            'fabricantes' => $fabricantes,
             'filtrosActivos' => $filtrosActivos,
-            'ordenables'     => $ordenables,
+            'ordenables' => $ordenables,
             'distribuidores' => $distribuidores,
             'pedidosGlobales' => $pedidosGlobales,
-            'obrasHpr'       => $obrasHpr,
-            'obrasExternas'  => $obrasExternas,
-            'idClienteHpr'   => $idClienteHpr,
-            'solo_hpr'       => $soloHpr,
-            'obra_id_hpr'    => $obraIdSeleccionada,
-            'obras'          => $obras,
+            'obrasHpr' => $obrasHpr,
+            'obrasExternas' => $obrasExternas,
+            'idClienteHpr' => $idClienteHpr,
+            'solo_hpr' => $soloHpr,
+            'obra_id_hpr' => $obraIdSeleccionada,
+            'obras' => $obras,
             'productosBase' => $productosBase,
         ], $datosStock));
     }
@@ -453,7 +453,7 @@ class PedidoController extends Controller
     {
         try {
             $obraId = $request->input('obra_id_hpr');
-            $obraIds = $obraId ? [(int)$obraId] : null;
+            $obraIds = $obraId ? [(int) $obraId] : null;
 
             $stockService = new StockService();
             $datos = $stockService->obtenerDatosStock($obraIds);
@@ -630,16 +630,16 @@ class PedidoController extends Controller
         try {
             $request->validate([
                 'movimiento_id' => ['required', 'exists:movimientos,id'],
-                'codigo'        => ['required', 'string', 'max:20', 'unique:productos,codigo', 'regex:/^mp/i'],
-                'codigo_2'      => ['nullable', 'string', 'max:20', 'different:codigo', 'unique:productos,codigo', 'regex:/^mp/i'],
+                'codigo' => ['required', 'string', 'max:20', 'unique:productos,codigo', 'regex:/^mp/i'],
+                'codigo_2' => ['nullable', 'string', 'max:20', 'different:codigo', 'unique:productos,codigo', 'regex:/^mp/i'],
                 'producto_base_id' => 'required|exists:productos_base,id',
-                'peso'             => 'required|numeric|min:1',
-                'n_colada'         => 'required|string|max:50',
-                'n_paquete'        => 'required|string|max:50',
-                'n_colada_2'       => 'nullable|string|max:50',
-                'n_paquete_2'      => 'nullable|string|max:50',
-                'ubicacion_id'     => 'required|exists:ubicaciones,id',
-                'fabricante_id'    => 'nullable|exists:fabricantes,id',
+                'peso' => 'required|numeric|min:1',
+                'n_colada' => 'required|string|max:50',
+                'n_paquete' => 'required|string|max:50',
+                'n_colada_2' => 'nullable|string|max:50',
+                'n_paquete_2' => 'nullable|string|max:50',
+                'ubicacion_id' => 'required|exists:ubicaciones,id',
+                'fabricante_id' => 'nullable|exists:fabricantes,id',
             ]);
 
             $pedido = Pedido::with('productos')->findOrFail($pedidoId);
@@ -651,7 +651,7 @@ class PedidoController extends Controller
             /** @var \App\Models\Movimiento $movimiento */
             $movimiento = Movimiento::with('pedidoProducto')->lockForUpdate()->findOrFail($request->movimiento_id);
 
-            if ((int)$movimiento->pedido_id !== (int)$pedido->id) {
+            if ((int) $movimiento->pedido_id !== (int) $pedido->id) {
                 return back()->with('error', 'El movimiento no pertenece a este pedido.');
             }
 
@@ -659,10 +659,10 @@ class PedidoController extends Controller
             $pedidoProducto = $movimiento->pedidoProducto;
 
             // --- Preparar datos
-            $codigo   = strtoupper(trim($request->codigo));
-            $codigo2  = $request->filled('codigo_2') ? strtoupper(trim($request->codigo_2)) : null;
-            $esDoble  = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
-            $peso     = (float) $request->peso;
+            $codigo = strtoupper(trim($request->codigo));
+            $codigo2 = $request->filled('codigo_2') ? strtoupper(trim($request->codigo_2)) : null;
+            $esDoble = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
+            $peso = (float) $request->peso;
             $pesoPorPaquete = $esDoble ? round($peso / 2, 3) : $peso;
 
             $ubicacion = Ubicacion::findOrFail($request->ubicacion_id);
@@ -682,14 +682,14 @@ class PedidoController extends Controller
 
             if (!$entrada) {
                 $entrada = new Entrada();
-                $entrada->pedido_id          = $pedido->id;
+                $entrada->pedido_id = $pedido->id;
                 $entrada->pedido_producto_id = $pedidoProducto->id;
-                $entrada->nave_id            = $pedidoProducto->obra_id;
-                $entrada->albaran            = $this->generarCodigoAlbaran();
-                $entrada->usuario_id         = auth()->id();
-                $entrada->peso_total         = 0;
-                $entrada->estado             = 'abierto';
-                $entrada->otros              = 'Entrada generada desde recepción de pedido';
+                $entrada->nave_id = $pedidoProducto->obra_id;
+                $entrada->albaran = $this->generarCodigoAlbaran();
+                $entrada->usuario_id = auth()->id();
+                $entrada->peso_total = 0;
+                $entrada->estado = 'abierto';
+                $entrada->otros = 'Entrada generada desde recepción de pedido';
                 $entrada->save();
             }
 
@@ -758,19 +758,19 @@ class PedidoController extends Controller
 
             // --- Crear producto(s) en esa entrada
             Producto::create([
-                'codigo'            => $codigo,
-                'producto_base_id'  => $request->producto_base_id,
-                'fabricante_id'     => $fabricanteFinal,
-                'obra_id'           => $obraIdActual,
-                'entrada_id'        => $entrada->id,
-                'n_colada'          => $request->n_colada,
-                'n_paquete'         => $request->n_paquete,
-                'peso_inicial'      => $pesoPorPaquete,
-                'peso_stock'        => $pesoPorPaquete,
-                'estado'            => 'almacenado',
-                'ubicacion_id'      => $ubicacion->id,
-                'maquina_id'        => null,
-                'otros'             => $request->otros ?? null,
+                'codigo' => $codigo,
+                'producto_base_id' => $request->producto_base_id,
+                'fabricante_id' => $fabricanteFinal,
+                'obra_id' => $obraIdActual,
+                'entrada_id' => $entrada->id,
+                'n_colada' => $request->n_colada,
+                'n_paquete' => $request->n_paquete,
+                'peso_inicial' => $pesoPorPaquete,
+                'peso_stock' => $pesoPorPaquete,
+                'estado' => 'almacenado',
+                'ubicacion_id' => $ubicacion->id,
+                'maquina_id' => null,
+                'otros' => $request->otros ?? null,
             ]);
 
             if ($esDoble) {
@@ -804,19 +804,19 @@ class PedidoController extends Controller
                 }
 
                 Producto::create([
-                    'codigo'            => $codigo2,
-                    'producto_base_id'  => $request->producto_base_id,
-                    'fabricante_id'     => $fabricanteFinal,
-                    'obra_id'           => $obraIdActual,
-                    'entrada_id'        => $entrada->id,
-                    'n_colada'          => $request->n_colada_2,
-                    'n_paquete'         => $request->n_paquete_2,
-                    'peso_inicial'      => $pesoPorPaquete,
-                    'peso_stock'        => $pesoPorPaquete,
-                    'estado'            => 'almacenado',
-                    'ubicacion_id'      => $ubicacion->id,
-                    'maquina_id'        => null,
-                    'otros'             => $request->otros ?? null,
+                    'codigo' => $codigo2,
+                    'producto_base_id' => $request->producto_base_id,
+                    'fabricante_id' => $fabricanteFinal,
+                    'obra_id' => $obraIdActual,
+                    'entrada_id' => $entrada->id,
+                    'n_colada' => $request->n_colada_2,
+                    'n_paquete' => $request->n_paquete_2,
+                    'peso_inicial' => $pesoPorPaquete,
+                    'peso_stock' => $pesoPorPaquete,
+                    'estado' => 'almacenado',
+                    'ubicacion_id' => $ubicacion->id,
+                    'maquina_id' => null,
+                    'otros' => $request->otros ?? null,
                 ]);
             }
 
@@ -829,7 +829,7 @@ class PedidoController extends Controller
             Log::error('❌ Error en procesarRecepcion()', [
                 'error' => $e->getMessage(),
                 'linea' => $e->getLine(),
-                'file'  => $e->getFile(),
+                'file' => $e->getFile(),
             ]);
             return back()->withInput()->with('error', 'Error: ' . $e->getMessage());
         }
@@ -959,7 +959,7 @@ class PedidoController extends Controller
 
         // Información adicional útil (opcional): cantidad prevista y fecha estimada
         if (!is_null($linea->cantidad)) {
-            $partes[] = sprintf('Cantidad solicitada: %s kg', rtrim(rtrim(number_format((float)$linea->cantidad, 3, ',', '.'), '0'), ','));
+            $partes[] = sprintf('Cantidad solicitada: %s kg', rtrim(rtrim(number_format((float) $linea->cantidad, 3, ',', '.'), '0'), ','));
         }
         $partes[] = sprintf('Fecha prevista: %s', $fechaEntregaFmt);
 
@@ -970,30 +970,30 @@ class PedidoController extends Controller
         try {
             // Activamos la línea
             DB::table('pedido_productos')->where('id', $lineaId)->update([
-                'estado'     => 'activo',
+                'estado' => 'activo',
                 'updated_at' => now(),
             ]);
 
             // ✅ Creamos el movimiento usando obra_id de la LÍNEA
             Movimiento::create([
-                'tipo'               => 'entrada',
-                'estado'             => 'pendiente',
-                'descripcion'        => $descripcion,
-                'fecha_solicitud'    => now(),
-                'solicitado_por'     => auth()->id(),
-                'pedido_id'          => $pedidoId,
-                'producto_base_id'   => $productoBase->id,
+                'tipo' => 'entrada',
+                'estado' => 'pendiente',
+                'descripcion' => $descripcion,
+                'fecha_solicitud' => now(),
+                'solicitado_por' => auth()->id(),
+                'pedido_id' => $pedidoId,
+                'producto_base_id' => $productoBase->id,
                 'pedido_producto_id' => $lineaId,
-                'prioridad'          => 2,
-                'nave_id'            => $linea->obra_id,  // 👈 CAMBIO: ahora viene de la línea
+                'prioridad' => 2,
+                'nave_id' => $linea->obra_id,  // 👈 CAMBIO: ahora viene de la línea
             ]);
 
             Log::info('Movimiento creado para activar línea de pedido', [
-                'linea_id'          => $lineaId,
-                'pedido_id'         => $pedidoId,
-                'producto_base_id'  => $productoBase->id,
-                'nave_id'           => $linea->obra_id,  // 👈 CAMBIO: ahora viene de la línea
-                'usuario'           => auth()->id(),
+                'linea_id' => $lineaId,
+                'pedido_id' => $pedidoId,
+                'producto_base_id' => $productoBase->id,
+                'nave_id' => $linea->obra_id,  // 👈 CAMBIO: ahora viene de la línea
+                'usuario' => auth()->id(),
             ]);
 
             DB::commit();
@@ -1104,8 +1104,9 @@ class PedidoController extends Controller
                         'colada_id' => $coladaId,
                         'colada' => $numeroColada,
                         'bulto' => $bulto,
-                        'user_id' => auth()->id(), // Usuario que activa la línea
-                    ]);
+                        'user_id' => auth()->id(),
+                    ];
+                    \App\Models\PedidoProductoColada::create($attributes);
                 }
             }
 
@@ -1214,8 +1215,8 @@ class PedidoController extends Controller
                     ->where('estado', 'pendiente')
                     ->delete();
                 Log::info('Movimiento eliminado para desactivar línea de pedido', [
-                    'linea_id'         => $lineaId,
-                    'pedido_id'        => $pedidoId,
+                    'linea_id' => $lineaId,
+                    'pedido_id' => $pedidoId,
                     'producto_base_id' => $linea->producto_base_id,
                 ]);
                 // Marcar la línea como pendiente
@@ -1256,7 +1257,7 @@ class PedidoController extends Controller
     public function cancelarLinea($pedidoId, $lineaId)
     {
         $pedido = Pedido::findOrFail($pedidoId);
-        $linea  = PedidoProducto::findOrFail($lineaId);
+        $linea = PedidoProducto::findOrFail($lineaId);
 
         if ($linea->pedido_id !== $pedido->id) {
             return back()->with('error', 'La línea no pertenece a este pedido.');
@@ -1275,7 +1276,7 @@ class PedidoController extends Controller
 
                 // 2) Restar del peso del pedido cabecera
                 $cantidad = (float) ($linea->cantidad ?? 0);
-                $pedido->peso_total = max(0, (float)$pedido->peso_total - $cantidad);
+                $pedido->peso_total = max(0, (float) $pedido->peso_total - $cantidad);
                 $pedido->save();
 
                 // 3) Si todas las líneas están canceladas, cancelar el pedido
@@ -1315,8 +1316,8 @@ class PedidoController extends Controller
         } catch (\Throwable $e) {
             Log::error('Error al cancelar línea de pedido', [
                 'pedido_id' => $pedido->id,
-                'linea_id'  => $linea->id,
-                'mensaje'   => $e->getMessage(),
+                'linea_id' => $linea->id,
+                'mensaje' => $e->getMessage(),
             ]);
 
             return back()->with('error', 'Error al cancelar la línea. Consulta con administración.');
@@ -1369,10 +1370,10 @@ class PedidoController extends Controller
                 }
 
                 Log::info('Pedido cancelado completamente', [
-                    'pedido_id'     => $pedido->id,
+                    'pedido_id' => $pedido->id,
                     'pedido_codigo' => $pedido->codigo,
-                    'num_lineas'    => $pedido->pedidoProductos->count(),
-                    'usuario'       => auth()->user()->nombre_completo ?? auth()->id(),
+                    'num_lineas' => $pedido->pedidoProductos->count(),
+                    'usuario' => auth()->user()->nombre_completo ?? auth()->id(),
                 ]);
             });
 
@@ -1380,7 +1381,7 @@ class PedidoController extends Controller
         } catch (\Throwable $e) {
             Log::error('Error al cancelar pedido', [
                 'pedido_id' => $pedido->id,
-                'mensaje'   => $e->getMessage(),
+                'mensaje' => $e->getMessage(),
             ]);
 
             return back()->with('error', 'Error al cancelar el pedido. Consulta con administración.');
@@ -1402,15 +1403,17 @@ class PedidoController extends Controller
         $asignaciones = [];
         $lineasCol = collect($lineas)->values()->map(function ($l, $i) {
             return [
-                'index'    => $l['index'] ?? $i,
+                'index' => $l['index'] ?? $i,
                 'cantidad' => (float) $l['cantidad'],
             ];
         });
 
         foreach ($pedidosGlobales as $pg) {
             $restante = (float) $pg->cantidad_restante;
-            if ($restante <= 0) continue;
-            if ($lineasCol->isEmpty()) break;
+            if ($restante <= 0)
+                continue;
+            if ($lineasCol->isEmpty())
+                break;
 
             // --- 1) EXACT MATCH con cualquier línea ---
             $idxExacto = $lineasCol->search(fn($l) => abs($l['cantidad'] - $restante) < 0.001);
@@ -1418,12 +1421,12 @@ class PedidoController extends Controller
             if ($idxExacto !== false) {
                 $l = $lineasCol->get($idxExacto);
                 $asignaciones[] = [
-                    'linea_index'       => $l['index'],
-                    'pedido_global_id'  => $pg->id,
-                    'codigo'            => $pg->codigo,
+                    'linea_index' => $l['index'],
+                    'pedido_global_id' => $pg->id,
+                    'codigo' => $pg->codigo,
                     'cantidad_asignada' => $l['cantidad'],
                     'cantidad_restante' => 0,
-                    'mensaje'           => "Cierra {$pg->codigo}",
+                    'mensaje' => "Cierra {$pg->codigo}",
                 ];
                 $lineasCol->forget($idxExacto);
                 $lineasCol = $lineasCol->values();
@@ -1431,7 +1434,7 @@ class PedidoController extends Controller
             }
 
             // --- 2) INTELIGENTE: combinación de líneas que sume el restante ---
-            $target  = (int) round($restante);
+            $target = (int) round($restante);
             $weights = $lineasCol->mapWithKeys(fn($l) => [$l['index'] => (int) round($l['cantidad'])]);
 
             $dp = [0 => []];
@@ -1440,7 +1443,8 @@ class PedidoController extends Controller
                 foreach (array_keys($dp) as $s) {
                     $lista = $dp[$s];
                     $nueva = $s + $w;
-                    if ($nueva > $target) continue;
+                    if ($nueva > $target)
+                        continue;
                     if (!isset($dp[$nueva])) {
                         $dp[$nueva] = array_merge($lista, [$idx]);
                     }
@@ -1450,16 +1454,17 @@ class PedidoController extends Controller
             if (isset($dp[$target]) && !empty($dp[$target])) {
                 foreach ($dp[$target] as $lineIndex) {
                     $lKey = $lineasCol->search(fn($x) => $x['index'] === $lineIndex);
-                    if ($lKey === false) continue;
+                    if ($lKey === false)
+                        continue;
                     $l = $lineasCol->get($lKey);
 
                     $asignaciones[] = [
-                        'linea_index'       => $l['index'],
-                        'pedido_global_id'  => $pg->id,
-                        'codigo'            => $pg->codigo,
+                        'linea_index' => $l['index'],
+                        'pedido_global_id' => $pg->id,
+                        'codigo' => $pg->codigo,
                         'cantidad_asignada' => $l['cantidad'],
                         'cantidad_restante' => 0,
-                        'mensaje'           => "Cierra {$pg->codigo}",
+                        'mensaje' => "Cierra {$pg->codigo}",
                     ];
                     $lineasCol->forget($lKey);
                 }
@@ -1473,12 +1478,12 @@ class PedidoController extends Controller
                 $r = $restante;
                 foreach ($lineasCol as $l) {
                     $asignaciones[] = [
-                        'linea_index'       => $l['index'],
-                        'pedido_global_id'  => $pg->id,
-                        'codigo'            => $pg->codigo,
+                        'linea_index' => $l['index'],
+                        'pedido_global_id' => $pg->id,
+                        'codigo' => $pg->codigo,
                         'cantidad_asignada' => $l['cantidad'],
                         'cantidad_restante' => max(0, $r - $l['cantidad']),
-                        'mensaje'           => "Asignado parcial a {$pg->codigo}",
+                        'mensaje' => "Asignado parcial a {$pg->codigo}",
                     ];
                     $r -= $l['cantidad'];
                 }
@@ -1488,22 +1493,22 @@ class PedidoController extends Controller
 
             // --- 4) No se puede cerrar (ni parcial completa) → avisar y bloquear ---
             $asignaciones[] = [
-                'linea_index'       => null,
-                'pedido_global_id'  => null,
-                'codigo'            => null,
+                'linea_index' => null,
+                'pedido_global_id' => null,
+                'codigo' => null,
                 'cantidad_asignada' => 0,
                 'cantidad_restante' => $restante,
-                'mensaje'           => "El pedido global más antiguo ({$pg->codigo}) tiene {$restante} kg pendientes. Debes ajustar alguna línea a esa cantidad exacta antes de pasar al siguiente.",
+                'mensaje' => "El pedido global más antiguo ({$pg->codigo}) tiene {$restante} kg pendientes. Debes ajustar alguna línea a esa cantidad exacta antes de pasar al siguiente.",
             ];
 
             foreach ($lineasCol as $l) {
                 $asignaciones[] = [
-                    'linea_index'       => $l['index'],
-                    'pedido_global_id'  => null,
-                    'codigo'            => null,
+                    'linea_index' => $l['index'],
+                    'pedido_global_id' => null,
+                    'codigo' => null,
                     'cantidad_asignada' => 0,
                     'cantidad_restante' => 0,
-                    'mensaje'           => "Pendiente: primero cierra el PG más antiguo",
+                    'mensaje' => "Pendiente: primero cierra el PG más antiguo",
                 ];
             }
             break; // no miramos siguientes PG hasta resolver éste
@@ -1512,12 +1517,12 @@ class PedidoController extends Controller
         // Lo que quede sin PG
         foreach ($lineasCol as $l) {
             $asignaciones[] = [
-                'linea_index'       => $l['index'],
-                'pedido_global_id'  => null,
-                'codigo'            => null,
+                'linea_index' => $l['index'],
+                'pedido_global_id' => null,
+                'codigo' => null,
                 'cantidad_asignada' => 0,
                 'cantidad_restante' => 0,
-                'mensaje'           => "Sin PG disponible",
+                'mensaje' => "Sin PG disponible",
             ];
         }
 
@@ -1527,9 +1532,9 @@ class PedidoController extends Controller
     public function sugerirPedidoGlobal(Request $request)
     {
         $request->validate([
-            'fabricante_id'     => 'nullable|exists:fabricantes,id',
-            'distribuidor_id'   => 'nullable|exists:distribuidores,id',
-            'lineas'            => 'required|array|min:1',
+            'fabricante_id' => 'nullable|exists:fabricantes,id',
+            'distribuidor_id' => 'nullable|exists:distribuidores,id',
+            'lineas' => 'required|array|min:1',
             'lineas.*.cantidad' => 'required|numeric|min:1'
         ]);
 
@@ -1637,18 +1642,18 @@ class PedidoController extends Controller
     {
         try {
             $request->validate([
-                'seleccionados'     => 'required|array',
-                'obra_id_hpr'       => 'nullable|exists:obras,id',
-                'obra_id_externa'   => 'nullable|exists:obras,id',
-                'obra_manual'       => 'nullable|string|max:255',
-                'fabricante_id'     => 'nullable|exists:fabricantes,id',
-                'distribuidor_id'   => 'nullable|exists:distribuidores,id',
+                'seleccionados' => 'required|array',
+                'obra_id_hpr' => 'nullable|exists:obras,id',
+                'obra_id_externa' => 'nullable|exists:obras,id',
+                'obra_manual' => 'nullable|string|max:255',
+                'fabricante_id' => 'nullable|exists:fabricantes,id',
+                'distribuidor_id' => 'nullable|exists:distribuidores,id',
             ]);
 
             // Exclusividad de lugar de entrega
-            $hayObraHpr     = $request->filled('obra_id_hpr');
+            $hayObraHpr = $request->filled('obra_id_hpr');
             $hayObraExterna = $request->filled('obra_id_externa');
-            $hayObraManual  = $request->filled('obra_manual');
+            $hayObraManual = $request->filled('obra_manual');
             $totalObrasMarcadas = (int) $hayObraHpr + (int) $hayObraExterna + (int) $hayObraManual;
 
             if ($totalObrasMarcadas > 1) {
@@ -1678,19 +1683,19 @@ class PedidoController extends Controller
 
             // Crear pedido principal (SIN obra_id ni obra_manual)
             $pedido = Pedido::create([
-                'codigo'          => Pedido::generarCodigo(),
-                'estado'          => 'pendiente',
-                'fabricante_id'   => $request->fabricante_id,
+                'codigo' => Pedido::generarCodigo(),
+                'estado' => 'pendiente',
+                'fabricante_id' => $request->fabricante_id,
                 'distribuidor_id' => $request->distribuidor_id,
-                'fecha_pedido'    => now(),
-                'created_by'      => auth()->id(),
+                'fecha_pedido' => now(),
+                'created_by' => auth()->id(),
             ]);
 
-            $pesoTotal      = 0;
+            $pesoTotal = 0;
             $pgIdsAfectados = [];
 
             foreach ($request->seleccionados as $clave) {
-                $tipo     = $request->input("detalles.$clave.tipo");
+                $tipo = $request->input("detalles.$clave.tipo");
                 $diametro = $request->input("detalles.$clave.diametro");
                 $longitud = $request->input("detalles.$clave.longitud");
 
@@ -1708,7 +1713,7 @@ class PedidoController extends Controller
                 $subproductos = data_get($request->input('productos'), $clave, []);
 
                 foreach ($subproductos as $index => $camion) {
-                    $peso  = (float) ($camion['peso'] ?? 0);
+                    $peso = (float) ($camion['peso'] ?? 0);
                     $fecha = $camion['fecha'] ?? null;
 
                     // ✅ Leer el pedido_global_id ESPECÍFICO de esta sub-línea
@@ -1722,30 +1727,30 @@ class PedidoController extends Controller
                     // ✅ Crear la línea de pedido CON obra_id y obra_manual
                     // En lugar de attach(), crear la línea directamente
                     $linea = PedidoProducto::create([
-                        'pedido_id'              => $pedido->id,
-                        'producto_base_id'       => $productoBase->id,
-                        'pedido_global_id'       => $pedidoGlobalId ?: null,
-                        'cantidad'               => $peso,
+                        'pedido_id' => $pedido->id,
+                        'producto_base_id' => $productoBase->id,
+                        'pedido_global_id' => $pedidoGlobalId ?: null,
+                        'cantidad' => $peso,
                         'fecha_estimada_entrega' => $fecha,
-                        'obra_id'                => $obraId,
-                        'obra_manual'            => $obraManual,
-                        'observaciones'          => null,
+                        'obra_id' => $obraId,
+                        'obra_manual' => $obraManual,
+                        'observaciones' => null,
                     ]);
                     if ($pedidoGlobalId) {
-                        $pgIdsAfectados[(int)$pedidoGlobalId] = true;
+                        $pgIdsAfectados[(int) $pedidoGlobalId] = true;
                     }
 
                     $pesoTotal += $peso;
 
                     Log::info("Línea creada", [
                         'producto_base_id' => $productoBase->id,
-                        'peso'             => $peso,
-                        'fecha'            => $fecha,
+                        'peso' => $peso,
+                        'fecha' => $fecha,
                         'pedido_global_id' => $pedidoGlobalId,
-                        'obra_id'          => $obraId,
-                        'obra_manual'      => $obraManual,
-                        'clave'            => $clave,
-                        'index'            => $index,
+                        'obra_id' => $obraId,
+                        'obra_manual' => $obraManual,
+                        'clave' => $clave,
+                        'index' => $index,
                     ]);
                 }
             }
@@ -1837,7 +1842,7 @@ class PedidoController extends Controller
         ];
 
         $fromAddress = config('mail.from.address');                 // p.ej. info@pacoreyes.eu
-        $fromName    = config('mail.from.name', 'Hierros Paco Reyes');
+        $fromName = config('mail.from.name', 'Hierros Paco Reyes');
 
         // ✉️ Preparar el Mailable
         $mailable = new PedidoCreado(
@@ -1859,20 +1864,20 @@ class PedidoController extends Controller
     {
         if ($pedido->fabricante && $pedido->fabricante->email) {
             return [
-                'email'  => $pedido->fabricante->email,
+                'email' => $pedido->fabricante->email,
                 'nombre' => 'Hierros Paco Reyes',
             ];
         }
 
         if ($pedido->distribuidor && $pedido->distribuidor->email) {
             return [
-                'email'  => $pedido->distribuidor->email,
+                'email' => $pedido->distribuidor->email,
                 'nombre' => 'Hierros Paco Reyes',
             ];
         }
 
         return [
-            'email'  => null,
+            'email' => null,
             'nombre' => null,
         ];
     }
@@ -1887,16 +1892,18 @@ class PedidoController extends Controller
     {
         try {
             // Verifica pertenencia: evita que “linea=120” (pedido) cuele
-            if ((int)$linea->pedido_id !== (int)$pedido->id) {
+            if ((int) $linea->pedido_id !== (int) $pedido->id) {
                 abort(404, 'La línea no pertenece a este pedido.');
             }
 
             DB::transaction(function () use ($pedido, $linea) {
                 // Completar SOLO esta línea (si no está facturada)
-                if (strtolower((string)$linea->estado) !== 'facturado') {
+                if (strtolower((string) $linea->estado) !== 'facturado') {
                     $linea->estado = 'completado';
-                    if ($linea->isFillable('fecha_completado')) $linea->fecha_completado = now();
-                    if ($linea->isFillable('updated_by'))       $linea->updated_by       = auth()->id();
+                    if ($linea->isFillable('fecha_completado'))
+                        $linea->fecha_completado = now();
+                    if ($linea->isFillable('updated_by'))
+                        $linea->updated_by = auth()->id();
                     $linea->save();
                 }
 
@@ -1908,8 +1915,8 @@ class PedidoController extends Controller
         } catch (\Throwable $e) {
             Log::error('Error al completar línea manualmente', [
                 'pedido_id' => $pedido->id,
-                'linea_id'  => $linea->id ?? null,
-                'msg'       => $e->getMessage(),
+                'linea_id' => $linea->id ?? null,
+                'msg' => $e->getMessage(),
             ]);
             return back()->with('error', 'No se pudo completar la línea.');
         }
@@ -1929,11 +1936,11 @@ class PedidoController extends Controller
                     ->toArray();
 
                 Log::info('Eliminando pedido', [
-                    'pedido_id'                  => $pedido->id,
-                    'pedido_codigo'              => $pedido->codigo,
-                    'num_lineas'                 => $pedido->pedidoProductos->count(),
+                    'pedido_id' => $pedido->id,
+                    'pedido_codigo' => $pedido->codigo,
+                    'num_lineas' => $pedido->pedidoProductos->count(),
                     'pedidos_globales_afectados' => $pgIds,
-                    'usuario'                    => auth()->user()->nombre_completo ?? auth()->id(),
+                    'usuario' => auth()->user()->nombre_completo ?? auth()->id(),
                 ]);
 
                 // 2️⃣ Eliminar el pedido (las líneas se borran por cascada)
@@ -1951,12 +1958,12 @@ class PedidoController extends Controller
                             $pg->actualizarEstadoSegunProgreso();
 
                             Log::info('Pedido Global recalculado tras eliminación', [
-                                'pedido_global_id'     => $pg->id,
+                                'pedido_global_id' => $pg->id,
                                 'pedido_global_codigo' => $pg->codigo,
-                                'estado_anterior'      => $estadoAnterior,
-                                'estado_nuevo'         => $pg->estado,
-                                'cantidad_restante'    => $pg->cantidad_restante,
-                                'progreso'             => $pg->progreso . '%',
+                                'estado_anterior' => $estadoAnterior,
+                                'estado_nuevo' => $pg->estado,
+                                'cantidad_restante' => $pg->cantidad_restante,
+                                'progreso' => $pg->progreso . '%',
                             ]);
                         }
                     }
@@ -1969,10 +1976,10 @@ class PedidoController extends Controller
         } catch (\Throwable $e) {
             Log::error('Error al eliminar pedido', [
                 'pedido_id' => $id,
-                'mensaje'   => $e->getMessage(),
-                'linea'     => $e->getLine(),
-                'archivo'   => $e->getFile(),
-                'trace'     => $e->getTraceAsString(),
+                'mensaje' => $e->getMessage(),
+                'linea' => $e->getLine(),
+                'archivo' => $e->getFile(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return back()->with('error', 'No se pudo eliminar el pedido. Consulta con administración.');
@@ -1993,9 +2000,9 @@ class PedidoController extends Controller
         $ignorar = ['cancelado'];
 
         $todas = PedidoProducto::where('pedido_id', $pedido->id)->get();
-        $relevantes = $todas->reject(fn($l) => in_array(strtolower((string)$l->estado), $ignorar, true));
+        $relevantes = $todas->reject(fn($l) => in_array(strtolower((string) $l->estado), $ignorar, true));
         $todasCerradas = $relevantes->count() > 0
-            && $relevantes->every(fn($l) => in_array(strtolower((string)$l->estado), $estadosQueCierran, true));
+            && $relevantes->every(fn($l) => in_array(strtolower((string) $l->estado), $estadosQueCierran, true));
 
         $pedido->estado = $todasCerradas ? 'completado' : 'pendiente';
         if ($todasCerradas && $pedido->isFillable('fecha_completado')) {
