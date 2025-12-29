@@ -10,9 +10,11 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->date('fecha_incorporacion')->nullable()->after('estado');
-        });
+        if (!Schema::hasColumn('users', 'fecha_incorporacion')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->date('fecha_incorporacion')->nullable()->after('estado');
+            });
+        }
     }
 
     /**
