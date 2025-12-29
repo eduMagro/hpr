@@ -25,6 +25,7 @@ class FerrawinBulkImportService
     protected array $advertencias = [];
     protected array $cacheClientes = [];
     protected array $cacheObras = [];
+    protected int $contadorElementos = 0;
 
     public function __construct(
         protected CodigoEtiqueta $codigoService,
@@ -66,8 +67,9 @@ class FerrawinBulkImportService
                 'existentes' => count($existentes),
             ]);
 
-            // 3. Inicializar contador de etiquetas
+            // 3. Inicializar contadores
             $this->codigoService->inicializarContadorBatch();
+            $this->inicializarContadorElementos();
 
             // 4. Procesar en transacción
             DB::beginTransaction();
@@ -222,7 +224,7 @@ class FerrawinBulkImportService
 
             foreach ($grupo['elementos'] as $elem) {
                 $elementosInsert[] = [
-                    'codigo' => Elemento::generarCodigo(),
+                    'codigo' => $this->generarCodigoElementoBatch(),
                     'planilla_id' => $planilla->id,
                     'etiqueta_id' => $etiqueta->id,
                     'figura' => $elem['figura'] ?? null,
@@ -370,6 +372,34 @@ class FerrawinBulkImportService
     }
 
     /**
+     * Inicializa el contador de elementos obteniendo el último usado.
+     */
+    protected function inicializarContadorElementos(): void
+    {
+        $prefijo = 'EL' . now()->format('ym');
+
+        $ultimo = Elemento::where('codigo', 'like', "$prefijo%")
+            ->orderByDesc(DB::raw("CAST(SUBSTRING(codigo, LENGTH('$prefijo') + 1) AS UNSIGNED)"))
+            ->value('codigo');
+
+        if ($ultimo) {
+            $this->contadorElementos = (int)substr($ultimo, strlen($prefijo));
+        } else {
+            $this->contadorElementos = 0;
+        }
+    }
+
+    /**
+     * Genera código único para elemento en batch.
+     */
+    protected function generarCodigoElementoBatch(): string
+    {
+        $this->contadorElementos++;
+        $prefijo = 'EL' . now()->format('ym');
+        return $prefijo . str_pad($this->contadorElementos, 5, '0', STR_PAD_LEFT);
+    }
+
+    /**
      * Calcula tiempo de fabricación.
      */
     protected function calcularTiempo(int $barras, int $dobles): float
@@ -432,5 +462,6 @@ class FerrawinBulkImportService
         $this->advertencias = [];
         $this->cacheClientes = [];
         $this->cacheObras = [];
+        $this->contadorElementos = 0;
     }
 }
