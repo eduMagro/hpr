@@ -294,6 +294,13 @@ class FerrawinBulkImportService
         // Reimportar elementos
         $this->crearElementosBulk($planilla, $data['elementos'] ?? []);
 
+        // Actualizar entidades (eliminar existentes y crear nuevas)
+        $entidades = $data['entidades'] ?? [];
+        if (!empty($entidades)) {
+            PlanillaEntidad::where('planilla_id', $planilla->id)->delete();
+            $this->crearEntidades($planilla, $entidades);
+        }
+
         // Reasignar máquinas
         $this->asignador->repartirPlanilla($planilla->id);
 
