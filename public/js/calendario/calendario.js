@@ -107,6 +107,15 @@
             turnos = [], // opcional
             userId = null,
         } = cfg;
+        
+        let {
+            fechaIncorporacion = null,
+            diasVacacionesAsignados = 0,
+        } = cfg;
+
+        if (typeof fechaIncorporacion === 'undefined') fechaIncorporacion = null; // Safety check
+        
+        console.log('🔧 Config Calendario:', { userId, permissions, fechaIncorporacion, diasVacacionesAsignados });
 
         // Estado de selección “clic-clic”
         let startClick = null;
@@ -142,7 +151,17 @@
             });
         }
 
-        function clearTempHighlight(calendar) {
+        function clearVacationBadges() {
+            // Limpiar modal INFERIOR
+            const modal = document.getElementById('vacation-bottom-modal');
+            if (modal) {
+                modal.classList.remove('translate-y-0');
+                modal.classList.add('translate-y-full');
+            }
+        }
+
+        function clearTempHighlight(calendar, keepBadges = false) {
+            if (!keepBadges) clearVacationBadges();
             if (!hoverDayEvs.length) return;
             calendar.batchRendering(() =>
                 hoverDayEvs.forEach((ev) => ev.remove())
@@ -168,13 +187,13 @@
             return x.toISOString().split("T")[0];
         };
 
-        function updateTempHighlight(calendar, startStr, hoverStr) {
+        function updateTempHighlight(calendar, startStr, hoverStr, isHover = true) {
             const forward = startStr <= hoverStr;
             const days = eachDayStr(startStr, hoverStr);
             const first = days[0];
             const last = days[days.length - 1];
 
-            clearTempHighlight(calendar);
+            clearTempHighlight(calendar, isHover);
 
             calendar.batchRendering(() => {
                 days.forEach((d) => {
@@ -641,43 +660,80 @@
                 const clicked = info.dateStr;
 
                 if (!startClick) {
+                    // --- PRIMER CLIC ---
                     startClick = clicked;
-                    updateTempHighlight(calendar, clicked, clicked); // pinta sólo ese día
+                    updateTempHighlight(calendar, clicked, clicked, false); // false para que SI limpie/actualice el modal
+
+                    // AJAX Fetch para datos frescos de vacaciones (solo en el primer clic)
+                    const fetchUrl = routes.vacationDataUrl || `/api/usuarios/${userId}/vacation-data`;
+                    fetch(fetchUrl)
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.error) throw new Error(data.error);
+                            
+                            fechaIncorporacion = data.fecha_incorporacion;
+                            diasVacacionesAsignados = data.dias_asignados;
+
+                            if (fechaIncorporacion) {
+                                const incorpDate = new Date(fechaIncorporacion);
+                                const clickDate = new Date(clicked);
+                                
+                                if (clickDate >= incorpDate) {
+                                    const diffTime = Math.abs(clickDate - incorpDate);
+                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                                    const generadas = (diffDays / 30) * 2.5;
+                                    const disponibles = generadas - diasVacacionesAsignados;
+
+                                    const modal = document.getElementById('vacation-bottom-modal');
+                                    const content = document.getElementById('vacation-bottom-content');
+                                    
+                                    if (modal && content) {
+                                        modal.classList.remove('translate-y-full');
+                                        modal.classList.add('translate-y-0');
+                                        
+                                        const colorClass = disponibles >= 0 ? 'text-green-400' : 'text-red-400';
+                                        content.innerHTML = `
+                                            <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm">
+                                                <span class="text-gray-400">
+                                                    (Generadas: ${generadas.toFixed(0)} - Usadas: ${diasVacacionesAsignados})
+                                                </span>
+                                                <span class="${colorClass} font-bold text-lg">
+                                                    ${disponibles.toFixed(0)} días disponibles
+                                                </span>
+                                            </div>
+                                        `;
+                                    }
+                                }
+                            }
+                        })
+                        .catch(e => console.error("Error fetching vacation data:", e));
+                    
                     return;
                 }
 
-                // ✅ segundo clic en el mismo día → seleccionar 1 solo día
-                if (clicked === startClick) {
-                    const startStr = clicked;
-                    const endStr = clicked;
-                    clearTempHighlight(calendar);
-                    startClick = null;
+                // --- SEGUNDO CLIC ---
+                const startStr = clicked < startClick ? clicked : startClick;
+                const endStr = clicked < startClick ? startClick : clicked;
+                
+                // Limpiamos todo antes de la acción
+                clearTempHighlight(calendar, false);
+                const tempStart = startClick;
+                startClick = null;
 
-                    if (
-                        permissions.canAssignStates ||
-                        permissions.canAssignShifts
-                    ) {
+                if (clicked === tempStart) {
+                    // Un solo día
+                    if (permissions.canAssignStates || permissions.canAssignShifts) {
+                        registrarEventoOficina(clicked, clicked, calendar);
+                    } else if (permissions.canRequestVacations) {
+                        pedirVacaciones(clicked, clicked, calendar);
+                    }
+                } else {
+                    // Rango
+                    if (permissions.canAssignStates || permissions.canAssignShifts) {
                         registrarEventoOficina(startStr, endStr, calendar);
                     } else if (permissions.canRequestVacations) {
                         pedirVacaciones(startStr, endStr, calendar);
                     }
-                    return;
-                }
-
-                // rango normal (días distintos)
-                const startStr = clicked < startClick ? clicked : startClick;
-                const endStr = clicked < startClick ? startClick : clicked;
-
-                clearTempHighlight(calendar);
-                startClick = null;
-
-                if (
-                    permissions.canAssignStates ||
-                    permissions.canAssignShifts
-                ) {
-                    registrarEventoOficina(startStr, endStr, calendar);
-                } else if (permissions.canRequestVacations) {
-                    pedirVacaciones(startStr, endStr, calendar);
                 }
             },
 
@@ -694,6 +750,96 @@
                     calendar.view.type
                 );
             },
+
+            // Click en evento para mostrar tooltip con detalles
+            eventClick: function (info) {
+                const event = info.event;
+                const props = event.extendedProps || {};
+
+                // Ignorar eventos de fondo (selección de rango)
+                if (event.display === 'background' || props.__tempHover) return;
+
+                // Ignorar festivos y vacaciones pendientes
+                if (event.id?.startsWith('festivo-') || event.id?.startsWith('vac-')) return;
+
+                // Eliminar tooltip existente
+                const existente = document.getElementById('evento-tooltip');
+                if (existente) existente.remove();
+
+                const obraNombre = props.obra_nombre || null;
+                const entrada = props.entrada ? props.entrada.substring(0, 5) : null;
+                const salida = props.salida ? props.salida.substring(0, 5) : null;
+
+                // Si no hay datos que mostrar, no hacer nada
+                if (!obraNombre && !entrada && !salida) return;
+
+                // Crear tooltip
+                const tooltip = document.createElement('div');
+                tooltip.id = 'evento-tooltip';
+                tooltip.style.cssText = `
+                    position: fixed;
+                    z-index: 9999;
+                    background: #1f2937;
+                    color: white;
+                    padding: 8px 12px;
+                    border-radius: 6px;
+                    font-size: 12px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    max-width: 250px;
+                    pointer-events: none;
+                `;
+
+                let html = '';
+                if (obraNombre) {
+                    html += `<div style="margin-bottom: 4px;"><strong>📍 Obra:</strong> ${obraNombre}</div>`;
+                }
+                if (entrada || salida) {
+                    html += `<div><strong>🕐 Horario:</strong> `;
+                    if (entrada) html += entrada;
+                    if (entrada && salida) html += ' - ';
+                    if (salida) html += salida;
+                    html += `</div>`;
+                }
+                tooltip.innerHTML = html;
+
+                document.body.appendChild(tooltip);
+
+                // Posicionar cerca del evento
+                const rect = info.el.getBoundingClientRect();
+                const tooltipRect = tooltip.getBoundingClientRect();
+
+                let top = rect.bottom + 5;
+                let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+
+                // Ajustar si se sale de pantalla
+                if (left < 10) left = 10;
+                if (left + tooltipRect.width > window.innerWidth - 10) {
+                    left = window.innerWidth - tooltipRect.width - 10;
+                }
+                if (top + tooltipRect.height > window.innerHeight - 10) {
+                    top = rect.top - tooltipRect.height - 5;
+                }
+
+                tooltip.style.top = top + 'px';
+                tooltip.style.left = left + 'px';
+
+                // Cerrar al hacer clic en cualquier lugar
+                const cerrarTooltip = (e) => {
+                    if (!tooltip.contains(e.target)) {
+                        tooltip.remove();
+                        document.removeEventListener('click', cerrarTooltip);
+                    }
+                };
+                setTimeout(() => document.addEventListener('click', cerrarTooltip), 10);
+
+                // Auto-cerrar después de 3 segundos
+                setTimeout(() => {
+                    if (document.getElementById('evento-tooltip')) {
+                        tooltip.remove();
+                        document.removeEventListener('click', cerrarTooltip);
+                    }
+                }, 3000);
+            },
         });
 
         // Cancelar rango con ESC
@@ -701,20 +847,30 @@
             if (ev.key === "Escape" && startClick) {
                 startClick = null;
                 clearTempHighlight(calendar);
+                // clearVacationBadges() is already called inside clearTempHighlight
             }
         });
 
         let rafId = null;
         function bindHoverCells() {
-            // re-bind cada vez que cambia el mes/vista
             const cells = el.querySelectorAll(".fc-daygrid-day");
             cells.forEach((cell) => {
                 cell.addEventListener("mouseenter", () => {
                     if (!startClick) return;
                     const day = cell.getAttribute("data-date");
-                    if (day) updateTempHighlight(calendar, startClick, day);
+                    if (day) updateTempHighlight(calendar, startClick, day, true); // true = keep badges
                 });
             });
+
+            // Si el cursor sale de la tabla de días, restauramos el highlight solo del primer día
+            const table = el.querySelector('.fc-scrollgrid-sync-table');
+            if (table) {
+                table.addEventListener('mouseleave', () => {
+                    if (startClick) {
+                        updateTempHighlight(calendar, startClick, startClick, true);
+                    }
+                });
+            }
         }
 
         calendar.render();

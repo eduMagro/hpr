@@ -162,6 +162,7 @@
     <!-- <script src="{{ asset('js/elementosJs/guardarCambios.js') }}" defer></script>
     <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script> -->
     <script>
+        // Función global para actualizar campo (necesaria para llamadas onchange desde HTML)
         function actualizarCampoElemento(input) {
             const id = input.dataset.id;
             const campo = input.dataset.field;
@@ -189,7 +190,7 @@
                 .then(res => res.json().then(data => {
                     if (!res.ok) {
                         const err = new Error(data.error || 'Error al guardar');
-                        err.responseJson = data; // 👉 guardamos la respuesta completa
+                        err.responseJson = data;
                         throw err;
                     }
                     return data;
@@ -199,16 +200,14 @@
                     input.dataset.originalValue = valor;
 
                     if (data.swal) {
-                        Swal.fire(data.swal); // 👈 dispara el swal de éxito si lo enviaste
+                        Swal.fire(data.swal);
                     }
                 })
                 .catch(error => {
                     console.error('Error completo:', error);
 
-                    // intenta leer la última respuesta json guardada en el error
                     let mensaje = error.message || 'Error al guardar dato';
 
-                    // si en la respuesta vino un swal, úsalo directamente
                     if (error.responseJson && error.responseJson.swal) {
                         Swal.fire(error.responseJson.swal);
                     } else {
@@ -219,33 +218,33 @@
                         });
                     }
 
-                    // revertir al valor original
                     if (input.dataset.originalValue) {
                         input.value = input.dataset.originalValue;
                     }
                 });
         }
 
-        // Inicializar valores originales al cargar la página
-        document.addEventListener('DOMContentLoaded', function() {
+        // Inicialización de la página
+        function initElementosPage() {
+            // Prevenir doble inicialización
+            if (document.body.dataset.elementosPageInit === 'true') return;
+
+            console.log('🔍 Inicializando página de elementos...');
+
+            // 1. Inicializar valores originales
             const selects = document.querySelectorAll('select[data-field]');
             selects.forEach(select => {
                 select.dataset.originalValue = select.value;
             });
-        });
-    </script>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
+            // 2. Vincular modal de dibujo
             const modal = document.getElementById("modal-dibujo");
             const titulo = document.getElementById("modal-titulo");
             const canvas = document.getElementById("canvas-dibujo");
             const cerrar = document.getElementById("cerrar-modal");
-
             let timeoutCerrar = null;
 
             function abrirModal(ojo) {
-                // Cancelar cualquier cierre pendiente
                 if (timeoutCerrar) {
                     clearTimeout(timeoutCerrar);
                     timeoutCerrar = null;
@@ -258,7 +257,6 @@
 
                 if (titulo) titulo.textContent = `${codigo}`;
 
-                // Actualizamos datos
                 window.elementoData = {
                     id,
                     dimensiones,
@@ -266,21 +264,19 @@
                 };
 
                 modal.classList.remove("hidden");
-                // ⚠️ Forzar redibujado
+                // Forzar redibujado
                 if (typeof window.dibujarFiguraElemento === 'function') {
                     window.dibujarFiguraElemento("canvas-dibujo", dimensiones, peso);
                 }
             }
 
             function cerrarModal() {
-                // Retrasar el cierre para evitar parpadeos
                 timeoutCerrar = setTimeout(() => {
                     modal.classList.add("hidden");
                 }, 100);
             }
 
             function mantenerModalAbierto() {
-                // Cancelar el cierre si el cursor está sobre el modal
                 if (timeoutCerrar) {
                     clearTimeout(timeoutCerrar);
                     timeoutCerrar = null;
@@ -288,19 +284,35 @@
             }
 
             document.querySelectorAll(".abrir-modal-dibujo").forEach(ojo => {
-                ojo.addEventListener("mouseenter", () => abrirModal(ojo));
-                ojo.addEventListener("mouseleave", cerrarModal);
-                ojo.addEventListener("click", e => e.preventDefault());
+                // Clonar y reemplazar para eliminar listeners antiguos si existen
+                const newOjo = ojo.cloneNode(true);
+                ojo.replaceWith(newOjo);
+
+                newOjo.addEventListener("mouseenter", () => abrirModal(newOjo));
+                newOjo.addEventListener("mouseleave", cerrarModal);
+                newOjo.addEventListener("click", e => e.preventDefault());
             });
 
             // Mantener el modal abierto cuando el cursor está sobre él
             if (modal) {
+                // Clonar modal para limpiar listeners (cuidado porque tiene hijos interactivos como canvas)
+                // En este caso, mejor solo volvemos a añadir si no tienen atributo data, 
+                // pero ya estamos controlando con dataset.pageInit
+
+                // NO clonamos el modal entero porque perderíamos referencias al canvas y botón cerrar internos si no las reasignamos.
+                // Como tenemos proteção global pageInit, solo añadimos listeners.
+
+                modal.removeEventListener("mouseenter", mantenerModalAbierto);
+                modal.removeEventListener("mouseleave", cerrarModal);
+
                 modal.addEventListener("mouseenter", mantenerModalAbierto);
                 modal.addEventListener("mouseleave", cerrarModal);
             }
 
             if (cerrar) {
-                cerrar.addEventListener("click", () => {
+                const newCerrar = cerrar.cloneNode(true);
+                cerrar.replaceWith(newCerrar);
+                newCerrar.addEventListener("click", () => {
                     if (timeoutCerrar) {
                         clearTimeout(timeoutCerrar);
                         timeoutCerrar = null;
@@ -308,13 +320,30 @@
                     modal.classList.add("hidden");
                 });
             }
+
+            // Datos iniciales
+            @if (isset($elemento))
+                window.elementoData = @json($elemento);
+            @else
+                window.elementoData = null;
+            @endif
+
+            // Marcar como inicializado
+            document.body.dataset.elementosPageInit = 'true';
+        }
+
+        // Registrar en el sistema global
+        window.pageInitializers = window.pageInitializers || [];
+        window.pageInitializers.push(initElementosPage);
+
+        // Configurar listeners
+        document.addEventListener('livewire:navigated', initElementosPage);
+        document.addEventListener('DOMContentLoaded', initElementosPage);
+
+        // Limpiar flag antes de navegar
+        document.addEventListener('livewire:navigating', () => {
+            document.body.dataset.elementosPageInit = 'false';
         });
     </script>
-    <script>
-        @if (isset($elemento))
-            window.elementoData = @json($elemento);
-        @else
-            window.elementoData = null;
-        @endif
-    </script>
+
 </x-app-layout>

@@ -115,6 +115,41 @@ export function crearCalendario() {
             schedulerLicenseKey: "CC-Attribution-NonCommercial-NoDerivatives",
             locale: "es",
             navLinks: true,
+            navLinkDayClick: (date, jsEvent) => {
+                const day = date.getDay();
+                const isWeekend = day === 0 || day === 6;
+                const viewType = calendar?.view?.type;
+
+                // Si es fin de semana en vista semanal o mensual, expandir/colapsar
+                if (isWeekend && (viewType === "resourceTimelineWeek" || viewType === "dayGridMonth")) {
+                    jsEvent.preventDefault();
+
+                    let key;
+                    if (viewType === "dayGridMonth") {
+                        // En vista mensual, usamos 'saturday' o 'sunday' como clave
+                        key = day === 6 ? 'saturday' : 'sunday';
+                    } else {
+                        // En vista semanal, usamos la fecha específica
+                        key = date.toISOString().split("T")[0];
+                    }
+
+                    // Toggle expandido/colapsado
+                    if (!window.expandedWeekendDays) window.expandedWeekendDays = new Set();
+
+                    if (window.expandedWeekendDays.has(key)) {
+                        window.expandedWeekendDays.delete(key);
+                    } else {
+                        window.expandedWeekendDays.add(key);
+                    }
+                    localStorage.setItem("expandedWeekendDays", JSON.stringify([...window.expandedWeekendDays]));
+                    calendar.render();
+                    setTimeout(() => window.applyWeekendCollapse?.(), 50);
+                    return; // No navegar
+                }
+
+                // Para días laborables, navegar a la vista día
+                calendar.changeView("resourceTimeGridDay", date);
+            },
             initialView: vistaGuardada,
             initialDate: fechaGuardada ? new Date(fechaGuardada) : undefined,
 
@@ -203,18 +238,26 @@ export function crearCalendario() {
                         calendar.refetchResources();
                         calendar.refetchEvents();
                         safeUpdateSize();
+                        // Aplicar colapso de fines de semana después de refetch
+                        if ((info.view.type === "resourceTimelineWeek" || info.view.type === "dayGridMonth") && window.applyWeekendCollapse) {
+                            setTimeout(() => window.applyWeekendCollapse(), 150);
+                        }
                     }, 0);
                 } catch (e) {
                     console.error("Error en datesSet:", e);
                 }
             },
             loading: (isLoading) => {
-                // Cuando termina de cargar eventos, actualizar resumen diario si estamos en vista diaria
+                // Cuando termina de cargar eventos
                 if (!isLoading && calendar) {
                     const viewType = calendar.view.type;
                     if (viewType === "resourceTimeGridDay") {
                         // Pequeño delay para asegurar que el DOM está listo
                         setTimeout(() => mostrarResumenDiario(), 150);
+                    }
+                    // Aplicar colapso de fines de semana en vista semanal o mensual
+                    if ((viewType === "resourceTimelineWeek" || viewType === "dayGridMonth") && window.applyWeekendCollapse) {
+                        setTimeout(() => window.applyWeekendCollapse(), 150);
                     }
                 }
             },
@@ -529,6 +572,7 @@ export function crearCalendario() {
                     fecha: nuevaFechaISO,
                     tipo: p.tipo,
                     planillas_ids: p.planillas_ids || [],
+                    elementos_ids: p.elementos_ids || [],
                 };
                 const url = (
                     window.AppSalidas?.routes?.updateItem || ""
@@ -547,13 +591,41 @@ export function crearCalendario() {
                             throw new Error("No se pudo actualizar la fecha.");
                         return r.json();
                     })
-                    .then(() => {
+                    .then((data) => {
                         calendar.refetchEvents();
                         calendar.refetchResources();
                         const nuevaFecha = info.event.start;
                         const fechaISO = nuevaFecha.toISOString().split("T")[0];
                         actualizarTotales(fechaISO);
                         safeUpdateSize();
+
+                        // Mostrar alerta si hay retraso en fabricación
+                        if (data.alerta_retraso) {
+                            Swal.fire({
+                                icon: "warning",
+                                title: "⚠️ Fecha de entrega adelantada",
+                                html: `
+                                    <div class="text-left">
+                                        <p class="mb-2">${data.alerta_retraso.mensaje}</p>
+                                        <div class="bg-yellow-50 border border-yellow-200 rounded p-3 mt-3">
+                                            <p class="text-sm"><strong>Fin fabricación:</strong> ${data.alerta_retraso.fin_programado}</p>
+                                            <p class="text-sm"><strong>Fecha entrega:</strong> ${data.alerta_retraso.fecha_entrega}</p>
+                                        </div>
+                                        <p class="mt-3 text-sm text-gray-600">Los elementos no estarán listos para la fecha indicada según la programación actual de máquinas.</p>
+                                    </div>
+                                `,
+                                showCancelButton: true,
+                                confirmButtonText: "🚀 Adelantar fabricación",
+                                cancelButtonText: "Entendido",
+                                confirmButtonColor: "#10b981",
+                                cancelButtonColor: "#f59e0b",
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    // Simular adelanto
+                                    simularAdelantoFabricacion(p.elementos_ids, nuevaFechaISO);
+                                }
+                            });
+                        }
                     })
                     .catch((err) => {
                         console.error("Error:", err);
@@ -574,12 +646,49 @@ export function crearCalendario() {
             },
             eventMinHeight: 30,
             firstDay: 1,
+            // Estado de días colapsados (sábado=6, domingo=0) - Por defecto colapsados
+            slotLabelContent: (arg) => {
+                const viewType = calendar?.view?.type;
+                if (viewType !== "resourceTimelineWeek") return null;
+
+                const date = arg.date;
+                if (!date) return null;
+
+                const dayOfWeek = date.getDay(); // 0=domingo, 6=sábado
+                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                const dateStr = date.toISOString().split("T")[0];
+
+                // Formatear la fecha
+                const options = { weekday: "short", day: "numeric", month: "short" };
+                const formattedDate = date.toLocaleDateString("es-ES", options);
+
+                if (isWeekend) {
+                    // Por defecto colapsados, expandidos solo si están en expandedWeekendDays
+                    const isExpanded = window.expandedWeekendDays?.has(dateStr);
+                    const isCollapsed = !isExpanded;
+                    const icon = isCollapsed ? "▶" : "▼";
+
+                    // Si está colapsado, mostrar solo el día de la semana abreviado
+                    const shortLabel = isCollapsed
+                        ? date.toLocaleDateString("es-ES", { weekday: "short" }).substring(0, 3)
+                        : formattedDate;
+
+                    return {
+                        html: `<div class="weekend-header cursor-pointer select-none hover:bg-gray-200 px-1 rounded"
+                                    data-date="${dateStr}"
+                                    data-collapsed="${isCollapsed}"
+                                    title="${isCollapsed ? 'Clic para expandir' : 'Clic para colapsar'}">
+                                <span class="collapse-icon text-xs mr-1">${icon}</span>
+                                <span class="weekend-label">${shortLabel}</span>
+                               </div>`
+                    };
+                }
+
+                return { html: `<span>${formattedDate}</span>` };
+            },
             views: {
                 resourceTimelineWeek: {
                     slotDuration: { days: 1 },
-                    slotLabelFormat: [
-                        { weekday: "short", day: "numeric", month: "short" },
-                    ],
                 },
                 resourceTimeGridDay: {
                     slotDuration: "01:00:00",
@@ -591,52 +700,6 @@ export function crearCalendario() {
                     slotLabelInterval: "01:00:00",
                     allDaySlot: false,
                 },
-            },
-            // slotLabelContent para formatear etiquetas de tiempo según vista
-            slotLabelContent: (arg) => {
-                const viewType = calendar?.view?.type;
-
-                // Vista diaria: mostrar horas
-                if (viewType === "resourceTimeGridDay") {
-                    const hora = arg.date.toLocaleTimeString("es-ES", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: false,
-                    });
-                    return {
-                        html: `<div class="text-sm font-medium text-gray-700 py-1">${hora}</div>`,
-                    };
-                }
-
-                // Vista timeline semanal: mostrar fecha
-                if (viewType === "resourceTimelineWeek") {
-                    const fecha = new Date(arg.date);
-                    const diaTexto = fecha.toLocaleDateString("es-ES", {
-                        weekday: "short",
-                        day: "numeric",
-                        month: "short",
-                    });
-                    return {
-                        html: `<div class="text-center font-bold text-sm py-2">${diaTexto}</div>`,
-                    };
-                }
-
-                // Otras vistas: usar formato por defecto
-                return null;
-            },
-            dayHeaderContent: (arg) => {
-                // dayHeaderContent solo se usa en vista diaria para columnas de recursos
-                // Mostrar solo la fecha simple
-                const fecha = new Date(arg.date);
-                const diaTexto = fecha.toLocaleDateString("es-ES", {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "short",
-                });
-
-                return {
-                    html: `<div class="text-center font-bold text-base py-2">${diaTexto}</div>`,
-                };
             },
             editable: true,
             eventDurationEditable: false, // Solo drag, no resize
@@ -664,6 +727,203 @@ export function crearCalendario() {
 
         calendar.render();
         safeUpdateSize();
+
+        // Inicializar estado de días colapsados desde localStorage
+        // Por defecto, los fines de semana están colapsados (true = colapsado por defecto)
+        const savedExpanded = localStorage.getItem("expandedWeekendDays");
+        window.expandedWeekendDays = new Set(savedExpanded ? JSON.parse(savedExpanded) : []);
+        // Para compatibilidad, mantenemos collapsedWeekendDays pero ahora invierte la lógica
+        window.weekendDefaultCollapsed = true; // Por defecto colapsados
+
+        // Función para verificar si una fecha es fin de semana
+        function isWeekendDate(dateStr) {
+            const date = new Date(dateStr + 'T00:00:00');
+            const day = date.getDay();
+            return day === 0 || day === 6; // domingo o sábado
+        }
+
+        // Función para aplicar estilos de colapso a las columnas de fin de semana
+        function applyWeekendCollapse() {
+            const viewType = calendar?.view?.type;
+
+            // Vista semanal (timeline)
+            if (viewType === "resourceTimelineWeek") {
+                const slots = document.querySelectorAll('.fc-timeline-slot[data-date]');
+                slots.forEach(slot => {
+                    const dateStr = slot.getAttribute('data-date');
+                    if (isWeekendDate(dateStr)) {
+                        const isExpanded = window.expandedWeekendDays?.has(dateStr);
+                        if (isExpanded) {
+                            slot.classList.remove('weekend-collapsed');
+                        } else {
+                            slot.classList.add('weekend-collapsed');
+                        }
+                    }
+                });
+
+                // También colapsar las celdas de eventos en esas fechas
+                const laneCells = document.querySelectorAll('.fc-timeline-lane td[data-date]');
+                laneCells.forEach(cell => {
+                    const dateStr = cell.getAttribute('data-date');
+                    if (isWeekendDate(dateStr)) {
+                        const isExpanded = window.expandedWeekendDays?.has(dateStr);
+                        if (isExpanded) {
+                            cell.classList.remove('weekend-collapsed');
+                        } else {
+                            cell.classList.add('weekend-collapsed');
+                        }
+                    }
+                });
+            }
+
+            // Vista mensual (dayGrid)
+            if (viewType === "dayGridMonth") {
+                // Verificar si sábados/domingos están expandidos
+                const satExpanded = window.expandedWeekendDays?.has('saturday');
+                const sunExpanded = window.expandedWeekendDays?.has('sunday');
+                console.log('applyWeekendCollapse - satExpanded:', satExpanded, 'sunExpanded:', sunExpanded);
+
+                // Aplicar a headers (th) - importante para que el ancho sea consistente
+                const satHeaders = document.querySelectorAll('.fc-col-header-cell.fc-day-sat');
+                const sunHeaders = document.querySelectorAll('.fc-col-header-cell.fc-day-sun');
+                console.log('Headers encontrados - sat:', satHeaders.length, 'sun:', sunHeaders.length);
+
+                satHeaders.forEach(header => {
+                    if (satExpanded) {
+                        header.classList.remove('weekend-day-collapsed');
+                    } else {
+                        header.classList.add('weekend-day-collapsed');
+                    }
+                    console.log('Header sat después:', header.classList.contains('weekend-day-collapsed'));
+                });
+                sunHeaders.forEach(header => {
+                    if (sunExpanded) {
+                        header.classList.remove('weekend-day-collapsed');
+                    } else {
+                        header.classList.add('weekend-day-collapsed');
+                    }
+                });
+
+                // Aplicar a celdas de días (td)
+                document.querySelectorAll('.fc-daygrid-day.fc-day-sat').forEach(cell => {
+                    if (satExpanded) {
+                        cell.classList.remove('weekend-day-collapsed');
+                    } else {
+                        cell.classList.add('weekend-day-collapsed');
+                    }
+                });
+                document.querySelectorAll('.fc-daygrid-day.fc-day-sun').forEach(cell => {
+                    if (sunExpanded) {
+                        cell.classList.remove('weekend-day-collapsed');
+                    } else {
+                        cell.classList.add('weekend-day-collapsed');
+                    }
+                });
+
+                // Aplicar colgroup para anchos de columna
+                const table = document.querySelector('.fc-dayGridMonth-view table');
+                if (table) {
+                    let colgroup = table.querySelector('colgroup');
+                    if (!colgroup) {
+                        colgroup = document.createElement('colgroup');
+                        for (let i = 0; i < 7; i++) {
+                            colgroup.appendChild(document.createElement('col'));
+                        }
+                        table.insertBefore(colgroup, table.firstChild);
+                    }
+                    const cols = colgroup.querySelectorAll('col');
+                    if (cols.length >= 7) {
+                        // Lunes a viernes (índices 0-4), sábado (5), domingo (6)
+                        // firstDay = 1 (lunes), así que sábado es índice 5, domingo es 6
+                        cols[5].style.width = satExpanded ? '' : '40px';
+                        cols[6].style.width = sunExpanded ? '' : '40px';
+                    }
+                }
+            }
+        }
+
+        // Función para alternar expansión de un día de fin de semana
+        function toggleWeekendCollapse(key) {
+            console.log('toggleWeekendCollapse llamado con key:', key);
+            console.log('expandedWeekendDays antes:', [...(window.expandedWeekendDays || [])]);
+
+            if (!window.expandedWeekendDays) {
+                window.expandedWeekendDays = new Set();
+            }
+
+            // Lógica invertida: por defecto colapsados, toggle para expandir
+            if (window.expandedWeekendDays.has(key)) {
+                // Si estaba expandido, quitarlo (volver a colapsar)
+                window.expandedWeekendDays.delete(key);
+                console.log('Colapsando:', key);
+            } else {
+                // Si estaba colapsado, expandirlo
+                window.expandedWeekendDays.add(key);
+                console.log('Expandiendo:', key);
+            }
+
+            console.log('expandedWeekendDays después:', [...window.expandedWeekendDays]);
+
+            // Guardar en localStorage
+            localStorage.setItem("expandedWeekendDays", JSON.stringify([...window.expandedWeekendDays]));
+
+            // Aplicar colapso sin re-renderizar todo el calendario
+            applyWeekendCollapse();
+        }
+
+        // Event listener para clics en encabezados de fin de semana
+        el.addEventListener('click', (e) => {
+            console.log('Click detectado en:', e.target);
+
+            const weekendHeader = e.target.closest('.weekend-header');
+            if (weekendHeader) {
+                const dateStr = weekendHeader.getAttribute('data-date');
+                console.log('Click en weekend-header, dateStr:', dateStr);
+                if (dateStr) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleWeekendCollapse(dateStr);
+                    return;
+                }
+            }
+
+            // Vista mensual: clic en header de sábado/domingo
+            const viewType = calendar?.view?.type;
+            console.log('Vista actual:', viewType);
+
+            if (viewType === "dayGridMonth") {
+                const headerCell = e.target.closest('.fc-col-header-cell.fc-day-sat, .fc-col-header-cell.fc-day-sun');
+                console.log('Header cell encontrado:', headerCell);
+                if (headerCell) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const isSaturday = headerCell.classList.contains('fc-day-sat');
+                    const key = isSaturday ? 'saturday' : 'sunday';
+                    console.log('Toggling:', key);
+                    toggleWeekendCollapse(key);
+                    return;
+                }
+
+                // También permitir clic en las celdas de días de fin de semana
+                const dayCell = e.target.closest('.fc-daygrid-day.fc-day-sat, .fc-daygrid-day.fc-day-sun');
+                console.log('Day cell encontrado:', dayCell);
+                if (dayCell && !e.target.closest('.fc-event')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const isSaturday = dayCell.classList.contains('fc-day-sat');
+                    const key = isSaturday ? 'saturday' : 'sunday';
+                    console.log('Toggling day:', key);
+                    toggleWeekendCollapse(key);
+                    return;
+                }
+            }
+        }, true); // Usar capturing para interceptar antes que FullCalendar
+
+        // Aplicar colapso inicial después de que el calendario se renderice
+        setTimeout(() => applyWeekendCollapse(), 100);
+
+        // Exponer función para uso global
+        window.applyWeekendCollapse = applyWeekendCollapse;
 
         // Añadir menú contextual para celdas del calendario (clic derecho en día)
         el.addEventListener('contextmenu', (e) => {
@@ -802,4 +1062,232 @@ function calcularFechaCentral(info) {
         return mid.toISOString().split("T")[0];
     }
     return info.startStr.split("T")[0];
+}
+
+/**
+ * Simula el adelanto de fabricación y muestra opciones al usuario
+ */
+function simularAdelantoFabricacion(elementosIds, fechaEntrega) {
+    if (!elementosIds || elementosIds.length === 0) {
+        Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No hay elementos para adelantar",
+        });
+        return;
+    }
+
+    // Mostrar loading
+    Swal.fire({
+        title: "Analizando opciones...",
+        html: "Calculando la mejor posición para adelantar la fabricación",
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+    });
+
+    fetch("/planificacion/simular-adelanto", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": window.AppSalidas?.csrf,
+        },
+        body: JSON.stringify({
+            elementos_ids: elementosIds,
+            fecha_entrega: fechaEntrega,
+        }),
+    })
+        .then((r) => {
+            if (!r.ok) throw new Error("Error en la simulación");
+            return r.json();
+        })
+        .then((data) => {
+            if (!data.necesita_adelanto) {
+                Swal.fire({
+                    icon: "info",
+                    title: "No es necesario adelantar",
+                    text: data.mensaje || "Los elementos llegarán a tiempo.",
+                });
+                return;
+            }
+
+            // Construir HTML con detalles de órdenes a adelantar
+            let htmlOrdenes = "";
+            if (data.ordenes_a_adelantar && data.ordenes_a_adelantar.length > 0) {
+                htmlOrdenes = `
+                    <div class="mb-4">
+                        <h4 class="font-semibold text-green-700 mb-2">📋 Planillas a adelantar:</h4>
+                        <div class="max-h-40 overflow-y-auto">
+                            <table class="w-full text-sm border">
+                                <thead class="bg-green-100">
+                                    <tr>
+                                        <th class="px-2 py-1 text-left">Planilla</th>
+                                        <th class="px-2 py-1 text-left">Máquina</th>
+                                        <th class="px-2 py-1 text-center">Pos. Actual</th>
+                                        <th class="px-2 py-1 text-center">Nueva Pos.</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+                data.ordenes_a_adelantar.forEach((o) => {
+                    htmlOrdenes += `
+                        <tr class="border-t">
+                            <td class="px-2 py-1">${o.planilla_codigo}</td>
+                            <td class="px-2 py-1">${o.maquina_nombre}</td>
+                            <td class="px-2 py-1 text-center">${o.posicion_actual}</td>
+                            <td class="px-2 py-1 text-center font-bold text-green-600">${o.posicion_nueva}</td>
+                        </tr>
+                    `;
+                });
+                htmlOrdenes += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Construir HTML con planillas colaterales afectadas
+            let htmlColaterales = "";
+            if (data.colaterales && data.colaterales.length > 0) {
+                htmlColaterales = `
+                    <div class="mb-4">
+                        <h4 class="font-semibold text-orange-700 mb-2">⚠️ Planillas que se retrasarán:</h4>
+                        <div class="max-h-32 overflow-y-auto bg-orange-50 border border-orange-200 rounded p-2">
+                            <table class="w-full text-sm">
+                                <thead class="bg-orange-100">
+                                    <tr>
+                                        <th class="px-2 py-1 text-left">Planilla</th>
+                                        <th class="px-2 py-1 text-left">Obra</th>
+                                        <th class="px-2 py-1 text-left">F. Entrega</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+                data.colaterales.forEach((c) => {
+                    htmlColaterales += `
+                        <tr class="border-t">
+                            <td class="px-2 py-1">${c.planilla_codigo}</td>
+                            <td class="px-2 py-1 truncate" style="max-width:150px">${c.obra}</td>
+                            <td class="px-2 py-1">${c.fecha_entrega}</td>
+                        </tr>
+                    `;
+                });
+                htmlColaterales += `
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="text-xs text-orange-600 mt-1">Estas planillas bajarán una posición en la cola de fabricación.</p>
+                    </div>
+                `;
+            }
+
+            const fechaEntregaStr = data.fecha_entrega || "---";
+
+            Swal.fire({
+                icon: "question",
+                title: "🚀 Adelantar fabricación",
+                html: `
+                    <div class="text-left">
+                        <p class="mb-3">Para cumplir con la fecha de entrega <strong>${fechaEntregaStr}</strong>, se propone el siguiente cambio:</p>
+                        ${htmlOrdenes}
+                        ${htmlColaterales}
+                        <p class="text-sm text-gray-600 mt-3">¿Deseas ejecutar el adelanto?</p>
+                    </div>
+                `,
+                width: 600,
+                showCancelButton: true,
+                confirmButtonText: "✅ Ejecutar adelanto",
+                cancelButtonText: "Cancelar",
+                confirmButtonColor: "#10b981",
+                cancelButtonColor: "#6b7280",
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    ejecutarAdelantoFabricacion(data.ordenes_a_adelantar);
+                }
+            });
+        })
+        .catch((err) => {
+            console.error("Error en simulación:", err);
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudo simular el adelanto. " + err.message,
+            });
+        });
+}
+
+/**
+ * Ejecuta el adelanto de fabricación
+ */
+function ejecutarAdelantoFabricacion(ordenesAAdelantar) {
+    if (!ordenesAAdelantar || ordenesAAdelantar.length === 0) {
+        Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No hay órdenes para adelantar",
+        });
+        return;
+    }
+
+    // Mostrar loading
+    Swal.fire({
+        title: "Ejecutando adelanto...",
+        html: "Actualizando posiciones en la cola de fabricación",
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+    });
+
+    // Preparar datos para enviar
+    const ordenes = ordenesAAdelantar.map((o) => ({
+        planilla_id: o.planilla_id,
+        maquina_id: o.maquina_id,
+        posicion_nueva: o.posicion_nueva,
+    }));
+
+    fetch("/planificacion/ejecutar-adelanto", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": window.AppSalidas?.csrf,
+        },
+        body: JSON.stringify({ ordenes }),
+    })
+        .then((r) => {
+            if (!r.ok) throw new Error("Error al ejecutar el adelanto");
+            return r.json();
+        })
+        .then((data) => {
+            if (data.success) {
+                Swal.fire({
+                    icon: "success",
+                    title: "¡Adelanto ejecutado!",
+                    text: data.mensaje || "Las posiciones han sido actualizadas correctamente.",
+                    confirmButtonColor: "#10b981",
+                }).then(() => {
+                    // Refrescar el calendario
+                    if (calendar) {
+                        calendar.refetchEvents();
+                        calendar.refetchResources();
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: data.mensaje || "No se pudo ejecutar el adelanto.",
+                });
+            }
+        })
+        .catch((err) => {
+            console.error("Error al ejecutar adelanto:", err);
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudo ejecutar el adelanto. " + err.message,
+            });
+        });
 }

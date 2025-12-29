@@ -15,335 +15,6 @@
         });
 @endphp
 
-<script>
-    /* Mapas globales base (no reactivos) */
-    window.productosAsignados = @json(\App\Models\Producto::whereNotNull('ubicacion_id')->pluck('ubicacion_id', 'codigo'));
-    window.detallesProductos = @json($detalles);
-
-    window.productosEstados = @json(\App\Models\Producto::pluck('estado', 'codigo'));
-</script>
-
-<script>
-    const RUTA_ALERTA = @json(route('alertas.store'));
-
-    /* ────── Alpine factory per location ────── */
-    window.inventarioUbicacion = function(productosEsperados, nombreUbicacion) {
-
-        /* key used to persist scans for this location */
-        const claveLS = `inv-${nombreUbicacion}`;
-
-        return {
-            /* props ---------------------------------------------------------------- */
-            productosEsperados,
-            nombreUbicacion,
-            originalEsperados: [],
-
-            escaneados: [], // códigos OK
-            sospechosos: [], // códigos inesperados
-            ultimoCodigo: null, // para el flash visual
-
-            /* copia REACTIVA del mapa global para x-show */
-            asignados: {},
-
-            /* audio */
-            audioOk: null,
-            audioError: null,
-            audioPedo: null,
-            audioEstaEnOtraUbi: null,
-            audioNoTieneUbicacion: null,
-
-            /* lifecycle ----------------------------------------------------------- */
-            init() {
-                /* snapshot inicial para diferenciar “servidos por Blade” vs. añadidos dinámicos */
-                this.originalEsperados = [...this.productosEsperados];
-
-                /* 1️⃣ recuperar progreso previo */
-                this.escaneados = JSON.parse(localStorage.getItem(claveLS) || '[]');
-                this.sospechosos = JSON.parse(localStorage.getItem(`sospechosos-${nombreUbicacion}`) || '[]');
-                this.$nextTick(() => this.$refs.inputQR?.focus());
-
-                /* audio */
-                this.audioOk = document.getElementById('sonido-ok');
-                this.audioError = document.getElementById('sonido-error');
-                this.audioPedo = document.getElementById('sonido-pedo');
-                this.audioEstaEnOtraUbi = document.getElementById('sonido-estaEnOtraUbi');
-                this.audioNoTieneUbicacion = document.getElementById('sonido-noTieneUbicacion');
-
-                /* copia REACTIVA del mapa global actual */
-                this.asignados = {
-                    ...(window.productosAsignados || {})
-                };
-
-                this.estados = {
-                    ...(window.productosEstados || {})
-                };
-
-                /* Escuchar reasignaciones globales */
-                window.addEventListener('producto-reasignado', (e) => {
-                    const {
-                        codigo,
-                        nuevaUbicacion
-                    } = e.detail;
-
-                    // limpiar en esta instancia
-                    this.sospechosos = this.sospechosos.filter(c => c !== codigo);
-                    this.escaneados = this.escaneados.filter(c => c !== codigo);
-                    this.productosEsperados = this.productosEsperados.filter(c => c !== codigo);
-
-                    // actualizar mapa reactivo local (clave para x-show)
-                    this.asignados[codigo] = nuevaUbicacion;
-
-                    // si la nueva ubicación es esta, añadirlo
-                    if (this.nombreUbicacion.toString() === nuevaUbicacion.toString()) {
-                        if (!this.productosEsperados.includes(codigo)) this.productosEsperados.push(codigo);
-                        if (!this.escaneados.includes(codigo)) this.escaneados.push(codigo);
-                    }
-
-                    // persistir
-                    localStorage.setItem(`inv-${this.nombreUbicacion}`, JSON.stringify(this.escaneados));
-                    localStorage.setItem(`sospechosos-${this.nombreUbicacion}`, JSON.stringify(this
-                        .sospechosos));
-                });
-            },
-
-            /* helpers ------------------------------------------------------------- */
-            reproducirOk() {
-                if (!this.audioOk) return;
-                this.audioOk.currentTime = 0;
-                this.audioOk.play().catch(() => {});
-            },
-            reproducirError() {
-                if (!this.audioError) return;
-                this.audioError.currentTime = 0;
-                this.audioError.play().catch(() => {});
-            },
-            reproducirPedo() {
-                if (!this.audioPedo) return;
-                this.audioPedo.currentTime = 0;
-                this.audioPedo.play().catch(() => {});
-            },
-            reproducirEstaEnOtraUbi() {
-                if (!this.audioEstaEnOtraUbi) return;
-                this.audioEstaEnOtraUbi.currentTime = 0;
-                this.audioEstaEnOtraUbi.play().catch(() => {});
-            },
-            reproducirNoTieneUbicacion() {
-                if (!this.audioNoTieneUbicacion) return;
-                this.audioNoTieneUbicacion.currentTime = 0;
-                this.audioNoTieneUbicacion.play().catch(() => {});
-            },
-
-            progreso() {
-                if (!this.productosEsperados.length) return 0;
-                return (this.escaneados.length / this.productosEsperados.length) * 100;
-            },
-
-            procesarQR(codigo) {
-                codigo = (codigo || '').trim();
-
-                // ❌ Si no empieza por MP, descartamos
-                if (!codigo.toUpperCase().startsWith('MP')) {
-                    this.reproducirPedo();
-                    this.ultimoCodigo = codigo;
-                    setTimeout(() => (this.ultimoCodigo = null), 1200);
-                    return;
-                }
-                if (!codigo) return;
-
-                const ubicacionAsignada = (window.productosAsignados || {})[codigo];
-
-                if (this.productosEsperados.includes(codigo)) {
-                    if (!this.escaneados.includes(codigo)) {
-                        this.escaneados.push(codigo);
-                        localStorage.setItem(claveLS, JSON.stringify(this.escaneados)); // 2️⃣ persist
-                        this.reproducirOk();
-                    }
-
-                    // 🧹 Si estaba en inesperados, lo quitamos
-                    const indexSospechoso = this.sospechosos.indexOf(codigo);
-                    if (indexSospechoso !== -1) {
-                        this.sospechosos.splice(indexSospechoso, 1);
-                        localStorage.setItem(`sospechosos-${nombreUbicacion}`, JSON.stringify(this.sospechosos));
-                    }
-                } else {
-                    // Siempre añadimos a sospechosos si aún no estaba
-                    if (!this.sospechosos.includes(codigo)) {
-                        this.sospechosos.push(codigo);
-                        localStorage.setItem(`sospechosos-${nombreUbicacion}`, JSON.stringify(this.sospechosos));
-                    }
-
-                    // Reproducimos sonido según caso
-                    if (ubicacionAsignada !== undefined && ubicacionAsignada.toString() !== this.nombreUbicacion
-                        .toString()) {
-                        this.reproducirEstaEnOtraUbi();
-                    } else if (ubicacionAsignada === undefined) {
-                        this.reproducirNoTieneUbicacion();
-                    } else {
-                        this.reproducirError();
-                    }
-                }
-
-                /* 3️⃣ flash highlight */
-                this.ultimoCodigo = codigo;
-                setTimeout(() => (this.ultimoCodigo = null), 1200);
-            },
-
-            resetear() {
-                Swal.fire({
-                    icon: 'warning',
-                    title: '¿Limpiar esta ubicación?',
-                    text: 'Se perderán los escaneos guardados.',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, borrar',
-                    cancelButtonText: 'Cancelar',
-                    confirmButtonColor: '#dc2626'
-                }).then(result => {
-                    if (result.isConfirmed) {
-                        this.escaneados = [];
-                        this.sospechosos = [];
-                        this.ultimoCodigo = null;
-                        localStorage.removeItem(claveLS);
-                        localStorage.removeItem(`sospechosos-${this.nombreUbicacion}`);
-                    }
-                });
-            },
-
-            productoEscaneado(codigo) {
-                return this.escaneados.includes(codigo);
-            },
-
-            productosAnadidos() {
-                return this.productosEsperados.filter(c => !this.originalEsperados.includes(c));
-            },
-
-            reportarErrores() {
-                const faltantes = this.productosEsperados.filter(c => !this.escaneados.includes(c));
-                const inesperados = [...this.sospechosos];
-                window.notificarProgramadorInventario({
-                    ubicacion: this.nombreUbicacion,
-                    faltantes,
-                    inesperados
-                });
-            },
-
-            // ⬇️ Reasignar producto
-            reasignarProducto(codigo) {
-                fetch("{{ route('productos.editarUbicacionInventario', ['codigo' => '___CODIGO___']) }}".replace(
-                        '___CODIGO___', codigo), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        },
-                        body: JSON.stringify({
-                            ubicacion_id: this.nombreUbicacion
-                        })
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            // actualizar global y local reactivo
-                            window.productosAsignados[codigo] = this.nombreUbicacion;
-                            this.asignados[codigo] = this.nombreUbicacion;
-
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Reasignado',
-                                text: `El producto ${codigo} fue reasignado a esta ubicación.`,
-                                timer: 2000,
-                                showConfirmButton: false
-                            });
-
-                            // 🚀 Emitimos evento global para que todas las ubicaciones se actualicen
-                            window.dispatchEvent(new CustomEvent('producto-reasignado', {
-                                detail: {
-                                    codigo,
-                                    nuevaUbicacion: this.nombreUbicacion
-                                }
-                            }));
-                        } else {
-                            throw new Error(data.message || 'Error desconocido');
-                        }
-                    })
-                    .catch(err => {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: err.message
-                        });
-                    });
-            }
-        };
-    };
-</script>
-
-<script>
-    window.notificarProgramadorInventario = function({
-        ubicacion,
-        faltantes,
-        inesperados
-    }) {
-        const erroresHtml = `
-            <p><strong>Ubicación:</strong> ${ubicacion}</p>
-            <p><strong>Faltantes:</strong> ${faltantes.length ? faltantes.join(', ') : '—'}</p>
-            <p><strong>Inesperados:</strong> ${inesperados.length ? inesperados.join(', ') : '—'}</p>
-        `;
-
-        Swal.fire({
-            icon: 'warning',
-            title: '¿Quieres reportar los errores al programador?',
-            html: erroresHtml,
-            showCancelButton: true,
-            confirmButtonText: 'Sí, enviar',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#dc2626'
-        }).then(result => {
-            if (result.isConfirmed) {
-                fetch(RUTA_ALERTA, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        },
-                        body: JSON.stringify({
-                            tipo: 'inventario',
-                            mensaje: `
-Ubicación: ${ubicacion}
-Faltantes: ${faltantes.join(', ') || '—'}
-Inesperados: ${inesperados.join(', ') || '—'}
-                        `.trim(),
-                            enviar_a_departamentos: ['Programador']
-                        })
-                    })
-                    .then(async res => {
-                        const data = await res.json();
-                        if (!res.ok || data.success === false) {
-                            throw new Error(data.message ||
-                                'Error desconocido al enviar la alerta.');
-                        }
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Reporte enviado',
-                            text: 'Gracias por notificar. El equipo ha sido avisado.',
-                            timer: 3000,
-                            showConfirmButton: false
-                        });
-                    })
-                    .catch(error => {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error al enviar',
-                            text: error.message
-                        });
-                        console.error('❌ Error en notificación:', error);
-                    });
-            }
-        });
-    };
-</script>
-
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -354,7 +25,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
     </x-slot>
 
     <div id="contenido"
-        class="max-w-7xl gap-2 flex flex-col altura-c h-[calc(100vh-90px)] w-screen mx-auto opacity-0 transform transition-all duration-200">
+        class="max-w-7xl gap-2 flex flex-col altura-c h-[calc(100vh-90px)] w-screen mx-auto transition-all duration-200">
         @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
             <div x-data="{ abierto: false }" class="h-full w-full">
 
@@ -373,6 +44,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                     @foreach ($ubicaciones as $ubicacion)
                         <!-- Componente Alpine independiente por ubicación -->
                         <div x-data='inventarioUbicacion(@json($ubicacion->productos->pluck('codigo')), "{{ $ubicacion->id }}")'
+                            x-on:producto-reasignado.window="handleProductoReasignado($event)"
                             :key="{{ json_encode($ubicacion->id) }}"
                             class="bg-white shadow rounded-2xl overflow-hidden mt-4">
 
@@ -655,64 +327,20 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
     </div>
 
+    <!-- Botón global para limpiar todos -->
     <div class="flex" id="btn_limpiar_todos_escaneos">
-        <button onclick="limpiarTodos()"
+        <button onclick="window.limpiarTodosEscaneos()"
             class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-1 rounded shadow text-center">
             Limpiar TODOS los escaneos
         </button>
     </div>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            let btn = document.getElementById("btn_limpiar_todos_escaneos")
-            console.log(btn)
-            btn.remove()
-            let header = document.getElementsByClassName("max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8")
-            header = header[0]
-            header.classList.add("flex", "justify-between")
-            console.log(header)
-            header.append(btn)
-        })
-    </script>
-
+    <!-- Audios -->
     <audio id="sonido-ok" src="{{ asset('sonidos/ok.mp3') }}" preload="auto"></audio>
     <audio id="sonido-error" src="{{ asset('sonidos/error.mp3') }}" preload="auto"></audio>
     <audio id="sonido-pedo" src="{{ asset('sonidos/pedo.mp3') }}" preload="auto"></audio>
     <audio id="sonido-estaEnOtraUbi" src="{{ asset('sonidos/estaEnOtraUbi.mp3') }}" preload="auto"></audio>
     <audio id="sonido-noTieneUbicacion" src="{{ asset('sonidos/noTieneUbicacion.mp3') }}" preload="auto"></audio>
-
-    <script>
-        window.limpiarTodos = function() {
-            Swal.fire({
-                icon: 'warning',
-                title: '¿Eliminar todos los escaneos?',
-                text: 'Se borrarán todos los registros escaneados.',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, borrar todo',
-                cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#dc2626'
-            }).then(result => {
-                if (result.isConfirmed) {
-                    const clavesABorrar = [];
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const key = localStorage.key(i);
-                        if (key?.startsWith('inv-') || key?.startsWith('sospechosos-')) {
-                            clavesABorrar.push(key);
-                        }
-                    }
-                    clavesABorrar.forEach(key => localStorage.removeItem(key));
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Escaneos eliminados',
-                        text: `${clavesABorrar.length} registros fueron eliminados.`,
-                        timer: 3000,
-                        showConfirmButton: false
-                    });
-                    setTimeout(() => location.reload(), 800);
-                }
-            });
-        };
-    </script>
 
     <style>
         .altura-c {
@@ -722,4 +350,340 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
     <script src="{{ asset('js/inventario/inventario.js') }}"></script>
 
+    @push('scripts')
+        <script>
+            window.inventarioCtx = {
+                asignados: @json(\App\Models\Producto::whereNotNull('ubicacion_id')->pluck('ubicacion_id', 'codigo')),
+                detalles: @json($detalles),
+                estados: @json(\App\Models\Producto::pluck('estado', 'codigo')),
+                rutaAlerta: @json(route('alertas.store')),
+                rutaReasignar: "{{ route('productos.editarUbicacionInventario', ['codigo' => '___CODIGO___']) }}",
+                token: document.querySelector('meta[name="csrf-token"]')?.content
+            };
+
+            window.initInventarioPage = function() {
+                if (document.body.dataset.inventarioPageInit === 'true') return;
+                document.body.dataset.inventarioPageInit = 'true';
+
+                // Helpers Globales
+                window.productosAsignados = window.inventarioCtx.asignados;
+                window.detallesProductos = window.inventarioCtx.detalles;
+                window.productosEstados = window.inventarioCtx.estados;
+
+                // Definir Factory solo si no existe
+                if (!window.inventarioUbicacion) {
+                    window.inventarioUbicacion = function(productosEsperados, nombreUbicacion) {
+                        const claveLS = `inv-${nombreUbicacion}`;
+
+                        return {
+                            productosEsperados,
+                            nombreUbicacion,
+                            originalEsperados: [],
+                            escaneados: [],
+                            sospechosos: [],
+                            ultimoCodigo: null,
+                            asignados: {},
+                            audioOk: null,
+                            audioError: null,
+                            audioPedo: null,
+                            audioEstaEnOtraUbi: null,
+                            audioNoTieneUbicacion: null,
+                            estados: {},
+
+                            init() {
+                                this.originalEsperados = [...this.productosEsperados];
+                                this.escaneados = JSON.parse(localStorage.getItem(claveLS) || '[]');
+                                this.sospechosos = JSON.parse(localStorage.getItem(`sospechosos-${nombreUbicacion}`) ||
+                                    '[]');
+                                this.$nextTick(() => this.$refs.inputQR?.focus());
+
+                                this.audioOk = document.getElementById('sonido-ok');
+                                this.audioError = document.getElementById('sonido-error');
+                                this.audioPedo = document.getElementById('sonido-pedo');
+                                this.audioEstaEnOtraUbi = document.getElementById('sonido-estaEnOtraUbi');
+                                this.audioNoTieneUbicacion = document.getElementById('sonido-noTieneUbicacion');
+
+                                this.asignados = {
+                                    ...(window.productosAsignados || {})
+                                };
+                                this.estados = {
+                                    ...(window.productosEstados || {})
+                                };
+                            },
+
+                            handleProductoReasignado(e) {
+                                const {
+                                    codigo,
+                                    nuevaUbicacion
+                                } = e.detail;
+
+                                this.sospechosos = this.sospechosos.filter(c => c !== codigo);
+                                this.escaneados = this.escaneados.filter(c => c !== codigo);
+                                this.productosEsperados = this.productosEsperados.filter(c => c !== codigo);
+
+                                this.asignados[codigo] = nuevaUbicacion;
+
+                                if (this.nombreUbicacion.toString() === nuevaUbicacion.toString()) {
+                                    if (!this.productosEsperados.includes(codigo)) this.productosEsperados.push(codigo);
+                                    if (!this.escaneados.includes(codigo)) this.escaneados.push(codigo);
+                                }
+
+                                localStorage.setItem(`inv-${this.nombreUbicacion}`, JSON.stringify(this.escaneados));
+                                localStorage.setItem(`sospechosos-${this.nombreUbicacion}`, JSON.stringify(this
+                                    .sospechosos));
+                            },
+
+                            reproducirOk() {
+                                this.audioOk && (this.audioOk.currentTime = 0, this.audioOk.play().catch(() => {}));
+                            },
+                            reproducirError() {
+                                this.audioError && (this.audioError.currentTime = 0, this.audioError.play().catch(
+                            () => {}));
+                            },
+                            reproducirPedo() {
+                                this.audioPedo && (this.audioPedo.currentTime = 0, this.audioPedo.play().catch(
+                                () => {}));
+                            },
+                            reproducirEstaEnOtraUbi() {
+                                this.audioEstaEnOtraUbi && (this.audioEstaEnOtraUbi.currentTime = 0, this
+                                    .audioEstaEnOtraUbi.play().catch(() => {}));
+                            },
+                            reproducirNoTieneUbicacion() {
+                                this.audioNoTieneUbicacion && (this.audioNoTieneUbicacion.currentTime = 0, this
+                                    .audioNoTieneUbicacion.play().catch(() => {}));
+                            },
+
+                            progreso() {
+                                if (!this.productosEsperados.length) return 0;
+                                return (this.escaneados.length / this.productosEsperados.length) * 100;
+                            },
+
+                            procesarQR(codigo) {
+                                codigo = (codigo || '').trim();
+                                if (!codigo.toUpperCase().startsWith('MP')) {
+                                    this.reproducirPedo();
+                                    this.ultimoCodigo = codigo;
+                                    setTimeout(() => (this.ultimoCodigo = null), 1200);
+                                    return;
+                                }
+                                if (!codigo) return;
+
+                                const ubicacionAsignada = (window.productosAsignados || {})[codigo];
+                                if (this.productosEsperados.includes(codigo)) {
+                                    if (!this.escaneados.includes(codigo)) {
+                                        this.escaneados.push(codigo);
+                                        localStorage.setItem(claveLS, JSON.stringify(this.escaneados));
+                                        this.reproducirOk();
+                                    }
+                                    const indexSospechoso = this.sospechosos.indexOf(codigo);
+                                    if (indexSospechoso !== -1) {
+                                        this.sospechosos.splice(indexSospechoso, 1);
+                                        localStorage.setItem(`sospechosos-${nombreUbicacion}`, JSON.stringify(this
+                                            .sospechosos));
+                                    }
+                                } else {
+                                    if (!this.sospechosos.includes(codigo)) {
+                                        this.sospechosos.push(codigo);
+                                        localStorage.setItem(`sospechosos-${nombreUbicacion}`, JSON.stringify(this
+                                            .sospechosos));
+                                    }
+                                    if (ubicacionAsignada !== undefined && ubicacionAsignada.toString() !== this
+                                        .nombreUbicacion.toString()) {
+                                        this.reproducirEstaEnOtraUbi();
+                                    } else if (ubicacionAsignada === undefined) {
+                                        this.reproducirNoTieneUbicacion();
+                                    } else {
+                                        this.reproducirError();
+                                    }
+                                }
+                                this.ultimoCodigo = codigo;
+                                setTimeout(() => (this.ultimoCodigo = null), 1200);
+                            },
+
+                            resetear() {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: '¿Limpiar esta ubicación?',
+                                    text: 'Se perderán los escaneos guardados.',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Sí, borrar',
+                                    cancelButtonText: 'Cancelar',
+                                    confirmButtonColor: '#dc2626'
+                                }).then(result => {
+                                    if (result.isConfirmed) {
+                                        this.escaneados = [];
+                                        this.sospechosos = [];
+                                        this.ultimoCodigo = null;
+                                        localStorage.removeItem(claveLS);
+                                        localStorage.removeItem(`sospechosos-${this.nombreUbicacion}`);
+                                    }
+                                });
+                            },
+                            productoEscaneado(codigo) {
+                                return this.escaneados.includes(codigo);
+                            },
+                            productosAnadidos() {
+                                return this.productosEsperados.filter(c => !this.originalEsperados.includes(c));
+                            },
+                            reportarErrores() {
+                                window.notificarProgramadorInventario({
+                                    ubicacion: this.nombreUbicacion,
+                                    faltantes: this.productosEsperados.filter(c => !this.escaneados.includes(
+                                        c)),
+                                    inesperados: [...this.sospechosos]
+                                });
+                            },
+                            reasignarProducto(codigo) {
+                                fetch(window.inventarioCtx.rutaReasignar.replace('___CODIGO___', codigo), {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'X-CSRF-TOKEN': window.inventarioCtx.token
+                                    },
+                                    body: JSON.stringify({
+                                        ubicacion_id: this.nombreUbicacion
+                                    })
+                                }).then(res => res.json()).then(data => {
+                                    if (data.success) {
+                                        window.productosAsignados[codigo] = this.nombreUbicacion;
+                                        this.asignados[codigo] = this.nombreUbicacion; // update local reactive
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'Reasignado',
+                                            text: `El producto ${codigo} fue reasignado a esta ubicación.`,
+                                            timer: 2000,
+                                            showConfirmButton: false
+                                        });
+                                        window.dispatchEvent(new CustomEvent('producto-reasignado', {
+                                            detail: {
+                                                codigo,
+                                                nuevaUbicacion: this.nombreUbicacion
+                                            }
+                                        }));
+                                    } else throw new Error(data.message || 'Error desconocido');
+                                }).catch(err => Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: err.message
+                                }));
+                            }
+                        };
+                    };
+                }
+
+                // Global Functions (if not exists)
+                window.notificarProgramadorInventario = window.notificarProgramadorInventario || function({
+                    ubicacion,
+                    faltantes,
+                    inesperados
+                }) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: '¿Quieres reportar los errores al programador?',
+                        html: `<p><strong>Ubicación:</strong> ${ubicacion}</p><p><strong>Faltantes:</strong> ${faltantes.length ? faltantes.join(', ') : '—'}</p><p><strong>Inesperados:</strong> ${inesperados.length ? inesperados.join(', ') : '—'}</p>`,
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, enviar',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#dc2626'
+                    }).then(result => {
+                        if (result.isConfirmed) {
+                            fetch(window.inventarioCtx.rutaAlerta, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': window.inventarioCtx.token
+                                },
+                                body: JSON.stringify({
+                                    tipo: 'inventario',
+                                    mensaje: `Ubicación: ${ubicacion}\nFaltantes: ${faltantes.join(', ') || '—'}\nInesperados: ${inesperados.join(', ') || '—'}`
+                                        .trim(),
+                                    enviar_a_departamentos: ['Programador']
+                                })
+                            }).then(async res => {
+                                const data = await res.json();
+                                if (!res.ok || data.success === false) throw new Error(data
+                                .message);
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Reporte enviado',
+                                    text: 'Gracias por notificar.',
+                                    timer: 3000,
+                                    showConfirmButton: false
+                                });
+                            }).catch(error => {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error al enviar',
+                                    text: error.message
+                                });
+                            });
+                        }
+                    });
+                };
+
+                window.limpiarTodosEscaneos = window.limpiarTodosEscaneos || function() {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: '¿Eliminar todos los escaneos?',
+                        text: 'Se borrarán todos los registros escaneados.',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, borrar todo',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#dc2626'
+                    }).then(result => {
+                        if (result.isConfirmed) {
+                            const clavesABorrar = [];
+                            for (let i = 0; i < localStorage.length; i++) {
+                                const key = localStorage.key(i);
+                                if (key?.startsWith('inv-') || key?.startsWith('sospechosos-')) clavesABorrar
+                                    .push(key);
+                            }
+                            clavesABorrar.forEach(key => localStorage.removeItem(key));
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Escaneos eliminados',
+                                text: `${clavesABorrar.length} registros fueron eliminados.`,
+                                timer: 3000,
+                                showConfirmButton: false
+                            });
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 800);
+                        }
+                    });
+                };
+
+                // Move button if needed
+                const btn = document.getElementById("btn_limpiar_todos_escaneos");
+                if (btn && btn.dataset.invPlaced !== "1") {
+                    const header = document.querySelector(".max-w-7xl.mx-auto.py-4.px-4.sm\\:px-6.lg\\:px-8");
+                    if (header) {
+                        btn.dataset.invPlaced = "1";
+                        btn.remove();
+                        header.classList.add("flex", "justify-between");
+                        header.append(btn);
+                    }
+                }
+
+                // Init cleanup
+                window.pageInitializers = window.pageInitializers || [];
+                window.pageInitializers.push(() => {
+                    document.body.dataset.inventarioPageInit = 'false';
+                    // Note: We don't remove global functions or factories usually unless strict requirement, 
+                    // but we do reset the flag.
+                });
+            };
+
+            // Bootstrap
+            document.removeEventListener('livewire:navigated', window.initInventarioPage);
+            document.addEventListener('livewire:navigated', window.initInventarioPage);
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', window.initInventarioPage);
+            } else {
+                window.initInventarioPage();
+            }
+        </script>
+    @endpush
 </x-app-layout>

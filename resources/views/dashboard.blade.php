@@ -1,5 +1,4 @@
 <x-app-layout>
-
     <div class="py-4 lg:py-12 ">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -7,12 +6,17 @@
                     <div
                         class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 px-6 justify-items-center">
 
-                        @foreach ($items as $item)
+                        @foreach ($items as $index => $item)
                             <a href="{{ $item['route'] ? route($item['route']) : '#' }}" wire:navigate
-                                class="w-32 h-32 bg-white rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl transition duration-300 ease-in-out relative">
+                                class="dashboard-icon w-32 h-32 bg-white rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl hover:scale-105 hover:-translate-y-1 transition-all duration-300 ease-out relative group"
+                                style="animation-delay: {{ 0.05 * $index }}s">
 
-                                <img src="{{ $item['icon'] }}" alt="{{ $item['label'] }}" class="w-20 h-20 mb-2">
-                                <span class="text-sm font-medium text-gray-700">{{ $item['label'] }}</span>
+                                <div class="relative">
+                                    <img src="{{ $item['icon'] }}" alt="{{ $item['label'] }}"
+                                        class="w-20 h-20 mb-2 transition-transform duration-300 group-hover:scale-110">
+                                </div>
+                                <span
+                                    class="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">{{ $item['label'] }}</span>
 
                                 @if ($item['route'] === 'alertas.index')
                                     <img id="notificacion-alertas-icono"
@@ -28,14 +32,16 @@
 
             </div>
 
-            @if(Auth::user()->esOficina() || Auth::user()->esAdminDepartamento())
+            @if (Auth::user()->esOficina() || Auth::user()->esAdminDepartamento())
                 <!-- Asistente Virtual Ferrallin -->
                 <div class="mt-8 bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-4 border-b border-gray-800 bg-gray-900">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
-                                <div class="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center shadow-lg overflow-hidden">
-                                    <img src="{{ asset('imagenes/iconos/asistente-sin-fondo.png') }}" alt="Ferrallin" class="w-10 h-10 object-contain">
+                                <div
+                                    class="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center shadow-lg overflow-hidden">
+                                    <img src="{{ asset('imagenes/iconos/asistente-sin-fondo.png') }}" alt="Ferrallin"
+                                        class="w-10 h-10 object-contain">
                                 </div>
                                 <div>
                                     <h2 class="text-xl font-bold text-white">FERRALLIN</h2>
@@ -46,9 +52,10 @@
                                 </div>
                             </div>
                             <a href="{{ route('asistente.index') }}" wire:navigate
-                               class="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 flex items-center gap-2 border border-gray-700">
+                                class="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 flex items-center gap-2 border border-gray-700">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                 </svg>
                                 Abrir Chat
                             </a>
@@ -56,10 +63,12 @@
                     </div>
                     <div class="p-6 bg-gray-50">
                         <p class="text-gray-700 mb-4">
-                            Ferrallin es tu asistente virtual potenciado por inteligencia artificial. Puede ayudarte con consultas sobre el sistema, gestión de información y mucho más.
+                            Ferrallin es tu asistente virtual potenciado por inteligencia artificial. Puede ayudarte con
+                            consultas sobre el sistema, gestión de información y mucho más.
                         </p>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition">
+                            <div
+                                class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition">
                                 <div class="flex items-start gap-2">
                                     <span class="text-2xl">🔍</span>
                                     <div>
@@ -68,7 +77,8 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition">
+                            <div
+                                class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition">
                                 <div class="flex items-start gap-2">
                                     <span class="text-2xl">💡</span>
                                     <div>
@@ -77,7 +87,8 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition">
+                            <div
+                                class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition">
                                 <div class="flex items-start gap-2">
                                     <span class="text-2xl">⚙️</span>
                                     <div>
@@ -97,6 +108,55 @@
                     Políticas de privacidad y cookies
                 </a>
             </div>
+
+            @if (Auth::id() === 1)
+                <!-- Botón de prueba de notificaciones (solo para usuario ID 1) -->
+                <div class="mt-4 text-center" x-data="{ loading: false, message: '' }">
+                    <button
+                        @click="
+                        loading = true;
+                        message = '';
+                        fetch('{{ route('fcm.test') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ message: 'Notificación de prueba enviada desde el dashboard' })
+                        })
+                        .then(r => r.json())
+                        .then(data => {
+                            loading = false;
+                            message = data.success ? 'Notificación enviada!' : 'Error al enviar';
+                            setTimeout(() => message = '', 3000);
+                        })
+                        .catch(e => {
+                            loading = false;
+                            message = 'Error de conexión';
+                            setTimeout(() => message = '', 3000);
+                        });
+                    "
+                        :disabled="loading"
+                        class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors">
+                        <svg x-show="!loading" class="w-5 h-5 mr-2" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        <svg x-show="loading" class="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
+                        </svg>
+                        <span x-text="loading ? 'Enviando...' : 'Enviar notificación de prueba'"></span>
+                    </button>
+                    <p x-show="message" x-text="message" class="mt-2 text-sm"
+                        :class="message.includes('Error') ? 'text-red-600' : 'text-green-600'"></p>
+                </div>
+            @endif
         </div>
 
         <!-- Modal Aceptación de Políticas -->
@@ -203,6 +263,111 @@
                     </div>
                 </div>
 
+                <!-- Notificaciones Push -->
+                <div x-data="{
+                    status: 'default',
+                    init() {
+                        this.checkStatus();
+                    },
+                    checkStatus() {
+                        if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+                            this.status = 'unsupported';
+                            return;
+                        }
+                        this.status = Notification.permission;
+                    },
+                    async activarNotificaciones() {
+                        this.status = 'loading';
+                        try {
+                            if (typeof window.FirebasePush === 'undefined') {
+                                console.error('FirebasePush no está disponible');
+                                this.status = 'default';
+                                return;
+                            }
+                            await window.FirebasePush.init();
+                            const token = await window.FirebasePush.requestPermission();
+                            if (token) {
+                                this.status = 'granted';
+                                if (typeof Swal !== 'undefined') {
+                                    Swal.fire({
+                                        title: 'Notificaciones activadas',
+                                        text: 'Recibirás alertas importantes en tu dispositivo.',
+                                        icon: 'success',
+                                        toast: true,
+                                        position: 'top-end',
+                                        showConfirmButton: false,
+                                        timer: 3000
+                                    });
+                                }
+                            } else {
+                                this.checkStatus();
+                            }
+                        } catch (error) {
+                            console.error('Error activando notificaciones:', error);
+                            this.checkStatus();
+                        }
+                    }
+                }" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="flex-shrink-0">
+                                <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-800">Notificaciones Push</h4>
+                                <p class="text-xs text-gray-600">Recibe alertas importantes incluso cuando no estés en
+                                    la aplicación</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span x-cloak x-show="status === 'loading'" class="text-sm text-gray-500">
+                                <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg"
+                                    fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10"
+                                        stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                    </path>
+                                </svg>
+                            </span>
+                            <span x-cloak x-show="status === 'granted'"
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd"
+                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                Activadas
+                            </span>
+                            <span x-cloak x-show="status === 'denied'"
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd"
+                                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                Bloqueadas
+                            </span>
+                            <span x-cloak x-show="status === 'unsupported'"
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                No soportado
+                            </span>
+                            <button x-cloak x-show="status === 'default'" @click="activarNotificaciones()"
+                                class="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors">
+                                Activar
+                            </button>
+                        </div>
+                    </div>
+                    <p x-cloak x-show="status === 'denied'" class="mt-2 text-xs text-red-600">
+                        Has bloqueado las notificaciones. Para activarlas, haz clic en el icono del candado en la barra
+                        de direcciones de tu navegador y permite las notificaciones.
+                    </p>
+                </div>
+
                 <!-- Checkboxes -->
                 <form method="POST" action="{{ route('politicas.aceptar') }}" class="space-y-4 mt-6">
                     @csrf
@@ -239,23 +404,62 @@
 
     </div>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        function initDashboardPage() {
+            // Prevenir doble inicialización
+            if (document.body.dataset.dashboardPageInit === 'true') return;
+
+            console.log('🔍 Inicializando Dashboard...');
+
             // Puedes usar esta condición desde el backend con una variable tipo Blade
             const debeAceptarPoliticas = {{ auth()->user()->acepta_politica_privacidad ? 'false' : 'true' }};
 
             if (debeAceptarPoliticas) {
                 const modal = document.getElementById('modal-politicas');
-                modal.classList.remove('hidden');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                }
             }
+
+            // Marcar como inicializado
+            document.body.dataset.dashboardPageInit = 'true';
+        }
+
+        // Registrar en el sistema global
+        window.pageInitializers.push(initDashboardPage);
+
+        // Configurar listeners
+        document.addEventListener('livewire:navigated', initDashboardPage);
+        document.addEventListener('DOMContentLoaded', initDashboardPage);
+
+        // Limpiar flag antes de navegar
+        document.addEventListener('livewire:navigating', () => {
+            document.body.dataset.dashboardPageInit = 'false';
         });
     </script>
 
     <!-- Estilos CSS directos -->
     <style>
+        /* Animación de entrada para iconos del dashboard */
+        .dashboard-icon {
+            opacity: 0;
+            animation: icon-pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes icon-pop-in {
+            0% {
+                opacity: 0;
+                transform: scale(0.8) translateY(20px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
         .icon-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            /* Ajusta el tamaño mínimo de los iconos */
             gap: 20px;
             justify-items: center;
             padding: 20px;

@@ -1,96 +1,96 @@
 {
-  "resources/css/app.css": {
-    "file": "assets/app.DhpUEJe1.css",
-    "src": "resources/css/app.css",
-    "isEntry": true
-  },
-  "resources/css/estilosCalendarioSalidas.css": {
-    "file": "assets/estilosCalendarioSalidas.BvWbNMCj.css",
-    "src": "resources/css/estilosCalendarioSalidas.css",
-    "isEntry": true
-  },
-  "resources/css/etiquetas-responsive.css": {
-    "file": "assets/etiquetas-responsive.CGFzjcL3.css",
-    "src": "resources/css/etiquetas-responsive.css",
-    "isEntry": true
-  },
-  "resources/css/localizaciones/styleLocCreate.css": {
-    "file": "assets/styleLocCreate.DWCi0Orz.css",
-    "src": "resources/css/localizaciones/styleLocCreate.css",
-    "isEntry": true
-  },
-  "resources/css/localizaciones/styleLocIndex.css": {
-    "file": "assets/styleLocIndex.D8Ekh_yc.css",
-    "src": "resources/css/localizaciones/styleLocIndex.css",
-    "isEntry": true
-  },
-  "resources/css/mapaLocalizaciones.css": {
-    "file": "assets/mapaLocalizaciones.cIAZ1QqS.css",
-    "src": "resources/css/mapaLocalizaciones.css",
-    "isEntry": true
-  },
-  "resources/css/styles.css": {
-    "file": "assets/styles.d2ysJtT_.css",
-    "src": "resources/css/styles.css",
-    "isEntry": true
-  },
-  "resources/css/ubicaciones/mapaUbis.css": {
-    "file": "assets/mapaUbis.XukTA3LC.css",
-    "src": "resources/css/ubicaciones/mapaUbis.css",
-    "isEntry": true
-  },
-  "resources/js/app.js": {
-    "file": "assets/app.C5KXcdKF.js",
-    "name": "app",
-    "src": "resources/js/app.js",
-    "isEntry": true
-  },
-  "resources/js/elementosJs/elementos-bundle.js": {
-    "file": "assets/elementos-bundle.BxuwqUYf.js",
-    "name": "elementos-bundle",
-    "src": "resources/js/elementosJs/elementos-bundle.js",
-    "isEntry": true
-  },
-  "resources/js/maquinaJS/maquina-bundle.js": {
-    "file": "assets/maquina-bundle.BKDUEaTA.js",
-    "name": "maquina-bundle",
-    "src": "resources/js/maquinaJS/maquina-bundle.js",
-    "isEntry": true
-  },
-  "resources/js/modules/calendario-salidas/index.js": {
-    "file": "assets/index.C0Wfwxuu.js",
-    "name": "index",
-    "src": "resources/js/modules/calendario-salidas/index.js",
-    "isEntry": true
-  },
-  "resources/js/modules/calendario-trabajadores/index.js": {
-    "file": "assets/index.B2tYPlOg.js",
-    "name": "index",
-    "src": "resources/js/modules/calendario-trabajadores/index.js",
-    "isEntry": true
-  },
-  "resources/js/paquetesJs/paquetes-bundle.js": {
-    "file": "assets/paquetes-bundle.MnCjFFhk.js",
-    "name": "paquetes-bundle",
-    "src": "resources/js/paquetesJs/paquetes-bundle.js",
-    "isEntry": true
-  },
-  "resources/js/qr/qr-bundle.js": {
-    "file": "assets/qr-bundle.l0sNRNKZ.js",
-    "name": "qr-bundle",
-    "src": "resources/js/qr/qr-bundle.js",
-    "isEntry": true
-  },
-  "resources/js/salidasJs/salidas-bundle.js": {
-    "file": "assets/salidas-bundle.DlHeX1fx.js",
-    "name": "salidas-bundle",
-    "src": "resources/js/salidasJs/salidas-bundle.js",
-    "isEntry": true
-  },
-  "resources/js/utils/livewire-helper.js": {
-    "file": "assets/livewire-helper.l0sNRNKZ.js",
-    "name": "livewire-helper",
-    "src": "resources/js/utils/livewire-helper.js",
-    "isEntry": true
-  }
+    "resources/css/app.css": {
+        "file": "assets/app.Dsxgu_qQ.css",
+        "src": "resources/css/app.css",
+        "isEntry": true
+    },
+    "resources/css/estilosCalendarioSalidas.css": {
+        "file": "assets/estilosCalendarioSalidas.Ce7QcUt0.css",
+        "src": "resources/css/estilosCalendarioSalidas.css",
+        "isEntry": true
+    },
+    "resources/css/etiquetas-responsive.css": {
+        "file": "assets/etiquetas-responsive.CGFzjcL3.css",
+        "src": "resources/css/etiquetas-responsive.css",
+        "isEntry": true
+    },
+    "resources/css/localizaciones/styleLocCreate.css": {
+        "file": "assets/styleLocCreate.DWCi0Orz.css",
+        "src": "resources/css/localizaciones/styleLocCreate.css",
+        "isEntry": true
+    },
+    "resources/css/localizaciones/styleLocIndex.css": {
+        "file": "assets/styleLocIndex.D8Ekh_yc.css",
+        "src": "resources/css/localizaciones/styleLocIndex.css",
+        "isEntry": true
+    },
+    "resources/css/mapaLocalizaciones.css": {
+        "file": "assets/mapaLocalizaciones.cIAZ1QqS.css",
+        "src": "resources/css/mapaLocalizaciones.css",
+        "isEntry": true
+    },
+    "resources/css/styles.css": {
+        "file": "assets/styles.d2ysJtT_.css",
+        "src": "resources/css/styles.css",
+        "isEntry": true
+    },
+    "resources/css/ubicaciones/mapaUbis.css": {
+        "file": "assets/mapaUbis.XukTA3LC.css",
+        "src": "resources/css/ubicaciones/mapaUbis.css",
+        "isEntry": true
+    },
+    "resources/js/app.js": {
+        "file": "assets/app.C5KXcdKF.js",
+        "name": "app",
+        "src": "resources/js/app.js",
+        "isEntry": true
+    },
+    "resources/js/elementosJs/elementos-bundle.js": {
+        "file": "assets/elementos-bundle.BxuwqUYf.js",
+        "name": "elementos-bundle",
+        "src": "resources/js/elementosJs/elementos-bundle.js",
+        "isEntry": true
+    },
+    "resources/js/maquinaJS/maquina-bundle.js": {
+        "file": "assets/maquina-bundle.UkuZRPkO.js",
+        "name": "maquina-bundle",
+        "src": "resources/js/maquinaJS/maquina-bundle.js",
+        "isEntry": true
+    },
+    "resources/js/modules/calendario-salidas/index.js": {
+        "file": "assets/index.DX_8ZzTt.js",
+        "name": "index",
+        "src": "resources/js/modules/calendario-salidas/index.js",
+        "isEntry": true
+    },
+    "resources/js/modules/calendario-trabajadores/index.js": {
+        "file": "assets/index.o_2ovtSc.js",
+        "name": "index",
+        "src": "resources/js/modules/calendario-trabajadores/index.js",
+        "isEntry": true
+    },
+    "resources/js/paquetesJs/paquetes-bundle.js": {
+        "file": "assets/paquetes-bundle.BsTK8UU8.js",
+        "name": "paquetes-bundle",
+        "src": "resources/js/paquetesJs/paquetes-bundle.js",
+        "isEntry": true
+    },
+    "resources/js/qr/qr-bundle.js": {
+        "file": "assets/qr-bundle.l0sNRNKZ.js",
+        "name": "qr-bundle",
+        "src": "resources/js/qr/qr-bundle.js",
+        "isEntry": true
+    },
+    "resources/js/salidasJs/salidas-bundle.js": {
+        "file": "assets/salidas-bundle.QvyYcpE6.js",
+        "name": "salidas-bundle",
+        "src": "resources/js/salidasJs/salidas-bundle.js",
+        "isEntry": true
+    },
+    "resources/js/utils/livewire-helper.js": {
+        "file": "assets/livewire-helper.l0sNRNKZ.js",
+        "name": "livewire-helper",
+        "src": "resources/js/utils/livewire-helper.js",
+        "isEntry": true
+    }
 }

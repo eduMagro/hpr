@@ -39,4 +39,8 @@ return [
         'api_key' => env('ANTHROPIC_API_KEY'),
     ],
 
+    'ocr_space' => [
+        'api_key' => env('OCR_SPACE_API_KEY', 'K88888888888957'), // Obtener gratis en https://ocr.space/ocrapi/freekey
+    ],
+
 ];

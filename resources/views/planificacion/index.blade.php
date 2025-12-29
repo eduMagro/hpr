@@ -80,8 +80,7 @@
             <!-- Calendario -->
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 relative">
                 <!-- Botón de pantalla completa en esquina superior derecha -->
-                <button onclick="toggleFullScreen()" id="fullscreen-btn"
-                    title="Pantalla completa"
+                <button onclick="toggleFullScreen()" id="fullscreen-btn" title="Pantalla completa"
                     class="absolute top-4 right-4 z-10 p-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors shadow-lg">
                     <svg id="fullscreen-icon-expand" class="w-5 h-5" fill="none" stroke="currentColor"
                         viewBox="0 0 24 24">
@@ -146,90 +145,136 @@
     <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
 
     {{-- Tu config global ANTES de @vite --}}
-    <script data-navigate-once>
-        // 1) Asegura el objeto global sin pisarlo
-        window.AppSalidas = window.AppSalidas || {};
+    <script>
+        window.initPlanificacionPage = function() {
+            // Protección contra doble inicialización
+            if (document.body.dataset.planificacionPageInit === 'true') return;
+            console.log('Inicializando Planificación Page');
 
-        // 2) Mezcla (merge) la config del backend SIN reemplazar el objeto entero
-        Object.assign(window.AppSalidas, @json($cfg));
+            // 1) Asegura el objeto global sin pisarlo
+            window.AppSalidas = window.AppSalidas || {};
 
-        // 3) Asegura que routes existe y añade solo la nueva clave
-        window.AppSalidas.routes = window.AppSalidas.routes || {};
-        window.AppSalidas.routes.codigoSage = @json(route('salidas.editarCodigoSage', ['salida' => '__ID__']));
+            // 2) Mezcla (merge) la config del backend SIN reemplazar el objeto entero
+            Object.assign(window.AppSalidas, @json($cfg));
 
-        // 4) Sistema de pantalla completa
-        window.isFullScreen = window.isFullScreen || false;
+            // 3) Asegura que routes existe y añade solo la nueva clave
+            window.AppSalidas.routes = window.AppSalidas.routes || {};
+            window.AppSalidas.routes.codigoSage = @json(route('salidas.editarCodigoSage', ['salida' => '__ID__']));
 
-        function toggleFullScreen() {
-            const container = document.getElementById('planificacion-container');
-            const sidebar = document.querySelector('[class*="sidebar"]') || document.querySelector('aside');
-            const header = document.querySelector('nav');
-            const breadcrumbs = document.querySelector('[class*="breadcrumb"]');
-            const expandIcon = document.getElementById('fullscreen-icon-expand');
-            const collapseIcon = document.getElementById('fullscreen-icon-collapse');
-            const fullscreenBtn = document.getElementById('fullscreen-btn');
+            // 4) Sistema de pantalla completa
+            window.isFullScreen = window.isFullScreen || false;
 
-            if (!isFullScreen) {
-                // Entrar en pantalla completa
-                if (sidebar) sidebar.style.display = 'none';
-                if (header) header.style.display = 'none';
-                if (breadcrumbs) breadcrumbs.style.display = 'none';
+            // Definimos funciones en window para que el onclick del HTML funcione
+            window.handleEscKey = function(e) {
+                if (e.key === 'Escape' && window.isFullScreen) {
+                    window.toggleFullScreen();
+                }
+            };
 
-                container.classList.add('fixed', 'inset-0', 'z-50', 'bg-gray-50', 'overflow-auto');
-                container.classList.remove('px-4');
-                container.style.padding = '1rem';
+            window.toggleFullScreen = function() {
+                const container = document.getElementById('planificacion-container');
+                const sidebar = document.querySelector('[class*="sidebar"]') || document.querySelector('aside');
+                const header = document.querySelector('nav');
+                const breadcrumbs = document.querySelector('[class*="breadcrumb"]');
+                const expandIcon = document.getElementById('fullscreen-icon-expand');
+                const collapseIcon = document.getElementById('fullscreen-icon-collapse');
+                const fullscreenBtn = document.getElementById('fullscreen-btn');
 
-                expandIcon.classList.add('hidden');
-                collapseIcon.classList.remove('hidden');
-                fullscreenBtn.title = 'Salir de pantalla completa';
+                // Si contenedor no existe (navegamos fuera), no hacemos nada
+                if (!container) return;
 
-                window.isFullScreen = true;
+                if (!window.isFullScreen) {
+                    // Entrar en pantalla completa
+                    if (sidebar) sidebar.style.display = 'none';
+                    if (header) header.style.display = 'none';
+                    if (breadcrumbs) breadcrumbs.style.display = 'none';
 
-                // Atajo de teclado ESC para salir
-                document.addEventListener('keydown', handleEscKey);
-            } else {
-                // Salir de pantalla completa
-                if (sidebar) sidebar.style.display = '';
-                if (header) header.style.display = '';
-                if (breadcrumbs) breadcrumbs.style.display = '';
+                    container.classList.add('fixed', 'inset-0', 'z-50', 'bg-gray-50', 'overflow-auto');
+                    container.classList.remove('px-4');
+                    container.style.padding = '1rem';
 
-                container.classList.remove('fixed', 'inset-0', 'z-50', 'bg-gray-50', 'overflow-auto');
-                container.classList.add('px-4');
-                container.style.padding = '';
+                    if (expandIcon) expandIcon.classList.add('hidden');
+                    if (collapseIcon) collapseIcon.classList.remove('hidden');
+                    if (fullscreenBtn) fullscreenBtn.title = 'Salir de pantalla completa';
 
-                expandIcon.classList.remove('hidden');
-                collapseIcon.classList.add('hidden');
-                fullscreenBtn.title = 'Pantalla completa';
+                    window.isFullScreen = true;
 
+                    // Atajo de teclado ESC para salir
+                    document.addEventListener('keydown', window.handleEscKey);
+                } else {
+                    // Salir de pantalla completa
+                    if (sidebar) sidebar.style.display = '';
+                    if (header) header.style.display = '';
+                    if (breadcrumbs) breadcrumbs.style.display = '';
+
+                    container.classList.remove('fixed', 'inset-0', 'z-50', 'bg-gray-50', 'overflow-auto');
+                    container.classList.add('px-4');
+                    container.style.padding = '';
+
+                    if (expandIcon) expandIcon.classList.remove('hidden');
+                    if (collapseIcon) collapseIcon.classList.add('hidden');
+                    if (fullscreenBtn) fullscreenBtn.title = 'Pantalla completa';
+
+                    window.isFullScreen = false;
+
+                    document.removeEventListener('keydown', window.handleEscKey);
+                }
+
+                // Re-renderizar el calendario para ajustar su tamaño
+                if (window.calendar) {
+                    setTimeout(() => {
+                        window.calendar.updateSize();
+                    }, 100);
+                }
+            };
+
+            // También permitir F11 como alternativa (opcional)
+            const handleF11 = function(e) {
+                if (e.key === 'F11') {
+                    e.preventDefault();
+                    window.toggleFullScreen();
+                }
+            };
+            document.addEventListener('keydown', handleF11);
+
+            // (opcional) deja activado el nuevo menú sin romper nada
+            window.AppSalidas.useNewMenu = true;
+
+            // --- Cleanup ---
+            document.body.dataset.planificacionPageInit = 'true';
+
+            const cleanup = () => {
+                document.removeEventListener('keydown', handleF11);
+                // Asegurarse de quitar ESC si nos vamos en modo fullscreen
+                document.removeEventListener('keydown', window.handleEscKey);
+
+                // Si nos vamos en modo fullscreen, intentar restaurar estilos podría ser difícil ya que los elementos se van a destruir,
+                // pero la variable global window.isFullScreen debería resetearse para la próxima vez?
+                // O se mantendrá en true? Mejor falsearla.
                 window.isFullScreen = false;
 
-                document.removeEventListener('keydown', handleEscKey);
-            }
+                document.body.dataset.planificacionPageInit = 'false';
+            };
 
-            // Re-renderizar el calendario para ajustar su tamaño
-            if (window.calendar) {
-                setTimeout(() => {
-                    window.calendar.updateSize();
-                }, 100);
-            }
+            document.addEventListener('livewire:navigating', cleanup, {
+                once: true
+            });
+        };
+
+        // Registrar en sistema global
+        window.pageInitializers = window.pageInitializers || [];
+        window.pageInitializers.push(window.initPlanificacionPage);
+
+        // Listeners iniciales
+        if (typeof Livewire !== 'undefined') {
+            document.addEventListener('livewire:navigated', window.initPlanificacionPage);
         }
+        document.addEventListener('DOMContentLoaded', window.initPlanificacionPage);
 
-        function handleEscKey(e) {
-            if (e.key === 'Escape' && window.isFullScreen) {
-                toggleFullScreen();
-            }
+        // Ejecución inmediata
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            window.initPlanificacionPage();
         }
-
-        // También permitir F11 como alternativa (opcional)
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'F11') {
-                e.preventDefault();
-                toggleFullScreen();
-            }
-        });
-
-        // (opcional) deja activado el nuevo menú sin romper nada
-        window.AppSalidas.useNewMenu = true;
     </script>
 
     <!-- Componente Livewire para comentarios -->
@@ -237,17 +282,22 @@
 
     <!-- Botón de ayuda de atajos flotante -->
     <div id="shortcuts-help-btn" class="fixed bottom-4 left-4 z-50 group">
-        <button class="w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110">
+        <button
+            class="w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                </path>
             </svg>
         </button>
 
         <!-- Tooltip con atajos -->
-        <div class="absolute bottom-12 left-0 w-80 bg-gray-900 text-white rounded-lg shadow-2xl p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
+        <div
+            class="absolute bottom-12 left-0 w-80 bg-gray-900 text-white rounded-lg shadow-2xl p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
             <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-700">
                 <h3 class="font-semibold text-sm">⌨️ Atajos de Planificación</h3>
-                <a href="{{ route('atajos.index') }}" class="text-xs text-blue-400 hover:text-blue-300">Ver todos →</a>
+                <a href="{{ route('atajos.index') }}" class="text-xs text-blue-400 hover:text-blue-300">Ver todos
+                    →</a>
             </div>
 
             <!-- Modo Días -->

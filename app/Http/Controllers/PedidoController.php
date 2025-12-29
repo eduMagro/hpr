@@ -531,8 +531,22 @@ class PedidoController extends Controller
             abort(422, 'No se encontró la nave asociada a la máquina.');
         }
 
+        // Cargar coladas de la línea con su relación a la tabla coladas maestra
+        $linea->load(['coladas.coladaMaestra']);
 
-        $requiereFabricanteManual = $pedido->distribuidor_id !== null && $pedido->fabricante_id === null;
+        // Verificar si las coladas ya tienen fabricante definido en la tabla coladas
+        $coladasConFabricante = $linea->coladas->filter(function ($c) {
+            return $c->coladaMaestra && $c->coladaMaestra->fabricante_id;
+        });
+        $todasColadasTienenFabricante = $linea->coladas->isNotEmpty() &&
+            $coladasConFabricante->count() === $linea->coladas->count();
+
+        // Solo requerir fabricante manual si:
+        // 1. Viene de distribuidor sin fabricante definido en pedido
+        // 2. Y las coladas no tienen fabricante ya definido
+        $requiereFabricanteManual = $pedido->distribuidor_id !== null
+            && $pedido->fabricante_id === null
+            && !$todasColadasTienenFabricante;
 
         // Fabricante propuesto:
         // 1) Pedido ya tiene fabricante
@@ -551,7 +565,6 @@ class PedidoController extends Controller
                 ->whereHas('entrada', fn($q) => $q->where('usuario_id', auth()->id()))
                 ->latest()
                 ->first()?->fabricante_id;
-
         $fabricantes = $requiereFabricanteManual ? Fabricante::orderBy('nombre')->get() : collect();
 
         // Últimas coladas por producto base para este usuario
@@ -684,7 +697,17 @@ class PedidoController extends Controller
 
             $fabricanteFinal = $pedido->fabricante_id ?? $request->fabricante_id;
 
-            //COMPROBACION DE QUE NO NOS PASAMOS DE KG 
+            // --- Si hay colada seleccionada, intentar obtener fabricante de la tabla coladas
+            if ($request->filled('n_colada') && !$fabricanteFinal) {
+                $coladaMaestra = \App\Models\Colada::where('numero_colada', $request->n_colada)
+                    ->where('producto_base_id', $request->producto_base_id)
+                    ->first();
+                if ($coladaMaestra && $coladaMaestra->fabricante_id) {
+                    $fabricanteFinal = $coladaMaestra->fabricante_id;
+                }
+            }
+
+            //COMPROBACION DE QUE NO NOS PASAMOS DE KG
             // --- Calcular lo recepcionado hasta ahora en esa línea
             $recepcionadoHastaAhora = Producto::whereHas(
                 'entrada',
@@ -1000,9 +1023,6 @@ class PedidoController extends Controller
             'coladas' => ['array'],
             'coladas.*.colada' => ['nullable', 'string', 'max:255'],
             'coladas.*.bulto' => ['nullable', 'numeric', 'min:0'],
-            'ocr_log_id' => ['nullable', 'integer', 'exists:entrada_import_logs,id'],
-            'json_resultante' => ['nullable', 'array'],
-            'id_pedido_productos_recomendado' => ['nullable', 'integer', 'exists:pedido_productos,id'],
         ]);
 
         $productoBase = $linea->productoBase;
@@ -1050,23 +1070,42 @@ class PedidoController extends Controller
 
             if (!empty($data['coladas'])) {
                 foreach ($data['coladas'] as $fila) {
-                    $colada = $fila['colada'] ?? null;
+                    $numeroColada = $fila['colada'] ?? null;
                     $bulto = $fila['bulto'] ?? null;
+                    $fabricanteId = $fila['fabricante_id'] ?? null;
 
-                    if ($colada === null && $bulto === null) {
+                    if ($numeroColada === null && $bulto === null) {
                         continue;
+                    }
+
+                    $coladaId = null;
+
+                    // Si hay número de colada, buscar o crear en tabla coladas
+                    if ($numeroColada !== null) {
+                        $coladaRegistro = \App\Models\Colada::firstOrCreate(
+                            [
+                                'numero_colada' => $numeroColada,
+                                'producto_base_id' => $productoBase->id,
+                            ],
+                            [
+                                'fabricante_id' => $fabricanteId,
+                            ]
+                        );
+                        $coladaId = $coladaRegistro->id;
+
+                        // Si la colada ya existía pero no tenía fabricante, actualizarlo
+                        if ($fabricanteId && !$coladaRegistro->fabricante_id) {
+                            $coladaRegistro->update(['fabricante_id' => $fabricanteId]);
+                        }
                     }
 
                     $attributes = [
                         'pedido_producto_id' => $linea->id,
-                        'colada' => $colada,
+                        'colada_id' => $coladaId,
+                        'colada' => $numeroColada,
                         'bulto' => $bulto,
-                    ];
-                    // Compatibilidad: algunas BDs aún no tienen la columna user_id.
-                    if (Schema::hasColumn('pedido_producto_coladas', 'user_id')) {
-                        $attributes['user_id'] = auth()->id();
-                    }
-                    \App\Models\PedidoProductoColada::create($attributes);
+                        'user_id' => auth()->id(), // Usuario que activa la línea
+                    ]);
                 }
             }
 
@@ -1220,7 +1259,7 @@ class PedidoController extends Controller
         $linea  = PedidoProducto::findOrFail($lineaId);
 
         if ($linea->pedido_id !== $pedido->id) {
-            abort(403, 'La línea no pertenece a este pedido.');
+            return back()->with('error', 'La línea no pertenece a este pedido.');
         }
 
         if (trim(strtolower($linea->estado)) === 'cancelado') {
@@ -1281,6 +1320,70 @@ class PedidoController extends Controller
             ]);
 
             return back()->with('error', 'Error al cancelar la línea. Consulta con administración.');
+        }
+    }
+
+    /**
+     * Cancelar un pedido completo y todas sus líneas
+     */
+    public function cancelarPedido($pedidoId)
+    {
+        $pedido = Pedido::with('pedidoProductos')->findOrFail($pedidoId);
+
+        if (strtolower(trim($pedido->estado)) === 'cancelado') {
+            return redirect()->back()->with('info', 'El pedido ya estaba cancelado.');
+        }
+
+        try {
+            DB::transaction(function () use ($pedido) {
+                // Recopilar todos los pedido_global_id afectados
+                $pgIds = $pedido->pedidoProductos
+                    ->pluck('pedido_global_id')
+                    ->filter()
+                    ->unique()
+                    ->toArray();
+
+                // Cancelar todas las líneas del pedido
+                foreach ($pedido->pedidoProductos as $linea) {
+                    if (strtolower(trim($linea->estado)) !== 'cancelado') {
+                        $linea->estado = 'cancelado';
+                        $linea->save();
+                    }
+                }
+
+                // Cancelar el pedido
+                $pedido->estado = 'cancelado';
+                $pedido->save();
+
+                // Recalcular estado de los Pedidos Globales afectados
+                if (!empty($pgIds)) {
+                    $pedidosGlobales = PedidoGlobal::whereIn('id', $pgIds)
+                        ->lockForUpdate()
+                        ->get();
+
+                    foreach ($pedidosGlobales as $pg) {
+                        if (method_exists($pg, 'actualizarEstadoSegunProgreso')) {
+                            $pg->actualizarEstadoSegunProgreso();
+                        }
+                    }
+                }
+
+                Log::info('Pedido cancelado completamente', [
+                    'pedido_id'     => $pedido->id,
+                    'pedido_codigo' => $pedido->codigo,
+                    'num_lineas'    => $pedido->pedidoProductos->count(),
+                    'usuario'       => auth()->user()->nombre_completo ?? auth()->id(),
+                ]);
+            });
+
+            return back()->with('success', 'Pedido cancelado correctamente.');
+        } catch (\Throwable $e) {
+            Log::error('Error al cancelar pedido', [
+                'pedido_id' => $pedido->id,
+                'mensaje'   => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Error al cancelar el pedido. Consulta con administración.');
         }
     }
 
@@ -1491,9 +1594,30 @@ class PedidoController extends Controller
                 'producto_base_id' => $validated['producto_base_id'],
             ]);
 
+            // Recargar relaciones para devolver datos actualizados
+            $linea->load(['obra', 'productoBase']);
+
+            // Construir texto del lugar de entrega
+            $lugarEntrega = '—';
+            if ($linea->obra_id) {
+                $lugarEntrega = $linea->obra->obra ?? '—';
+            } elseif ($linea->obra_manual) {
+                $lugarEntrega = $linea->obra_manual;
+            }
+
+            // Construir texto del producto
+            $productoTexto = ucfirst($linea->productoBase->tipo ?? '') . ' Ø' . ($linea->productoBase->diametro ?? '');
+            if ($linea->productoBase->tipo === 'barra' && $linea->productoBase->longitud) {
+                $productoTexto .= ' x ' . $linea->productoBase->longitud . ' m';
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => 'Línea actualizada correctamente'
+                'message' => 'Línea actualizada correctamente',
+                'data' => [
+                    'lugar_entrega' => $lugarEntrega,
+                    'producto' => $productoTexto,
+                ]
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([

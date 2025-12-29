@@ -1053,7 +1053,7 @@ class PlanillaController extends Controller
                 ->select(['id', 'codigo', 'fecha_estimada_entrega', 'obra_id', 'seccion', 'descripcion', 'peso_total'])
                 ->with([
                     'obra:id,cod_obra,obra',
-                    'elementos:id,planilla_id,marca,diametro,longitud,barras,peso,fecha_entrega'
+                    'elementos:id,planilla_id,codigo,marca,diametro,longitud,barras,peso,dimensiones,fecha_entrega'
                 ])
                 ->get();
 
@@ -1085,11 +1085,13 @@ class PlanillaController extends Controller
                     $elementos = $p->elementos->map(function ($e) {
                         return [
                             'id' => $e->id,
+                            'codigo' => $e->codigo,
                             'marca' => $e->marca,
                             'diametro' => $e->diametro,
                             'longitud' => $e->longitud,
                             'barras' => $e->barras,
                             'peso' => $e->peso,
+                            'dimensiones' => $e->dimensiones,
                             'fecha_entrega' => $e->fecha_entrega ? $e->fecha_entrega->format('Y-m-d') : null,
                         ];
                     })->values()->all();
@@ -1182,5 +1184,127 @@ class PlanillaController extends Controller
     public function importProgress(string $id)
     {
         return response()->json(ImportProgress::get($id));
+    }
+
+    /**
+     * Resetear una planilla a su estado inicial
+     * - Planilla: estado = pendiente, fechas = null, revisada = false
+     * - Etiquetas: estado = pendiente, fechas = null, operarios = null
+     * - Elementos: estado = pendiente, fechas = null, operarios = null, maquina_id = null
+     * - Paquetes: eliminar todos
+     * - OrdenPlanillas: eliminar y recrear usando los servicios
+     */
+    public function resetearPlanilla(Request $request, $id)
+    {
+        $planilla = Planilla::with(['elementos', 'etiquetas', 'paquetes'])->findOrFail($id);
+
+        DB::beginTransaction();
+
+        try {
+            // Instanciar servicios
+            $asignarMaquinaService = new \App\Services\AsignarMaquinaService();
+            $ordenPlanillaService = new \App\Services\OrdenPlanillaService();
+
+            // 1. Eliminar todos los paquetes de esta planilla
+            $paquetesEliminados = $planilla->paquetes()->count();
+            $planilla->paquetes()->delete();
+
+            // 2. Resetear etiquetas
+            $etiquetasReseteadas = $planilla->etiquetas()->count();
+            $planilla->etiquetas()->update([
+                'estado' => 'pendiente',
+                'fecha_inicio' => null,
+                'fecha_finalizacion' => null,
+                'fecha_inicio_ensamblado' => null,
+                'fecha_finalizacion_ensamblado' => null,
+                'fecha_inicio_soldadura' => null,
+                'fecha_finalizacion_soldadura' => null,
+                'operario1_id' => null,
+                'operario2_id' => null,
+                'soldador1_id' => null,
+                'soldador2_id' => null,
+                'ensamblador1_id' => null,
+                'ensamblador2_id' => null,
+                'paquete_id' => null,
+            ]);
+
+            // 3. Eliminar orden_planillas existente (esto también limpia orden_planilla_id de elementos)
+            $ordenPlanillaService->eliminarOrdenDePlanilla($planilla->id);
+
+            // 4. Resetear elementos (incluyendo maquina_id para que el servicio los reasigne)
+            // Nota: elementos NO tiene fecha_inicio/fecha_finalizacion ni operarios - eso está en etiquetas
+            // Nota: etiqueta_id NO se resetea porque es la relación estructural con la etiqueta padre
+            $elementosReseteados = $planilla->elementos()->count();
+            $planilla->elementos()->update([
+                'estado' => 'pendiente',
+                'paquete_id' => null,
+                'producto_id' => null,
+                'producto_id_2' => null,
+                'maquina_id' => null,
+                'orden_planilla_id' => null,
+            ]);
+
+            // 5. Resetear la planilla
+            $planilla->update([
+                'estado' => 'pendiente',
+                'fecha_inicio' => null,
+                'fecha_finalizacion' => null,
+                'revisada' => false,
+                'revisada_por_id' => null,
+                'revisada_at' => null,
+            ]);
+
+            // 6. Reasignar máquinas a los elementos usando AsignarMaquinaService
+            $asignarMaquinaService->repartirPlanilla($planilla->id);
+
+            // 7. Crear orden_planillas y asignar orden_planilla_id a elementos
+            $ordenesCreadas = $ordenPlanillaService->crearOrdenParaPlanilla($planilla->id);
+
+            // Obtener las máquinas asignadas para el resumen
+            $maquinasAsignadas = OrdenPlanilla::where('planilla_id', $planilla->id)
+                ->with('maquina:id,codigo')
+                ->get()
+                ->pluck('maquina.codigo')
+                ->filter()
+                ->toArray();
+
+            DB::commit();
+
+            Log::info('Planilla reseteada', [
+                'planilla_id' => $planilla->id,
+                'codigo' => $planilla->codigo,
+                'paquetes_eliminados' => $paquetesEliminados,
+                'etiquetas_reseteadas' => $etiquetasReseteadas,
+                'elementos_reseteados' => $elementosReseteados,
+                'ordenes_creadas' => $ordenesCreadas,
+                'maquinas_asignadas' => $maquinasAsignadas,
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Planilla {$planilla->codigo} reseteada correctamente",
+                'detalles' => [
+                    'paquetes_eliminados' => $paquetesEliminados,
+                    'etiquetas_reseteadas' => $etiquetasReseteadas,
+                    'elementos_reseteados' => $elementosReseteados,
+                    'maquinas_asignadas' => $maquinasAsignadas,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Error al resetear planilla', [
+                'planilla_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al resetear la planilla: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

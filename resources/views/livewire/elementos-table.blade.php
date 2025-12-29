@@ -1,4 +1,40 @@
 <div>
+    <!-- Panel de métricas de rendimiento -->
+    <div class="fixed bottom-4 left-4 z-50 bg-gray-900 text-white rounded-lg shadow-xl p-3 text-xs font-mono opacity-90 hover:opacity-100 transition-opacity"
+        title="Métricas de rendimiento del servidor">
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span
+                    class="{{ $loadTime > 500 ? 'text-red-400' : ($loadTime > 200 ? 'text-yellow-400' : 'text-green-400') }}">
+                    {{ $loadTime }} ms
+                </span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                </svg>
+                <span
+                    class="{{ $queryCount > 20 ? 'text-red-400' : ($queryCount > 10 ? 'text-yellow-400' : 'text-green-400') }}">
+                    {{ $queryCount }} queries
+                </span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                </svg>
+                <span>{{ $memoryUsage }} MB</span>
+            </div>
+            <div class="text-gray-400 border-l border-gray-700 pl-3">
+                {{ $elementos->total() }} registros
+            </div>
+        </div>
+    </div>
 
     <div class="w-full p-4 sm:p-2">
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
@@ -54,116 +90,134 @@
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-10">
                     <tr class="text-center text-xs uppercase">
-                        <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
-                        <x-tabla.encabezado-ordenable campo="codigo" :sortActual="$sort" :orderActual="$order" texto="Código" />
-                        <x-tabla.encabezado-ordenable campo="codigo_planilla" :sortActual="$sort" :orderActual="$order" texto="Planilla" />
-                        <x-tabla.encabezado-ordenable campo="etiqueta" :sortActual="$sort" :orderActual="$order" texto="Etiqueta" />
-                        <x-tabla.encabezado-ordenable campo="subetiqueta" :sortActual="$sort" :orderActual="$order" texto="Subetiqueta" />
-                        <x-tabla.encabezado-ordenable campo="dimensiones" :sortActual="$sort" :orderActual="$order" texto="Dimensiones" />
-                        <x-tabla.encabezado-ordenable campo="diametro" :sortActual="$sort" :orderActual="$order" texto="Diámetro" />
-                        <x-tabla.encabezado-ordenable campo="barras" :sortActual="$sort" :orderActual="$order" texto="Barras" />
-                        <x-tabla.encabezado-ordenable campo="maquina" :sortActual="$sort" :orderActual="$order" texto="Maq. 1" />
-                        <x-tabla.encabezado-ordenable campo="maquina_2" :sortActual="$sort" :orderActual="$order" texto="Maq. 2" />
-                        <x-tabla.encabezado-ordenable campo="maquina3" :sortActual="$sort" :orderActual="$order" texto="Maq. 3" />
-                        <x-tabla.encabezado-ordenable campo="producto1" :sortActual="$sort" :orderActual="$order" texto="M. Prima 1" />
-                        <x-tabla.encabezado-ordenable campo="producto2" :sortActual="$sort" :orderActual="$order" texto="M. Prima 2" />
-                        <x-tabla.encabezado-ordenable campo="producto3" :sortActual="$sort" :orderActual="$order" texto="M. Prima 3" />
-                        <x-tabla.encabezado-ordenable campo="figura" :sortActual="$sort" :orderActual="$order" texto="Figura" />
-                        <x-tabla.encabezado-ordenable campo="peso" :sortActual="$sort" :orderActual="$order" texto="Peso (kg)" wire:navigate />
-                        <x-tabla.encabezado-ordenable campo="longitud" :sortActual="$sort" :orderActual="$order" texto="Longitud (m)" wire:navigate />
-                        <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order" texto="Estado" />
+                        <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order"
+                            texto="ID" />
+                        <x-tabla.encabezado-ordenable campo="codigo" :sortActual="$sort" :orderActual="$order"
+                            texto="Código" />
+                        <x-tabla.encabezado-ordenable campo="codigo_planilla" :sortActual="$sort" :orderActual="$order"
+                            texto="Planilla" />
+                        <x-tabla.encabezado-ordenable campo="etiqueta" :sortActual="$sort" :orderActual="$order"
+                            texto="Etiqueta" />
+                        <x-tabla.encabezado-ordenable campo="subetiqueta" :sortActual="$sort" :orderActual="$order"
+                            texto="Subetiqueta" />
+                        <x-tabla.encabezado-ordenable campo="dimensiones" :sortActual="$sort" :orderActual="$order"
+                            texto="Dimensiones" />
+                        <x-tabla.encabezado-ordenable campo="diametro" :sortActual="$sort" :orderActual="$order"
+                            texto="Diámetro" />
+                        <x-tabla.encabezado-ordenable campo="barras" :sortActual="$sort" :orderActual="$order"
+                            texto="Barras" />
+                        <x-tabla.encabezado-ordenable campo="maquina" :sortActual="$sort" :orderActual="$order"
+                            texto="Maq. 1" />
+                        <x-tabla.encabezado-ordenable campo="maquina_2" :sortActual="$sort" :orderActual="$order"
+                            texto="Maq. 2" />
+                        <x-tabla.encabezado-ordenable campo="maquina3" :sortActual="$sort" :orderActual="$order"
+                            texto="Maq. 3" />
+                        <x-tabla.encabezado-ordenable campo="producto1" :sortActual="$sort" :orderActual="$order"
+                            texto="M. Prima 1" />
+                        <x-tabla.encabezado-ordenable campo="producto2" :sortActual="$sort" :orderActual="$order"
+                            texto="M. Prima 2" />
+                        <x-tabla.encabezado-ordenable campo="producto3" :sortActual="$sort" :orderActual="$order"
+                            texto="M. Prima 3" />
+                        <x-tabla.encabezado-ordenable campo="figura" :sortActual="$sort" :orderActual="$order"
+                            texto="Figura" />
+                        <x-tabla.encabezado-ordenable campo="peso" :sortActual="$sort" :orderActual="$order"
+                            texto="Peso (kg)" wire:navigate />
+                        <x-tabla.encabezado-ordenable campo="longitud" :sortActual="$sort" :orderActual="$order"
+                            texto="Longitud (m)" wire:navigate />
+                        <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order"
+                            texto="Estado" />
                         <th class="p-2 border">Acciones</th>
                     </tr>
 
                     <tr class="text-center text-xs uppercase">
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="elemento_id"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="ID...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="codigo"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Código...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="codigo_planilla"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Planilla...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="etiqueta"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Etiqueta...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="subetiqueta"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Subetiqueta...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="dimensiones"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Dimensiones...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="diametro"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Diámetro...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="barras"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Barras...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="maquina"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Máquina...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="maquina_2"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Máquina 2...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="maquina3"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Máquina 3...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="producto1"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Producto 1...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="producto2"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Producto 2...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="producto3"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Producto 3...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="figura"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Figura...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="peso"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Peso...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="longitud"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Longitud...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <select wire:model.live="estado"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                                 <option value="">Todos</option>
                                 <option value="pendiente">Pendiente</option>
                                 <option value="fabricando">Fabricando</option>
@@ -171,7 +225,7 @@
                                 <option value="montaje">Montaje</option>
                             </select>
                         </th>
-                        <th class="p-1 border text-center align-middle">
+                        <th class="p-2 border text-center align-middle">
                             <div class="flex justify-center gap-2 items-center h-full">
                                 {{-- ♻️ Botón reset --}}
                                 <button wire:click="limpiarFiltros"
@@ -190,9 +244,7 @@
 
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($elementos as $elemento)
-                        <tr tabindex="0"
-                            wire:key="elemento-{{ $elemento->id }}"
-                            x-data="{
+                        <tr tabindex="0" wire:key="elemento-{{ $elemento->id }}" x-data="{
                             editando: false,
                             seleccionada: false,
                             elemento: @js($elemento),
@@ -228,30 +280,31 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.codigo"></span>
                                 </template>
-                                <input x-show="editando" style="display: none;" type="text" x-model="elemento.codigo"
+                                <input x-show="editando" style="display: none;" type="text"
+                                    x-model="elemento.codigo"
                                     class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
                             <!-- PLANILLA -->
                             <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('elementos.index', ['planilla_id' => $elemento->planilla_id]) }}" wire:navigate
-                                    class="text-blue-500 hover:underline">
+                                <a href="{{ route('elementos.index', ['planilla_id' => $elemento->planilla_id]) }}"
+                                    wire:navigate class="text-blue-500 hover:underline">
                                     {{ $elemento->planilla->codigo_limpio ?? 'N/A' }}
                                 </a>
                             </td>
 
                             <!-- ETIQUETA -->
                             <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}" wire:navigate
-                                    class="text-blue-500 hover:underline">
+                                <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}"
+                                    wire:navigate class="text-blue-500 hover:underline">
                                     {{ $elemento->etiquetaRelacion?->id ?? 'N/A' }}
                                 </a>
                             </td>
 
                             <!-- SUBETIQUETA -->
                             <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}" wire:navigate
-                                    class="text-blue-500 hover:underline">
+                                <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}"
+                                    wire:navigate class="text-blue-500 hover:underline">
                                     {{ $elemento->subetiqueta ?? 'N/A' }}
                                 </a>
                             </td>
@@ -261,7 +314,8 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.dimensiones ?? 'N/A'"></span>
                                 </template>
-                                <input x-show="editando" style="display: none;" type="text" x-model="elemento.dimensiones"
+                                <input x-show="editando" style="display: none;" type="text"
+                                    x-model="elemento.dimensiones"
                                     class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
@@ -270,7 +324,8 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.diametro_mm"></span>
                                 </template>
-                                <input x-show="editando" style="display: none;" type="number" x-model="elemento.diametro"
+                                <input x-show="editando" style="display: none;" type="number"
+                                    x-model="elemento.diametro"
                                     class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
@@ -279,7 +334,8 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.barras"></span>
                                 </template>
-                                <input x-show="editando" style="display: none;" type="number" x-model="elemento.barras"
+                                <input x-show="editando" style="display: none;" type="number"
+                                    x-model="elemento.barras"
                                     class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
@@ -291,19 +347,21 @@
                                         data-id="{{ $elemento->id }}" data-field="maquina_id"
                                         onchange="actualizarCampoElemento(this)">
                                         <option value="">N/A</option>
-                                        @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora manual']) as $maquina)
+                                        @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora manual', 'grua']) as $maquina)
                                             <option value="{{ $maquina->id }}" @selected($elemento->maquina_id === $maquina->id)>
                                                 {{ $maquina->nombre }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    <div
-                                        class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center abrir-modal-dibujo flex-shrink-0 cursor-pointer"
+                                    <div class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center abrir-modal-dibujo flex-shrink-0 cursor-pointer"
                                         data-id="{{ $elemento->id }}" data-codigo="{{ $elemento->codigo }}"
                                         data-dimensiones="{{ $elemento->dimensiones }}"
-                                        data-peso="{{ $elemento->peso_kg }}" title="Ver figura del elemento (solo hover)" wire:navigate>
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        data-peso="{{ $elemento->peso_kg }}"
+                                        title="Ver figura del elemento (solo hover)" wire:navigate
+                                        @mouseenter="window.abrirModal($el)" @mouseleave="window.cerrarModal()">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none"
+                                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                            stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -345,24 +403,24 @@
 
                             <!-- PRODUCTO 1 -->
                             <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('productos.index', ['id' => $elemento->producto_id]) }}" wire:navigate
-                                    class="text-blue-500 hover:underline">
+                                <a href="{{ route('productos.index', ['id' => $elemento->producto_id]) }}"
+                                    wire:navigate class="text-blue-500 hover:underline">
                                     {{ $elemento->producto?->codigo ?? 'N/A' }}
                                 </a>
                             </td>
 
                             <!-- PRODUCTO 2 -->
                             <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('productos.index', ['id' => $elemento->producto_id_2]) }}" wire:navigate
-                                    class="text-blue-500 hover:underline">
+                                <a href="{{ route('productos.index', ['id' => $elemento->producto_id_2]) }}"
+                                    wire:navigate class="text-blue-500 hover:underline">
                                     {{ $elemento->producto2?->codigo ?? 'N/A' }}
                                 </a>
                             </td>
 
                             <!-- PRODUCTO 3 -->
                             <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('productos.index', ['id' => $elemento->producto_id_3]) }}" wire:navigate
-                                    class="text-blue-500 hover:underline">
+                                <a href="{{ route('productos.index', ['id' => $elemento->producto_id_3]) }}"
+                                    wire:navigate class="text-blue-500 hover:underline">
                                     {{ $elemento->producto3?->codigo ?? 'N/A' }}
                                 </a>
                             </td>
@@ -372,7 +430,8 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.figura"></span>
                                 </template>
-                                <input x-show="editando" style="display: none;" type="text" x-model="elemento.figura"
+                                <input x-show="editando" style="display: none;" type="text"
+                                    x-model="elemento.figura"
                                     class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
@@ -381,7 +440,8 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.peso_kg"></span>
                                 </template>
-                                <input x-show="editando" style="display: none;" type="number" x-model="elemento.peso"
+                                <input x-show="editando" style="display: none;" type="number"
+                                    x-model="elemento.peso"
                                     class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
@@ -390,7 +450,8 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.longitud_m"></span>
                                 </template>
-                                <input x-show="editando" style="display: none;" type="number" x-model="elemento.longitud"
+                                <input x-show="editando" style="display: none;" type="number"
+                                    x-model="elemento.longitud"
                                     class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
@@ -411,7 +472,8 @@
                             <td class="px-1 py-2 border text-xs font-bold">
                                 <div class="flex items-center space-x-2 justify-center">
                                     <!-- Mostrar solo en modo edición -->
-                                    <button x-show="editando" style="display: none;" @click="guardarCambios(elemento); editando = false"
+                                    <button x-show="editando" style="display: none;"
+                                        @click="guardarCambios(elemento); editando = false"
                                         class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
                                         title="Guardar cambios">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
@@ -495,11 +557,12 @@
         </div>
 
         <!-- Modal de dibujo -->
-        <div id="modal-dibujo" class="hidden fixed inset-0 flex justify-end items-center pr-96 pointer-events-none"
-            wire:ignore>
+        <div id="modal-dibujo" class="hidden fixed inset-0 justify-end items-center pr-96 pointer-events-none"
+            wire:ignore @mouseenter="window.mantenerModalAbierto()" @mouseleave="window.cerrarModal()">
             <div
                 class="bg-white rounded-lg p-5 w-3/4 max-w-lg relative pointer-events-auto shadow-lg border border-gray-300">
-                <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">✖</button>
+                <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100"
+                    @click="document.getElementById('modal-dibujo').classList.add('hidden')">✖</button>
                 <h2 class="text-lg font-semibold mb-3" id="modal-titulo">Elemento</h2>
                 <canvas id="canvas-dibujo" class="border border-gray-300 w-full h-[300px]"></canvas>
             </div>
@@ -525,7 +588,7 @@
         <!-- Vite: elementos-bundle -->
         @vite(['resources/js/elementosJs/elementos-bundle.js'])
         <!-- <script src="{{ asset('js/elementosJs/guardarCambios.js') }}" defer></script>
-        <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script> -->
+                            <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script> -->
         <script>
             function actualizarCampoElemento(input) {
                 const id = input.dataset.id;
@@ -553,14 +616,39 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        if (data.success) {
+                        if (data.ok) {
                             console.log('✅ Campo actualizado correctamente');
                             input.dataset.originalValue = valor;
-                            // Recargar la página para ver los cambios
-                            window.location.reload();
+
+                            // Feedback visual sin recargar
+                            input.classList.add('bg-green-100', 'border-green-500');
+                            setTimeout(() => {
+                                input.classList.remove('bg-green-100', 'border-green-500');
+                            }, 1500);
+
+                            // Mostrar notificación si SweetAlert está disponible
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    toast: true,
+                                    position: 'top-end',
+                                    icon: 'success',
+                                    title: 'Máquina actualizada',
+                                    showConfirmButton: false,
+                                    timer: 1500,
+                                    timerProgressBar: true,
+                                });
+                            }
+                        } else if (data.swal) {
+                            // Mostrar error con SweetAlert si está disponible
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire(data.swal);
+                            } else {
+                                alert(data.swal.text || data.swal.title);
+                            }
+                            input.value = valorOriginal;
                         } else {
-                            console.error('❌ Error al actualizar:', data.message);
-                            alert('Error: ' + (data.message || 'No se pudo actualizar'));
+                            console.error('❌ Error al actualizar:', data.error || data.message);
+                            alert('Error: ' + (data.error || data.message || 'No se pudo actualizar'));
                             input.value = valorOriginal;
                         }
                     })
@@ -571,19 +659,20 @@
                     });
             }
 
-            document.addEventListener('DOMContentLoaded', () => {
-                const modal = document.getElementById("modal-dibujo");
-                const titulo = document.getElementById("modal-titulo");
-                const canvas = document.getElementById("canvas-dibujo");
-                const cerrar = document.getElementById("cerrar-modal");
 
+            (function() {
                 let timeoutCerrar = null;
 
-                function abrirModal(ojo) {
+                window.abrirModal = function(ojo) {
                     if (timeoutCerrar) {
                         clearTimeout(timeoutCerrar);
                         timeoutCerrar = null;
                     }
+
+                    const modal = document.getElementById("modal-dibujo");
+                    const titulo = document.getElementById("modal-titulo");
+
+                    if (!modal) return;
 
                     const id = ojo.dataset.id;
                     const codigo = ojo.dataset.codigo;
@@ -603,59 +692,37 @@
                     if (typeof window.dibujarFiguraElemento === 'function') {
                         window.dibujarFiguraElemento("canvas-dibujo", dimensiones, peso);
                     }
-                }
+                };
 
-                function cerrarModal() {
+                window.cerrarModal = function() {
+                    const modal = document.getElementById("modal-dibujo");
                     timeoutCerrar = setTimeout(() => {
-                        modal.classList.add("hidden");
+                        if (modal) modal.classList.add("hidden");
                     }, 100);
-                }
+                };
 
-                function mantenerModalAbierto() {
+                window.mantenerModalAbierto = function() {
                     if (timeoutCerrar) {
                         clearTimeout(timeoutCerrar);
                         timeoutCerrar = null;
                     }
+                };
+
+                function initElementosTablePage() {
+                    if (document.body.dataset.elementosTablePageInit === 'true') return;
+                    console.log('Inicializando Elementos Table Page');
+                    document.body.dataset.elementosTablePageInit = 'true';
                 }
 
-                document.querySelectorAll(".abrir-modal-dibujo").forEach(ojo => {
-                    ojo.addEventListener("mouseenter", () => abrirModal(ojo));
-                    ojo.addEventListener("mouseleave", cerrarModal);
-                    ojo.addEventListener("click", (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return false;
-                    });
+                window.pageInitializers = window.pageInitializers || [];
+                window.pageInitializers.push(initElementosTablePage);
+                document.addEventListener('livewire:navigated', initElementosTablePage);
+                document.addEventListener('DOMContentLoaded', initElementosTablePage);
+                document.addEventListener('livewire:navigating', () => {
+                    document.body.dataset.elementosTablePageInit = 'false';
                 });
 
-                if (modal) {
-                    modal.addEventListener("mouseenter", mantenerModalAbierto);
-                    modal.addEventListener("mouseleave", cerrarModal);
-                }
-
-                if (cerrar) {
-                    cerrar.addEventListener("click", () => {
-                        if (timeoutCerrar) {
-                            clearTimeout(timeoutCerrar);
-                            timeoutCerrar = null;
-                        }
-                        modal.classList.add("hidden");
-                    });
-                }
-
-                // Re-inicializar event listeners después de que Livewire actualice
-                document.addEventListener('livewire:navigated', () => {
-                    document.querySelectorAll(".abrir-modal-dibujo").forEach(ojo => {
-                        ojo.addEventListener("mouseenter", () => abrirModal(ojo));
-                        ojo.addEventListener("mouseleave", cerrarModal);
-                        ojo.addEventListener("click", (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            return false;
-                        });
-                    });
-                });
-            });
+            })();
         </script>
     @endpush
 </div>

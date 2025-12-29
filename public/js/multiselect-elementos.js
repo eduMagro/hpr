@@ -81,6 +81,7 @@
 
     /**
      * Obtiene información completa de todos los elementos a mover
+     * 🆕 Soporta elementos agrupados (múltiples elementos con mismas dimensiones)
      */
     function getDataElementosParaMover(elementoArrastrado) {
         const elementoId = elementoArrastrado.dataset.elementoId;
@@ -90,9 +91,46 @@
         let elementosIds = [parseInt(elementoId)];
         let maquinaOrigenId = parseInt(maquinaOriginal);
 
+        // 🆕 Verificar si es un elemento agrupado
+        const esGrupo = elementoArrastrado.dataset.esGrupo === 'true';
+        if (esGrupo && elementoArrastrado.dataset.elementosGrupo) {
+            try {
+                const idsGrupo = JSON.parse(elementoArrastrado.dataset.elementosGrupo);
+                elementosIds = idsGrupo.map(id => parseInt(id));
+                console.log('📦 Elemento agrupado detectado, IDs:', elementosIds);
+            } catch (e) {
+                console.error('Error parseando elementosGrupo:', e);
+            }
+        }
+
         // Si el elemento arrastrado está seleccionado, incluir todos los seleccionados
         if (elementosSeleccionados.includes(elementoId) && elementosSeleccionados.length > 1) {
-            elementosIds = elementosSeleccionados.map(id => parseInt(id));
+            // Combinar IDs del grupo con los seleccionados manualmente
+            const idsSeleccionados = elementosSeleccionados.map(id => parseInt(id));
+
+            // Para cada elemento seleccionado, verificar si es un grupo y añadir sus IDs
+            elementosSeleccionados.forEach(selId => {
+                const selDiv = document.querySelector(`.elemento-drag[data-elemento-id="${selId}"]`);
+                if (selDiv && selDiv.dataset.esGrupo === 'true' && selDiv.dataset.elementosGrupo) {
+                    try {
+                        const idsGrupoSel = JSON.parse(selDiv.dataset.elementosGrupo);
+                        idsGrupoSel.forEach(gId => {
+                            const gIdInt = parseInt(gId);
+                            if (!elementosIds.includes(gIdInt)) {
+                                elementosIds.push(gIdInt);
+                            }
+                        });
+                    } catch (e) {
+                        console.error('Error parseando elementosGrupo de seleccionado:', e);
+                    }
+                } else {
+                    // Elemento individual seleccionado
+                    const selIdInt = parseInt(selId);
+                    if (!elementosIds.includes(selIdInt)) {
+                        elementosIds.push(selIdInt);
+                    }
+                }
+            });
 
             // Obtener la máquina origen del primer elemento seleccionado
             const primerElementoDiv = document.querySelector(`.elemento-drag[data-elemento-id="${elementosSeleccionados[0]}"]`);

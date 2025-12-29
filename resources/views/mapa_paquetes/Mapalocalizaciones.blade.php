@@ -11,26 +11,22 @@
                     <h1 class="text-2xl font-bold text-gray-800">Mapa de
                         Localizaciones</h1>
                     <p class="text-gray-600 mt-1">
-                        Obra: <span
-                            class="font-semibold">{{ $dimensiones['obra'] ?? 'Sin obra' }}</span>
+                        Obra: <span class="font-semibold">{{ $dimensiones['obra'] ?? 'Sin obra' }}</span>
                         | Dimensiones:
                         <span class="font-semibold">{{ $dimensiones['ancho'] }}m
                             × {{ $dimensiones['largo'] }}m</span>
-                        | Cliente: <span
-                            class="font-semibold">{{ $cliente->empresa ?? 'Sin cliente' }}</span>
+                        | Cliente: <span class="font-semibold">{{ $cliente->empresa ?? 'Sin cliente' }}</span>
                     </p>
                 </div>
 
                 {{-- Selector de obra --}}
                 <div class="flex items-center gap-3">
-                    <label for="obra-select"
-                        class="text-sm font-medium text-gray-700">Obra:</label>
+                    <label for="obra-select" class="text-sm font-medium text-gray-700">Obra:</label>
                     <select id="obra-select"
                         class=" rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         onchange="window.location.href = '{{ route('mapa.paquetes') }}?obra=' + this.value">
                         @foreach ($obras as $obra)
-                            <option value="{{ $obra->id }}"
-                                {{ $obra->id == $obraActualId ? 'selected' : '' }}>
+                            <option value="{{ $obra->id }}" {{ $obra->id == $obraActualId ? 'selected' : '' }}>
                                 {{ $obra->obra }}
                             </option>
                         @endforeach
@@ -50,7 +46,7 @@
                 flex: 0 0 auto: respeta el ancho calculado (o sus límites) sin encogerse ni crecer arbitrariamente.
             --}}
             <div class="relative overflow-hidden rounded-md shadow-sm border border-gray-200"
-                 style="height: 100%; aspect-ratio: {{ $dimensiones['ancho'] }} / {{ $dimensiones['largo'] }}; max-width: 65%; min-width: 350px; flex: 0 0 auto;">
+                style="height: 100%; aspect-ratio: {{ $dimensiones['ancho'] }} / {{ $dimensiones['largo'] }}; max-width: 65%; min-width: 350px; flex: 0 0 auto;">
                 <x-mapa-simple :nave-id="$obraActualId" :modo-edicion="true" class="w-full h-full absolute inset-0" />
             </div>
 
@@ -64,8 +60,7 @@
                 </div>
 
                 <div class="p-3 border-b border-gray-200 space-y-2">
-                    <input type="text" id="search-paquetes"
-                        placeholder="Buscar por código..."
+                    <input type="text" id="search-paquetes" placeholder="Buscar por código..."
                         class="w-full px-3 py-2  rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
 
                     <select id="filter-obra-paquetes"
@@ -76,59 +71,47 @@
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-3 grid gap-2 content-start" id="lista-paquetes"
-                     style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                    style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
                     @forelse($paquetesConLocalizacion as $paquete)
                         <div class="paquete-item bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-blue-400 hover:shadow-md transition cursor-pointer h-full"
-                            data-paquete-id="{{ $paquete['id'] }}"
-                            data-codigo="{{ $paquete['codigo'] }}"
-                            data-obra="{{ $paquete['obra'] }}"
-                            data-x1="{{ $paquete['x1'] }}"
-                            data-y1="{{ $paquete['y1'] }}"
-                            data-x2="{{ $paquete['x2'] }}"
+                            data-paquete-id="{{ $paquete['id'] }}" data-codigo="{{ $paquete['codigo'] }}"
+                            data-obra="{{ $paquete['obra'] }}" data-x1="{{ $paquete['x1'] }}"
+                            data-y1="{{ $paquete['y1'] }}" data-x2="{{ $paquete['x2'] }}"
                             data-y2="{{ $paquete['y2'] }}">
                             <div class="flex items-center justify-between mb-2">
                                 <span class="font-bold text-gray-800 text-sm">📦
                                     {{ $paquete['codigo'] }}</span>
-                                <span
-                                    class="text-xs text-gray-500">{{ $paquete['cantidad_etiquetas'] }}
+                                <span class="text-xs text-gray-500">{{ $paquete['cantidad_etiquetas'] }}
                                     etiquetas</span>
                             </div>
-                            <div
-                                class="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                            <div class="grid grid-cols-2 gap-2 text-xs text-gray-600">
                                 <div><span class="text-gray-500">Peso:</span>
-                                    <span
-                                        class="font-semibold">{{ number_format($paquete['peso'], 2) }}
+                                    <span class="font-semibold">{{ number_format($paquete['peso'], 2) }}
                                         kg</span>
                                 </div>
                                 <div class="col-span-2">
                                     <span class="text-gray-500">Obra:</span>
-                                    <span
-                                        class="font-semibold">{{ $paquete['obra'] }}</span>
+                                    <span class="font-semibold">{{ $paquete['obra'] }}</span>
                                 </div>
                             </div>
                             <div class="mt-2 flex items-center gap-2">
                                 @if ($paquete['tipo_contenido'] === 'barras')
-                                    <span
-                                        class="inline-block w-3 h-3 bg-blue-500 rounded-full"></span><span
+                                    <span class="inline-block w-3 h-3 bg-blue-500 rounded-full"></span><span
                                         class="text-xs text-gray-600">Barras</span>
                                 @elseif($paquete['tipo_contenido'] === 'estribos')
-                                    <span
-                                        class="inline-block w-3 h-3 bg-green-500 rounded-full"></span><span
+                                    <span class="inline-block w-3 h-3 bg-green-500 rounded-full"></span><span
                                         class="text-xs text-gray-600">Estribos</span>
                                 @else
-                                    <span
-                                        class="inline-block w-3 h-3 bg-orange-500 rounded-full"></span><span
+                                    <span class="inline-block w-3 h-3 bg-orange-500 rounded-full"></span><span
                                         class="text-xs text-gray-600">Mixto</span>
                                 @endif
                             </div>
                         </div>
                     @empty
                         <div class="col-span-full text-center py-8 text-gray-500">
-                            <svg class="w-16 h-16 mx-auto mb-3 text-gray-300"
-                                fill="none" stroke="currentColor"
+                            <svg class="w-16 h-16 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
-                                <path stroke-linecap="round"
-                                    stroke-linejoin="round" stroke-width="2"
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                             </svg>
                             <p class="font-medium">No hay paquetes ubicados</p>
@@ -166,16 +149,15 @@
 
     {{-- Panel flotante para detalle de etiquetas/elementos del paquete (se muestra al hacer click derecho) --}}
     <div id="detalle-paquete-panel"
-         class="hidden fixed z-50 bg-white shadow-2xl border border-gray-200 rounded-lg w-full max-w-lg max-h-[400px] overflow-hidden flex flex-col"
-         style="top: 1.5rem; right: 1.5rem;">
+        class="hidden fixed z-50 bg-white shadow-2xl border border-gray-200 rounded-lg w-full max-w-lg max-h-[400px] overflow-hidden flex-col"
+        style="top: 1.5rem; right: 1.5rem;">
         <div class="flex items-start justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
             <div>
                 <p class="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Detalle del paquete</p>
                 <p id="detalle-paquete-codigo" class="text-sm font-bold text-gray-800 mt-0.5">Selecciona un paquete</p>
             </div>
             <button id="detalle-paquete-cerrar" type="button"
-                class="text-gray-500 hover:text-gray-700 rounded-full p-1 transition"
-                aria-label="Cerrar detalle">
+                class="text-gray-500 hover:text-gray-700 rounded-full p-1 transition" aria-label="Cerrar detalle">
                 ✕
             </button>
         </div>
@@ -187,7 +169,28 @@
 
 
     <script>
-            document.addEventListener('DOMContentLoaded', function() {
+        // Definir función global para evitar rediclaraciones anónimas y permitir limpieza
+        window.initMapalocalizacionesPage = function() {
+            // Protección contra doble inicialización
+            if (document.body.dataset.mapalocalizacionesPageInit === 'true') return;
+
+            // Variables de estado local a la ejecución de la página
+            let paqueteSeleccionadoCodigo = null;
+            let cacheDetalles = new Map();
+            let ultimoPosDetalle = null;
+
+            const listaPaquetes = document.getElementById('lista-paquetes');
+            // Si no estamos en la página correcta, salir
+            if (!listaPaquetes) return;
+
+            const paquetesItems = listaPaquetes.querySelectorAll('.paquete-item');
+            const searchInput = document.getElementById('search-paquetes');
+            const filterObra = document.getElementById('filter-obra-paquetes');
+            const detallePanel = document.getElementById('detalle-paquete-panel');
+            const detalleContenido = document.getElementById('detalle-paquete-contenido');
+            const detalleCodigo = document.getElementById('detalle-paquete-codigo');
+            const cerrarDetalleBtn = document.getElementById('detalle-paquete-cerrar');
+
             // === Utilidades para renderizar dimensiones como SVG (longitud + ángulo) ===
             function parseDimensiones(dims) {
                 if (!dims) return null;
@@ -204,18 +207,28 @@
                     }
                 });
                 if (!longitudes.length) return null;
-                return { longitudes, angulos };
+                return {
+                    longitudes,
+                    angulos
+                };
             }
 
             function buildPuntosFigura(longitudes, angulos) {
-                const puntos = [{ x: 0, y: 0 }];
+                const puntos = [{
+                    x: 0,
+                    y: 0
+                }];
                 let anguloActual = 0;
-                let x = 0, y = 0;
+                let x = 0,
+                    y = 0;
                 longitudes.forEach((L, idx) => {
                     const rad = anguloActual * Math.PI / 180;
                     x += L * Math.cos(rad);
                     y += L * Math.sin(rad);
-                    puntos.push({ x, y });
+                    puntos.push({
+                        x,
+                        y
+                    });
                     anguloActual += angulos[idx] ?? 0;
                 });
                 return puntos;
@@ -227,9 +240,15 @@
 
                 // Rotar -90° para que el primer tramo se dibuje hacia arriba
                 const puntos = buildPuntosFigura(parsed.longitudes, parsed.angulos)
-                    .map(p => ({ x: p.y, y: -p.x }));
+                    .map(p => ({
+                        x: p.y,
+                        y: -p.x
+                    }));
 
-                let minX = 0, maxX = 0, minY = 0, maxY = 0;
+                let minX = 0,
+                    maxX = 0,
+                    minY = 0,
+                    maxY = 0;
                 puntos.forEach(p => {
                     minX = Math.min(minX, p.x);
                     maxX = Math.max(maxX, p.x);
@@ -239,7 +258,8 @@
 
                 const ancho = maxX - minX || 1;
                 const alto = maxY - minY || 1;
-                const viewW = 140, viewH = 80;
+                const viewW = 140,
+                    viewH = 80;
                 const padding = 8;
                 const scale = Math.min(
                     (viewW - padding * 2) / ancho,
@@ -270,34 +290,19 @@
                 return svg;
             }
 
-            const listaPaquetes = document.getElementById('lista-paquetes');
-            const paquetesItems = listaPaquetes.querySelectorAll('.paquete-item');
-            const searchInput = document.getElementById('search-paquetes');
-            const filterObra = document.getElementById('filter-obra-paquetes');
-            const detallePanel = document.getElementById('detalle-paquete-panel');
-            const detalleContenido = document.getElementById('detalle-paquete-contenido');
-            const detalleCodigo = document.getElementById('detalle-paquete-codigo');
-            const cerrarDetalleBtn = document.getElementById('detalle-paquete-cerrar');
-            
-            let paqueteSeleccionadoCodigo = null;
-            const cacheDetalles = new Map();
-            let ultimoPosDetalle = null;
-
             // === 1. Lógica de Filtrado ===
 
-            // Obtener obras únicas de los paquetes listados
+            // Poblar select
             const obrasUnicas = new Set();
             paquetesItems.forEach(item => {
                 const obra = item.dataset.obra;
                 if (obra) obrasUnicas.add(obra);
             });
 
-            // Poblar el select de obras
-            // Limpiar opciones excepto la primera (Todas las obras)
             while (filterObra.options.length > 1) {
                 filterObra.remove(1);
             }
-            
+
             obrasUnicas.forEach(obra => {
                 const option = document.createElement('option');
                 option.value = obra;
@@ -305,7 +310,6 @@
                 filterObra.appendChild(option);
             });
 
-            // Función de filtrado
             function filtrarPaquetes() {
                 const textoBusqueda = searchInput.value.toLowerCase().trim();
                 const obraSeleccionada = filterObra.value;
@@ -319,89 +323,95 @@
                     const coincideObra = obraSeleccionada === '' || obra === obraSeleccionada;
 
                     if (coincideTexto && coincideObra) {
-                        item.style.display = ''; // Mostrar (usa el display por defecto o del CSS)
+                        item.style.display = '';
                     } else {
-                        item.style.display = 'none'; // Ocultar
+                        item.style.display = 'none';
                     }
                 });
             }
 
-            // Event listeners para filtrado
-            if (searchInput) searchInput.addEventListener('input', filtrarPaquetes);
-            if (filterObra) filterObra.addEventListener('change', filtrarPaquetes);
+            const handleInput = () => filtrarPaquetes();
+            const handleChange = () => filtrarPaquetes();
+
+            if (searchInput) searchInput.addEventListener('input', handleInput);
+            if (filterObra) filterObra.addEventListener('change', handleChange);
 
 
             // === 2. Lógica de Interacción con el Mapa ===
 
-            // Función para obtener la instancia del mapa
             function getMapaContainer() {
-                // Buscamos el contenedor del mapa por el atributo data-mapa-simple
-                // Como el ID es dinámico, buscamos el elemento que tenga ese atributo
                 return document.querySelector('[data-mapa-simple]');
             }
 
-            paquetesItems.forEach(item => {
-                item.addEventListener('click', function() {
-                    const mapaContainer = getMapaContainer();
-                    if (!mapaContainer || !mapaContainer.mostrarPaquete) {
-                        console.warn('El componente de mapa no está listo o no expone las funciones necesarias.');
-                        return;
-                    }
+            // Handlers para listeners
+            const handleClickItem = function() {
+                const item = this;
+                const mapaContainer = getMapaContainer();
+                if (!mapaContainer || !mapaContainer.mostrarPaquete) {
+                    console.warn('El componente de mapa no está listo o no expone las funciones necesarias.');
+                    return;
+                }
 
-                    // Obtener código del paquete (limpiando el emoji y espacios)
-                    const codigoSpan = item.querySelector('span.font-bold');
-                    const codigo = codigoSpan.textContent.replace('📦', '').trim();
+                const codigoSpan = item.querySelector('span.font-bold');
+                const codigo = codigoSpan.textContent.replace('📦', '').trim();
 
-                    // Si es el mismo paquete, no hacemos nada (o podríamos deseleccionar)
-                    if (paqueteSeleccionadoCodigo === codigo) {
-                        return;
-                    }
+                if (paqueteSeleccionadoCodigo === codigo) return;
 
-                    // Deseleccionar anterior visualmente
-                    paquetesItems.forEach(p => {
-                        p.classList.remove('bg-blue-100', 'border-blue-500', 'ring-2', 'ring-blue-200');
-                        p.classList.add('bg-gray-50', 'border-gray-200');
-                    });
-
-                    // Ocultar anterior en mapa
-                    if (paqueteSeleccionadoCodigo) {
-                        mapaContainer.ocultarPaquete(paqueteSeleccionadoCodigo);
-                    }
-
-                    // Seleccionar nuevo visualmente
-                    item.classList.remove('bg-gray-50', 'border-gray-200');
-                    item.classList.add('bg-blue-100', 'border-blue-500', 'ring-2', 'ring-blue-200');
-
-                    // Mostrar nuevo en mapa
-                    mapaContainer.mostrarPaquete(codigo);
-                    paqueteSeleccionadoCodigo = codigo;
+                paquetesItems.forEach(p => {
+                    p.classList.remove('bg-blue-100', 'border-blue-500', 'ring-2', 'ring-blue-200');
+                    p.classList.add('bg-gray-50', 'border-gray-200');
                 });
 
-                // Click derecho: mostrar detalle de etiquetas/elementos
-                item.addEventListener('contextmenu', function(ev) {
-                    ev.preventDefault();
-                    const paqueteId = item.dataset.paqueteId;
-                    const codigo = item.dataset.codigo || item.querySelector('span.font-bold')?.textContent?.replace('📦', '').trim();
-                    if (!paqueteId) return;
-                    mostrarDetallePaquete(paqueteId, codigo, { x: ev.clientX, y: ev.clientY });
-                });
-            });
+                if (paqueteSeleccionadoCodigo) {
+                    mapaContainer.ocultarPaquete(paqueteSeleccionadoCodigo);
+                }
 
-            // Delegar click derecho en los paquetes del mapa (divs generados dentro del componente)
-            document.addEventListener('contextmenu', function(ev) {
+                item.classList.remove('bg-gray-50', 'border-gray-200');
+                item.classList.add('bg-blue-100', 'border-blue-500', 'ring-2', 'ring-blue-200');
+
+                mapaContainer.mostrarPaquete(codigo);
+                paqueteSeleccionadoCodigo = codigo;
+            };
+
+            const handleContextMenu = function(ev) {
+                ev.preventDefault();
+                const item = this;
+                const paqueteId = item.dataset.paqueteId;
+                const codigo = item.dataset.codigo || item.querySelector('span.font-bold')?.textContent?.replace(
+                    '📦', '').trim();
+                if (!paqueteId) return;
+                mostrarDetallePaquete(paqueteId, codigo, {
+                    x: ev.clientX,
+                    y: ev.clientY
+                });
+            };
+
+            const handleDocContextMenu = function(ev) {
                 const paqueteMapa = ev.target.closest('.loc-paquete');
                 if (!paqueteMapa) return;
                 ev.preventDefault();
                 const paqueteId = paqueteMapa.dataset.paqueteId;
                 const codigo = paqueteMapa.dataset.codigo;
                 if (!paqueteId) return;
-                mostrarDetallePaquete(paqueteId, codigo, { x: ev.clientX, y: ev.clientY });
+                mostrarDetallePaquete(paqueteId, codigo, {
+                    x: ev.clientX,
+                    y: ev.clientY
+                });
+            };
+
+            paquetesItems.forEach(item => {
+                item.addEventListener('click', handleClickItem);
+                item.addEventListener('contextmenu', handleContextMenu);
             });
 
-            // Panel de detalle --------------------------------------------------
+            document.addEventListener('contextmenu', handleDocContextMenu);
+
+            // Panel de detalle
             function cerrarDetalle() {
                 detallePanel.classList.add('hidden');
-                detalleContenido.innerHTML = '<p class="text-gray-500 text-sm">Haz click derecho sobre un paquete para ver sus etiquetas y elementos.</p>';
+                detallePanel.classList.remove('flex'); // Remove flex when hidden
+                detalleContenido.innerHTML =
+                    '<p class="text-gray-500 text-sm">Haz click derecho sobre un paquete para ver sus etiquetas y elementos.</p>';
             }
 
             function posicionarPanel(posicion) {
@@ -424,18 +434,23 @@
                 detallePanel.style.right = 'auto';
             }
 
-            cerrarDetalleBtn?.addEventListener('click', cerrarDetalle);
-            document.addEventListener('click', (ev) => {
+            const handleCerrarDetalle = () => cerrarDetalle();
+            const handleDocClick = (ev) => {
                 if (detallePanel.classList.contains('hidden')) return;
                 if (!detallePanel.contains(ev.target)) {
                     cerrarDetalle();
                 }
-            });
+            };
+
+            cerrarDetalleBtn?.addEventListener('click', handleCerrarDetalle);
+            document.addEventListener('click', handleDocClick);
 
             async function mostrarDetallePaquete(paqueteId, codigo, posicion = null) {
                 detallePanel.classList.remove('hidden');
+                detallePanel.classList.add('flex'); // Add flex when shown
                 detalleCodigo.textContent = codigo ? `Paquete ${codigo}` : `Paquete #${paqueteId}`;
-                detalleContenido.innerHTML = '<div class="flex items-center gap-2 text-blue-600 text-sm"><span class="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></span> Cargando etiquetas...</div>';
+                detalleContenido.innerHTML =
+                    '<div class="flex items-center gap-2 text-blue-600 text-sm"><span class="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></span> Cargando etiquetas...</div>';
                 ultimoPosDetalle = posicion || ultimoPosDetalle;
                 posicionarPanel(ultimoPosDetalle);
 
@@ -451,7 +466,8 @@
                     renderDetalle(data);
                 } catch (error) {
                     console.error('Error cargando detalle del paquete', error);
-                    detalleContenido.innerHTML = `<p class="text-red-600 text-sm">${error.message || 'Error inesperado al cargar el detalle.'}</p>`;
+                    detalleContenido.innerHTML =
+                        `<p class="text-red-600 text-sm">${error.message || 'Error inesperado al cargar el detalle.'}</p>`;
                 }
             }
 
@@ -459,7 +475,8 @@
                 detalleContenido.innerHTML = '';
                 const etiquetas = data.etiquetas || [];
                 if (!etiquetas.length) {
-                    detalleContenido.innerHTML = '<p class="text-gray-600 text-sm">Este paquete no tiene etiquetas asociadas.</p>';
+                    detalleContenido.innerHTML =
+                        '<p class="text-gray-600 text-sm">Este paquete no tiene etiquetas asociadas.</p>';
                     return;
                 }
 
@@ -471,9 +488,11 @@
                     header.className = 'flex justify-between items-start mb-2';
                     const titulo = document.createElement('div');
                     const subCodigo = etiqueta.etiqueta_sub_id || etiqueta.codigo || etiqueta.id;
-                    titulo.innerHTML = `<p class="text-xs text-gray-500">Subetiqueta</p><p class="font-semibold text-gray-800">🏷️ ${subCodigo}</p>`;
+                    titulo.innerHTML =
+                        `<p class="text-xs text-gray-500">Subetiqueta</p><p class="font-semibold text-gray-800">🏷️ ${subCodigo}</p>`;
                     const badge = document.createElement('span');
-                    badge.className = 'text-[11px] px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold';
+                    badge.className =
+                        'text-[11px] px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold';
                     badge.textContent = `${etiqueta.cantidad_elementos} elementos`;
                     header.appendChild(titulo);
                     header.appendChild(badge);
@@ -490,7 +509,8 @@
                     } else {
                         etiqueta.elementos.forEach((elem) => {
                             const item = document.createElement('div');
-                            item.className = 'text-xs text-gray-700 border border-gray-200 rounded px-2 py-2 bg-white space-y-1';
+                            item.className =
+                                'text-xs text-gray-700 border border-gray-200 rounded px-2 py-2 bg-white space-y-1';
 
                             const header = document.createElement('div');
                             header.className = 'flex items-center justify-between';
@@ -510,7 +530,8 @@
                             } else {
                                 const dimensionesText = document.createElement('span');
                                 dimensionesText.className = 'text-gray-600 block';
-                                dimensionesText.textContent = elem.dimensiones || 'Dimensiones no disponibles';
+                                dimensionesText.textContent = elem.dimensiones ||
+                                    'Dimensiones no disponibles';
                                 item.appendChild(dimensionesText);
                             }
 
@@ -522,6 +543,28 @@
                     detalleContenido.appendChild(etiquetaCard);
                 });
             }
-        });
+
+            // Cleanup function using the captured reference to handlers
+            // Añadimos al sistema global de limpieza
+            window.pageInitializers = window.pageInitializers || [];
+            window.pageInitializers.push(() => {
+                document.body.dataset.mapalocalizacionesPageInit = 'false';
+                // Limpiar listeners globales
+                document.removeEventListener('contextmenu', handleDocContextMenu);
+                document.removeEventListener('click', handleDocClick);
+            });
+
+            // Marcar inicializado
+            document.body.dataset.mapalocalizacionesPageInit = 'true';
+        };
+
+        // Eliminar listener anterior si existe para evitar duplicados al reevaluar el script
+        if (window.initMapalocalizacionesPage) {
+            document.removeEventListener('livewire:navigated', window.initMapalocalizacionesPage);
+        }
+
+        // Iniciar
+        document.addEventListener('livewire:navigated', window.initMapalocalizacionesPage);
+        window.initMapalocalizacionesPage();
     </script>
 </x-app-layout>

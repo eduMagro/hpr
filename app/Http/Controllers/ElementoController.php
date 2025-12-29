@@ -441,8 +441,8 @@ class ElementoController extends Controller
     public function dividirElemento(Request $request)
     {
         $request->validate([
-            'elemento_id' => 'required|exists:elementos,id',
-            'num_nuevos'  => 'required|integer|min:1',
+            'elemento_id'    => 'required|exists:elementos,id',
+            'barras_a_mover' => 'required|integer|min:1',
         ]);
 
         try {
@@ -450,101 +450,89 @@ class ElementoController extends Controller
 
                 /** @var \App\Models\Elemento $elemento */
                 $elemento = Elemento::lockForUpdate()
-                    ->with('etiquetaRelacion') // relación a Etiqueta (ajústala si el nombre difiere)
+                    ->with('etiquetaRelacion')
                     ->findOrFail($request->elemento_id);
 
-                // Partes = original + N nuevos
-                $nuevos      = (int) $request->num_nuevos;
-                $totalPartes = $nuevos + 1;
+                $barrasAMover = (int) $request->barras_a_mover;
+                $barrasTotal  = (int) ($elemento->barras ?? 0);
 
-                // === Reparto de PESO ===
-                $pesoTotal = (float) ($elemento->peso ?? 0);
-                $pesoBase  = $pesoTotal / $totalPartes;
-                // redondeo: ajusta la precisión a tu necesidad (3 decimales típico en kg)
-                $prec      = 3;
-                $pesos     = array_fill(0, $totalPartes, round($pesoBase, $prec));
-                // corrige para que la suma cuadre exactamente con el total
-                $diff = round($pesoTotal - array_sum($pesos), $prec);
-                $pesos[$totalPartes - 1] = round($pesos[$totalPartes - 1] + $diff, $prec);
-
-                // === Reparto de BARRAS (enteros) ===
-                $barrasTotal = (int) ($elemento->barras ?? 0);
-                $barrasBase  = intdiv($barrasTotal, $totalPartes);
-                $resto       = $barrasTotal % $totalPartes;
-                $barrasParts = array_fill(0, $totalPartes, $barrasBase);
-                for ($i = 0; $i < $resto; $i++) {
-                    $barrasParts[$i] += 1; // reparte +1 a las primeras $resto partes
+                // Validar que no se muevan todas o más barras
+                if ($barrasAMover >= $barrasTotal) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No puedes mover todas o más barras de las que tiene el elemento.',
+                    ], 422);
                 }
 
-                // === Etiqueta base y sufijos por CODIGO (no por etiqueta_sub_id) ===
+                // Calcular barras que quedan en el original
+                $barrasOriginal = $barrasTotal - $barrasAMover;
+
+                // === Reparto proporcional de PESO ===
+                $pesoTotal    = (float) ($elemento->peso ?? 0);
+                $pesoPorBarra = $barrasTotal > 0 ? $pesoTotal / $barrasTotal : 0;
+                $prec         = 3;
+
+                $pesoOriginal = round($pesoPorBarra * $barrasOriginal, $prec);
+                $pesoNuevo    = round($pesoTotal - $pesoOriginal, $prec);
+
+                // === Reparto proporcional de TIEMPO DE FABRICACIÓN ===
+                $tiempoTotal     = (int) ($elemento->tiempo_fabricacion ?? 0);
+                $tiempoPorBarra  = $barrasTotal > 0 ? $tiempoTotal / $barrasTotal : 0;
+
+                $tiempoOriginal = (int) round($tiempoPorBarra * $barrasOriginal);
+                $tiempoNuevo    = $tiempoTotal - $tiempoOriginal;
+
+                // === Etiqueta base y sufijos por CODIGO ===
                 $etqOriginal = $elemento->etiquetaRelacion
                     ?: Etiqueta::lockForUpdate()->findOrFail($elemento->etiqueta_id);
 
-                // Tomamos el CODIGO de la etiqueta original como raíz
                 $baseCodigo = $etqOriginal->codigo ?: preg_replace('/[.\-]\d+$/', '', (string) $etqOriginal->etiqueta_sub_id);
 
-                // Bloquea la serie de ese codigo y obtiene el sufijo máximo ya usado para ese código
+                // Obtener el sufijo máximo ya usado para ese código
                 $maxSufijo = (int) DB::table('etiquetas')
                     ->where('codigo', $baseCodigo)
                     ->lockForUpdate()
                     ->selectRaw("COALESCE(MAX(CAST(SUBSTRING_INDEX(etiqueta_sub_id, '.', -1) AS UNSIGNED)), 0) AS max_suf")
                     ->value('max_suf');
 
-                // === Reparto de TIEMPO DE FABRICACIÓN (numérico, entero en minutos o segundos) ===
-                $tiempoTotal = (int) ($elemento->tiempo_fabricacion ?? 0);
-                $tiempoBase  = intdiv($tiempoTotal, $totalPartes);
-                $restoTiempo = $tiempoTotal % $totalPartes;
-                $tiempos     = array_fill(0, $totalPartes, $tiempoBase);
-                for ($i = 0; $i < $restoTiempo; $i++) {
-                    $tiempos[$i] += 1;
-                }
-
-                // === 1) Actualiza ORIGINAL
-                $elemento->peso               = $pesos[0];
-                $elemento->barras             = $barrasParts[0];
-                $elemento->tiempo_fabricacion = $tiempos[0];
+                // === 1) Actualiza ORIGINAL con las barras restantes ===
+                $elemento->peso               = $pesoOriginal;
+                $elemento->barras             = $barrasOriginal;
+                $elemento->tiempo_fabricacion = $tiempoOriginal;
                 $elemento->save();
 
-                // Si tu etiqueta representa solo ese elemento, actualiza su peso:
-                $etqOriginal->peso = $pesos[0];
+                $etqOriginal->peso = $pesoOriginal;
                 $etqOriginal->save();
 
-                // === 2) Crea N CLONES: cada uno con etiqueta nueva y sus pesos/barras ===
-                for ($i = 1; $i < $totalPartes; $i++) {
+                // === 2) Crear nueva etiqueta y elemento con las barras movidas ===
+                $maxSufijo++;
+                $nuevoSubId = sprintf('%s.%02d', $baseCodigo, $maxSufijo);
 
-                    // 2.1 Generar etiqueta_sub_id libre para ESTE codigo
+                while (DB::table('etiquetas')->where('etiqueta_sub_id', $nuevoSubId)->exists()) {
                     $maxSufijo++;
                     $nuevoSubId = sprintf('%s.%02d', $baseCodigo, $maxSufijo);
-                    // seguridad extra ante huecos ocupados (raro con lockForUpdate, pero por si acaso):
-                    while (DB::table('etiquetas')->where('etiqueta_sub_id', $nuevoSubId)->exists()) {
-                        $maxSufijo++;
-                        $nuevoSubId = sprintf('%s.%02d', $baseCodigo, $maxSufijo);
-                    }
-
-                    // 2.2 Clonar Etiqueta (replica campos, asigna codigo y sub_id, y PESO de la parte)
-                    $nuevaEtiqueta = $etqOriginal->replicate();
-                    $nuevaEtiqueta->codigo          = $baseCodigo;
-                    $nuevaEtiqueta->etiqueta_sub_id = $nuevoSubId;
-                    $nuevaEtiqueta->peso            = $pesos[$i];
-                    // (opcional) reset de tiempos/estados si procede:
-                    // $nuevaEtiqueta->fecha_inicio = null;
-                    // $nuevaEtiqueta->fecha_finalizacion = null;
-                    // $nuevaEtiqueta->estado = 'pendiente';
-                    $nuevaEtiqueta->save();
-
-                    // 2.3 Clonar Elemento con CODIGO nuevo y reparto de peso/barras
-                    $clon = $elemento->replicate(); // replica del ORIGINAL ya actualizado
-                    $clon->codigo         = Elemento::generarCodigo(); // tu generador ELyymmXXXX
-                    $clon->peso           = $pesos[$i];
-                    $clon->barras         = $barrasParts[$i];
-                    $clon->etiqueta_id    = $nuevaEtiqueta->id;
-                    $clon->etiqueta_sub_id = $nuevaEtiqueta->etiqueta_sub_id;
-                    $clon->save();
                 }
+
+                // Clonar Etiqueta
+                $nuevaEtiqueta = $etqOriginal->replicate();
+                $nuevaEtiqueta->codigo          = $baseCodigo;
+                $nuevaEtiqueta->etiqueta_sub_id = $nuevoSubId;
+                $nuevaEtiqueta->peso            = $pesoNuevo;
+                $nuevaEtiqueta->save();
+
+                // Clonar Elemento
+                $clon = $elemento->replicate();
+                $clon->codigo              = Elemento::generarCodigo();
+                $clon->peso                = $pesoNuevo;
+                $clon->barras              = $barrasAMover;
+                $clon->tiempo_fabricacion  = $tiempoNuevo;
+                $clon->etiqueta_id         = $nuevaEtiqueta->id;
+                $clon->etiqueta_sub_id     = $nuevaEtiqueta->etiqueta_sub_id;
+                $clon->save();
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'El elemento se dividió correctamente en ' . $totalPartes . ' partes',
+                    'message' => "Division completada:<br><strong>Etiqueta original:</strong> {$barrasOriginal} barras ({$pesoOriginal} kg)<br><strong>Nueva etiqueta ({$nuevoSubId}):</strong> {$barrasAMover} barras ({$pesoNuevo} kg)",
                 ], 200);
             });
         } catch (\Throwable $e) {
@@ -631,48 +619,39 @@ class ElementoController extends Controller
             $request->validate([
                 'maquina_id' => 'required|exists:maquinas,id',
             ]);
-            Log::info("Entrando al metodo...");
-            $elemento = Elemento::findOrFail($id);
-            $nuevaMaquinaId = $request->maquina_id;
+            Log::info("Entrando al metodo cambioMaquina...");
 
-            if ($elemento->maquina_id == $nuevaMaquinaId) {
-                Log::info("El elemento ya pertenece a esa maquina");
-            }
+            return DB::transaction(function () use ($request, $id) {
+                $elemento = Elemento::lockForUpdate()->findOrFail($id);
+                $nuevaMaquinaId = (int) $request->maquina_id;
 
-            $prefijo = (int) $elemento->etiqueta_sub_id;
-
-            // Buscar hermanos en la nueva máquina con mismo prefijo
-            $hermano = Elemento::where('maquina_id', $nuevaMaquinaId)
-                ->where('etiqueta_sub_id', 'like', "$prefijo.%")
-                ->first();
-            Log::info("Buscando a mirmano");
-
-            if ($hermano) {
-                $elemento->etiqueta_sub_id = $hermano->etiqueta_sub_id;
-            } else {
-                $sufijos = Elemento::where('etiqueta_sub_id', 'like', "$prefijo.%")
-                    ->pluck('etiqueta_sub_id')
-                    ->map(fn($e) => (int) explode('.', $e)[1])
-                    ->toArray();
-                $next = empty($sufijos) ? 1 : (max($sufijos) + 1);
-                $elemento->etiqueta_sub_id = "$prefijo.$next";
-            }
-
-            $elemento->maquina_id = $nuevaMaquinaId;
-            $elemento->save();
-            // Marcar la alerta como completada
-            $alertaId = $request->query('alerta_id');
-
-            if ($alertaId) {
-                $alerta = Alerta::find($alertaId);
-                if ($alerta) {
-                    $alerta->completada = true;
-                    $alerta->save();
-                    Log::info("Alerta {$alertaId} completada");
+                if ($elemento->maquina_id == $nuevaMaquinaId) {
+                    Log::info("El elemento ya pertenece a esa maquina");
                 }
-            }
 
-            return redirect()->route('dashboard')->with('success', 'Cambio de máquina aplicado correctamente.');
+                // Actualizar máquina del elemento
+                $elemento->maquina_id = $nuevaMaquinaId;
+                $elemento->save();
+
+                // Usar SubEtiquetaService para reubicar subetiquetas correctamente
+                /** @var SubEtiquetaService $svc */
+                $svc = app(SubEtiquetaService::class);
+                $svc->reubicarParaProduccion($elemento, $nuevaMaquinaId);
+
+                // Marcar la alerta como completada
+                $alertaId = $request->query('alerta_id');
+
+                if ($alertaId) {
+                    $alerta = Alerta::find($alertaId);
+                    if ($alerta) {
+                        $alerta->completada = true;
+                        $alerta->save();
+                        Log::info("Alerta {$alertaId} completada");
+                    }
+                }
+
+                return redirect()->route('dashboard')->with('success', 'Cambio de máquina aplicado correctamente.');
+            });
         } catch (\Exception $e) {
             Log::error("Error al cambiar máquina de elemento {$id}: {$e->getMessage()}");
             return back()->with('error', 'No se pudo cambiar la máquina del elemento.');
@@ -970,35 +949,9 @@ class ElementoController extends Controller
                 }
             }
 
-            // 🚚 Si cambió la máquina, recalcular etiqueta_sub_id
-            if (
-                array_key_exists('maquina_id', $validated)
-                && $validated['maquina_id'] != $elemento->maquina_id
-            ) {
-                $nuevoMaquinaId = $validated['maquina_id'];
-                $prefijo = (int) $elemento->etiqueta_sub_id; // parte antes del punto
-
-                // 1) Buscar hermanos en la máquina destino con ese mismo prefijo
-                $hermano = Elemento::where('maquina_id', $nuevoMaquinaId)
-                    ->where('etiqueta_sub_id', 'like', "$prefijo.%")
-                    ->first();
-
-                if ($hermano) {
-                    // Si existe, reutilizar la misma etiqueta_sub_id
-                    $validated['etiqueta_sub_id'] = $hermano->etiqueta_sub_id;
-                } else {
-                    // 2) No hay hermanos; generar siguiente sufijo libre
-                    $sufijos = Elemento::where('etiqueta_sub_id', 'like', "$prefijo.%")
-                        ->pluck('etiqueta_sub_id')
-                        ->map(function ($full) use ($prefijo) {
-                            return (int) explode('.', $full)[1];
-                        })
-                        ->toArray();
-
-                    $next = empty($sufijos) ? 1 : (max($sufijos) + 1);
-                    $validated['etiqueta_sub_id'] = "$prefijo.$next";
-                }
-            }
+            // 🚚 Si cambió la máquina, usar SubEtiquetaService para reubicar subetiquetas
+            $maquinaCambio = array_key_exists('maquina_id', $validated)
+                && $validated['maquina_id'] != $elemento->maquina_id;
 
             // Actualizar resto de campos
             $elemento->fill($validated);
@@ -1014,10 +967,10 @@ class ElementoController extends Controller
             }
 
 
-            // Si cambió de máquina, actualizar orden_planillas
-            if (array_key_exists('maquina_id', $validated) && $validated['maquina_id'] != $elemento->getOriginal('maquina_id')) {
+            // Si cambió de máquina, actualizar orden_planillas y reubicar subetiquetas
+            if ($maquinaCambio) {
                 $planillaId = $elemento->planilla_id;
-                $nuevaMaquinaId = $validated['maquina_id'];
+                $nuevaMaquinaId = (int) $validated['maquina_id'];
                 $maquinaAnteriorId = $elemento->getOriginal('maquina_id');
 
                 // 1. Obtener o crear OrdenPlanilla en nueva máquina
@@ -1038,6 +991,11 @@ class ElementoController extends Controller
                 // 🔗 Actualizar orden_planilla_id del elemento
                 $elemento->orden_planilla_id = $ordenPlanilla->id;
                 $elemento->save();
+
+                // 🏷️ Usar SubEtiquetaService para reubicar subetiquetas correctamente
+                /** @var SubEtiquetaService $svc */
+                $svc = app(SubEtiquetaService::class);
+                $svc->reubicarParaProduccion($elemento, $nuevaMaquinaId);
 
                 // 2. Eliminar de la máquina anterior si ya no hay elementos
                 $quedan = \App\Models\Elemento::where('planilla_id', $planillaId)
@@ -1161,5 +1119,182 @@ class ElementoController extends Controller
     public function show(Elemento $elemento)
     {
         //
+    }
+
+    /**
+     * Obtiene las máquinas disponibles para un elemento según su diámetro.
+     * GET /api/elementos/{id}/maquinas-disponibles
+     */
+    public function maquinasDisponibles($elementoId)
+    {
+        try {
+            $elemento = Elemento::findOrFail($elementoId);
+            $diametro = (int) $elemento->diametro;
+            $maquinaActualId = $elemento->maquina_id;
+
+            // Obtener todas las máquinas y filtrar por diámetro
+            // Una máquina soporta el diámetro si:
+            // - diametro_min es null O diametro >= diametro_min
+            // - diametro_max es null O diametro <= diametro_max
+            $maquinas = Maquina::orderBy('codigo')
+                ->get()
+                ->filter(function ($m) use ($diametro) {
+                    $minOk = is_null($m->diametro_min) || $diametro >= (int) $m->diametro_min;
+                    $maxOk = is_null($m->diametro_max) || $diametro <= (int) $m->diametro_max;
+                    return $minOk && $maxOk;
+                })
+                ->map(function ($m) use ($maquinaActualId) {
+                    return [
+                        'id' => $m->id,
+                        'codigo' => $m->codigo,
+                        'nombre' => $m->nombre ?? $m->codigo,
+                        'tipo' => $m->tipo,
+                        'diametro_min' => $m->diametro_min,
+                        'diametro_max' => $m->diametro_max,
+                        'es_actual' => $m->id === $maquinaActualId,
+                    ];
+                })
+                ->values();
+
+            return response()->json([
+                'success' => true,
+                'elemento' => [
+                    'id' => $elemento->id,
+                    'diametro' => $diametro,
+                    'maquina_actual_id' => $maquinaActualId,
+                ],
+                'maquinas' => $maquinas,
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Error al obtener máquinas disponibles: {$e->getMessage()}");
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener máquinas disponibles: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Cambia directamente la máquina de un elemento.
+     * Si el elemento pertenece a un grupo resumido, cambia todos los elementos similares del grupo.
+     * Valida diámetros y usa SubEtiquetaService para hermanos MSR20.
+     * POST /elementos/{id}/cambiar-maquina
+     */
+    public function cambiarMaquinaDirecto(Request $request, $elementoId)
+    {
+        $request->validate([
+            'maquina_id' => 'required|exists:maquinas,id',
+        ]);
+
+        try {
+            return DB::transaction(function () use ($request, $elementoId) {
+                $elementoOriginal = Elemento::with('etiquetaRelacion')->lockForUpdate()->findOrFail($elementoId);
+                $nuevaMaquina = Maquina::findOrFail($request->maquina_id);
+                $diametro = (int) $elementoOriginal->diametro;
+                $dimensiones = $elementoOriginal->dimensiones;
+
+                // Validar que la máquina soporte el diámetro
+                $minOk = is_null($nuevaMaquina->diametro_min) || $diametro >= (int) $nuevaMaquina->diametro_min;
+                $maxOk = is_null($nuevaMaquina->diametro_max) || $diametro <= (int) $nuevaMaquina->diametro_max;
+
+                if (!$minOk || !$maxOk) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "La máquina {$nuevaMaquina->codigo} no soporta el diámetro Ø{$diametro} (rango permitido: {$nuevaMaquina->diametro_min}-{$nuevaMaquina->diametro_max})",
+                    ], 422);
+                }
+
+                $maquinaAnterior = $elementoOriginal->maquina ? $elementoOriginal->maquina->codigo : 'Sin asignar';
+
+                // Verificar si el elemento pertenece a un grupo resumido
+                $etiqueta = $elementoOriginal->etiquetaRelacion;
+                $grupoResumenId = $etiqueta ? $etiqueta->grupo_resumen_id : null;
+
+                // Colección de elementos a cambiar
+                $elementosACambiar = collect([$elementoOriginal]);
+
+                // Si está en un grupo resumido, buscar elementos similares (mismo diámetro y dimensiones)
+                if ($grupoResumenId) {
+                    // Obtener todas las etiquetas del grupo
+                    $etiquetasDelGrupo = Etiqueta::where('grupo_resumen_id', $grupoResumenId)
+                        ->pluck('etiqueta_sub_id')
+                        ->toArray();
+
+                    // Buscar elementos similares en el grupo (mismo diámetro y dimensiones)
+                    $elementosSimilares = Elemento::whereIn('etiqueta_sub_id', $etiquetasDelGrupo)
+                        ->where('diametro', $diametro)
+                        ->where('dimensiones', $dimensiones)
+                        ->where('id', '!=', $elementoOriginal->id)
+                        ->lockForUpdate()
+                        ->get();
+
+                    $elementosACambiar = $elementosACambiar->merge($elementosSimilares);
+
+                    Log::info("Cambio de máquina en grupo resumido", [
+                        'grupo_resumen_id' => $grupoResumenId,
+                        'elemento_original_id' => $elementoId,
+                        'elementos_similares' => $elementosSimilares->count(),
+                        'total_elementos' => $elementosACambiar->count(),
+                    ]);
+                }
+
+                // Verificar que al menos un elemento no esté ya en la máquina destino
+                $elementosYaEnDestino = $elementosACambiar->where('maquina_id', $nuevaMaquina->id)->count();
+                if ($elementosYaEnDestino === $elementosACambiar->count()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Todos los elementos ya están asignados a esa máquina',
+                    ], 422);
+                }
+
+                /** @var SubEtiquetaService $svc */
+                $svc = app(SubEtiquetaService::class);
+                $elementosMovidos = 0;
+
+                // Cambiar máquina de cada elemento
+                foreach ($elementosACambiar as $elemento) {
+                    // Saltar si ya está en la máquina destino
+                    if ($elemento->maquina_id == $nuevaMaquina->id) {
+                        continue;
+                    }
+
+                    // Actualizar máquina del elemento
+                    $elemento->maquina_id = $nuevaMaquina->id;
+                    $elemento->save();
+
+                    // Usar SubEtiquetaService para reubicar subetiquetas correctamente
+                    $svc->reubicarParaProduccion($elemento, $nuevaMaquina->id);
+
+                    $elementosMovidos++;
+                }
+
+                $mensaje = $elementosMovidos === 1
+                    ? "Elemento movido a {$nuevaMaquina->codigo}"
+                    : "{$elementosMovidos} elementos movidos a {$nuevaMaquina->codigo}";
+
+                Log::info("Elementos movidos de {$maquinaAnterior} a {$nuevaMaquina->codigo}", [
+                    'elemento_original_id' => $elementoId,
+                    'elementos_movidos' => $elementosMovidos,
+                    'maquina_anterior' => $maquinaAnterior,
+                    'maquina_nueva' => $nuevaMaquina->codigo,
+                    'grupo_resumen_id' => $grupoResumenId,
+                    'usuario_id' => Auth::id(),
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $mensaje,
+                    'elementos_movidos' => $elementosMovidos,
+                    'maquina_anterior' => $maquinaAnterior,
+                    'maquina_nueva' => $nuevaMaquina->codigo,
+                ]);
+            });
+        } catch (\Exception $e) {
+            Log::error("Error al cambiar máquina del elemento {$elementoId}: {$e->getMessage()}");
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cambiar la máquina: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

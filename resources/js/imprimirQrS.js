@@ -31,6 +31,14 @@ function generateAndPrintQR(id, nombre, tipo) {
 
         // Crear una nueva ventana con contenido para imprimir
         const printWindow = window.open("", "_blank");
+        if (!printWindow) {
+            Swal.fire({
+                icon: 'error',
+                title: 'No se pudo abrir la ventana de impresión',
+                text: 'Por favor, desactiva el bloqueador de ventanas emergentes para este sitio e inténtalo de nuevo.',
+            });
+            return;
+        }
         printWindow.document.write(`
             <html>
                 <head>

@@ -10,6 +10,8 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Models\AsignacionTurno;
+use App\Models\Epi;
+use App\Models\EpiUsuario;
 
 
 class User extends Authenticatable
@@ -77,6 +79,7 @@ class User extends Authenticatable
         'password' => 'hashed',
         'puede_usar_asistente' => 'boolean',
         'puede_modificar_bd' => 'boolean',
+        'fecha_incorporacion' => 'date',
     ];
     public function getRutaImagenAttribute()
     {
@@ -101,6 +104,57 @@ class User extends Authenticatable
     public function getNombreCompletoAttribute()
     {
         return trim("{$this->name} {$this->primer_apellido} {$this->segundo_apellido}");
+    }
+
+    public function getFechaIncorporacionEfectivaAttribute()
+    {
+        return $this->incorporacion?->fecha_incorporacion ?? $this->fecha_incorporacion;
+    }
+
+    /**
+     * Calcular días de vacaciones correspondientes al año actual
+     * basado en la fecha de incorporación.
+     */
+    public function getVacacionesCorrespondientesAttribute()
+    {
+        // 1. Si tiene un manual override, usarlo
+        if ($this->vacaciones_totales) {
+            return $this->vacaciones_totales;
+        }
+
+        $diasPorAnio = 22; // Base estándar
+
+        // 2. Determinar la fecha de incorporación efectiva
+        $inicio = $this->fecha_incorporacion_efectiva;
+
+        // Si no hay fecha de incorporación, asumimos año completo
+        if (!$inicio) {
+            return $diasPorAnio;
+        }
+
+        $now = now();
+        $finAnio = $now->copy()->endOfYear();
+
+        // 3. Si se incorporó en un año anterior, le corresponden todos
+        if ($inicio->year < $now->year) {
+            return $diasPorAnio;
+        }
+
+        // 4. Si se incorpora este año (o en el futuro de este año??), cálculo proporcional
+        // Si la fecha es futura al fin de año actual, 0 días
+        if ($inicio->gt($finAnio)) {
+            return 0;
+        }
+
+        // Días restantes desde la incorporación hasta fin de año
+        $diasTrabajados = $inicio->diffInDays($finAnio) + 1;
+        $diasEnAnio = $now->isLeapYear() ? 366 : 365;
+
+        $correspondientes = ($diasTrabajados / $diasEnAnio) * $diasPorAnio;
+
+        // Redondear a enteros (o 0.5?) - Generalmente se redondea al entero más cercano o superior.
+        // Haremos round estándar por ahora.
+        return round($correspondientes);
     }
 
     // En app/Models/User.php
@@ -220,6 +274,12 @@ class User extends Authenticatable
     {
         return $this->hasOne(Modelo145::class);
     }
+
+    public function incorporacion()
+    {
+        return $this->hasOne(Incorporacion::class);
+    }
+
     public function esOperario()
     {
         return $this->rol === 'operario';
@@ -228,6 +288,77 @@ class User extends Authenticatable
     public function esOficina()
     {
         return $this->rol === 'oficina' || $this->rol === 'admin';
+    }
+
+    public function documentosEmpleado()
+    {
+        return $this->hasMany(DocumentoEmpleado::class);
+    }
+
+    /* ============================================
+       SCOPES PARA CONSULTAS DE OPERARIOS
+       ============================================ */
+
+    /**
+     * Scope: Filtra solo operarios activos.
+     * Uso: User::operarios()->get()
+     */
+    public function scopeOperarios($query)
+    {
+        return $query->where('rol', 'operario');
+    }
+
+    /**
+     * Scope: Filtra por empresa.
+     * Uso: User::operarios()->deEmpresa(1)->get()
+     */
+    public function scopeDeEmpresa($query, $empresaId)
+    {
+        if ($empresaId === null) {
+            return $query->whereNull('empresa_id');
+        }
+        return $query->where('empresa_id', $empresaId);
+    }
+
+    /**
+     * Scope: Filtra operarios de una máquina específica.
+     * Uso: User::operarios()->deMaquina(5)->get()
+     */
+    public function scopeDeMaquina($query, $maquinaId)
+    {
+        return $query->where('maquina_id', $maquinaId);
+    }
+
+    /**
+     * Scope: Filtra operarios que trabajan en máquinas de ciertos tipos.
+     * Uso: User::operarios()->enTiposMaquina(['estribadora', 'cortadora_dobladora'])->get()
+     */
+    public function scopeEnTiposMaquina($query, array $tipos)
+    {
+        return $query->whereHas('maquina', function ($q) use ($tipos) {
+            $q->whereIn('tipo', $tipos);
+        });
+    }
+
+    /**
+     * Scope: Filtra operarios maquinistas (estribadora, cortadora_dobladora, grua).
+     */
+    public function scopeMaquinistas($query)
+    {
+        return $query->whereHas('maquina', function ($q) {
+            $q->whereIn('tipo', ['estribadora', 'cortadora_dobladora', 'grua']);
+        });
+    }
+
+    /**
+     * Scope: Filtra operarios ferrallas (sin máquina o ensambladora).
+     */
+    public function scopeFerrallas($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('maquina_id')
+                ->orWhereHas('maquina', fn($mq) => $mq->where('tipo', 'ensambladora'));
+        });
     }
 
     public function departamentos()
@@ -246,7 +377,7 @@ class User extends Authenticatable
 
                 // Ejemplo 2 - por nombre
                 // $q->orWhere('nombre', 'Administrador');
-
+    
                 // Ejemplo 3 - por rol en el pivot
                 // $q->orWherePivot('rol_departamental', 'administrador');
             })
@@ -261,7 +392,7 @@ class User extends Authenticatable
 
                 // Ejemplo 2 - por nombre
                 // $q->orWhere('nombre', 'Administrador');
-
+    
                 // Ejemplo 3 - por rol en el pivot
                 // $q->orWherePivot('rol_departamental', 'administrador');
             })
@@ -286,5 +417,27 @@ class User extends Authenticatable
     public function coladasCreadas()
     {
         return $this->hasMany(PedidoProductoColada::class, 'user_id');
+    }
+
+    public function fcmTokens()
+    {
+        return $this->hasMany(UserFcmToken::class);
+    }
+
+    public function activeFcmTokens()
+    {
+        return $this->fcmTokens()->active();
+    }
+
+    public function epis()
+    {
+        return $this->belongsToMany(Epi::class, 'epis_usuario')
+            ->withPivot(['id', 'cantidad', 'entregado_en', 'devuelto_en', 'notas'])
+            ->withTimestamps();
+    }
+
+    public function episAsignaciones()
+    {
+        return $this->hasMany(EpiUsuario::class, 'user_id');
     }
 }

@@ -112,6 +112,25 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+        /*
+        |--------------------------------------------------------------------------
+        | FerraWin - Conexión SQL Server para sincronización automática
+        |--------------------------------------------------------------------------
+        */
+        'ferrawin' => [
+            'driver' => 'sqlsrv',
+            'host' => env('FERRAWIN_DB_HOST', '192.168.0.7'),
+            'port' => env('FERRAWIN_DB_PORT', '1433'),
+            'database' => env('FERRAWIN_DB_DATABASE', 'FERRAWIN'),
+            'username' => env('FERRAWIN_DB_USERNAME', 'sa'),
+            'password' => env('FERRAWIN_DB_PASSWORD', ''),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'encrypt' => env('FERRAWIN_DB_ENCRYPT', 'no'),
+            'trust_server_certificate' => env('FERRAWIN_DB_TRUST_CERT', 'true'),
+        ],
+
     ],
 
     /*

@@ -9,7 +9,6 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
     JS
     : '';
 @endphp
-
 <div>
     @if ($paginator->hasPages())
         {{-- Selector de cantidad por página --}}

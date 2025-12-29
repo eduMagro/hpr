@@ -83,11 +83,6 @@ class LocalizacionPaqueteService
         // Calcular el punto medio de Y (promedio entre y1 y y2)
         $centroY = (int) round(($y1 + $y2) / 2);
 
-        Log::info("Centro calculado para máquina", [
-            'coordenadas_maquina' => "({$x1},{$y1}) a ({$x2},{$y2})",
-            'centro_calculado' => "({$centroX},{$centroY})"
-        ]);
-
         return [
             'x' => $centroX,
             'y' => $centroY
@@ -119,15 +114,6 @@ class LocalizacionPaqueteService
             // siempre tenga espacio suficiente (mínimo 1 celda)
             $anchoCeldas = max(1, (int) ceil($anchoMetros / self::METROS_POR_CELDA));
             $largoCeldas = max(1, (int) ceil($longitudMetros / self::METROS_POR_CELDA));
-
-            Log::info("Tamaño de paquete calculado", [
-                'paquete_id' => $paquete->id,
-                'codigo_paquete' => $paquete->codigo,
-                'ancho_metros' => $anchoMetros,
-                'longitud_metros' => $longitudMetros,
-                'ancho_celdas' => $anchoCeldas,
-                'largo_celdas' => $largoCeldas
-            ]);
 
             return [
                 'ancho_celdas' => $anchoCeldas,
@@ -181,12 +167,6 @@ class LocalizacionPaqueteService
         $y1 = max(1, $centroY - $mitadLargo); // Asegurar que y1 >= 1
         $y2 = $y1 + $largoCeldas - 1;
 
-        Log::info("Coordenadas del paquete calculadas", [
-            'centro' => "({$centroX},{$centroY})",
-            'tamano' => "{$anchoCeldas}x{$largoCeldas} celdas",
-            'coordenadas_finales' => "({$x1},{$y1}) a ({$x2},{$y2})"
-        ]);
-
         return [
             'x1' => $x1,
             'y1' => $y1,
@@ -212,12 +192,6 @@ class LocalizacionPaqueteService
     public function asignarLocalizacionAutomatica(Paquete $paquete, int $maquinaId): ?LocalizacionPaquete
     {
         try {
-            Log::info("Iniciando asignación automática de localización", [
-                'paquete_id' => $paquete->id,
-                'codigo_paquete' => $paquete->codigo,
-                'maquina_id' => $maquinaId
-            ]);
-
             // Paso 1: Obtener la localización de la máquina
             $localizacionMaquina = $this->obtenerLocalizacionMaquina($maquinaId);
 
@@ -268,14 +242,6 @@ class LocalizacionPaqueteService
                     'y2' => $coordenadas['y2']
                 ]
             );
-
-            Log::info("Localización de paquete asignada exitosamente", [
-                'paquete_id' => $paquete->id,
-                'localizacion_paquete_id' => $localizacionPaquete->id,
-                'coordenadas' => "({$coordenadas['x1']},{$coordenadas['y1']}) a ({$coordenadas['x2']},{$coordenadas['y2']})",
-                'centro_usado' => "({$centroX},{$centroY})",
-                'tiene_localizacion_maquina' => $localizacionMaquina ? 'sí' : 'no'
-            ]);
 
             return $localizacionPaquete;
         } catch (Exception $e) {
@@ -334,13 +300,6 @@ class LocalizacionPaqueteService
 
             $solapamientos = $query->count();
 
-            if ($solapamientos > 0) {
-                Log::info("Se detectó solapamiento en la posición", [
-                    'coordenadas' => "({$x1},{$y1}) a ({$x2},{$y2})",
-                    'solapamientos_encontrados' => $solapamientos
-                ]);
-            }
-
             // Retorna true si NO hay solapamientos (posición disponible)
             return $solapamientos === 0;
         } catch (Exception $e) {
@@ -364,12 +323,7 @@ class LocalizacionPaqueteService
     public function eliminarLocalizacionPaquete(int $paqueteId): bool
     {
         try {
-            $eliminados = LocalizacionPaquete::where('paquete_id', $paqueteId)->delete();
-
-            Log::info("Localización de paquete eliminada", [
-                'paquete_id' => $paqueteId,
-                'registros_eliminados' => $eliminados
-            ]);
+            LocalizacionPaquete::where('paquete_id', $paqueteId)->delete();
 
             return true;
         } catch (Exception $e) {

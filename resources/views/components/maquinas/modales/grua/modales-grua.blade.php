@@ -5,6 +5,8 @@
 
 @php
     $mapaData = $mapaData ?? [];
+    // Obtener el nave_id (obra_id) de la máquina si está disponible
+    $naveIdMapa = $maquina->obra_id ?? 1;
 @endphp
 
 {{-- 🔄 MODAL MOVIMIENTO GENERAL --}}
@@ -302,27 +304,34 @@
         modal.classList.remove('hidden');
         modal.classList.add('flex');
 
-        const eventoEnter = new KeyboardEvent("keydown", {
-            key: "Enter",
-            code: "Enter",
-            keyCode: 13,
-            which: 13,
-            bubbles: true,
-        });
-
         const inputQR = document.getElementById("codigo_general_general");
 
-        setTimeout(() => {
-            if (!inputQR) return;
-
-            if (codigo) {
-                const code = String(codigo).trim().toUpperCase();
-                inputQR.value = code;
-                inputQR.dispatchEvent(eventoEnter);
-            }
-
-            inputQR.focus();
-        }, 100);
+        if (codigo) {
+            const code = String(codigo).trim().toUpperCase();
+            // Reintentar hasta que la función esté disponible (máximo 2 segundos)
+            let intentos = 0;
+            const maxIntentos = 20;
+            const intervalo = setInterval(() => {
+                intentos++;
+                if (typeof window.agregarQRMovimientoLibre === 'function') {
+                    clearInterval(intervalo);
+                    window.agregarQRMovimientoLibre(code);
+                    if (inputQR) inputQR.focus();
+                } else if (intentos >= maxIntentos) {
+                    clearInterval(intervalo);
+                    console.warn('[abrirModalMovimientoLibre] Función agregarQRMovimientoLibre no disponible después de', maxIntentos * 100, 'ms');
+                    // Fallback: poner el valor en el input para que el usuario presione Enter
+                    if (inputQR) {
+                        inputQR.value = code;
+                        inputQR.focus();
+                    }
+                }
+            }, 100);
+        } else {
+            setTimeout(() => {
+                if (inputQR) inputQR.focus();
+            }, 100);
+        }
     }
 
     function cerrarModalMovimientoLibre() {
@@ -334,20 +343,20 @@
     // Mostrar/ocultar campos según tipo
     document.addEventListener('DOMContentLoaded', function() {
         const tipoSelect = document.getElementById('tipo');
-        const productoSection = document.getElementById(
-            'producto-section');
-        const paqueteSection = document.getElementById(
-            'paquete-section');
+        const productoSection = document.getElementById('producto-section');
+        const paqueteSection = document.getElementById('paquete-section');
 
-        tipoSelect.addEventListener('change', function() {
-            if (this.value === 'producto') {
-                productoSection.classList.remove('hidden');
-                paqueteSection.classList.add('hidden');
-            } else if (this.value === 'paquete') {
-                productoSection.classList.add('hidden');
-                paqueteSection.classList.remove('hidden');
-            }
-        });
+        if (tipoSelect && productoSection && paqueteSection) {
+            tipoSelect.addEventListener('change', function() {
+                if (this.value === 'producto') {
+                    productoSection.classList.remove('hidden');
+                    paqueteSection.classList.add('hidden');
+                } else if (this.value === 'paquete') {
+                    productoSection.classList.add('hidden');
+                    paqueteSection.classList.remove('hidden');
+                }
+            });
+        }
     });
 
     let paqueteEsperadoId = null;
@@ -521,13 +530,13 @@
     }
 </style>
 
-<script src="{{ asset('js/movimientos/movimientosgrua.js') }}"></script>
+<script src="{{ asset('js/movimientos/movimientosgrua.js') }}?v={{ time() }}"></script>
 
 {{-- 📦 MODAL MOVER PAQUETE (3 pasos: escanear, validar, ubicar en mapa) --}}
 <div id="modal-mover-paquete"
-    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center sm:p-4">
+    class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div
-        class="bg-white sm:rounded-2xl shadow-xl w-full max-w-6xl h-screen sm:max-h-[95vh] overflow-hidden flex flex-col"
+        class="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-6xl max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
         data-modal-ajustable-grid="true">
         {{-- Header --}}
         <div
@@ -544,15 +553,15 @@
             <div id="paso-escanear-paquete" class="flex-1 overflow-y-auto p-4 space-y-4">
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <h3 class="font-semibold text-blue-800 mb-2">Paso 1:
-                        Escanear Código del Paquete</h3>
+                        Escanear Código</h3>
                     <p class="text-sm text-blue-600 mb-3">Escanea o introduce
-                        el código QR del paquete que deseas mover.</p>
+                        el código de una etiqueta o directamente el código del paquete.</p>
 
                     <div class="flex flex-col gap-2">
                         <div class="flex-1">
                             <x-tabla.input-movil type="text"
-                                id="codigo_paquete_mover" label="Código del Paquete"
-                                placeholder="Escanea o escribe el código (ej: ETQ123456.01)"
+                                id="codigo_paquete_mover" label="Código de Etiqueta o Paquete"
+                                placeholder="Escanea código de etiqueta (ETQ...) o paquete (PAQ...)"
                                 autocomplete="off" inputmode="text" />
                         </div>
                         <button onclick="buscarPaqueteParaMover()" 
@@ -594,6 +603,11 @@
                                 class="font-bold text-gray-800"></p>
                         </div>
                     </div>
+                    {{-- Mensaje de advertencia si no tiene localización --}}
+                    <div id="warning-sin-localizacion" class="hidden mt-3 p-3 bg-blue-50 border border-blue-300 rounded-lg">
+                        <p class="text-blue-800 text-sm font-medium">📍 Este paquete no tiene ubicación asignada en el mapa.</p>
+                        <p class="text-blue-700 text-xs mt-1">Se mostrará un ghost para que puedas arrastrarlo a la ubicación deseada.</p>
+                    </div>
                     <button onclick="mostrarPasoMapa()"
                         class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow">
                         Seleccionar Ubicación en Mapa
@@ -602,22 +616,25 @@
             </div>
 
             {{-- PASO 2: Seleccionar ubicación en mapa --}}
-            <div id="paso-mapa-paquete" class="hidden space-y-4 h-full">
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <h3 class="font-semibold text-yellow-800 mb-2">Paso 2:
-                        Seleccionar Nueva Ubicación</h3>
-
-                    {{-- Información del paquete seleccionado --}}
-                    <div class="bg-white p-3 rounded border mb-3">
-                        <p class="text-sm"><strong>Paquete:</strong> <span
-                                id="paquete-codigo-mapa"
-                                class="text-green-700 font-bold"></span></p>
+            <div id="paso-mapa-paquete" class="hidden space-y-2 h-full">
+                {{-- Información del paquete seleccionado --}}
+                <div class="bg-green-50 border border-green-300 rounded-lg p-3 flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">📦</span>
+                        <div>
+                            <p class="font-bold text-green-800 text-lg" id="paquete-codigo-mapa"></p>
+                            <p class="text-sm text-green-600" id="paquete-info-mapa"></p>
+                        </div>
                     </div>
+                    <button onclick="volverPasoEscaneo()"
+                        class="text-sm px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-1">
+                        ← Buscar otro
+                    </button>
                 </div>
 
                 {{-- Componente de mapa simplificado --}}
-                <div class="bg-white p-4 rounded-lg border h-[550px] overflow-hidden relative">
-                    <x-mapa-simple :nave-id="1" :modo-edicion="true" class="h-full w-full" />
+                <div class="bg-white p-2 rounded-lg border flex-1 overflow-hidden relative" style="height: calc(100% - 70px);">
+                    <x-mapa-simple :nave-id="$naveIdMapa" :modo-edicion="true" class="h-full w-full" />
                 </div>
             </div>
         </div>
@@ -686,6 +703,16 @@
         document.getElementById('paso-escanear-paquete')?.classList.remove('hidden');
         document.getElementById('error-paquete-mover')?.classList.add('hidden');
         document.getElementById('loading-paquete-mover')?.classList.add('hidden');
+        document.getElementById('warning-sin-localizacion')?.classList.add('hidden');
+
+        // Cancelar ghost si existe
+        const modal = document.getElementById('modal-mover-paquete');
+        if (modal) {
+            const mapa = modal.querySelector('[data-mapa-simple]');
+            if (mapa && typeof mapa.cancelarGhost === 'function') {
+                mapa.cancelarGhost();
+            }
+        }
 
         paqueteMoverData = null;
     }
@@ -693,17 +720,47 @@
     function mostrarPasoMapa() {
         document.getElementById('paso-escanear-paquete').classList.add('hidden');
         document.getElementById('paso-mapa-paquete').classList.remove('hidden');
+
         const codigoPak = (paqueteMoverData?.codigo || '').toString().trim();
+        const etiquetasCount = paqueteMoverData?.etiquetas_count || 0;
+        const elementosCount = paqueteMoverData?.elementos_count || 0;
+        const tieneLocalizacion = paqueteMoverData?.tiene_localizacion;
+
         document.getElementById('paquete-codigo-mapa').textContent = codigoPak;
-        if (codigoPak) {
-            // Usar la función mostrarPaquete expuesta por el mapa-simple del modal
+        document.getElementById('paquete-info-mapa').textContent =
+            `${etiquetasCount} etiquetas · ${elementosCount} elementos` +
+            (tieneLocalizacion ? '' : ' · Sin ubicación asignada');
+
+        if (codigoPak && tieneLocalizacion) {
+            // Paquete con localización: mostrar en el mapa
             mostrarPaqueteEnMapaModal('modal-mover-paquete', codigoPak);
+        } else if (codigoPak && !tieneLocalizacion) {
+            // Paquete SIN localización: crear ghost para asignar ubicación
+            crearGhostEnMapaModal('modal-mover-paquete', paqueteMoverData);
         }
     }
 
     function volverPasoEscaneo() {
         document.getElementById('paso-mapa-paquete').classList.add('hidden');
         document.getElementById('paso-escanear-paquete').classList.remove('hidden');
+
+        // Limpiar input y dar focus
+        const input = document.getElementById('codigo_paquete_mover');
+        if (input) {
+            input.value = '';
+            setTimeout(() => input.focus(), 100);
+        }
+
+        // Cancelar ghost si existe
+        const modal = document.getElementById('modal-mover-paquete');
+        if (modal) {
+            const mapa = modal.querySelector('[data-mapa-simple]');
+            if (mapa && typeof mapa.cancelarGhost === 'function') {
+                mapa.cancelarGhost();
+            }
+        }
+
+        paqueteMoverData = null;
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -723,15 +780,13 @@
         const codigo = document.getElementById('codigo_paquete_mover').value
             .trim();
         if (!codigo) {
-            mostrarErrorPaquete('Debes introducir un código de paquete.');
+            mostrarErrorPaquete('Debes introducir un código de paquete o etiqueta.');
             return;
         }
 
         document.getElementById('loading-paquete-mover').classList.remove(
             'hidden');
         document.getElementById('error-paquete-mover').classList.add(
-            'hidden');
-        document.getElementById('info-paquete-validado').classList.add(
             'hidden');
 
         try {
@@ -758,19 +813,14 @@
 
             paqueteMoverData = data;
 
-            document.getElementById('paquete-codigo-info').textContent =
-                data.codigo || codigo;
-            document.getElementById('paquete-peso-info').textContent =
-                `${data.etiquetas_count || 0} etq / ${data.elementos_count || 0} elem`;
-
-            document.getElementById('info-paquete-validado').classList
-                .remove('hidden');
+            // Ir directamente al mapa
+            document.getElementById('loading-paquete-mover').classList.add('hidden');
+            mostrarPasoMapa();
 
         } catch (error) {
             console.error('Error al buscar paquete:', error);
             mostrarErrorPaquete(error.message ||
                 'No se encontró el paquete. Verifica el código.');
-        } finally {
             document.getElementById('loading-paquete-mover').classList.add(
                 'hidden');
         }
@@ -785,29 +835,124 @@
     // Mostrar paquete en el mapa-simple que está dentro de un modal concreto
     function mostrarPaqueteEnMapaModal(modalId, codigoPaquete) {
         const modal = document.getElementById(modalId);
-        if (!modal) return;
+        if (!modal) {
+            console.warn('Modal no encontrado:', modalId);
+            return;
+        }
         const mapa = modal.querySelector('[data-mapa-simple]');
-        if (!mapa) return;
+        if (!mapa) {
+            console.warn('Componente mapa-simple no encontrado en modal:', modalId);
+            return;
+        }
 
         let intentos = 0;
+        const maxIntentos = 40;
         const intentar = () => {
             intentos += 1;
             const fnMostrar = mapa.mostrarPaquete;
             const fnAutoclick = mapa.autoclickEditarPaquete;
             if (typeof fnMostrar === 'function') {
                 try {
-                    fnMostrar(codigoPaquete);
-                    if (typeof fnAutoclick === 'function') {
-                        // Asegurar flujo de clic tras mostrar y centrar
-                        setTimeout(() => fnAutoclick(codigoPaquete), 200);
+                    const resultado = fnMostrar(codigoPaquete);
+                    if (resultado === false) {
+                        // El paquete no existe en el DOM del mapa
+                        console.warn('Paquete no encontrado en el mapa:', codigoPaquete);
+                        mostrarMensajeEnMapa(modal, 'El paquete no tiene ubicación registrada en este mapa. Puedes asignarle una nueva ubicación.', 'warning');
+                    } else {
+                        if (typeof fnAutoclick === 'function') {
+                            // Asegurar flujo de clic tras mostrar y centrar
+                            setTimeout(() => fnAutoclick(codigoPaquete), 200);
+                        }
                     }
                 } catch (e) {
                     console.warn('No se pudo mostrar paquete en el mapa:', e);
                 }
                 return;
             }
-            if (intentos < 40) {
+            if (intentos < maxIntentos) {
                 setTimeout(intentar, 200);
+            } else {
+                console.warn('Timeout esperando funciones del mapa');
+            }
+        };
+        intentar();
+    }
+
+    // Mostrar mensaje flotante en el área del mapa
+    function mostrarMensajeEnMapa(modal, mensaje, tipo = 'info') {
+        const contenedorMapa = modal.querySelector('#paso-mapa-paquete .bg-white');
+        if (!contenedorMapa) return;
+
+        // Remover mensaje anterior si existe
+        const msgAnterior = contenedorMapa.querySelector('.mensaje-mapa-flotante');
+        if (msgAnterior) msgAnterior.remove();
+
+        const colores = {
+            'info': 'bg-blue-100 text-blue-800 border-blue-300',
+            'warning': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+            'error': 'bg-red-100 text-red-800 border-red-300',
+            'success': 'bg-green-100 text-green-800 border-green-300'
+        };
+
+        const div = document.createElement('div');
+        div.className = `mensaje-mapa-flotante absolute top-2 left-2 right-2 z-50 p-3 rounded-lg border text-sm ${colores[tipo] || colores.info}`;
+        div.innerHTML = `<p>${mensaje}</p>`;
+        contenedorMapa.appendChild(div);
+
+        // Auto-ocultar después de 5 segundos
+        setTimeout(() => {
+            if (div.parentNode) div.remove();
+        }, 5000);
+    }
+
+    // Crear ghost en el mapa-simple para paquetes sin localización
+    function crearGhostEnMapaModal(modalId, paqueteData) {
+        const modal = document.getElementById(modalId);
+        if (!modal) {
+            console.warn('[crearGhostEnMapaModal] Modal no encontrado:', modalId);
+            return;
+        }
+        const mapa = modal.querySelector('[data-mapa-simple]');
+        if (!mapa) {
+            console.warn('[crearGhostEnMapaModal] Componente mapa-simple no encontrado en modal:', modalId);
+            return;
+        }
+
+        console.log('[crearGhostEnMapaModal] Intentando crear ghost para paquete:', paqueteData.codigo);
+
+        let intentos = 0;
+        const maxIntentos = 50; // 50 * 200ms = 10 segundos máximo
+        const intentar = () => {
+            intentos += 1;
+
+            // Verificar si el ghost está listo (el mapa terminó de cargar)
+            const isGhostReady = typeof mapa.isGhostReady === 'function' && mapa.isGhostReady();
+            const fnCrearGhost = mapa.crearGhostPaquete;
+
+            if (isGhostReady && typeof fnCrearGhost === 'function') {
+                console.log('[crearGhostEnMapaModal] Ghost listo, creando... (intento', intentos, ')');
+                try {
+                    const resultado = fnCrearGhost(paqueteData);
+                    if (resultado) {
+                        console.log('[crearGhostEnMapaModal] Ghost creado exitosamente');
+                    } else {
+                        console.warn('[crearGhostEnMapaModal] No se pudo crear el ghost (resultado false)');
+                    }
+                } catch (e) {
+                    console.error('[crearGhostEnMapaModal] Error al crear ghost:', e);
+                }
+                return;
+            }
+
+            if (intentos < maxIntentos) {
+                if (intentos % 10 === 0) {
+                    console.log('[crearGhostEnMapaModal] Esperando ghost... intento', intentos,
+                        '- isGhostReady:', isGhostReady,
+                        '- fnCrearGhost:', typeof fnCrearGhost);
+                }
+                setTimeout(intentar, 200);
+            } else {
+                console.warn('[crearGhostEnMapaModal] Timeout esperando ghost después de', maxIntentos, 'intentos');
             }
         };
         intentar();
@@ -816,8 +961,8 @@
 
 {{-- 🚛 MODAL EJECUTAR SALIDA (con mapa y escaneo de paquetes) --}}
 <div id="modal-ejecutar-salida"
-    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
-    <div class="bg-white sm:rounded-2xl shadow-xl w-[100vw] h-[100vh] sm:w-[90vw] sm:h-[70vh] overflow-hidden flex flex-col">
+    class="fixed inset-x-0 top-14 bottom-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white sm:rounded-2xl shadow-xl w-full h-full sm:w-[90vw] sm:max-h-[calc(100vh-5rem)] overflow-hidden flex flex-col">
         {{-- Header --}}
         <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-4 flex justify-between items-center">
             <div>

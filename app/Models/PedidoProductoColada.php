@@ -10,6 +10,7 @@ class PedidoProductoColada extends Model
 
     protected $fillable = [
         'pedido_producto_id',
+        'colada_id',
         'colada',
         'bulto',
         'user_id',
@@ -23,6 +24,19 @@ class PedidoProductoColada extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function colada()
+    {
+        return $this->belongsTo(Colada::class);
+    }
+
+    /**
+     * Relación alternativa para evitar conflicto con el campo 'colada' (string)
+     */
+    public function coladaMaestra()
+    {
+        return $this->belongsTo(Colada::class, 'colada_id');
     }
 }
 

@@ -288,7 +288,14 @@ function construirInterfazGestionPaquetesSalida(
                 <div class="bg-green-50 border-2 border-green-200 rounded-lg p-3">
                     <div class="font-semibold text-green-900 mb-2 flex items-center justify-between">
                         <span>📦 Paquetes en esta salida</span>
-                        <span class="text-xs bg-green-200 px-2 py-1 rounded" id="peso-asignados">${totalKgAsignados.toFixed(2)} kg</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs bg-green-200 px-2 py-1 rounded" id="peso-asignados">${totalKgAsignados.toFixed(2)} kg</span>
+                            <button type="button" onclick="window.vaciarSalidaModal()"
+                                class="text-xs px-2 py-1 bg-orange-500 hover:bg-orange-600 text-white rounded transition-colors"
+                                title="Vaciar salida (devolver todos a disponibles)">
+                                🔄 Vaciar
+                            </button>
+                        </div>
                     </div>
                     <div
                         class="paquetes-zona-salida drop-zone overflow-y-auto"
@@ -323,10 +330,16 @@ function construirInterfazGestionPaquetesSalida(
                                 </select>
                             </div>
                         </div>
-                        <button type="button" id="btn-limpiar-filtros-modal"
-                                class="w-full text-xs px-2 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors">
-                            🔄 Limpiar Filtros
-                        </button>
+                        <div class="flex gap-2">
+                            <button type="button" id="btn-limpiar-filtros-modal"
+                                    class="flex-1 text-xs px-2 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors">
+                                🔄 Limpiar Filtros
+                            </button>
+                            <button type="button" onclick="window.volcarTodosASalidaModal()"
+                                    class="flex-1 text-xs px-2 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-colors font-medium">
+                                📥 Volcar todos
+                            </button>
+                        </div>
                     </div>
 
                     <div
@@ -1143,6 +1156,71 @@ function actualizarTotalesSalida() {
 
 }
 
+/* ===================== Vaciar salida modal ===================== */
+function vaciarSalidaModal() {
+    const zonaAsignados = document.querySelector('[data-zona="asignados"]');
+    const zonaDisponibles = document.querySelector('[data-zona="disponibles"]');
+
+    if (!zonaAsignados || !zonaDisponibles) return;
+
+    const paquetes = zonaAsignados.querySelectorAll(".paquete-item-salida");
+
+    if (paquetes.length === 0) return;
+
+    // Mover todos los paquetes a disponibles
+    paquetes.forEach(paquete => {
+        zonaDisponibles.appendChild(paquete);
+    });
+
+    // Remover placeholder de disponibles si existe
+    const placeholder = zonaDisponibles.querySelector(".placeholder-sin-paquetes");
+    if (placeholder) placeholder.remove();
+
+    // Agregar placeholder a asignados si está vacío
+    if (zonaAsignados.querySelectorAll(".paquete-item-salida").length === 0) {
+        zonaAsignados.innerHTML = '<div class="text-gray-400 text-sm text-center py-4 placeholder-sin-paquetes">Sin paquetes</div>';
+    }
+
+    // Actualizar totales
+    actualizarTotalesSalida();
+}
+
+/* ===================== Volcar todos a salida modal ===================== */
+function volcarTodosASalidaModal() {
+    const zonaAsignados = document.querySelector('[data-zona="asignados"]');
+    const zonaDisponibles = document.querySelector('[data-zona="disponibles"]');
+
+    if (!zonaAsignados || !zonaDisponibles) return;
+
+    // Obtener solo los paquetes visibles (no ocultos por filtros)
+    const paquetes = Array.from(zonaDisponibles.querySelectorAll(".paquete-item-salida"))
+        .filter(p => p.style.display !== 'none');
+
+    if (paquetes.length === 0) return;
+
+    // Remover placeholder de asignados si existe
+    const placeholder = zonaAsignados.querySelector(".placeholder-sin-paquetes");
+    if (placeholder) placeholder.remove();
+
+    // Mover todos los paquetes visibles a asignados
+    paquetes.forEach(paquete => {
+        zonaAsignados.appendChild(paquete);
+    });
+
+    // Agregar placeholder a disponibles si está vacío
+    const paquetesRestantes = zonaDisponibles.querySelectorAll(".paquete-item-salida");
+    if (paquetesRestantes.length === 0) {
+        zonaDisponibles.innerHTML = '<div class="text-gray-400 text-sm text-center py-4 placeholder-sin-paquetes">Sin paquetes</div>';
+    }
+
+    // Actualizar totales
+    actualizarTotalesSalida();
+}
+
+// Exportar funciones para uso en el modal
+window.vaciarSalidaModal = vaciarSalidaModal;
+window.volcarTodosASalidaModal = volcarTodosASalidaModal;
+
 /* ===================== Recolectar paquetes salida ===================== */
 function recolectarPaquetesSalida() {
     const zonaAsignados = document.querySelector('[data-zona="asignados"]');
@@ -1409,6 +1487,70 @@ function esFinDeSemana(dateStr) {
     return dayOfWeek === 0 || dayOfWeek === 6;
 }
 
+/**
+ * Muestra un tooltip con la figura del elemento al hacer hover
+ * @param {string|number} elementoId - ID del elemento
+ * @param {string} dimensiones - String de dimensiones del elemento
+ * @param {HTMLElement} triggerBtn - Botón que disparó el evento
+ */
+function mostrarFiguraElementoModal(elementoId, codigo, dimensiones, triggerBtn) {
+    // Eliminar modal anterior si existe
+    const modalAnterior = document.getElementById('modal-figura-elemento-overlay');
+    if (modalAnterior) {
+        modalAnterior.remove();
+    }
+
+    // Calcular posición cerca del botón
+    const rect = triggerBtn.getBoundingClientRect();
+    const tooltipWidth = 320;
+    const tooltipHeight = 240;
+
+    // Posicionar a la derecha del botón, o a la izquierda si no hay espacio
+    let left = rect.right + 10;
+    if (left + tooltipWidth > window.innerWidth) {
+        left = rect.left - tooltipWidth - 10;
+    }
+
+    // Centrar verticalmente respecto al botón
+    let top = rect.top - (tooltipHeight / 2) + (rect.height / 2);
+    if (top < 10) top = 10;
+    if (top + tooltipHeight > window.innerHeight - 10) {
+        top = window.innerHeight - tooltipHeight - 10;
+    }
+
+    // Crear tooltip HTML
+    const modalHtml = `
+        <div id="modal-figura-elemento-overlay"
+             class="fixed bg-white rounded-lg shadow-2xl border border-gray-300"
+             style="z-index: 10001; left: ${left}px; top: ${top}px; width: ${tooltipWidth}px;"
+             onmouseleave="this.remove()">
+            <div class="flex items-center justify-between px-3 py-2 border-b bg-gray-100 rounded-t-lg">
+                <h3 class="text-xs font-semibold text-gray-700">${codigo || 'Elemento'}</h3>
+            </div>
+            <div class="p-2">
+                <div id="figura-elemento-container-${elementoId}" class="w-full h-36 bg-gray-50 rounded"></div>
+                <div class="mt-2 px-1 py-1 bg-gray-100 rounded text-xs text-gray-600 font-mono break-all">
+                    ${dimensiones || 'Sin dimensiones'}
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Insertar tooltip en el body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Dibujar la figura después de insertar el modal
+    setTimeout(() => {
+        if (typeof window.dibujarFiguraElemento === 'function') {
+            window.dibujarFiguraElemento(
+                `figura-elemento-container-${elementoId}`,
+                dimensiones,
+                null
+            );
+        }
+    }, 50);
+}
+
 function construirFormularioFechas(planillas) {
     const filas = planillas
         .map((p, i) => {
@@ -1433,15 +1575,44 @@ function construirFormularioFechas(planillas) {
                 elementosHtml = p.elementos.map((el, idx) => {
                     const fechaElISO = el.fecha_entrega || '';
                     const pesoEl = el.peso ? parseFloat(el.peso).toFixed(2) : '-';
+                    const codigoEl = el.codigo || '-';
+                    const tieneDimensiones = el.dimensiones && el.dimensiones.trim() !== '';
+                    // Escapar dimensiones para JSON
+                    const dimensionesEscaped = tieneDimensiones ? el.dimensiones.replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '';
+
+                    // Escapar código para atributo
+                    const codigoEscaped = codigoEl.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
                     return `
                     <tr class="elemento-row elemento-planilla-${p.id} bg-gray-50 hidden">
-                        <td class="px-2 py-1 text-xs text-gray-400 pl-8">↳ ${el.id}</td>
-                        <td class="px-2 py-1 text-xs text-gray-500" colspan="2">Marca: ${el.marca || '-'}</td>
+                        <td class="px-2 py-1 text-xs text-gray-400 pl-4">
+                            <div class="flex items-center gap-1">
+                                <input type="checkbox" class="elemento-checkbox rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-3.5 w-3.5"
+                                       data-elemento-id="${el.id}"
+                                       data-planilla-id="${p.id}">
+                                <span>↳</span>
+                                <span class="font-medium text-gray-600">${codigoEl}</span>
+                                ${tieneDimensiones ? `
+                                <button type="button"
+                                        class="ver-figura-elemento text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded p-0.5 transition-colors"
+                                        data-elemento-id="${el.id}"
+                                        data-elemento-codigo="${codigoEscaped}"
+                                        data-dimensiones="${dimensionesEscaped}"
+                                        title="Click para seleccionar, hover para ver figura">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                </button>
+                                ` : ''}
+                            </div>
+                        </td>
+                        <td class="px-2 py-1 text-xs text-gray-500">${el.marca || '-'}</td>
                         <td class="px-2 py-1 text-xs text-gray-500">Ø${el.diametro || '-'}</td>
                         <td class="px-2 py-1 text-xs text-gray-500">${el.longitud || '-'} mm</td>
                         <td class="px-2 py-1 text-xs text-gray-500">${el.barras || '-'} uds</td>
                         <td class="px-2 py-1 text-xs text-right text-gray-500">${pesoEl} kg</td>
-                        <td class="px-2 py-1">
+                        <td class="px-2 py-1" colspan="2">
                             <input type="date" class="swal2-input !m-0 !w-auto !text-xs elemento-fecha"
                                    data-elemento-id="${el.id}"
                                    data-planilla-id="${p.id}"
@@ -1452,24 +1623,21 @@ function construirFormularioFechas(planillas) {
             }
 
             return `
-<tr class="planilla-row hover:bg-blue-50 cursor-pointer" data-planilla-id="${p.id}" style="opacity:0; transform:translateY(4px); animation: swalRowIn .22s ease-out forwards; animation-delay:${i * 18}ms;">
-  <td class="px-2 py-1 text-xs">
-    ${tieneElementos ? `<button type="button" class="toggle-elementos mr-1 text-blue-500 hover:text-blue-700" data-planilla-id="${p.id}">▶</button>` : ''}
-    ${p.id}
+<tr class="planilla-row hover:bg-blue-50 bg-blue-100 border-t border-blue-200" data-planilla-id="${p.id}" style="opacity:0; transform:translateY(4px); animation: swalRowIn .22s ease-out forwards; animation-delay:${i * 18}ms;">
+  <td class="px-2 py-2 text-xs font-semibold text-blue-800" colspan="2">
+    ${tieneElementos ? `<button type="button" class="toggle-elementos mr-1 text-blue-600 hover:text-blue-800" data-planilla-id="${p.id}">▶</button>` : ''}
+    📄 ${codigoPlanilla}
+    ${tieneElementos ? `<span class="ml-1 text-xs text-blue-500 font-normal">(${numElementos} elem.)</span>` : ''}
   </td>
-  <td class="px-2 py-1 text-xs">${codObra}</td>
-  <td class="px-2 py-1 text-xs">${nombreObra}</td>
-  <td class="px-2 py-1 text-xs">${seccionObra}</td>
-  <td class="px-2 py-1 text-xs">${descripcionObra}</td>
-  <td class="px-2 py-1 text-xs">
-    ${codigoPlanilla}
-    ${tieneElementos ? `<span class="ml-1 text-xs text-gray-400">(${numElementos} elem.)</span>` : ''}
+  <td class="px-2 py-2 text-xs text-blue-700" colspan="2">
+    <span class="font-medium">${codObra}</span> ${nombreObra}
   </td>
-  <td class="px-2 py-1 text-xs text-right font-medium">${pesoTotal}</td>
-  <td class="px-2 py-1">
+  <td class="px-2 py-2 text-xs text-blue-600">${seccionObra || '-'}</td>
+  <td class="px-2 py-2 text-xs text-right font-semibold text-blue-800">${pesoTotal}</td>
+  <td class="px-2 py-2" colspan="2">
     <div class="flex items-center gap-1">
-      <input type="date" class="swal2-input !m-0 !w-auto planilla-fecha" data-planilla-id="${p.id}" value="${fechaISO}">
-      ${tieneElementos ? `<button type="button" class="aplicar-fecha-elementos text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded" data-planilla-id="${p.id}" title="Aplicar fecha a todos los elementos">↓</button>` : ''}
+      <input type="date" class="swal2-input !m-0 !w-auto planilla-fecha !bg-blue-50 !border-blue-300" data-planilla-id="${p.id}" value="${fechaISO}">
+      ${tieneElementos ? `<button type="button" class="aplicar-fecha-elementos text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded" data-planilla-id="${p.id}" title="Aplicar fecha a todos los elementos">↓</button>` : ''}
     </div>
   </td>
 </tr>
@@ -1481,7 +1649,33 @@ ${elementosHtml}`;
     <div class="text-left">
       <div class="text-sm text-gray-600 mb-2">
         Edita la <strong>fecha estimada de entrega</strong> de planillas y elementos.
-        <span class="text-blue-600">▶</span> = expandir elementos
+        <span class="text-blue-600">▶</span> = expandir elementos, <span class="text-purple-600">☑</span> = seleccionar para asignar fecha masiva
+      </div>
+
+      <!-- Barra de acciones masivas para elementos -->
+      <div id="barra-acciones-masivas" class="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-lg hidden">
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-purple-800">
+              <span id="contador-seleccionados">0</span> elementos seleccionados
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-purple-700">Asignar fecha:</label>
+            <input type="date" id="fecha-masiva" class="swal2-input !m-0 !w-auto !text-sm !bg-white !border-purple-300">
+            <button type="button" id="aplicar-fecha-masiva" class="text-sm bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded font-medium transition-colors">
+              Aplicar a seleccionados
+            </button>
+          </div>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" id="limpiar-fecha-seleccionados" class="text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded" title="Quitar fecha de los seleccionados">
+              Limpiar fecha
+            </button>
+            <button type="button" id="deseleccionar-todos" class="text-xs bg-gray-400 hover:bg-gray-500 text-white px-2 py-1 rounded">
+              Deseleccionar
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Sumatorio dinámico por fechas -->
@@ -1496,26 +1690,32 @@ ${elementosHtml}`;
         <table class="min-w-full text-sm">
         <thead class="sticky top-0 bg-white z-10">
           <tr>
-            <th class="px-2 py-1 text-left">ID</th>
-            <th class="px-2 py-1 text-left">Cod. Obra</th>
-            <th class="px-2 py-1 text-left">Obra</th>
-            <th class="px-2 py-1 text-left">Sección</th>
-            <th class="px-2 py-1 text-left">Descripción</th>
-            <th class="px-2 py-1 text-left">Planilla</th>
-            <th class="px-2 py-1 text-left">Peso Total</th>
-            <th class="px-2 py-1 text-left">Fecha Entrega</th>
+            <th class="px-2 py-1 text-left">ID / Código</th>
+            <th class="px-2 py-1 text-left">Marca</th>
+            <th class="px-2 py-1 text-left">Ø</th>
+            <th class="px-2 py-1 text-left">Longitud</th>
+            <th class="px-2 py-1 text-left">Barras</th>
+            <th class="px-2 py-1 text-left">Peso</th>
+            <th class="px-2 py-1 text-left" colspan="2">Fecha Entrega</th>
           </tr>
         </thead>
           <tbody>${filas}</tbody>
         </table>
       </div>
 
-      <div class="mt-2 flex gap-2">
+      <div class="mt-2 flex flex-wrap gap-2">
         <button type="button" id="expandir-todos" class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded">
           📂 Expandir todos
         </button>
         <button type="button" id="colapsar-todos" class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded">
           📁 Colapsar todos
+        </button>
+        <span class="border-l border-gray-300 mx-1"></span>
+        <button type="button" id="seleccionar-todos-elementos" class="text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded">
+          ☑ Seleccionar todos los elementos
+        </button>
+        <button type="button" id="seleccionar-sin-fecha" class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1 rounded">
+          ☑ Seleccionar sin fecha
         </button>
       </div>
     </div>`;
@@ -1752,6 +1952,112 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
                     container.querySelectorAll('.toggle-elementos').forEach(btn => btn.textContent = '▶');
                 });
 
+                // === FUNCIONALIDAD DE SELECCIÓN MASIVA ===
+
+                // Función para actualizar el contador y mostrar/ocultar la barra
+                function actualizarBarraSeleccion() {
+                    const checkboxes = container.querySelectorAll('.elemento-checkbox:checked');
+                    const cantidad = checkboxes.length;
+                    const barra = container.querySelector('#barra-acciones-masivas');
+                    const contador = container.querySelector('#contador-seleccionados');
+
+                    if (cantidad > 0) {
+                        barra?.classList.remove('hidden');
+                        if (contador) contador.textContent = cantidad;
+                    } else {
+                        barra?.classList.add('hidden');
+                    }
+                }
+
+                // Event listeners para checkboxes de elementos
+                container.querySelectorAll('.elemento-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', actualizarBarraSeleccion);
+                });
+
+                // Seleccionar todos los elementos visibles
+                container.querySelector('#seleccionar-todos-elementos')?.addEventListener('click', () => {
+                    // Primero expandir todos
+                    container.querySelectorAll('.elemento-row').forEach(el => el.classList.remove('hidden'));
+                    container.querySelectorAll('.toggle-elementos').forEach(btn => btn.textContent = '▼');
+                    // Luego seleccionar todos
+                    container.querySelectorAll('.elemento-checkbox').forEach(cb => {
+                        cb.checked = true;
+                    });
+                    actualizarBarraSeleccion();
+                });
+
+                // Seleccionar solo elementos sin fecha
+                container.querySelector('#seleccionar-sin-fecha')?.addEventListener('click', () => {
+                    // Primero expandir todos
+                    container.querySelectorAll('.elemento-row').forEach(el => el.classList.remove('hidden'));
+                    container.querySelectorAll('.toggle-elementos').forEach(btn => btn.textContent = '▼');
+                    // Deseleccionar todos primero
+                    container.querySelectorAll('.elemento-checkbox').forEach(cb => {
+                        cb.checked = false;
+                    });
+                    // Seleccionar solo los que no tienen fecha
+                    container.querySelectorAll('.elemento-checkbox').forEach(cb => {
+                        const elementoId = cb.dataset.elementoId;
+                        const fechaInput = container.querySelector(`.elemento-fecha[data-elemento-id="${elementoId}"]`);
+                        if (fechaInput && !fechaInput.value) {
+                            cb.checked = true;
+                        }
+                    });
+                    actualizarBarraSeleccion();
+                });
+
+                // Deseleccionar todos
+                container.querySelector('#deseleccionar-todos')?.addEventListener('click', () => {
+                    container.querySelectorAll('.elemento-checkbox').forEach(cb => {
+                        cb.checked = false;
+                    });
+                    actualizarBarraSeleccion();
+                });
+
+                // Aplicar fecha masiva a seleccionados
+                container.querySelector('#aplicar-fecha-masiva')?.addEventListener('click', () => {
+                    const fechaMasiva = container.querySelector('#fecha-masiva')?.value;
+                    if (!fechaMasiva) {
+                        alert('Por favor, selecciona una fecha para aplicar');
+                        return;
+                    }
+
+                    const checkboxes = container.querySelectorAll('.elemento-checkbox:checked');
+                    checkboxes.forEach(cb => {
+                        const elementoId = cb.dataset.elementoId;
+                        const fechaInput = container.querySelector(`.elemento-fecha[data-elemento-id="${elementoId}"]`);
+                        if (fechaInput) {
+                            fechaInput.value = fechaMasiva;
+                            fechaInput.dispatchEvent(new Event('change'));
+                        }
+                    });
+
+                    // Feedback visual
+                    const btn = container.querySelector('#aplicar-fecha-masiva');
+                    const textoOriginal = btn.textContent;
+                    btn.textContent = '✓ Aplicado';
+                    btn.classList.add('bg-green-600');
+                    setTimeout(() => {
+                        btn.textContent = textoOriginal;
+                        btn.classList.remove('bg-green-600');
+                    }, 1500);
+                });
+
+                // Limpiar fecha de seleccionados
+                container.querySelector('#limpiar-fecha-seleccionados')?.addEventListener('click', () => {
+                    const checkboxes = container.querySelectorAll('.elemento-checkbox:checked');
+                    checkboxes.forEach(cb => {
+                        const elementoId = cb.dataset.elementoId;
+                        const fechaInput = container.querySelector(`.elemento-fecha[data-elemento-id="${elementoId}"]`);
+                        if (fechaInput) {
+                            fechaInput.value = '';
+                            fechaInput.dispatchEvent(new Event('change'));
+                        }
+                    });
+                });
+
+                // === FIN FUNCIONALIDAD DE SELECCIÓN MASIVA ===
+
                 // Aplicar fecha de planilla a todos sus elementos
                 container.querySelectorAll('.aplicar-fecha-elementos').forEach(btn => {
                     btn.addEventListener('click', (e) => {
@@ -1769,7 +2075,53 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
                     });
                 });
 
-                // 6) Actualizar sumatorio inicial
+                // 6) Ver figura del elemento (hover + click para seleccionar)
+                container.querySelectorAll('.ver-figura-elemento').forEach(btn => {
+                    btn.addEventListener('mouseenter', (e) => {
+                        const elementoId = btn.dataset.elementoId;
+                        const codigo = btn.dataset.elementoCodigo?.replace(/&quot;/g, '"').replace(/&#39;/g, "'") || '';
+                        const dimensiones = btn.dataset.dimensiones?.replace(/&quot;/g, '"').replace(/&#39;/g, "'") || '';
+
+                        if (typeof window.dibujarFiguraElemento === 'function') {
+                            mostrarFiguraElementoModal(elementoId, codigo, dimensiones, btn);
+                        }
+                    });
+
+                    btn.addEventListener('mouseleave', (e) => {
+                        // Pequeño delay para permitir mover el mouse al modal
+                        setTimeout(() => {
+                            const modal = document.getElementById('modal-figura-elemento-overlay');
+                            if (modal && !modal.matches(':hover')) {
+                                modal.remove();
+                            }
+                        }, 100);
+                    });
+
+                    // Click en el ojo marca/desmarca el checkbox del elemento
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const elementoId = btn.dataset.elementoId;
+                        const checkbox = container.querySelector(`.elemento-checkbox[data-elemento-id="${elementoId}"]`);
+                        if (checkbox) {
+                            checkbox.checked = !checkbox.checked;
+                            // Llamar directamente a la lógica de actualización
+                            const checkboxes = container.querySelectorAll('.elemento-checkbox:checked');
+                            const cantidad = checkboxes.length;
+                            const barra = container.querySelector('#barra-acciones-masivas');
+                            const contador = container.querySelector('#contador-seleccionados');
+
+                            if (cantidad > 0) {
+                                barra?.classList.remove('hidden');
+                                if (contador) contador.textContent = cantidad;
+                            } else {
+                                barra?.classList.add('hidden');
+                            }
+                        }
+                    });
+                });
+
+                // 7) Actualizar sumatorio inicial
                 setTimeout(() => {
                     actualizarSumatorio(planillas);
                 }, 100);

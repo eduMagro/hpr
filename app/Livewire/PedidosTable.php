@@ -259,6 +259,9 @@ class PedidosTable extends Component
 
         $lineas = $query->paginate($this->perPage);
 
+        // Agrupar líneas por pedido_id para la vista
+        $lineasAgrupadas = $lineas->getCollection()->groupBy('pedido_id');
+
         // Cargar datos para selects
         $pedidosGlobales = PedidoGlobal::select('id', 'codigo')->get();
         $fabricantes = Fabricante::select('id', 'nombre')->get();
@@ -276,6 +279,7 @@ class PedidosTable extends Component
 
         return view('livewire.pedidos-table', [
             'lineas' => $lineas,
+            'lineasAgrupadas' => $lineasAgrupadas,
             'pedidosGlobales' => $pedidosGlobales,
             'fabricantes' => $fabricantes,
             'distribuidores' => $distribuidores,

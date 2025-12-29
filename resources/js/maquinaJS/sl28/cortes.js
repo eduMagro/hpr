@@ -113,15 +113,19 @@ window.Cortes = (function () {
         csrfToken
     ) {
         try {
-            console.log("🎯 [Cortes] Calculando patrones optimizados");
+            console.log("🎯 [Cortes] Calculando patrones optimizados para:", etiquetaId, "diametro:", diametro);
+            console.log("🎯 [Cortes] Patrones previos recibidos:", patronesPrevios);
 
             let patrones = patronesPrevios;
+            let etiquetasPlanillas = {};
 
             if (!patrones || patrones.length === 0) {
                 const url = CONFIG.endpoints.calcularPatronOptimizado.replace(
                     "{id}",
                     etiquetaId
                 );
+                console.log("🎯 [Cortes] Llamando al endpoint:", url);
+
                 const response = await fetch(url, {
                     method: "POST",
                     headers: {
@@ -131,32 +135,45 @@ window.Cortes = (function () {
                     body: JSON.stringify({ diametro, kmax: 5 }),
                 });
 
+                console.log("🎯 [Cortes] Response status:", response.status);
+
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error("🎯 [Cortes] Error response:", errorText);
                     throw new Error("Error al calcular patrones optimizados");
                 }
 
                 const data = await response.json();
+                console.log("🎯 [Cortes] Data recibida del backend:", data);
                 patrones = data.top_global || [];
+                // Guardar el mapa de etiquetas a planillas
+                etiquetasPlanillas = data.etiquetas_planillas || {};
             }
+
+            console.log("🎯 [Cortes] Patrones a mostrar:", patrones.length, patrones);
 
             if (patrones.length === 0) {
                 await Swal.fire({
                     icon: "warning",
-                    title: "Sin patrones",
-                    timer: 2000,
+                    title: "Sin patrones optimizados",
+                    text: "No se encontraron combinaciones de etiquetas para optimizar",
+                    timer: 3000,
                 });
                 return null;
             }
 
+            console.log("🎯 [Cortes] Mostrando popup optimizado...");
             const resultado = await mostrarPopupOptimizado({
                 etiquetaId,
                 diametro,
                 patrones,
+                etiquetasPlanillas,
             });
 
+            console.log("🎯 [Cortes] Resultado del popup:", resultado);
             return resultado;
         } catch (error) {
-            console.error("❌ Error:", error);
+            console.error("❌ [Cortes] Error en mejorCorteOptimizado:", error);
             await Swal.fire({
                 icon: "error",
                 title: "Error al optimizar",
@@ -171,8 +188,94 @@ window.Cortes = (function () {
     // FUNCIÓN 3: ENVIAR A FABRICACIÓN
     // ============================================================================
 
+    // ============================================================================
+    // FUNCIÓN AUXILIAR: PEDIR DESPERDICIO MANUAL
+    // ============================================================================
+
+    async function pedirDesperdicioManual(longitudBarraM, desperdicioEstimadoCm = 0) {
+        const resultado = await Swal.fire({
+            title: 'Desperdicio Real',
+            width: 340,
+            html: `
+                <div style="text-align: center; padding: 0 8px;">
+                    <p style="color: #6b7280; font-size: 14px; margin-bottom: 12px;">
+                        Introduce el desperdicio real (cm)
+                    </p>
+                    <div style="background: #f3f4f6; padding: 10px; border-radius: 8px; margin-bottom: 16px;">
+                        <p style="margin: 0; font-size: 13px;">
+                            <strong>Barra:</strong> ${longitudBarraM}m
+                            ${desperdicioEstimadoCm > 0 ? ` · <strong>Est:</strong> ${desperdicioEstimadoCm} cm` : ''}
+                        </p>
+                    </div>
+                    <input type="number"
+                           id="swal-desperdicio-input"
+                           placeholder="cm"
+                           min="0"
+                           step="0.1"
+                           value="${desperdicioEstimadoCm}"
+                           style="width: 120px; font-size: 24px; text-align: center; padding: 12px; border: 2px solid #d1d5db; border-radius: 8px; outline: none;">
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Confirmar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#10b981',
+            focusConfirm: false,
+            didOpen: () => {
+                const input = document.getElementById('swal-desperdicio-input');
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            },
+            preConfirm: () => {
+                const valor = document.getElementById('swal-desperdicio-input').value;
+                if (valor === '' || isNaN(parseFloat(valor))) {
+                    Swal.showValidationMessage('Introduce un valor válido');
+                    return false;
+                }
+                if (parseFloat(valor) < 0) {
+                    Swal.showValidationMessage('No puede ser negativo');
+                    return false;
+                }
+                return parseFloat(valor);
+            }
+        });
+
+        if (resultado.isConfirmed) {
+            return resultado.value;
+        }
+        return null;
+    }
+
+    // ============================================================================
+    // FUNCIÓN 3: ENVIAR A FABRICACIÓN
+    // ============================================================================
+
     async function enviarAFabricacionOptimizada(params) {
-        const { longitudBarraCm, etiquetas, csrfToken, onUpdate } = params;
+        const {
+            longitudBarraCm,
+            etiquetas,
+            csrfToken,
+            onUpdate,
+            desperdicioEstimadoCm = 0,
+            pedirDesperdicio = true  // Solo pedir en primer clic
+        } = params;
+
+        let desperdicioManualCm = null;
+
+        // Solo pedir desperdicio si se indica (primer clic)
+        if (pedirDesperdicio) {
+            desperdicioManualCm = await pedirDesperdicioManual(
+                (longitudBarraCm / 100).toFixed(2),
+                desperdicioEstimadoCm
+            );
+
+            // Si el usuario cancela, no continuar
+            if (desperdicioManualCm === null) {
+                return { success: false, cancelled: true };
+            }
+        }
 
         try {
             const payload = {
@@ -183,6 +286,11 @@ window.Cortes = (function () {
                     patron_letras: e.patron?.patron_letras || "",
                 })),
             };
+
+            // Solo incluir desperdicio si se pidió
+            if (desperdicioManualCm !== null) {
+                payload.desperdicio_manual_cm = desperdicioManualCm;
+            }
 
             const response = await fetch(
                 CONFIG.endpoints.fabricacionOptimizada,
@@ -285,88 +393,349 @@ window.Cortes = (function () {
                 }
                 const c = cfg.colores[nivel];
                 const esquemaLetras = Array(p.por_barra).fill("A").join(" + ");
+
+                // Iconos según nivel de aprovechamiento
+                const iconoNivel = nivel === "verde" ? "✓" : nivel === "amarillo" ? "⚠" : nivel === "rojo" ? "✕" : "○";
+
                 return `
-            <div class="patron-simple" data-index="${i}" style="
-                border: 2px solid ${c.borde};
-                background: ${c.fondo};
-                padding: 12px 16px;
-                border-radius: 8px;
-                margin: 8px 0;
-                cursor: pointer;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                transition: all 0.2s;
-            ">
-                <div>
-                    <span style="font-size: 20px; font-weight: bold;">${p.longitud_m
-                    }m</span>
-        
-                    <span style="font-size: 20px; font-weight: bold;">${esquemaLetras}</span>
-        
-                    <span style="margin-left: 12px; color: #6b7280;">→ ${p.por_barra
-                    } piezas</span>
-                    ${!p.disponible_en_maquina
-                        ? '<span style="margin-left: 8px; color: #ef4444; font-size: 12px;">(no disponible)</span>'
-                        : ""
-                    }
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 24px; font-weight: bold; color: ${c.texto
-                    };">
-                        ${p.aprovechamiento.toFixed(1)}%
+                <div class="patron-simple-item" data-index="${i}" data-nivel="${nivel}">
+                    <div class="patron-simple-left">
+                        <div class="patron-simple-barra">
+                            <span class="patron-barra-diametro">Ø${diametro}</span>
+                            <span class="patron-barra-longitud">${p.longitud_m}m</span>
+                            <span class="patron-barra-esquema">${esquemaLetras}</span>
+                        </div>
+                        <div class="patron-simple-info">
+                            <span class="patron-piezas">${p.por_barra} piezas</span>
+                            ${!p.disponible_en_maquina ? '<span class="patron-no-disponible">No disponible en máquina</span>' : ''}
+                        </div>
                     </div>
-                    <div style="font-size: 12px; color: #6b7280;">
-                        Desperdicio: ${p.sobra_cm} cm
+                    <div class="patron-simple-right">
+                        <div class="patron-aprovechamiento" data-nivel="${nivel}">
+                            <span class="patron-icono">${iconoNivel}</span>
+                            <span class="patron-porcentaje">${p.aprovechamiento.toFixed(1)}%</span>
+                        </div>
+                        <div class="patron-desperdicio">
+                            Desperdicio: ${p.sobra_cm} cm
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
             })
             .join("");
 
         let seleccionado = null;
 
         const resultado = await Swal.fire({
-            title: `📏 Corte Simple - ${etiquetaId}`,
+            title: `Patrón de Corte Simple`,
             html: `
-            <div style="text-align: left; max-height: 400px; overflow-y: auto;">
-                ${htmlOpciones}
-            </div>
-            <p style="margin-top: 16px; font-size: 13px; color: #6b7280;">
-                💡 Click para seleccionar una opción
-            </p>
-        `,
+                <style>
+                    .modal-corte-simple-header {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 12px;
+                        padding: 12px 16px;
+                        background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+                        border-radius: 12px;
+                        margin-bottom: 20px;
+                    }
+                    .modal-corte-simple-header .header-icon {
+                        width: 40px;
+                        height: 40px;
+                        background: rgba(255,255,255,0.15);
+                        border-radius: 10px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 20px;
+                    }
+                    .modal-corte-simple-header .header-info {
+                        text-align: left;
+                    }
+                    .modal-corte-simple-header .header-title {
+                        color: white;
+                        font-weight: 700;
+                        font-size: 16px;
+                        margin: 0;
+                    }
+                    .modal-corte-simple-header .header-subtitle {
+                        color: rgba(255,255,255,0.8);
+                        font-size: 13px;
+                        margin: 2px 0 0 0;
+                    }
+
+                    .patron-simple-container {
+                        max-height: 380px;
+                        overflow-y: auto;
+                        padding: 4px;
+                        scrollbar-width: thin;
+                        scrollbar-color: #cbd5e1 #f1f5f9;
+                    }
+                    .patron-simple-container::-webkit-scrollbar {
+                        width: 6px;
+                    }
+                    .patron-simple-container::-webkit-scrollbar-track {
+                        background: #f1f5f9;
+                        border-radius: 3px;
+                    }
+                    .patron-simple-container::-webkit-scrollbar-thumb {
+                        background: #cbd5e1;
+                        border-radius: 3px;
+                    }
+                    .patron-simple-container::-webkit-scrollbar-thumb:hover {
+                        background: #94a3b8;
+                    }
+
+                    .patron-simple-item {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 14px 18px;
+                        margin: 8px 0;
+                        border-radius: 12px;
+                        cursor: pointer;
+                        transition: all 0.2s ease;
+                        border: 2px solid #e2e8f0;
+                        background: #ffffff;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                    }
+                    .patron-simple-item:hover {
+                        border-color: #1e3a5f;
+                        transform: translateY(-2px);
+                        box-shadow: 0 4px 12px rgba(30,58,95,0.15);
+                    }
+                    .patron-simple-item.selected {
+                        border-color: #1e3a5f;
+                        background: linear-gradient(135deg, #f0f7ff 0%, #e8f4fd 100%);
+                        box-shadow: 0 0 0 3px rgba(30,58,95,0.2), 0 4px 12px rgba(30,58,95,0.15);
+                    }
+
+                    .patron-simple-item[data-nivel="gris"] {
+                        opacity: 0.7;
+                    }
+
+                    .patron-simple-left {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 6px;
+                    }
+                    .patron-simple-barra {
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                    }
+                    .patron-barra-diametro {
+                        font-size: 18px;
+                        font-weight: 600;
+                        color: #64748b;
+                        background: #f1f5f9;
+                        padding: 4px 10px;
+                        border-radius: 6px;
+                    }
+                    .patron-barra-longitud {
+                        font-size: 22px;
+                        font-weight: 700;
+                        color: #1e3a5f;
+                    }
+                    .patron-barra-esquema {
+                        font-size: 16px;
+                        font-weight: 600;
+                        color: #475569;
+                        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                        background: #f1f5f9;
+                        padding: 4px 10px;
+                        border-radius: 6px;
+                    }
+                    .patron-simple-info {
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                    }
+                    .patron-piezas {
+                        font-size: 13px;
+                        color: #64748b;
+                        font-weight: 500;
+                    }
+                    .patron-no-disponible {
+                        font-size: 11px;
+                        color: #ef4444;
+                        background: #fef2f2;
+                        padding: 2px 8px;
+                        border-radius: 4px;
+                        font-weight: 500;
+                    }
+
+                    .patron-simple-right {
+                        text-align: right;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: flex-end;
+                        gap: 4px;
+                    }
+                    .patron-aprovechamiento {
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        padding: 6px 12px;
+                        border-radius: 8px;
+                        font-weight: 700;
+                    }
+                    .patron-aprovechamiento[data-nivel="verde"] {
+                        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+                        color: #047857;
+                    }
+                    .patron-aprovechamiento[data-nivel="amarillo"] {
+                        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+                        color: #b45309;
+                    }
+                    .patron-aprovechamiento[data-nivel="rojo"] {
+                        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+                        color: #b91c1c;
+                    }
+                    .patron-aprovechamiento[data-nivel="gris"] {
+                        background: #f3f4f6;
+                        color: #6b7280;
+                    }
+                    .patron-icono {
+                        font-size: 14px;
+                    }
+                    .patron-porcentaje {
+                        font-size: 20px;
+                    }
+                    .patron-desperdicio {
+                        font-size: 12px;
+                        color: #94a3b8;
+                    }
+
+                    .modal-corte-simple-footer {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        margin-top: 16px;
+                        padding: 12px;
+                        background: #f8fafc;
+                        border-radius: 10px;
+                        color: #64748b;
+                        font-size: 13px;
+                    }
+                    .modal-corte-simple-footer svg {
+                        width: 18px;
+                        height: 18px;
+                        color: #1e3a5f;
+                    }
+                </style>
+
+                <div class="modal-corte-simple-header">
+                    <div class="header-icon">📏</div>
+                    <div class="header-info">
+                        <p class="header-title">Etiqueta: ${etiquetaId}</p>
+                        <p class="header-subtitle">Selecciona el patrón de corte óptimo</p>
+                    </div>
+                </div>
+
+                <div class="patron-simple-container">
+                    ${htmlOpciones}
+                </div>
+
+                <div class="modal-corte-simple-footer">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>Haz clic en una opción para seleccionarla</span>
+                </div>
+            `,
             showCancelButton: true,
             showDenyButton: true,
-            confirmButtonText: "✓ Fabricar",
-            denyButtonText: "🔍 Optimizar",
+            confirmButtonText: "Fabricar",
+            denyButtonText: "Optimizar",
             cancelButtonText: "Cancelar",
             confirmButtonColor: "#10b981",
-            denyButtonColor: "#3b82f6",
-            width: "600px",
+            denyButtonColor: "#1e3a5f",
+            width: "580px",
+            customClass: {
+                popup: 'modal-corte-simple-popup',
+                title: 'modal-corte-simple-title',
+                confirmButton: 'modal-corte-btn-fabricar',
+                denyButton: 'modal-corte-btn-optimizar',
+                cancelButton: 'modal-corte-btn-cancelar'
+            },
             didOpen: () => {
-                document.querySelectorAll(".patron-simple").forEach((el) => {
+                // Añadir estilos personalizados para los botones del modal
+                const style = document.createElement('style');
+                style.textContent = `
+                    .modal-corte-simple-popup {
+                        border-radius: 20px !important;
+                        padding: 24px !important;
+                    }
+                    .modal-corte-simple-title {
+                        display: none !important;
+                    }
+                    .modal-corte-btn-fabricar {
+                        padding: 12px 28px !important;
+                        font-weight: 600 !important;
+                        border-radius: 10px !important;
+                        font-size: 15px !important;
+                        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+                        transition: all 0.2s ease !important;
+                    }
+                    .modal-corte-btn-fabricar:hover {
+                        transform: translateY(-2px) !important;
+                        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4) !important;
+                    }
+                    .modal-corte-btn-optimizar {
+                        padding: 12px 28px !important;
+                        font-weight: 600 !important;
+                        border-radius: 10px !important;
+                        font-size: 15px !important;
+                        box-shadow: 0 4px 12px rgba(30, 58, 95, 0.3) !important;
+                        transition: all 0.2s ease !important;
+                    }
+                    .modal-corte-btn-optimizar:hover {
+                        transform: translateY(-2px) !important;
+                        box-shadow: 0 6px 16px rgba(30, 58, 95, 0.4) !important;
+                    }
+                    .modal-corte-btn-cancelar {
+                        padding: 12px 28px !important;
+                        font-weight: 500 !important;
+                        border-radius: 10px !important;
+                        font-size: 15px !important;
+                        color: #64748b !important;
+                        background: #f1f5f9 !important;
+                        transition: all 0.2s ease !important;
+                    }
+                    .modal-corte-btn-cancelar:hover {
+                        background: #e2e8f0 !important;
+                    }
+                `;
+                document.head.appendChild(style);
+
+                document.querySelectorAll(".patron-simple-item").forEach((el) => {
                     el.addEventListener("click", function () {
                         document
-                            .querySelectorAll(".patron-simple")
+                            .querySelectorAll(".patron-simple-item")
                             .forEach((e) => {
-                                e.style.boxShadow = "none";
+                                e.classList.remove("selected");
                             });
-                        this.style.boxShadow = "0 0 0 3px #3b82f6";
+                        this.classList.add("selected");
                         seleccionado =
                             disponibles[parseInt(this.dataset.index)];
                     });
                 });
 
-                const primero = document.querySelector(".patron-simple");
+                const primero = document.querySelector(".patron-simple-item");
                 if (primero) {
                     primero.click();
                 }
             },
         });
 
+        console.log("🔍 [Cortes] Resultado del modal simple:", resultado);
+        console.log("🔍 [Cortes] isConfirmed:", resultado.isConfirmed, "isDenied:", resultado.isDenied, "isDismissed:", resultado.isDismissed);
+
         if (resultado.isConfirmed && seleccionado) {
+            console.log("🔍 [Cortes] Usuario eligió FABRICAR patrón simple");
             // Generar el patrón de letras para el corte simple (todas las piezas son iguales: A + A + A...)
             const esquemaSimple = Array(seleccionado.por_barra).fill("A").join(" + ");
 
@@ -382,9 +751,11 @@ window.Cortes = (function () {
                 }
             };
         } else if (resultado.isDenied) {
+            console.log("🔍 [Cortes] Usuario eligió OPTIMIZAR - llamando a mejorCorteOptimizado...");
             return { accion: "optimizar" };
         }
 
+        console.log("🔍 [Cortes] Usuario CANCELÓ el modal");
         return null;
     }
     // ============================================================================
@@ -392,7 +763,10 @@ window.Cortes = (function () {
     // ============================================================================
 
     async function mostrarPopupOptimizado(datos) {
-        const { patrones } = datos;
+        const { patrones, etiquetasPlanillas } = datos;
+
+        // Mapa de etiquetas a planillas (desde el backend)
+        const mapaPlanillas = etiquetasPlanillas || {};
 
         const top3 = [...patrones]
             .sort((a, b) => b.aprovechamiento - a.aprovechamiento)
@@ -401,7 +775,7 @@ window.Cortes = (function () {
         let indiceActual = 0;
         let patronActual = top3[0];
 
-        // Generar esquema simple (A + B + A + C)
+        // Generar esquema simple (A + B + A + C) con info de planilla
         const generarEsquema = (patron) => {
             const letras = {};
             let siguienteLetra = 65; // A
@@ -415,11 +789,22 @@ window.Cortes = (function () {
                 })
                 .join(" + ");
 
-            const leyenda = Object.entries(letras)
-                .map(([id, letra]) => `${letra} = ${id}`)
-                .join(" • ");
+            // Generar leyenda con planilla (usando mapa del backend)
+            const leyendaItems = Object.entries(letras).map(([id, letra]) => {
+                const planillaCodigo = mapaPlanillas[id] || null;
 
-            return { esquema, leyenda };
+                // Formato vertical: planilla arriba, etiqueta abajo
+                return `
+                    <div class="leyenda-item">
+                        ${planillaCodigo ? `<span class="leyenda-planilla">${planillaCodigo}</span>` : ''}
+                        <span class="leyenda-etiqueta">${letra} = ${id}</span>
+                    </div>
+                `;
+            });
+
+            const leyendaHtml = leyendaItems.join("");
+
+            return { esquema, leyenda: leyendaHtml };
         };
 
         // 🆕 Actualizar popup Y filtrar etiquetas por posición
@@ -459,7 +844,7 @@ window.Cortes = (function () {
 
             document.getElementById("popup-patron-esquema").textContent =
                 esquema;
-            document.getElementById("popup-patron-leyenda").textContent =
+            document.getElementById("popup-patron-leyenda").innerHTML =
                 leyenda;
             document.getElementById("popup-patron-barra").textContent = `${(
                 patronActual.longitud_barra_cm / 100
@@ -547,11 +932,38 @@ window.Cortes = (function () {
                 }
 
                 #popup-patron-leyenda {
-                    font-size: 12px;
-                    color: #6b7280;
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                    justify-content: center;
                     margin: 8px 0 16px 0;
-                    text-align: center;
-                    line-height: 1.5;
+                }
+
+                .leyenda-item {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 2px;
+                    padding: 6px 10px;
+                    background: #f8fafc;
+                    border-radius: 8px;
+                    border: 1px solid #e2e8f0;
+                }
+
+                .leyenda-planilla {
+                    display: inline-block;
+                    background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+                    color: white;
+                    font-size: 10px;
+                    font-weight: 600;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                }
+
+                .leyenda-etiqueta {
+                    font-size: 11px;
+                    color: #475569;
+                    font-weight: 500;
                 }
 
                 .popup-info-grid {

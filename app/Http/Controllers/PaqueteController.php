@@ -10,8 +10,10 @@ use App\Models\Ubicacion;
 use App\Models\Elemento;
 use App\Models\Maquina;
 use App\Models\Movimiento;
+use App\Models\EtiquetaHistorial;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use App\Services\PlanillaColaService;
@@ -266,12 +268,6 @@ class PaqueteController extends Controller
 
     public function store(Request $request, LocalizacionPaqueteService $localizacionPaqueteService)
     {
-        Log::info('🔍 DEBUG: Método store() iniciado', [
-            'maquina_id' => $request->input('maquina_id'),
-            'items_count' => count($request->input('items', [])),
-            'servicio_inyectado' => get_class($localizacionPaqueteService)
-        ]);
-
         // 1) Validación de la petición
         //    - items: array de cosas a paquetizar (etiquetas / elementos)
         //    - items.*.id: identificador de la etiqueta_sub_id o del elemento
@@ -314,6 +310,66 @@ class PaqueteController extends Controller
                 ], 400);
             }
 
+            // 3.1) VALIDACIÓN: Todas las etiquetas deben pertenecer a la MISMA OBRA
+            $etiquetasParaValidar = Etiqueta::with('planilla.obra')
+                ->whereIn('etiqueta_sub_id', $etiquetasSubIds)
+                ->get();
+
+            $obrasUnicas = $etiquetasParaValidar
+                ->pluck('planilla.obra_id')
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($obrasUnicas->count() > 1) {
+                $nombresObras = $etiquetasParaValidar
+                    ->pluck('planilla.obra.obra')
+                    ->filter()
+                    ->unique()
+                    ->implode(', ');
+
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "No se puede crear el paquete: las etiquetas pertenecen a obras diferentes ({$nombresObras}). Un paquete solo puede contener etiquetas de la misma obra.",
+                ], 400);
+            }
+
+            // 3.2) VALIDACIÓN: Todas las planillas deben tener la MISMA FECHA DE ENTREGA
+            $fechasEntrega = $etiquetasParaValidar
+                ->pluck('planilla.fecha_estimada_entrega')
+                ->filter()
+                ->map(fn($fecha) => $fecha instanceof \Carbon\Carbon ? $fecha->format('Y-m-d') : $fecha)
+                ->unique()
+                ->values();
+
+            if ($fechasEntrega->count() > 1) {
+                $fechasFormateadas = $etiquetasParaValidar
+                    ->pluck('planilla')
+                    ->filter()
+                    ->unique('id')
+                    ->map(fn($p) => $p->codigo_limpio . ' (' . ($p->fecha_estimada_entrega ? $p->fecha_estimada_entrega->format('d/m/Y') : 'sin fecha') . ')')
+                    ->implode(', ');
+
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "No se puede crear el paquete: las planillas tienen diferentes fechas de entrega ({$fechasFormateadas}). Un paquete solo puede contener etiquetas con la misma fecha de entrega.",
+                ], 400);
+            }
+
+            // 3.3) VALIDACIÓN: El peso total no puede exceder 1350 kg
+            $pesoMaximo = 1350;
+            $pesoTotalCalculado = $todosElementos->sum(fn($elemento) => $elemento->peso ?? 0);
+
+            if ($pesoTotalCalculado > $pesoMaximo) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "No se puede crear el paquete: el peso total (" . number_format($pesoTotalCalculado, 2) . " kg) excede el límite máximo de {$pesoMaximo} kg.",
+                ], 400);
+            }
+
             // 4) Máquina y planilla
             //    - Se usa la máquina para:
             //         * determinar ubicación (Ubicacion)
@@ -339,20 +395,26 @@ class PaqueteController extends Controller
             });
 
             // 6) Ubicación: según el nombre/código de la máquina
+            //    - Si viene sin_ubicacion=true (grúa), no se asigna ubicación ahora
             //    - Si contiene 'idea 5' en el nombre → Sector Final
             //    - Si no → ubicación que contenga el código de la máquina
-            if (stripos($maquina->nombre, 'idea 5') !== false) {
-                $ubicacion = Ubicacion::where('descripcion', 'LIKE', '%Sector Final%')->first();
-            } else {
-                $ubicacion = Ubicacion::where('descripcion', 'LIKE', "%{$codigoMaquina}%")->first();
-            }
+            $sinUbicacion = $request->boolean('sin_ubicacion', false);
+            $ubicacion = null;
 
-            if (!$ubicacion) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => "No se encontró una ubicación con el nombre de la máquina: {$codigoMaquina}.",
-                ], 400);
+            if (!$sinUbicacion) {
+                if (stripos($maquina->nombre, 'idea 5') !== false) {
+                    $ubicacion = Ubicacion::where('descripcion', 'LIKE', '%Sector Final%')->first();
+                } else {
+                    $ubicacion = Ubicacion::where('descripcion', 'LIKE', "%{$codigoMaquina}%")->first();
+                }
+
+                if (!$ubicacion) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "No se encontró una ubicación con el nombre de la máquina: {$codigoMaquina}.",
+                    ], 400);
+                }
             }
 
             // 7) Guardar los paquetes ANTERIORES de esas subetiquetas (para luego limpiar si quedan vacíos)
@@ -367,11 +429,11 @@ class PaqueteController extends Controller
             // 8) Crear paquete NUEVO (en la tabla paquetes)
             $codigo  = Paquete::generarCodigo();
             $paquete = $this->crearPaquete(
-                $planilla->id,   // planilla_id
-                $ubicacion->id,  // ubicacion_id
-                $pesoTotal,      // peso total del paquete
-                $codigo,         // código generado
-                $maquina->obra_id // nave/obra a la que pertenece
+                $planilla->id,           // planilla_id
+                $ubicacion?->id ?? null, // ubicacion_id (null para grúa, se asigna después)
+                $pesoTotal,              // peso total del paquete
+                $codigo,                 // código generado
+                $maquina->obra_id        // nave/obra a la que pertenece
             );
 
             // 9) Reasignar etiquetas al NUEVO paquete
@@ -408,22 +470,14 @@ class PaqueteController extends Controller
             //          - Inserta/actualiza en `localizaciones_paquetes` una posición
             //            centrada encima del div de la máquina.
 
-            Log::info('🔍 DEBUG: Antes de llamar al servicio de localización', [
-                'paquete_id' => $paquete->id,
-                'maquina_id' => $maquina->id,
-                'servicio_clase' => get_class($localizacionPaqueteService)
-            ]);
-
-            $resultadoLocalizacion = $localizacionPaqueteService->asignarLocalizacionAutomatica(
-                $paquete,          // paquete recién creado
-                $maquina->id       // máquina desde la que se ha creado el paquete
-            );
-
-            Log::info('🔍 DEBUG: Resultado del servicio de localización', [
-                'paquete_id' => $paquete->id,
-                'resultado' => $resultadoLocalizacion ? 'SUCCESS' : 'NULL',
-                'localizacion_id' => $resultadoLocalizacion->id ?? null
-            ]);
+            // Para grúa (sin_ubicacion=true): no asignar localización automática,
+            // se hará manualmente desde el mapa después de crear el paquete
+            if (!$sinUbicacion) {
+                $localizacionPaqueteService->asignarLocalizacionAutomatica(
+                    $paquete,          // paquete recién creado
+                    $maquina->id       // máquina desde la que se ha creado el paquete
+                );
+            }
 
             // 11) Borrar paquetes ANTERIORES que hayan quedado vacíos tras la reasignación
             foreach ($paquetesPrevios as $paqueteAnteriorId) {
@@ -446,9 +500,11 @@ class PaqueteController extends Controller
                 }
             }
 
-            // 12) Retirar de la cola de ESTA máquina si ya no quedan etiquetas pendientes en ella
-            app(PlanillaColaService::class)
-                ->retirarSiPlanillaCompletamentePaquetizadaYCompletada($planilla, $maquina);
+            // 12) DESHABILITADO: La eliminación de la cola ahora solo se hace manualmente
+            // cuando el usuario hace clic en "Planilla Completada" desde la vista de máquina.
+            // Esto evita que se elimine prematuramente la posición antes de confirmar manualmente.
+            // app(PlanillaColaService::class)
+            //     ->retirarSiPlanillaCompletamentePaquetizadaYCompletada($planilla, $maquina);
 
             // 14) Guardar en sesión los IDs de elementos reempaquetados (para otras vistas/lógica)
             session(['elementos_reempaquetados' => $todosElementos->pluck('id')->toArray()]);
@@ -550,6 +606,7 @@ class PaqueteController extends Controller
             return Paquete::create([
                 'planilla_id'   => $planillaId,
                 'ubicacion_id'  => $ubicacionId,
+                'user_id'       => auth()->id(),
                 'peso'          => $pesoTotal ?? 0,
                 'codigo'        => $codigo,
                 'nave_id'     => $obraId,
@@ -571,6 +628,19 @@ class PaqueteController extends Controller
 
             if (count($etiquetasYaAsignadas) > 0) {
                 Log::warning('Etiquetas ya asignadas a otro paquete: ' . implode(', ', $etiquetasYaAsignadas));
+            }
+
+            // 🔄 GUARDAR HISTORIAL ANTES DE ASIGNAR AL PAQUETE (para sistema UNDO)
+            $etiquetas = Etiqueta::whereIn('etiqueta_sub_id', $subIds)->get();
+            foreach ($etiquetas as $etiqueta) {
+                EtiquetaHistorial::registrarCambio(
+                    $etiqueta,
+                    'empaquetar',
+                    'en-paquete',
+                    null, // No hay máquina en esta operación
+                    Auth::id(),
+                    [] // No hay consumo de productos
+                );
             }
 
             // Asignar el paquete a las etiquetas correctas
@@ -638,30 +708,38 @@ class PaqueteController extends Controller
         $validated = $request->validate([
             'codigo' => 'required|string|max:100',
         ], [
-            'codigo.required' => 'Debes indicar el etiqueta_sub_id.',
+            'codigo.required' => 'Debes indicar el código de etiqueta o paquete.',
         ]);
 
         $codigo = trim($validated['codigo']);
+        $paquete = null;
 
-        // 2) Buscar etiqueta directamente
-        $etiqueta = Etiqueta::where('etiqueta_sub_id', $codigo)->first();
+        // 2) Primero intentar buscar directamente como código de paquete
+        $paquete = Paquete::with(['etiquetas.elementos', 'localizacionPaquete'])
+            ->where('codigo', $codigo)
+            ->first();
 
-        // 3) Fallback: buscar en elementos
-        if (!$etiqueta) {
-            $elemento = Elemento::with('etiqueta')
-                ->where('etiqueta_sub_id', $codigo)
-                ->first();
-            if ($elemento) {
-                $etiqueta = $elemento->etiqueta;
+        // 3) Si no es un paquete, buscar como etiqueta
+        if (!$paquete) {
+            $etiqueta = Etiqueta::where('etiqueta_sub_id', $codigo)->first();
+
+            // 4) Fallback: buscar en elementos
+            if (!$etiqueta) {
+                $elemento = Elemento::with('etiqueta')
+                    ->where('etiqueta_sub_id', $codigo)
+                    ->first();
+                if ($elemento) {
+                    $etiqueta = $elemento->etiqueta;
+                }
             }
-        }
 
-        if (!$etiqueta || !$etiqueta->paquete_id) {
-            return response()->json(['error' => 'Etiqueta no asociada a ningún paquete.'], 404);
-        }
+            if (!$etiqueta || !$etiqueta->paquete_id) {
+                return response()->json(['error' => 'Código no encontrado. Introduce un código de etiqueta o de paquete válido.'], 404);
+            }
 
-        // 4) Cargar paquete con todas sus etiquetas y elementos
-        $paquete = Paquete::with(['etiquetas.elementos'])->find($etiqueta->paquete_id);
+            // 5) Cargar paquete desde la etiqueta
+            $paquete = Paquete::with(['etiquetas.elementos', 'localizacionPaquete'])->find($etiqueta->paquete_id);
+        }
         if (!$paquete) {
             return response()->json(['error' => 'Paquete no encontrado.'], 404);
         }
@@ -676,16 +754,32 @@ class PaqueteController extends Controller
         $celdaM = 0.5;
         $celdasLargo = max(1, (int) ceil(($tamano['longitud'] ?? 0) / $celdaM));
 
-        // 7) Respuesta JSON
+        // 7) Datos de localización en el mapa
+        $loc = $paquete->localizacionPaquete;
+        $tieneLocalizacion = $loc !== null;
+        $localizacionData = null;
+        if ($tieneLocalizacion) {
+            $localizacionData = [
+                'x1' => $loc->x1,
+                'y1' => $loc->y1,
+                'x2' => $loc->x2,
+                'y2' => $loc->y2,
+            ];
+        }
+
+        // 8) Respuesta JSON
         return response()->json([
-            'codigo'          => $paquete->codigo,
-            'paquete_id'      => $paquete->id,
-            'ancho'           => (float) $tamano['ancho'],
-            'longitud'        => (float) $tamano['longitud'],
-            'celdas_largo'    => $celdasLargo,
-            'etiqueta_sub_id' => $codigo,
-            'etiquetas_count' => $etiquetasCount,
-            'elementos_count' => $elementosCount,
+            'codigo'             => $paquete->codigo,
+            'paquete_id'         => $paquete->id,
+            'ancho'              => (float) $tamano['ancho'],
+            'longitud'           => (float) $tamano['longitud'],
+            'celdas_largo'       => $celdasLargo,
+            'etiqueta_sub_id'    => $codigo,
+            'etiquetas_count'    => $etiquetasCount,
+            'elementos_count'    => $elementosCount,
+            'nave_id'            => $paquete->nave_id,
+            'tiene_localizacion' => $tieneLocalizacion,
+            'localizacion'       => $localizacionData,
         ]);
     }
 
@@ -742,16 +836,16 @@ class PaqueteController extends Controller
     public function obtenerPaquetesPorPlanilla($planillaId, \Illuminate\Http\Request $request)
     {
         try {
-            $planilla = \App\Models\Planilla::findOrFail($planillaId);
+            $planilla = \App\Models\Planilla::with(['cliente', 'obra'])->findOrFail($planillaId);
 
             // Obtener paquetes de esta planilla con sus etiquetas y elementos
             $query = Paquete::with(['etiquetas' => function ($query) {
                 $query->select('id', 'etiqueta_sub_id', 'paquete_id', 'peso', 'estado')
                     ->withCount('elementos')
                     ->with(['elementos' => function ($q) {
-                        $q->select('id', 'codigo', 'dimensiones', 'etiqueta_id');
+                        $q->select('id', 'codigo', 'dimensiones', 'etiqueta_sub_id');
                     }]);
-            }, 'ubicacion:id,nombre'])
+            }, 'ubicacion:id,nombre,descripcion', 'user:id,name'])
                 ->where('planilla_id', $planillaId);
 
             // Filtrar por máquina si se proporciona el parámetro
@@ -762,14 +856,22 @@ class PaqueteController extends Controller
 
             $paquetes = $query->orderBy('created_at', 'desc')->get();
 
-            $paquetesFormateados = $paquetes->map(function ($paquete) {
+            $paquetesFormateados = $paquetes->map(function ($paquete) use ($planilla) {
                 return [
                     'id' => $paquete->id,
                     'codigo' => $paquete->codigo,
                     'peso' => number_format($paquete->peso, 2, '.', ''),
                     'cantidad_etiquetas' => $paquete->etiquetas->count(),
-                    'ubicacion' => optional($paquete->ubicacion)->nombre ?? 'Sin ubicación',
+                    'ubicacion' => optional($paquete->ubicacion)->descripcion ?? optional($paquete->ubicacion)->nombre ?? 'Sin ubicación',
+                    'usuario' => optional($paquete->user)->name ?? 'Sin asignar',
                     'created_at' => $paquete->created_at->format('d/m/Y H:i'),
+                    // Datos para QR
+                    'planilla_codigo' => $planilla->codigo_limpio ?? $planilla->codigo ?? '',
+                    'cliente' => $planilla->cliente->empresa ?? '',
+                    'obra' => $planilla->obra->obra ?? '',
+                    'descripcion' => $planilla->descripcion ?? '',
+                    'seccion' => $planilla->seccion ?? '',
+                    'ensamblado' => $planilla->ensamblado ?? '',
                     'etiquetas' => $paquete->etiquetas->map(function ($etiqueta) {
                         return [
                             'codigo' => $etiqueta->etiqueta_sub_id,
@@ -832,8 +934,10 @@ class PaqueteController extends Controller
             $paquete = Paquete::findOrFail($paqueteId);
             $codigoEtiqueta = trim($request->etiqueta_codigo);
 
-            // Buscar la etiqueta
-            $etiqueta = Etiqueta::where('etiqueta_sub_id', $codigoEtiqueta)->first();
+            // Buscar la etiqueta con sus relaciones necesarias para validación
+            $etiqueta = Etiqueta::with('planilla.obra')
+                ->where('etiqueta_sub_id', $codigoEtiqueta)
+                ->first();
 
             if (!$etiqueta) {
                 return response()->json([
@@ -842,11 +946,59 @@ class PaqueteController extends Controller
                 ], 404);
             }
 
-            // Validar que la etiqueta pertenezca a la misma planilla
-            if ($etiqueta->planilla_id !== $paquete->planilla_id) {
+            // Obtener las etiquetas existentes en el paquete (se usa para varias validaciones)
+            $etiquetasPaquete = Etiqueta::with('planilla.obra')
+                ->where('paquete_id', $paquete->id)
+                ->get();
+
+            // VALIDACIÓN 1: La etiqueta debe pertenecer a la MISMA OBRA de las etiquetas ya en el paquete
+            if ($etiquetasPaquete->isNotEmpty()) {
+                // Obtener la obra de la primera etiqueta del paquete como referencia
+                $obraPaquete = $etiquetasPaquete->first()->planilla->obra_id ?? null;
+                $obraEtiqueta = $etiqueta->planilla->obra_id ?? null;
+
+                if ($obraPaquete && $obraEtiqueta && $obraPaquete !== $obraEtiqueta) {
+                    $nombreObraPaquete = $etiquetasPaquete->first()->planilla->obra->obra ?? 'Desconocida';
+                    $nombreObraEtiqueta = $etiqueta->planilla->obra->obra ?? 'Desconocida';
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => "No se puede añadir la etiqueta: pertenece a la obra '{$nombreObraEtiqueta}' pero las etiquetas del paquete son de la obra '{$nombreObraPaquete}'. Un paquete solo puede contener etiquetas de la misma obra."
+                    ], 400);
+                }
+            }
+            // Si el paquete está vacío, se permite cualquier etiqueta (la primera define la obra del paquete)
+
+            // VALIDACIÓN 2: La fecha de entrega de la planilla debe ser la MISMA que las demás del paquete
+            if ($etiquetasPaquete->isNotEmpty()) {
+                $fechaPaquete = $etiquetasPaquete->first()->planilla?->fecha_estimada_entrega;
+                $fechaEtiqueta = $etiqueta->planilla?->fecha_estimada_entrega;
+
+                // Normalizar fechas para comparación
+                $fechaPaqueteStr = $fechaPaquete instanceof \Carbon\Carbon ? $fechaPaquete->format('Y-m-d') : $fechaPaquete;
+                $fechaEtiquetaStr = $fechaEtiqueta instanceof \Carbon\Carbon ? $fechaEtiqueta->format('Y-m-d') : $fechaEtiqueta;
+
+                if ($fechaPaqueteStr && $fechaEtiquetaStr && $fechaPaqueteStr !== $fechaEtiquetaStr) {
+                    $fechaPaqueteFormato = $fechaPaquete instanceof \Carbon\Carbon ? $fechaPaquete->format('d/m/Y') : $fechaPaquete;
+                    $fechaEtiquetaFormato = $fechaEtiqueta instanceof \Carbon\Carbon ? $fechaEtiqueta->format('d/m/Y') : $fechaEtiqueta;
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => "No se puede añadir la etiqueta: su planilla tiene fecha de entrega {$fechaEtiquetaFormato} pero las etiquetas del paquete tienen fecha {$fechaPaqueteFormato}. Un paquete solo puede contener etiquetas con la misma fecha de entrega."
+                    ], 400);
+                }
+            }
+
+            // VALIDACIÓN 3: El peso del paquete + etiqueta no puede exceder 1350 kg
+            $pesoMaximo = 1350;
+            $pesoEtiquetaNueva = $etiqueta->peso ?? 0;
+            $pesoPaqueteActual = $paquete->peso ?? 0;
+            $pesoTotalResultante = $pesoPaqueteActual + $pesoEtiquetaNueva;
+
+            if ($pesoTotalResultante > $pesoMaximo) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'La etiqueta no pertenece a la misma planilla del paquete'
+                    'message' => "No se puede añadir la etiqueta: el peso resultante (" . number_format($pesoTotalResultante, 2) . " kg) excedería el límite máximo de {$pesoMaximo} kg. Peso actual del paquete: " . number_format($pesoPaqueteActual, 2) . " kg, peso de la etiqueta: " . number_format($pesoEtiquetaNueva, 2) . " kg."
                 ], 400);
             }
 
@@ -922,9 +1074,8 @@ class PaqueteController extends Controller
             // Guardar peso anterior para logs
             $pesoAnterior = $paquete->peso;
 
-            // Asignar etiqueta al paquete
+            // Asignar etiqueta al paquete (mantener el estado actual)
             $etiqueta->paquete_id = $paquete->id;
-            $etiqueta->estado = 'en paquete';
             $etiqueta->save();
 
             // Actualizar peso del paquete
@@ -1015,6 +1166,7 @@ class PaqueteController extends Controller
 
             // Guardar peso antes de desasociar
             $pesoEtiqueta = $etiqueta->peso ?? 0;
+            $pesoAnterior = $paquete->peso; // Guardar peso anterior del paquete para logs
 
             // Desasociar etiqueta del paquete
             $etiqueta->paquete_id = null;
@@ -1057,6 +1209,7 @@ class PaqueteController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "Etiqueta eliminada correctamente del paquete",
+                'etiqueta_codigo' => $codigoEtiqueta,
                 'paquete' => [
                     'id' => $paquete->id,
                     'codigo' => $paquete->codigo,
@@ -1102,10 +1255,17 @@ class PaqueteController extends Controller
                 'usuario' => auth()->user()->nombre_completo ?? 'desconocido'
             ]);
 
-            // 📊 Obtener IDs de etiquetas para logs (antes de liberarlas)
-            $etiquetasIds = Etiqueta::where('paquete_id', $paquete->id)
-                ->pluck('etiqueta_sub_id')
+            // 📊 Obtener datos de etiquetas para logs y actualización del DOM (antes de liberarlas)
+            $etiquetasData = Etiqueta::where('paquete_id', $paquete->id)
+                ->select('etiqueta_sub_id', 'estado')
+                ->get()
+                ->map(fn($e) => [
+                    'id' => $e->etiqueta_sub_id,
+                    'estado' => $e->estado
+                ])
                 ->toArray();
+
+            $etiquetasIds = array_column($etiquetasData, 'id');
 
             // Liberar todas las etiquetas del paquete (solo quitar paquete_id, mantener estado)
             $etiquetasLiberadas = Etiqueta::where('paquete_id', $paquete->id)
@@ -1146,7 +1306,10 @@ class PaqueteController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "Paquete {$codigoPaquete} eliminado correctamente. {$etiquetasLiberadas} etiquetas liberadas",
-                'etiquetas_liberadas' => $etiquetasLiberadas
+                'etiquetas_liberadas' => $etiquetasLiberadas,
+                'etiquetas_ids' => $etiquetasIds,
+                'etiquetas_data' => $etiquetasData,
+                'codigo_paquete' => $codigoPaquete
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             DB::rollBack();

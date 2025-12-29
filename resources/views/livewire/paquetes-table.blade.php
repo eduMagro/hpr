@@ -7,18 +7,17 @@
             <table class="w-full min-w-[1600px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-10">
                     <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('id')" wire:navigate">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('id')">
                             ID @if ($sort === 'id')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('codigo')" wire:navigate">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('codigo')">
                             Código @if ($sort === 'codigo')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('planilla_id')"
-                            wire:navigate">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('planilla_id')">
                             Planilla @if ($sort === 'planilla_id')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
@@ -29,19 +28,19 @@
                         <th class="p-2 border">Cliente</th>
                         <th class="p-2 border">Nave</th>
                         <th class="p-2 border">Ubicación</th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('estado')" wire:navigate">
+                        <th class="p-2 border">Usuario</th>
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('estado')">
                             Estado @if ($sort === 'estado')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
                         <th class="p-2 border">Elementos</th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('peso')" wire:navigate">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('peso')">
                             Peso (Kg) @if ($sort === 'peso')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('created_at')"
-                            wire:navigate">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('created_at')">
                             Fecha Creación @if ($sort === 'created_at')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
@@ -51,54 +50,55 @@
                     </tr>
 
                     <tr class="text-center text-xs uppercase">
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="paquete_id"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="ID...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="codigo"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Código...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="planilla"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Planilla...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="cod_obra"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Cód. Obra...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="nom_obra"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Obra...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="codigo_cliente"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Cód. Cliente...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="cliente"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Cliente...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="nave"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Nave...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="ubicacion"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Ubicación...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border"></th> {{-- Usuario (sin filtro) --}}
+                        <th class="p-2 border">
                             <select wire:model.live="estado"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                                 <option value="">Todos</option>
                                 <option value="pendiente">Pendiente</option>
                                 <option value="asignado_a_salida">Asignado</option>
@@ -106,17 +106,17 @@
                                 <option value="enviado">Enviado</option>
                             </select>
                         </th>
-                        <th class="p-1 border"></th> {{-- Elementos --}}
-                        <th class="p-1 border"></th> {{-- Peso --}}
-                        <th class="p-1 border">
+                        <th class="p-2 border"></th> {{-- Elementos --}}
+                        <th class="p-2 border"></th> {{-- Peso --}}
+                        <th class="p-2 border">
                             <input type="date" wire:model.live.debounce.300ms="created_at"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="date" wire:model.live.debounce.300ms="fecha_limite"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                         </th>
-                        <th class="p-1 border text-center align-middle">
+                        <th class="p-2 border text-center align-middle">
                             <div class="flex justify-center gap-2 items-center h-full">
                                 {{-- ♻️ Botón reset --}}
                                 <button wire:click="limpiarFiltros"
@@ -135,7 +135,7 @@
 
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($paquetes as $paquete)
-                        <tr
+                        <tr wire:key="paquete-{{ $paquete->id }}"
                             class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 transition-colors text-xs uppercase">
                             <td class="p-2 text-center border">{{ $paquete->id }}</td>
                             <td class="p-2 text-center border">{{ $paquete->codigo }}</td>
@@ -151,6 +151,7 @@
                             <td class="p-2 text-center border">{{ $paquete->planilla->cliente->empresa ?? '-' }}</td>
                             <td class="p-2 text-center border">{{ $paquete->nave->obra ?? '-' }}</td>
                             <td class="p-2 text-center border">{{ $paquete->ubicacion->nombre ?? '-' }}</td>
+                            <td class="p-2 text-center border">{{ $paquete->user->name ?? '-' }}</td>
                             <td class="p-2 text-center border">
                                 @php
                                     $estadoBadge = match ($paquete->estado) {
@@ -231,10 +232,17 @@
                                 <div class="flex flex-row justify-center items-center gap-3">
                                     {{-- Botón QR --}}
                                     <button
-                                        onclick="onclick="generateAndPrintQR('{{ $paquete->codigo }}', '{{ $paquete->planilla->codigo_limpio }}'
-                                        , 'PAQUETE' )" wire:navigate"
-                                        class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
-                                        title="Generar QR">
+                                        class="btn-qr-paquete w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                        data-codigo="{{ $paquete->codigo }}"
+                                        data-planilla="{{ $paquete->planilla->codigo_limpio ?? '' }}"
+                                        data-cliente="{{ $paquete->planilla->cliente->empresa ?? '' }}"
+                                        data-obra="{{ $paquete->planilla->obra->obra ?? '' }}"
+                                        data-descripcion="{{ $paquete->planilla->descripcion ?? '' }}"
+                                        data-seccion="{{ $paquete->planilla->seccion ?? '' }}"
+                                        data-ensamblado="{{ $paquete->planilla->ensamblado ?? '' }}"
+                                        data-peso="{{ number_format($paquete->peso ?? 0, 2, ',', '.') }}"
+                                        data-etiquetas="{{ $paquete->etiquetas->pluck('etiqueta_sub_id')->filter()->implode(', ') }}"
+                                        title="Imprimir QR">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none"
                                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -262,7 +270,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="15" class="text-center py-4 text-gray-500">No hay paquetes registrados</td>
+                            <td colspan="16" class="text-center py-4 text-gray-500">No hay paquetes registrados</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -410,17 +418,54 @@
                 }
             }
 
-            // Ejecutar en carga inicial
-            document.addEventListener('DOMContentLoaded', inicializarPaquetes);
+            function initPaquetesTablePage() {
+                // Prevenir doble inicialización
+                if (document.body.dataset.paquetesTablePageInit === 'true') return;
 
-            // Ejecutar después de navegación SPA con Livewire
-            document.addEventListener('livewire:navigated', inicializarPaquetes);
+                console.log('🔍 Inicializando tabla de paquetes...');
+
+                // Llamar a la función de inicialización
+                if (typeof inicializarPaquetes === 'function') inicializarPaquetes();
+
+                // Marcar como inicializado
+                document.body.dataset.paquetesTablePageInit = 'true';
+            }
+
+            // Registrar en el sistema global
+            window.pageInitializers.push(initPaquetesTablePage);
+
+            // Configurar listeners
+            document.addEventListener('livewire:navigated', initPaquetesTablePage);
+            document.addEventListener('DOMContentLoaded', initPaquetesTablePage);
+
+            // Limpiar flag antes de navegar
+            document.addEventListener('livewire:navigating', () => {
+                document.body.dataset.paquetesTablePageInit = 'false';
+            });
         </script>
     @endpush
 
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="{{ asset('js/imprimirQrS.js') }}"></script>
+    <script>
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn-qr-paquete');
+            if (btn) {
+                generateAndPrintQRPaquete({
+                    codigo: btn.dataset.codigo,
+                    planilla: btn.dataset.planilla,
+                    cliente: btn.dataset.cliente,
+                    obra: btn.dataset.obra,
+                    descripcion: btn.dataset.descripcion,
+                    seccion: btn.dataset.seccion,
+                    ensamblado: btn.dataset.ensamblado,
+                    peso: btn.dataset.peso,
+                    etiquetas: btn.dataset.etiquetas
+                });
+            }
+        });
+    </script>
     <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </div>

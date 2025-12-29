@@ -19,6 +19,8 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\AsignacionesTurnosExport;
 use App\Models\Festivo;
 use Carbon\CarbonPeriod;
+use App\Servicios\Turnos\TurnoMapper;
+use App\Servicios\Turnos\ValidadorAsignaciones;
 
 class AsignacionTurnoController extends Controller
 {
@@ -374,13 +376,15 @@ class AsignacionTurnoController extends Controller
             }
 
             /* 2) Obra cercana --------------------------------------------------------- */
-            // TODO: Descomentar para producción - Control de ubicación desactivado para pruebas
-            // $obraEncontrada = $this->buscarObraCercana($request->latitud, $request->longitud);
-            // if (!$obraEncontrada) {
-            //     return response()->json(['error' => 'No estás dentro de ninguna zona de trabajo.'], 403);
-            // }
-            // TEMPORAL: Usar primera obra activa para pruebas
-            $obraEncontrada = Obra::where('estado', 'activa')->first();
+            // Eduardo Magro puede fichar sin verificación de ubicación
+            if ($user->email === 'eduardo.magro@pacoreyes.com') {
+                $obraEncontrada = Obra::where('estado', 'activa')->first();
+            } else {
+                $obraEncontrada = $this->buscarObraCercana($request->latitud, $request->longitud);
+                if (!$obraEncontrada) {
+                    return response()->json(['error' => 'No estás dentro de ninguna zona de trabajo.'], 403);
+                }
+            }
 
             /* 3) Hora actual + detección de turno/fecha ------------------------------ */
             $ahora = now();
@@ -401,22 +405,61 @@ class AsignacionTurnoController extends Controller
 
             if ($request->tipo === 'entrada') {
                 // ======= ENTRADA ======================================================
-                // Buscar asignación del día detectado o crearla
+                // Buscar asignación del día (sin soft-deleted)
                 $asignacion = $user->asignacionesTurnos()
                     ->whereDate('fecha', $fechaTurnoDetectado)
-                    ->with('turno')
                     ->first();
 
-                if (!$asignacion) {
-                    $asignacion = $user->asignacionesTurnos()->create([
+                if ($asignacion) {
+                    // Comprobar si el turno cambia para notificar
+                    $turnoAnterior = $asignacion->turno?->nombre;
+                    $turnoCambia = $asignacion->turno_id !== $turnoModelo->id;
+
+                    // Si existe, actualizar con la entrada
+                    $asignacion->update([
+                        'turno_id'   => $turnoModelo->id,
+                        'estado'     => 'activo',
+                        'entrada'    => $horaActual,
+                        'obra_id'    => $obraEncontrada->id,
+                        'maquina_id' => $asignacion->maquina_id ?? $user->maquina_id,
+                    ]);
+
+                    // Notificar si el turno cambió
+                    if ($turnoCambia) {
+                        try {
+                            $programadores = User::whereHas('departamentos', fn($q) => $q->where('nombre', 'Programador'))->get();
+                            $alerta = Alerta::create([
+                                'user_id_1' => $user->id,
+                                'mensaje'   => "🔁 Turno corregido de '{$turnoAnterior}' a '{$turnoDetectado}' para {$user->nombre_completo} en {$fechaTurnoDetectado}.",
+                                'tipo'      => 'Info Turnos',
+                                'leida'     => false,
+                            ]);
+                            foreach ($programadores as $p) {
+                                AlertaLeida::firstOrCreate(['alerta_id' => $alerta->id, 'user_id' => $p->id]);
+                            }
+                        } catch (\Throwable $e) {
+                            Log::error('No se pudo notificar corrección turno: ' . $e->getMessage());
+                        }
+                    }
+                } else {
+                    // Eliminar definitivamente cualquier registro soft-deleted para evitar conflicto
+                    $user->asignacionesTurnos()
+                        ->onlyTrashed()
+                        ->whereDate('fecha', $fechaTurnoDetectado)
+                        ->forceDelete();
+
+                    // Crear nuevo registro
+                    $asignacion = AsignacionTurno::create([
+                        'user_id'    => $user->id,
                         'fecha'      => $fechaTurnoDetectado,
                         'turno_id'   => $turnoModelo->id,
                         'estado'     => 'activo',
+                        'entrada'    => $horaActual,
+                        'obra_id'    => $obraEncontrada->id,
                         'maquina_id' => $user->maquina_id ?? null,
-                        'obra_id'    => null,
                     ]);
 
-                    // (Opcional) notificación a programadores
+                    // Notificación a programadores (solo cuando se crea nuevo)
                     try {
                         $programadores = User::whereHas('departamentos', fn($q) => $q->where('nombre', 'Programador'))->get();
                         $alerta = Alerta::create([
@@ -431,39 +474,12 @@ class AsignacionTurnoController extends Controller
                     } catch (\Throwable $e) {
                         Log::error('No se pudo notificar creación asignación: ' . $e->getMessage());
                     }
-                } else {
-                    // Si existe pero con otro turno, lo corregimos automáticamente
-                    if (strtolower($asignacion->turno->nombre) !== strtolower($turnoDetectado)) {
-                        $asignacion->turno_id = $turnoModelo->id;
-                        $asignacion->save();
-
-                        try {
-                            $programadores = User::whereHas('departamentos', fn($q) => $q->where('nombre', 'Programador'))->get();
-                            $alerta = Alerta::create([
-                                'user_id_1' => $user->id,
-                                'mensaje'   => "🔁 Corregido turno a '{$turnoDetectado}' para {$user->nombre_completo} en {$fechaTurnoDetectado}.",
-                                'tipo'      => 'Info Turnos',
-                                'leida'     => false,
-                            ]);
-                            foreach ($programadores as $p) {
-                                AlertaLeida::firstOrCreate(['alerta_id' => $alerta->id, 'user_id' => $p->id]);
-                            }
-                        } catch (\Throwable $e) {
-                            Log::error('No se pudo notificar corrección turno: ' . $e->getMessage());
-                        }
-                    }
                 }
 
                 // Validación de horario (entrada)
                 if (!$this->validarHoraEntrada($turnoDetectado, $horaActual)) {
                     $warning = 'Has fichado entrada fuera de tu horario.';
                 }
-
-                // Guardar entrada y obra
-                $asignacion->update([
-                    'entrada' => $horaActual,
-                    'obra_id' => $obraEncontrada->id,
-                ]);
 
                 return response()->json([
                     'success'     => 'Entrada registrada.',
@@ -473,35 +489,31 @@ class AsignacionTurnoController extends Controller
             }
 
             // ======= SALIDA ==========================================================
-            // Intentar cerrar la asignación abierta más razonable (últimas 36h)
+            // La salida siempre usa la fecha REAL del fichaje, sin detectar turno
+            $fechaReal = $ahora->toDateString();
+
+            // Primero: buscar asignación abierta (con entrada y sin salida) en las últimas 36h
             $asignacion = $this->buscarAsignacionAbiertaParaSalida($user, $ahora);
 
-            // Fallback: usar el día detectado si no hay abierta
+            // Fallback: buscar asignación del día REAL (no del turno detectado)
             if (!$asignacion) {
                 $asignacion = $user->asignacionesTurnos()
-                    ->whereDate('fecha', $fechaTurnoDetectado)
+                    ->whereDate('fecha', $fechaReal)
                     ->orderByDesc('id')
                     ->first();
             }
 
+            // Si no hay asignación, no permitir fichar salida
             if (!$asignacion) {
-                // Si aun así no hay, crearla para no perder el fichaje
-                $asignacion = $user->asignacionesTurnos()->create([
-                    'fecha'      => $fechaTurnoDetectado,
-                    'turno_id'   => $turnoModelo->id,
-                    'estado'     => 'activo',
-                    'maquina_id' => $user->maquina_id ?? null,
-                    'obra_id'    => null,
-                ]);
-                $warning = 'No había una asignación abierta; se ha creado una nueva para registrar la salida.';
+                return response()->json([
+                    'error' => 'No tienes una asignación de turno para hoy. Debes fichar entrada primero.'
+                ], 403);
             }
 
             if (!$asignacion->entrada) {
-                $warning = 'Estás registrando una salida sin haber fichado entrada.';
-            }
-
-            if (!$this->validarHoraSalida($turnoDetectado, $horaActual)) {
-                $warning = 'Has fichado salida fuera de tu horario.';
+                return response()->json([
+                    'error' => 'No puedes fichar salida sin haber fichado entrada.'
+                ], 403);
             }
 
             $asignacion->update([
@@ -511,7 +523,6 @@ class AsignacionTurnoController extends Controller
 
             return response()->json([
                 'success'     => 'Salida registrada.',
-                'warning'     => $warning,
                 'obra_nombre' => $obraEncontrada->obra,
             ]);
         } catch (\Throwable $e) {
@@ -532,8 +543,8 @@ class AsignacionTurnoController extends Controller
      */
     private function detectarTurnoYFecha(Carbon $ahora): array
     {
-        // Margen de anticipación en minutos (fichar hasta 1 hora antes)
-        $margenAnticipacion = 60;
+        // Margen de anticipación en minutos (fichar hasta 2 horas antes)
+        $margenAnticipacion = 120;
 
         // Obtener turnos con horarios definidos (excluir montaje, festivo, dinámico que no tienen hora)
         $turnos = Turno::whereNotNull('hora_inicio')
@@ -773,6 +784,16 @@ class AsignacionTurnoController extends Controller
     public function store(Request $request)
     {
         try {
+            Log::channel('planificacion_trabajadores_taller')->info('[store] Creando asignación', [
+                'user_id' => $request->user_id,
+                'fecha_inicio' => $request->fecha_inicio,
+                'fecha_fin' => $request->fecha_fin,
+                'tipo' => $request->tipo,
+                'maquina_id' => $request->maquina_id,
+                'obra_id' => $request->obra_id,
+                'ejecutado_por' => auth()->id(),
+            ]);
+
             $request->validate([
                 'user_id'      => 'required|exists:users,id',
                 'fecha_inicio' => 'required|date',
@@ -944,7 +965,7 @@ class AsignacionTurnoController extends Controller
                         if ($esTurno) {
                             $datos['turno_id'] = $turno->id;
                         }
-                        $datos['maquina_id'] = $request->maquina_id ?? $asignacion->maquina_id ?? $user->maquina_id;
+                        $datos['maquina_id'] = $request->maquina_id ?? ($asignacion ? $asignacion->maquina_id : null) ?? $user->maquina_id;
                     }
 
                     if ($request->has('entrada')) {
@@ -957,13 +978,42 @@ class AsignacionTurnoController extends Controller
                         $datos['obra_id'] = $request->obra_id;
                     }
 
-                    if ($asignacion) {
-                        $asignacion->update($datos);
+                    // Buscar asignación existente (incluyendo soft-deleted) con whereDate
+                    $asignacionExistente = AsignacionTurno::withTrashed()
+                        ->where('user_id', $user->id)
+                        ->whereDate('fecha', $dateStr)
+                        ->first();
+
+                    if ($asignacionExistente) {
+                        // Restaurar si estaba eliminada
+                        if ($asignacionExistente->trashed()) {
+                            $asignacionExistente->restore();
+                        }
+                        $asignacionExistente->update($datos);
                     } else {
-                        AsignacionTurno::create(array_merge($datos, [
-                            'user_id' => $user->id,
-                            'fecha'   => $dateStr,
-                        ]));
+                        // Usar try-catch para manejar posibles condiciones de carrera
+                        try {
+                            AsignacionTurno::create(array_merge($datos, [
+                                'user_id' => $user->id,
+                                'fecha'   => $dateStr,
+                            ]));
+                        } catch (\Illuminate\Database\QueryException $e) {
+                            // Si es error de duplicado, intentar actualizar (incluye soft-deleted)
+                            if ($e->errorInfo[1] == 1062) {
+                                $asignacion = AsignacionTurno::withTrashed()
+                                    ->where('user_id', $user->id)
+                                    ->whereDate('fecha', $dateStr)
+                                    ->first();
+                                if ($asignacion) {
+                                    if ($asignacion->trashed()) {
+                                        $asignacion->restore();
+                                    }
+                                    $asignacion->update($datos);
+                                }
+                            } else {
+                                throw $e;
+                            }
+                        }
                     }
                 }
             }
@@ -1030,6 +1080,12 @@ class AsignacionTurnoController extends Controller
     public function update(Request $request, $id)
     {
         try {
+            Log::channel('planificacion_trabajadores_taller')->info('[update] Actualizando asignación', [
+                'asignacion_id' => $id,
+                'cambios' => $request->all(),
+                'ejecutado_por' => auth()->id(),
+            ]);
+
             $asignacion = AsignacionTurno::findOrFail($id);
 
             // Validar los campos que puedes editar en línea
@@ -1039,6 +1095,7 @@ class AsignacionTurnoController extends Controller
                 'salida' => 'nullable|date_format:H:i',
                 'maquina_id' => 'nullable|exists:maquinas,id',
                 'obra_id' => 'nullable|exists:obras,id',
+                'estado' => 'nullable|string|in:activo,curso,vacaciones,baja,justificada,injustificada',
             ]);
 
             $asignacion->update($validated);
@@ -1060,6 +1117,13 @@ class AsignacionTurnoController extends Controller
     public function actualizarHoras(Request $request, $id)
     {
         try {
+            Log::channel('planificacion_trabajadores_taller')->info('[actualizarHoras] Actualizando horas', [
+                'asignacion_id' => $id,
+                'entrada' => $request->entrada,
+                'salida' => $request->salida,
+                'ejecutado_por' => auth()->id(),
+            ]);
+
             $request->validate(
                 [
                     'entrada' => 'nullable|date_format:H:i',
@@ -1100,9 +1164,32 @@ class AsignacionTurnoController extends Controller
 
     public function destroy(Request $request)
     {
-        Log::debug('Request completo', $request->all());
+        Log::channel('planificacion_trabajadores_taller')->info('[destroy] Eliminando asignación', [
+            'user_id' => $request->user_id,
+            'fecha_inicio' => $request->fecha_inicio,
+            'fecha_fin' => $request->fecha_fin,
+            'tipo' => $request->tipo,
+            'ejecutado_por' => auth()->id(),
+        ]);
 
         try {
+            // Normalizar fechas (FullCalendar puede enviar datetime con T)
+            $fechaInicio = $request->fecha_inicio;
+            $fechaFin = $request->fecha_fin ?? $request->fecha_inicio;
+
+            // Extraer solo la fecha si viene con tiempo
+            if ($fechaInicio && str_contains($fechaInicio, 'T')) {
+                $fechaInicio = substr($fechaInicio, 0, 10);
+            }
+            if ($fechaFin && str_contains($fechaFin, 'T')) {
+                $fechaFin = substr($fechaFin, 0, 10);
+            }
+
+            $request->merge([
+                'fecha_inicio' => $fechaInicio,
+                'fecha_fin' => $fechaFin,
+            ]);
+
             $request->validate([
                 'fecha_inicio' => 'required|date',
                 'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
@@ -1116,10 +1203,16 @@ class AsignacionTurnoController extends Controller
                 }
 
                 AsignacionTurno::where('turno_id', $turno->id)
-                    ->whereBetween('fecha', [$request->fecha_inicio, $request->fecha_fin])
+                    ->whereBetween('fecha', [$fechaInicio, $fechaFin])
                     ->delete();
 
                 return response()->json(['success' => 'Turnos festivos eliminados para todos los usuarios.']);
+            }
+
+            // Verificar que user_id no sea null o undefined
+            if (!$request->filled('user_id')) {
+                Log::warning('AsignacionTurno destroy - user_id no proporcionado', $request->all());
+                return response()->json(['error' => 'No se proporcionó el ID del usuario'], 400);
             }
 
             $request->validate([
@@ -1127,12 +1220,12 @@ class AsignacionTurnoController extends Controller
                 'tipo'    => 'required|in:eliminarTurnoEstado,eliminarEstado',
             ]);
 
-            $tipo = trim($request->tipo); // ✅ evitar errores por espacios
+            $tipo = trim($request->tipo);
 
             $user = User::findOrFail($request->user_id);
 
             $asignaciones = AsignacionTurno::where('user_id', $user->id)
-                ->whereBetween('fecha', [$request->fecha_inicio, $request->fecha_fin])
+                ->whereBetween('fecha', [$fechaInicio, $fechaFin])
                 ->get();
 
             foreach ($asignaciones as $asignacion) {
@@ -1152,7 +1245,17 @@ class AsignacionTurnoController extends Controller
                     ? 'Turnos eliminados correctamente.'
                     : 'Estado eliminado correctamente.'
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('AsignacionTurno destroy - Validación fallida', [
+                'errors' => $e->errors(),
+                'request' => $request->all()
+            ]);
+            return response()->json(['error' => 'Datos inválidos: ' . collect($e->errors())->flatten()->first()], 422);
         } catch (\Exception $e) {
+            Log::error('AsignacionTurno destroy - Error', [
+                'message' => $e->getMessage(),
+                'request' => $request->all()
+            ]);
             return response()->json(['error' => 'Error al eliminar los turnos: ' . $e->getMessage()], 500);
         }
     }
@@ -1164,7 +1267,13 @@ class AsignacionTurnoController extends Controller
 
     public function asignarObra(Request $request)
     {
-        Log::debug('🪵 asignarObra payload:', $request->all()); // 👈 Log de entrada
+        Log::channel('planificacion_trabajadores_taller')->info('[asignarObra] Asignando obra a trabajador', [
+            'user_id' => $request->user_id,
+            'fecha' => $request->fecha,
+            'obra_id' => $request->obra_id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         // 👇 Forzar null si viene cadena vacía
         if ($request->obra_id === '') {
             $request->merge(['obra_id' => null]);
@@ -1178,17 +1287,22 @@ class AsignacionTurnoController extends Controller
         ]);
         $turnoMontajeId = Turno::where('nombre', 'montaje')->firstOrFail()->id;
 
-        // Buscar asignación de turno para ese día
-        $asignacion = AsignacionTurno::where('user_id', $validated['user_id'])
-            ->where('fecha', $validated['fecha'])
+        // Buscar asignación de turno para ese día (incluyendo soft-deleted)
+        $asignacion = AsignacionTurno::withTrashed()
+            ->where('user_id', $validated['user_id'])
+            ->whereDate('fecha', $validated['fecha'])
             ->first();
 
-        // Si no existe, se crea
+        // Si existe pero está soft-deleted, restaurarla
+        if ($asignacion && $asignacion->trashed()) {
+            $asignacion->restore();
+        }
+
+        // Si no existe, crear nueva
         if (!$asignacion) {
             $asignacion = new AsignacionTurno();
             $asignacion->user_id = $validated['user_id'];
             $asignacion->fecha = $validated['fecha'];
-
             $asignacion->turno_id = $turnoMontajeId;
         }
 
@@ -1212,17 +1326,25 @@ class AsignacionTurnoController extends Controller
 
     public function asignarObraMultiple(Request $request)
     {
-        Log::debug('🪵 asignarObra multiple payload:', $request->all()); // 👈 Log de entrada
-        // 👇 Forzar null si viene cadena vacía
-        if ($request->obra_id === '') {
+        Log::channel('planificacion_trabajadores_taller')->info('[asignarObraMultiple] Asignando obra a múltiples trabajadores', [
+            'user_ids' => $request->user_ids,
+            'obra_id' => $request->obra_id,
+            'fecha_inicio' => $request->fecha_inicio,
+            'fecha_fin' => $request->fecha_fin,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
+        // 👇 Forzar null si viene cadena vacía o "sin-obra"
+        if (in_array($request->obra_id, ['', 'sin-obra', null], true)) {
             $request->merge(['obra_id' => null]);
+        } else {
+            $request->merge(['obra_id' => (int) $request->obra_id]);
         }
 
         $request->validate([
             'user_ids' => 'required|array',
             'user_ids.*' => 'exists:users,id',
             'obra_id' => ['nullable', 'integer', 'exists:obras,id'],
-
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
         ]);
@@ -1235,16 +1357,34 @@ class AsignacionTurnoController extends Controller
         foreach ($request->user_ids as $userId) {
             $fecha = $fechaInicio->copy();
             while ($fecha->lte($fechaFin)) {
-                AsignacionTurno::updateOrCreate(
-                    [
-                        'user_id' => $userId,
-                        'fecha' => $fecha->toDateString(),
-                    ],
-                    [
+                $fechaStr = $fecha->toDateString();
+
+                // Buscar asignación existente (incluyendo soft-deleted)
+                $asignacion = AsignacionTurno::withTrashed()
+                    ->where('user_id', $userId)
+                    ->whereDate('fecha', $fechaStr)
+                    ->first();
+
+                if ($asignacion) {
+                    // Si está soft-deleted, restaurarla
+                    if ($asignacion->trashed()) {
+                        $asignacion->restore();
+                    }
+                    // Actualizar
+                    $asignacion->update([
                         'obra_id' => $request->obra_id,
                         'turno_id' => $turnoMontajeId,
-                    ]
-                );
+                    ]);
+                } else {
+                    // Crear nueva
+                    AsignacionTurno::create([
+                        'user_id' => $userId,
+                        'fecha' => $fechaStr,
+                        'obra_id' => $request->obra_id,
+                        'turno_id' => $turnoMontajeId,
+                    ]);
+                }
+
                 $fecha->addDay();
             }
         }
@@ -1255,8 +1395,13 @@ class AsignacionTurnoController extends Controller
 
     public function updateObra(Request $request, $id)
     {
-        Log::debug('🪵 Actualizar obra
-         :', $request->all()); // 👈 Log de entrada
+        Log::channel('planificacion_trabajadores_taller')->info('[updateObra] Actualizando obra de asignación', [
+            'asignacion_id' => $id,
+            'obra_id' => $request->obra_id,
+            'fecha' => $request->fecha,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         // 🛠️ Corregimos obra_id si llega como string vacío
         if (in_array($request->obra_id, ['', 'sin-obra', 'null', null], true)) {
             $request->merge(['obra_id' => null]);
@@ -1270,16 +1415,23 @@ class AsignacionTurnoController extends Controller
 
         $asignacion = AsignacionTurno::findOrFail($id);
 
-        $existeOtra = AsignacionTurno::where('user_id', $asignacion->user_id)
-            ->where('fecha', $request->fecha)
+        // Verificar si existe otra asignación (incluyendo soft-deleted) para esa fecha
+        $existeOtra = AsignacionTurno::withTrashed()
+            ->where('user_id', $asignacion->user_id)
+            ->whereDate('fecha', $request->fecha)
             ->where('id', '!=', $asignacion->id)
             ->first();
 
         if ($existeOtra) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ya existe otra asignación para este usuario en esa fecha.'
-            ]);
+            // Si la otra está soft-deleted, eliminarla definitivamente
+            if ($existeOtra->trashed()) {
+                $existeOtra->forceDelete();
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ya existe otra asignación para este usuario en esa fecha.'
+                ]);
+            }
         }
 
         $asignacion->obra_id = $request->obra_id;
@@ -1291,6 +1443,11 @@ class AsignacionTurnoController extends Controller
 
     public function repetirSemana(Request $request)
     {
+        Log::channel('planificacion_trabajadores_taller')->info('[repetirSemana] Repitiendo semana anterior', [
+            'fecha_actual' => $request->fecha_actual,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         $request->validate([
             'fecha_actual' => 'required|date',
         ]);
@@ -1299,23 +1456,46 @@ class AsignacionTurnoController extends Controller
         $inicioAnterior = $inicioSemana->copy()->subWeek();
         $finAnterior = $inicioAnterior->copy()->endOfWeek();
 
+        // Repetir asignaciones normales
         $asignaciones = AsignacionTurno::whereBetween('fecha', [$inicioAnterior, $finAnterior])->get();
 
         foreach ($asignaciones as $asignacion) {
             $nuevaFecha = Carbon::parse($asignacion->fecha)->addWeek();
-            // Verifica si ya existe para evitar duplicados
+            // Verifica si ya existe (sin soft-deleted)
             $existe = AsignacionTurno::where('user_id', $asignacion->user_id)
                 ->whereDate('fecha', $nuevaFecha)
                 ->exists();
 
             if (!$existe) {
+                // Limpiar cualquier soft-deleted para evitar conflicto de unique
+                ValidadorAsignaciones::limpiarSoftDeleted($asignacion->user_id, $nuevaFecha->toDateString());
+
                 AsignacionTurno::create([
                     'user_id' => $asignacion->user_id,
                     'obra_id' => $asignacion->obra_id,
                     'fecha' => $nuevaFecha,
-                    'estado' => $asignacion->estado,
+                    'estado' => 'activo', // Solo copiamos la obra, no el estado (vacaciones, baja, etc.)
                     'turno_id' => $asignacion->turno_id,
                     'maquina_id' => $asignacion->maquina_id,
+                ]);
+            }
+        }
+
+        // Repetir eventos ficticios
+        $eventosFicticios = \App\Models\EventoFicticioObra::whereBetween('fecha', [$inicioAnterior, $finAnterior])->get();
+
+        foreach ($eventosFicticios as $evento) {
+            $nuevaFecha = Carbon::parse($evento->fecha)->addWeek();
+            $existe = \App\Models\EventoFicticioObra::where('trabajador_ficticio_id', $evento->trabajador_ficticio_id)
+                ->whereDate('fecha', $nuevaFecha)
+                ->where('obra_id', $evento->obra_id)
+                ->exists();
+
+            if (!$existe) {
+                \App\Models\EventoFicticioObra::create([
+                    'trabajador_ficticio_id' => $evento->trabajador_ficticio_id,
+                    'obra_id' => $evento->obra_id,
+                    'fecha' => $nuevaFecha,
                 ]);
             }
         }
@@ -1325,6 +1505,12 @@ class AsignacionTurnoController extends Controller
 
     public function repetirSemanaObra(Request $request)
     {
+        Log::channel('planificacion_trabajadores_taller')->info('[repetirSemanaObra] Repitiendo semana por obra', [
+            'fecha_actual' => $request->fecha_actual,
+            'obra_id' => $request->obra_id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         $request->validate([
             'fecha_actual' => 'required|date',
             'obra_id' => 'required|exists:obras,id',
@@ -1335,6 +1521,7 @@ class AsignacionTurnoController extends Controller
         $inicioAnterior = $inicioSemana->copy()->subWeek();
         $finAnterior = $inicioAnterior->copy()->endOfWeek();
 
+        // Repetir asignaciones normales
         $asignaciones = AsignacionTurno::whereBetween('fecha', [$inicioAnterior, $finAnterior])
             ->where('obra_id', $obraId)
             ->get();
@@ -1343,18 +1530,20 @@ class AsignacionTurnoController extends Controller
         foreach ($asignaciones as $asignacion) {
             $nuevaFecha = Carbon::parse($asignacion->fecha)->addWeek();
 
-            // Verifica si ya existe para evitar duplicados
+            // Verifica si ya existe (sin importar la obra, un usuario solo puede tener 1 asignación por día)
             $existe = AsignacionTurno::where('user_id', $asignacion->user_id)
                 ->whereDate('fecha', $nuevaFecha)
-                ->where('obra_id', $obraId)
                 ->exists();
 
             if (!$existe) {
+                // Limpiar cualquier soft-deleted para evitar conflicto de unique
+                ValidadorAsignaciones::limpiarSoftDeleted($asignacion->user_id, $nuevaFecha->toDateString());
+
                 AsignacionTurno::create([
                     'user_id' => $asignacion->user_id,
                     'obra_id' => $asignacion->obra_id,
                     'fecha' => $nuevaFecha,
-                    'estado' => $asignacion->estado,
+                    'estado' => 'activo', // Solo copiamos la obra, no el estado (vacaciones, baja, etc.)
                     'turno_id' => $asignacion->turno_id,
                     'maquina_id' => $asignacion->maquina_id,
                 ]);
@@ -1362,14 +1551,656 @@ class AsignacionTurnoController extends Controller
             }
         }
 
+        // Repetir eventos ficticios de la misma obra
+        $eventosFicticios = \App\Models\EventoFicticioObra::whereBetween('fecha', [$inicioAnterior, $finAnterior])
+            ->where('obra_id', $obraId)
+            ->get();
+
+        $copiadasFicticias = 0;
+        foreach ($eventosFicticios as $evento) {
+            $nuevaFecha = Carbon::parse($evento->fecha)->addWeek();
+            $existe = \App\Models\EventoFicticioObra::where('trabajador_ficticio_id', $evento->trabajador_ficticio_id)
+                ->whereDate('fecha', $nuevaFecha)
+                ->where('obra_id', $obraId)
+                ->exists();
+
+            if (!$existe) {
+                \App\Models\EventoFicticioObra::create([
+                    'trabajador_ficticio_id' => $evento->trabajador_ficticio_id,
+                    'obra_id' => $evento->obra_id,
+                    'fecha' => $nuevaFecha,
+                ]);
+                $copiadasFicticias++;
+            }
+        }
+
+        $total = $copiadas + $copiadasFicticias;
         return response()->json([
             'success' => true,
-            'message' => "Se copiaron {$copiadas} asignaciones."
+            'message' => "Se copiaron {$total} asignaciones ({$copiadas} normales, {$copiadasFicticias} ficticias)."
+        ]);
+    }
+
+    /**
+     * Limpia el obra_id de las asignaciones de una semana
+     * Excluye las obras de Hierros Paco Reyes (naves propias)
+     * Puede limpiar todas las obras o solo una específica
+     */
+    public function limpiarSemana(Request $request)
+    {
+        Log::channel('planificacion_trabajadores_taller')->info('[limpiarSemana] Limpiando asignaciones de semana', [
+            'fecha_actual' => $request->fecha_actual,
+            'obra_id' => $request->obra_id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
+        $request->validate([
+            'fecha_actual' => 'required|date',
+            'obra_id' => 'nullable|exists:obras,id',
+        ]);
+
+        $inicioSemana = Carbon::parse($request->fecha_actual)->startOfWeek();
+        $finSemana = $inicioSemana->copy()->endOfWeek();
+
+        // Obtener IDs de obras de Hierros Paco Reyes (no se deben limpiar)
+        $obrasPacoReyes = Obra::getNavesPacoReyes()->pluck('id')->toArray();
+
+        // Query base para asignaciones normales (excluyendo obras de Paco Reyes)
+        $queryAsignaciones = AsignacionTurno::whereBetween('fecha', [$inicioSemana, $finSemana])
+            ->whereNotNull('obra_id')
+            ->whereNotIn('obra_id', $obrasPacoReyes);
+
+        // Query base para eventos ficticios (excluyendo obras de Paco Reyes)
+        $queryFicticios = \App\Models\EventoFicticioObra::whereBetween('fecha', [$inicioSemana, $finSemana])
+            ->whereNotIn('obra_id', $obrasPacoReyes);
+
+        // Filtrar por obra si se especifica
+        if ($request->obra_id) {
+            // Verificar que la obra especificada no sea de Paco Reyes
+            if (in_array($request->obra_id, $obrasPacoReyes)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pueden limpiar obras de Hierros Paco Reyes.'
+                ]);
+            }
+            $queryAsignaciones->where('obra_id', $request->obra_id);
+            $queryFicticios->where('obra_id', $request->obra_id);
+        }
+
+        // Quitar obra_id de las asignaciones (no eliminar el registro)
+        $limpiadasNormales = $queryAsignaciones->count();
+        $queryAsignaciones->update(['obra_id' => null]);
+
+        // Eliminar eventos ficticios (estos sí se eliminan porque no tienen sentido sin obra)
+        $eliminadasFicticias = $queryFicticios->count();
+        $queryFicticios->delete();
+
+        $total = $limpiadasNormales + $eliminadasFicticias;
+
+        return response()->json([
+            'success' => true,
+            'message' => "Se limpiaron {$total} asignaciones ({$limpiadasNormales} normales, {$eliminadasFicticias} ficticias)."
+        ]);
+    }
+
+    /**
+     * Repite los turnos de la semana anterior para una máquina específica
+     * Usado desde el calendario de trabajadores (clic derecho en máquina)
+     */
+    public function repetirSemanaMaquina(Request $request)
+    {
+        Log::channel('planificacion_trabajadores_taller')->info('[repetirSemanaMaquina] Repitiendo semana por máquina', [
+            'maquina_id' => $request->maquina_id,
+            'semana_inicio' => $request->semana_inicio,
+            'duracion_semanas' => $request->duracion_semanas,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
+        $request->validate([
+            'maquina_id' => 'required|exists:maquinas,id',
+            'semana_inicio' => 'required|date',
+            'duracion_semanas' => 'required|integer|min:1|max:2',
+        ]);
+
+        $maquinaId = $request->maquina_id;
+        $duracionSemanas = $request->duracion_semanas;
+        $inicioSemanaActual = Carbon::parse($request->semana_inicio)->startOfWeek();
+        $inicioSemanaAnterior = $inicioSemanaActual->copy()->subWeek();
+        $finSemanaAnterior = $inicioSemanaAnterior->copy()->endOfWeek();
+
+        // Obtener la máquina para saber su obra_id
+        $maquina = \App\Models\Maquina::find($maquinaId);
+        $obraId = $maquina->obra_id;
+
+        // Colores por obra
+        $coloresEventos = [
+            1 => ['bg' => '#93C5FD', 'border' => '#60A5FA'],
+            2 => ['bg' => '#6EE7B7', 'border' => '#34D399'],
+            3 => ['bg' => '#FDBA74', 'border' => '#F59E0B'],
+        ];
+        $colorEvento = $coloresEventos[$obraId] ?? ['bg' => '#d1d5db', 'border' => '#9ca3af'];
+
+        // Obtener asignaciones de la semana anterior para esta máquina
+        $asignaciones = AsignacionTurno::with(['user', 'turno'])
+            ->whereBetween('fecha', [$inicioSemanaAnterior, $finSemanaAnterior])
+            ->where('maquina_id', $maquinaId)
+            ->get();
+
+        $turnosCreados = 0;
+        $eventosCreados = [];
+
+        // Copiar a las semanas solicitadas
+        for ($semana = 0; $semana < $duracionSemanas; $semana++) {
+            $offsetSemanas = $semana; // 0 = semana actual, 1 = semana siguiente
+
+            foreach ($asignaciones as $asignacion) {
+                $nuevaFecha = Carbon::parse($asignacion->fecha)->addWeeks($offsetSemanas + 1);
+
+                // Verificar si ya existe para evitar duplicados
+                $existe = AsignacionTurno::where('user_id', $asignacion->user_id)
+                    ->whereDate('fecha', $nuevaFecha)
+                    ->exists();
+
+                if (!$existe) {
+                    // Limpiar cualquier soft-deleted para evitar conflicto de unique
+                    ValidadorAsignaciones::limpiarSoftDeleted($asignacion->user_id, $nuevaFecha->toDateString());
+
+                    $nuevaAsignacion = AsignacionTurno::create([
+                        'user_id' => $asignacion->user_id,
+                        'obra_id' => $asignacion->obra_id,
+                        'fecha' => $nuevaFecha,
+                        'estado' => 'activo',
+                        'turno_id' => $asignacion->turno_id,
+                        'maquina_id' => $asignacion->maquina_id,
+                    ]);
+
+                    $turnosCreados++;
+
+                    // Mapeo visual usando TurnoMapper
+                    $fechaStr = $nuevaFecha->format('Y-m-d');
+                    $turnoModel = $asignacion->turno;
+                    $slot = TurnoMapper::getSlotParaTurnoModel($turnoModel, $fechaStr);
+
+                    $eventosCreados[] = [
+                        'id' => 'turno-' . $nuevaAsignacion->id,
+                        'title' => $asignacion->user->nombre_completo ?? $asignacion->user->name,
+                        'start' => $slot['start'],
+                        'end' => $slot['end'],
+                        'resourceId' => $maquinaId,
+                        'backgroundColor' => $colorEvento['bg'],
+                        'borderColor' => $colorEvento['border'],
+                        'textColor' => '#000000',
+                        'extendedProps' => [
+                            'user_id' => $asignacion->user_id,
+                            'turno' => $turnoModel->nombre ?? null,
+                            'categoria_nombre' => $asignacion->user->categoria->nombre ?? null,
+                            'entrada' => null,
+                            'salida' => null,
+                            'foto' => $asignacion->user->ruta_imagen ?? null,
+                            'es_festivo' => false,
+                        ],
+                    ];
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Se copiaron {$turnosCreados} turnos correctamente.",
+            'turnos_creados' => $turnosCreados,
+            'eventos' => $eventosCreados,
+        ]);
+    }
+
+    /**
+     * Copia las asignaciones de un día a otro (persistiendo en BD)
+     * Usado desde el calendario de trabajadores
+     */
+    public function copiarDia(Request $request)
+    {
+        Log::channel('planificacion_trabajadores_taller')->info('[copiarDia] Copiando asignaciones de un día a otro', [
+            'fecha_origen' => $request->fecha_origen,
+            'fecha_destino' => $request->fecha_destino,
+            'maquina_id' => $request->maquina_id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
+        $request->validate([
+            'fecha_origen' => 'required|date',
+            'fecha_destino' => 'required|date',
+            'maquina_id' => 'nullable|exists:maquinas,id',
+        ]);
+
+        $fechaOrigen = $request->fecha_origen;
+        $fechaDestino = $request->fecha_destino;
+        $maquinaId = $request->maquina_id;
+
+        // Obtener asignaciones del día origen
+        $query = AsignacionTurno::with(['user.categoria', 'turno', 'obra'])
+            ->whereDate('fecha', $fechaOrigen);
+
+        if ($maquinaId) {
+            $query->where('maquina_id', $maquinaId);
+        }
+
+        $asignaciones = $query->get();
+
+        if ($asignaciones->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay asignaciones en el día origen para copiar.',
+            ]);
+        }
+
+        // Colores por obra
+        $coloresEventos = [
+            1 => ['bg' => '#93C5FD', 'border' => '#60A5FA'],
+            2 => ['bg' => '#6EE7B7', 'border' => '#34D399'],
+            3 => ['bg' => '#FDBA74', 'border' => '#F59E0B'],
+        ];
+
+        $copiadas = 0;
+        $eventosCreados = [];
+
+        foreach ($asignaciones as $asignacion) {
+            // Verificar si ya existe para evitar duplicados
+            $existe = AsignacionTurno::where('user_id', $asignacion->user_id)
+                ->whereDate('fecha', $fechaDestino)
+                ->exists();
+
+            if ($existe) {
+                continue;
+            }
+
+            // Eliminar cualquier soft-deleted para evitar conflicto de unique
+            AsignacionTurno::onlyTrashed()
+                ->where('user_id', $asignacion->user_id)
+                ->whereDate('fecha', $fechaDestino)
+                ->forceDelete();
+
+            $nuevaAsignacion = AsignacionTurno::create([
+                'user_id' => $asignacion->user_id,
+                'fecha' => $fechaDestino,
+                'turno_id' => $asignacion->turno_id,
+                'maquina_id' => $asignacion->maquina_id,
+                'obra_id' => $asignacion->obra_id,
+                'estado' => 'activo',
+            ]);
+
+            $copiadas++;
+
+            // Construir evento para el frontend usando TurnoMapper
+            $turnoModel = $asignacion->turno;
+            $slot = TurnoMapper::getSlotParaTurnoModel($turnoModel, $fechaDestino);
+            $slotStart = $slot['start'];
+            $slotEnd = $slot['end'];
+
+            $obraId = $asignacion->obra_id;
+            $colorEvento = $coloresEventos[$obraId] ?? ['bg' => '#d1d5db', 'border' => '#9ca3af'];
+
+            $eventosCreados[] = [
+                'id' => 'turno-' . $nuevaAsignacion->id,
+                'title' => $asignacion->user->nombre_completo ?? $asignacion->user->name,
+                'start' => $slotStart,
+                'end' => $slotEnd,
+                'resourceId' => $asignacion->maquina_id,
+                'backgroundColor' => $colorEvento['bg'],
+                'borderColor' => $colorEvento['border'],
+                'textColor' => '#000000',
+                'extendedProps' => [
+                    'user_id' => $asignacion->user_id,
+                    'turno' => $turnoModel->nombre ?? null,
+                    'categoria_nombre' => $asignacion->user->categoria->nombre ?? null,
+                    'entrada' => null,
+                    'salida' => null,
+                    'foto' => $asignacion->user->ruta_imagen ?? null,
+                    'es_festivo' => false,
+                ],
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Se copiaron {$copiadas} asignaciones correctamente.",
+            'copiadas' => $copiadas,
+            'eventos' => $eventosCreados,
+        ]);
+    }
+
+    /**
+     * Verifica si hay conflictos entre obra externa y taller (Paco Reyes)
+     * para un trabajador en un rango de fechas
+     */
+    public function verificarConflictosObraTaller(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'fecha_inicio' => 'required|date',
+            'fecha_fin' => 'nullable|date',
+            'destino' => 'required|in:taller,obra', // hacia dónde va la asignación
+        ]);
+
+        $userId = $request->user_id;
+        $fechaInicio = Carbon::parse($request->fecha_inicio);
+        $fechaFin = $request->fecha_fin ? Carbon::parse($request->fecha_fin) : $fechaInicio;
+        $destino = $request->destino;
+
+        // Obtener IDs de obras de Hierros Paco Reyes (taller)
+        $obrasPacoReyes = Obra::getNavesPacoReyes()->pluck('id')->toArray();
+
+        // Buscar asignaciones del trabajador en el rango de fechas
+        $asignaciones = AsignacionTurno::where('user_id', $userId)
+            ->whereBetween('fecha', [$fechaInicio->toDateString(), $fechaFin->toDateString()])
+            ->whereNotNull('obra_id')
+            ->with('obra:id,nombre')
+            ->get();
+
+        $conflictos = [];
+
+        foreach ($asignaciones as $asig) {
+            $esEnTaller = in_array($asig->obra_id, $obrasPacoReyes);
+
+            // Si va hacia taller y tiene asignaciones en obra externa
+            if ($destino === 'taller' && !$esEnTaller) {
+                $conflictos[] = [
+                    'fecha' => Carbon::parse($asig->fecha)->format('Y-m-d'),
+                    'fecha_formateada' => Carbon::parse($asig->fecha)->locale('es')->isoFormat('ddd D MMM'),
+                    'obra' => $asig->obra?->nombre ?? 'Obra externa',
+                    'tipo' => 'obra_externa',
+                ];
+            }
+
+            // Si va hacia obra y tiene asignaciones en taller
+            if ($destino === 'obra' && $esEnTaller) {
+                $conflictos[] = [
+                    'fecha' => Carbon::parse($asig->fecha)->format('Y-m-d'),
+                    'fecha_formateada' => Carbon::parse($asig->fecha)->locale('es')->isoFormat('ddd D MMM'),
+                    'obra' => $asig->obra?->nombre ?? 'Taller',
+                    'tipo' => 'taller',
+                ];
+            }
+        }
+
+        // Agrupar por tipo para mejor presentación
+        $diasEnObra = collect($conflictos)->where('tipo', 'obra_externa')->pluck('fecha_formateada')->unique()->values()->toArray();
+        $diasEnTaller = collect($conflictos)->where('tipo', 'taller')->pluck('fecha_formateada')->unique()->values()->toArray();
+
+        return response()->json([
+            'tiene_conflictos' => count($conflictos) > 0,
+            'conflictos' => $conflictos,
+            'dias_en_obra' => $diasEnObra,
+            'dias_en_taller' => $diasEnTaller,
+            'resumen' => [
+                'total_obra' => count($diasEnObra),
+                'total_taller' => count($diasEnTaller),
+            ],
+        ]);
+    }
+
+    /**
+     * Propaga las asignaciones de un día a múltiples días siguientes
+     * Salta fines de semana y festivos automáticamente
+     */
+    public function propagarDia(Request $request)
+    {
+        $request->validate([
+            'fecha_origen' => 'required|date',
+            'alcance' => 'required|in:semana_actual,dos_semanas',
+            'maquina_id' => 'nullable',
+        ]);
+
+        $fechaOrigen = Carbon::parse($request->fecha_origen);
+        $maquinaId = $request->maquina_id;
+        $alcance = $request->alcance;
+
+        // Calcular fecha fin según alcance
+        // dayOfWeek: 0=domingo, 1=lunes, ..., 5=viernes, 6=sábado
+        $diaSemana = $fechaOrigen->dayOfWeek;
+
+        // Calcular días hasta el viernes de esta semana
+        // Si es domingo (0), el viernes es en 5 días
+        // Si es lunes (1), el viernes es en 4 días
+        // Si es viernes (5), es hoy mismo
+        // Si es sábado (6), el viernes pasó, ir al siguiente
+        $diasHastaViernes = $diaSemana === 0 ? 5 : (5 - $diaSemana);
+        if ($diasHastaViernes <= 0) {
+            $diasHastaViernes += 7; // Ir al viernes de la siguiente semana
+        }
+
+        if ($alcance === 'semana_actual') {
+            $fechaFin = $fechaOrigen->copy()->addDays($diasHastaViernes);
+        } else {
+            // Dos semanas: viernes de la semana siguiente
+            $fechaFin = $fechaOrigen->copy()->addDays($diasHastaViernes + 7);
+        }
+
+        Log::channel('planificacion_trabajadores_taller')->info('[propagarDia] Parámetros:', [
+            'fecha_origen' => $fechaOrigen->toDateString(),
+            'fecha_fin' => $fechaFin->toDateString(),
+            'alcance' => $alcance,
+            'maquina_id' => $maquinaId,
+        ]);
+
+        // Si la fecha origen es posterior o igual a la fecha fin, error
+        if ($fechaOrigen->greaterThanOrEqualTo($fechaFin)) {
+            return response()->json([
+                'success' => false,
+                'message' => "La fecha de origen ({$fechaOrigen->toDateString()}) debe ser anterior al viernes ({$fechaFin->toDateString()}).",
+            ]);
+        }
+
+        // Obtener IDs de obras de "Hierros Paco Reyes"
+        $obrasPacoReyes = Obra::whereHas('cliente', function ($q) {
+            $q->whereRaw('LOWER(empresa) LIKE ?', ['%hierros paco reyes%']);
+        })->pluck('id')->toArray();
+
+        Log::channel('planificacion_trabajadores_taller')->info('[propagarDia] Obras de Paco Reyes:', ['ids' => $obrasPacoReyes]);
+
+        // Obtener asignaciones del día origen (solo de obras de Paco Reyes)
+        $query = AsignacionTurno::with(['user.categoria', 'turno', 'obra'])
+            ->whereDate('fecha', $fechaOrigen->toDateString())
+            ->whereIn('obra_id', $obrasPacoReyes);
+
+        // Solo filtrar por máquina si se especifica una válida
+        if ($maquinaId && is_numeric($maquinaId)) {
+            $query->where('maquina_id', $maquinaId);
+        }
+
+        $asignaciones = $query->get();
+
+        Log::channel('planificacion_trabajadores_taller')->info('[propagarDia] Asignaciones encontradas:', [
+            'count' => $asignaciones->count(),
+            'ids' => $asignaciones->pluck('id')->toArray(),
+        ]);
+
+        if ($asignaciones->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay asignaciones en el día origen para propagar.',
+            ]);
+        }
+
+        // Obtener festivos en el rango
+        $festivos = Festivo::whereBetween('fecha', [
+            $fechaOrigen->toDateString(),
+            $fechaFin->toDateString()
+        ])->pluck('fecha')->map(fn($f) => Carbon::parse($f)->toDateString())->toArray();
+
+        // Obtener vacaciones de los usuarios involucrados
+        $userIds = $asignaciones->pluck('user_id')->unique()->toArray();
+        $vacaciones = VacacionesSolicitud::whereIn('user_id', $userIds)
+            ->where('estado', 'aprobada')
+            ->where(function ($q) use ($fechaOrigen, $fechaFin) {
+                $q->whereBetween('fecha_inicio', [$fechaOrigen, $fechaFin])
+                  ->orWhereBetween('fecha_fin', [$fechaOrigen, $fechaFin])
+                  ->orWhere(function ($q2) use ($fechaOrigen, $fechaFin) {
+                      $q2->where('fecha_inicio', '<=', $fechaOrigen)
+                         ->where('fecha_fin', '>=', $fechaFin);
+                  });
+            })
+            ->get();
+
+        // Crear mapa de vacaciones por usuario y fecha
+        $vacacionesPorUsuario = [];
+        foreach ($vacaciones as $v) {
+            $periodo = CarbonPeriod::create($v->fecha_inicio, $v->fecha_fin);
+            foreach ($periodo as $dia) {
+                $vacacionesPorUsuario[$v->user_id][$dia->toDateString()] = true;
+            }
+        }
+
+        // Colores por obra
+        $coloresEventos = [
+            1 => ['bg' => '#93C5FD', 'border' => '#60A5FA'],
+            2 => ['bg' => '#6EE7B7', 'border' => '#34D399'],
+            3 => ['bg' => '#FDBA74', 'border' => '#F59E0B'],
+        ];
+
+        $copiadas = 0;
+        $eliminadas = 0;
+        $eventosCreados = [];
+        $eventosEliminados = [];
+        $diasProcesados = 0;
+
+        // IDs de usuarios que tienen asignación en el día origen (para modo espejo)
+        $userIdsEnOrigen = $asignaciones->pluck('user_id')->unique()->toArray();
+
+        // Iterar desde el día siguiente al origen hasta el fin
+        $fechaActual = $fechaOrigen->copy()->addDay();
+
+        while ($fechaActual->lessThanOrEqualTo($fechaFin)) {
+            $fechaStr = $fechaActual->toDateString();
+
+            // Saltar fines de semana
+            if ($fechaActual->isWeekend()) {
+                $fechaActual->addDay();
+                continue;
+            }
+
+            // Saltar festivos
+            if (in_array($fechaStr, $festivos)) {
+                $fechaActual->addDay();
+                continue;
+            }
+
+            $diasProcesados++;
+
+            // === MODO ESPEJO: Quitar maquina_id a usuarios que NO están en el día origen ===
+            $queryEspejo = AsignacionTurno::whereDate('fecha', $fechaStr)
+                ->whereNotIn('user_id', $userIdsEnOrigen);
+
+            // Si filtramos por máquina, solo afectar asignaciones de esa máquina
+            if ($maquinaId && is_numeric($maquinaId)) {
+                $queryEspejo->where('maquina_id', $maquinaId);
+            } else {
+                // Si es "todas las máquinas", solo afectar las que tienen maquina_id
+                $queryEspejo->whereNotNull('maquina_id');
+            }
+
+            $asignacionesAQuitar = $queryEspejo->get();
+
+            foreach ($asignacionesAQuitar as $asignacionQuitar) {
+                // Guardar ID para notificar al frontend
+                $eventosEliminados[] = 'turno-' . $asignacionQuitar->id;
+
+                // Quitar el maquina_id (el trabajador ya no está asignado a esa máquina)
+                $asignacionQuitar->update(['maquina_id' => null]);
+                $eliminadas++;
+            }
+
+            // === Propagar asignaciones del día origen ===
+            foreach ($asignaciones as $asignacion) {
+                // Verificar si el usuario tiene vacaciones este día
+                if (isset($vacacionesPorUsuario[$asignacion->user_id][$fechaStr])) {
+                    continue;
+                }
+
+                // Buscar asignación existente (incluyendo soft-deleted)
+                $asignacionExistente = AsignacionTurno::withTrashed()
+                    ->where('user_id', $asignacion->user_id)
+                    ->whereDate('fecha', $fechaStr)
+                    ->first();
+
+                if ($asignacionExistente) {
+                    // Si está soft-deleted, restaurarla
+                    if ($asignacionExistente->trashed()) {
+                        $asignacionExistente->restore();
+                    }
+                    // Actualizar con los datos del día origen
+                    $asignacionExistente->update([
+                        'turno_id' => $asignacion->turno_id,
+                        'maquina_id' => $asignacion->maquina_id,
+                        'obra_id' => $asignacion->obra_id,
+                        'estado' => 'activo',
+                    ]);
+                    $nuevaAsignacion = $asignacionExistente;
+                } else {
+                    // Crear nueva asignación
+                    $nuevaAsignacion = AsignacionTurno::create([
+                        'user_id' => $asignacion->user_id,
+                        'fecha' => $fechaStr,
+                        'turno_id' => $asignacion->turno_id,
+                        'maquina_id' => $asignacion->maquina_id,
+                        'obra_id' => $asignacion->obra_id,
+                        'estado' => 'activo',
+                    ]);
+                }
+
+                $copiadas++;
+
+                // Construir evento para el frontend
+                $turnoModel = $asignacion->turno;
+                $slot = TurnoMapper::getSlotParaTurnoModel($turnoModel, $fechaStr);
+                $slotStart = $slot['start'];
+                $slotEnd = $slot['end'];
+
+                $obraId = $asignacion->obra_id;
+                $colorEvento = $coloresEventos[$obraId] ?? ['bg' => '#d1d5db', 'border' => '#9ca3af'];
+
+                $eventosCreados[] = [
+                    'id' => 'turno-' . $nuevaAsignacion->id,
+                    'title' => $asignacion->user->nombre_completo ?? $asignacion->user->name,
+                    'start' => $slotStart,
+                    'end' => $slotEnd,
+                    'resourceId' => $asignacion->maquina_id,
+                    'backgroundColor' => $colorEvento['bg'],
+                    'borderColor' => $colorEvento['border'],
+                    'textColor' => '#000000',
+                    'extendedProps' => [
+                        'user_id' => $asignacion->user_id,
+                        'turno' => $turnoModel->nombre ?? null,
+                        'categoria_nombre' => $asignacion->user->categoria->nombre ?? null,
+                        'entrada' => null,
+                        'salida' => null,
+                        'foto' => $asignacion->user->ruta_imagen ?? null,
+                        'es_festivo' => false,
+                    ],
+                ];
+            }
+
+            $fechaActual->addDay();
+        }
+
+        $alcanceTexto = $alcance === 'semana_actual' ? 'esta semana' : 'las próximas 2 semanas';
+
+        return response()->json([
+            'success' => true,
+            'message' => "Se propagaron {$copiadas} asignaciones y se quitaron {$eliminadas} de máquinas ({$alcanceTexto}).",
+            'copiadas' => $copiadas,
+            'eliminadas' => $eliminadas,
+            'dias_procesados' => $diasProcesados,
+            'eventos' => $eventosCreados,
+            'eventos_eliminados' => $eventosEliminados,
         ]);
     }
 
     public function quitarObra($id)
     {
+        Log::channel('planificacion_trabajadores_taller')->info('[quitarObra] Quitando obra de asignación', [
+            'asignacion_id' => $id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         $asignacion = AsignacionTurno::find($id);
 
         if (!$asignacion) {
@@ -1392,6 +2223,12 @@ class AsignacionTurnoController extends Controller
      */
     public function moverEventosAObra(Request $request)
     {
+        Log::channel('planificacion_trabajadores_taller')->info('[moverEventosAObra] Moviendo eventos a otra obra', [
+            'asignacion_ids' => $request->asignacion_ids,
+            'obra_id' => $request->obra_id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         try {
             // Procesar IDs primero (quitar prefijo 'turno-')
             $ids = collect($request->asignacion_ids)->map(function ($id) {

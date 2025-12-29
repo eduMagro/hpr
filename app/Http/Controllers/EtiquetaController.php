@@ -18,6 +18,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Maquina;
+use App\Models\EtiquetaHistorial;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
@@ -257,8 +258,8 @@ class EtiquetaController extends Controller
         $query = Etiqueta::with([
             'planilla:id,codigo,obra_id,cliente_id,seccion',
             'paquete:id,codigo',
-            'producto:id,codigo,nombre',
-            'producto2:id,codigo,nombre',
+            'producto:id,codigo',
+            'producto2:id,codigo',
             'soldador1:id,name,primer_apellido',
             'soldador2:id,name,primer_apellido',
             'ensamblador1:id,name,primer_apellido',
@@ -398,11 +399,6 @@ class EtiquetaController extends Controller
                 'disponible_en_maquina' => $disponible,
             ];
         }
-        log::info('Patrones corte simple', [
-            'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
-            'diametro_mm'    => $diametro,
-            'patrones'       => $patrones,
-        ]);
 
         // 🔠 Esquema tipo A + A + A
         $letra = 'A';
@@ -463,7 +459,8 @@ class EtiquetaController extends Controller
         int $planillaId,
         int $diametroMm,
         string $excluirSubId,
-        ?int $maquinaIdObjetivo = null
+        ?int $maquinaIdObjetivo = null,
+        ?int $barrasRequeridas = null
     ): array {
         $planilla = Planilla::with('etiquetas.elementos')->find($planillaId);
         if (!$planilla) return [];
@@ -499,6 +496,11 @@ class EtiquetaController extends Controller
             $longitudCm  = (float) ($e->longitud ?? 0);       // en BD: cm
             $disponibles = (int)   max(0, (int) ($e->barras ?? 0));
             if ($longitudCm <= 0 || $disponibles <= 0) continue;
+
+            // ⬇️ NUEVO: filtrar por MISMO número de barras si se indicó
+            if ($barrasRequeridas !== null && $disponibles !== $barrasRequeridas) {
+                continue;
+            }
 
             $candidatos[] = [
                 'id'          => $subId,
@@ -595,12 +597,13 @@ class EtiquetaController extends Controller
         foreach ($planillasEnOrden as $planillaId) {
             if (count($topGlobal98) >= 3) break;
 
-            // ⬇️ ahora filtrará por máquina
+            // ⬇️ ahora filtrará por máquina y por mismo número de barras
             $candidatos = $this->construirCandidatosEnPlanilla(
                 $planillaId,
                 $diametro,
                 $etiquetaSubId,
-                $maquinaObjetivoId
+                $maquinaObjetivoId,
+                $barrasA
             );
             if (empty($candidatos)) continue;
             // 5.2) Pre-carga de etiquetas para ESTA planilla (y A) → evita N+1
@@ -678,6 +681,7 @@ class EtiquetaController extends Controller
         usort($topGlobal98, $comparador);
         $topGlobal98 = array_slice($topGlobal98, 0, 3);
 
+        $etiquetasPlanillas = [];
         if (!empty($topGlobal98)) {
             $todosSubIdsTop = collect($topGlobal98)->flatMap(fn($p) => array_keys($p['conteo_por_subid']))->unique()->values();
             $mapaGlobal = Etiqueta::with(['elementos', 'planilla'])
@@ -689,14 +693,15 @@ class EtiquetaController extends Controller
                 $pat['grupos'] = $this->construirGruposParaCanvas($pat['conteo_por_subid'], $mapaGlobal);
             }
             unset($pat);
+
+            // Construir mapa etiqueta -> planilla para el frontend
+            foreach ($mapaGlobal as $subId => $etiqueta) {
+                $etiquetasPlanillas[$subId] = $etiqueta->planilla?->codigo_limpio ?? null;
+            }
         }
 
         $htmlResumen = $this->construirHtmlResumenMultiLongitudes($longitudesBarraCm, $progresoPorLongitud);
-        log::info('Patrones corte optimizado', [
-            'etiqueta_sub_id'       => $etiquetaSubId,
-            'top_global_98'         => $topGlobal98,
-            'progreso_por_longitud' => $progresoPorLongitud,
-        ]);
+
         /* ─────────────────────────────
         |  7) Responder
         ───────────────────────────── */
@@ -704,6 +709,7 @@ class EtiquetaController extends Controller
             'success'               => true,
             'longitudes_barra_cm'   => array_values($longitudesBarraCm),
             'top_global'            => $topGlobal98,
+            'etiquetas_planillas'   => $etiquetasPlanillas,
             'progreso_por_longitud' => $progresoPorLongitud,
             'kmax'                  => $Kmax,
             'umbral_ok'             => $UMBRAL_OK,
@@ -1030,10 +1036,18 @@ class EtiquetaController extends Controller
 
     /**
      * Inserta patrones en TopLocal y TopGlobal con deduplicación por combinación multiset.
+     * Descarta patrones que solo contengan una etiqueta (ej: A+A+A) - deben combinar al menos 2 etiquetas diferentes.
      */
     private function acumularPatrones(array $encontrados, array &$topLocal98, array &$topGlobal98, array &$combinacionesYaVistas, callable $comparador): void
     {
         foreach ($encontrados as $p) {
+            // Descartar patrones que solo tienen una etiqueta única (ej: A+A+A)
+            // Los patrones optimizados deben combinar al menos 2 etiquetas diferentes
+            $etiquetasUnicas = count(array_keys($p['conteo_por_subid'] ?? []));
+            if ($etiquetasUnicas < 2) {
+                continue;
+            }
+
             $clave = $p['clave_estable']; // ids ordenados, con repeticiones
             if (isset($combinacionesYaVistas[$clave])) continue;
             $combinacionesYaVistas[$clave] = true;
@@ -1188,6 +1202,7 @@ class EtiquetaController extends Controller
             $data = $request->validate([
                 'producto_base.longitud_barra_cm' => ['required', 'numeric', 'min:1'],
                 'repeticiones' => ['required', 'integer', 'min:1'],
+                'desperdicio_manual_cm' => ['nullable', 'numeric', 'min:0'],
                 'etiquetas' => ['required', 'array', 'min:1'],
                 'etiquetas.*.etiqueta_sub_id' => ['required', 'string'],
                 'etiquetas.*.patron_letras' => ['nullable', 'string', 'max:100'],
@@ -1201,6 +1216,7 @@ class EtiquetaController extends Controller
         }
 
         $longitud = (int) $data['producto_base']['longitud_barra_cm'];
+        $desperdicioManualCm = $data['desperdicio_manual_cm'] ?? null;
         $userId = Auth::id();
         $compaId = auth()->user()->compañeroDeTurno()?->id;
         $resultados = [];
@@ -1224,7 +1240,11 @@ class EtiquetaController extends Controller
                     longitudSeleccionada: $longitud,
                     operario1Id: $userId,
                     operario2Id: $compaId,
-                    opciones: ['origen' => 'optimizada', 'patron_letras' => $patronLetras,]
+                    opciones: [
+                        'origen' => 'optimizada',
+                        'patron_letras' => $patronLetras,
+                        'desperdicio_manual_cm' => $desperdicioManualCm,
+                    ]
                 );
 
                 $resultado = $fabrica->porMaquina($maquina)->actualizar($dto);
@@ -1255,14 +1275,26 @@ class EtiquetaController extends Controller
                 ?? $resultado->etiqueta->elementos->sum('peso')
                 ?? 0;
 
+            // ✅ Obtener información de coladas para actualizar UI sin recargar
+            $etiqueta = $resultado->etiqueta;
+            $etiqueta->load('producto');
+            $productoNColada = $etiqueta->producto?->n_colada ?? null;
+            $producto2NColada = null;
+            if ($etiqueta->producto_id_2) {
+                $producto2 = Producto::find($etiqueta->producto_id_2);
+                $producto2NColada = $producto2?->n_colada;
+            }
+
             return response()->json([
                 'success' => true,
-                'estado' => $resultado->etiqueta->estado ?? null,
+                'estado' => $etiqueta->estado ?? null,
                 'peso_etiqueta' => $pesoTotalEtiqueta,
-                'fecha_inicio' => $resultado->etiqueta->fecha_inicio,
-                'fecha_finalizacion' => $resultado->etiqueta->fecha_finalizacion,
+                'fecha_inicio' => $etiqueta->fecha_inicio,
+                'fecha_finalizacion' => $etiqueta->fecha_finalizacion,
                 'productos_afectados' => $resultado->productosAfectados ?? [],
                 'warnings' => $resultado->warnings ?? [],
+                'producto_n_colada' => $productoNColada,
+                'producto2_n_colada' => $producto2NColada,
             ]);
         } catch (\Illuminate\Http\Exceptions\HttpResponseException $e) {
             DB::rollBack();
@@ -1298,16 +1330,24 @@ class EtiquetaController extends Controller
             $estadoAnterior = $etiquetaAntes ? $etiquetaAntes->estado : 'pendiente';
             $fechaInicio = $etiquetaAntes ? $etiquetaAntes->fecha_inicio : null;
 
+            // Construir opciones (para grúa: producto_id y paquete_completo)
+            $opciones = [];
+            if ($request->has('producto_id')) {
+                $opciones['producto_id'] = (int) $request->input('producto_id');
+            }
+            if ($request->has('paquete_completo')) {
+                $opciones['paquete_completo'] = (bool) $request->input('paquete_completo');
+            }
+
             $dto = new \App\Servicios\Etiquetas\DTOs\ActualizarEtiquetaDatos(
                 etiquetaSubId: $id,
                 maquinaId: (int) $maquina_id,
                 longitudSeleccionada: (int) $request->input('longitudSeleccionada'),
                 operario1Id: Auth::id(),
                 operario2Id: auth()->user()->compañeroDeTurno()?->id,
-                opciones: []
+                opciones: $opciones
             );
 
-            log::info("Delegando actualización de etiqueta {$dto->etiquetaSubId} a servicio para máquina {$maquina->id} ({$maquina->tipo}, operario1Id={$dto->operario1Id}, operario2Id={$dto->operario2Id})");
             /** @var \App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio $fabrica */
             $fabrica = app(\App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio::class);
             $servicio = $fabrica->porMaquina($maquina);
@@ -1317,6 +1357,7 @@ class EtiquetaController extends Controller
 
             // 🔄 Refrescar la etiqueta desde la base de datos para obtener el peso actualizado
             $etiqueta->refresh();
+            $etiqueta->load(['producto', 'producto2']);
 
             // Extraer coladas únicas de los productos afectados
             $coladas = collect($resultado->productosAfectados)
@@ -1397,7 +1438,11 @@ class EtiquetaController extends Controller
                 'productos_afectados' => $resultado->productosAfectados,
                 'coladas' => $coladas,
                 'coladas_por_elemento' => $coladasPorElemento,
+                // Coladas de la etiqueta (asignadas en primer y segundo clic)
+                'producto_n_colada' => $etiqueta->producto?->n_colada,
+                'producto2_n_colada' => $etiqueta->producto2?->n_colada,
                 'warnings' => $resultado->warnings,
+                'metricas' => $resultado->metricas,
                 'fecha_inicio' => optional($etiqueta->fecha_inicio)->format('d-m-Y H:i:s'),
                 'fecha_finalizacion' => optional($etiqueta->fecha_finalizacion)->format('d-m-Y H:i:s'),
             ], 200);
@@ -1492,7 +1537,6 @@ class EtiquetaController extends Controller
             // Convertir los diámetros requeridos a enteros
             // 2) Diámetros requeridos (normalizados)
             $diametrosRequeridos = array_map('intval', array_keys($diametrosConPesos));
-            Log::info("🔍 Diametros requeridos", $diametrosRequeridos);
 
             // Si por alguna razón no hay diametros (p.ej. diametro null en elementos), intenta derivarlos
             if (empty($diametrosRequeridos)) {
@@ -1503,12 +1547,10 @@ class EtiquetaController extends Controller
                     ->values()
                     ->all();
                 $diametrosRequeridos = $derivados;
-                Log::info('🔄 Diametros requeridos derivados de elementos', $diametrosRequeridos);
             }
             // -------------------------------------------- ESTADO PENDIENTE --------------------------------------------
             switch ($etiqueta->estado) {
                 case 'pendiente':
-                    log::info("Etiqueta {$id}: estado pendiente");
                     // Si la etiqueta está pendiente, verificar si ya están todos los elementos fabricados
                     if ($numeroElementosCompletadosEnMaquina >= $numeroElementosTotalesEnEtiqueta) {
                         // Actualizar estado de la etiqueta a "fabricado"
@@ -1615,13 +1657,7 @@ class EtiquetaController extends Controller
                                 // Transacción corta y autónoma: el movimiento se registra pase lo que pase
                                 DB::transaction(function () use ($productoBaseFaltante, $maquina) {
                                     $this->generarMovimientoRecargaMateriaPrima($productoBaseFaltante, $maquina, null);
-                                    Log::info('✅ Movimiento de recarga creado (faltante)', [
-                                        'producto_base_id' => $productoBaseFaltante->id,
-                                        'maquina_id'       => $maquina->id,
-                                    ]);
                                 });
-                            } else {
-                                Log::warning("No se encontró ProductoBase para Ø{$diametroFaltante} y tipo {$maquina->tipo_material}");
                             }
                         }
 
@@ -1730,12 +1766,6 @@ class EtiquetaController extends Controller
                                         // Tu método existente. productoId = null → materia prima genérica
                                         $this->generarMovimientoRecargaMateriaPrima($productoBase, $maquina, null);
 
-                                        Log::info('📣 Recarga solicitada (déficit previsto)', [
-                                            'maquina_id'       => $maquina->id,
-                                            'producto_base_id' => $productoBase->id,
-                                            'diametro'         => $dInsuf,
-                                            'deficit_kg'       => $deficitKg,
-                                        ]);
                                     } catch (\Throwable $e) {
                                         Log::error('❌ Error al solicitar recarga (déficit previsto)', [
                                             'maquina_id'       => $maquina->id,
@@ -1745,8 +1775,6 @@ class EtiquetaController extends Controller
                                             'error'            => $e->getMessage(),
                                         ]);
                                     }
-                                } else {
-                                    Log::warning("No se encontró ProductoBase para Ø{$dInsuf} y tipo {$maquina->tipo_material} (recarga no creada).");
                                 }
                             }
                         }
@@ -1758,6 +1786,17 @@ class EtiquetaController extends Controller
                     //    - Marcamos elementos en máquina como "fabricando" y asignamos operarios.
                     //    - Ponemos la etiqueta en "fabricando".
                     // ─────────────────────────────────────────────────────────────────────
+
+                    // 🔄 GUARDAR HISTORIAL ANTES DE CAMBIOS (para sistema UNDO)
+                    $historialResult = EtiquetaHistorial::registrarCambio(
+                        $etiqueta,
+                        'iniciar_fabricacion',
+                        'fabricando',
+                        $maquina->id,
+                        Auth::id(),
+                        [] // No hay consumo de productos en este paso
+                    );
+
                     if ($etiqueta->planilla) {
                         if (is_null($etiqueta->planilla->fecha_inicio)) {
                             $etiqueta->planilla->fecha_inicio = now();
@@ -1862,8 +1901,6 @@ class EtiquetaController extends Controller
                             ], 400);
                         }
 
-                        // Opcional: Si la máquina no es de los tipos esperados, se puede registrar un warning o dejar el estado sin cambios.
-                        Log::info("La máquina actual no es ensambladora ni soldadora en el estado 'fabricada'.");
                     }
                     break;
                 // -------------------------------------------- ESTADO ENSAMBLADA --------------------------------------------
@@ -1907,9 +1944,6 @@ class EtiquetaController extends Controller
                         $etiqueta->soldador1 =  $operario1;
                         $etiqueta->soldador2 =  $operario2;
                         $etiqueta->save();
-                    } else {
-                        // Opcional: Si la máquina no es de los tipos esperados, se puede registrar un warning o dejar el estado sin cambios.
-                        Log::info("La máquina actual no es ensambladora ni soldadora en el estado 'fabricada'.");
                     }
                     break;
 
@@ -1917,7 +1951,6 @@ class EtiquetaController extends Controller
                 case 'ensamblando':
 
                     foreach ($elementosEnMaquina as $elemento) {
-                        Log::info("Entra en el condicional para completar elementos");
                         $elemento->estado = "completado";
                         $elemento->users_id =  $operario1;
                         $elemento->users_id_2 =  $operario2;
@@ -2182,10 +2215,6 @@ class EtiquetaController extends Controller
                 // 3️⃣  Insertamos el movimiento en SU propia transacción
                 DB::transaction(function () use ($productoBase, $maquina) {
                     $this->generarMovimientoRecargaMateriaPrima($productoBase, $maquina);
-                    Log::info('✅ Movimiento de recarga creado', [
-                        'producto_base_id' => $productoBase->id,
-                        'maquina_id'       => $maquina->id,
-                    ]);
                 });
 
                 // 4️⃣  Respondemos y detenemos la ejecución
@@ -2296,17 +2325,6 @@ class EtiquetaController extends Controller
 
             // 🧠 Regla especial: si el nombre de la etiqueta contiene "pates"
             if (Str::of($etiqueta->nombre ?? '')->lower()->contains('pates')) {
-
-                $cid = (string) Str::uuid();
-
-                Log::info("[pates][$cid] Disparada regla especial", [
-                    'etiqueta_id'     => $etiqueta->id ?? null,
-                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id ?? null,
-                    'etiqueta_nombre' => $etiqueta->nombre ?? null,
-                    'maquina_id'      => $maquina->id ?? null,
-                    'maquina_tipo'    => $maquina->tipo ?? null,
-                    'maquina_obra_id' => $maquina->obra_id ?? null,
-                ]);
                 DB::transaction(function () use ($etiqueta, $maquina) {
                     // 1) Marcar etiqueta como "fabricada" y cerrar fecha
                     $etiqueta->estado = 'fabricada';
@@ -2487,12 +2505,6 @@ class EtiquetaController extends Controller
                 ->exists();
 
             if ($yaExiste) {
-                Log::info('Movimiento paquete ya existente; no se duplica', [
-                    'origen'        => $origen->id,
-                    'destino'       => $destino->id,
-                    'etiqueta_sub'  => $etiquetaSubId,
-                    'planilla_id'   => $planillaId,
-                ]);
                 return;
             }
 
@@ -2562,6 +2574,15 @@ class EtiquetaController extends Controller
             // Buscar la etiqueta o lanzar excepción si no se encuentra
             $etiqueta = Etiqueta::findOrFail($id);
 
+            // Normalizar campos: la tabla envía 'peso' pero el modelo usa 'peso'
+            // Aceptamos tanto 'peso_kg' como 'peso'
+            $pesoValue = $request->peso_kg ?? $request->peso ?? null;
+            // Limpiar el valor de peso: si es vacío o no numérico, convertir a null
+            if ($pesoValue === '' || $pesoValue === null || (!is_numeric($pesoValue) && !is_float($pesoValue))) {
+                $pesoValue = null;
+            }
+            $request->merge(['peso_kg' => $pesoValue]);
+
             // Si los campos de fecha vienen vacíos, forzar null
             $request->merge([
                 'fecha_inicio'                => $request->fecha_inicio ?: null,
@@ -2573,61 +2594,57 @@ class EtiquetaController extends Controller
             ]);
 
             // Validar los datos recibidos con mensajes personalizados
+            // Aceptamos fechas en formato Y-m-d (desde inputs date) o d/m/Y
             $validatedData = $request->validate([
-                'numero_etiqueta'          => 'required|string|max:50',
-                'nombre'                   => 'required|string|max:255',
+                'numero_etiqueta'          => 'nullable|string|max:50',
+                'nombre'                   => 'nullable|string|max:255',
+                'marca'                    => 'nullable|string|max:100',
                 'peso_kg'                  => 'nullable|numeric',
-                'fecha_inicio'             => 'nullable|date_format:d/m/Y',
-                'fecha_finalizacion'       => 'nullable|date_format:d/m/Y',
-                'fecha_inicio_ensamblado'  => 'nullable|date_format:d/m/Y',
-                'fecha_finalizacion_ensamblado' => 'nullable|date_format:d/m/Y',
-                'fecha_inicio_soldadura'   => 'nullable|date_format:d/m/Y',
-                'fecha_finalizacion_soldadura' => 'nullable|date_format:d/m/Y',
-                'estado'                   => 'nullable|string|in:pendiente,fabricando,completada'
+                'fecha_inicio'             => 'nullable|date',
+                'fecha_finalizacion'       => 'nullable|date',
+                'fecha_inicio_ensamblado'  => 'nullable|date',
+                'fecha_finalizacion_ensamblado' => 'nullable|date',
+                'fecha_inicio_soldadura'   => 'nullable|date',
+                'fecha_finalizacion_soldadura' => 'nullable|date',
+                'estado'                   => 'nullable|string|in:pendiente,fabricando,ensamblando,soldando,completada,empaquetada'
             ], [
-                'numero_etiqueta.required' => 'El campo Número de Etiqueta es obligatorio.',
                 'numero_etiqueta.string'   => 'El campo Número de Etiqueta debe ser una cadena de texto.',
                 'numero_etiqueta.max'      => 'El campo Número de Etiqueta no debe exceder 50 caracteres.',
 
-                'nombre.required'          => 'El campo Nombre es obligatorio.',
                 'nombre.string'            => 'El campo Nombre debe ser una cadena de texto.',
                 'nombre.max'               => 'El campo Nombre no debe exceder 255 caracteres.',
 
                 'peso_kg.numeric'          => 'El campo Peso debe ser un número.',
 
-                'fecha_inicio.date_format'             => 'El campo Fecha Inicio no corresponde al formato DD/MM/YYYY.',
-                'fecha_finalizacion.date_format'       => 'El campo Fecha Finalización no corresponde al formato DD/MM/YYYY.',
-                'fecha_inicio_ensamblado.date_format'    => 'El campo Fecha Inicio Ensamblado no corresponde al formato DD/MM/YYYY.',
-                'fecha_finalizacion_ensamblado.date_format' => 'El campo Fecha Finalización Ensamblado no corresponde al formato DD/MM/YYYY.',
-                'fecha_inicio_soldadura.date_format'     => 'El campo Fecha Inicio Soldadura no corresponde al formato DD/MM/YYYY.',
-                'fecha_finalizacion_soldadura.date_format' => 'El campo Fecha Finalización Soldadura no corresponde al formato DD/MM/YYYY.',
-                'estado.in'              => 'El campo Estado debe ser: pendiente, fabricando o completada.'
+                'fecha_inicio.date'             => 'El campo Fecha Inicio no es una fecha válida.',
+                'fecha_finalizacion.date'       => 'El campo Fecha Finalización no es una fecha válida.',
+                'fecha_inicio_ensamblado.date'    => 'El campo Fecha Inicio Ensamblado no es una fecha válida.',
+                'fecha_finalizacion_ensamblado.date' => 'El campo Fecha Finalización Ensamblado no es una fecha válida.',
+                'fecha_inicio_soldadura.date'     => 'El campo Fecha Inicio Soldadura no es una fecha válida.',
+                'fecha_finalizacion_soldadura.date' => 'El campo Fecha Finalización Soldadura no es una fecha válida.',
+                'estado.in'              => 'El campo Estado no es válido.'
             ]);
 
-            // Convertir las fechas al formato 'Y-m-d' si existen
-            if (!empty($validatedData['fecha_inicio'])) {
-                $validatedData['fecha_inicio'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_inicio'])
-                    ->format('Y-m-d');
+            // Convertir peso_kg a peso para el modelo
+            if (isset($validatedData['peso_kg'])) {
+                $validatedData['peso'] = $validatedData['peso_kg'];
+                unset($validatedData['peso_kg']);
             }
-            if (!empty($validatedData['fecha_finalizacion'])) {
-                $validatedData['fecha_finalizacion'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_finalizacion'])
-                    ->format('Y-m-d');
-            }
-            if (!empty($validatedData['fecha_inicio_ensamblado'])) {
-                $validatedData['fecha_inicio_ensamblado'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_inicio_ensamblado'])
-                    ->format('Y-m-d');
-            }
-            if (!empty($validatedData['fecha_finalizacion_ensamblado'])) {
-                $validatedData['fecha_finalizacion_ensamblado'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_finalizacion_ensamblado'])
-                    ->format('Y-m-d');
-            }
-            if (!empty($validatedData['fecha_inicio_soldadura'])) {
-                $validatedData['fecha_inicio_soldadura'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_inicio_soldadura'])
-                    ->format('Y-m-d');
-            }
-            if (!empty($validatedData['fecha_finalizacion_soldadura'])) {
-                $validatedData['fecha_finalizacion_soldadura'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_finalizacion_soldadura'])
-                    ->format('Y-m-d');
+
+            // Convertir las fechas al formato 'Y-m-d' si vienen en otro formato
+            $camposFecha = ['fecha_inicio', 'fecha_finalizacion', 'fecha_inicio_ensamblado',
+                           'fecha_finalizacion_ensamblado', 'fecha_inicio_soldadura', 'fecha_finalizacion_soldadura'];
+
+            foreach ($camposFecha as $campo) {
+                if (!empty($validatedData[$campo])) {
+                    try {
+                        // Intentar parsear la fecha (acepta múltiples formatos)
+                        $validatedData[$campo] = Carbon::parse($validatedData[$campo])->format('Y-m-d');
+                    } catch (\Exception $e) {
+                        // Si falla, dejar null
+                        $validatedData[$campo] = null;
+                    }
+                }
             }
 
             // Actualizar la etiqueta con los datos validados
@@ -2680,5 +2697,354 @@ class EtiquetaController extends Controller
                 'message' => 'Error al eliminar la etiqueta. Intente nuevamente. ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    // ============================================================================
+    // SISTEMA DE DESHACER (UNDO)
+    // ============================================================================
+
+    /**
+     * Deshace el último cambio de una etiqueta
+     * Revierte estado, elementos, productos consumidos y planilla si aplica
+     *
+     * @param string $etiquetaSubId El etiqueta_sub_id de la etiqueta
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deshacerEtiqueta(string $etiquetaSubId)
+    {
+        try {
+            // Obtener la etiqueta actual
+            $etiqueta = Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
+
+            if (!$etiqueta) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Etiqueta no encontrada.',
+                    'puede_deshacer' => false,
+                ], 404);
+            }
+
+            // Verificar si hay cambios que deshacer en el historial
+            $ultimoCambio = EtiquetaHistorial::ultimoCambio($etiquetaSubId);
+
+            // CASO ESPECIAL: No hay historial pero la etiqueta está en "fabricando"
+            // Esto puede pasar con etiquetas que iniciaron fabricación antes de implementar el historial
+            if (!$ultimoCambio && $etiqueta->estado === 'fabricando') {
+                return $this->deshacerFabricandoSinHistorial($etiqueta);
+            }
+
+            if (!$ultimoCambio) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay cambios que deshacer para esta etiqueta.',
+                    'puede_deshacer' => false,
+                ], 400);
+            }
+
+            // Ejecutar la reversión
+            $resultado = $ultimoCambio->revertir(Auth::id());
+
+            if (!$resultado['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $resultado['message'],
+                ], 400);
+            }
+
+            // Obtener la etiqueta actualizada
+            $etiqueta = Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
+
+            // Verificar si hay más cambios que deshacer
+            $puedeDeshacer = EtiquetaHistorial::puedeDeshacer($etiquetaSubId);
+            $proximoCambio = $puedeDeshacer ? EtiquetaHistorial::ultimoCambio($etiquetaSubId) : null;
+
+            return response()->json([
+                'success' => true,
+                'message' => $resultado['message'],
+                'estado' => $etiqueta->estado ?? $ultimoCambio->snapshot_etiqueta['estado'],
+                'estado_anterior' => $ultimoCambio->estado_nuevo,
+                'cambios_realizados' => $resultado['cambios'],
+                'puede_deshacer' => $puedeDeshacer,
+                'proximo_estado' => $proximoCambio ? $proximoCambio->snapshot_etiqueta['estado'] : null,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Error al deshacer etiqueta', [
+                'etiqueta_sub_id' => $etiquetaSubId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al deshacer el cambio: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Deshace una etiqueta en estado "fabricando" cuando no hay historial
+     * Esto maneja el caso de etiquetas que iniciaron fabricación antes de implementar el sistema de historial
+     *
+     * @param Etiqueta $etiqueta
+     * @return \Illuminate\Http\JsonResponse
+     */
+    private function deshacerFabricandoSinHistorial(Etiqueta $etiqueta): \Illuminate\Http\JsonResponse
+    {
+        return DB::transaction(function () use ($etiqueta) {
+            $cambios = [];
+
+            // 1. Restaurar elementos a estado pendiente y limpiar operarios
+            $elementosActualizados = $etiqueta->elementos()
+                ->where('estado', 'fabricando')
+                ->update([
+                    'estado' => 'pendiente',
+                    'users_id' => null,
+                    'users_id_2' => null,
+                ]);
+            $cambios[] = "Elementos restaurados: {$elementosActualizados}";
+
+            // 2. Restaurar etiqueta a pendiente
+            $etiqueta->update([
+                'estado' => 'pendiente',
+                'fecha_inicio' => null,
+                'operario1_id' => null,
+                'operario2_id' => null,
+            ]);
+            $cambios[] = "Etiqueta restaurada a estado: pendiente";
+
+            // 3. Verificar si la planilla debe volver a pendiente
+            if ($etiqueta->planilla) {
+                $planilla = $etiqueta->planilla->fresh();
+
+                // Si ninguna etiqueta está en proceso, restaurar planilla a pendiente
+                $hayEtiquetasEnProceso = $planilla->etiquetas()
+                    ->whereIn('estado', ['fabricando', 'completada', 'fabricada', 'en-paquete'])
+                    ->exists();
+
+                if (!$hayEtiquetasEnProceso && $planilla->estado !== 'pendiente') {
+                    $planilla->update([
+                        'estado' => 'pendiente',
+                        'fecha_inicio' => null,
+                        'fecha_finalizacion' => null,
+                    ]);
+                    $cambios[] = "Planilla restaurada a estado: pendiente";
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cambio revertido exitosamente (sin historial previo). Estado restaurado a: pendiente',
+                'estado' => 'pendiente',
+                'estado_anterior' => 'fabricando',
+                'cambios_realizados' => $cambios,
+                'puede_deshacer' => false,
+                'proximo_estado' => null,
+            ], 200);
+        });
+    }
+
+    /**
+     * Obtiene el historial de cambios de una etiqueta
+     *
+     * @param string $etiquetaSubId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function historialEtiqueta(string $etiquetaSubId)
+    {
+        try {
+            $historial = EtiquetaHistorial::where('etiqueta_sub_id', $etiquetaSubId)
+                ->orderByDesc('id')
+                ->limit(20)
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'accion' => $item->accion,
+                        'estado_anterior' => $item->estado_anterior,
+                        'estado_nuevo' => $item->estado_nuevo,
+                        'descripcion' => $item->descripcion,
+                        'fecha' => $item->created_at->format('d/m/Y H:i:s'),
+                        'revertido' => $item->revertido,
+                        'puede_revertir' => !$item->revertido,
+                    ];
+                });
+
+            $puedeDeshacer = EtiquetaHistorial::puedeDeshacer($etiquetaSubId);
+            $ultimoCambio = $puedeDeshacer ? EtiquetaHistorial::ultimoCambio($etiquetaSubId) : null;
+
+            return response()->json([
+                'success' => true,
+                'historial' => $historial,
+                'puede_deshacer' => $puedeDeshacer,
+                'ultimo_estado_reversible' => $ultimoCambio ? $ultimoCambio->snapshot_etiqueta['estado'] : null,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener historial: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Verifica si una etiqueta puede deshacer cambios
+     *
+     * @param string $etiquetaSubId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function puedeDeshacer(string $etiquetaSubId)
+    {
+        $etiqueta = Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
+        $estadoActual = $etiqueta?->estado;
+
+        $puedeDeshacer = EtiquetaHistorial::puedeDeshacer($etiquetaSubId);
+        $ultimoCambio = $puedeDeshacer ? EtiquetaHistorial::ultimoCambio($etiquetaSubId) : null;
+
+        // Caso especial: etiqueta en fabricando sin historial (legacy)
+        $puedeUndoLegacy = !$puedeDeshacer && $estadoActual === 'fabricando';
+
+        return response()->json([
+            'puede_deshacer' => $puedeDeshacer || $puedeUndoLegacy,
+            'estado_actual' => $estadoActual,
+            'estado_anterior' => $ultimoCambio
+                ? $ultimoCambio->snapshot_etiqueta['estado']
+                : ($puedeUndoLegacy ? 'pendiente' : null),
+            'accion_a_deshacer' => $ultimoCambio
+                ? $ultimoCambio->accion
+                : ($puedeUndoLegacy ? 'iniciar_fabricacion (legacy)' : null),
+        ]);
+    }
+
+    /**
+     * Obtener la longitud de barra del producto asignado a una etiqueta.
+     * Se usa en el segundo clic de fabricación cuando la decisión de patrón no está en memoria.
+     */
+    public function longitudAsignada(string $etiquetaSubId): JsonResponse
+    {
+        $etiqueta = Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)
+            ->with('producto.productoBase')
+            ->first();
+
+        if (!$etiqueta) {
+            return response()->json(['error' => 'Etiqueta no encontrada'], 404);
+        }
+
+        if (!$etiqueta->producto_id) {
+            return response()->json(['error' => 'No hay producto asignado'], 404);
+        }
+
+        $producto = $etiqueta->producto;
+        if (!$producto || !$producto->productoBase) {
+            return response()->json(['error' => 'Producto sin base'], 404);
+        }
+
+        $longitudM = $producto->productoBase->longitud; // en metros
+        $longitudCm = $longitudM ? (int) ($longitudM * 100) : null;
+
+        return response()->json([
+            'longitud_barra_m' => $longitudM,
+            'longitud_barra_cm' => $longitudCm,
+            'producto_id' => $producto->id,
+            'producto_codigo' => $producto->codigo,
+            'diametro' => $producto->productoBase->diametro,
+        ]);
+    }
+
+    /**
+     * Renderiza múltiples etiquetas para impresión.
+     * Útil cuando las etiquetas no están en el DOM (ej: grupos multiplanilla).
+     * POST /etiquetas/render-multiple
+     */
+    public function renderMultiple(Request $request): JsonResponse
+    {
+        $request->validate([
+            'etiqueta_sub_ids' => 'required|array|min:1',
+            'etiqueta_sub_ids.*' => 'required|string',
+            'maquina_tipo' => 'nullable|string',
+        ]);
+
+        $etiquetaSubIds = $request->input('etiqueta_sub_ids');
+        $maquinaTipo = $request->input('maquina_tipo', 'barra');
+
+        $etiquetas = Etiqueta::with([
+                'planilla.obra',
+                'planilla.cliente',
+                'elementos.producto',
+                'elementos.producto2',
+                'elementos.producto3',
+                'paquete'
+            ])
+            ->whereIn('etiqueta_sub_id', $etiquetaSubIds)
+            ->get()
+            ->keyBy('etiqueta_sub_id');
+
+        $resultado = [];
+
+        foreach ($etiquetaSubIds as $subId) {
+            $etiqueta = $etiquetas->get($subId);
+
+            if (!$etiqueta) {
+                $resultado[] = [
+                    'etiqueta_sub_id' => $subId,
+                    'found' => false,
+                    'html' => null,
+                    'elementos' => [],
+                ];
+                continue;
+            }
+
+            // Renderizar el HTML de la etiqueta
+            $html = view('components.etiqueta.etiqueta', [
+                'etiqueta' => $etiqueta,
+                'planilla' => $etiqueta->planilla,
+                'maquinaTipo' => $maquinaTipo,
+            ])->render();
+
+            // Preparar datos de elementos para el SVG
+            $elementos = $etiqueta->elementos->map(function ($el) {
+                return [
+                    'id' => $el->id,
+                    'diametro' => $el->diametro,
+                    'dimensiones' => $el->dimensiones,
+                    'barras' => $el->barras,
+                    'peso' => $el->peso,
+                    'tipo' => $el->tipo,
+                    'marca' => $el->marca,
+                    'longitud' => $el->longitud,
+                    'coladas' => [
+                        'colada1' => $el->producto?->n_colada,
+                        'colada2' => $el->producto2?->n_colada ?? null,
+                        'colada3' => $el->producto3?->n_colada ?? null,
+                    ],
+                ];
+            })->toArray();
+
+            $resultado[] = [
+                'etiqueta_sub_id' => $subId,
+                'found' => true,
+                'html' => $html,
+                'elementos' => $elementos,
+                'data' => [
+                    'id' => $etiqueta->id,
+                    'nombre' => $etiqueta->nombre,
+                    'peso_kg' => $etiqueta->peso_kg,
+                    'estado' => $etiqueta->estado,
+                    'planilla_codigo' => $etiqueta->planilla->codigo_limpio ?? $etiqueta->planilla->codigo,
+                    'planilla_seccion' => $etiqueta->planilla->seccion,
+                    'obra' => $etiqueta->planilla->obra->obra ?? 'N/A',
+                    'cliente' => $etiqueta->planilla->cliente->empresa ?? 'N/A',
+                    'paquete_codigo' => $etiqueta->paquete?->codigo,
+                ],
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'etiquetas' => $resultado,
+            'total' => count($resultado),
+            'found' => collect($resultado)->where('found', true)->count(),
+        ]);
     }
 }

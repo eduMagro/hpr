@@ -35,7 +35,7 @@ class PlanillaProcessor
     protected array $diametrosPermitidos;
     protected int $tiempoSetupElemento;
     protected array $estrategiasSubetiquetas;
-    protected array $longitudesProductoBase;
+    protected array $productosBase;
 
     protected CodigoEtiqueta $codigoService;
 
@@ -45,13 +45,15 @@ class PlanillaProcessor
         $this->diametrosPermitidos = config('planillas.importacion.diametros_permitidos', [5, 8, 10, 12, 16, 20, 25, 32]);
         $this->tiempoSetupElemento = config('planillas.importacion.tiempo_setup_elemento', 1200);
 
-        // Cargar longitudes de productos base (barras) para determinar elementos no elaborados
-        $this->longitudesProductoBase = ProductoBase::where('tipo', 'barra')
+        // Cargar productos base (barras) con diámetro y longitud para determinar elementos no elaborados
+        $this->productosBase = ProductoBase::where('tipo', 'barra')
             ->whereNotNull('longitud')
-            ->pluck('longitud')
-            ->map(fn($l) => (float)$l)
-            ->unique()
-            ->values()
+            ->whereNotNull('diametro')
+            ->get(['diametro', 'longitud'])
+            ->map(fn($p) => [
+                'diametro' => (int)$p->diametro,
+                'longitud' => (float)$p->longitud,
+            ])
             ->toArray();
 
         // Configuración de estrategias por máquina
@@ -468,8 +470,8 @@ class PlanillaProcessor
             // Determinar si el elemento necesita elaboración
             // Un elemento NO necesita elaboración si:
             // 1. No tiene dobleces (dobles_barra = 0)
-            // 2. Su longitud coincide con alguna longitud de producto base disponible
-            $elaborado = $this->determinarElaborado($doblesBarra, (float)$longitud);
+            // 2. Existe un producto base con mismo diámetro y longitud
+            $elaborado = $this->determinarElaborado($doblesBarra, (int)$diametro, (float)$longitud);
 
             // Crear elemento
             Elemento::create([
@@ -686,70 +688,69 @@ class PlanillaProcessor
     {
         $subId = $this->codigoService->generarCodigoSubetiqueta($padre->codigo);
 
-        $subRow = Etiqueta::firstWhere('etiqueta_sub_id', $subId);
+        $data = [
+            'codigo' => $padre->codigo,
+            'planilla_id' => $padre->planilla_id,
+            'nombre' => $padre->nombre,
+            'estado' => $padre->estado ?? 'pendiente',
+            'peso' => 0.0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
 
-        if (!$subRow) {
-            $data = [
-                'codigo' => $padre->codigo,
-                'etiqueta_sub_id' => $subId,
-                'planilla_id' => $padre->planilla_id,
-                'nombre' => $padre->nombre,
-                'estado' => $padre->estado ?? 'pendiente',
-                'peso' => 0.0,
-            ];
+        // Copiar campos adicionales si existen
+        $camposOpcionales = [
+            'producto_id',
+            'producto_id_2',
+            'ubicacion_id',
+            'operario1_id',
+            'operario2_id',
+            'soldador1_id',
+            'soldador2_id',
+            'ensamblador1_id',
+            'ensamblador2_id',
+            'marca',
+            'paquete_id',
+            'numero_etiqueta',
+            'fecha_inicio',
+            'fecha_finalizacion',
+            'fecha_inicio_ensamblado',
+            'fecha_finalizacion_ensamblado',
+            'fecha_inicio_soldadura',
+            'fecha_finalizacion_soldadura'
+        ];
 
-            // Copiar campos adicionales si existen
-            $camposOpcionales = [
-                'producto_id',
-                'producto_id_2',
-                'ubicacion_id',
-                'operario1_id',
-                'operario2_id',
-                'soldador1_id',
-                'soldador2_id',
-                'ensamblador1_id',
-                'ensamblador2_id',
-                'marca',
-                'paquete_id',
-                'numero_etiqueta',
-                'fecha_inicio',
-                'fecha_finalizacion',
-                'fecha_inicio_ensamblado',
-                'fecha_finalizacion_ensamblado',
-                'fecha_inicio_soldadura',
-                'fecha_finalizacion_soldadura'
-            ];
-
-            foreach ($camposOpcionales as $campo) {
-                if (Schema::hasColumn('etiquetas', $campo)) {
-                    $data[$campo] = $padre->$campo;
-                }
+        foreach ($camposOpcionales as $campo) {
+            if (Schema::hasColumn('etiquetas', $campo)) {
+                $data[$campo] = $padre->$campo;
             }
-
-            $subRow = Etiqueta::create($data);
         }
+
+        // Usar updateOrCreate que maneja duplicados correctamente
+        $data['etiqueta_sub_id'] = $subId;
+        $subRow = Etiqueta::updateOrCreate(
+            ['etiqueta_sub_id' => $subId],
+            $data
+        );
 
         return [$subId, (int)$subRow->id];
     }
 
     protected function asegurarSubetiquetaExiste(string $subId, Etiqueta $padre): int
     {
-        $row = Etiqueta::firstWhere('etiqueta_sub_id', $subId);
+        // Usar updateOrCreate que maneja duplicados correctamente
+        $row = Etiqueta::updateOrCreate(
+            ['etiqueta_sub_id' => $subId],
+            [
+                'codigo' => $padre->codigo,
+                'planilla_id' => $padre->planilla_id,
+                'nombre' => $padre->nombre,
+                'estado' => $padre->estado ?? 'pendiente',
+                'peso' => 0.0,
+            ]
+        );
 
-        if ($row) {
-            return (int)$row->id;
-        }
-
-        $data = [
-            'codigo' => $padre->codigo,
-            'etiqueta_sub_id' => $subId,
-            'planilla_id' => $padre->planilla_id,
-            'nombre' => $padre->nombre,
-            'estado' => $padre->estado ?? 'pendiente',
-            'peso' => 0.0,
-        ];
-
-        return (int)Etiqueta::create($data)->id;
+        return (int)$row->id;
     }
 
     protected function recalcularPesosEtiquetas(Etiqueta $padre): void
@@ -874,16 +875,17 @@ class PlanillaProcessor
      *
      * Un elemento NO necesita elaboración (elaborado = 0) si:
      * 1. No tiene dobleces (dobles_barra = 0) - es una barra recta
-     * 2. Su longitud coincide con alguna longitud de producto base disponible
+     * 2. Existe un producto base con el mismo diámetro Y longitud
      *
      * IMPORTANTE: La longitud del elemento viene en CENTÍMETROS desde el Excel,
      * mientras que los productos base tienen la longitud en METROS.
      *
      * @param int $doblesBarra Número de dobleces del elemento
+     * @param int $diametro Diámetro del elemento en mm
      * @param float $longitud Longitud del elemento en CENTÍMETROS
      * @return int 1 si necesita elaboración, 0 si no
      */
-    protected function determinarElaborado(int $doblesBarra, float $longitud): int
+    protected function determinarElaborado(int $doblesBarra, int $diametro, float $longitud): int
     {
         // Si tiene dobleces, necesita elaboración
         if ($doblesBarra > 0) {
@@ -893,19 +895,23 @@ class PlanillaProcessor
         // Convertir longitud de centímetros a metros para comparar con productos base
         $longitudEnMetros = $longitud / 100;
 
-        // Tolerancia de 0.05m (5cm) para comparación
+        // Tolerancia de 0.05m (5cm) para comparación de longitud
         $tolerancia = 0.05;
 
-        foreach ($this->longitudesProductoBase as $longitudPB) {
-            if (abs($longitudEnMetros - $longitudPB) <= $tolerancia) {
+        foreach ($this->productosBase as $producto) {
+            // Verificar que coincidan TANTO el diámetro como la longitud
+            $coincideDiametro = $producto['diametro'] === $diametro;
+            $coincideLongitud = abs($longitudEnMetros - $producto['longitud']) <= $tolerancia;
+
+            if ($coincideDiametro && $coincideLongitud) {
                 Log::channel('planilla_import')->debug(
-                    "📦 Elemento sin elaborar: longitud {$longitud}cm ({$longitudEnMetros}m) coincide con producto base {$longitudPB}m"
+                    "📦 Elemento sin elaborar: Ø{$diametro}mm x {$longitud}cm ({$longitudEnMetros}m) coincide con producto base Ø{$producto['diametro']}mm x {$producto['longitud']}m"
                 );
                 return 0; // No necesita elaboración
             }
         }
 
-        // La longitud no coincide con ningún producto base, necesita elaboración (corte)
+        // No existe producto base con ese diámetro y longitud, necesita elaboración
         return 1;
     }
 }

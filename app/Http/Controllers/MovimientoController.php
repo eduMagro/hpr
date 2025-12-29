@@ -516,15 +516,15 @@ class MovimientoController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json(['success' => false, 'message' => $validator->errors()->first(), 'errors' => $validator->errors()], 422);
         }
 
         if ($request->ubicacion_destino && $request->maquina_id) {
-            return response()->json(['error' => 'No puedes elegir una ubicación y una máquina a la vez como destino']);
+            return response()->json(['success' => false, 'message' => 'No puedes elegir una ubicación y una máquina a la vez como destino'], 400);
         }
 
         if (!$request->ubicacion_destino && !$request->maquina_id) {
-            return response()->json(['error' => 'No has elegido destino']);
+            return response()->json(['success' => false, 'message' => 'No has elegido destino'], 400);
         }
 
         try {
@@ -557,6 +557,21 @@ class MovimientoController extends Controller
                         }
                         if (!$productoBase) {
                             throw new \Exception('No se pudo resolver el producto base.');
+                        }
+
+                        // Validar compatibilidad de tipo de material entre producto y máquina
+                        $tipoMaquina = strtolower(trim($maquina->tipo_material ?? ''));
+                        $tipoProducto = strtolower(trim($productoBase->tipo ?? ''));
+
+                        if ($tipoMaquina !== '' && $tipoProducto !== '' && $tipoMaquina !== $tipoProducto) {
+                            Log::warning('⚠️ Tipo de material incompatible al solicitar recarga', [
+                                'maquina_id' => $maquina->id,
+                                'maquina_nombre' => $maquina->nombre,
+                                'tipo_maquina' => $tipoMaquina,
+                                'tipo_producto' => $tipoProducto,
+                                'producto_base_id' => $productoBase->id,
+                            ]);
+                            throw new \Exception("La máquina '{$maquina->nombre}' solo acepta material tipo '{$tipoMaquina}', pero el producto solicitado es tipo '{$tipoProducto}'.");
                         }
 
                         $tipo = strtolower($productoBase->tipo ?? 'N/A');
@@ -638,9 +653,15 @@ class MovimientoController extends Controller
                 }
             });
 
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true, 'message' => 'Movimiento creado correctamente.']);
+            }
             return redirect()->back()->with('success', 'Movimiento creado correctamente.');
         } catch (\Exception $e) {
             Log::error('Error al registrar movimiento: ' . $e->getMessage());
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+            }
             return redirect()->back()->with('error', 'No se ha podido crear el movimiento.');
         }
     }
@@ -783,25 +804,19 @@ class MovimientoController extends Controller
                         // Si hay máquina
                         if ($maquinaDetectada) {
 
-                            $tipoMaquina = strtolower($maquinaDetectada->tipo_material);
-                            $tipoProducto = strtolower($tipoBase); // viene de productoBase->tipo
+                            $tipoMaquina = strtolower(trim($maquinaDetectada->tipo_material ?? ''));
+                            $tipoProducto = strtolower(trim($tipoBase ?? '')); // viene de productoBase->tipo
 
-                            if ($tipoMaquina === 'encarretado' && $tipoProducto === 'barras') {
-                                Log::warning('⚠️ Máquina solo acepta productos encarretados', [
+                            // Validar compatibilidad de tipo de material si la máquina tiene tipo definido
+                            if ($tipoMaquina !== '' && $tipoProducto !== '' && $tipoMaquina !== $tipoProducto) {
+                                Log::warning('⚠️ Tipo de material incompatible entre producto y máquina', [
                                     'maquina' => $maquinaDetectada->codigo,
+                                    'maquina_nombre' => $maquinaDetectada->nombre,
+                                    'tipo_maquina' => $tipoMaquina,
                                     'tipo_producto' => $tipoProducto,
                                     'codigo_producto' => $codigo,
                                 ]);
-                                throw new \Exception('La máquina seleccionada solo acepta productos de tipo encarretado.');
-                            }
-
-                            if ($tipoMaquina === 'barra' && $tipoProducto === 'encarretado') {
-                                Log::warning('⚠️ Máquina solo acepta productos tipo barra', [
-                                    'maquina' => $maquinaDetectada->codigo,
-                                    'tipo_producto' => $tipoProducto,
-                                    'codigo_producto' => $codigo,
-                                ]);
-                                throw new \Exception('La máquina seleccionada solo acepta productos de tipo barra.');
+                                throw new \Exception("La máquina '{$maquinaDetectada->nombre}' solo acepta material tipo '{$tipoMaquina}', pero el producto es tipo '{$tipoProducto}'.");
                             }
 
                             if (
@@ -818,6 +833,7 @@ class MovimientoController extends Controller
                                 ->latest()
                                 ->first();
 
+                            $movimientoActual = null;
                             if ($movPend) {
                                 $movPend->update([
                                     'producto_id'      => $producto->id,
@@ -825,10 +841,10 @@ class MovimientoController extends Controller
                                     'estado'           => 'completado',
                                     'fecha_ejecucion'  => now(),
                                     'ejecutado_por'    => auth()->id(),
-                                    // opcional: 'descripcion' => $descripcion,
                                 ]);
+                                $movimientoActual = $movPend;
                             } else {
-                                Movimiento::create([
+                                $movimientoActual = Movimiento::create([
                                     'tipo'               => 'movimiento libre',
                                     'producto_id'        => $producto->id,
                                     'producto_base_id'   => $producto->producto_base_id,
@@ -843,6 +859,34 @@ class MovimientoController extends Controller
                                 ]);
                             }
 
+                            // Consumir producto anterior del mismo producto_base que estaba fabricando en esta máquina
+                            // (mismo tipo, diámetro y longitud)
+                            $productoAnterior = Producto::where('producto_base_id', $producto->producto_base_id)
+                                ->where('id', '!=', $producto->id)
+                                ->where('maquina_id', $maquinaDetectada->id)
+                                ->where('estado', 'fabricando')
+                                ->first();
+
+                            if ($productoAnterior) {
+                                $productoAnterior->update([
+                                    'estado'          => 'consumido',
+                                    'maquina_id'      => null,
+                                    'fecha_consumido' => now(),
+                                    'consumido_by'    => auth()->id(),
+                                ]);
+                                Log::info('Producto anterior consumido automáticamente', [
+                                    'producto_anterior_id' => $productoAnterior->id,
+                                    'producto_nuevo_id'    => $producto->id,
+                                    'maquina_id'           => $maquinaDetectada->id,
+                                    'producto_base_id'     => $producto->producto_base_id,
+                                ]);
+
+                                // Guardar referencia del producto consumido en el movimiento
+                                if ($movimientoActual) {
+                                    $movimientoActual->update(['producto_consumido_id' => $productoAnterior->id]);
+                                }
+                            }
+
                             // Actualiza producto a máquina
                             $producto->update([
                                 'ubicacion_id' => null,
@@ -850,21 +894,6 @@ class MovimientoController extends Controller
                                 'maquina_id'   => $maquinaDetectada->id,
                                 'estado'       => 'fabricando',
                             ]);
-
-                            // // Consumir anterior YA NO LO USAMOS, LO DEJAMOS POR AHORA
-                            // $productoAnterior = Producto::where('producto_base_id', $producto->producto_base_id)
-                            //     ->where('id', '!=', $producto->id)
-                            //     ->where('maquina_id', $maquinaDetectada->id)
-                            //     ->where('estado', 'fabricando')
-                            //     ->latest('updated_at')
-                            //     ->first();
-
-                            // if ($productoAnterior) {
-                            //     $productoAnterior->update([
-                            //         'maquina_id' => null,
-                            //         'estado'     => 'consumido',
-                            //     ]);
-                            // }
                         } else {
                             // A ubicación
                             Movimiento::create([
@@ -1070,6 +1099,204 @@ class MovimientoController extends Controller
     }
 
     /**
+     * Completa un movimiento genérico (pendiente -> completado)
+     */
+    public function completar($id)
+    {
+        try {
+            $movimiento = Movimiento::findOrFail($id);
+
+            if ($movimiento->estado === 'completado') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Este movimiento ya está completado.'
+                ], 400);
+            }
+
+            $movimiento->update([
+                'estado' => 'completado',
+                'fecha_ejecucion' => now(),
+                'ejecutado_por' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Movimiento completado correctamente.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al completar movimiento: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al completar el movimiento.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtiene las etiquetas de elementos sin elaborar para un movimiento de "Preparación elementos"
+     * Extrae el planilla_id de la descripción del movimiento
+     */
+    public function getEtiquetasElementosSinElaborar($movimientoId)
+    {
+        try {
+            $movimiento = Movimiento::findOrFail($movimientoId);
+
+            if (strtolower($movimiento->tipo) !== 'preparación elementos') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Este movimiento no es de tipo preparación de elementos.'
+                ], 400);
+            }
+
+            // Extraer planilla_id de la descripción [planilla_id:123]
+            $planillaId = null;
+            if (preg_match('/\[planilla_id:(\d+)\]/', $movimiento->descripcion, $matches)) {
+                $planillaId = (int) $matches[1];
+            }
+
+            if (!$planillaId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pudo determinar la planilla asociada a este movimiento.'
+                ], 400);
+            }
+
+            $planilla = \App\Models\Planilla::with(['cliente', 'obra'])->find($planillaId);
+
+            if (!$planilla) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontró la planilla asociada.'
+                ], 404);
+            }
+
+            // Buscar elementos con elaborado=0 de esa planilla (con todas las relaciones necesarias)
+            $elementosSinElaborar = \App\Models\Elemento::with([
+                'etiquetaRelacion',
+                'maquina',
+                'producto',
+                'producto2',
+                'producto3'
+            ])
+                ->where('planilla_id', $planillaId)
+                ->where('elaborado', 0)
+                ->get();
+
+            if ($elementosSinElaborar->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'html' => '',
+                    'etiquetasData' => [],
+                    'planilla' => [
+                        'id' => $planilla->id,
+                        'codigo' => $planilla->codigo,
+                    ],
+                    'total_etiquetas' => 0,
+                    'message' => 'No hay elementos sin elaborar en esta planilla.'
+                ]);
+            }
+
+            // Función para ordenar por etiqueta_sub_id
+            $ordenSub = function ($grupo, $subId) {
+                if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
+                    return sprintf('%s-%010d', $m[1], (int)$m[2]);
+                }
+                return $subId . '-0000000000';
+            };
+
+            // Agrupar por etiqueta_sub_id
+            $elementosAgrupados = $elementosSinElaborar->groupBy('etiqueta_sub_id')->sortBy($ordenSub);
+
+            // Construir etiquetasData para el renderizado de SVGs (mismo formato que en MaquinaController)
+            $etiquetasData = $elementosAgrupados->map(function ($grupo, $subId) {
+                $etiqueta = $grupo->first()->etiquetaRelacion;
+
+                // Si no hay etiqueta, buscarla o crear un objeto mínimo
+                if (!$etiqueta) {
+                    $etiqueta = \App\Models\Etiqueta::where('etiqueta_sub_id', $subId)->first();
+                }
+
+                return [
+                    'etiqueta' => $etiqueta ? [
+                        'id' => $etiqueta->id,
+                        'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id ?? $subId,
+                        'nombre' => $etiqueta->nombre,
+                        'estado' => $etiqueta->estado,
+                    ] : [
+                        'id' => $subId, // Usar subId como fallback
+                        'etiqueta_sub_id' => $subId,
+                        'nombre' => null,
+                        'estado' => 'pendiente',
+                    ],
+                    'elementos' => $grupo->map(function ($e) {
+                        return [
+                            'id'          => $e->id,
+                            'codigo'      => $e->codigo,
+                            'dimensiones' => $e->dimensiones,
+                            'estado'      => $e->estado,
+                            'peso'        => $e->peso_kg,
+                            'diametro'    => $e->diametro_mm,
+                            'longitud'    => $e->longitud_cm,
+                            'barras'      => $e->barras,
+                            'figura'      => $e->figura,
+                            'coladas'     => [
+                                'colada1' => $e->producto ? $e->producto->n_colada : null,
+                                'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
+                                'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
+                            ],
+                        ];
+                    })->values(),
+                ];
+            })->values();
+
+            // Renderizar las etiquetas como HTML
+            $html = '';
+            foreach ($elementosAgrupados as $etiquetaSubId => $elementos) {
+                $firstElement = $elementos->first();
+                $etiqueta = $firstElement->etiquetaRelacion;
+
+                if (!$etiqueta) {
+                    // Si no hay relación de etiqueta, buscarla
+                    $etiqueta = \App\Models\Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
+                }
+
+                if ($etiqueta) {
+                    // Asegurar que el etiqueta_sub_id esté en el objeto
+                    if (!$etiqueta->etiqueta_sub_id) {
+                        $etiqueta->etiqueta_sub_id = $etiquetaSubId;
+                    }
+
+                    $html .= view('components.etiqueta.etiqueta', [
+                        'etiqueta' => $etiqueta,
+                        'planilla' => $planilla,
+                        'maquinaTipo' => 'grua',
+                    ])->render();
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'etiquetasData' => $etiquetasData,
+                'planilla' => [
+                    'id' => $planilla->id,
+                    'codigo' => $planilla->codigo,
+                    'cliente' => $planilla->cliente->empresa ?? 'N/A',
+                    'obra' => $planilla->obra->obra ?? 'N/A',
+                ],
+                'total_etiquetas' => $elementosAgrupados->count(),
+                'total_elementos' => $elementosSinElaborar->count(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al obtener etiquetas de elementos sin elaborar: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener las etiquetas: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Obtiene las etiquetas de un paquete para mostrar en el modal de preparación
      */
     public function getEtiquetasPaquete($movimientoId)
@@ -1129,19 +1356,20 @@ class MovimientoController extends Controller
         try {
             // Obtener el movimiento que será eliminado
             $movimiento = Movimiento::findOrFail($id);
+            $productoConsumidoRecuperado = null;
+
             if ($movimiento->producto_id) {
                 // Obtener el producto asociado al movimiento
                 $producto = Producto::findOrFail($movimiento->producto_id);
 
                 // Revertir la ubicación y máquina del producto al origen del movimiento
                 $producto->ubicacion_id = $movimiento->ubicacion_origen ?: null;
-                $producto->maquina_id = $movimiento->maquina_origen ?: null; // Asegúrate de tener este campo en tu modelo Movimiento
+                $producto->maquina_id = $movimiento->maquina_origen ?: null;
 
                 // Actualizar el estado del producto basado en la ubicación de origen
                 if ($movimiento->ubicacion_origen) {
                     $ubicacion = Ubicacion::find($movimiento->ubicacion_origen);
                     if ($ubicacion) {
-
                         $producto->estado = 'almacenado';
                     }
                 } elseif ($movimiento->maquina_origen) {
@@ -1153,6 +1381,25 @@ class MovimientoController extends Controller
                 }
                 // Guardar los cambios en el producto
                 $producto->save();
+
+                // Si hay un producto consumido asociado, recuperarlo
+                if ($movimiento->producto_consumido_id) {
+                    $productoConsumido = Producto::find($movimiento->producto_consumido_id);
+                    if ($productoConsumido && $productoConsumido->estado === 'consumido') {
+                        $productoConsumido->update([
+                            'estado'          => 'fabricando',
+                            'maquina_id'      => $movimiento->maquina_destino,
+                            'fecha_consumido' => null,
+                            'consumido_by'    => null,
+                        ]);
+                        $productoConsumidoRecuperado = $productoConsumido;
+                        Log::info('Producto consumido recuperado al eliminar movimiento', [
+                            'producto_consumido_id' => $productoConsumido->id,
+                            'movimiento_id'         => $movimiento->id,
+                            'maquina_destino'       => $movimiento->maquina_destino,
+                        ]);
+                    }
+                }
             }
 
             if ($movimiento->paquete_id) {
@@ -1172,6 +1419,19 @@ class MovimientoController extends Controller
             // Confirmar la transacción
             DB::commit();
 
+            // Si es petición AJAX, devolver JSON
+            if (request()->expectsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Movimiento eliminado correctamente.',
+                    'producto_consumido_recuperado' => $productoConsumidoRecuperado ? true : false,
+                    'producto_recuperado' => $productoConsumidoRecuperado ? [
+                        'id' => $productoConsumidoRecuperado->id,
+                        'codigo' => $productoConsumidoRecuperado->codigo,
+                    ] : null,
+                ]);
+            }
+
             // Redirigir con un mensaje de éxito
             return redirect()->route('movimientos.index')->with('success', 'Movimiento eliminado correctamente.');
         } catch (\Throwable $e) {
@@ -1183,6 +1443,14 @@ class MovimientoController extends Controller
                 'message' => $e->getMessage(),
                 'stack' => $e->getTraceAsString(),
             ]);
+
+            // Si es petición AJAX, devolver JSON con error
+            if (request()->expectsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ocurrió un error al eliminar el movimiento.',
+                ], 500);
+            }
 
             // Redirigir con un mensaje de error genérico
             return redirect()->back()->with('error', 'Ocurrió un error al eliminar el movimiento. Inténtalo nuevamente.');

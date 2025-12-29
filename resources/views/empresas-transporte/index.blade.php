@@ -159,7 +159,12 @@
         </div>
     </div>
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
+        function initEmpresasTransportePage() {
+            // Prevenir doble inicialización
+            if (document.body.dataset.empresasTransportePageInit === 'true') return;
+
+            console.log('🔍 Inicializando página de empresas de transporte...');
+
             const editables = document.querySelectorAll('.editable');
 
             editables.forEach(el => {
@@ -183,7 +188,7 @@
                         return;
                     }
 
-                    // Envía la actualización al servidor vía fetch (ajusta la URL y el método según tu API)
+                    // Envía la actualización al servidor vía fetch
                     fetch("{{ route('empresas-transporte.editarField') }}", {
                             method: 'POST',
                             headers: {
@@ -208,7 +213,7 @@
                                         'Campo actualizado correctamente.',
                                     confirmButtonColor: '#28a745'
                                 }).then(() => {
-                                    window.location.reload(); // ✅ CORRECTO
+                                    window.location.reload();
                                 });
                             } else {
                                 console.error('Error al actualizar:', data.error ||
@@ -226,9 +231,24 @@
                                 text: 'Error en la solicitud. Revisa la consola.',
                             });
                         });
-
                 });
             });
+
+            // Marcar como inicializado
+            document.body.dataset.empresasTransportePageInit = 'true';
+        }
+
+        // Registrar en el sistema global
+        window.pageInitializers = window.pageInitializers || [];
+        window.pageInitializers.push(initEmpresasTransportePage);
+
+        // Configurar listeners
+        document.addEventListener('livewire:navigated', initEmpresasTransportePage);
+        document.addEventListener('DOMContentLoaded', initEmpresasTransportePage);
+
+        // Limpiar flag antes de navegar
+        document.addEventListener('livewire:navigating', () => {
+            document.body.dataset.empresasTransportePageInit = 'false';
         });
     </script>
 </x-app-layout>

@@ -5,3 +5,4 @@ import './trabajoEtiqueta.js';
 import './trabajoPaquete.js';
 import './eliminarPaquete.js';
 import './gridClasses.js';
+import './historialEtiquetas.js'; // Sistema de deshacer (UNDO)

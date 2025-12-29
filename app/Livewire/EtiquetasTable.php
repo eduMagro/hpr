@@ -308,8 +308,8 @@ class EtiquetasTable extends Component
         $query = Etiqueta::with([
             'planilla:id,codigo,obra_id,cliente_id,seccion',
             'paquete:id,codigo',
-            'producto:id,codigo,nombre',
-            'producto2:id,codigo,nombre',
+            'producto:id,codigo',
+            'producto2:id,codigo',
             'soldador1:id,name,primer_apellido',
             'soldador2:id,name,primer_apellido',
             'ensamblador1:id,name,primer_apellido',

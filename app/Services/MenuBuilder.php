@@ -16,9 +16,14 @@ class MenuBuilder
             return [];
         }
 
-        // Cachear el menú por usuario durante 1 hora
-        return Cache::remember("menu_user_{$user->id}", 3600, function () use ($user) {
+        // Cachear el menú por usuario durante 30 minutos
+        return Cache::remember("menu_user_{$user->id}", 1800, function () use ($user) {
             $menu = config('menu.main');
+
+            if (!$menu || !is_array($menu)) {
+                return [];
+            }
+
             $filteredMenu = [];
 
             foreach ($menu as $section) {
@@ -34,20 +39,26 @@ class MenuBuilder
 
     /**
      * Filtra una sección del menú según permisos del usuario
+     * Los items sin permiso se marcan como 'disabled' en lugar de ocultarse
      */
     private static function filterSection($section, $user)
     {
-        // Verificar si el usuario puede acceder a la sección principal
-        if (!self::userCanAccessRoute($section['route'], $user)) {
-            return null;
-        }
+        // No verificamos la ruta de la sección principal (ej: secciones.produccion)
+        // porque son rutas virtuales. Solo verificamos los items del submenu.
 
         $filteredSubmenu = [];
+        $hasAccessibleItems = false;
 
         if (isset($section['submenu'])) {
             foreach ($section['submenu'] as $item) {
-                if (self::userCanAccessRoute($item['route'], $user)) {
-                    $filteredItem = $item;
+                $filteredItem = $item;
+                $canAccess = self::userCanAccessRoute($item['route'], $user);
+
+                // Marcar como disabled si no tiene acceso
+                $filteredItem['disabled'] = !$canAccess;
+
+                if ($canAccess) {
+                    $hasAccessibleItems = true;
 
                     // Filtrar acciones según permisos
                     if (isset($item['actions'])) {
@@ -55,14 +66,14 @@ class MenuBuilder
                             return self::userCanAccessRoute($action['route'], $user);
                         });
                     }
-
-                    $filteredSubmenu[] = $filteredItem;
                 }
+
+                $filteredSubmenu[] = $filteredItem;
             }
         }
 
-        // Si no tiene submenú accesible, no mostrar la sección
-        if (empty($filteredSubmenu)) {
+        // Si no tiene ningún submenú accesible, no mostrar la sección
+        if (!$hasAccessibleItems) {
             return null;
         }
 

@@ -13,9 +13,16 @@ return [
         'pedidos.',
         'ayuda.',
         'maquinas.',
-        'entradas.',   // ✅ acceso permitido
-        'movimientos.', // ✅ acceso permitido
+        'etiquetas.',      // ✅ acceso para fabricar etiquetas
+        'elementos.',      // ✅ acceso para dividir/cambiar máquina elementos
+        'subetiquetas.',   // ✅ acceso para crear/mover subetiquetas
+        'paquetes.',       // ✅ acceso para crear/gestionar paquetes
+        'localizaciones.', // ✅ acceso para ubicar paquetes en mapa
+        'api.',            // ✅ acceso a rutas API (productos, paquetes, etc.)
+        'entradas.',       // ✅ acceso permitido
+        'movimientos.',    // ✅ acceso permitido
         'ubicaciones.',
+        'incorporaciones.descargarMiContrato', // ✅ acceso para descargar su contrato
     ],
 
     // 📌 Prefijos que deben salir en el dashboard para operarios
@@ -54,6 +61,7 @@ return [
         'usuarios.imagen',
         'usuarios.editarSubirImagen',
         'nominas.crearDescargarMes',
+        'incorporaciones.descargarMiContrato', // ✅ descargar mi contrato
         'turno.cambiarMaquina',
         'salida.completarDesdeMovimiento',
         'alertas.index',
@@ -65,6 +73,7 @@ return [
         'vacaciones.solicitar',
         'users.verEventos-turnos',
         'users.verResumen-asistencia',
+        'api.mapaNave', // ✅ mapa de nave (usado en grúa y otras vistas)
     ],
 
     // 📌 Correos con acceso total

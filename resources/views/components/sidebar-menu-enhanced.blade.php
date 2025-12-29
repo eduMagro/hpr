@@ -22,6 +22,7 @@
     isToggling: false,
     focusedSectionId: null,
     focusedItemIndex: -1, // -1 = sección, 0+ = item del submenú
+    ready: false, // Para controlar transiciones
     menuSectionIds: [@foreach($menuItems as $section)'{{ $section['id'] }}'@if(!$loop->last), @endif @endforeach],
     menuItemCounts: { @foreach($menuItems as $section)'{{ $section['id'] }}': {{ isset($section['submenu']) ? count($section['submenu']) : 0 }}@if(!$loop->last), @endif @endforeach },
 
@@ -251,6 +252,12 @@
         // Aplicar modo oscuro
         this.applyDarkMode();
 
+        // Activar transiciones después de que Alpine haya renderizado
+        // Esto evita el efecto de abrir/cerrar al cargar en móvil
+        setTimeout(() => {
+            this.ready = true;
+        }, 100);
+
         // Actualizar sección activa cuando Livewire navega
         document.addEventListener('livewire:navigated', () => {
             // Cerrar paneles desplegables
@@ -264,8 +271,11 @@
     },
 
     updateActiveSection() {
-        // Actualizar la ruta actual
-        this.currentPath = window.location.pathname;
+        // Forzar re-evaluación de Alpine cambiando currentPath
+        const newPath = window.location.pathname;
+        if (this.currentPath !== newPath) {
+            this.currentPath = newPath;
+        }
 
         // Resetear sección actual asociada a la ruta
         this.currentSectionId = null;
@@ -297,7 +307,8 @@
 
     isRouteActive(routeUrl) {
         const url = new URL(routeUrl, window.location.origin);
-        return window.location.pathname === url.pathname;
+        // Usar currentPath (reactivo) en lugar de window.location.pathname
+        return this.currentPath === url.pathname;
     },
 
     toggleSidebar() {
@@ -431,10 +442,13 @@
     </div>
 
     <!-- Sidebar -->
-    <div x-cloak x-show="true"
-        :class="open ? 'w-64 translate-x-0' : 'w-16 -translate-x-full md:translate-x-0'"
-        class="bg-gray-900 dark:bg-gray-950 text-white flex-shrink-0 flex flex-col fixed md:static inset-y-0 left-0 z-[9999] md:z-auto"
-        style="transition: width 0.3s ease-in-out, transform 0.3s ease-in-out;">
+    <div id="main-sidebar"
+        :class="{
+            'sidebar-open': open,
+            'sidebar-closed': !open,
+            'sidebar-ready': ready
+        }"
+        class="sidebar-mobile-hidden bg-gray-900 dark:bg-gray-950 text-white flex-shrink-0 flex flex-col fixed md:static inset-y-0 left-0 z-[9999] md:z-auto">
 
         <!-- Header del Sidebar -->
         <div class="px-4 h-14 flex items-center justify-around border-b border-gray-800 border-r-0 overflow-hidden">
@@ -473,7 +487,7 @@
             <!-- Búsqueda -->
             <div class="relative">
                 <button @click="searchOpen = true"
-                    class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition text-sm group">
+                    class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg bg-gray-800 hover:bg-white/20 transition text-sm group">
                     <svg class="w-5 h-5 flex-shrink-0 text-gray-400 group-hover:text-white transition"
                         fill="none" stroke="currentColor"
                         viewBox="0 0 24 24">
@@ -482,8 +496,8 @@
                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z">
                         </path>
                     </svg>
-                    <span x-show="open"
-                        class="text-gray-400 group-hover:text-white transition">Buscar
+                    <span x-show="open" x-cloak
+                        class="sidebar-text text-gray-400 group-hover:text-white transition">Buscar
                         (Ctrl+K)</span>
                 </button>
             </div>
@@ -500,10 +514,10 @@
                             d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z">
                         </path>
                     </svg>
-                    <span x-show="open"
-                        class="text-gray-400 group-hover:text-white transition">Favoritos</span>
-                    <span x-show="open && favorites.length > 0"
-                        class="ml-auto bg-yellow-600 text-xs px-2 py-0.5 rounded-full"
+                    <span x-show="open" x-cloak
+                        class="sidebar-text text-gray-400 group-hover:text-white transition">Favoritos</span>
+                    <span x-show="open && favorites.length > 0" x-cloak
+                        class="sidebar-text ml-auto bg-yellow-600 text-xs px-2 py-0.5 rounded-full"
                         x-text="favorites.length"></span>
                     <span x-show="!open && favorites.length > 0"
                         class="absolute -top-1 -right-1 bg-yellow-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full"
@@ -525,7 +539,7 @@
                     </template>
                     <template x-for="fav in favorites" :key="fav.route">
                         <div
-                            class="flex items-center group px-3 py-2 rounded-lg hover:bg-gray-700 transition">
+                            class="flex items-center group px-3 py-2 rounded-lg hover:bg-gray-800 transition">
                             <a :href="fav.url || `{{ url('/') }}${getRouteUrl(fav.route)}`"
                                 wire:navigate
                                 class="flex items-center space-x-2 flex-1 min-w-0">
@@ -566,8 +580,8 @@
                             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z">
                         </path>
                     </svg>
-                    <span x-show="open"
-                        class="text-gray-400 group-hover:text-white transition">Recientes
+                    <span x-show="open" x-cloak
+                        class="sidebar-text text-gray-400 group-hover:text-white transition">Recientes
                         (Ctrl+H)</span>
                 </button>
 
@@ -646,13 +660,13 @@
                             <div class="flex items-center space-x-3">
                                 <span
                                     class="text-xl flex-shrink-0">{{ $section['icon'] }}</span>
-                                <span x-show="open" x-transition
-                                    class="font-medium">{{ $section['label'] }}</span>
+                                <span x-show="open" x-cloak x-transition
+                                    class="sidebar-text font-medium">{{ $section['label'] }}</span>
                             </div>
-                            <svg x-show="open"
+                            <svg x-show="open" x-cloak
                                 :class="activeSections.includes('{{ $section['id'] }}') ?
                                     'rotate-180' : ''"
-                                class="w-4 h-4 flex-shrink-0 transition-transform"
+                                class="sidebar-text w-4 h-4 flex-shrink-0 transition-transform"
                                 fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
                                 <path stroke-linecap="round"
@@ -668,46 +682,60 @@
                             x-transition
                             class="mt-2 ml-4 space-y-1 border-l-2 border-gray-700 pl-4">
                             @foreach ($section['submenu'] as $itemIndex => $item)
-                                <div class="flex items-center group" id="menu-item-{{ $section['id'] }}-{{ $itemIndex }}">
-                                    <a href="{{ route($item['route']) }}" wire:navigate
-                                        @click="if (window.innerWidth < 768) { open = false; localStorage.setItem('sidebar_open', 'false'); }"
-                                        :class="{
-                                            'bg-{{ $section['color'] }}-500 text-white font-medium': isRouteActive('{{ route($item['route']) }}'),
-                                            'text-gray-400 hover:text-white hover:bg-gray-800': !isRouteActive('{{ route($item['route']) }}'),
-                                            'ring-2 ring-blue-400 ring-offset-1 ring-offset-gray-900': focusedSectionId === '{{ $section['id'] }}' && focusedItemIndex === {{ $itemIndex }} && !isRouteActive('{{ route($item['route']) }}')
-                                        }"
-                                        class="flex-1 flex items-center justify-between px-3 py-2 rounded-lg text-sm transition">
-                                        <div
-                                            class="flex items-center space-x-2">
-                                            <span>{{ $item['icon'] }}</span>
-                                            <span>{{ $item['label'] }}</span>
+                                @if (!empty($item['disabled']))
+                                    {{-- Item DESHABILITADO --}}
+                                    <div class="flex items-center group" id="menu-item-{{ $section['id'] }}-{{ $itemIndex }}"
+                                        title="No tienes permiso para acceder a esta sección">
+                                        <div class="flex-1 flex items-center justify-between px-3 py-2 rounded-lg text-sm cursor-not-allowed opacity-50">
+                                            <div class="flex items-center space-x-2">
+                                                <span class="grayscale">{{ $item['icon'] }}</span>
+                                                <span class="text-gray-500">{{ $item['label'] }}</span>
+                                            </div>
+                                            {{-- Icono de candado --}}
+                                            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                            </svg>
                                         </div>
-                                        @if (isset($item['badge']))
-                                            <span
-                                                class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
-                                        @endif
-                                    </a>
+                                    </div>
+                                @else
+                                    {{-- Item HABILITADO --}}
+                                    <div class="flex items-center group" id="menu-item-{{ $section['id'] }}-{{ $itemIndex }}">
+                                        <a href="{{ route($item['route']) }}" wire:navigate
+                                            @click="if (window.innerWidth < 768) { open = false; localStorage.setItem('sidebar_open', 'false'); }"
+                                            :class="{
+                                                'bg-{{ $section['color'] }}-500 text-white font-medium': currentPath && isRouteActive('{{ route($item['route']) }}'),
+                                                'text-gray-400 hover:text-white hover:bg-gray-800': currentPath && !isRouteActive('{{ route($item['route']) }}'),
+                                                'ring-2 ring-blue-400 ring-offset-1 ring-offset-gray-900': focusedSectionId === '{{ $section['id'] }}' && focusedItemIndex === {{ $itemIndex }} && !isRouteActive('{{ route($item['route']) }}')
+                                            }"
+                                            class="flex-1 flex items-center justify-between px-3 py-2 rounded-lg text-sm transition">
+                                            <div class="flex items-center space-x-2">
+                                                <span>{{ $item['icon'] }}</span>
+                                                <span>{{ $item['label'] }}</span>
+                                            </div>
+                                            @if (isset($item['badge']))
+                                                <span class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
+                                            @endif
+                                        </a>
 
-                                    <!-- Botón de favorito -->
-                                    <button
-                                        @click="toggleFavorite('{{ $item['route'] }}', '{{ $item['label'] }}', '{{ $section['label'] }}', '{{ $item['icon'] }}', '{{ route($item['route']) }}')"
-                                        class="ml-2 p-1.5 rounded hover:bg-gray-800 transition opacity-0 group-hover:opacity-100">
-                                        <svg class="w-4 h-4 transition"
-                                            :class="isFavorite(
-                                                    '{{ $item['route'] }}') ?
-                                                'text-yellow-500 fill-current' :
-                                                'text-gray-500'"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                stroke-width="2"
-                                                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z">
-                                            </path>
-                                        </svg>
-                                    </button>
-                                </div>
+                                        <!-- Botón de favorito -->
+                                        <button
+                                            @click="toggleFavorite('{{ $item['route'] }}', '{{ $item['label'] }}', '{{ $section['label'] }}', '{{ $item['icon'] }}', '{{ route($item['route']) }}')"
+                                            class="ml-2 p-1.5 rounded hover:bg-gray-800 transition opacity-0 group-hover:opacity-100">
+                                            <svg class="w-4 h-4 transition"
+                                                :class="isFavorite('{{ $item['route'] }}') ? 'text-yellow-500 fill-current' : 'text-gray-500'"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z">
+                                                </path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                @endif
                             @endforeach
                         </div>
                     @endif
@@ -727,28 +755,28 @@
                         d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
                     </path>
                 </svg>
-                <span x-show="open"
-                    class="text-gray-400 group-hover:text-white">Dashboard</span>
+                <span x-show="open" x-cloak
+                    class="sidebar-text text-gray-400 group-hover:text-white">Dashboard</span>
             </a>
 
             <!-- Modo Oscuro -->
             <button @click="toggleDarkMode()"
                 class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition text-sm group">
-                <svg x-show="!darkMode"
+                <svg x-show="!darkMode" x-cloak
                     class="w-5 h-5 flex-shrink-0 text-yellow-500"
                     fill="currentColor" viewBox="0 0 24 24">
                     <path
                         d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
                     </path>
                 </svg>
-                <svg x-show="darkMode"
+                <svg x-show="darkMode" x-cloak
                     class="w-5 h-5 flex-shrink-0 text-blue-400"
                     fill="currentColor" viewBox="0 0 24 24">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z">
                     </path>
                 </svg>
-                <span x-show="open"
-                    class="text-gray-400 group-hover:text-white"
+                <span x-show="open" x-cloak
+                    class="sidebar-text text-gray-400 group-hover:text-white"
                     x-text="darkMode ? 'Modo Claro' : 'Modo Oscuro'"></span>
             </button>
         </div>
@@ -872,5 +900,72 @@
     /* Animaciones suaves */
     [x-cloak] {
         display: none !important;
+    }
+
+    /* ===== SIDEBAR MÓVIL ===== */
+    /* Por defecto: oculto en móvil sin transición */
+    @media (max-width: 767px) {
+        .sidebar-mobile-hidden {
+            transform: translateX(-100%);
+            width: 16rem;
+        }
+
+        /* Cuando está abierto en móvil */
+        .sidebar-mobile-hidden.sidebar-open {
+            transform: translateX(0);
+        }
+
+        /* Solo aplicar transiciones cuando ready=true */
+        .sidebar-mobile-hidden.sidebar-ready {
+            transition: transform 0.3s ease-in-out;
+        }
+
+        /* En móvil, mostrar textos siempre que sidebar esté abierto */
+        .sidebar-mobile-hidden.sidebar-open .sidebar-text {
+            display: inline !important;
+            visibility: visible;
+        }
+
+        .sidebar-mobile-hidden.sidebar-open svg.sidebar-text {
+            display: inline-block !important;
+        }
+    }
+
+    /* ===== SIDEBAR DESKTOP ===== */
+    @media (min-width: 768px) {
+        .sidebar-mobile-hidden {
+            transform: translateX(0);
+            width: 4rem; /* Por defecto cerrado */
+        }
+
+        /* Elementos ocultos por defecto (antes de Alpine) */
+        .sidebar-mobile-hidden .sidebar-text {
+            display: none !important;
+            visibility: hidden;
+        }
+
+        /* Mostrar elementos solo cuando sidebar abierto Y listo */
+        .sidebar-mobile-hidden.sidebar-open.sidebar-ready .sidebar-text {
+            display: inline !important;
+            visibility: visible;
+        }
+
+        /* Para SVGs usar inline-block */
+        .sidebar-mobile-hidden.sidebar-open.sidebar-ready svg.sidebar-text {
+            display: inline-block !important;
+        }
+
+        .sidebar-mobile-hidden.sidebar-open {
+            width: 16rem;
+        }
+
+        .sidebar-mobile-hidden.sidebar-closed {
+            width: 4rem;
+        }
+
+        /* Transiciones solo cuando ready */
+        .sidebar-mobile-hidden.sidebar-ready {
+            transition: width 0.3s ease-in-out;
+        }
     }
 </style>

@@ -4,11 +4,11 @@
     // Ocultar breadcrumbs si solo hay Dashboard o Dashboard + Sección principal
     $shouldShowBreadcrumbs = count($breadcrumbs) > 2;
 
-    // Obtener la ruta actual y el menú completo
+    // Obtener la ruta actual y el menú filtrado por permisos del usuario
     $currentRoute = request()->route()->getName();
-    $menu = config('menu.main');
+    $menu = MenuBuilder::buildForUser(auth()->user());
 
-    // Buscar la sección actual y sus pestañas
+    // Buscar la sección actual y sus pestañas (con info de disabled)
     $currentSection = null;
     $sectionTabs = [];
 
@@ -78,14 +78,26 @@
                         @if($tabIndex > 0)
                             <span class="text-gray-400">|</span>
                         @endif
-                        <a href="{{ route($tab['route']) }}" wire:navigate
-                           wire:navigate
-                           :class="isRouteActive('{{ route($tab['route']) }}') || routeStartsWith('{{ route($tab['route']) }}')
-                               ? 'bg-blue-100 text-blue-700 font-semibold'
-                               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'"
-                           class="px-3 py-1 rounded whitespace-nowrap transition-all duration-200">
-                            {{ $tab['icon'] ?? '' }} {{ $tab['label'] }}
-                        </a>
+                        @if(!empty($tab['disabled']))
+                            {{-- Pestaña DESHABILITADA --}}
+                            <span class="px-3 py-1 rounded whitespace-nowrap text-gray-400 cursor-not-allowed opacity-60 inline-flex items-center gap-1"
+                                  title="No tienes permiso para acceder a esta sección">
+                                {{ $tab['icon'] ?? '' }} {{ $tab['label'] }}
+                                <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                            </span>
+                        @else
+                            {{-- Pestaña HABILITADA --}}
+                            <a href="{{ route($tab['route']) }}" wire:navigate
+                               :class="isRouteActive('{{ route($tab['route']) }}') || routeStartsWith('{{ route($tab['route']) }}')
+                                   ? 'bg-blue-100 text-blue-700 font-semibold'
+                                   : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'"
+                               class="px-3 py-1 rounded whitespace-nowrap transition-all duration-200">
+                                {{ $tab['icon'] ?? '' }} {{ $tab['label'] }}
+                            </a>
+                        @endif
                     @endforeach
                 </div>
             @else

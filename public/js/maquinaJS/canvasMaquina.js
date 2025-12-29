@@ -1,6 +1,10 @@
 // =======================
 // Colores y configuración
 // =======================
+(function() {
+// =======================
+// Colores y configuración
+// =======================
 const FIGURE_LINE_COLOR = "rgba(0, 0, 0, 0.8)";
 const VALOR_COTA_COLOR = "rgba(0, 0, 0, 1)";
 const BARS_TEXT_COLOR = "rgba(0, 0, 0, 1)";
@@ -1944,3 +1948,15 @@ window.enviarDivision = async function enviarDivision() {
         else alert((e && e.message) || "Error");
     }
 }
+
+// Exportar funciones globales necesarias
+window.renderizarGrupoSVG = renderizarGrupoSVG;
+
+// Wrapper para compatibilidad con la llamada en blade: renderizarSVGEtiqueta(etiquetaId, grupoEtiqueta)
+window.renderizarSVGEtiqueta = function(id, group) {
+    // En canvasMaquina.js: renderizarGrupoSVG(grupo, gidx)
+    // Asumimos que podemos pasar id como índice o ignorarlo
+    return renderizarGrupoSVG(group, id);
+};
+
+})();

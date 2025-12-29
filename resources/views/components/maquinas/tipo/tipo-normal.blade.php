@@ -30,7 +30,7 @@
 
     init() {
         window.addEventListener('toggleLeft', () => {
-            this.showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'false');
+            this.showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'true');
         });
         window.addEventListener('solo', () => {
             this.showLeft = false;
@@ -63,80 +63,89 @@
             <div x-show="showLeft" x-cloak
                 class="col-span-12 lg:col-span-2 bg-white border border-gray-200 shadow-lg rounded-lg self-start lg:sticky lg:top-2 overflow-hidden">
 
-                <div id="materia-prima-container" class="p-2 overflow-y-auto" style="max-height: calc(100vh - 60px);">
+                <div id="materia-prima-container" class="p-1.5 overflow-y-auto" style="max-height: calc(100vh - 60px);">
+                    @if($productosBaseCompatibles->isEmpty())
+                        <div class="text-center text-gray-500 py-4">
+                            <p class="text-xs">No hay productos base compatibles</p>
+                        </div>
+                    @endif
                     @foreach ($productosBaseCompatibles as $productoBase)
                         @php
-                            $productoExistente = $maquina->productos->firstWhere('producto_base_id', $productoBase->id);
-                            if ($productoExistente && $productoExistente->estado === 'consumido') continue;
+                            // Obtener TODOS los productos de este base que no estén consumidos
+                            $productosDeEsteBase = $maquina->productos
+                                ->where('producto_base_id', $productoBase->id)
+                                ->reject(fn($p) => $p->estado === 'consumido')
+                                ->sortByDesc('estado'); // fabricando primero
 
-                            $pesoStock = $productoExistente->peso_stock ?? 0;
-                            $pesoInicial = $productoExistente->peso_inicial ?? 0;
-                            $porcentaje = $pesoInicial > 0 ? ($pesoStock / $pesoInicial) * 100 : 0;
-
-                            $codigoPB = $fabricantePB = $coladaPB = $paquetePB = null;
-                            if ($productoExistente) {
-                                $codigoPB = $productoExistente->codigo ?? ($productoExistente->codigo_producto ?? null);
-                                $fabricantePB = $productoExistente->fabricante->nombre ?? ($productoExistente->fabricante ?? null);
-                                $coladaPB = $productoExistente->n_colada ?? ($productoExistente->colada ?? null);
-                                $paquetePB = $productoExistente->n_paquete ?? ($productoExistente->paquete ?? null);
-                            }
+                            $tieneProductos = $productosDeEsteBase->isNotEmpty();
                         @endphp
 
-                        <div class="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-green-400 transition">
-                            <div class="flex items-center justify-between mb-2">
-                                <div class="text-sm font-semibold text-gray-800">
-                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded">Ø {{ $productoBase->diametro }} mm</span>
+                        <div class="mb-2 p-1.5 {{ $tieneProductos ? 'bg-gray-50' : 'bg-red-50' }} rounded border {{ $tieneProductos ? 'border-gray-200' : 'border-red-200' }}">
+                            {{-- Cabecera del producto base --}}
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="{{ $tieneProductos ? 'bg-green-600' : 'bg-red-500' }} text-white px-1.5 py-0.5 rounded text-xs font-bold shadow-sm">
+                                    Ø{{ $productoBase->diametro }}
                                     @if (strtoupper($productoBase->tipo) === 'BARRA')
-                                        <span class="ml-2 text-gray-600">L: {{ $productoBase->longitud }} m</span>
+                                        <span class="{{ $tieneProductos ? 'text-green-100' : 'text-red-100' }} font-normal">L:{{ $productoBase->longitud }}m</span>
                                     @endif
-                                </div>
-
-                                <form method="POST" action="{{ route('movimientos.crear') }}">
-                                    @csrf
-                                    <input type="hidden" name="tipo" value="recarga_materia_prima">
-                                    <input type="hidden" name="maquina_id" value="{{ $maquina->id }}">
-                                    <input type="hidden" name="producto_base_id" value="{{ $productoBase->id }}">
-                                    @if ($productoExistente)
-                                        <input type="hidden" name="producto_id" value="{{ $productoExistente->id }}">
-                                    @endif
-                                    <input type="hidden" name="descripcion"
-                                        value="Recarga solicitada para máquina {{ $maquina->nombre }} (Ø{{ $productoBase->diametro }} {{ strtolower($productoBase->tipo) }}, {{ $pesoStock }} kg)">
-
-                                    @if (optional($productoBaseSolicitados)->contains($productoBase->id))
-                                        <button disabled
-                                            class="bg-gray-300 text-gray-600 text-xs font-medium px-2 py-1 rounded cursor-not-allowed">
-                                            🕓 Solicitado
-                                        </button>
-                                    @else
-                                        <button
-                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-medium px-2 py-1 rounded transition shadow-sm">
-                                            Solicitar
-                                        </button>
-                                    @endif
-                                </form>
+                                </span>
+                                @if (optional($productoBaseSolicitados)->contains($productoBase->id))
+                                    <button disabled class="bg-gray-300 text-gray-500 text-xs px-2 py-1 rounded cursor-not-allowed" title="Solicitud pendiente">
+                                        🕓
+                                    </button>
+                                @else
+                                    <button
+                                        onclick="solicitarRecarga(this, {{ $maquina->id }}, {{ $productoBase->id }}, '{{ $productoBase->diametro }}')"
+                                        class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded font-medium"
+                                        title="Solicitar recarga">
+                                        +
+                                    </button>
+                                @endif
                             </div>
 
-                            @if ($productoExistente)
-                                {{-- Barra de progreso --}}
-                                <div id="progreso-container-{{ $productoExistente->id }}"
-                                    class="relative mt-2 {{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'w-20 h-20 mx-auto' : 'w-full h-5' }} bg-gray-200 overflow-hidden rounded-full">
-                                    <div id="progreso-barra-{{ $productoExistente->id }}"
-                                        class="absolute {{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'bottom-0 w-full' : 'left-0 h-full' }} transition-all duration-300"
-                                        style="{{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'height' : 'width' }}: {{ $porcentaje }}%; background: linear-gradient(90deg, #10b981, #059669);">
+                            @if ($tieneProductos)
+                            {{-- Lista de productos activos --}}
+                            <div class="space-y-1">
+                                @foreach ($productosDeEsteBase as $producto)
+                                    @php
+                                        $pesoStock = $producto->peso_stock ?? 0;
+                                        $pesoInicial = $producto->peso_inicial ?? 0;
+                                        $porcentaje = $pesoInicial > 0 ? ($pesoStock / $pesoInicial) * 100 : 0;
+                                        $esFabricando = $producto->estado === 'fabricando';
+                                    @endphp
+                                    <div class="p-1 rounded {{ $esFabricando ? 'bg-green-50 border border-green-200' : 'bg-white border border-gray-100' }}">
+                                        {{-- Barra de progreso + botón consumir --}}
+                                        <div class="flex items-center gap-1">
+                                            <div class="relative flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
+                                                <div class="absolute left-0 h-full transition-all duration-300"
+                                                    style="width: {{ $porcentaje }}%; background: {{ $esFabricando ? 'linear-gradient(90deg, #10b981, #059669)' : 'linear-gradient(90deg, #9ca3af, #6b7280)' }};">
+                                                </div>
+                                                <span class="absolute inset-0 flex items-center justify-center text-[10px] font-bold {{ $porcentaje > 50 ? 'text-white' : 'text-gray-700' }}">
+                                                    {{ number_format($pesoStock, 0, ',', '.') }}/{{ number_format($pesoInicial, 0, ',', '.') }} kg
+                                                </span>
+                                            </div>
+                                            <button type="button"
+                                                onclick="consumirProducto({{ $producto->id }})"
+                                                class="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded font-medium flex-shrink-0"
+                                                title="Consumir">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M13.5 3.5c-2 2-1.5 4-3 5.5s-4 1-4 5a6 6 0 0012 0c0-2-1-3.5-2-4.5s-1-3-3-6z" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        {{-- Info compacta --}}
+                                        <div class="flex items-center justify-between text-[9px] text-gray-500 mt-0.5 px-0.5">
+                                            <span title="Código" class="truncate">{{ $producto->codigo ?? '—' }}</span>
+                                            <span title="Colada">C: {{ $producto->n_colada ?? '—' }}</span>
+                                        </div>
                                     </div>
-                                    <span id="progreso-texto-{{ $productoExistente->id }}"
-                                        class="absolute inset-0 flex items-center justify-center text-white text-xs font-bold drop-shadow">
-                                        {{ number_format($pesoStock, 0, ',', '.') }} / {{ number_format($pesoInicial, 0, ',', '.') }} kg
-                                    </span>
-                                </div>
-
-                                {{-- Información técnica --}}
-                                <div class="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-gray-600">
-                                    <div><span class="font-medium">Código:</span> {{ $codigoPB ?? '—' }}</div>
-                                    <div><span class="font-medium">Fabricante:</span> {{ $fabricantePB ?? '—' }}</div>
-                                    <div><span class="font-medium">Colada:</span> {{ $coladaPB ?? '—' }}</div>
-                                    <div><span class="font-medium">Paquete:</span> {{ $paquetePB ?? '—' }}</div>
-                                </div>
+                                @endforeach
+                            </div>
+                            @else
+                            {{-- Sin stock - mostrar mensaje --}}
+                            <div class="text-center py-2">
+                                <span class="text-xs text-red-600 font-medium">⚠️ Sin stock</span>
+                            </div>
                             @endif
                         </div>
                     @endforeach
@@ -216,16 +225,69 @@
                         @forelse($planillasActivas as $planilla)
                             @php
                                 $grupoPlanilla = $elementosPorPlanilla->get($planilla->id, collect());
-                                $elementosAgrupados = $grupoPlanilla->groupBy('etiqueta_sub_id')->sortBy(function ($grupo, $subId) {
+                                $elementosAgrupadosLocal = $grupoPlanilla->groupBy('etiqueta_sub_id')->sortBy(function ($grupo, $subId) {
                                     if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
                                         return sprintf('%s-%010d', $m[1], (int) $m[2]);
                                     }
                                     return $subId . '-0000000000';
                                 });
+
+                                // Filtrar etiquetas que están en grupos resumidos
+                                $etiquetasEnGruposArray = $etiquetasEnGrupos ?? [];
+                                $elementosAgrupados = $elementosAgrupadosLocal->filter(
+                                    fn($grupo, $subId) => !in_array($subId, $etiquetasEnGruposArray)
+                                );
                             @endphp
 
                             <section class="bg-gradient-to-br from-gray-50 to-white rounded-lg border-2 border-gray-200 shadow-md overflow-hidden">
                                 <div class="space-y-2 overflow-y-auto flex flex-col items-center justify-start pt-4" style="max-height: calc(100vh - 70px);">
+
+                                    {{-- GRUPOS DE RESUMEN de esta planilla --}}
+                                    @php
+                                        $gruposDePlanilla = collect($gruposResumen ?? [])->filter(function($grupo) use ($planilla, $planillasActivas) {
+                                            // Grupos con planilla_id específico -> mostrar solo en esa planilla
+                                            if (!is_null($grupo['planilla_id'])) {
+                                                return $grupo['planilla_id'] == $planilla->id;
+                                            }
+
+                                            // Grupos multi-planilla -> mostrar solo en la primera planilla que tenga etiquetas
+                                            $etiquetasPlanillas = collect($grupo['etiquetas'] ?? [])
+                                                ->pluck('planilla_codigo')
+                                                ->filter()
+                                                ->unique();
+
+                                            // Encontrar la primera planilla activa que tenga etiquetas de este grupo
+                                            foreach ($planillasActivas as $pa) {
+                                                $codigoPa = $pa->codigo_limpio ?? $pa->codigo;
+                                                if ($etiquetasPlanillas->contains($codigoPa)) {
+                                                    // Solo mostrar si esta es la primera planilla que coincide
+                                                    $codigoPlanillaActual = $planilla->codigo_limpio ?? $planilla->codigo;
+                                                    return $codigoPa === $codigoPlanillaActual;
+                                                }
+                                            }
+
+                                            return false;
+                                        });
+                                    @endphp
+
+                                    @foreach ($gruposDePlanilla as $grupo)
+                                        <x-etiqueta.grupo-resumen :grupo="$grupo" :maquina="$maquina" />
+                                    @endforeach
+
+                                    {{-- Etiquetas originales de grupos (OCULTAS para impresión) --}}
+                                    <div style="position:absolute;left:-9999px;top:0;opacity:0;pointer-events:none;" aria-hidden="true">
+                                        @foreach ($gruposDePlanilla as $grupo)
+                                            @foreach ($grupo['etiquetas'] ?? [] as $etData)
+                                                @php
+                                                    $etOculta = \App\Models\Etiqueta::with(['planilla', 'elementos'])->find($etData['id']);
+                                                @endphp
+                                                @if ($etOculta)
+                                                    <x-etiqueta.etiqueta :etiqueta="$etOculta" :planilla="$etOculta->planilla" :maquina-tipo="$maquina->tipo" />
+                                                @endif
+                                            @endforeach
+                                        @endforeach
+                                    </div>
+
                                     @forelse ($elementosAgrupados as $etiquetaSubId => $elementos)
                                         @php
                                             $firstElement = $elementos->first();
@@ -239,15 +301,21 @@
                                             $tieneElementosEnOtrasMaquinas = isset($otrosElementos[$etiqueta?->id]) && $otrosElementos[$etiqueta?->id]->isNotEmpty();
                                         @endphp
 
-                                        <div class="hover:border-blue-400 hover:shadow-md transition-all duration-200">
-                                            <x-etiqueta.etiqueta :etiqueta="$etiqueta" :planilla="$planilla" :maquina-tipo="$maquina->tipo" />
+                                        @if ($etiqueta)
+                                            <div class="hover:border-blue-400 hover:shadow-md transition-all duration-200">
+                                                <x-etiqueta.etiqueta :etiqueta="$etiqueta" :planilla="$planilla" :maquina-tipo="$maquina->tipo" />
 
-                                            @if ($tieneElementosEnOtrasMaquinas)
-                                                <div class="mt-2 pt-2 border-t border-gray-200 text-center">
-                                                    <span class="text-amber-600 font-semibold text-xs">⚠️ En otras máq.</span>
-                                                </div>
-                                            @endif
-                                        </div>
+                                                @if ($tieneElementosEnOtrasMaquinas)
+                                                    <div class="mt-2 pt-2 border-t border-gray-200 text-center">
+                                                        <span class="text-amber-600 font-semibold text-xs">⚠️ En otras máq.</span>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @else
+                                            <div class="p-4 bg-yellow-50 border border-yellow-200 rounded text-center text-yellow-700 text-sm">
+                                                ⚠️ Etiqueta no encontrada: {{ $etiquetaSubId }}
+                                            </div>
+                                        @endif
                                     @empty
                                         <div class="text-center p-8 text-sm text-gray-500 bg-gray-50 rounded-lg">
                                             Sin subetiquetas pendientes
@@ -369,6 +437,11 @@
                 $c = collect($els)->pluck('diametro')->filter()->map(fn($d) => (int) $d);
                 return (int) $c->countBy()->sortDesc()->keys()->first();
             }));
+        window.LONGITUD_POR_ETIQUETA = @json(
+            $elementosAgrupados->map(function ($els) {
+                // Obtener la longitud máxima de los elementos (en cm)
+                return (float) collect($els)->pluck('longitud')->filter()->max();
+            }));
 
         @if ($esBarra)
             window.LONGITUDES_POR_DIAMETRO = @json($longitudesPorDiametro);
@@ -408,21 +481,152 @@
         form.addEventListener('submit', (e) => !validar() && e.preventDefault());
     });
 
-    // Auto-refresh para el contenedor de materia prima cada 10 segundos
-    let materiaPrimaRefreshInterval = null;
+    // Función para consumir un producto (marcar como consumido)
+    function consumirProducto(productoId) {
+        Swal.fire({
+            title: '¿Consumir producto?',
+            text: 'El producto se marcará como consumido y se eliminará de la máquina',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, consumir',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Mostrar loading
+                Swal.fire({
+                    title: 'Consumiendo producto...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
 
-    function refreshMateriaPrima() {
+                // Hacer petición AJAX
+                fetch(`/productos/${productoId}/consumir?modo=total`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Producto consumido',
+                            text: data.message,
+                            confirmButtonColor: '#10b981',
+                        });
+
+                        // Refrescar la sección de materia prima
+                        refrescarMateriaPrima();
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message || 'No se pudo consumir el producto',
+                            confirmButtonColor: '#dc2626',
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error de conexión',
+                        text: 'No se pudo conectar con el servidor',
+                        confirmButtonColor: '#dc2626',
+                    });
+                });
+            }
+        });
+    }
+
+    // Función para solicitar recarga de materia prima (AJAX)
+    function solicitarRecarga(btn, maquinaId, productoBaseId, diametro) {
+        // Deshabilitar botón inmediatamente
+        btn.disabled = true;
+        btn.innerHTML = '⏳';
+        btn.className = 'bg-gray-400 text-white text-xs px-2 py-1 rounded cursor-wait';
+
+        fetch('{{ route("movimientos.crear") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                tipo: 'recarga_materia_prima',
+                maquina_id: maquinaId,
+                producto_base_id: productoBaseId,
+                descripcion: `Recarga Ø${diametro}`
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Cambiar a estado "pendiente"
+                btn.innerHTML = '🕓';
+                btn.className = 'bg-gray-300 text-gray-500 text-xs px-2 py-1 rounded cursor-not-allowed';
+                btn.title = 'Solicitud pendiente';
+
+                // Toast de éxito
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: `Recarga Ø${diametro} solicitada`,
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true,
+                });
+            } else {
+                // Restaurar botón si falla
+                btn.disabled = false;
+                btn.innerHTML = '+';
+                btn.className = 'bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded font-medium';
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'error',
+                    title: data.message || 'Error al solicitar recarga',
+                    showConfirmButton: false,
+                    timer: 3000,
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            // Restaurar botón si falla
+            btn.disabled = false;
+            btn.innerHTML = '+';
+            btn.className = 'bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded font-medium';
+
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'error',
+                title: 'Error de conexión',
+                showConfirmButton: false,
+                timer: 3000,
+            });
+        });
+    }
+
+    // Función para refrescar la sección de materia prima sin recargar la página
+    function refrescarMateriaPrima() {
         const container = document.getElementById('materia-prima-container');
-        if (!container) {
-            console.warn('Contenedor de materia prima no encontrado');
-            return;
-        }
+        if (!container) return;
 
-        // Obtener parámetros de URL actuales
-        const params = new URLSearchParams(window.location.search);
-        const url = window.location.pathname + '?' + params.toString();
+        // Obtener la URL actual
+        const url = window.location.href;
 
-        // Hacer fetch para obtener el HTML actualizado
         fetch(url, {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
@@ -430,83 +634,19 @@
         })
         .then(response => response.text())
         .then(html => {
-            // Parsear el HTML
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
+            const nuevoContainer = doc.getElementById('materia-prima-container');
 
-            // Dibujamos la etiqueta en la lista visual
-            const li = document.createElement('li');
-            li.textContent = `Etiqueta ${etiquetaId}`;
-            li.dataset.etiquetaId = etiquetaId;
-            itemsList.appendChild(li);
-
-            inputQr.value = '';
+            if (nuevoContainer) {
+                container.innerHTML = nuevoContainer.innerHTML;
+            }
+        })
+        .catch(error => {
+            console.error('Error al refrescar materia prima:', error);
         });
+    }
 
-        /**
-         * Enviar petición para crear el paquete desde la máquina actual.
-         * Envía:
-         *  - maquina_id
-         *  - etiquetas_ids[]
-         */
-        btnCrear.addEventListener('click', async () => {
-            if (!maquinaId) {
-                alert(
-                    'No se ha podido determinar la máquina actual.');
-                return;
-            }
-
-            if (etiquetasSeleccionadas.size === 0) {
-                alert(
-                    'Añade al menos una etiqueta al carro antes de crear el paquete.');
-                return;
-            }
-
-            const etiquetasIds = Array.from(
-                etiquetasSeleccionadas);
-
-            try {
-                const resp = await fetch(
-                    "{{ route('paquetes.store') }}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document
-                                .querySelector(
-                                    'meta[name=\"csrf-token\"]'
-                                    ).getAttribute(
-                                    'content'),
-                            'Accept': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            maquina_id: maquinaId,
-                            etiquetas_ids: etiquetasIds,
-                        }),
-                    });
-
-                if (!resp.ok) {
-                    throw new Error(
-                        'Error al crear el paquete');
-                }
-
-                const data = await resp.json();
-
-                // Aquí el paquete ya tiene localización en el mapa
-                // (se ha creado el registro en localizaciones_paquetes)
-                // Podrías mostrar un Swal bonito:
-                // Swal.fire({ icon: 'success', title: 'Paquete creado', text: 'ID: ' + data.paquete.id });
-
-                // Limpiamos el carro
-                etiquetasSeleccionadas.clear();
-                itemsList.innerHTML = '';
-
-            } catch (e) {
-                console.error(e);
-                alert(
-                    'Ha ocurrido un error al crear el paquete.');
-            }
-        });
-    });
 </script>
 
 {{-- Panel de información del elemento --}}

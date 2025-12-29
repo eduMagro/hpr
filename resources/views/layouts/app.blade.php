@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="base-url" content="{{ url('') }}">
     <meta name="google" content="notranslate">
 
 
@@ -22,7 +23,8 @@
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('imagenes/ico/apple-touch-icon.png') }}">
     <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('imagenes/ico/android-chrome-192x192.png') }}">
     <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('imagenes/ico/android-chrome-512x512.png') }}">
-    <meta name="theme-color" content="#ffffff">
+    <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
+    <meta name="theme-color" content="#111827">
 
     <!-- ✅ Vite Assets - Cache busting automático -->
     @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/css/styles.css', 'resources/css/etiquetas-responsive.css'])
@@ -155,27 +157,36 @@
     </style>
 </head>
 
-<body class="font-sans antialiased transition-colors duration-200">
+<body class="font-sans antialiased transition-colors duration-200" @auth data-user-id="{{ auth()->id() }}" @endauth>
     <!-- Overlay de navegación -->
     <div id="navigation-overlay" class="navigation-overlay">
         <div class="navigation-spinner"></div>
     </div>
 
     <div class="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
-        <!-- Sidebar Menu Enhanced -->
-        <x-sidebar-menu-enhanced />
+        <!-- Sidebar Menu Enhanced (persiste entre navegaciones) -->
+        @persist('sidebar')
+            <x-sidebar-menu-enhanced />
+        @endpersist
 
         <!-- Main Content Area -->
         <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Top Header Enhanced -->
-            <x-top-header-enhanced />
+            <!-- Top Header Enhanced (persiste entre navegaciones) -->
+            @persist('header')
+                <x-top-header-enhanced />
+            @endpersist
 
             <!-- Alerts -->
             @include('layouts.alerts')
 
+            <!-- Prompt para notificaciones push -->
+            @auth
+                <x-notification-prompt />
+            @endauth
+
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto bg-neutral-100 dark:bg-gray-900 transition-colors">
-                <div id="app_content" class="py-6 px-0 sm:px-6 lg:px-8">
+                <div class="py-4 md:px-6 h-full">
                     <!-- Breadcrumbs -->
                     <x-breadcrumbs />
 
@@ -190,7 +201,7 @@
                     @endisset
 
                     <!-- Main Content -->
-                    <div class="transition-colors">
+                    <div class="page-content pb-4">
                         {{ $slot }}
                     </div>
                 </div>
@@ -198,10 +209,26 @@
         </div>
     </div>
     <!-- Livewire Scripts -->
-    {{-- Livewire ya trae Alpine, pero nuestro bundle de Vite lo incluye; evitamos doble carga --}}
-    @livewireScripts(['navigate' => true, 'alpine' => false])
+    @livewireScripts(['navigate' => true])
 
     @stack('scripts')
+
+    <!-- Sistema de limpieza global para Livewire SPA - Previene acumulación de listeners -->
+    <script data-navigate-once>
+        // Sistema de limpieza global para inicializadores de JavaScript
+        window.pageInitializers = window.pageInitializers || [];
+
+        document.addEventListener('livewire:navigating', () => {
+            // Limpiar todos los inicializadores registrados antes de navegar
+            window.pageInitializers.forEach(init => {
+                document.removeEventListener('livewire:navigated', init);
+            });
+            window.pageInitializers = [];
+        });
+    </script>
+
+    <!-- Firebase Cloud Messaging -->
+    <script src="{{ asset('js/firebase-push.js') }}" defer></script>
 
     <!-- Dark Mode Support Script -->
     <script data-navigate-once>
@@ -217,133 +244,261 @@
             }
         });
 
-        // Configurar la barra de progreso de Livewire Navigate
-        document.addEventListener('livewire:init', () => {
-            // Verificar que Livewire y navigate existan
-            if (typeof Livewire !== 'undefined' && Livewire.navigate && typeof Livewire.navigate.config ===
-                'function') {
-                // Configurar Navigate para esperar a que el DOM esté completamente cargado
-                Livewire.navigate.config({
-                    showProgressBar: true,
-                    progressBarDuration: 1000, // Duración mínima de la barra en ms
-                    progressBarColor: '#3b82f6',
+        // Sistema SPA personalizado compatible con Vite
+        class CustomSPA {
+            constructor() {
+                this.progressBar = this.createProgressBar();
+                this.overlay = document.getElementById('navigation-overlay');
+                this.isNavigating = false;
+                this.executedScripts = new Set();
+                this.collectExistingScripts();
+                this.init();
+            }
+
+            createProgressBar() {
+                const bar = document.createElement('div');
+                bar.className = 'livewire-progress-bar';
+                bar.style.width = '0%';
+                bar.style.display = 'none';
+                document.body.appendChild(bar);
+                return bar;
+            }
+
+            showProgress() {
+                this.progressBar.style.display = 'block';
+                this.progressBar.style.width = '0%';
+                setTimeout(() => this.progressBar.style.width = '70%', 50);
+                this.overlay?.classList.add('active');
+            }
+
+            hideProgress() {
+                this.progressBar.style.width = '100%';
+                setTimeout(() => {
+                    this.progressBar.style.display = 'none';
+                    this.progressBar.style.width = '0%';
+                }, 300);
+                this.overlay?.classList.remove('active');
+            }
+
+            init() {
+                document.addEventListener('click', (e) => {
+                    const link = e.target.closest('a[data-spa-link]');
+                    if (link && !this.isNavigating) {
+                        e.preventDefault();
+                        this.navigate(link.href);
+                    }
+                });
+
+                window.addEventListener('popstate', (e) => {
+                    if (e.state && e.state.spa && !this.isNavigating) {
+                        this.navigate(window.location.href, false);
+                    }
+                });
+
+                document.addEventListener('livewire:init', () => {
+                    if (typeof Livewire !== 'undefined' && Livewire.hook) {
+                        Livewire.hook('url.changed', () => false);
+                    }
                 });
             }
 
-            if (typeof Livewire !== 'undefined' && typeof Livewire.hook === 'function') {
-                Livewire.hook('navigate', ({
-                    url,
-                    history
-                }) => {
-                    // Scroll to top on navigation
-                    setTimeout(() => {
-                        window.scrollTo({
-                            top: 0,
-                            behavior: 'instant'
-                        });
-                    }, 0);
+            async navigate(url, pushState = true) {
+                if (this.isNavigating) {
+                    console.log('⏸️ Navegación ya en curso, ignorando...');
+                    return;
+                }
+                console.log('🚀 Iniciando SPA navigation a:', url);
+                this.isNavigating = true;
+                this.showProgress();
+
+                try {
+                    console.log('📡 Haciendo fetch...');
+                    const response = await fetch(url, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            Accept: 'text/html',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        console.error('❌ Fetch failed:', response.status);
+                        throw new Error('Navigation failed');
+                    }
+
+                    console.log('✅ Fetch exitoso, parseando HTML...');
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newMain = doc.querySelector('main');
+                    const currentMain = document.querySelector('main');
+                    const newScripts = newMain ? Array.from(newMain.querySelectorAll('script')) : [];
+
+                    if (!newMain || !currentMain) {
+                        console.error('❌ No se encontró <main> en la página nueva o la actual');
+                        window.location.href = url;
+                        return;
+                    }
+
+                    console.log('🔄 Reemplazando contenido...');
+                    if (typeof Alpine !== 'undefined' && Alpine.morph) {
+                        console.log('✨ Usando Alpine.morph');
+                        Alpine.morph(currentMain, newMain);
+                    } else {
+                        console.log('⚠️ Alpine.morph no disponible, usando innerHTML');
+                        currentMain.innerHTML = newMain.innerHTML;
+                    }
+
+                    this.executeScripts(newScripts);
+                    document.title = doc.title;
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'instant'
+                    });
+
+                    if (pushState) {
+                        setTimeout(() => {
+                            console.log('🔗 Actualizando URL a:', url);
+                            window.history.pushState({
+                                spa: true
+                            }, '', url);
+                        }, 100);
+                    }
+
+                    console.log('✅ Navegación SPA completada exitosamente');
+                } catch (error) {
+                    console.error('❌ SPA navigation error:', error);
+                    console.log('🔄 Fallback a navegación normal');
+                    window.location.href = url;
+                } finally {
+                    this.hideProgress();
+                    this.isNavigating = false;
+                }
+            }
+
+            executeScripts(scripts) {
+                scripts.forEach((oldScript) => {
+                    if (oldScript.hasAttribute('data-navigate-once')) return;
+                    const forceReload = oldScript.hasAttribute('data-navigate-reload');
+                    const signature = this.getScriptSignature(oldScript);
+                    if (!forceReload && this.executedScripts.has(signature)) return;
+
+                    const script = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach(({
+                        name,
+                        value
+                    }) => {
+                        script.setAttribute(name, value);
+                    });
+
+                    if (oldScript.textContent) {
+                        script.textContent = oldScript.textContent;
+                    }
+
+                    document.body.appendChild(script);
+                    script.remove();
+
+                    if (!forceReload) {
+                        this.executedScripts.add(signature);
+                    }
                 });
             }
-        });
 
-        // Control del overlay de navegación
-        const overlay = document.getElementById('navigation-overlay');
-        let isNavigating = false;
+            collectExistingScripts() {
+                document.querySelectorAll('script').forEach((script) => {
+                    const signature = this.getScriptSignature(script);
+                    this.executedScripts.add(signature);
+                });
+            }
+
+            getScriptSignature(script) {
+                if (script.src) return `src:${script.src}`;
+                return `inline:${(script.textContent || '').trim()}`;
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => new CustomSPA());
+        } else {
+            new CustomSPA();
+        }
+
+        const navigationOverlay = document.getElementById('navigation-overlay');
         let navigationTimeout = null;
 
         document.addEventListener('livewire:navigating', () => {
-            console.log('Navegando...');
-            isNavigating = true;
-
-            // Mostrar overlay después de un pequeño delay para navegaciones rápidas
             navigationTimeout = setTimeout(() => {
-                if (isNavigating) {
-                    overlay.classList.add('active');
-                }
+                navigationOverlay?.classList.add('active');
             }, 100);
         });
 
         document.addEventListener('livewire:navigated', () => {
-            // Cancelar el timeout si la navegación fue muy rápida
             if (navigationTimeout) {
                 clearTimeout(navigationTimeout);
                 navigationTimeout = null;
             }
-
-            // Remover overlay inmediatamente - Livewire ya se encarga de la sincronización
-            isNavigating = false;
-            overlay.classList.remove('active');
-
-            // Cargar FullCalendar dinámicamente si estamos en la página de máquinas
-            const calendarioEl = document.getElementById('calendario');
-            if (calendarioEl && calendarioEl.dataset.calendarType === 'maquinas') {
-                // Pequeño delay para que el script de la página se ejecute primero
-                setTimeout(() => {
-                    // Destruir calendario anterior si existe
-                    if (window.calendar) {
-                        try {
-                            window.calendar.destroy();
-                            window.calendar = null;
-                        } catch (e) {
-                            console.warn('Error al destruir calendario anterior:', e);
-                        }
-                    }
-
-                    // Función para esperar a que la función de inicialización esté disponible
-                    function esperarYCargar(intentos = 0) {
-                        if (typeof window.inicializarCalendarioMaquinas === 'function') {
-                            if (typeof FullCalendar === 'undefined') {
-                                console.log('📅 Cargando FullCalendar dinámicamente...');
-                                const scripts = [
-                                    'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js',
-                                    'https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js',
-                                    'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js'
-                                ];
-
-                                function cargarScriptSecuencial(index, callback) {
-                                    if (index >= scripts.length) {
-                                        if (callback) callback();
-                                        return;
-                                    }
-                                    const script = document.createElement('script');
-                                    script.src = scripts[index];
-                                    script.onload = () => cargarScriptSecuencial(index + 1, callback);
-                                    document.head.appendChild(script);
-                                }
-
-                                cargarScriptSecuencial(0, () => {
-                                    console.log(
-                                        '✅ FullCalendar cargado, inicializando calendario...');
-                                    window.inicializarCalendarioMaquinas();
-                                });
-                            } else {
-                                // FullCalendar ya está cargado, solo inicializar
-                                console.log('📅 FullCalendar ya disponible, reinicializando calendario...');
-                                window.inicializarCalendarioMaquinas();
-                            }
-                        } else if (intentos < 20) {
-                            // Esperar un poco más
-                            setTimeout(() => esperarYCargar(intentos + 1), 50);
-                        } else {
-                            console.error('❌ No se encontró la función inicializarCalendarioMaquinas');
-                        }
-                    }
-
-                    esperarYCargar();
-                }, 100);
-            }
+            navigationOverlay?.classList.remove('active');
         });
 
-        // Manejar errores de navegación
         document.addEventListener('livewire:navigate-failed', () => {
             console.error('Navegación fallida');
-            isNavigating = false;
-            overlay.classList.remove('active');
+            navigationOverlay?.classList.remove('active');
             if (navigationTimeout) {
                 clearTimeout(navigationTimeout);
                 navigationTimeout = null;
             }
         });
+
+        const calendarioEl = document.getElementById('calendario');
+        if (calendarioEl && calendarioEl.dataset.calendarType === 'maquinas') {
+            setTimeout(() => {
+                if (window.calendar) {
+                    try {
+                        window.calendar.destroy();
+                        window.calendar = null;
+                    } catch (e) {
+                        console.warn('Error al destruir calendario anterior:', e);
+                    }
+                }
+
+                const scripts = [
+                    'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js',
+                    'https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js',
+                    'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js',
+                ];
+
+                function cargarScriptSecuencial(index, callback) {
+                    if (index >= scripts.length) {
+                        if (callback) callback();
+                        return;
+                    }
+                    const script = document.createElement('script');
+                    script.src = scripts[index];
+                    script.onload = () => cargarScriptSecuencial(index + 1, callback);
+                    document.head.appendChild(script);
+                }
+
+                function esperarYCargar(intentos = 0) {
+                    if (typeof window.inicializarCalendarioMaquinas === 'function') {
+                        if (typeof FullCalendar === 'undefined') {
+                            console.log('📅 Cargando FullCalendar dinámicamente...');
+                            cargarScriptSecuencial(0, () => {
+                                console.log('✅ FullCalendar cargado, inicializando calendario...');
+                                window.inicializarCalendarioMaquinas();
+                            });
+                        } else {
+                            console.log('📅 FullCalendar ya disponible, reinicializando calendario...');
+                            window.inicializarCalendarioMaquinas();
+                        }
+                    } else if (intentos < 20) {
+                        setTimeout(() => esperarYCargar(intentos + 1), 50);
+                    } else {
+                        console.error('❌ No se encontró la función inicializarCalendarioMaquinas');
+                    }
+                }
+
+                esperarYCargar();
+            }, 100);
+        }
     </script>
 </body>
 

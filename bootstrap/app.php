@@ -5,7 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\VerificarAccesoSeccion;
 use App\Http\Middleware\VerificarPermisoAsistente;
-use Illuminate\Console\Scheduling\Schedule;
+use App\Http\Middleware\FerrawinApiAuth;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Http\Request;
 //use App\Console\Commands\SincronizarFestivosCommand;
@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'acceso.seccion' => VerificarAccesoSeccion::class,
             'puede.asistente' => VerificarPermisoAsistente::class,
+            'ferrawin.api' => FerrawinApiAuth::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
@@ -33,10 +34,5 @@ return Application::configure(basePath: dirname(__DIR__))
         // App\Console\Commands\SincronizarFestivosCommand::class,
     ])
 
-    // Programación de tareas (Schedule)
-    ->withSchedule(function (Schedule $schedule) {
-        $schedule->command('festivos:sincronizar')
-            ->yearlyOn(1, 1, '01:10')
-            ->timezone('Europe/Madrid');
-    })
+    // Programación de tareas definida en routes/console.php
     ->create();

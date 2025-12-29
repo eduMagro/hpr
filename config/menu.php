@@ -252,6 +252,15 @@ return [
                         ['label' => 'Ver registros', 'route' => 'asignaciones-turnos.index', 'permission' => 'ver'],
                     ]
                 ],
+                [
+                    'label' => 'EPIS',
+                    'route' => 'epis.index',
+                    'icon' => '🦺',
+                    'actions' => [
+                        ['label' => 'Ver todos', 'route' => 'epis.index', 'permission' => 'ver'],
+                        ['label' => 'Nuevo EPI', 'route' => 'epis.create', 'permission' => 'crear'],
+                    ]
+                ],
             ]
         ],
         [
@@ -335,6 +344,14 @@ return [
                     'icon' => '📊',
                     'actions' => [
                         ['label' => 'Ver panel', 'route' => 'estadisticas.index', 'permission' => 'ver'],
+                    ]
+                ],
+                [
+                    'label' => 'Permisos y configuración',
+                    'route' => 'departamentos.index',
+                    'icon' => '🔐',
+                    'actions' => [
+                        ['label' => 'Gestionar permisos', 'route' => 'departamentos.index', 'permission' => 'ver'],
                     ]
                 ],
             ]
@@ -654,6 +671,18 @@ return [
                 'colorBase' => 'indigo',
                 'style' => 'tabs',
                 'mobileLabel' => 'Trabajadores',
+            ]
+        ],
+
+        'epis' => [
+            'items' => [
+                ['label' => 'Todos', 'route' => 'epis.index', 'icon' => '🦺'],
+                ['label' => 'Nuevo EPI', 'route' => 'epis.create', 'icon' => '➕'],
+            ],
+            'config' => [
+                'colorBase' => 'indigo',
+                'style' => 'tabs',
+                'mobileLabel' => 'EPIS',
             ]
         ],
 

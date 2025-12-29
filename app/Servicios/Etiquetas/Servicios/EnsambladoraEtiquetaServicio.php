@@ -64,7 +64,6 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
             // Agrupar pesos por diámetro de los elementos en la máquina
             $diametrosConPesos = $this->agruparPesosPorDiametro($elementosEnMaquina);
             $diametrosRequeridos = array_map('intval', array_keys($diametrosConPesos));
-            Log::info('🔍 Diametros requeridos', $diametrosRequeridos);
 
             if (empty($diametrosRequeridos)) {
                 $derivados = $elementosEnMaquina->pluck('diametro')
@@ -74,7 +73,6 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
                     ->values()
                     ->all();
                 $diametrosRequeridos = $derivados;
-                Log::info('🔄 Diametros requeridos derivados de elementos', $diametrosRequeridos);
             }
 
             switch ($etiqueta->estado) {
@@ -118,11 +116,6 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
                             if ($productoBaseFaltante) {
                                 try {
                                     $this->generarMovimientoRecargaMateriaPrima($productoBaseFaltante, $maquina, null, $operario1);
-                                    Log::info('✅ Movimiento de recarga creado (no había productos en máquina)', [
-                                        'producto_base_id' => $productoBaseFaltante->id,
-                                        'maquina_id'       => $maquina->id,
-                                        'diametro'         => $diametroFaltante,
-                                    ]);
                                 } catch (\Throwable $e) {
                                     Log::error('❌ Error creando movimiento de recarga (no había productos en máquina)', [
                                         'maquina_id'       => $maquina->id,
@@ -160,12 +153,6 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
                                 // Nota: si esta transacción se revierte, estos movimientos también.
                                 // Se podría migrar a afterCommit si se desea persistencia incluso en error.
                                 $this->generarMovimientoRecargaMateriaPrima($productoBaseFaltante, $maquina, null, $operario1);
-                                Log::info('✅ Movimiento de recarga creado (faltante)', [
-                                    'producto_base_id' => $productoBaseFaltante->id,
-                                    'maquina_id'       => $maquina->id,
-                                ]);
-                            } else {
-                                Log::warning("No se encontró ProductoBase para Ø{$diametroFaltante} y tipo {$maquina->tipo_material}");
                             }
                         }
 
@@ -318,7 +305,6 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
                         ) {
                             throw new RuntimeException('Todos los elementos en la máquina ya han sido completados.');
                         }
-                        Log::info("La máquina actual no es ensambladora ni soldadora en el estado 'fabricada'.");
                     }
                     break;
 
@@ -349,14 +335,11 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
                         $etiqueta->soldador1 =  $operario1;
                         $etiqueta->soldador2 =  $operario2;
                         $etiqueta->save();
-                    } else {
-                        Log::info("La máquina actual no es ensambladora ni soldadora en el estado 'fabricada'.");
                     }
                     break;
 
                 case 'ensamblando':
                     foreach ($elementosEnMaquina as $elemento) {
-                        Log::info('Entra en el condicional para completar elementos');
                         $elemento->estado = 'completado';
                         $elemento->users_id =  $operario1;
                         $elemento->users_id_2 =  $operario2;
@@ -863,12 +846,6 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
             ->exists();
 
         if ($yaExiste) {
-            Log::info('Movimiento paquete ya existente; no se duplica', [
-                'origen'        => $origen->id,
-                'destino'       => $destino->id,
-                'etiqueta_sub'  => $etiquetaSubId,
-                'planilla_id'   => $planillaId,
-            ]);
             return;
         }
 

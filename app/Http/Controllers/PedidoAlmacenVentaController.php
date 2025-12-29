@@ -266,7 +266,7 @@ class PedidoAlmacenVentaController extends Controller
     {
         // aseguramos que la línea pertenece al pedido
         if ($linea->pedido_almacen_venta_id !== $pedido->id) {
-            abort(403, 'No autorizado');
+            return back()->with('error', 'No autorizado: la línea no pertenece a este pedido.');
         }
 
         $linea->update([

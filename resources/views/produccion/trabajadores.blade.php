@@ -2,6 +2,12 @@
     <x-slot name="title">Planificación Producción</x-slot>
 
     <div class="py-2" id="calendario-trabajadores-container">
+        <!-- Filtro de búsqueda de trabajadores (eventos) -->
+        <div class="px-4 py-2 bg-white border-b">
+            <input type="text" id="filtro-eventos"
+                   placeholder="Buscar trabajador..."
+                   class="w-full md:w-64 border border-gray-300 rounded px-3 py-2 text-sm focus:ring focus:ring-blue-300 focus:border-blue-500">
+        </div>
         <!-- Contenedor del Calendario -->
         <div class="w-full bg-white">
             <div id="calendario" data-calendar-type="trabajadores" class="w-full" style="height: calc(100vh - 100px);"></div>
@@ -38,6 +44,7 @@
             'eventos' => $trabajadoresEventos,
             'cargaTrabajo' => $cargaTrabajo ?? [],
             'turnos' => $turnos ?? [],
+            'turnosConfig' => $turnosConfig ?? null,
         ];
     @endphp
 

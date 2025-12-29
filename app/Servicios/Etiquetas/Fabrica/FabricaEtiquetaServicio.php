@@ -6,7 +6,6 @@ use App\Models\Maquina;
 use App\Servicios\Etiquetas\Contratos\EtiquetaServicio;
 use Illuminate\Contracts\Container\Container;
 use InvalidArgumentException;
-use Illuminate\Support\Facades\Log;
 
 class FabricaEtiquetaServicio
 {
@@ -18,7 +17,6 @@ class FabricaEtiquetaServicio
         if (!$tipo) {
             throw new InvalidArgumentException('La máquina no tiene tipo definido.');
         }
-        log::info("Fábrica de servicio para máquina ID {$maquina->id} de tipo {$tipo}");
         // Rama especial para cortadora_dobladora
         if ($tipo === 'cortadora_dobladora' || $tipo === 'estribadora') {
             $material = strtolower(trim((string)$maquina->tipo_material)); // 'barra' | 'encarretado'

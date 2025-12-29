@@ -118,10 +118,25 @@
                         <p class="text-orange-200 text-sm mt-1">Gestión de producción</p>
                     </div>
                     <div class="p-6">
-                        <div class="space-y-2">
-                            <x-shortcut-row keys="← →" description="Navegar entre posiciones" />
-                            <x-shortcut-row keys="Enter" description="Seleccionar posición" />
-                            <x-shortcut-row keys="Esc" description="Cerrar modal/popup" />
+                        <div class="space-y-4">
+                            <!-- Control de Columnas -->
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Control de Columnas</h3>
+                                <div class="space-y-2">
+                                    <x-shortcut-row keys="←" description="Mostrar/ocultar columna izquierda (materia prima)" />
+                                    <x-shortcut-row keys="→" description="Mostrar/ocultar columna derecha (paquetes)" />
+                                    <x-shortcut-row keys="↑" description="Mostrar/ocultar cabecera (nombre máquina, botones)" />
+                                    <x-shortcut-row keys="↓" description="Modo solo: ocultar todo excepto planillas" />
+                                </div>
+                            </div>
+
+                            <!-- General -->
+                            <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">General</h3>
+                                <div class="space-y-2">
+                                    <x-shortcut-row keys="Esc" description="Cerrar modal/popup" />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

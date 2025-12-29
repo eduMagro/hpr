@@ -20,7 +20,7 @@
         });
     }
 }"
-    class="bg-gray-900 dark:bg-gray-950 border-b border-gray-800 dark:border-gray-700 shadow-sm flex-shrink-0 transition-colors">
+    class="bg-gray-900 dark:bg-gray-950 border-b border-gray-800 dark:border-gray-700 shadow-sm flex-shrink-0 transition-colors sticky top-0 z-[60]">
     <!-- Primary Navigation Menu -->
     <div class="w-full">
         <div class="flex justify-between items-center h-14">
@@ -61,6 +61,17 @@
 
             <!-- Right Side - User Actions -->
             <div class="flex items-center space-x-2 sm:space-x-4">
+                <!-- Botón Refrescar Página -->
+                <button onclick="window.location.reload()"
+                    class="relative p-2 text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-700 rounded-lg transition"
+                    title="Refrescar página">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                        </path>
+                    </svg>
+                </button>
+
                 <!-- Notificaciones - Enlace directo a alertas -->
                 <a href="{{ route('alertas.index') }}" wire:navigate
                     class="relative p-2 text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-700 rounded-lg transition"
@@ -80,7 +91,7 @@
                     <button @click="open = !open" @click.away="open = false"
                         class="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-300 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 rounded-lg transition">
                         <div
-                            class="w-8 h-8 bg-gray-900 dark:bg-gray-950 rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-gray-300">
+                            class="w-8 h-8 bg-gray-800 dark:bg-gray-950 rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-gray-600">
                             {{ strtoupper(substr(Auth::user()->nombre_completo, 0, 1)) }}
                         </div>
                         <span class="hidden sm:block">{{ Auth::user()->nombre_completo }}</span>

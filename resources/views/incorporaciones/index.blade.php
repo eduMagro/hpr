@@ -48,24 +48,38 @@
                 <div>
                     <select name="estado" class="rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                         <option value="">Todos los estados</option>
-                        <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>Pendiente</option>
-                        <option value="datos_recibidos" {{ request('estado') == 'datos_recibidos' ? 'selected' : '' }}>Datos recibidos</option>
-                        <option value="en_proceso" {{ request('estado') == 'en_proceso' ? 'selected' : '' }}>En proceso</option>
-                        <option value="completada" {{ request('estado') == 'completada' ? 'selected' : '' }}>Completada</option>
-                        <option value="cancelada" {{ request('estado') == 'cancelada' ? 'selected' : '' }}>Cancelada</option>
+                        <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>Pendiente
+                        </option>
+                        <option value="datos_recibidos" {{ request('estado') == 'datos_recibidos' ? 'selected' : '' }}>
+                            Datos recibidos</option>
+                        <option value="en_proceso" {{ request('estado') == 'en_proceso' ? 'selected' : '' }}>En proceso
+                        </option>
+                        <option value="completada" {{ request('estado') == 'completada' ? 'selected' : '' }}>Completada
+                        </option>
+                        <option value="cancelada" {{ request('estado') == 'cancelada' ? 'selected' : '' }}>Cancelada
+                        </option>
                     </select>
                 </div>
                 <div>
                     <select name="empresa" class="rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                         <option value="">Todas las empresas</option>
-                        <option value="hpr_servicios" {{ request('empresa') == 'hpr_servicios' ? 'selected' : '' }}>HPR Servicios</option>
-                        <option value="hierros_paco_reyes" {{ request('empresa') == 'hierros_paco_reyes' ? 'selected' : '' }}>Hierros Paco Reyes</option>
+                        <option value="hpr_servicios" {{ request('empresa') == 'hpr_servicios' ? 'selected' : '' }}>HPR
+                            Servicios</option>
+                        <option value="hierros_paco_reyes"
+                            {{ request('empresa') == 'hierros_paco_reyes' ? 'selected' : '' }}>Hierros Paco Reyes
+                        </option>
                     </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" name="no_asignado" id="no_asignado" value="1"
+                        {{ request('no_asignado') ? 'checked' : '' }}
+                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                    <label for="no_asignado" class="text-sm text-gray-700">Sin asignar</label>
                 </div>
                 <button type="submit" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
                     Filtrar
                 </button>
-                @if(request()->hasAny(['buscar', 'estado', 'empresa']))
+                @if (request()->hasAny(['buscar', 'estado', 'empresa', 'no_asignado']))
                     <a href="{{ route('incorporaciones.index') }}" class="px-4 py-2 text-gray-600 hover:text-gray-800">
                         Limpiar
                     </a>
@@ -75,14 +89,16 @@
 
         <!-- Tabla de incorporaciones -->
         <div class="bg-white rounded-lg shadow-sm border overflow-hidden">
-            @if($incorporaciones->isEmpty())
+            @if ($incorporaciones->isEmpty())
                 <div class="p-8 text-center text-gray-500">
-                    <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                     <p>No hay incorporaciones registradas</p>
-                    <a href="{{ route('incorporaciones.create') }}" class="mt-4 inline-block text-blue-600 hover:underline">
+                    <a href="{{ route('incorporaciones.create') }}"
+                        class="mt-4 inline-block text-blue-600 hover:underline">
                         Crear la primera incorporación
                     </a>
                 </div>
@@ -91,38 +107,45 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Candidato</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Candidato
+                                </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Empresa</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Documentos</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Documentos
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
-                            @foreach($incorporaciones as $inc)
+                            @foreach ($incorporaciones as $inc)
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-6 py-4">
-                                        <div class="font-medium text-gray-900">{{ $inc->name }} {{ $inc->primer_apellido }} {{ $inc->segundo_apellido }}</div>
+                                        <div class="font-medium text-gray-900">{{ $inc->name }}
+                                            {{ $inc->primer_apellido }} {{ $inc->segundo_apellido }}</div>
                                         <div class="text-sm text-gray-500">
-                                            @if($inc->dni)
+                                            @if ($inc->dni)
                                                 {{ $inc->dni }} &middot;
                                             @endif
                                             {{ $inc->email ?: $inc->email_provisional ?: 'Sin email' }}
                                         </div>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                                             {{ $inc->empresa_destino === 'hpr_servicios' ? 'bg-purple-100 text-purple-800' : 'bg-indigo-100 text-indigo-800' }}">
                                             {{ $inc->empresa_nombre }}
                                         </span>
-                                        @if($inc->puesto)
+                                        @if ($inc->puesto)
                                             <div class="text-xs text-gray-500 mt-1">{{ $inc->puesto }}</div>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4">
                                         @php $badge = $inc->estado_badge; @endphp
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                                             bg-{{ $badge['color'] }}-100 text-{{ $badge['color'] }}-800">
                                             {{ $badge['texto'] }}
                                         </span>
@@ -130,10 +153,27 @@
                                     <td class="px-6 py-4">
                                         <div class="flex items-center">
                                             <div class="w-24 bg-gray-200 rounded-full h-2 mr-2">
-                                                <div class="bg-blue-600 h-2 rounded-full" style="width: {{ $inc->porcentajeDocumentosPost() }}%"></div>
+                                                <div class="bg-blue-600 h-2 rounded-full"
+                                                    style="width: {{ $inc->porcentajeDocumentosPost() }}%"></div>
                                             </div>
-                                            <span class="text-sm text-gray-600">{{ $inc->porcentajeDocumentosPost() }}%</span>
+                                            <span
+                                                class="text-sm text-gray-600">{{ $inc->porcentajeDocumentosPost() }}%</span>
                                         </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        @if ($inc->user_id)
+                                            <span
+                                                class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                <div class="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                                                Asignado
+                                            </span>
+                                        @else
+                                            <span
+                                                class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                <div class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                                                Sin asignar
+                                            </span>
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-500">
                                         {{ $inc->created_at->format('d/m/Y') }}
@@ -158,10 +198,34 @@
         </div>
     </div>
 
-    @if(session('success'))
+    @if (session('success'))
         <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                alert('{{ session('success') }}');
+            function initIncorporacionesPage() {
+                // Prevenir doble inicialización
+                if (document.body.dataset.incorporacionesPageInit === 'true') return;
+
+                console.log('🔍 Inicializando página de incorporaciones...');
+
+                // Mostrar mensaje de éxito si existe
+                @if (session('success'))
+                    alert('{{ session('success') }}');
+                @endif
+
+                // Marcar como inicializado
+                document.body.dataset.incorporacionesPageInit = 'true';
+            }
+
+            // Registrar en el sistema global
+            window.pageInitializers = window.pageInitializers || [];
+            window.pageInitializers.push(initIncorporacionesPage);
+
+            // Configurar listeners
+            document.addEventListener('livewire:navigated', initIncorporacionesPage);
+            document.addEventListener('DOMContentLoaded', initIncorporacionesPage);
+
+            // Limpiar flag antes de navegar
+            document.addEventListener('livewire:navigating', () => {
+                document.body.dataset.incorporacionesPageInit = 'false';
             });
         </script>
     @endif

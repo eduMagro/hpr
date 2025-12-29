@@ -91,4 +91,9 @@ class Maquina extends Model
     {
         return $this->hasOne(Localizacion::class, 'maquina_id');
     }
+
+    public function ordenPlanillas()
+    {
+        return $this->hasMany(OrdenPlanilla::class, 'maquina_id');
+    }
 }

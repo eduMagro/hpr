@@ -126,10 +126,8 @@
                                 <span class="text-xs text-gray-500">Haz clic para activar/desactivar</span>
                             </div>
                             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                                @foreach($turnosLista as $turno)
-                                    <button
-                                        type="button"
-                                        data-turno-id="{{ $turno->id }}"
+                                @foreach ($turnosLista as $turno)
+                                    <button type="button" data-turno-id="{{ $turno->id }}"
                                         data-turno-nombre="{{ $turno->nombre }}"
                                         class="turno-toggle-btn px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 border-2 {{ $turno->activo ? 'bg-green-500 text-white border-green-600 hover:bg-green-600' : 'bg-gray-200 text-gray-600 border-gray-300 hover:bg-gray-300' }}"
                                         onclick="toggleTurno({{ $turno->id }}, '{{ $turno->nombre }}')"
@@ -138,7 +136,7 @@
                                             <span class="turno-icon">{{ $turno->activo ? '✓' : '✕' }}</span>
                                             <span class="turno-nombre">{{ ucfirst($turno->nombre) }}</span>
                                         </div>
-                                        @if($turno->hora_inicio && $turno->hora_fin)
+                                        @if ($turno->hora_inicio && $turno->hora_fin)
                                             <div class="text-[10px] opacity-75 mt-0.5">
                                                 {{ substr($turno->hora_inicio, 0, 5) }}-{{ substr($turno->hora_fin, 0, 5) }}
                                             </div>
@@ -157,25 +155,30 @@
                 </div>
             </div>
             <!-- Por esta versión con transición -->
-            <div id="contenedor-calendario" class="bg-white shadow rounded-lg p-2 transition-all duration-300 relative">
+            <div id="contenedor-calendario"
+                class="bg-white shadow rounded-lg p-2 transition-all duration-300 relative pt-10">
                 <!-- Botones en esquina superior izquierda -->
                 <div class="absolute top-4 left-4 z-10 flex gap-2">
                     <!-- Botón de optimizar planillas -->
                     <button onclick="abrirModalOptimizar()" id="optimizar-btn"
                         title="Optimizar planillas con retraso"
                         class="px-3 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
-                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                         </svg>
                         <span class="text-sm font-medium hidden md:inline">Optimizar Planillas</span>
                     </button>
 
                     <!-- Botón de balancear carga -->
-                    <button onclick="abrirModalBalanceo()" id="balancear-btn"
-                        title="Balancear carga entre máquinas"
+                    <button onclick="abrirModalBalanceo()" id="balancear-btn" title="Balancear carga entre máquinas"
                         class="px-3 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
-                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path>
+                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3">
+                            </path>
                         </svg>
                         <span class="text-sm font-medium hidden md:inline">Balancear Carga</span>
                     </button>
@@ -184,35 +187,52 @@
                     <button onclick="abrirModalPriorizarObra()" id="priorizar-obra-btn"
                         title="Priorizar todas las planillas de una obra"
                         class="px-3 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
-                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z">
+                            </path>
                         </svg>
                         <span class="text-sm font-medium hidden md:inline">Priorizar Obra</span>
                     </button>
 
                     <!-- Botón de resumen -->
-                    <button onclick="abrirModalResumen()" id="resumen-btn"
-                        title="Ver resumen del calendario"
+                    <button onclick="abrirModalResumen()" id="resumen-btn" title="Ver resumen del calendario"
                         class="px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
-                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                            </path>
                         </svg>
                         <span class="text-sm font-medium hidden md:inline">Resumen</span>
+                    </button>
+
+                    <!-- Botón de deshacer última operación -->
+                    <button onclick="deshacerUltimaOperacion()" id="deshacer-btn" title="Deshacer última operación"
+                        class="px-3 py-2 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
+                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                        </svg>
+                        <span class="text-sm font-medium hidden md:inline">Deshacer</span>
                     </button>
                 </div>
 
                 <!-- Botón de pantalla completa en esquina superior derecha -->
-                <button onclick="toggleFullScreen()" id="fullscreen-btn"
-                    title="Pantalla completa (F11)"
+                <button onclick="toggleFullScreen()" id="fullscreen-btn" title="Pantalla completa (F11)"
                     class="absolute top-4 right-4 z-10 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
-                    <svg id="fullscreen-icon-expand" class="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
+                    <svg id="fullscreen-icon-expand" class="w-5 h-5 transition-transform group-hover:scale-110"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4">
                         </path>
                     </svg>
-                    <svg id="fullscreen-icon-collapse" class="w-5 h-5 hidden transition-transform group-hover:scale-110" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
+                    <svg id="fullscreen-icon-collapse"
+                        class="w-5 h-5 hidden transition-transform group-hover:scale-110" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25">
                         </path>
@@ -226,29 +246,34 @@
 
         <!-- Panel lateral para elementos -->
         <div id="panel_elementos"
-            class="fixed top-0 right-0 h-full w-80 bg-white shadow-2xl transform translate-x-full transition-all duration-300 ease-in-out z-50 flex flex-col">
+            class="fixed right-0 h-full w-80 bg-white shadow-2xl transform translate-x-full transition-all duration-300 ease-in-out z-50 flex flex-col"
+            style="top: 40px;">
 
             <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 shadow-md">
                 <div class="flex justify-between items-center mb-3">
                     <div>
                         <h3 class="font-bold text-lg flex items-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
                             Elementos
                         </h3>
                         <p class="text-sm opacity-90" id="panel_codigo"></p>
                     </div>
-                    <button id="cerrar_panel" class="hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-all duration-200 transform hover:scale-110">
+                    <button id="cerrar_panel"
+                        class="hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-all duration-200 transform hover:scale-110">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
-                <button id="btn_marcar_revisada" class="w-full bg-white hover:bg-gray-100 text-blue-700 font-semibold py-2 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-md">
+                <button id="btn_marcar_revisada"
+                    class="w-full bg-white hover:bg-gray-100 text-blue-700 font-semibold py-2 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-md">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     Marcar como revisada
                 </button>
@@ -256,7 +281,8 @@
 
             <!-- Filtro por máquina -->
             <div class="px-4 py-2 bg-gray-50 border-b">
-                <select id="panel_filtro_maquina" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <select id="panel_filtro_maquina"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     <option value="todas">Todas las máquinas</option>
                 </select>
             </div>
@@ -270,31 +296,32 @@
             </div>
         </div>
 
-        <div id="panel_overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden transition-opacity duration-300 z-40"
+        <div id="panel_overlay"
+            class="fixed inset-0 bg-black bg-opacity-50 hidden transition-opacity duration-300 z-40"
             style="pointer-events: none;"></div>
 
         <!-- Indicador de posición al arrastrar -->
         <div id="indicador_posicion"
-            class="fixed hidden pointer-events-none"
-            style="display: none; width: 48px; height: 48px; z-index: 2147483647;">
-            <div class="w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center font-bold text-xl"
-                 style="box-shadow: 0 4px 15px rgba(37, 99, 235, 0.5); border: 3px solid white;">
-                <span id="numero_posicion">1</span>
-            </div>
+            class="fixed bg-blue-600 text-white rounded-full shadow-lg font-bold hidden z-[99999] pointer-events-none"
+            style="display: none; width: 48px; height: 48px; line-height: 48px; text-align: center; font-size: 20px;">
+            <span id="numero_posicion">1</span>
         </div>
 
-
         <!-- Modal para ver figura dibujada -->
-        <div id="modal-dibujo" class="hidden fixed inset-0 flex justify-center items-center z-[9999] bg-black bg-opacity-50">
-            <div class="bg-white rounded-lg p-5 w-3/4 max-w-4xl max-h-[90vh] overflow-auto relative shadow-lg border border-gray-300 m-4">
+        <div id="modal-dibujo"
+            class="hidden fixed inset-0 flex justify-center items-center z-[9999] bg-black bg-opacity-50">
+            <div
+                class="bg-white rounded-lg p-5 w-3/4 max-w-4xl max-h-[90vh] overflow-auto relative shadow-lg border border-gray-300 m-4">
                 <button id="cerrar-modal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 z-10">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 </button>
                 <h3 class="text-lg font-semibold mb-4">Figura del Elemento</h3>
                 <div class="flex justify-center items-center">
-                    <canvas id="canvas-dibujo" width="800" height="600" class="border border-gray-300 max-w-full"></canvas>
+                    <canvas id="canvas-dibujo" width="800" height="600"
+                        class="border border-gray-300 max-w-full"></canvas>
                 </div>
             </div>
         </div>
@@ -306,6 +333,38 @@
         <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
         <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
         <script src="{{ asset('js/multiselect-elementos.js') }}"></script>
+        <script src="{{ asset('js/resumir-etiquetas.js') }}"></script>
+
+        <script>
+            // Variables globales para el panel de planificación
+            window.panelPlanillaActual = null;
+            window.panelMaquinaActual = null;
+
+            // Función para resumir etiquetas desde el panel lateral
+            function resumirEtiquetasPanel() {
+                if (!panelPlanillaActual) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Sin planilla seleccionada',
+                        text: 'Abre una planilla del calendario primero',
+                    });
+                    return;
+                }
+                // Llamar a la función global del sistema de resumen
+                resumirEtiquetas(panelPlanillaActual, panelMaquinaActual);
+            }
+
+            // Actualizar variables cuando se abre el panel (hook para el código existente)
+            var originalAbrirPanel = window.abrirPanelElementos;
+            if (typeof originalAbrirPanel === 'function' && !originalAbrirPanel.isMyWrapper) {
+                window.abrirPanelElementos = function(planillaId, maquinaId, ...args) {
+                    window.panelPlanillaActual = planillaId;
+                    window.panelMaquinaActual = maquinaId;
+                    return originalAbrirPanel(planillaId, maquinaId, ...args);
+                };
+                window.abrirPanelElementos.isMyWrapper = true;
+            }
+        </script>
 
         <!-- Modal Cambiar Estado -->
         <div id="modalEstado" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
@@ -544,7 +603,8 @@
                 <div class="bg-purple-600 text-white px-6 py-4 rounded-t-lg">
                     <h3 class="text-lg font-semibold flex items-center gap-2">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                         </svg>
                         Optimizar Planillas con Retraso
                     </h3>
@@ -580,8 +640,11 @@
                     <!-- Tabla de elementos -->
                     <div class="p-6">
                         <h4 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                                </path>
                             </svg>
                             Previsualización de Redistribución
                         </h4>
@@ -589,15 +652,24 @@
                             <table class="min-w-full divide-y divide-gray-200 text-sm">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Elemento</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Planilla</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ø mm</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Material</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Peso kg</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Máquina Actual</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fecha Entrega</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fin Programado</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nueva Máquina</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Elemento</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Planilla</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ø
+                                            mm</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Material</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Peso kg</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Máquina Actual</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Fecha Entrega</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fin
+                                            Programado</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Nueva Máquina</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tablaOptimizacion" class="bg-white divide-y divide-gray-200">
@@ -610,118 +682,178 @@
 
                 <!-- Empty state -->
                 <div id="optimizarEmpty" class="hidden p-12 text-center">
-                    <svg class="w-16 h-16 mx-auto text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    <svg class="w-16 h-16 mx-auto text-green-500 mb-4" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     <h3 class="text-lg font-semibold text-gray-800 mb-2">¡Todo está optimizado!</h3>
                     <p class="text-gray-600">No hay planillas con retraso que requieran redistribución.</p>
                 </div>
 
                 <!-- Botones de acción -->
-                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end gap-3 border-t border-gray-200">
-                    <button onclick="cerrarModalOptimizar()"
-                        class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
-                        Cancelar
-                    </button>
-                    <button id="btnAplicarOptimizacion" onclick="aplicarOptimizacion()"
-                        class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 hidden">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        Aplicar Optimización
-                    </button>
+                <div
+                    class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-between items-center border-t border-gray-200">
+                    <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                        <input type="checkbox" id="chkOptimizarFabricando"
+                            class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500">
+                        <span>Incluir planillas en posición 1 y fabricando</span>
+                    </label>
+                    <div class="flex gap-3">
+                        <button onclick="cerrarModalOptimizar()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                            Cancelar
+                        </button>
+                        <button id="btnAplicarOptimizacion" onclick="aplicarOptimizacion()"
+                            class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 hidden">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Aplicar Optimización
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Modal Balancear Carga -->
         <div id="modalBalanceo"
-            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 my-8 max-h-[90vh] flex flex-col">
-                <div class="bg-green-600 text-white px-6 py-4 rounded-t-lg">
-                    <h3 class="text-lg font-semibold flex items-center gap-2">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path>
-                        </svg>
-                        Balancear Carga entre Máquinas
+            class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 overflow-y-auto">
+            <div
+                class="bg-white rounded-2xl shadow-2xl w-full max-w-[95vw] mx-4 my-8 max-h-[90vh] flex flex-col overflow-hidden">
+                <div class="bg-gradient-to-r from-slate-800 to-slate-700 text-white px-6 py-5">
+                    <h3 class="text-xl font-bold flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3">
+                                </path>
+                            </svg>
+                        </div>
+                        Balancear Carga
                     </h3>
-                    <p class="text-sm opacity-90 mt-1">Distribuir equitativamente el trabajo entre todas las máquinas</p>
+                    <p class="text-slate-300 text-sm mt-1 ml-13">Distribuir equitativamente el trabajo entre máquinas
+                    </p>
                 </div>
 
                 <!-- Loading state -->
-                <div id="balanceoLoading" class="p-12 text-center">
-                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
-                    <p class="mt-4 text-gray-600">Analizando carga de máquinas y calculando distribución...</p>
+                <div id="balanceoLoading" class="p-16 text-center">
+                    <div
+                        class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-indigo-600">
+                    </div>
+                    <p class="mt-4 text-slate-500">Analizando distribución de carga...</p>
                 </div>
 
                 <!-- Content state -->
                 <div id="balanceoContent" class="hidden flex-1 overflow-y-auto">
                     <!-- Estadísticas superiores -->
-                    <div class="p-6 bg-gray-50 border-b border-gray-200">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <div class="text-sm text-blue-600 font-medium">Elementos a Redistribuir</div>
-                                <div id="estadElementosBalanceo" class="text-3xl font-bold text-blue-700">0</div>
+                    <div class="px-6 py-5 bg-slate-50 border-b border-slate-200">
+                        <div class="grid grid-cols-4 gap-4">
+                            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+                                <div class="text-xs text-slate-500 font-medium mb-1">A Redistribuir</div>
+                                <div id="estadElementosBalanceo" class="text-2xl font-bold text-slate-800">0</div>
                             </div>
-                            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                                <div class="text-sm text-green-600 font-medium">Tiempo Promedio por Máquina</div>
-                                <div id="estadTiempoPromedio" class="text-3xl font-bold text-green-700">0h</div>
+                            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+                                <div class="text-xs text-slate-500 font-medium mb-1">Peso Total</div>
+                                <div id="estadPesoTotal" class="text-2xl font-bold text-slate-800">0 kg</div>
                             </div>
-                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                                <div class="text-sm text-purple-600 font-medium">Máquinas Balanceadas</div>
-                                <div id="estadMaquinasBalanceadas" class="text-3xl font-bold text-purple-700">0</div>
+                            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+                                <div class="text-xs text-slate-500 font-medium mb-1">Longitud Total</div>
+                                <div id="estadLongitudTotal" class="text-2xl font-bold text-slate-800">0 m</div>
+                            </div>
+                            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+                                <div class="text-xs text-slate-500 font-medium mb-1">Máquinas</div>
+                                <div id="estadMaquinasBalanceadas" class="text-2xl font-bold text-slate-800">0</div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Gráfico de distribución -->
-                    <div class="p-6 border-b border-gray-200">
-                        <h4 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                            </svg>
-                            Distribución de Carga Original
-                        </h4>
-                        <div id="graficoCargaOriginal" class="space-y-2">
-                            <!-- Se llenará dinámicamente -->
+                    <!-- Gráficos de distribución lado a lado -->
+                    <div class="p-6 border-b border-slate-200">
+                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                            <!-- Gráfico Original -->
+                            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div class="px-5 py-4 border-b border-slate-100 bg-slate-50">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-semibold text-slate-700 flex items-center gap-2">
+                                            <div class="w-3 h-3 rounded-full bg-indigo-500"></div>
+                                            Distribución Actual
+                                        </h4>
+                                        <span
+                                            class="text-xs text-slate-500 bg-slate-200 px-2.5 py-1 rounded-full font-medium">Antes</span>
+                                    </div>
+                                </div>
+                                <div id="graficoCargaOriginal" class="p-4">
+                                    <!-- Se llenará dinámicamente -->
+                                </div>
+                            </div>
+
+                            <!-- Gráfico Después del Balanceo -->
+                            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div class="px-5 py-4 border-b border-slate-100 bg-emerald-50">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-semibold text-emerald-700 flex items-center gap-2">
+                                            <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+                                            Después del Balanceo
+                                        </h4>
+                                        <span
+                                            class="text-xs text-emerald-600 bg-emerald-100 px-2.5 py-1 rounded-full font-medium">Previsión</span>
+                                    </div>
+                                </div>
+                                <div id="graficoCargaBalanceada" class="p-4">
+                                    <!-- Se llenará dinámicamente -->
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Tabla de elementos -->
                     <div class="p-6">
-                        <h4 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-                            </svg>
-                            Movimientos Propuestos
-                        </h4>
-                        <div class="mb-4 flex gap-2">
-                            <button onclick="seleccionarTodosBalanceo()" class="text-sm text-green-600 hover:text-green-700 font-medium">
-                                Seleccionar todos
-                            </button>
-                            <span class="text-gray-300">|</span>
-                            <button onclick="deseleccionarTodosBalanceo()" class="text-sm text-gray-600 hover:text-gray-700 font-medium">
-                                Deseleccionar todos
-                            </button>
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-semibold text-slate-800">Movimientos Propuestos</h4>
+                            <div class="flex gap-3">
+                                <button onclick="seleccionarTodosBalanceo()"
+                                    class="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+                                    Seleccionar todos
+                                </button>
+                                <span class="text-slate-300">|</span>
+                                <button onclick="deseleccionarTodosBalanceo()"
+                                    class="text-sm text-slate-500 hover:text-slate-700 font-medium">
+                                    Deseleccionar todos
+                                </button>
+                            </div>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200 text-sm">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-3 py-2 text-left">
-                                            <input type="checkbox" id="checkAllBalanceo" onchange="toggleAllBalanceo(this)"
-                                                class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                        <div class="overflow-x-auto rounded-xl border border-slate-200">
+                            <table class="min-w-full text-sm">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b border-slate-200">
+                                        <th class="px-4 py-3 text-left">
+                                            <input type="checkbox" id="checkAllBalanceo"
+                                                onchange="toggleAllBalanceo(this)"
+                                                class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
                                         </th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Elemento</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Planilla</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ø mm</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tiempo</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Máquina Actual</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nueva Máquina</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Razón</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                            Figura</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                            Elemento</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                            Dimensiones</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                            Peso</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                            Origen</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                            Destino</th>
                                     </tr>
                                 </thead>
-                                <tbody id="tablaBalanceo" class="bg-white divide-y divide-gray-200">
+                                <tbody id="tablaBalanceo" class="bg-white divide-y divide-slate-100">
                                     <!-- Se llenará dinámicamente -->
                                 </tbody>
                             </table>
@@ -730,43 +862,59 @@
                 </div>
 
                 <!-- Empty state -->
-                <div id="balanceoEmpty" class="hidden p-12 text-center">
-                    <svg class="w-16 h-16 mx-auto text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">¡Carga ya balanceada!</h3>
-                    <p class="text-gray-600">La distribución de trabajo entre máquinas ya es óptima.</p>
+                <div id="balanceoEmpty" class="hidden p-16 text-center">
+                    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                            </path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-slate-800 mb-2">Carga ya balanceada</h3>
+                    <p class="text-slate-500">La distribución de trabajo entre máquinas ya es óptima.</p>
                 </div>
 
                 <!-- Botones de acción -->
-                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end gap-3 border-t border-gray-200">
-                    <button onclick="cerrarModalBalanceo()"
-                        class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
-                        Cancelar
-                    </button>
-                    <button id="btnAplicarBalanceo" onclick="aplicarBalanceo()"
-                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 hidden">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        Aplicar Balanceo
-                    </button>
+                <div class="bg-slate-50 px-6 py-4 flex justify-between items-center border-t border-slate-200">
+                    <label
+                        class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800 transition-colors">
+                        <input type="checkbox" id="chkBalancearFabricando"
+                            class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
+                        <span>Incluir planillas en posición 1 y fabricando</span>
+                    </label>
+                    <div class="flex gap-3">
+                        <button onclick="cerrarModalBalanceo()"
+                            class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-100 transition-colors">
+                            Cancelar
+                        </button>
+                        <button id="btnAplicarBalanceo" onclick="aplicarBalanceo()"
+                            class="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-colors flex items-center gap-2 hidden">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Aplicar Balanceo
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Modal Priorizar Obra -->
+        <!-- Modal Priorizar Obras (hasta 5 posiciones) -->
         <div id="modalPriorizarObra"
-            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 my-8">
                 <div class="bg-orange-500 text-white px-6 py-4 rounded-t-lg">
                     <h3 class="text-lg font-semibold flex items-center gap-2">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z">
+                            </path>
                         </svg>
-                        Priorizar Obra
+                        Priorizar Obras
                     </h3>
-                    <p class="text-sm opacity-90 mt-1">Mover todas las planillas de una obra al inicio de la cola</p>
+                    <p class="text-sm opacity-90 mt-1">Ordenar las primeras 5 posiciones de la cola por obra y fecha de
+                        entrega</p>
                 </div>
 
                 <!-- Loading state -->
@@ -777,48 +925,169 @@
 
                 <!-- Content state -->
                 <div id="priorizarObraContent" class="hidden p-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Selecciona obra y fecha de entrega:
-                    </label>
-                    <select id="selectObraPriorizar"
-                        class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
-                        <option value="">-- Selecciona --</option>
-                    </select>
-                    <div id="infoPriorizacion" class="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg hidden">
-                        <div class="flex items-center gap-2 text-orange-800">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <span id="infoPlanillasCount" class="font-medium"></span>
+                    <p class="text-sm text-gray-600 mb-4">
+                        Selecciona hasta 5 obras con sus fechas de entrega. Las planillas se ordenarán en cada máquina
+                        según el orden indicado.
+                    </p>
+
+                    <!-- Selectores de prioridad -->
+                    <div class="space-y-3" id="prioridadesContainer">
+                        <!-- Posición 1 -->
+                        <div
+                            class="flex items-center gap-3 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-orange-200 rounded-lg">
+                            <span
+                                class="flex items-center justify-center w-8 h-8 bg-orange-500 text-white rounded-full font-bold text-sm shrink-0">1</span>
+                            <select id="selectPrioridad1"
+                                class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                onchange="actualizarInfoPrioridad(1)">
+                                <option value="">-- Sin selección --</option>
+                            </select>
+                            <button type="button" onclick="limpiarPrioridad(1)"
+                                class="text-gray-400 hover:text-red-500 p-1" title="Limpiar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Posición 2 -->
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <span
+                                class="flex items-center justify-center w-8 h-8 bg-gray-400 text-white rounded-full font-bold text-sm shrink-0">2</span>
+                            <select id="selectPrioridad2"
+                                class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                onchange="actualizarInfoPrioridad(2)">
+                                <option value="">-- Sin selección --</option>
+                            </select>
+                            <button type="button" onclick="limpiarPrioridad(2)"
+                                class="text-gray-400 hover:text-red-500 p-1" title="Limpiar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Posición 3 -->
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <span
+                                class="flex items-center justify-center w-8 h-8 bg-gray-400 text-white rounded-full font-bold text-sm shrink-0">3</span>
+                            <select id="selectPrioridad3"
+                                class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                onchange="actualizarInfoPrioridad(3)">
+                                <option value="">-- Sin selección --</option>
+                            </select>
+                            <button type="button" onclick="limpiarPrioridad(3)"
+                                class="text-gray-400 hover:text-red-500 p-1" title="Limpiar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Posición 4 -->
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <span
+                                class="flex items-center justify-center w-8 h-8 bg-gray-400 text-white rounded-full font-bold text-sm shrink-0">4</span>
+                            <select id="selectPrioridad4"
+                                class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                onchange="actualizarInfoPrioridad(4)">
+                                <option value="">-- Sin selección --</option>
+                            </select>
+                            <button type="button" onclick="limpiarPrioridad(4)"
+                                class="text-gray-400 hover:text-red-500 p-1" title="Limpiar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Posición 5 -->
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <span
+                                class="flex items-center justify-center w-8 h-8 bg-gray-400 text-white rounded-full font-bold text-sm shrink-0">5</span>
+                            <select id="selectPrioridad5"
+                                class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                onchange="actualizarInfoPrioridad(5)">
+                                <option value="">-- Sin selección --</option>
+                            </select>
+                            <button type="button" onclick="limpiarPrioridad(5)"
+                                class="text-gray-400 hover:text-red-500 p-1" title="Limpiar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
                         </div>
                     </div>
-                    <p class="mt-3 text-sm text-gray-500">
-                        Las planillas seleccionadas se moverán a la posición 1 en cada máquina.
+
+                    <!-- Resumen de selección -->
+                    <div id="infoPriorizacion"
+                        class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg hidden">
+                        <div class="flex items-center gap-2 text-orange-800 mb-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span class="font-medium">Resumen de prioridades:</span>
+                        </div>
+                        <ul id="resumenPrioridades" class="text-sm text-orange-700 space-y-1 ml-7"></ul>
+                    </div>
+
+                    <p class="mt-3 text-xs text-gray-500">
+                        Las planillas de las obras seleccionadas se ordenarán en cada máquina según la prioridad
+                        indicada. El resto de planillas mantendrán su orden relativo después de las priorizadas.
                     </p>
                 </div>
 
                 <!-- Empty state -->
                 <div id="priorizarObraEmpty" class="hidden p-8 text-center">
-                    <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                    <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
+                        </path>
                     </svg>
                     <h3 class="text-lg font-semibold text-gray-800 mb-2">Sin obras activas</h3>
                     <p class="text-gray-600">No hay obras con planillas pendientes en la cola de producción.</p>
                 </div>
 
                 <!-- Botones de acción -->
-                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end gap-3 border-t border-gray-200">
-                    <button onclick="cerrarModalPriorizarObra()"
-                        class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
-                        Cancelar
-                    </button>
-                    <button id="btnAplicarPriorizar" onclick="aplicarPriorizarObra()"
-                        class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 hidden">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
-                        </svg>
-                        Priorizar Obra
-                    </button>
+                <div class="bg-gray-50 px-6 py-4 rounded-b-lg border-t border-gray-200">
+                    <div class="flex justify-between items-center mb-3">
+                        <button type="button" onclick="limpiarTodasPrioridades()"
+                            class="text-gray-500 hover:text-gray-700 text-sm flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                </path>
+                            </svg>
+                            Limpiar todo
+                        </button>
+                        <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                            <input type="checkbox" id="chkPriorizarFabricando"
+                                class="w-4 h-4 text-orange-500 rounded border-gray-300 focus:ring-orange-500">
+                            <span>Incluir planillas en posición 1 y fabricando</span>
+                        </label>
+                    </div>
+                    <div class="flex justify-end gap-3">
+                        <button onclick="cerrarModalPriorizarObra()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                            Cancelar
+                        </button>
+                        <button id="btnAplicarPriorizar" onclick="aplicarPriorizarObra()"
+                            class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 hidden">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z">
+                                </path>
+                            </svg>
+                            Aplicar Prioridades
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -830,11 +1099,14 @@
                 <div class="bg-blue-600 text-white px-6 py-4 rounded-t-lg">
                     <h3 class="text-lg font-semibold flex items-center gap-2">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                            </path>
                         </svg>
                         Resumen del Calendario de Producción
                     </h3>
-                    <p class="text-sm opacity-90 mt-1">Vista general del estado de las planillas y carga de máquinas</p>
+                    <p class="text-sm opacity-90 mt-1">Vista general del estado de las planillas y carga de máquinas
+                    </p>
                 </div>
 
                 <!-- Loading state -->
@@ -870,8 +1142,10 @@
                     <!-- Sección de Planillas Fuera de Tiempo -->
                     <div class="p-6 border-b border-gray-200">
                         <h4 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             Planillas Fuera de Tiempo
                         </h4>
@@ -879,8 +1153,10 @@
                             <!-- Se llenará dinámicamente -->
                         </div>
                         <div id="sinPlanillasRetraso" class="hidden text-center py-8 text-gray-500">
-                            <svg class="w-12 h-12 mx-auto text-green-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            <svg class="w-12 h-12 mx-auto text-green-500 mb-2" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             <p>No hay planillas fuera de tiempo</p>
                         </div>
@@ -889,8 +1165,11 @@
                     <!-- Sección de Carga por Máquina -->
                     <div class="p-6">
                         <h4 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                                </path>
                             </svg>
                             Carga por Máquina
                         </h4>
@@ -898,11 +1177,16 @@
                             <table class="min-w-full divide-y divide-gray-200 text-sm">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Máquina</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Planillas en Cola</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Kilos Totales</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tiempo de Trabajo</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Máquina</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Tipo</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Planillas en Cola</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Kilos Totales</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Tiempo de Trabajo</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tablaMaquinas" class="bg-white divide-y divide-gray-200">
@@ -924,24 +1208,75 @@
         </div>
 
         <style>
-            /* Contenedor calendario */
+            /* Animación de carga fluida */
             #contenedor-calendario {
-                transition: all 0.3s ease;
+                opacity: 0;
+                transform: translateY(8px);
+                transition: opacity 0.5s ease-out, transform 0.5s ease-out, padding-right 0.3s ease;
                 min-height: 1200px;
             }
 
-            #contenedor-calendario.con-panel-abierto {
-                width: calc(100% - 320px);
-                margin-right: 320px;
+            #contenedor-calendario.loaded {
+                opacity: 1;
+                transform: translateY(0);
             }
 
-            body.panel-abierto #contenedor-calendario {
-                margin-right: 320px;
+            #contenedor-calendario.con-panel-abierto {
+                padding-right: 150px;
+            }
+
+            /* Eventos con animación suave */
+            .fc-event {
+                animation: fadeInEvent 0.25s ease-out forwards;
+            }
+
+            @keyframes fadeInEvent {
+                from {
+                    opacity: 0;
+                    transform: scale(0.96);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+
+            /* Panel de filtros */
+            #produccion-maquinas-container>.py-2>.mt-2 {
+                opacity: 0;
+                animation: fadeInUp 0.4s ease-out 0.1s forwards;
+            }
+
+            @keyframes fadeInUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(8px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
             }
 
             canvas {
                 height: 180px !important;
                 max-height: 180px !important;
+            }
+
+            /* Clases para sticky header optimizado */
+            .fc-header-sticky {
+                position: fixed !important;
+                top: 0 !important;
+                z-index: 1000 !important;
+                background-color: white !important;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+            }
+
+            .fc-header-section-sticky {
+                z-index: 999 !important;
+                width: 100% !important;
             }
 
             /* Panel lateral */
@@ -977,16 +1312,6 @@
                 background: #eff6ff;
             }
 
-            /* Mirror de FullCalendar */
-            .fc-event-mirror {
-                background: #3b82f6 !important;
-                border: none !important;
-                border-radius: 4px !important;
-                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
-                opacity: 0.9 !important;
-                z-index: 9999 !important;
-            }
-
             /* Elemento seleccionado */
             .elemento-drag.seleccionado {
                 border-color: #2563eb;
@@ -1012,11 +1337,13 @@
                 z-index: 10;
             }
 
-            .elemento-drag canvas {
+            .elemento-drag canvas,
+            .elemento-drag>div {
                 width: 100%;
-                height: 80px;
+                height: 120px;
                 border: 1px solid #e5e7eb;
                 border-radius: 3px;
+                background: white;
             }
 
             .elemento-info-mini {
@@ -1034,7 +1361,7 @@
                 margin-top: -12px;
             }
 
-            .seccion-maquina-header > div {
+            .seccion-maquina-header>div {
                 position: sticky;
                 top: 0;
                 z-index: 5;
@@ -1047,7 +1374,21 @@
                 display: flex;
                 flex-direction: column;
                 gap: 4px;
-                margin-bottom: 4px;
+                margin-bottom: 12px;
+                padding-bottom: 8px;
+                overflow: hidden;
+            }
+
+            /* Asegurar que los elementos no excedan el ancho del panel */
+            .elemento-drag {
+                max-width: 100%;
+                overflow: hidden;
+            }
+
+            .elemento-drag>div,
+            .elemento-drag>canvas {
+                max-width: 100% !important;
+                width: 100% !important;
             }
 
             .seccion-maquina-wrapper {
@@ -1070,8 +1411,21 @@
                 transition: all 0.3s;
             }
 
+            .fc-scrollgrid-sync-inner {
+                height: 100% !important;
+            }
+
+            .fc-col-header-cell-cushion {
+                padding: 0 !important;
+                height: 100% !important;
+            }
+
             .selection-badge.show {
                 display: block;
+            }
+
+            .fc-scrollgrid-section-header .fc-scroller {
+                overflow: hidden !important;
             }
 
             /* Highlight en recursos cuando se arrastra */
@@ -1111,7 +1465,7 @@
             }
 
             /* Eliminar espacios entre eventos */
-            .fc-timegrid-event-harness + .fc-timegrid-event-harness {
+            .fc-timegrid-event-harness+.fc-timegrid-event-harness {
                 margin-top: 0 !important;
             }
 
@@ -1328,7 +1682,7 @@
             }
 
             /* Para resourceTimeGrid: hacer sticky toda la sección del header */
-            .fc-resource-timeline .fc-scrollgrid-section-header > tr > * {
+            .fc-resource-timeline .fc-scrollgrid-section-header>tr>* {
                 position: sticky !important;
                 top: 0 !important;
                 z-index: 3 !important;
@@ -1348,26 +1702,27 @@
                 pointer-events: none;
             }
 
-            /* Indicador de posición durante arrastre - Círculo azul */
+            /* Indicador de posición durante arrastre */
             #indicador_posicion {
                 transition: left 0.05s ease-out, top 0.05s ease-out;
             }
 
-            /* Ocultar todos los tooltips durante el drag */
-            body.dragging-elemento .fc-tooltip,
-            body.dragging-elemento [data-tippy-root],
-            body.dragging-elemento .tippy-box {
+            #indicador_posicion span {
+                display: block;
+                width: 100%;
+                height: 100%;
+                line-height: 48px;
+            }
+
+            /* Ocultar todos los tooltips cuando se arrastra un elemento del panel */
+            body.dragging-panel-elemento .fc-tooltip,
+            body.dragging-panel-elemento [data-tippy-root],
+            body.dragging-panel-elemento .tippy-box {
                 display: none !important;
                 visibility: hidden !important;
                 opacity: 0 !important;
-                z-index: -1 !important;
+                pointer-events: none !important;
             }
-
-            /* Indicador siempre encima de todo */
-            #indicador_posicion {
-                z-index: 2147483647 !important;
-            }
-
         </style>
         {{-- Datos del calendario - se actualiza en cada navegación --}}
         <script id="calendario-maquinas-data" type="application/json">
@@ -1439,36 +1794,19 @@
 
                 // Variable para trackear elemento que se arrastra desde el panel
                 let elementoArrastrandose = null;
+                let eventoArrastrandose = null;
                 let mostrarIndicador = false;
                 window.tooltipsDeshabilitados = false;
 
-                // 🎯 Listener GLOBAL para el indicador (mousemove + drag)
-                function moverIndicador(e) {
-                    if (mostrarIndicador && indicadorPosicion && e.clientX !== 0 && e.clientY !== 0) {
+                // 🎯 Listener GLOBAL de mousemove para el indicador
+                document.addEventListener('mousemove', function(e) {
+                    if (mostrarIndicador && indicadorPosicion) {
                         indicadorPosicion.style.left = (e.clientX + 20) + 'px';
                         indicadorPosicion.style.top = (e.clientY - 20) + 'px';
                         indicadorPosicion.style.display = 'block';
                         indicadorPosicion.classList.remove('hidden');
                     }
-                }
-
-                // Guardar referencia para poder eliminar después
-                window._maquinasCalendarState.moverIndicadorHandler = moverIndicador;
-
-                document.addEventListener('mousemove', moverIndicador);
-                document.addEventListener('drag', moverIndicador);
-
-                // 🧹 Función auxiliar para limpiar estado de drag completamente
-                function limpiarEstadoDrag() {
-                    mostrarIndicador = false;
-                    elementoArrastrandose = null;
-                    window.tooltipsDeshabilitados = false;
-                    document.body.classList.remove('dragging-elemento');
-                    if (indicadorPosicion) {
-                        indicadorPosicion.classList.add('hidden');
-                        indicadorPosicion.style.display = 'none';
-                    }
-                }
+                });
 
 
                 // Inicializar FullCalendar
@@ -1480,10 +1818,10 @@
                     resourceLabelContent: function(arg) {
                         return {
                             html: `
-                            <div class="flex flex-col gap-2 w-full py-1">
+                            <div class="flex flex-col justify-between h-full w-full py-1">
                                 <a href="/maquinas/${arg.resource.id}"
                                    wire:navigate
-                                   class="text-blue-600 hover:text-blue-800 hover:underline font-semibold maquina-nombre"
+                                   class="text-blue-600 hover:text-blue-800 text-sm hover:underline font-semibold maquina-nombre"
                                    data-maquina-id="${arg.resource.id}"
                                    data-maquina-titulo="${arg.resource.title}">${arg.resource.title}</a>
                                 <div class="flex gap-1 justify-center">
@@ -1518,32 +1856,46 @@
                                 days: 1
                             },
                             slotMinTime: '00:00:00',
-                            slotMaxTime: '{{ $fechaMaximaCalendario["horas"] }}:00:00',
+                            slotMaxTime: '{{ $fechaMaximaCalendario['horas'] ?? 168 }}:00:00',
                             slotDuration: '01:00:00',
                             dayHeaderContent: function(arg) {
                                 return '';
                             },
-                            buttonText: '{{ $fechaMaximaCalendario["dias"] }} días',
+                            buttonText: '{{ $fechaMaximaCalendario['dias'] ?? 7 }} días',
                             // Extender el rango visible hasta el último fin programado
                             visibleRange: function(currentDate) {
-                                const start = new Date(currentDate);
+                                // Si currentDate es null, usar initialDate del calendario
+                                const initialDateStr = "{{ $initialDate ?: now()->format('Y-m-d H:i:s') }}";
+                                let baseDate = currentDate;
+
+                                if (!baseDate || (baseDate instanceof Date && isNaN(baseDate.getTime()))) {
+                                    baseDate = new Date(initialDateStr);
+                                }
+
+                                if (isNaN(baseDate.getTime())) {
+                                    baseDate = new Date();
+                                }
+
+                                const start = new Date(baseDate);
                                 start.setHours(0, 0, 0, 0);
                                 const end = new Date(start);
-                                end.setDate(end.getDate() + {{ $fechaMaximaCalendario["dias"] }});
-                                return { start: start, end: end };
+                                const dias = {{ $fechaMaximaCalendario['dias'] ?? 7 }};
+                                end.setDate(end.getDate() + dias);
+
+                                return {
+                                    start: start,
+                                    end: end
+                                };
                             }
                         }
                     },
                     locale: 'es',
                     timeZone: 'local', // Fechas ISO8601 con offset se interpretan correctamente
-                    initialDate: "{{ $initialDate }}",
+                    initialDate: "{{ $initialDate ?: now()->format('Y-m-d H:i:s') }}",
                     // ✅ CAMBIO: Usar endpoints dinámicos en lugar de datos estáticos
                     resources: {
                         url: '{{ route('api.produccion.recursos') }}',
-                        failure: function(error) {
-                            console.error('❌ Error al cargar recursos:', error);
-                            alert('Error al cargar las máquinas. Revisa la consola.');
-                        }
+                        // failure: eliminado porque provoca warnings en FullCalendar
                     },
                     resourceOrder: false,
                     events: {
@@ -1554,45 +1906,36 @@
                         }
                     },
 
-                    // Transformar fechas de eventos para vista de 360 horas
+                    // Transformar fechas de eventos para vista de horas extendidas
                     eventDataTransform: function(eventData) {
-                        const initialDateStr = "{{ $initialDate }}";
+                        const initialDateStr = "{{ $initialDate ?: now()->format('Y-m-d H:i:s') }}";
+                        if (!initialDateStr) return eventData;
+
                         const initialDate = new Date(initialDateStr);
+                        if (isNaN(initialDate.getTime())) return eventData;
+
                         initialDate.setHours(0, 0, 0, 0);
 
                         // Parsear fechas del evento
                         const startDate = new Date(eventData.start);
                         const endDate = new Date(eventData.end);
 
+                        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return eventData;
+
                         // Calcular horas desde el inicio del calendario
                         const msStart = startDate.getTime() - initialDate.getTime();
                         const msEnd = endDate.getTime() - initialDate.getTime();
                         const horasStart = msStart / (1000 * 60 * 60);
                         const horasEnd = msEnd / (1000 * 60 * 60);
-                        const horasMaximas = {{ $fechaMaximaCalendario["horas"] }};
+                        const horasMaximas = {{ $fechaMaximaCalendario['horas'] ?? 168 }};
 
                         // Solo procesar eventos dentro del rango dinámico
                         if (horasStart >= 0 && horasStart < horasMaximas) {
-                            // Convertir a formato que FullCalendar entienda para vista extendida
-                            // Usar el initialDate como base y añadir las horas como minutos desde medianoche
                             const nuevoStart = new Date(initialDate);
                             nuevoStart.setTime(initialDate.getTime() + msStart);
 
                             const nuevoEnd = new Date(initialDate);
                             nuevoEnd.setTime(initialDate.getTime() + msEnd);
-
-                            // Debug
-                            if (!window._evtDebug) window._evtDebug = 0;
-                            if (window._evtDebug < 3) {
-                                console.log('📅 Transform:', {
-                                    title: eventData.title,
-                                    horasStart: horasStart.toFixed(1),
-                                    horasEnd: horasEnd.toFixed(1),
-                                    originalStart: eventData.start,
-                                    nuevoStart: nuevoStart.toISOString()
-                                });
-                                window._evtDebug++;
-                            }
 
                             eventData.start = nuevoStart;
                             eventData.end = nuevoEnd;
@@ -1608,6 +1951,8 @@
                     eventDurationEditable: false,
                     droppable: true, // ✅ Habilitar drop de elementos externos
                     slotEventOverlap: false, // ✅ Eventos NO se solapan (se apilan verticalmente sin espacios)
+                    dragRevertDuration: 300, // Duración de animación de revert
+                    dragScroll: true, // Permitir scroll mientras se arrastra
 
                     headerToolbar: {
                         left: '',
@@ -1618,8 +1963,12 @@
                     // 🎯 CLAVE: Configurar recepción de elementos externos
                     eventReceive: async function(info) {
                         try {
-                            // Limpiar estado de drag al soltar
-                            limpiarEstadoDrag();
+                            // Ocultar indicador al soltar
+                            mostrarIndicador = false;
+                            if (indicadorPosicion) {
+                                indicadorPosicion.classList.add('hidden');
+                                indicadorPosicion.style.display = 'none';
+                            }
 
                             const elementoDiv = document.querySelector(
                                 `.elemento-drag[data-elemento-id="${info.event.extendedProps.elementoId}"]`
@@ -1664,7 +2013,8 @@
                             const eventosOrdenados = calendar.getEvents()
                                 .filter(ev => {
                                     const evResources = ev.getResources();
-                                    return evResources && evResources.length > 0 && evResources[0] && evResources[0].id == maquinaDestinoId;
+                                    return evResources && evResources.length > 0 && evResources[0] &&
+                                        evResources[0].id == maquinaDestinoId;
                                 })
                                 .sort((a, b) => (a.start || 0) - (b.start || 0));
 
@@ -1788,8 +2138,12 @@
                                         // Remover el evento temporal que se creó
                                         info.event.remove();
 
-                                        // Recargar eventos desde el servidor
+                                        // Recargar recursos y eventos desde el servidor
+                                        calendar.refetchResources();
                                         calendar.refetchEvents();
+
+                                        // Refrescar panel lateral si está abierto
+                                        refrescarPanelElementos();
 
                                         const Toast = Swal.mixin({
                                             toast: true,
@@ -1820,7 +2174,8 @@
                                                     .maquinaOriginal,
                                                 nueva_posicion: nuevaPosicion,
                                                 elementos_id: dataMovimiento.elementosIds,
-                                                crear_nueva_posicion: false
+                                                crear_nueva_posicion: false,
+                                                usar_posicion_existente: true
                                             })
                                         });
 
@@ -1837,8 +2192,12 @@
                                         // Remover el evento temporal que se creó
                                         info.event.remove();
 
-                                        // Recargar eventos desde el servidor
+                                        // Recargar recursos y eventos desde el servidor
+                                        calendar.refetchResources();
                                         calendar.refetchEvents();
+
+                                        // Refrescar panel lateral si está abierto
+                                        refrescarPanelElementos();
 
                                         const Toast = Swal.mixin({
                                             toast: true,
@@ -1872,8 +2231,12 @@
                                 // Remover el evento temporal que se creó
                                 info.event.remove();
 
-                                // Recargar eventos desde el servidor
+                                // Recargar recursos y eventos desde el servidor
+                                calendar.refetchResources();
                                 calendar.refetchEvents();
+
+                                // Refrescar panel lateral si está abierto
+                                refrescarPanelElementos();
 
                                 const Toast = Swal.mixin({
                                     toast: true,
@@ -1925,21 +2288,26 @@
                     slotLabelContent: function(arg) {
                         // Obtener la fecha inicial del calendario
                         const initialDateStr = "{{ $initialDate }}";
-                        const calendarInitialDate = new Date(initialDateStr);
-                        calendarInitialDate.setHours(0, 0, 0, 0);
+                        // Parsear la fecha correctamente para evitar problemas de zona horaria
+                        const [year, month, day] = initialDateStr.split('-').map(Number);
+                        const calendarInitialDate = new Date(year, month - 1, day, 0, 0, 0, 0);
 
-                        // arg.text contiene la hora del slot ('0', '1', '2'... '359')
-                        // arg.date devuelve 1970 incorrectamente con slotMaxTime extendido
-                        const horaSlot = parseInt(arg.text, 10) || 0;
-
-                        // Calcular días adicionales y hora real del día
-                        const diasAdicionales = Math.floor(horaSlot / 24);
-                        const horaDelDia = horaSlot % 24;
+                        // arg.text contiene solo la hora del día (0-23), NO las horas acumuladas
+                        // arg.date SÍ avanza correctamente aunque muestre 1970
+                        // Usamos arg.date para calcular los días transcurridos
+                        const slotDate = arg.date;
+                        const horaDelDia = parseInt(arg.text, 10) || 0;
                         const minutos = 0; // Los slots son de 1 hora
 
-                        // Calcular la fecha real del slot
-                        const fechaReal = new Date(calendarInitialDate.getTime());
-                        fechaReal.setDate(fechaReal.getDate() + diasAdicionales);
+                        // Calcular días adicionales desde la fecha base de FullCalendar (1970-01-01)
+                        // La fecha 1970-01-01T00:00:00Z corresponde al día 0
+                        const fechaBase1970 = new Date(Date.UTC(1970, 0, 1, 0, 0, 0));
+                        const diasDesde1970 = Math.floor((slotDate.getTime() - fechaBase1970.getTime()) / (24 *
+                            60 * 60 * 1000));
+
+                        // Calcular la fecha real del slot sumando los días a la fecha inicial del calendario
+                        const fechaReal = new Date(calendarInitialDate.getTime() + (diasDesde1970 * 24 * 60 *
+                            60 * 1000));
                         fechaReal.setHours(horaDelDia, minutos, 0, 0);
 
                         // Formatear la hora para mostrar
@@ -1949,7 +2317,7 @@
                         // Determinar si este slot corresponde a un inicio de turno basado en turnos activos
                         let esTurno = false;
                         let nombreTurno = '';
-                        let fechaMostrar = new Date(fechaReal);
+                        let fechaMostrar = new Date(fechaReal.getTime());
                         let turnoEncontrado = null;
 
                         // Buscar si esta hora corresponde al inicio de algún turno activo
@@ -1975,10 +2343,10 @@
 
                                 nombreTurno = `${emoji} ${turno.nombre}`;
 
-                                // Si el turno tiene offset negativo, mostrar fecha del día siguiente
+                                // Si el turno tiene offset negativo (turno de noche),
+                                // la fecha laboral es el día siguiente
                                 if (turno.offset_dias_inicio < 0) {
-                                    fechaMostrar = new Date(fechaReal.getTime());
-                                    fechaMostrar.setDate(fechaMostrar.getDate() + 1);
+                                    fechaMostrar = new Date(fechaReal.getTime() + (24 * 60 * 60 * 1000));
                                 }
 
                                 break;
@@ -2102,18 +2470,18 @@
 
                     // 🎯 Eventos para mostrar indicador de posición al arrastrar
                     eventDragStart: function(info) {
+                        eventoArrastrandose = info.event;
                         mostrarIndicador = true;
                         window.tooltipsDeshabilitados = true;
-                        document.body.classList.add('dragging-elemento');
 
                         // Ocultar todos los tooltips existentes
-                        document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
+                        document.querySelectorAll('.fc-tooltip').forEach(t => t.style.display = 'none');
 
                         // Calcular posición inicial
                         const recursoId = info.event.getResources()[0]?.id;
                         if (recursoId) {
                             const eventosOrdenados = calendar.getEvents()
-                                .filter(ev => ev.getResources().some(r => r.id == recursoId) && ev.id !==
+                                .filter(ev => ev.getResources().some(r => r && r.id == recursoId) && ev.id !==
                                     info.event.id)
                                 .sort((a, b) => a.start - b.start);
 
@@ -2138,7 +2506,7 @@
 
                             if (recursoId) {
                                 const eventosOrdenados = calendar.getEvents()
-                                    .filter(ev => ev.getResources().some(r => r.id == recursoId) && ev
+                                    .filter(ev => ev.getResources().some(r => r && r.id == recursoId) && ev
                                         .id !== draggedEvent.id)
                                     .sort((a, b) => a.start - b.start);
 
@@ -2163,7 +2531,16 @@
                     },
 
                     eventDragStop: function(info) {
-                        limpiarEstadoDrag();
+                        eventoArrastrandose = null;
+                        mostrarIndicador = false;
+                        window.tooltipsDeshabilitados = false;
+                        if (indicadorPosicion) {
+                            indicadorPosicion.classList.add('hidden');
+                            indicadorPosicion.style.display = 'none';
+                        }
+
+                        // Limpiar tooltips duplicados que puedan haberse creado
+                        document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
                     },
 
                     eventDrop: async function(info) {
@@ -2193,7 +2570,7 @@
                         }
 
                         const eventosOrdenados = calendar.getEvents()
-                            .filter(ev => ev.getResources().some(r => r.id == maquinaDestinoId))
+                            .filter(ev => ev.getResources().some(r => r && r.id == maquinaDestinoId))
                             .sort((a, b) => a.start - b.start);
                         const nuevaPosicion = eventosOrdenados.findIndex(ev => ev.id === info.event.id) + 1;
 
@@ -2356,10 +2733,9 @@
 
                     eventDidMount: function(info) {
                         const props = info.event.extendedProps;
-                        const tooltip = document.createElement('div');
-                        tooltip.className = 'fc-tooltip';
 
-                        // ⚠️ Información de revisión
+                        // 🔧 OPTIMIZACIÓN: Usar un único tooltip global en lugar de uno por evento
+                        // Guardar los datos del tooltip en el elemento para usarlos con event delegation
                         let estadoRevision = '';
                         if (props.revisada === false || props.revisada === 0) {
                             estadoRevision =
@@ -2369,48 +2745,192 @@
                                 `<br><span class="text-green-400">✅ Revisada por ${props.revisada_por || 'N/A'}</span>`;
                         }
 
-                        // Debug: mostrar elementos de este evento
-                        const elementosDebug = props.codigos_elementos ? props.codigos_elementos.join(', ') : 'N/A';
+                        const elementosDebug = props.codigos_elementos ? props.codigos_elementos.join(', ') :
+                            'N/A';
                         const maquinaId = info.event.getResources()[0]?.id || 'N/A';
 
-                        tooltip.innerHTML = `
-                        <div class="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-md max-w-xs">
-                            <strong>${info.event.title}</strong><br>
-                            Obra: ${props.obra}<br>
-                            Estado producción: ${props.estado}<br>
-                            Máquina: <span class="text-blue-300">${maquinaId}</span><br>
-                            Elementos: <span class="text-purple-300">${elementosDebug}</span><br>
-                            Duración: <span class="text-cyan-300">${props.duracion_horas || 0} hrs</span><br>
-                            Fin programado: <span class="text-yellow-300">${props.fin_programado}</span><br>
-                            Fecha estimada entrega: <span class="text-green-300">${props.fecha_entrega}</span>${estadoRevision}
-                        </div>`;
-                        tooltip.style.display = 'none';
-                        document.body.appendChild(tooltip);
+                        // Guardar datos del tooltip en el elemento (sin crear elemento DOM)
+                        info.el._tooltipData = {
+                            title: info.event.title,
+                            obra: props.obra,
+                            estado: props.estado,
+                            maquinaId: maquinaId,
+                            elementos: elementosDebug,
+                            duracion: props.duracion_horas || 0,
+                            finProgramado: props.fin_programado,
+                            fechaEntrega: props.fecha_entrega,
+                            estadoRevision: estadoRevision
+                        };
+                    },
 
-                        info.el.addEventListener('mouseenter', function(e) {
-                            if (window.tooltipsDeshabilitados || document.body.classList.contains('dragging-elemento')) {
-                                tooltip.style.display = 'none';
-                                return;
-                            }
-                            tooltip.style.left = e.pageX + 10 + 'px';
-                            tooltip.style.top = e.pageY + 10 + 'px';
-                            tooltip.style.display = 'block';
-                        });
-                        info.el.addEventListener('mousemove', function(e) {
-                            if (window.tooltipsDeshabilitados || document.body.classList.contains('dragging-elemento')) {
-                                tooltip.style.display = 'none';
-                                return;
-                            }
-                            tooltip.style.left = e.pageX + 10 + 'px';
-                            tooltip.style.top = e.pageY + 10 + 'px';
-                        });
-                        info.el.addEventListener('mouseleave', function() {
-                            tooltip.style.display = 'none';
-                        });
+                    // 🔧 OPTIMIZACIÓN: Limpiar datos del tooltip cuando el evento se desmonta
+                    eventWillUnmount: function(info) {
+                        if (info.el._tooltipData) {
+                            delete info.el._tooltipData;
+                        }
                     }
                 });
+
+                // 🔧 OPTIMIZACIÓN: Tooltip global único con event delegation
+                let tooltipGlobal = document.getElementById('fc-tooltip-global');
+                if (!tooltipGlobal) {
+                    tooltipGlobal = document.createElement('div');
+                    tooltipGlobal.id = 'fc-tooltip-global';
+                    tooltipGlobal.className = 'fc-tooltip';
+                    tooltipGlobal.style.display = 'none';
+                    document.body.appendChild(tooltipGlobal);
+                }
+
+                // Event delegation para tooltips (un solo listener en lugar de cientos)
+                const calendarioContainer = document.getElementById('calendario');
+                if (calendarioContainer) {
+                    // Limpiar listeners anteriores
+                    if (window._maquinasCalendarState.tooltipMouseEnter) {
+                        calendarioContainer.removeEventListener('mouseenter', window._maquinasCalendarState
+                            .tooltipMouseEnter, true);
+                    }
+                    if (window._maquinasCalendarState.tooltipMouseMove) {
+                        calendarioContainer.removeEventListener('mousemove', window._maquinasCalendarState.tooltipMouseMove,
+                            true);
+                    }
+                    if (window._maquinasCalendarState.tooltipMouseLeave) {
+                        calendarioContainer.removeEventListener('mouseleave', window._maquinasCalendarState
+                            .tooltipMouseLeave, true);
+                    }
+
+                    function handleTooltipEnter(e) {
+                        const fcEvent = e.target.closest('.fc-event');
+                        if (!fcEvent || !fcEvent._tooltipData) return;
+
+                        if (window.tooltipsDeshabilitados ||
+                            document.body.classList.contains('dragging-elemento') ||
+                            document.body.classList.contains('dragging-panel-elemento')) {
+                            tooltipGlobal.style.display = 'none';
+                            return;
+                        }
+
+                        const data = fcEvent._tooltipData;
+                        tooltipGlobal.innerHTML = `
+                        <div class="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-md max-w-xs">
+                            <strong>${data.title}</strong><br>
+                            Obra: ${data.obra}<br>
+                            Estado producción: ${data.estado}<br>
+                            Máquina: <span class="text-blue-300">${data.maquinaId}</span><br>
+                            Elementos: <span class="text-purple-300">${data.elementos}</span><br>
+                            Duración: <span class="text-cyan-300">${data.duracion} hrs</span><br>
+                            Fin programado: <span class="text-yellow-300">${data.finProgramado}</span><br>
+                            Fecha estimada entrega: <span class="text-green-300">${data.fechaEntrega}</span>${data.estadoRevision}
+                        </div>`;
+                        tooltipGlobal.style.left = e.pageX + 10 + 'px';
+                        tooltipGlobal.style.top = e.pageY + 10 + 'px';
+                        tooltipGlobal.style.display = 'block';
+                    }
+
+                    function handleTooltipMove(e) {
+                        const fcEvent = e.target.closest('.fc-event');
+                        if (!fcEvent || !fcEvent._tooltipData || tooltipGlobal.style.display === 'none') return;
+
+                        if (window.tooltipsDeshabilitados ||
+                            document.body.classList.contains('dragging-elemento') ||
+                            document.body.classList.contains('dragging-panel-elemento')) {
+                            tooltipGlobal.style.display = 'none';
+                            return;
+                        }
+
+                        tooltipGlobal.style.left = e.pageX + 10 + 'px';
+                        tooltipGlobal.style.top = e.pageY + 10 + 'px';
+                    }
+
+                    function handleTooltipLeave(e) {
+                        const fcEvent = e.target.closest('.fc-event');
+                        const relatedFcEvent = e.relatedTarget?.closest('.fc-event');
+
+                        // Solo ocultar si salimos del evento y no entramos en otro
+                        if (fcEvent && fcEvent !== relatedFcEvent) {
+                            tooltipGlobal.style.display = 'none';
+                        }
+                    }
+
+                    // Guardar referencias y añadir listeners
+                    window._maquinasCalendarState.tooltipMouseEnter = handleTooltipEnter;
+                    window._maquinasCalendarState.tooltipMouseMove = handleTooltipMove;
+                    window._maquinasCalendarState.tooltipMouseLeave = handleTooltipLeave;
+
+                    calendarioContainer.addEventListener('mouseenter', handleTooltipEnter, true);
+                    calendarioContainer.addEventListener('mousemove', handleTooltipMove, true);
+                    calendarioContainer.addEventListener('mouseleave', handleTooltipLeave, true);
+                }
                 calendar.render();
                 window.calendar = calendar;
+
+                // Activar animación de carga fluida
+                setTimeout(() => {
+                    const contenedor = document.getElementById('contenedor-calendario');
+                    if (contenedor) contenedor.classList.add('loaded');
+                }, 100);
+
+                // 🎯 Listener para calcular posición cuando se arrastra elemento del panel sobre el calendario
+                const calendarDragTarget = document.getElementById('calendario');
+                if (calendarDragTarget) {
+                    calendarDragTarget.addEventListener('dragover', function(e) {
+                        // Solo procesar si estamos arrastrando un elemento del panel
+                        if (!elementoArrastrandose || !mostrarIndicador) return;
+
+                        // Encontrar la columna de recurso (máquina) bajo el cursor
+                        const elementoBajo = document.elementFromPoint(e.clientX, e.clientY);
+                        if (!elementoBajo) return;
+
+                        // Buscar la columna del recurso
+                        const columna = elementoBajo.closest('.fc-timegrid-col');
+                        if (!columna) return;
+
+                        // Obtener el ID del recurso desde data-resource-id
+                        const resourceId = columna.dataset.resourceId;
+                        if (!resourceId) return;
+
+                        // Obtener todos los eventos de esta máquina
+                        const eventosOrdenados = calendar.getEvents()
+                            .filter(ev => ev.getResources().some(r => r && r.id == resourceId))
+                            .sort((a, b) => a.start - b.start);
+
+                        // Calcular la posición basada en la posición Y del cursor
+                        // Obtener el slot de tiempo bajo el cursor
+                        const slotLane = elementoBajo.closest('.fc-timegrid-slot-lane') ||
+                            elementoBajo.closest('.fc-timegrid-slot');
+
+                        let posicionDestino = eventosOrdenados.length + 1; // Por defecto al final
+
+                        if (slotLane) {
+                            const slotTime = slotLane.dataset.time;
+                            if (slotTime) {
+                                // Convertir el tiempo del slot a una fecha para comparar
+                                const [hours, minutes] = slotTime.split(':').map(Number);
+                                const initialDateStr = "{{ $initialDate }}";
+                                const [year, month, day] = initialDateStr.split('-').map(Number);
+                                const initialDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+
+                                // Calcular la fecha/hora del slot
+                                const slotDate = new Date(initialDate.getTime() + (hours * 60 + minutes) * 60 *
+                                    1000);
+
+                                // Encontrar la posición donde caería este elemento
+                                posicionDestino = 1;
+                                for (let i = 0; i < eventosOrdenados.length; i++) {
+                                    if (slotDate < eventosOrdenados[i].start) {
+                                        posicionDestino = i + 1;
+                                        break;
+                                    }
+                                    posicionDestino = i + 2;
+                                }
+                            }
+                        }
+
+                        // Actualizar el indicador de posición
+                        if (numeroPosicion) {
+                            numeroPosicion.textContent = posicionDestino;
+                        }
+                    });
+                }
 
                 // 🎯 Aplicar líneas separadoras de turnos dinámicamente
                 window.aplicarLineasTurnos = function() {
@@ -2460,57 +2980,50 @@
                     // Obtener la posición inicial del header
                     const headerInitialTop = headerSection.getBoundingClientRect().top + window.pageYOffset;
 
-                    // Escuchar scroll en la página (window)
-                    window.addEventListener('scroll', function() {
-                        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    // Estado del sticky para evitar cambios innecesarios
+                    let isSticky = false;
+                    let scrollTicking = false;
 
-                        // Si el scroll pasa la posición del header, hacerlo sticky
-                        if (scrollTop > headerInitialTop - 10) {
-                            if (headerResources) {
-                                headerResources.style.position = 'fixed';
-                                headerResources.style.top = '0px';
-                                headerResources.style.zIndex = '1000';
-                                headerResources.style.backgroundColor = 'white';
-                                headerResources.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                            }
-                            if (headerTime) {
-                                headerTime.style.position = 'fixed';
-                                headerTime.style.top = '0px';
-                                headerTime.style.zIndex = '1000';
-                                headerTime.style.backgroundColor = 'white';
-                                headerTime.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                            }
-                            if (headerSection) {
-                                headerSection.style.position = 'fixed';
-                                headerSection.style.top = '0px';
-                                headerSection.style.zIndex = '999';
-                                headerSection.style.backgroundColor = 'white';
-                                headerSection.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                                headerSection.style.width = '100%';
-                            }
+                    // Función optimizada para aplicar estilos sticky
+                    function aplicarEstilosSticky(sticky) {
+                        if (sticky === isSticky) return; // No hacer nada si el estado no cambió
+                        isSticky = sticky;
+
+                        if (sticky) {
+                            // Aplicar sticky usando clases CSS en lugar de estilos inline
+                            if (headerResources) headerResources.classList.add('fc-header-sticky');
+                            if (headerTime) headerTime.classList.add('fc-header-sticky');
+                            if (headerSection) headerSection.classList.add('fc-header-sticky',
+                                'fc-header-section-sticky');
                         } else {
-                            // Restaurar posición normal
-                            if (headerResources) {
-                                headerResources.style.position = '';
-                                headerResources.style.top = '';
-                                headerResources.style.zIndex = '';
-                                headerResources.style.boxShadow = '';
-                            }
-                            if (headerTime) {
-                                headerTime.style.position = '';
-                                headerTime.style.top = '';
-                                headerTime.style.zIndex = '';
-                                headerTime.style.boxShadow = '';
-                            }
-                            if (headerSection) {
-                                headerSection.style.position = '';
-                                headerSection.style.top = '';
-                                headerSection.style.zIndex = '';
-                                headerSection.style.boxShadow = '';
-                                headerSection.style.width = '';
-                            }
+                            // Quitar sticky
+                            if (headerResources) headerResources.classList.remove('fc-header-sticky');
+                            if (headerTime) headerTime.classList.remove('fc-header-sticky');
+                            if (headerSection) headerSection.classList.remove('fc-header-sticky',
+                                'fc-header-section-sticky');
                         }
-                    }, { passive: true });
+                    }
+
+                    // Escuchar scroll con requestAnimationFrame para evitar jank
+                    function onScroll() {
+                        if (!scrollTicking) {
+                            requestAnimationFrame(() => {
+                                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                                aplicarEstilosSticky(scrollTop > headerInitialTop - 10);
+                                scrollTicking = false;
+                            });
+                            scrollTicking = true;
+                        }
+                    }
+
+                    // Guardar referencia para poder limpiar después
+                    if (window._maquinasCalendarState.scrollHandler) {
+                        window.removeEventListener('scroll', window._maquinasCalendarState.scrollHandler);
+                    }
+                    window._maquinasCalendarState.scrollHandler = onScroll;
+                    window.addEventListener('scroll', onScroll, {
+                        passive: true
+                    });
                 }, 500);
 
                 // 🎯 PANTALLA COMPLETA
@@ -2765,6 +3278,24 @@
 
                 // Variable global para guardar el planillaId actual del panel
                 let planillaIdActualPanel = null;
+                let codigoPlanillaActualPanel = null;
+
+                // Función para refrescar el panel de elementos si está abierto
+                async function refrescarPanelElementos() {
+                    if (!planillaIdActualPanel) return;
+
+                    const panel = document.getElementById('panel_elementos');
+                    if (!panel || panel.classList.contains('translate-x-full')) return;
+
+                    try {
+                        const response = await fetch(`/elementos/por-ids?planilla_id=${planillaIdActualPanel}`);
+                        const elementos = await response.json();
+                        console.log('🔄 Panel refrescado con', elementos.length, 'elementos');
+                        mostrarPanelElementos(elementos, planillaIdActualPanel, codigoPlanillaActualPanel);
+                    } catch (error) {
+                        console.error('❌ Error al refrescar panel:', error);
+                    }
+                }
 
                 // Función para mostrar panel de elementos
                 function mostrarPanelElementos(elementos, planillaId, codigo) {
@@ -2797,8 +3328,9 @@
                         return;
                     }
 
-                    // Guardar el planillaId actual
+                    // Guardar el planillaId y codigo actual
                     planillaIdActualPanel = planillaId;
+                    codigoPlanillaActualPanel = codigo;
                     console.log('✅ planillaIdActualPanel establecido:', planillaIdActualPanel);
 
                     if (panelCodigo) panelCodigo.textContent = codigo;
@@ -2825,7 +3357,8 @@
                         Object.entries(elementosPorMaquina).forEach(([maquinaId, grupo]) => {
                             const option = document.createElement('option');
                             option.value = maquinaId;
-                            option.textContent = `${grupo.codigo ? grupo.codigo + ' - ' : ''}${grupo.nombre} (${grupo.elementos.length})`;
+                            option.textContent =
+                                `${grupo.codigo ? grupo.codigo + ' - ' : ''}${grupo.nombre} (${grupo.elementos.length})`;
                             selectFiltro.appendChild(option);
                         });
 
@@ -2834,17 +3367,23 @@
                             const maquinaSeleccionada = this.value;
                             if (maquinaSeleccionada === 'todas') {
                                 // Mostrar todas las secciones y scroll al inicio
-                                lista.querySelectorAll('.seccion-maquina-wrapper').forEach(s => s.style.display = 'block');
+                                lista.querySelectorAll('.seccion-maquina-wrapper').forEach(s => s.style.display =
+                                    'block');
                                 lista.scrollTop = 0;
                             } else {
                                 // Mostrar solo la sección seleccionada
                                 lista.querySelectorAll('.seccion-maquina-wrapper').forEach(s => {
-                                    s.style.display = s.dataset.maquinaId === maquinaSeleccionada ? 'block' : 'none';
+                                    s.style.display = s.dataset.maquinaId === maquinaSeleccionada ? 'block' :
+                                        'none';
                                 });
                                 // Scroll a la sección
-                                const seccion = lista.querySelector(`.seccion-maquina-wrapper[data-maquina-id="${maquinaSeleccionada}"]`);
+                                const seccion = lista.querySelector(
+                                    `.seccion-maquina-wrapper[data-maquina-id="${maquinaSeleccionada}"]`);
                                 if (seccion) {
-                                    seccion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    seccion.scrollIntoView({
+                                        behavior: 'smooth',
+                                        block: 'start'
+                                    });
                                 }
                             }
                         };
@@ -2872,31 +3411,74 @@
                         const seccionElementos = document.createElement('div');
                         seccionElementos.className = 'seccion-maquina-elementos';
 
+                        // Array para almacenar los datos de los elementos a dibujar después
+                        const elementosParaDibujar = [];
+
+                        // 🔄 AGRUPAR elementos por dimensiones + diámetro
+                        const elementosAgrupados = {};
                         grupo.elementos.forEach(elemento => {
+                            // Clave de agrupación: diámetro + dimensiones
+                            const claveGrupo = `${elemento.diametro || 0}-${elemento.dimensiones || ''}`;
+
+                            if (!elementosAgrupados[claveGrupo]) {
+                                elementosAgrupados[claveGrupo] = {
+                                    elementos: [],
+                                    diametro: elemento.diametro,
+                                    dimensiones: elemento.dimensiones,
+                                    totalBarras: 0,
+                                    totalPeso: 0,
+                                    primerElemento: elemento
+                                };
+                            }
+
+                            elementosAgrupados[claveGrupo].elementos.push(elemento);
+                            elementosAgrupados[claveGrupo].totalBarras += parseInt(elemento.barras) || 1;
+                            elementosAgrupados[claveGrupo].totalPeso += parseFloat(elemento.peso) || 0;
+                        });
+
+                        // Renderizar elementos agrupados
+                        Object.values(elementosAgrupados).forEach(grupoElementos => {
+                            const primerElemento = grupoElementos.primerElemento;
+                            const elementosDelGrupo = grupoElementos.elementos;
+                            const esGrupo = elementosDelGrupo.length > 1;
+                            const idsDelGrupo = elementosDelGrupo.map(e => e.id);
+
                             const div = document.createElement('div');
-                            div.className = 'elemento-drag fc-event';
+                            div.className = 'elemento-drag fc-event' + (esGrupo ? ' elemento-agrupado' :
+                                '');
                             div.draggable = true;
                             div.title = ''; // Evitar tooltip nativo del navegador
 
-                            div.dataset.elementoId = elemento.id;
+                            // Guardar el primer ID para compatibilidad
+                            div.dataset.elementoId = primerElemento.id;
                             div.dataset.planillaId = planillaId;
-                            div.dataset.maquinaOriginal = elemento.maquina_id;
+                            div.dataset.maquinaOriginal = primerElemento.maquina_id;
+                            div.dataset.posicion = primerElemento.posicion || '1';
+
+                            // 🆕 Guardar todos los IDs del grupo
+                            if (esGrupo) {
+                                div.dataset.esGrupo = 'true';
+                                div.dataset.elementosGrupo = JSON.stringify(idsDelGrupo);
+                                div.dataset.cantidadGrupo = elementosDelGrupo.length;
+                            }
 
                             div.dataset.event = JSON.stringify({
-                                title: elemento.codigo,
+                                title: primerElemento.codigo,
                                 extendedProps: {
-                                    elementoId: elemento.id,
+                                    elementoId: primerElemento.id,
                                     planillaId: planillaId,
-                                    maquinaOriginal: elemento.maquina_id
+                                    maquinaOriginal: primerElemento.maquina_id,
+                                    esGrupo: esGrupo,
+                                    elementosGrupo: idsDelGrupo
                                 },
                                 duration: '01:00'
                             });
 
-                            const canvasId = `canvas-panel-${elemento.id}`;
+                            const canvasId = `canvas-panel-${primerElemento.id}`;
 
                             div.innerHTML = `
-                            <canvas id="${canvasId}" width="240" height="80" draggable="false"></canvas>
-                        `;
+                                <canvas id="${canvasId}" width="260" height="100" draggable="false"></canvas>
+                            `;
 
                             seccionElementos.appendChild(div);
 
@@ -2909,43 +3491,66 @@
 
                             // ✅ Evento de dragstart en cada elemento
                             div.addEventListener('dragstart', function(e) {
-                                // Ocultar ghost nativo
+                                // Ocultar ghost nativo del navegador
                                 const img = new Image();
-                                img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                                img.src =
+                                    'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
                                 e.dataTransfer.setDragImage(img, 0, 0);
 
                                 elementoArrastrandose = div;
                                 mostrarIndicador = true;
                                 window.tooltipsDeshabilitados = true;
-                                document.body.classList.add('dragging-elemento');
 
-                                // Eliminar tooltips
-                                document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
+                                // Añadir clase al body para ocultar tooltips via CSS
+                                document.body.classList.add('dragging-panel-elemento');
 
-                                // Mostrar indicador
-                                if (indicadorPosicion) {
-                                    indicadorPosicion.style.display = 'block';
-                                    indicadorPosicion.classList.remove('hidden');
+                                // Ocultar y eliminar tooltips existentes
+                                document.querySelectorAll('.fc-tooltip').forEach(t => {
+                                    t.style.display = 'none';
+                                    t.remove();
+                                });
+
+                                // Mostrar indicador con posición inicial (se actualizará en dragover)
+                                if (numeroPosicion) {
+                                    numeroPosicion.textContent = '?';
                                 }
 
                                 div.classList.add('dragging-original');
                             });
 
                             div.addEventListener('dragend', function() {
-                                limpiarEstadoDrag();
+                                elementoArrastrandose = null;
+                                mostrarIndicador = false;
+                                window.tooltipsDeshabilitados = false;
+
+                                // Quitar clase del body
+                                document.body.classList.remove('dragging-panel-elemento');
+
+                                if (indicadorPosicion) {
+                                    indicadorPosicion.classList.add('hidden');
+                                    indicadorPosicion.style.display = 'none';
+                                }
                                 div.classList.remove('dragging-original');
+
+                                // Limpiar tooltips duplicados
+                                document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
                             });
 
-                            setTimeout(() => {
-                                window.dibujarFiguraElemento(
-                                    canvasId,
-                                    elemento.dimensiones,
-                                    elemento.peso,
-                                    elemento.diametro,
-                                    elemento.barras
-                                );
-                            }, 10);
+                            // Almacenar datos para dibujar después de que el panel sea visible
+                            // 🆕 Usar el total de barras del grupo y cantidad de elementos
+                            elementosParaDibujar.push({
+                                canvasId,
+                                dimensiones: primerElemento.dimensiones,
+                                peso: grupoElementos.totalPeso,
+                                diametro: primerElemento.diametro,
+                                barras: grupoElementos.totalBarras,
+                                cantidadElementos: elementosDelGrupo
+                                    .length // Cantidad de elementos agrupados
+                            });
                         });
+
+                        // Guardar referencia para dibujar después
+                        seccionWrapper._elementosParaDibujar = elementosParaDibujar;
 
                         seccionWrapper.appendChild(seccionElementos);
                     });
@@ -2968,14 +3573,78 @@
                     }, 100);
 
                     // ✅ Ajustar calendario
-                    panel.classList.add('abierto');
                     overlay.classList.remove('hidden');
                     contenedorCalendario.classList.add('con-panel-abierto');
                     document.body.classList.add('panel-abierto');
 
+                    // Función para dibujar SVGs de forma progresiva (no bloquea el thread)
+                    function dibujarSVGsProgresivo() {
+                        const secciones = lista.querySelectorAll('.seccion-maquina-wrapper');
+                        const todosElementos = [];
+
+                        // Recolectar todos los elementos a dibujar
+                        secciones.forEach(seccion => {
+                            if (seccion._elementosParaDibujar) {
+                                todosElementos.push(...seccion._elementosParaDibujar);
+                            }
+                        });
+
+                        // Dibujar en batches usando requestAnimationFrame
+                        let indice = 0;
+                        const BATCH_SIZE = 5; // Dibujar 5 elementos por frame
+
+                        function dibujarBatch() {
+                            const fin = Math.min(indice + BATCH_SIZE, todosElementos.length);
+
+                            for (let i = indice; i < fin; i++) {
+                                const elem = todosElementos[i];
+                                window.dibujarFiguraElemento(
+                                    elem.canvasId,
+                                    elem.dimensiones,
+                                    elem.peso,
+                                    elem.diametro,
+                                    elem.barras,
+                                    elem.cantidadElementos // Cantidad de elementos agrupados
+                                );
+                            }
+
+                            indice = fin;
+
+                            // Si quedan más elementos, programar siguiente batch
+                            if (indice < todosElementos.length) {
+                                requestAnimationFrame(dibujarBatch);
+                            }
+                        }
+
+                        // Iniciar dibujado
+                        if (todosElementos.length > 0) {
+                            requestAnimationFrame(dibujarBatch);
+                        }
+                    }
+
+                    // Usar transitionend para detectar cuando el panel está visible
+                    const onTransitionEnd = function(e) {
+                        // Solo procesar si es la transición de transform del panel
+                        if (e.propertyName === 'transform' && e.target === panel) {
+                            panel.removeEventListener('transitionend', onTransitionEnd);
+                            calendar.updateSize();
+                            dibujarSVGsProgresivo();
+                        }
+                    };
+
+                    panel.addEventListener('transitionend', onTransitionEnd);
+
+                    // Añadir clase para iniciar la transición
+                    panel.classList.add('abierto');
+
+                    // Fallback: si transitionend no se dispara en 500ms, dibujar de todos modos
                     setTimeout(() => {
-                        calendar.updateSize();
-                    }, 300);
+                        if (panel.classList.contains('abierto')) {
+                            panel.removeEventListener('transitionend', onTransitionEnd);
+                            calendar.updateSize();
+                            dibujarSVGsProgresivo();
+                        }
+                    }, 500);
                 }
 
                 function cerrarPanel() {
@@ -2985,8 +3654,9 @@
                     window.MultiSelectElementos.limpiarSelecciones();
                     document.body.classList.remove('panel-abierto');
 
-                    // Limpiar planillaId actual
+                    // Limpiar planillaId y codigo actual
                     planillaIdActualPanel = null;
+                    codigoPlanillaActualPanel = null;
                     console.log('🧹 planillaIdActualPanel limpiado');
 
                     const panelElementos = document.getElementById('panel_elementos');
@@ -3039,14 +3709,16 @@
                         }
 
                         try {
-                            const response = await fetch(`/planillas/${planillaIdActualPanel}/marcar-revisada`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Accept': 'application/json',
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                                }
-                            });
+                            const response = await fetch(
+                                `/planillas/${planillaIdActualPanel}/marcar-revisada`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                            .content
+                                    }
+                                });
 
                             const data = await response.json();
 
@@ -3088,9 +3760,10 @@
                 // Overlay ya no captura clics (pointer-events: none) para permitir interacción con calendario
 
                 // Cerrar panel al hacer clic fuera del panel (en el área del calendario)
-                document.addEventListener('click', function(e) {
+                // 🔧 OPTIMIZACIÓN: Guardar referencia para poder limpiar el listener
+                function handleClickFueraPanel(e) {
                     const panel = document.getElementById('panel_elementos');
-                    const panelAbierto = panel.classList.contains('abierto');
+                    const panelAbierto = panel && panel.classList.contains('abierto');
 
                     if (panelAbierto && !panel.contains(e.target) && !e.target.closest('.fc-event')) {
                         // Solo cerrar si se hace clic fuera del panel y no en un elemento arrastrable
@@ -3099,7 +3772,14 @@
                             cerrarPanel();
                         }
                     }
-                });
+                }
+
+                // Limpiar listener anterior si existe
+                if (window._maquinasCalendarState.clickFueraPanelHandler) {
+                    document.removeEventListener('click', window._maquinasCalendarState.clickFueraPanelHandler);
+                }
+                window._maquinasCalendarState.clickFueraPanelHandler = handleClickFueraPanel;
+                document.addEventListener('click', handleClickFueraPanel);
 
                 // ================================
                 // SISTEMA DE FILTROS DE RESALTADO
@@ -3214,7 +3894,8 @@
 
                     // Filtro por código planilla (búsqueda parcial, case-insensitive)
                     if (filtrosActivos.codigoPlanilla && filtrosActivos.codigoPlanilla !== '') {
-                        const codigoPlanilla = (props.codigo_planilla || evento.extendedProps.codigo || evento.title || '').toLowerCase();
+                        const codigoPlanilla = (props.codigo_planilla || evento.extendedProps.codigo || evento.title || '')
+                            .toLowerCase();
                         const filtro = filtrosActivos.codigoPlanilla.toLowerCase();
                         const cumple = codigoPlanilla.includes(filtro);
                         console.log('🔍 Código Planilla filtro:', filtrosActivos.codigoPlanilla);
@@ -3295,19 +3976,42 @@
                         let planillasResaltadas = 0;
                         let segmentosResaltados = 0;
 
+                        // 🔧 OPTIMIZACIÓN: Cachear querySelectorAll y crear mapa de elementos por ID
+                        const todosElementosDOM = document.querySelectorAll('.fc-event');
+                        const elementosPorEventoId = new Map();
+
+                        // Crear índice de elementos DOM por evento ID (O(n) en lugar de O(n²))
+                        todosElementosDOM.forEach(el => {
+                            // Por fcSeg
+                            if (el.fcSeg && el.fcSeg.eventRange.def.publicId) {
+                                const eventId = el.fcSeg.eventRange.def.publicId;
+                                if (!elementosPorEventoId.has(eventId)) {
+                                    elementosPorEventoId.set(eventId, []);
+                                }
+                                if (!elementosPorEventoId.get(eventId).includes(el)) {
+                                    elementosPorEventoId.get(eventId).push(el);
+                                }
+                            }
+                            // Por data-event-id
+                            const dataEventId = el.getAttribute('data-event-id') ||
+                                el.querySelector('[data-event-id]')?.getAttribute('data-event-id');
+                            if (dataEventId) {
+                                if (!elementosPorEventoId.has(dataEventId)) {
+                                    elementosPorEventoId.set(dataEventId, []);
+                                }
+                                if (!elementosPorEventoId.get(dataEventId).includes(el)) {
+                                    elementosPorEventoId.get(dataEventId).push(el);
+                                }
+                            }
+                        });
+
                         // Evaluar cada planilla
                         Object.entries(eventosPorPlanilla).forEach(([planillaId, data]) => {
-                            console.group(`📋 Planilla ${data.title}`);
-                            console.log('Segmentos:', data.eventos.length);
-                            console.log('Props:', data.props);
-
-                            const cumple = cumpleFiltros(data.eventos[
-                                0]); // Evaluar con el primer segmento
+                            const cumple = cumpleFiltros(data.eventos[0]); // Evaluar con el primer segmento
 
                             // Aplicar a TODOS los segmentos de esta planilla
                             data.eventos.forEach(evento => {
-                                // Buscar TODAS las representaciones DOM de este evento
-                                // Un evento puede tener múltiples elementos DOM si está en varias posiciones
+                                // 🔧 OPTIMIZACIÓN: Lookup O(1) en lugar de querySelectorAll O(n)
                                 const elementosDOM = [];
 
                                 // Primero intentar con evento.el
@@ -3315,32 +4019,15 @@
                                     elementosDOM.push(evento.el);
                                 }
 
-                                // Buscar todas las instancias DOM que coincidan con este evento ID
-                                const todosElementos = document.querySelectorAll('.fc-event');
-                                todosElementos.forEach(el => {
-                                    // Verificar por fcSeg
-                                    if (el.fcSeg && el.fcSeg.eventRange.def.publicId ===
-                                        evento.id) {
-                                        // Evitar duplicados
-                                        if (!elementosDOM.includes(el)) {
-                                            elementosDOM.push(el);
-                                        }
-                                    }
-                                    // También verificar por atributos data
-                                    const dataEventId = el.getAttribute(
-                                            'data-event-id') ||
-                                        el.querySelector('[data-event-id]')
-                                        ?.getAttribute('data-event-id');
-                                    if (dataEventId === evento.id && !elementosDOM
-                                        .includes(el)) {
+                                // Buscar en el mapa cacheado
+                                const elementosDelMapa = elementosPorEventoId.get(evento.id) || [];
+                                elementosDelMapa.forEach(el => {
+                                    if (!elementosDOM.includes(el)) {
                                         elementosDOM.push(el);
                                     }
                                 });
 
                                 if (elementosDOM.length === 0) {
-                                    console.warn(
-                                        '⚠️ No se encontró ningún elemento DOM para evento:',
-                                        evento.id);
                                     return;
                                 }
 
@@ -3353,10 +4040,8 @@
                                     if (cumple) {
                                         elementoDOM.classList.add('evento-resaltado',
                                             'pulsando');
-                                        console.log('✅ Elemento resaltado:', evento.id);
                                     } else {
                                         elementoDOM.classList.add('evento-opaco');
-                                        console.log('⚪ Elemento opacado:', evento.id);
                                     }
                                 });
 
@@ -3368,12 +4053,7 @@
 
                             if (cumple) {
                                 planillasResaltadas++;
-                                console.log('✅ RESALTADA (todos los segmentos)');
-                            } else {
-                                console.log('⚪ OPACADA (todos los segmentos)');
                             }
-
-                            console.groupEnd();
                         });
 
                         console.log(`━━━━━━━━━━━━━━━━`);
@@ -3617,7 +4297,8 @@
                 // ========================================
 
                 let ultimoTimestamp = new Date().toISOString();
-                let intervaloPolling = null;
+                // Usar window para persistir el intervalo entre navegaciones/recargas de script
+                window._maquinasPollingInterval = window._maquinasPollingInterval || null;
                 let calendarioVisible = true;
                 let actualizacionesRecibidas = 0;
 
@@ -3626,16 +4307,35 @@
                     calendarioVisible = !document.hidden;
 
                     if (calendarioVisible) {
-                        iniciarPolling();
+                        // Solo reiniciar si estamos en la página correcta
+                        const isMaquinasPage = document.getElementById('calendario-maquinas-data') &&
+                            document.querySelector('#calendario[data-calendar-type="maquinas"]');
+                        if (isMaquinasPage) {
+                            iniciarPolling();
+                        }
                     } else {
                         detenerPolling();
                     }
                 });
 
                 function iniciarPolling() {
-                    if (intervaloPolling) return; // Ya está activo
+                    // Si ya existe un intervalo global activo, no crear otro
+                    if (window._maquinasPollingInterval) return;
 
-                    intervaloPolling = setInterval(async () => {
+                    console.log('🔄 Iniciando polling de actualizaciones de máquinas...');
+
+                    window._maquinasPollingInterval = setInterval(async () => {
+                        // 🛡️ PROTECCIÓN SPA: Verificar si seguimos en la página
+                        const isMaquinasPage = document.getElementById('calendario-maquinas-data') &&
+                            document.querySelector('#calendario[data-calendar-type="maquinas"]');
+
+                        if (!isMaquinasPage) {
+                            // Si no estamos en la página, DETENER inmediatamente
+                            console.log('⏸️ Auto-limpieza de polling (cambio de vista detectado)');
+                            detenerPolling();
+                            return;
+                        }
+
                         try {
                             const url =
                                 `/produccion/maquinas/actualizaciones?timestamp=${encodeURIComponent(ultimoTimestamp)}`;
@@ -3650,9 +4350,13 @@
                             });
 
                             if (!response.ok) {
-                                console.error(`❌ Error HTTP: ${response.status} ${response.statusText}`);
-                                const text = await response.text();
-                                console.error('Respuesta:', text.substring(0, 200));
+                                // Si hay error 500, pausar para no saturar errores
+                                if (response.status === 500 || response.status === 404) {
+                                    console.warn(
+                                        `⚠️ Polling pausado por error del servidor (${response.status})`);
+                                    detenerPolling();
+                                    return;
+                                }
                                 return;
                             }
 
@@ -3668,18 +4372,20 @@
                             }
                         } catch (error) {
                             console.error('❌ Error al obtener actualizaciones:', error);
-                            console.error('Stack:', error.stack);
                         }
                     }, 5000); // Cada 5 segundos
                 }
 
                 function detenerPolling() {
-                    if (intervaloPolling) {
-                        clearInterval(intervaloPolling);
-                        intervaloPolling = null;
-                        console.log('⏸️ Polling detenido');
+                    if (window._maquinasPollingInterval) {
+                        clearInterval(window._maquinasPollingInterval);
+                        window._maquinasPollingInterval = null;
+                        console.log('⏸️ Polling de máquinas detenido correctamente');
                     }
                 }
+
+                // EXPOSICIÓN GLOBAL para la limpieza SPA
+                window.stopPolling = detenerPolling;
 
                 function aplicarActualizaciones(actualizaciones) {
                     actualizaciones.forEach(upd => {
@@ -3740,13 +4446,15 @@
 
                             if (upd.fecha_entrega && fechaEntregaAnterior !== upd.fecha_entrega) {
                                 evento.setExtendedProp('fecha_entrega', upd.fecha_entrega);
-                                cambios.push(`fecha_entrega: ${fechaEntregaAnterior} → ${upd.fecha_entrega}`);
+                                cambios.push(
+                                    `fecha_entrega: ${fechaEntregaAnterior} → ${upd.fecha_entrega}`);
                                 cambioRelevante = true;
                             }
 
                             if (upd.fin_programado && finProgramadoAnterior !== upd.fin_programado) {
                                 evento.setExtendedProp('fin_programado', upd.fin_programado);
-                                cambios.push(`fin_programado: ${finProgramadoAnterior} → ${upd.fin_programado}`);
+                                cambios.push(
+                                    `fin_programado: ${finProgramadoAnterior} → ${upd.fin_programado}`);
                                 cambioRelevante = true;
                             }
 
@@ -3856,16 +4564,19 @@
 
                 // Debug: Mostrar estadísticas cada minuto
                 setInterval(() => {
-                    console.log(`📊 Estadísticas de polling: ${actualizacionesRecibidas} actualizaciones recibidas`);
+                    console.log(
+                        `📊 Estadísticas de polling: ${actualizacionesRecibidas} actualizaciones recibidas`);
                 }, 60000);
             }
 
-            // Inicializar en carga inicial
+            // Inicialización antigua comentada para evitar conflictos con SPA
+            /*
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', inicializarCalendarioMaquinas);
             } else {
                 inicializarCalendarioMaquinas();
             }
+            */
 
             // Nota: La reinicialización en livewire:navigated se maneja desde el layout principal (app.blade.php)
             // para evitar problemas de timing con la carga de scripts
@@ -4092,7 +4803,8 @@
             window.datosRedistribucion = window.datosRedistribucion || null; // Para almacenar los datos para el reporte
 
             window.tipoRedistribucionSeleccionado = window.tipoRedistribucionSeleccionado || null;
-            window.maquinaRedistribucionId = window.maquinaRedistribucionId || null; // ID de la máquina desde donde se redistribuye
+            window.maquinaRedistribucionId = window.maquinaRedistribucionId ||
+                null; // ID de la máquina desde donde se redistribuye
 
             async function redistribuir(tipo) {
                 if (!maquinaActualId) return;
@@ -4117,7 +4829,8 @@
 
                     if (data.success && data.elementos) {
                         // Mostrar modal de confirmación con los elementos
-                        mostrarModalConfirmacionRedistribucion(data.elementos, tipo, data.maquina_origen, data.maquinas_disponibles);
+                        mostrarModalConfirmacionRedistribucion(data.elementos, tipo, data.maquina_origen, data
+                            .maquinas_disponibles);
                         cerrarModalRedistribuir();
                     } else {
                         alert('No hay elementos para redistribuir');
@@ -4137,7 +4850,8 @@
 
                 window.maquinasDisponiblesGlobal = maquinasDisponibles;
 
-                mensaje.textContent = `Se redistribuirán ${elementos.length} elemento(s) desde "${maquinaOrigen.nombre}" - ${tipo === 'todos' ? 'TODOS los pendientes' : 'Los primeros elementos'}`;
+                mensaje.textContent =
+                    `Se redistribuirán ${elementos.length} elemento(s) desde "${maquinaOrigen.nombre}" - ${tipo === 'todos' ? 'TODOS los pendientes' : 'Los primeros elementos'}`;
 
                 lista.innerHTML = '';
                 elementos.forEach((elemento, index) => {
@@ -4210,7 +4924,14 @@
             }
 
             function verFiguraElementoRedistribucion(id, codigo, dimensiones, peso, diametro, barras) {
-                console.log('Abriendo figura para elemento:', { id, codigo, dimensiones, peso, diametro, barras });
+                console.log('Abriendo figura para elemento:', {
+                    id,
+                    codigo,
+                    dimensiones,
+                    peso,
+                    diametro,
+                    barras
+                });
 
                 // Asegurar que el modal de dibujo esté visible
                 const modalDibujo = document.getElementById('modal-dibujo');
@@ -4261,10 +4982,17 @@
             }
 
             async function confirmarRedistribucion() {
-                console.log('🔄 confirmarRedistribucion llamada', { maquinaRedistribucionId: window.maquinaRedistribucionId, tipoRedistribucionSeleccionado: window.tipoRedistribucionSeleccionado, maquinasDestinoSeleccionadas: window.maquinasDestinoSeleccionadas });
+                console.log('🔄 confirmarRedistribucion llamada', {
+                    maquinaRedistribucionId: window.maquinaRedistribucionId,
+                    tipoRedistribucionSeleccionado: window.tipoRedistribucionSeleccionado,
+                    maquinasDestinoSeleccionadas: window.maquinasDestinoSeleccionadas
+                });
 
                 if (!window.maquinaRedistribucionId || !window.tipoRedistribucionSeleccionado) {
-                    console.error('Faltan datos:', { maquinaRedistribucionId: window.maquinaRedistribucionId, tipoRedistribucionSeleccionado: window.tipoRedistribucionSeleccionado });
+                    console.error('Faltan datos:', {
+                        maquinaRedistribucionId: window.maquinaRedistribucionId,
+                        tipoRedistribucionSeleccionado: window.tipoRedistribucionSeleccionado
+                    });
                     alert('Error: Faltan datos necesarios para la redistribución');
                     return;
                 }
@@ -4510,7 +5238,8 @@
                     row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
 
                     // Crear select de máquinas compatibles
-                    const selectMaquinas = crearSelectMaquinas(elem.id, elem.maquina_destino_sugerida, elem.maquinas_compatibles);
+                    const selectMaquinas = crearSelectMaquinas(elem.id, elem.maquina_destino_sugerida, elem
+                        .maquinas_compatibles);
 
                     // Calcular retraso
                     const fechaEntrega = new Date(elem.fecha_entrega);
@@ -4538,7 +5267,8 @@
             }
 
             function crearSelectMaquinas(elementoId, maquinaSugerida, maquinasCompatibles) {
-                let html = `<select class="maquina-selector border border-gray-300 rounded px-2 py-1 text-sm w-full focus:ring-2 focus:ring-purple-500" data-elemento-id="${elementoId}">`;
+                let html =
+                    `<select class="maquina-selector border border-gray-300 rounded px-2 py-1 text-sm w-full focus:ring-2 focus:ring-purple-500" data-elemento-id="${elementoId}">`;
 
                 maquinasCompatibles.forEach(maq => {
                     const selected = maq.id === maquinaSugerida ? 'selected' : '';
@@ -4553,7 +5283,13 @@
             function formatearFecha(fechaStr) {
                 if (!fechaStr) return '-';
                 const fecha = new Date(fechaStr);
-                return fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                return fecha.toLocaleDateString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
             }
 
             function cerrarModalOptimizar() {
@@ -4609,13 +5345,18 @@
                 });
 
                 try {
+                    const incluirFabricando = document.getElementById('chkOptimizarFabricando')?.checked || false;
+
                     const response = await fetch('/api/produccion/optimizar-aplicar', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         },
-                        body: JSON.stringify({ redistribuciones })
+                        body: JSON.stringify({
+                            redistribuciones,
+                            incluir_fabricando: incluirFabricando
+                        })
                     });
 
                     if (!response.ok) {
@@ -4638,6 +5379,9 @@
                         calendar.refetchResources();
                         calendar.refetchEvents();
                     }
+
+                    // Actualizar botón de deshacer
+                    actualizarBotonDeshacer();
 
                 } catch (error) {
                     console.error('Error al aplicar optimización:', error);
@@ -4709,40 +5453,23 @@
                 }
             }
 
+            // Variable global para almacenar datos del balanceo
+            window.datosBalanceoOriginal = null;
+
             function mostrarPreviewBalanceo(data) {
-                // Actualizar estadísticas
+                // Guardar datos para cálculos posteriores
+                window.datosBalanceoOriginal = data;
+
+                // Actualizar estadísticas con kg, metros y elementos
                 document.getElementById('estadElementosBalanceo').textContent = data.total_elementos || 0;
-                document.getElementById('estadTiempoPromedio').textContent = (data.tiempo_promedio_horas || 0) + 'h';
+                document.getElementById('estadPesoTotal').textContent = Number(data.peso_total_kg || 0).toLocaleString(
+                    'es-ES') + ' kg';
+                document.getElementById('estadLongitudTotal').textContent = Number(data.longitud_total_m || 0).toLocaleString(
+                    'es-ES') + ' m';
                 document.getElementById('estadMaquinasBalanceadas').textContent = (data.resumen_original || []).length;
 
-                // Mostrar gráfico de carga original
-                const grafico = document.getElementById('graficoCargaOriginal');
-                grafico.innerHTML = '';
-
-                if (data.resumen_original && data.resumen_original.length > 0) {
-                    const maxHoras = Math.max(...data.resumen_original.map(m => m.tiempo_horas));
-
-                    data.resumen_original.forEach(maquina => {
-                        const porcentaje = (maquina.tiempo_horas / maxHoras) * 100;
-                        const esSobrecargada = maquina.tiempo_horas > (data.tiempo_promedio_horas * 1.15);
-                        const esSubcargada = maquina.tiempo_horas < (data.tiempo_promedio_horas * 0.85);
-
-                        const barColor = esSobrecargada ? 'bg-red-500' : (esSubcargada ? 'bg-yellow-500' : 'bg-green-500');
-
-                        grafico.innerHTML += `
-                            <div class="flex items-center gap-2">
-                                <div class="w-32 text-sm font-medium text-gray-700">${maquina.nombre}</div>
-                                <div class="flex-1 bg-gray-200 rounded-full h-6 relative">
-                                    <div class="${barColor} h-6 rounded-full flex items-center justify-end pr-2 text-white text-xs font-medium"
-                                         style="width: ${porcentaje}%">
-                                        ${maquina.tiempo_horas}h
-                                    </div>
-                                </div>
-                                <div class="w-24 text-sm text-gray-600">${maquina.cantidad_elementos} elem.</div>
-                            </div>
-                        `;
-                    });
-                }
+                // Mostrar gráfico de carga original (basado en peso kg)
+                renderizarGrafico('graficoCargaOriginal', data.resumen_original, data.peso_promedio_kg, 'original');
 
                 // Llenar tabla de elementos
                 const tabla = document.getElementById('tablaBalanceo');
@@ -4750,34 +5477,217 @@
 
                 data.elementos.forEach((elemento, index) => {
                     const row = document.createElement('tr');
-                    row.className = 'hover:bg-gray-50';
+                    row.className = 'hover:bg-slate-50 transition-colors';
+                    const longitudElemento = elemento.longitud || 0;
+                    const figuraId = `figura-balanceo-${index}`;
                     row.innerHTML = `
-                        <td class="px-3 py-2">
+                        <td class="px-4 py-3">
                             <input type="checkbox"
-                                   class="balanceo-checkbox rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                   class="balanceo-checkbox rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                                    data-elemento-id="${elemento.elemento_id}"
                                    data-maquina-actual="${elemento.maquina_actual_id}"
                                    data-maquina-nueva="${elemento.maquina_nueva_id}"
+                                   data-peso="${elemento.peso || 0}"
+                                   data-longitud="${longitudElemento}"
+                                   data-diametro="${elemento.diametro || 0}"
+                                   onchange="actualizarGraficoBalanceado()"
                                    checked>
                         </td>
-                        <td class="px-3 py-2 font-medium text-gray-900">${elemento.codigo}</td>
-                        <td class="px-3 py-2 text-gray-600">${elemento.planilla_codigo || '-'}</td>
-                        <td class="px-3 py-2 text-gray-600">${elemento.diametro}</td>
-                        <td class="px-3 py-2 text-gray-600">${elemento.tiempo_horas}h</td>
-                        <td class="px-3 py-2">
-                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                        <td class="px-2 py-2">
+                            <div id="${figuraId}" class="w-24 h-14 bg-white border border-slate-200 rounded" data-dimensiones="${elemento.dimensiones || ''}" data-diametro="${elemento.diametro}" data-barras="${elemento.barras || 1}"></div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="font-semibold text-slate-800">${elemento.codigo}</div>
+                            <div class="text-xs text-slate-400">${elemento.planilla_codigo || '-'}</div>
+                        </td>
+                        <td class="px-4 py-3 text-slate-600">${elemento.dimensiones || '-'}</td>
+                        <td class="px-4 py-3 font-medium text-slate-700">${Math.round(elemento.peso || 0).toLocaleString('es-ES')} kg</td>
+                        <td class="px-4 py-3">
+                            <span class="px-2.5 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-700 border border-slate-200">
                                 ${elemento.maquina_actual_nombre}
                             </span>
                         </td>
-                        <td class="px-3 py-2">
-                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                        <td class="px-4 py-3">
+                            <span class="px-2.5 py-1 text-xs font-medium rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 ${elemento.maquina_nueva_nombre}
                             </span>
                         </td>
-                        <td class="px-3 py-2 text-sm text-gray-600">${elemento.razon || '-'}</td>
                     `;
                     tabla.appendChild(row);
                 });
+
+                // Dibujar las figuras de los elementos
+                data.elementos.forEach((elemento, index) => {
+                    const figuraId = `figura-balanceo-${index}`;
+                    const contenedor = document.getElementById(figuraId);
+                    if (contenedor) {
+                        if (elemento.dimensiones && elemento.dimensiones.trim() !== '' && window
+                            .dibujarFiguraElemento) {
+                            setTimeout(() => {
+                                window.dibujarFiguraElemento(figuraId, elemento.dimensiones, null, elemento
+                                    .diametro, elemento.barras);
+                            }, 50);
+                        } else {
+                            // Si no hay dimensiones, mostrar el código del elemento
+                            contenedor.innerHTML =
+                                `<div class="w-full h-full flex items-center justify-center text-xs text-slate-400 font-medium">${elemento.codigo || '-'}</div>`;
+                        }
+                    }
+                });
+
+                // Mostrar gráfico balanceado inicial (con todos seleccionados)
+                actualizarGraficoBalanceado();
+            }
+
+            // Función común para renderizar gráficos de barras
+            function renderizarGrafico(containerId, datos, pesoPromedio, tipo) {
+                const grafico = document.getElementById(containerId);
+                grafico.innerHTML = '';
+
+                if (!datos || datos.length === 0) {
+                    grafico.innerHTML = '<div class="text-center text-gray-400 py-8">Sin datos disponibles</div>';
+                    return;
+                }
+
+                // Calcular el peso máximo dinámicamente para que las barras sean proporcionales
+                const pesoMaximoReal = Math.max(...datos.map(m => m.peso_kg || 0));
+                // Añadir un 10% de margen para que la barra más grande no llegue al 100%
+                const maxPeso = pesoMaximoReal > 0 ? pesoMaximoReal * 1.1 : 1;
+                const esBalanceado = tipo === 'balanceado';
+
+                // Colores según tipo de gráfico
+                const colores = esBalanceado ? {
+                    bar: 'background: linear-gradient(90deg, #059669 0%, #10b981 100%);',
+                    bg: 'bg-emerald-100',
+                    text: 'text-emerald-700',
+                    accent: '#059669'
+                } : {
+                    bar: 'background: linear-gradient(90deg, #4f46e5 0%, #6366f1 100%);',
+                    bg: 'bg-indigo-100',
+                    text: 'text-indigo-700',
+                    accent: '#4f46e5'
+                };
+
+                datos.forEach((maquina, index) => {
+                    const peso = maquina.peso_kg || 0;
+                    const longitud = maquina.longitud_m || 0;
+                    const diametro = maquina.diametro_medio || 0;
+                    const elementos = maquina.cantidad_elementos || 0;
+                    const porcentaje = (peso / maxPeso) * 100;
+
+                    grafico.innerHTML += `
+                        <div class="grid py-2.5 px-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0" style="grid-template-columns: 100px 1fr 130px; gap: 16px; align-items: center;">
+                            <div class="min-w-0">
+                                <div class="text-sm font-semibold text-slate-700 truncate" title="${maquina.nombre}">${maquina.nombre}</div>
+                                <div class="text-xs text-slate-400">${elementos} elementos</div>
+                            </div>
+                            <div class="h-6 rounded bg-slate-200 overflow-hidden shadow-inner">
+                                <div class="h-full rounded transition-all duration-500 ease-out flex items-center justify-end pr-3"
+                                     style="${colores.bar} width: ${Math.max(porcentaje, peso > 0 ? 5 : 1)}%; min-width: ${peso > 0 ? '30px' : '4px'};">
+                                    <span class="text-xs font-bold text-white drop-shadow-sm whitespace-nowrap">${peso > 0 ? (peso >= 1000 ? Math.round(peso/1000) + 'T' : Math.round(peso) + 'kg') : ''}</span>
+                                </div>
+                            </div>
+                            <div class="text-right min-w-0">
+                                <div class="text-sm font-semibold ${colores.text}">${Math.round(peso).toLocaleString('es-ES')} kg</div>
+                                <div class="text-xs text-slate-400">${Number(longitud).toLocaleString('es-ES')}m · ⌀${diametro}mm</div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                // Línea de promedio
+                if (pesoPromedio > 0) {
+                    grafico.innerHTML += `
+                        <div class="mt-4 pt-3 border-t-2 border-dashed border-slate-200 flex items-center justify-between">
+                            <span class="text-sm text-slate-500 font-medium">Promedio</span>
+                            <span class="text-sm font-bold ${colores.text}">${Math.round(pesoPromedio).toLocaleString('es-ES')} kg</span>
+                        </div>
+                    `;
+                }
+            }
+
+            // Debounce para evitar múltiples ejecuciones seguidas
+            window._debounceGraficoBalanceado = null;
+
+            // Función para calcular y mostrar distribución después de los cambios
+            function actualizarGraficoBalanceado() {
+                // Cancelar ejecución anterior si existe
+                if (_debounceGraficoBalanceado) {
+                    clearTimeout(_debounceGraficoBalanceado);
+                }
+
+                // Ejecutar después de un pequeño delay
+                _debounceGraficoBalanceado = setTimeout(_actualizarGraficoBalanceadoReal, 150);
+            }
+
+            function _actualizarGraficoBalanceadoReal() {
+                const data = window.datosBalanceoOriginal;
+                if (!data || !data.resumen_original) return;
+
+                // Crear copia profunda de los datos originales
+                const datosBalanceados = JSON.parse(JSON.stringify(data.resumen_original));
+
+                // Añadir contadores de diámetros para recalcular el promedio
+                datosBalanceados.forEach(m => {
+                    m._diametros = [];
+                    m._elementosCount = m.cantidad_elementos || 0;
+                    // Simular que tenemos los diámetros originales
+                    if (m.diametro_medio > 0 && m._elementosCount > 0) {
+                        for (let i = 0; i < m._elementosCount; i++) {
+                            m._diametros.push(m.diametro_medio);
+                        }
+                    }
+                });
+
+                // Obtener checkboxes seleccionados
+                const checkboxes = document.querySelectorAll('.balanceo-checkbox:checked');
+
+                // Aplicar los movimientos seleccionados
+                checkboxes.forEach(cb => {
+                    const maquinaActualId = parseInt(cb.dataset.maquinaActual);
+                    const maquinaNuevaId = parseInt(cb.dataset.maquinaNueva);
+                    const peso = parseFloat(cb.dataset.peso) || 0;
+                    const longitud = parseFloat(cb.dataset.longitud) || 0;
+                    const diametro = parseFloat(cb.dataset.diametro) || 0;
+
+                    // Restar del origen
+                    const origen = datosBalanceados.find(m => m.id === maquinaActualId);
+                    if (origen) {
+                        origen.peso_kg = Math.max(0, (origen.peso_kg || 0) - peso);
+                        origen.longitud_m = Math.max(0, (origen.longitud_m || 0) - longitud);
+                        origen.cantidad_elementos = Math.max(0, (origen.cantidad_elementos || 0) - 1);
+                        // Quitar un diámetro del array
+                        if (origen._diametros.length > 0) {
+                            origen._diametros.pop();
+                        }
+                    }
+
+                    // Sumar al destino
+                    const destino = datosBalanceados.find(m => m.id === maquinaNuevaId);
+                    if (destino) {
+                        destino.peso_kg = (destino.peso_kg || 0) + peso;
+                        destino.longitud_m = (destino.longitud_m || 0) + longitud;
+                        destino.cantidad_elementos = (destino.cantidad_elementos || 0) + 1;
+                        destino._diametros.push(diametro);
+                    }
+                });
+
+                // Recalcular diámetro medio para cada máquina
+                datosBalanceados.forEach(m => {
+                    if (m._diametros && m._diametros.length > 0) {
+                        const sumaDiametros = m._diametros.reduce((a, b) => a + b, 0);
+                        m.diametro_medio = Math.round((sumaDiametros / m._diametros.length) * 100) / 100;
+                    } else {
+                        m.diametro_medio = 0;
+                    }
+                });
+
+                // Recalcular promedio de peso
+                const pesoTotal = datosBalanceados.reduce((sum, m) => sum + (m.peso_kg || 0), 0);
+                const pesoPromedio = datosBalanceados.length > 0 ? pesoTotal / datosBalanceados.length : 0;
+
+                // Renderizar gráfico balanceado
+                renderizarGrafico('graficoCargaBalanceada', datosBalanceados, pesoPromedio, 'balanceado');
             }
 
             function cerrarModalBalanceo() {
@@ -4790,21 +5700,35 @@
             function toggleAllBalanceo(checkbox) {
                 const checkboxes = document.querySelectorAll('.balanceo-checkbox');
                 checkboxes.forEach(cb => cb.checked = checkbox.checked);
+                actualizarGraficoBalanceado();
             }
 
             function seleccionarTodosBalanceo() {
                 const checkboxes = document.querySelectorAll('.balanceo-checkbox');
                 checkboxes.forEach(cb => cb.checked = true);
                 document.getElementById('checkAllBalanceo').checked = true;
+                actualizarGraficoBalanceado();
             }
 
             function deseleccionarTodosBalanceo() {
                 const checkboxes = document.querySelectorAll('.balanceo-checkbox');
                 checkboxes.forEach(cb => cb.checked = false);
                 document.getElementById('checkAllBalanceo').checked = false;
+                actualizarGraficoBalanceado();
             }
 
             async function aplicarBalanceo() {
+                // Mostrar loading inmediatamente para feedback visual
+                const btnAplicar = document.getElementById('btnAplicarBalanceo');
+                if (btnAplicar) {
+                    btnAplicar.disabled = true;
+                    btnAplicar.innerHTML =
+                        '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Procesando...';
+                }
+
+                // Usar setTimeout para permitir que el UI se actualice antes de procesar
+                await new Promise(resolve => setTimeout(resolve, 10));
+
                 // Recopilar elementos seleccionados
                 const checkboxes = document.querySelectorAll('.balanceo-checkbox:checked');
                 const movimientos = [];
@@ -4816,6 +5740,13 @@
                         maquina_nueva_id: parseInt(cb.dataset.maquinaNueva)
                     });
                 });
+
+                // Restaurar botón
+                if (btnAplicar) {
+                    btnAplicar.disabled = false;
+                    btnAplicar.innerHTML =
+                        '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Aplicar Balanceo';
+                }
 
                 if (movimientos.length === 0) {
                     Swal.fire({
@@ -4851,25 +5782,42 @@
                 });
 
                 try {
+                    const incluirFabricando = document.getElementById('chkBalancearFabricando')?.checked || false;
+
+                    console.log('Enviando movimientos:', movimientos);
+
                     const response = await fetch('/api/produccion/balancear-carga-aplicar', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         },
-                        body: JSON.stringify({ movimientos })
+                        body: JSON.stringify({
+                            movimientos,
+                            incluir_fabricando: incluirFabricando
+                        })
                     });
 
+                    console.log('Response status:', response.status);
+
                     if (!response.ok) {
-                        throw new Error('Error al aplicar balanceo');
+                        const errorText = await response.text();
+                        console.error('Error response:', errorText);
+                        throw new Error('Error al aplicar balanceo: ' + response.status);
                     }
 
                     const data = await response.json();
 
+                    let mensajeHtml = `Se han redistribuido <strong>${data.procesados}</strong> elemento(s) exitosamente.`;
+                    if (data.omitidos > 0) {
+                        mensajeHtml +=
+                            `<br><small class="text-gray-500">(${data.omitidos} omitidos por estar fabricando)</small>`;
+                    }
+
                     Swal.fire({
                         icon: 'success',
                         title: '¡Balanceo aplicado!',
-                        html: `Se han redistribuido <strong>${data.procesados}</strong> elemento(s) exitosamente.`,
+                        html: mensajeHtml,
                         confirmButtonColor: '#16a34a'
                     });
 
@@ -4880,6 +5828,9 @@
                         calendar.refetchResources();
                         calendar.refetchEvents();
                     }
+
+                    // Actualizar botón de deshacer
+                    actualizarBotonDeshacer();
 
                 } catch (error) {
                     console.error('Error al aplicar balanceo:', error);
@@ -4892,7 +5843,7 @@
             }
 
             // ============================================================
-            // PRIORIZAR OBRA POR FECHA DE ENTREGA
+            // PRIORIZAR OBRAS POR FECHA DE ENTREGA (HASTA 5 POSICIONES)
             // ============================================================
 
             window.datosAgrupaciones = null;
@@ -4927,51 +5878,120 @@
                     // Guardar datos para usar al aplicar
                     window.datosAgrupaciones = agrupaciones;
 
-                    // Agrupar visualmente por obra
-                    const select = document.getElementById('selectObraPriorizar');
-                    select.innerHTML = '<option value="">-- Selecciona obra y fecha --</option>';
+                    // Poblar los 5 selectores
+                    for (let i = 1; i <= 5; i++) {
+                        const select = document.getElementById(`selectPrioridad${i}`);
+                        select.innerHTML = '<option value="">-- Sin selección --</option>';
 
-                    let currentObra = null;
-                    let optgroup = null;
+                        let currentObra = null;
+                        let optgroup = null;
 
-                    agrupaciones.forEach((grupo, index) => {
-                        // Crear optgroup si cambia la obra
-                        if (currentObra !== grupo.obra_id) {
-                            optgroup = document.createElement('optgroup');
-                            optgroup.label = `${grupo.cod_obra} - ${grupo.obra}`;
-                            select.appendChild(optgroup);
-                            currentObra = grupo.obra_id;
-                        }
+                        agrupaciones.forEach((grupo, index) => {
+                            // Crear optgroup si cambia la obra
+                            if (currentObra !== grupo.obra_id) {
+                                optgroup = document.createElement('optgroup');
+                                optgroup.label = `${grupo.cod_obra} - ${grupo.obra}`;
+                                select.appendChild(optgroup);
+                                currentObra = grupo.obra_id;
+                            }
 
-                        const option = document.createElement('option');
-                        option.value = index; // Índice en el array
-                        option.textContent = `📅 ${grupo.fecha_entrega_formatted} (${grupo.planillas_count} planillas)`;
-                        optgroup.appendChild(option);
-                    });
+                            // Mostrar códigos de planillas (máx 3, luego "...")
+                            const codigos = grupo.planillas_codigos || [];
+                            let codigosText = '';
+                            if (codigos.length > 0) {
+                                const mostrar = codigos.slice(0, 3).join(', ');
+                                codigosText = codigos.length > 3 ?
+                                    ` [${mostrar}...]` :
+                                    ` [${mostrar}]`;
+                            }
+
+                            const option = document.createElement('option');
+                            option.value = index;
+                            option.textContent =
+                                `${grupo.fecha_entrega_formatted} (${grupo.planillas_count} pl.)${codigosText}`;
+                            optgroup.appendChild(option);
+                        });
+                    }
 
                     loading.classList.add('hidden');
                     content.classList.remove('hidden');
 
-                    select.onchange = function() {
-                        const idx = this.value;
-                        if (idx !== '' && window.datosAgrupaciones[idx]) {
-                            const grupo = window.datosAgrupaciones[idx];
-                            btnAplicar.classList.remove('hidden');
-                            if (infoDiv) {
-                                infoDiv.classList.remove('hidden');
-                                document.getElementById('infoPlanillasCount').textContent =
-                                    `${grupo.planillas_count} planillas de "${grupo.cod_obra} - ${grupo.obra}" con entrega ${grupo.fecha_entrega_formatted}`;
-                            }
-                        } else {
-                            btnAplicar.classList.add('hidden');
-                            if (infoDiv) infoDiv.classList.add('hidden');
-                        }
-                    };
                 } catch (error) {
                     console.error('Error al cargar obras:', error);
-                    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron cargar las obras' });
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudieron cargar las obras'
+                    });
                     cerrarModalPriorizarObra();
                 }
+            }
+
+            function actualizarInfoPrioridad(posicion) {
+                actualizarResumenPrioridades();
+            }
+
+            function limpiarPrioridad(posicion) {
+                document.getElementById(`selectPrioridad${posicion}`).value = '';
+                actualizarResumenPrioridades();
+            }
+
+            function limpiarTodasPrioridades() {
+                for (let i = 1; i <= 5; i++) {
+                    document.getElementById(`selectPrioridad${i}`).value = '';
+                }
+                actualizarResumenPrioridades();
+            }
+
+            function actualizarResumenPrioridades() {
+                const infoDiv = document.getElementById('infoPriorizacion');
+                const resumenList = document.getElementById('resumenPrioridades');
+                const btnAplicar = document.getElementById('btnAplicarPriorizar');
+
+                const selecciones = obtenerSeleccionesPrioridad();
+
+                if (selecciones.length === 0) {
+                    infoDiv.classList.add('hidden');
+                    btnAplicar.classList.add('hidden');
+                    return;
+                }
+
+                resumenList.innerHTML = '';
+                selecciones.forEach((sel, idx) => {
+                    const codigos = sel.grupo.planillas_codigos || [];
+                    const codigosText = codigos.length > 0 ? ` - ${codigos.join(', ')}` : '';
+                    const li = document.createElement('li');
+                    li.innerHTML =
+                        `<strong>${idx + 1}.</strong> ${sel.grupo.cod_obra} - ${sel.grupo.fecha_entrega_formatted} <span class="text-orange-500">(${sel.grupo.planillas_count} pl.)</span><br><span class="text-xs text-gray-600 ml-4">${codigosText}</span>`;
+                    resumenList.appendChild(li);
+                });
+
+                infoDiv.classList.remove('hidden');
+                btnAplicar.classList.remove('hidden');
+            }
+
+            function obtenerSeleccionesPrioridad() {
+                const selecciones = [];
+                const indicesUsados = new Set();
+
+                for (let i = 1; i <= 5; i++) {
+                    const select = document.getElementById(`selectPrioridad${i}`);
+                    const idx = select.value;
+
+                    if (idx !== '' && window.datosAgrupaciones && window.datosAgrupaciones[idx]) {
+                        // Evitar duplicados
+                        if (!indicesUsados.has(idx)) {
+                            indicesUsados.add(idx);
+                            selecciones.push({
+                                posicion: i,
+                                indice: parseInt(idx),
+                                grupo: window.datosAgrupaciones[idx]
+                            });
+                        }
+                    }
+                }
+
+                return selecciones;
             }
 
             function cerrarModalPriorizarObra() {
@@ -4979,32 +5999,49 @@
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
                 window.datosAgrupaciones = null;
+                // Limpiar selectores
+                for (let i = 1; i <= 5; i++) {
+                    const select = document.getElementById(`selectPrioridad${i}`);
+                    if (select) select.value = '';
+                }
             }
 
             async function aplicarPriorizarObra() {
-                const select = document.getElementById('selectObraPriorizar');
-                const idx = select.value;
+                const selecciones = obtenerSeleccionesPrioridad();
 
-                if (idx === '' || !window.datosAgrupaciones || !window.datosAgrupaciones[idx]) {
-                    Swal.fire({ icon: 'warning', title: 'Selección requerida', text: 'Por favor selecciona una opción' });
+                if (selecciones.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Selección requerida',
+                        text: 'Por favor selecciona al menos una obra'
+                    });
                     return;
                 }
 
-                const grupo = window.datosAgrupaciones[idx];
+                // Preparar resumen para confirmación
+                let resumenHtml = '<div class="text-left"><ol class="list-decimal ml-5 space-y-1">';
+                let totalPlanillas = 0;
+                selecciones.forEach(sel => {
+                    resumenHtml +=
+                        `<li><strong>${sel.grupo.cod_obra}</strong> - ${sel.grupo.fecha_entrega_formatted} (${sel.grupo.planillas_count} planillas)</li>`;
+                    totalPlanillas += sel.grupo.planillas_count;
+                });
+                resumenHtml += '</ol></div>';
+
                 const result = await Swal.fire({
                     icon: 'question',
-                    title: '¿Priorizar estas planillas?',
-                    html: `<strong>${grupo.planillas_count} planillas</strong> de <strong>${grupo.cod_obra} - ${grupo.obra}</strong><br>
-                           Fecha de entrega: <strong>${grupo.fecha_entrega_formatted}</strong><br><br>
-                           Se moverán al inicio de la cola en cada máquina.<br><br>
+                    title: '¿Aplicar estas prioridades?',
+                    html: `${resumenHtml}<br>
+                           <strong>Total: ${totalPlanillas} planillas</strong> se reordenarán según el orden indicado.<br><br>
                            <label class="flex items-center justify-center gap-2 cursor-pointer">
                                <input type="checkbox" id="pararFabricando" class="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
-                               <span class="text-sm text-gray-700">Parar planillas en posición 1 que estén fabricando</span>
+                               <span class="text-sm text-gray-700">Parar planillas que estén fabricando si es necesario</span>
                            </label>`,
                     showCancelButton: true,
-                    confirmButtonText: 'Sí, priorizar',
+                    confirmButtonText: 'Sí, aplicar',
                     cancelButtonText: 'Cancelar',
                     confirmButtonColor: '#f97316',
+                    width: '500px',
                     preConfirm: () => {
                         return {
                             pararFabricando: document.getElementById('pararFabricando').checked
@@ -5016,19 +6053,35 @@
 
                 const pararFabricando = result.value?.pararFabricando || false;
 
-                Swal.fire({ title: 'Priorizando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                Swal.fire({
+                    title: 'Aplicando prioridades...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
 
                 try {
-                    const response = await fetch('/api/produccion/priorizar-obra', {
+                    // Preparar datos para enviar al backend
+                    const prioridades = selecciones.map(sel => ({
+                        obra_id: sel.grupo.obra_id,
+                        planillas_ids: sel.grupo.planillas_ids,
+                        fecha_entrega: sel.grupo.fecha_entrega
+                    }));
+
+                    // Obtener el valor del checkbox del modal
+                    const incluirFabricando = document.getElementById('chkPriorizarFabricando')?.checked || false;
+
+                    // Extraer solo los IDs de obras
+                    const obrasIds = prioridades.map(p => p.obra_id);
+
+                    const response = await fetch('/api/produccion/priorizar-obras', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         },
                         body: JSON.stringify({
-                            obra_id: grupo.obra_id,
-                            planillas_ids: grupo.planillas_ids,
-                            parar_fabricando: pararFabricando
+                            obras: obrasIds,
+                            incluir_fabricando: incluirFabricando
                         })
                     });
 
@@ -5037,7 +6090,7 @@
 
                     Swal.fire({
                         icon: 'success',
-                        title: '¡Planillas priorizadas!',
+                        title: '¡Prioridades aplicadas!',
                         html: data.message,
                         confirmButtonColor: '#f97316'
                     });
@@ -5047,8 +6100,15 @@
                         calendar.refetchResources();
                         calendar.refetchEvents();
                     }
+
+                    // Actualizar botón de deshacer
+                    actualizarBotonDeshacer();
                 } catch (error) {
-                    Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'No se pudo priorizar' });
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message || 'No se pudieron aplicar las prioridades'
+                    });
                 }
             }
 
@@ -5081,6 +6141,7 @@
                     }
 
                     const data = await response.json();
+                    console.log('Respuesta resumen:', JSON.stringify(data, null, 2));
 
                     if (data.success) {
                         // Llenar estadísticas
@@ -5106,19 +6167,24 @@
 
                                 let obrasHtml = '';
                                 let totalPlanillas = 0;
-                                cliente.obras.forEach(obra => {
+
+                                // Verificar que cliente.obras existe y es un array
+                                const obras = cliente.obras || [];
+                                obras.forEach(obra => {
                                     // Contar planillas de todas las fechas
                                     let planillasObra = 0;
-                                    obra.fechas.forEach(fecha => {
-                                        planillasObra += fecha.planillas.length;
+                                    const fechas = obra.fechas || [];
+                                    fechas.forEach(fecha => {
+                                        planillasObra += (fecha.planillas || []).length;
                                     });
                                     totalPlanillas += planillasObra;
 
                                     // Generar HTML para cada fecha de entrega
                                     let fechasHtml = '';
-                                    obra.fechas.forEach(fecha => {
+                                    fechas.forEach(fecha => {
                                         let planillasHtml = '';
-                                        fecha.planillas.forEach(planilla => {
+                                        const planillas = fecha.planillas || [];
+                                        planillas.forEach(planilla => {
                                             planillasHtml += `
                                                 <tr class="hover:bg-gray-50">
                                                     <td class="px-3 py-2">
@@ -5148,7 +6214,7 @@
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                                     </svg>
                                                     <span class="text-sm font-medium text-green-800">Entrega: ${fecha.fecha_entrega}</span>
-                                                    <span class="text-xs text-green-600">(${fecha.planillas.length} planilla${fecha.planillas.length > 1 ? 's' : ''})</span>
+                                                    <span class="text-xs text-green-600">(${planillas.length} planilla${planillas.length > 1 ? 's' : ''})</span>
                                                 </div>
                                                 <table class="min-w-full text-sm">
                                                     <thead class="bg-gray-50">
@@ -5262,6 +6328,145 @@
             }
 
             // ============================================================
+            // DESHACER ÚLTIMA OPERACIÓN
+            // ============================================================
+
+            // Verificar si hay snapshot disponible al cargar la página
+            async function verificarSnapshotDisponible() {
+                try {
+                    const response = await fetch('/api/produccion/ultimo-snapshot', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+
+                    const data = await response.json();
+                    const btn = document.getElementById('deshacer-btn');
+
+                    if (data.success && data.snapshot) {
+                        btn.disabled = false;
+                        btn.title = `Deshacer: ${data.snapshot.tipo_operacion} (${data.snapshot.created_at})`;
+                    } else {
+                        btn.disabled = true;
+                        btn.title = 'No hay operaciones para deshacer';
+                    }
+                } catch (error) {
+                    console.error('Error verificando snapshot:', error);
+                }
+            }
+
+            // Ejecutar al cargar y después de cada operación
+            document.addEventListener('DOMContentLoaded', verificarSnapshotDisponible);
+
+            async function deshacerUltimaOperacion() {
+                try {
+                    // Primero verificar qué se va a deshacer
+                    const checkResponse = await fetch('/api/produccion/ultimo-snapshot', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+
+                    const checkData = await checkResponse.json();
+
+                    if (!checkData.success || !checkData.snapshot) {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Sin cambios',
+                            text: 'No hay operaciones para deshacer'
+                        });
+                        return;
+                    }
+
+                    const snapshot = checkData.snapshot;
+                    const tipoTexto = {
+                        'optimizar_planillas': 'Optimizar Planillas',
+                        'balancear_carga': 'Balancear Carga',
+                        'priorizar_obras': 'Priorizar Obras'
+                    } [snapshot.tipo_operacion] || snapshot.tipo_operacion;
+
+                    // Confirmar con el usuario
+                    const result = await Swal.fire({
+                        icon: 'warning',
+                        title: '¿Deshacer última operación?',
+                        html: `
+                            <div class="text-left">
+                                <p class="mb-2"><strong>Operación:</strong> ${tipoTexto}</p>
+                                <p class="mb-2"><strong>Realizada:</strong> ${snapshot.created_at}</p>
+                                <p class="mb-2"><strong>Por:</strong> ${snapshot.user}</p>
+                            </div>
+                            <p class="mt-4 text-sm text-gray-500">Esta acción restaurará el estado anterior de las planillas y elementos.</p>
+                        `,
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, deshacer',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#6b7280'
+                    });
+
+                    if (!result.isConfirmed) return;
+
+                    // Mostrar loading
+                    Swal.fire({
+                        title: 'Deshaciendo...',
+                        html: 'Restaurando estado anterior',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+
+                    // Ejecutar restauración
+                    const response = await fetch('/api/produccion/restaurar-snapshot', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            snapshot_id: snapshot.id
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Operación deshecha!',
+                            text: data.message,
+                            confirmButtonColor: '#6b7280'
+                        });
+
+                        // Refrescar calendario
+                        if (typeof calendar !== 'undefined') {
+                            calendar.refetchResources();
+                            calendar.refetchEvents();
+                        }
+
+                        // Verificar si hay más snapshots
+                        verificarSnapshotDisponible();
+                    } else {
+                        throw new Error(data.message || 'Error al deshacer');
+                    }
+
+                } catch (error) {
+                    console.error('Error al deshacer:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message || 'No se pudo deshacer la operación'
+                    });
+                }
+            }
+
+            // Actualizar botón después de cada operación exitosa
+            function actualizarBotonDeshacer() {
+                verificarSnapshotDisponible();
+            }
+
+            // ============================================================
             // GESTIÓN DE TURNOS
             // ============================================================
 
@@ -5318,14 +6523,16 @@
                     }
 
                     // Mostrar mensaje
-                    const mensaje = nuevoActivo
-                        ? `✅ Turno "${turnoNombre}" activado`
-                        : `⏸️ Turno "${turnoNombre}" desactivado`;
+                    const mensaje = nuevoActivo ?
+                        `✅ Turno "${turnoNombre}" activado` :
+                        `⏸️ Turno "${turnoNombre}" desactivado`;
 
                     // Crear toast notification
                     const toast = document.createElement('div');
-                    toast.className = 'fixed top-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg transition-all duration-300 ' +
-                        (nuevoActivo ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-gray-100 text-gray-800 border border-gray-300');
+                    toast.className =
+                        'fixed top-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg transition-all duration-300 ' +
+                        (nuevoActivo ? 'bg-green-100 text-green-800 border border-green-300' :
+                            'bg-gray-100 text-gray-800 border border-gray-300');
                     toast.innerHTML = `
                         <div class="flex items-center gap-2">
                             <span class="text-xl">${nuevoActivo ? '✅' : '⏸️'}</span>
@@ -5363,7 +6570,8 @@
 
                     // Mostrar error
                     const errorToast = document.createElement('div');
-                    errorToast.className = 'fixed top-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg bg-red-100 text-red-800 border border-red-300';
+                    errorToast.className =
+                        'fixed top-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg bg-red-100 text-red-800 border border-red-300';
                     errorToast.innerHTML = `
                         <div class="flex items-center gap-2">
                             <span class="text-xl">❌</span>
@@ -5385,6 +6593,46 @@
             }
 
             // ============================================================
+            // 🚀 INICIALIZACIÓN ROBUSTA SPA / LIVEWIRE
+            // ============================================================
 
+            window.initProduccionMaquinasPage = function() {
+                // Verificar si estamos estrictamente en la página de máquinas
+                // Buscamos el elemento de datos específico o el atributo de tipo
+                const isMaquinasPage = document.getElementById('calendario-maquinas-data') &&
+                    document.querySelector('#calendario[data-calendar-type="maquinas"]');
+
+                if (!isMaquinasPage) {
+                    // Si no estamos en la página de máquinas, detener cualquier polling activo
+                    if (typeof window.stopPolling === 'function') {
+                        // Solo loguear si realmente había algo que detener
+                        if (window._maquinasPollingInterval) {
+                            console.log('⏸️ Deteniendo polling de máquinas por navegación');
+                        }
+                        window.stopPolling();
+                    }
+                    return;
+                }
+
+                if (typeof window.inicializarCalendarioMaquinas === 'function') {
+                    window.inicializarCalendarioMaquinas();
+                } else {
+                    console.error('❌ window.inicializarCalendarioMaquinas no encontrada');
+                }
+            };
+
+            // Ejecutar en carga inicial
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', window.initProduccionMaquinasPage);
+            } else {
+                window.initProduccionMaquinasPage();
+            }
+
+            // Ejecutar en navegación SPA - Asegurar Listener Único Global
+            if (!window._maquinasListenerAdded) {
+                document.addEventListener('livewire:navigated', window.initProduccionMaquinasPage);
+                window._maquinasListenerAdded = true;
+                // console.log('✅ Listener SPA de [Máquinas] registrado por primera vez');
+            }
         </script>
 </x-app-layout>

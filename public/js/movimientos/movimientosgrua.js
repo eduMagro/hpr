@@ -1,23 +1,134 @@
-document.addEventListener("DOMContentLoaded", () => {
-    // variables
-    const QRINPUT = document.getElementById("codigo_general_general"); // input donde escribe el escáner
-    const LISTAQRS = document.getElementById("mostrar_qrs"); // contenedor visual de códigos
-    const INPUT_OCULTO = document.getElementById("lista_qrs"); // input hidden que viaja al backend
-    const FORM = document.getElementById("form-movimiento-general"); // formulario
-    const CANCELAR_BTN = document.getElementById("cancelar_btn"); // botón cancelar
+// Estado global para el módulo de movimientos grúa
+window._movimientosGruaState = window._movimientosGruaState || {
+    yaEscaneados: [],
+    cacheInfo: new Map(),
+    initialized: false
+};
+
+// Función auxiliar para crear un chip y cargar su info
+function _crearChipQR(escaneado, LISTAQRS, state) {
     const API_INFO_URL = LISTAQRS.dataset.apiInfoUrl || "/api/codigos/info";
+    const pill = document.createElement("span");
+    pill.className = "qr-chip loading";
+    pill.textContent = escaneado;
+    pill.dataset.code = escaneado;
+    pill.title = "Click para eliminar";
 
-    // array con los codigos ya escaneados (estado)
-    let yaEscaneados = [];
+    pill.addEventListener("click", () => {
+        state.yaEscaneados = state.yaEscaneados.filter((c) => c !== escaneado);
+        pill.remove();
+        const INPUT_OCULTO = document.getElementById("lista_qrs");
+        if (INPUT_OCULTO) INPUT_OCULTO.value = JSON.stringify(state.yaEscaneados);
+        if (navigator && typeof navigator.vibrate === "function") navigator.vibrate(60);
+    });
 
-    // cache de respuestas para no repetir llamadas
-    const cacheInfo = new Map(); // code -> {ok, ...}
+    LISTAQRS.appendChild(pill);
 
-    // si el hidden ya trae datos (editar), los cargamos
+    // Cargar info async
+    (async () => {
+        try {
+            const url = new URL(API_INFO_URL, window.location.origin);
+            url.searchParams.set("code", escaneado);
+            const res = await fetch(url.toString(), {
+                method: "GET",
+                headers: { Accept: "application/json" },
+                credentials: "same-origin",
+            });
+            const data = await res.json().catch(() => ({}));
+            state.cacheInfo.set(escaneado, data);
+
+            const currentPill = LISTAQRS.querySelector(`[data-code="${escaneado}"]`);
+            if (currentPill) {
+                currentPill.classList.remove("loading", "error");
+                if (!data || data.ok === false) {
+                    currentPill.classList.add("error");
+                    currentPill.textContent = `${escaneado} · error`;
+                } else {
+                    const partes = [];
+                    if (data.sigla) partes.push(data.sigla);
+                    partes.push(data.codigo);
+                    if (data.diametro !== null && data.diametro !== undefined) {
+                        partes.push(`Ø${data.diametro} mm`);
+                    }
+                    if (data.longitud) {
+                        const isEncarretado = String(data.tipo || "").toLowerCase().includes("encarretado");
+                        if (!isEncarretado) partes.push(`L:${data.longitud} mm`);
+                    }
+                    currentPill.textContent = partes.join(" · ");
+                }
+            }
+        } catch (e) {
+            const currentPill = LISTAQRS.querySelector(`[data-code="${escaneado}"]`);
+            if (currentPill) {
+                currentPill.classList.remove("loading");
+                currentPill.classList.add("error");
+                currentPill.textContent = `${escaneado} · error`;
+            }
+        }
+    })();
+}
+
+// Función global para agregar QR - siempre disponible
+window.agregarQRMovimientoLibre = function(valor) {
+    const state = window._movimientosGruaState;
+    const LISTAQRS = document.getElementById("mostrar_qrs");
+    const INPUT_OCULTO = document.getElementById("lista_qrs");
+
+    if (!LISTAQRS || !INPUT_OCULTO) {
+        console.warn('[agregarQRMovimientoLibre] Elementos del modal no encontrados');
+        return false;
+    }
+
+    const escaneado = String(valor).trim();
+    if (!escaneado) return false;
+
+    // duplicado exacto
+    if (!state.yaEscaneados.includes(escaneado)) {
+        state.yaEscaneados.push(escaneado);
+        INPUT_OCULTO.value = JSON.stringify(state.yaEscaneados);
+
+        _crearChipQR(escaneado, LISTAQRS, state);
+
+        if (navigator && typeof navigator.vibrate === "function") navigator.vibrate(100);
+        return true;
+    } else {
+        // Duplicado - resaltar
+        const pill = LISTAQRS.querySelector(`[data-code="${escaneado}"]`);
+        if (pill) {
+            pill.style.outline = "2px solid #991b1b";
+            setTimeout(() => (pill.style.outline = ""), 500);
+        }
+        if (navigator && typeof navigator.vibrate === "function") navigator.vibrate(50);
+        return false;
+    }
+};
+
+function initMovimientosGrua() {
+    const QRINPUT = document.getElementById("codigo_general_general");
+    const LISTAQRS = document.getElementById("mostrar_qrs");
+    const INPUT_OCULTO = document.getElementById("lista_qrs");
+    const FORM = document.getElementById("form-movimiento-general");
+    const CANCELAR_BTN = document.getElementById("cancelar_btn");
+
+    if (!QRINPUT || !LISTAQRS || !INPUT_OCULTO || !FORM) {
+        return;
+    }
+
+    // Evitar inicialización múltiple
+    if (QRINPUT.dataset.initialized === 'true') {
+        return;
+    }
+    QRINPUT.dataset.initialized = 'true';
+
+    const state = window._movimientosGruaState;
+    state.initialized = true;
+
+    // Si el hidden ya trae datos (editar), los cargamos
+    let codigosIniciales = [];
     try {
         const inicial = JSON.parse(INPUT_OCULTO.value || "[]");
         if (Array.isArray(inicial)) {
-            yaEscaneados = Array.from(
+            codigosIniciales = Array.from(
                 new Set(
                     inicial
                         .map((v) => String(v).trim().toUpperCase())
@@ -29,208 +140,76 @@ document.addEventListener("DOMContentLoaded", () => {
         /* no-op */
     }
 
-    // utilidad: vibración para feedback
-    const vibrar = (ms = 100) =>
-        navigator &&
-        typeof navigator.vibrate === "function" &&
-        navigator.vibrate(ms);
+    // Limpiar estado y renderizar lista inicial
+    state.yaEscaneados = [];
+    LISTAQRS.innerHTML = "";
 
-    // utilidad: sincroniza el hidden con el array actual
-    function syncHidden(filtrarErrores = false) {
-        const lista = filtrarErrores
-            ? yaEscaneados.filter((c) => !esError(c))
-            : yaEscaneados;
-        INPUT_OCULTO.value = JSON.stringify(lista);
-    }
+    // Agregar cada código inicial (esto los añade al array Y crea los chips)
+    codigosIniciales.forEach((code) => {
+        window.agregarQRMovimientoLibre(code);
+    });
 
-    // formatea el contenido final del chip con la info recibida del backend
-    function formatearChip(info) {
-        // info: { ok, clase, codigo, sigla, tipo, diametro, longitud }
-        const partes = [];
-        if (info.sigla) partes.push(info.sigla); // B / E / PAQ...
-        partes.push(info.codigo); // MP********
-        if (info.diametro !== null && info.diametro !== undefined) {
-            partes.push(`Ø${info.diametro} mm`);
-        }
-        if (info.longitud) {
-            const isEncarretado = String(info.tipo || "")
-                .toLowerCase()
-                .includes("encarretado");
-            if (!isEncarretado) partes.push(`L:${info.longitud} mm`);
-        }
-        return partes.join(" · ");
-    }
-
-    // crea un chip básico (mientras carga) y lo deja listo para eliminarse con click
-    function crearChipBase(codigo) {
-        const pill = document.createElement("span");
-        pill.className = "qr-chip loading"; // estado “cargando”
-        pill.textContent = codigo; // contenido provisional: el código
-        pill.dataset.code = codigo; // data attribute por si hace falta localizarlo
-        pill.title = "Click para eliminar"; // hint
-
-        // al clickar, eliminar el código de la lista y del hidden
-        pill.addEventListener("click", () => {
-            yaEscaneados = yaEscaneados.filter((c) => c !== codigo);
-            pill.remove();
-            syncHidden(); // sincronizamos el hidden
-            vibrar(60);
-        });
-
-        return pill;
-    }
-
-    // actualiza un chip ya pintado con la info (si el usuario no lo borró antes)
-    function actualizarChipConInfo(codigo, info) {
-        const pill = LISTAQRS.querySelector(`[data-code="${codigo}"]`);
-        if (!pill) return; // si ya se borró, no hacemos nada
-        pill.classList.remove("loading", "error");
-
-        if (!info || info.ok === false) {
-            pill.classList.add("error");
-            pill.textContent = `${codigo} · error`;
-            return;
-        }
-        pill.textContent = formatearChip(info);
-    }
-
-    // hace la llamada asíncrona; no bloquea la UI
-    async function cargarInfoAsync(codigo) {
-        // si ya está en cache, úsalo
-        if (cacheInfo.has(codigo)) {
-            actualizarChipConInfo(codigo, cacheInfo.get(codigo));
-            return;
-        }
-        try {
-            const url = new URL(API_INFO_URL, window.location.origin);
-            url.searchParams.set("code", codigo);
-
-            const res = await fetch(url.toString(), {
-                method: "GET",
-                headers: { Accept: "application/json" },
-                credentials: "same-origin",
-            });
-
-            const data = await res.json().catch(() => ({}));
-            cacheInfo.set(codigo, data);
-            actualizarChipConInfo(codigo, data);
-        } catch (e) {
-            const data = { ok: false, error: "network" };
-            cacheInfo.set(codigo, data);
-            actualizarChipConInfo(codigo, data);
-        }
-    }
-
-    // renderiza SOLO el nuevo chip y lanza su fetch en background
-    function renderChipNuevo(codigoNuevo) {
-        const pill = crearChipBase(codigoNuevo);
-        LISTAQRS.appendChild(pill); // pintamos ya
-        cargarInfoAsync(codigoNuevo); // enriquecemos en background
-    }
-
-    // repinta toda la lista (por ejemplo, tras cancelar)
-    function renderLista() {
-        LISTAQRS.innerHTML = "";
-        yaEscaneados.forEach((code) => renderChipNuevo(code));
-        syncHidden();
-    }
-
-    // agregar el código si es válido y no está repetido
-    function agregarSiValido(valor) {
-        const escaneado = String(valor).trim();
-        if (!escaneado) return; // vacío, fuera
-
-        // duplicado exacto (respetando may/min tal cual)
-        if (!yaEscaneados.includes(escaneado)) {
-            yaEscaneados.push(escaneado);
-            syncHidden();
-            renderChipNuevo(escaneado); // hace la llamada async y “devuelve el elemento”
-            vibrar(100);
-        } else {
-            const pill = LISTAQRS.querySelector(`[data-code="${escaneado}"]`);
-            if (pill) {
-                pill.style.outline = "2px solid #991b1b";
-                setTimeout(() => (pill.style.outline = ""), 500);
-            }
-            vibrar(50);
-        }
-    }
-
-    // Si se cancela se borran los códigos escaneados (si el botón existe)
+    // Si se cancela se borran los códigos escaneados
     if (CANCELAR_BTN) {
         CANCELAR_BTN.addEventListener("click", (e) => {
-            cerrarModalMovimientoLibre();
+            if (typeof cerrarModalMovimientoLibre === 'function') {
+                cerrarModalMovimientoLibre();
+            }
             e.preventDefault();
             e.stopPropagation();
-            resetEscaneos();
+
+            state.yaEscaneados.length = 0;
+            INPUT_OCULTO.value = "[]";
+            if ("defaultValue" in INPUT_OCULTO) INPUT_OCULTO.defaultValue = "[]";
+            INPUT_OCULTO.dispatchEvent(new Event("change", { bubbles: true }));
+            LISTAQRS.innerHTML = "";
+            state.cacheInfo.clear();
+            if (QRINPUT) QRINPUT.value = "";
+            if (navigator && typeof navigator.vibrate === "function") navigator.vibrate(60);
         });
     }
 
-    // devuelve true si ese código está marcado como error en el caché
     function esError(codigo) {
-        const info = cacheInfo.get(codigo);
+        const info = state.cacheInfo.get(codigo);
         return info && info.ok === false;
     }
 
-    // Cuando se modifique el input de qr:
-    QRINPUT.addEventListener("input", () => {});
-
-    // Aceptar también con Enter (algunos escáneres envían Enter al final)
+    // Aceptar con Enter
     QRINPUT.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.keyCode === 13) {
             e.preventDefault();
-            agregarSiValido(QRINPUT.value);
+            window.agregarQRMovimientoLibre(QRINPUT.value);
             QRINPUT.value = "";
         }
     });
 
-    // Permitir pegar varios códigos separados por coma/espacio/salto de línea
+    // Permitir pegar varios códigos
     QRINPUT.addEventListener("paste", (e) => {
         e.preventDefault();
-        const txt =
-            (e.clipboardData || window.clipboardData).getData("text") || "";
+        const txt = (e.clipboardData || window.clipboardData).getData("text") || "";
         txt.split(/[,\s;]+/)
             .filter(Boolean)
-            .forEach(agregarSiValido);
+            .forEach((code) => window.agregarQRMovimientoLibre(code));
         QRINPUT.value = "";
     });
 
-    // Pintamos lo que pudiera venir precargado (edición)
-    renderLista();
-
-    // Seguridad: antes de enviar garantizamos que el hidden esté actualizado
+    // Antes de enviar, filtrar errores
     FORM.addEventListener("submit", (e) => {
-        // calcula válidos (excluye los que ya están marcados como error)
-        const validos = yaEscaneados.filter((c) => !esError(c));
-        const removidos = yaEscaneados.length - validos.length;
-
-        // escribe SOLO los válidos al hidden
+        const validos = state.yaEscaneados.filter((c) => !esError(c));
+        const removidos = state.yaEscaneados.length - validos.length;
         INPUT_OCULTO.value = JSON.stringify(validos);
-
-        // si quieres, deja un aviso en consola (no molesta al usuario)
         if (removidos > 0) {
-            console.warn(
-                `[QR] ${removidos} código(s) con error no se enviaron`
-            );
+            console.warn(`[QR] ${removidos} código(s) con error no se enviaron`);
         }
     });
+}
 
-    function resetEscaneos() {
-        // Vacía el array sin perder la referencia (más seguro si alguien lo retiene)
-        yaEscaneados.length = 0;
+// Inicialización: detectar si DOM ya está listo
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initMovimientosGrua);
+} else {
+    initMovimientosGrua();
+}
 
-        // Sincroniza hidden y su defaultValue por si el DOM se rehidrata
-        INPUT_OCULTO.value = "[]";
-        if ("defaultValue" in INPUT_OCULTO) INPUT_OCULTO.defaultValue = "[]";
-        INPUT_OCULTO.dispatchEvent(new Event("change", { bubbles: true }));
-
-        // Limpia chips y caché
-        LISTAQRS.innerHTML = "";
-        cacheInfo.clear();
-
-        // Limpia el input visible
-        if (QRINPUT) QRINPUT.value = "";
-
-        vibrar(60);
-    }
-});
+// Soporte para navegación Livewire
+document.addEventListener("livewire:navigated", initMovimientosGrua);

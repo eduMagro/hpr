@@ -51,8 +51,7 @@
                                                     class="border mb-2 px-2 py-1 rounded-md w-20 sm:w-auto max-w-full"
                                                     x-model="idIngresado"
                                                     @input="paqueteVerificado = (idIngresado == paqueteId);">
-                                                <span x-show="paqueteVerificado"
-                                                    class="text-green-500">&#10004;</span>
+                                                <span x-show="paqueteVerificado" class="text-green-500">&#10004;</span>
                                                 <span x-show="!paqueteVerificado && idIngresado"
                                                     class="text-red-500">&#10008;</span>
                                                 <button onclick="mostrarDibujo({{ $paquete->id }})"
@@ -384,7 +383,8 @@
                     const selCamion = findCamionSelectByKey(key);
                     if (selCamion) {
                         selCamion.innerHTML = '';
-                        selCamion.appendChild(opcionesCamion(empresaId, null)); // limpia selección de camión
+                        selCamion.appendChild(opcionesCamion(empresaId,
+                        null)); // limpia selección de camión
                     }
                     if (!canEdit) return;
 
@@ -484,6 +484,34 @@
             initSalidasIndexCamiones();
         }
         document.addEventListener('livewire:navigated', initSalidasIndexCamiones);
+    </script>
+
+    {{-- Inicialización maestra con patrón robusto --}}
+    <script>
+        function initSalidasIndexPage() {
+            // Prevenir doble inicialización
+            if (document.body.dataset.salidasIndexPageInit === 'true') return;
+
+            console.log('🔍 Inicializando Salidas Index...');
+
+            // Llamar a las funciones de inicialización
+            if (typeof initSalidasIndexCamiones === 'function') initSalidasIndexCamiones();
+
+            // Marcar como inicializado
+            document.body.dataset.salidasIndexPageInit = 'true';
+        }
+
+        // Registrar en el sistema global
+        window.pageInitializers.push(initSalidasIndexPage);
+
+        // Configurar listeners
+        document.addEventListener('livewire:navigated', initSalidasIndexPage);
+        document.addEventListener('DOMContentLoaded', initSalidasIndexPage);
+
+        // Limpiar flag antes de navegar
+        document.addEventListener('livewire:navigating', () => {
+            document.body.dataset.salidasIndexPageInit = 'false';
+        });
     </script>
 
 </x-app-layout>

@@ -385,6 +385,11 @@ class ElementosTable extends Component
 
     public function render()
     {
+        // Iniciar medición de tiempo
+        $startTime = microtime(true);
+        $queryCount = count(\DB::getQueryLog());
+        \DB::enableQueryLog();
+
         $query = Elemento::with([
             'planilla',
             'etiquetaRelacion',
@@ -416,11 +421,17 @@ class ElementosTable extends Component
         if (!empty($this->planilla_id)) {
             $planilla = Planilla::with(['cliente', 'obra', 'revisor'])->find($this->planilla_id);
         } elseif (!empty($this->codigo_planilla)) {
-            // Buscar por código de planilla
             $planilla = Planilla::with(['cliente', 'obra', 'revisor'])
                 ->where('codigo', 'like', '%' . trim($this->codigo_planilla) . '%')
                 ->first();
         }
+
+        // Calcular métricas de rendimiento
+        $endTime = microtime(true);
+        $loadTime = round(($endTime - $startTime) * 1000, 2);
+        $queries = \DB::getQueryLog();
+        $queryCountFinal = count($queries) - $queryCount;
+        $memoryUsage = round(memory_get_usage() / 1024 / 1024, 2);
 
         return view('livewire.elementos-table', [
             'elementos' => $elementos,
@@ -428,6 +439,9 @@ class ElementosTable extends Component
             'totalPesoFiltrado' => $totalPesoFiltrado,
             'planilla' => $planilla,
             'filtrosActivos' => $this->getFiltrosActivos(),
+            'loadTime' => $loadTime,
+            'queryCount' => $queryCountFinal,
+            'memoryUsage' => $memoryUsage,
         ]);
     }
 }

@@ -4,9 +4,19 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MovimientoController;
 use App\Http\Controllers\PaqueteController;
 use App\Http\Controllers\AsistenteVirtualController;
+use App\Http\Controllers\ProductoController;
+use App\Http\Controllers\ResumenEtiquetaController;
 
 Route::get('/codigos/info', [MovimientoController::class, 'infoCodigo'])
     ->name('api.codigos.info');   // ← este será el nombre exacto
+
+// Buscar producto por código (para escaneo QR en grúa)
+Route::get('/productos/buscar-por-codigo', [ProductoController::class, 'buscarPorCodigo'])
+    ->name('api.productos.buscar-por-codigo');
+
+// Sugerencias de productos por diámetro/longitud (para modal de grúa)
+Route::get('/productos/sugerencias', [ProductoController::class, 'sugerenciasPorDiametroLongitud'])
+    ->name('api.productos.sugerencias');
 Route::get('/planillas/{planillaId}/paquetes', [PaqueteController::class, 'obtenerPaquetesPorPlanilla'])
     ->name('api.planillas.paquetes');
 Route::post('/paquetes/{paqueteId}/añadir-etiqueta', [PaqueteController::class, 'añadirEtiquetaAPaquete'])
@@ -31,4 +41,84 @@ Route::prefix('asistente')->group(function () {
 
     // Ver estadísticas de uso
     Route::get('/estadisticas', [AsistenteVirtualController::class, 'estadisticas'])->name('asistente.estadisticas');
+});
+
+// Obtener longitud del producto asignado a una etiqueta (para segundo clic en cortadora)
+Route::get('/etiquetas/{etiquetaSubId}/longitud-asignada', [App\Http\Controllers\EtiquetaController::class, 'longitudAsignada'])
+    ->name('api.etiquetas.longitud-asignada');
+
+// Rutas para el sistema de resumen de etiquetas
+Route::prefix('etiquetas/resumir')->group(function () {
+    // Vista previa de grupos que se crearían
+    Route::get('/preview', [ResumenEtiquetaController::class, 'preview'])
+        ->name('api.etiquetas.resumir.preview');
+
+    // Ejecutar resumen
+    Route::post('/', [ResumenEtiquetaController::class, 'resumir'])
+        ->name('api.etiquetas.resumir');
+
+    // Obtener grupos activos
+    Route::get('/grupos', [ResumenEtiquetaController::class, 'grupos'])
+        ->name('api.etiquetas.resumir.grupos');
+
+    // Desagrupar todos los grupos de una planilla
+    Route::post('/desagrupar-todos', [ResumenEtiquetaController::class, 'desagruparTodos'])
+        ->name('api.etiquetas.resumir.desagrupar-todos');
+
+    // Desagrupar un grupo específico
+    Route::post('/{grupo}/desagrupar', [ResumenEtiquetaController::class, 'desagrupar'])
+        ->name('api.etiquetas.resumir.desagrupar');
+
+    // Deshacer estado de un grupo (completada -> fabricando -> pendiente)
+    Route::post('/{grupo}/deshacer-estado', [ResumenEtiquetaController::class, 'deshacerEstado'])
+        ->name('api.etiquetas.resumir.deshacer-estado');
+
+    // Obtener etiquetas de un grupo para imprimir
+    Route::get('/{grupo}/imprimir', [ResumenEtiquetaController::class, 'etiquetasParaImprimir'])
+        ->name('api.etiquetas.resumir.imprimir');
+
+    // Cambiar estado de todas las etiquetas del grupo (fabricando/completada)
+    Route::put('/{grupo}/estado', [ResumenEtiquetaController::class, 'cambiarEstado'])
+        ->name('api.etiquetas.resumir.estado');
+
+    // === RUTAS MULTI-PLANILLA ===
+    // Vista previa de resumen entre planillas revisadas
+    Route::get('/multiplanilla/preview', [ResumenEtiquetaController::class, 'previewMultiplanilla'])
+        ->name('api.etiquetas.resumir.multiplanilla.preview');
+
+    // Ejecutar resumen multi-planilla
+    Route::post('/multiplanilla', [ResumenEtiquetaController::class, 'resumirMultiplanilla'])
+        ->name('api.etiquetas.resumir.multiplanilla');
+
+    // Obtener grupos multi-planilla activos
+    Route::get('/multiplanilla/grupos', [ResumenEtiquetaController::class, 'gruposMultiplanilla'])
+        ->name('api.etiquetas.resumir.multiplanilla.grupos');
+
+    // Desagrupar todos los grupos multi-planilla de una máquina
+    Route::post('/multiplanilla/desagrupar-todos', [ResumenEtiquetaController::class, 'desagruparTodosMultiplanilla'])
+        ->name('api.etiquetas.resumir.multiplanilla.desagrupar-todos');
+
+    // Reagrupar manualmente (habilita etiquetas desagrupadas + ejecuta resumen)
+    Route::post('/multiplanilla/reagrupar', [ResumenEtiquetaController::class, 'reagruparManual'])
+        ->name('api.etiquetas.resumir.multiplanilla.reagrupar');
+
+    // Habilitar reagrupación para etiquetas específicas o todas de una máquina
+    Route::post('/multiplanilla/habilitar-reagrupacion', [ResumenEtiquetaController::class, 'habilitarReagrupacion'])
+        ->name('api.etiquetas.resumir.multiplanilla.habilitar-reagrupacion');
+});
+
+// =====================================================================
+// FERRAWIN SYNC API
+// =====================================================================
+use App\Http\Controllers\Api\FerrawinSyncController;
+
+Route::prefix('ferrawin')->group(function () {
+    // Status público (para verificar conectividad)
+    Route::get('/status', [FerrawinSyncController::class, 'status'])
+        ->name('api.ferrawin.status');
+
+    // Sync protegido con token
+    Route::post('/sync', [FerrawinSyncController::class, 'sync'])
+        ->middleware('ferrawin.api')
+        ->name('api.ferrawin.sync');
 });

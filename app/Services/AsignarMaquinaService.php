@@ -10,6 +10,64 @@ use App\Models\ProductoBase;
 
 class AsignarMaquinaService
 {
+    /**
+     * Normaliza las dimensiones para comparación consistente.
+     * Mismo método que usa ResumenEtiquetaService para garantizar consistencia.
+     *
+     * @param string|null $dimensiones
+     * @return string
+     */
+    protected function normalizarDimensiones(?string $dimensiones): string
+    {
+        if (empty($dimensiones)) {
+            return 'barra';
+        }
+
+        // Normalizar: minúsculas, quitar espacios múltiples, trim
+        $normalizado = mb_strtolower(trim($dimensiones));
+        $normalizado = preg_replace('/\s+/', ' ', $normalizado);
+
+        return $normalizado;
+    }
+
+    /**
+     * Agrupa elementos por diámetro + dimensiones normalizadas.
+     * Esto permite que elementos susceptibles de resumen vayan a la misma máquina.
+     *
+     * @param \Illuminate\Support\Collection $elementos
+     * @return array Array de grupos, cada grupo contiene elementos con mismo diámetro+dimensiones
+     */
+    protected function agruparPorResumen($elementos): array
+    {
+        $grupos = [];
+
+        foreach ($elementos as $elemento) {
+            $diametro = (int)$elemento->diametro;
+            $dimensiones = $this->normalizarDimensiones($elemento->dimensiones);
+            $key = "{$diametro}|{$dimensiones}";
+
+            if (!isset($grupos[$key])) {
+                $grupos[$key] = [
+                    'diametro' => $diametro,
+                    'dimensiones' => $dimensiones,
+                    'dimensiones_original' => $elemento->dimensiones,
+                    'elementos' => collect(),
+                ];
+            }
+
+            $grupos[$key]['elementos']->push($elemento);
+        }
+
+        // Ordenar grupos por peso total descendente para mejor balanceo
+        uasort($grupos, function ($a, $b) {
+            $pesoA = $a['elementos']->sum(fn($e) => (float)$e->peso);
+            $pesoB = $b['elementos']->sum(fn($e) => (float)$e->peso);
+            return $pesoB <=> $pesoA;
+        });
+
+        return $grupos;
+    }
+
     public function repartirPlanilla(int $planillaId): void
     {
         Log::channel('planilla_import')->info("🎯 [AsignarMaquina] Iniciando reparto de planilla {$planillaId}");
@@ -137,76 +195,61 @@ class AsignarMaquinaService
             return;
         }
 
-        // 🎯 Ordenar estribos por peso descendente para mejor balanceo
-        $estribos = $estribos->sortByDesc(fn($e) => (float)$e->peso);
         $pesoTotal = $estribos->sum(fn($e) => (float)$e->peso);
-        Log::channel('planilla_import')->info("⚖️ [Balanceo] Estribos ordenados por peso (total: {$pesoTotal}kg) para distribución equitativa");
+        Log::channel('planilla_import')->info("⚖️ [Balanceo] Total estribos: {$estribos->count()} elementos, {$pesoTotal}kg");
 
-        $diametros = $estribos->pluck('diametro')->unique()->map(fn($d) => (int)$d);
-        Log::channel('planilla_import')->debug("📊 [AsignarMaquina] Diámetros en estribos: " . json_encode($diametros->toArray()));
+        // 🎯 AGRUPAR POR RESUMEN: elementos con mismo diámetro+dimensiones van a la misma máquina
+        $gruposResumen = $this->agruparPorResumen($estribos);
+        $totalGrupos = count($gruposResumen);
+        $gruposMultiples = collect($gruposResumen)->filter(fn($g) => $g['elementos']->count() > 1)->count();
 
-        // Buscar una máquina única que soporte todos los diámetros
-        $candidataUnica = null;
-        foreach ($candidatas->groupBy('codigo') as $codigo => $grupo) {
-            $soportaTodos = $diametros->every(fn($d) => $grupo->contains(fn($m) => $this->soportaDiametro($m, $d)));
-            if ($soportaTodos) {
-                $candidataUnica = $codigo;
-                Log::channel('planilla_import')->info("🎯 [AsignarMaquina] Máquina única encontrada: {$codigo} soporta todos los diámetros");
-                break;
+        Log::channel('planilla_import')->info("📦 [RESUMEN] Estribos agrupados en {$totalGrupos} grupos por Ø+dimensiones ({$gruposMultiples} grupos con múltiples elementos)");
+
+        foreach ($gruposResumen as $key => $grupo) {
+            $elementos = $grupo['elementos'];
+            $diametro = $grupo['diametro'];
+            $dimensiones = $grupo['dimensiones_original'] ?: 'barra';
+            $pesoGrupo = $elementos->sum(fn($e) => (float)$e->peso);
+
+            Log::channel('planilla_import')->info("📦 [RESUMEN] Grupo '{$key}': Ø{$diametro}, dim='{$dimensiones}', {$elementos->count()} elem, {$pesoGrupo}kg");
+
+            // Buscar máquina compatible para este grupo (todos tienen mismo diámetro)
+            $poolCandidatas = $candidatas->filter(fn($m) => $this->soportaDiametro($m, $diametro));
+
+            if ($poolCandidatas->isEmpty()) {
+                Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina] Sin máquina compatible para grupo Ø{$diametro} en planilla {$planilla->id}");
+                continue;
             }
-        }
 
-        if ($candidataUnica) {
-            Log::channel('planilla_import')->info("✓ [AsignarMaquina] Asignando todos los estribos a máquinas con código {$candidataUnica}");
+            // Seleccionar la menos cargada para TODO el grupo
+            $maquinaDestino = $this->menosCargada($poolCandidatas, $cargas);
+
+            if (!$maquinaDestino) {
+                Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina] No se pudo seleccionar máquina para grupo Ø{$diametro}");
+                continue;
+            }
+
+            Log::channel('planilla_import')->info("🎯 [RESUMEN] Grupo '{$key}' → Máquina {$maquinaDestino->id} ({$maquinaDestino->codigo}) - {$elementos->count()} elementos a misma máquina");
+
+            // Asignar TODOS los elementos del grupo a la MISMA máquina
             $asignados = 0;
-
-            foreach ($estribos as $e) {
-                $m = $this->mejorMaquinaPorCodigoYDiametro($candidatas, $candidataUnica, (int)$e->diametro, $cargas);
-                if ($m) {
-                    // VALIDACIÓN: No permitir asignar a CM si no cumple requisitos
-                    if (!$this->puedeIrACM($e, $m)) {
-                        Log::channel('planilla_import')->error("⚠️ [AsignarMaquina] Estribo {$e->id} BLOQUEADO para {$m->codigo} (validación CM fallida)");
-                        continue;
-                    }
-
-                    $e->maquina_id = $m->id;
-                    $e->save();
-                    $this->sumarCarga($cargas, $m->id, (float)$e->peso, (int)($e->tiempo_fabricacion ?? 0));
-                    $asignados++;
-                    Log::channel('planilla_import')->debug("✓ [AsignarMaquina] Elemento {$e->id} (Ø{$e->diametro}, {$e->peso}kg) → Máquina {$m->id} ({$m->codigo})");
-                } else {
-                    Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina] Estribo sin candidata ({$candidataUnica}) Ø{$e->diametro} en planilla {$planilla->id}");
-                }
-            }
-
-            Log::channel('planilla_import')->info("✅ [AsignarMaquina] Estribos asignados: {$asignados} de {$estribos->count()}");
-            return;
-        }
-
-        // No hay máquina única, asignar individualmente
-        Log::channel('planilla_import')->info("🔀 [AsignarMaquina] No hay máquina única, asignando estribos individualmente");
-        $asignados = 0;
-
-        foreach ($estribos as $e) {
-            $m = $this->mejorMaquinaPorCodigoYDiametro($candidatas, null, (int)$e->diametro, $cargas);
-            if ($m) {
+            foreach ($elementos as $e) {
                 // VALIDACIÓN: No permitir asignar a CM si no cumple requisitos
-                if (!$this->puedeIrACM($e, $m)) {
-                    Log::channel('planilla_import')->error("⚠️ [AsignarMaquina] Estribo {$e->id} BLOQUEADO para {$m->codigo} (validación CM fallida)");
+                if (!$this->puedeIrACM($e, $maquinaDestino)) {
+                    Log::channel('planilla_import')->error("⚠️ [AsignarMaquina] Estribo {$e->id} BLOQUEADO para {$maquinaDestino->codigo} (validación CM fallida)");
                     continue;
                 }
 
-                $e->maquina_id = $m->id;
+                $e->maquina_id = $maquinaDestino->id;
                 $e->save();
-                $this->sumarCarga($cargas, $m->id, (float)$e->peso, (int)($e->tiempo_fabricacion ?? 0));
+                $this->sumarCarga($cargas, $maquinaDestino->id, (float)$e->peso, (int)($e->tiempo_fabricacion ?? 0));
                 $asignados++;
-                Log::channel('planilla_import')->debug("✓ [AsignarMaquina] Elemento {$e->id} (Ø{$e->diametro}, {$e->peso}kg) → Máquina {$m->id} ({$m->codigo})");
-            } else {
-                Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina] Estribo sin máquina compatible Ø{$e->diametro} planilla {$planilla->id}");
             }
+
+            Log::channel('planilla_import')->debug("✓ [RESUMEN] Grupo '{$key}': {$asignados} de {$elementos->count()} estribos asignados a {$maquinaDestino->codigo}");
         }
 
-        Log::channel('planilla_import')->info("✅ [AsignarMaquina] Estribos asignados individualmente: {$asignados} de {$estribos->count()}");
+        Log::channel('planilla_import')->info("✅ [AsignarMaquina] Estribos repartidos por grupos de resumen: {$totalGrupos} grupos procesados");
     }
 
     protected function repartirResto(
@@ -223,64 +266,119 @@ class AsignarMaquinaService
             return;
         }
 
-        // 🎯 Los elementos con dobles_barra = 0 pueden ir tanto a CM como a cortadoras automáticas
-        // Se distribuirán según el balanceo de cargas para evitar sobrecarga de CM
         // Log de diagnóstico: mostrar distribución de dobles_barra en el resto
         $distribucionDobles = $resto->groupBy(fn($e) => (int)$e->dobles_barra)->map->count();
         Log::channel('planilla_import')->debug("🔍 [AsignarMaquina] Distribución dobles_barra en resto: " . json_encode($distribucionDobles->toArray()));
 
-        // CM participa en el pool de máquinas candidatas para elementos con dobles_barra=0
-        // pero se balancea con las demás cortadoras automáticas
-        Log::channel('planilla_import')->info("⚖️ [AsignarMaquina] Elementos con dobles_barra=0 se distribuirán entre CM y cortadoras automáticas según carga");
-
-        // 🎯 Optimizar elementos por desperdicio antes de asignar
-        $restoOptimizado = $this->optimizarPorDesperdicio($resto);
-        $pesoTotalResto = $restoOptimizado->sum(fn($e) => (float)$e->peso);
-        Log::channel('planilla_import')->info("⚖️ [Balanceo] Elementos 'resto' optimizados (total: {$pesoTotalResto}kg) ordenados por desperdicio y peso para distribución equitativa");
-
-        // 🧠 Incluir CM en el pool de máquinas disponibles para balanceo
+        // 🧠 Incluir CM en el pool de máquinas disponibles para elementos rectos
         $todasMaquinas = $cortadoras->toBase();
         if ($cortadoraManual) {
             $todasMaquinas = $todasMaquinas->push($cortadoraManual);
             Log::channel('planilla_import')->info("🪚 [AsignarMaquina] CM incluida en pool de balanceo para elementos con dobles_barra=0");
         }
 
-        // Asignar individualmente con balanceo entre TODAS las máquinas (incluida CM)
-        Log::channel('planilla_import')->info("🔀 [AsignarMaquina] Asignando elementos del resto con balanceo entre " . $todasMaquinas->count() . " máquinas");
-        $asignados = 0;
+        // Separar elementos rectos (dobles=0) de elementos con dobleces
+        $elementosRectos = $resto->filter(fn($e) => (int)$e->dobles_barra === 0);
+        $elementosConDobleces = $resto->filter(fn($e) => (int)$e->dobles_barra > 0);
 
-        foreach ($restoOptimizado as $e) {
-            // Determinar pool de máquinas candidatas según dobles_barra
-            $dobles = (int)$e->dobles_barra;
+        Log::channel('planilla_import')->info("📊 [AsignarMaquina] Clasificación resto: {$elementosRectos->count()} rectos, {$elementosConDobleces->count()} con dobleces");
 
-            if ($dobles === 0) {
-                // Elementos rectos: pueden ir a CM o cortadoras automáticas
-                $poolCandidatas = $todasMaquinas->filter(fn($m) => $this->soportaDiametro($m, (int)$e->diametro));
-            } else {
-                // Elementos con dobleces: SOLO cortadoras automáticas (nunca CM)
-                $poolCandidatas = $cortadoras->filter(fn($m) => $this->soportaDiametro($m, (int)$e->diametro));
-            }
+        $totalAsignados = 0;
 
-            $m = $this->menosCargada($poolCandidatas, $cargas);
+        // 🎯 PROCESAR ELEMENTOS RECTOS (pueden ir a CM o cortadoras automáticas)
+        if ($elementosRectos->isNotEmpty()) {
+            $gruposRectos = $this->agruparPorResumen($elementosRectos);
+            $totalGruposRectos = count($gruposRectos);
+            $gruposMultiplesRectos = collect($gruposRectos)->filter(fn($g) => $g['elementos']->count() > 1)->count();
 
-            if ($m) {
-                // VALIDACIÓN: No permitir asignar a CM si no cumple requisitos
-                if (!$this->puedeIrACM($e, $m)) {
-                    Log::channel('planilla_import')->error("⚠️ [AsignarMaquina] Elemento {$e->id} BLOQUEADO para {$m->codigo} (validación CM fallida)");
+            Log::channel('planilla_import')->info("📦 [RESUMEN] Elementos rectos agrupados en {$totalGruposRectos} grupos por Ø+dimensiones ({$gruposMultiplesRectos} grupos con múltiples elementos)");
+
+            foreach ($gruposRectos as $key => $grupo) {
+                $elementos = $grupo['elementos'];
+                $diametro = $grupo['diametro'];
+                $dimensiones = $grupo['dimensiones_original'] ?: 'barra';
+                $pesoGrupo = $elementos->sum(fn($e) => (float)$e->peso);
+
+                Log::channel('planilla_import')->info("📦 [RESUMEN] Grupo rectos '{$key}': Ø{$diametro}, dim='{$dimensiones}', {$elementos->count()} elem, {$pesoGrupo}kg");
+
+                // Buscar máquina compatible para este grupo
+                $poolCandidatas = $todasMaquinas->filter(fn($m) => $this->soportaDiametro($m, $diametro));
+
+                if ($poolCandidatas->isEmpty()) {
+                    Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina] Sin máquina compatible para grupo rectos Ø{$diametro}");
                     continue;
                 }
 
-                $e->maquina_id = $m->id;
-                $e->save();
-                $this->sumarCarga($cargas, $m->id, (float)$e->peso, (int)($e->tiempo_fabricacion ?? 0));
-                $asignados++;
-                Log::channel('planilla_import')->debug("✓ [AsignarMaquina] Elemento {$e->id} (Ø{$e->diametro}, {$e->peso}kg, dobles={$dobles}) → Máquina {$m->id} ({$m->codigo})");
-            } else {
-                Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina] Sin máquina compatible para elemento {$e->id} Ø{$e->diametro} dobles={$dobles} planilla {$planilla->id}");
+                // Seleccionar la menos cargada para TODO el grupo
+                $maquinaDestino = $this->menosCargada($poolCandidatas, $cargas);
+
+                if (!$maquinaDestino) {
+                    Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina] No se pudo seleccionar máquina para grupo rectos Ø{$diametro}");
+                    continue;
+                }
+
+                Log::channel('planilla_import')->info("🎯 [RESUMEN] Grupo rectos '{$key}' → Máquina {$maquinaDestino->id} ({$maquinaDestino->codigo}) - {$elementos->count()} elementos a misma máquina");
+
+                // Asignar TODOS los elementos del grupo a la MISMA máquina
+                foreach ($elementos as $e) {
+                    if (!$this->puedeIrACM($e, $maquinaDestino)) {
+                        Log::channel('planilla_import')->error("⚠️ [AsignarMaquina] Elemento {$e->id} BLOQUEADO para {$maquinaDestino->codigo}");
+                        continue;
+                    }
+
+                    $e->maquina_id = $maquinaDestino->id;
+                    $e->save();
+                    $this->sumarCarga($cargas, $maquinaDestino->id, (float)$e->peso, (int)($e->tiempo_fabricacion ?? 0));
+                    $totalAsignados++;
+                }
             }
         }
 
-        Log::channel('planilla_import')->info("✅ [AsignarMaquina] Elementos del resto asignados con balanceo: {$asignados} de {$restoOptimizado->count()}");
+        // 🎯 PROCESAR ELEMENTOS CON DOBLECES (SOLO cortadoras automáticas, nunca CM)
+        if ($elementosConDobleces->isNotEmpty()) {
+            $gruposDobleces = $this->agruparPorResumen($elementosConDobleces);
+            $totalGruposDobleces = count($gruposDobleces);
+            $gruposMultiplesDobleces = collect($gruposDobleces)->filter(fn($g) => $g['elementos']->count() > 1)->count();
+
+            Log::channel('planilla_import')->info("📦 [RESUMEN] Elementos con dobleces agrupados en {$totalGruposDobleces} grupos por Ø+dimensiones ({$gruposMultiplesDobleces} grupos con múltiples elementos)");
+
+            foreach ($gruposDobleces as $key => $grupo) {
+                $elementos = $grupo['elementos'];
+                $diametro = $grupo['diametro'];
+                $dimensiones = $grupo['dimensiones_original'] ?: 'barra';
+                $pesoGrupo = $elementos->sum(fn($e) => (float)$e->peso);
+
+                Log::channel('planilla_import')->info("📦 [RESUMEN] Grupo dobleces '{$key}': Ø{$diametro}, dim='{$dimensiones}', {$elementos->count()} elem, {$pesoGrupo}kg");
+
+                // Solo cortadoras automáticas (nunca CM)
+                $poolCandidatas = $cortadoras->filter(fn($m) => $this->soportaDiametro($m, $diametro));
+
+                if ($poolCandidatas->isEmpty()) {
+                    Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina] Sin cortadora automática compatible para grupo dobleces Ø{$diametro}");
+                    continue;
+                }
+
+                // Seleccionar la menos cargada para TODO el grupo
+                $maquinaDestino = $this->menosCargada($poolCandidatas, $cargas);
+
+                if (!$maquinaDestino) {
+                    Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina] No se pudo seleccionar máquina para grupo dobleces Ø{$diametro}");
+                    continue;
+                }
+
+                Log::channel('planilla_import')->info("🎯 [RESUMEN] Grupo dobleces '{$key}' → Máquina {$maquinaDestino->id} ({$maquinaDestino->codigo}) - {$elementos->count()} elementos a misma máquina");
+
+                // Asignar TODOS los elementos del grupo a la MISMA máquina
+                foreach ($elementos as $e) {
+                    $e->maquina_id = $maquinaDestino->id;
+                    $e->save();
+                    $this->sumarCarga($cargas, $maquinaDestino->id, (float)$e->peso, (int)($e->tiempo_fabricacion ?? 0));
+                    $totalAsignados++;
+                }
+            }
+        }
+
+        Log::channel('planilla_import')->info("✅ [AsignarMaquina] Elementos del resto asignados por grupos de resumen: {$totalAsignados} de {$resto->count()}");
     }
 
     protected function mejorMaquinaPorCodigoYDiametro($candidatas, ?string $codigoPreferido, int $diametro, array $cargas)
@@ -648,6 +746,7 @@ class AsignarMaquinaService
     /**
      * Reparte los elementos de una planilla "ensamblado taller" en máquinas de Nave B
      * Solo usa cortadoras_dobladoras de Nave B, sin lógica de estriberas ni CM
+     * Agrupa elementos por diámetro+dimensiones para evitar duplicación de trabajo
      */
     protected function repartirEnNaveB(Planilla $planilla, $elementos): void
     {
@@ -688,38 +787,127 @@ class AsignarMaquinaService
             return;
         }
 
-        // Optimizar elementos por desperdicio antes de asignar
-        $elementosOptimizados = $this->optimizarPorDesperdicio($elementosAElaborar);
-        $pesoTotal = $elementosOptimizados->sum(fn($e) => (float)$e->peso);
-        Log::channel('planilla_import')->info("⚖️ [AsignarMaquina/NaveB] Elementos optimizados (total: {$pesoTotal}kg) para distribución en Nave B");
+        $pesoTotal = $elementosAElaborar->sum(fn($e) => (float)$e->peso);
+        Log::channel('planilla_import')->info("⚖️ [AsignarMaquina/NaveB] Total elementos a elaborar: {$elementosAElaborar->count()}, {$pesoTotal}kg");
+
+        // 🎯 AGRUPAR POR RESUMEN: elementos con mismo diámetro+dimensiones van a la misma máquina
+        $gruposResumen = $this->agruparPorResumen($elementosAElaborar);
+        $totalGrupos = count($gruposResumen);
+        $gruposMultiples = collect($gruposResumen)->filter(fn($g) => $g['elementos']->count() > 1)->count();
+
+        Log::channel('planilla_import')->info("📦 [RESUMEN/NaveB] Elementos agrupados en {$totalGrupos} grupos por Ø+dimensiones ({$gruposMultiples} grupos con múltiples elementos)");
 
         $asignados = 0;
 
-        foreach ($elementosOptimizados as $elemento) {
+        foreach ($gruposResumen as $key => $grupo) {
+            $elementosGrupo = $grupo['elementos'];
+            $diametro = $grupo['diametro'];
+            $dimensiones = $grupo['dimensiones_original'] ?: 'barra';
+            $pesoGrupo = $elementosGrupo->sum(fn($e) => (float)$e->peso);
+
+            Log::channel('planilla_import')->info("📦 [RESUMEN/NaveB] Grupo '{$key}': Ø{$diametro}, dim='{$dimensiones}', {$elementosGrupo->count()} elem, {$pesoGrupo}kg");
+
             // Buscar máquinas que soporten el diámetro
-            $candidatas = $maquinasNaveB->filter(fn($m) => $this->soportaDiametro($m, (int)$elemento->diametro));
+            $candidatas = $maquinasNaveB->filter(fn($m) => $this->soportaDiametro($m, $diametro));
 
             if ($candidatas->isEmpty()) {
-                Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina/NaveB] Sin máquina compatible para elemento {$elemento->id} Ø{$elemento->diametro} en Nave B");
+                Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina/NaveB] Sin máquina compatible para grupo Ø{$diametro} en Nave B");
                 continue;
             }
 
-            // Seleccionar la menos cargada
-            $maquina = $this->menosCargada($candidatas, $cargas);
+            // Seleccionar la menos cargada para TODO el grupo
+            $maquinaDestino = $this->menosCargada($candidatas, $cargas);
 
-            if ($maquina) {
-                $elemento->maquina_id = $maquina->id;
+            if (!$maquinaDestino) {
+                Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina/NaveB] No se pudo seleccionar máquina para grupo Ø{$diametro}");
+                continue;
+            }
+
+            Log::channel('planilla_import')->info("🎯 [RESUMEN/NaveB] Grupo '{$key}' → Máquina {$maquinaDestino->id} ({$maquinaDestino->codigo}) - {$elementosGrupo->count()} elementos a misma máquina");
+
+            // Asignar TODOS los elementos del grupo a la MISMA máquina
+            foreach ($elementosGrupo as $elemento) {
+                $elemento->maquina_id = $maquinaDestino->id;
                 $elemento->save();
-                $this->sumarCarga($cargas, $maquina->id, (float)$elemento->peso, (int)($elemento->tiempo_fabricacion ?? 0));
+                $this->sumarCarga($cargas, $maquinaDestino->id, (float)$elemento->peso, (int)($elemento->tiempo_fabricacion ?? 0));
                 $asignados++;
-                Log::channel('planilla_import')->debug("✓ [AsignarMaquina/NaveB] Elemento {$elemento->id} (Ø{$elemento->diametro}, {$elemento->peso}kg) → Máquina {$maquina->id} ({$maquina->codigo})");
             }
         }
 
-        Log::channel('planilla_import')->info("✅ [AsignarMaquina/NaveB] Asignados {$asignados} de {$elementosAElaborar->count()} elementos a Nave B");
+        Log::channel('planilla_import')->info("✅ [AsignarMaquina/NaveB] Asignados {$asignados} de {$elementosAElaborar->count()} elementos a Nave B por grupos de resumen");
 
         // Mostrar resumen de balanceo
         $this->mostrarResumenBalanceo($cargas, $maquinasNaveB);
+    }
+
+    /**
+     * Reasigna un elemento a una máquina específica, validando compatibilidad
+     * Usado por el sistema de balanceo de cargas
+     *
+     * @param Elemento $elemento
+     * @param Maquina $maquinaDestino
+     * @return array ['success' => bool, 'message' => string]
+     */
+    public function reasignarElemento(Elemento $elemento, Maquina $maquinaDestino): array
+    {
+        $dobles = (int)$elemento->dobles_barra;
+        $diametro = (int)$elemento->diametro;
+        $elaborado = (int)($elemento->elaborado ?? 1);
+
+        // 1. Elementos sin elaborar solo pueden ir a grúas
+        if ($elaborado === 0) {
+            if ($maquinaDestino->tipo !== 'grua') {
+                return [
+                    'success' => false,
+                    'message' => "Elemento {$elemento->codigo} sin elaborar solo puede ir a grúas, no a {$maquinaDestino->codigo}"
+                ];
+            }
+        }
+
+        // 2. Validar diámetro
+        if (!$this->soportaDiametro($maquinaDestino, $diametro)) {
+            return [
+                'success' => false,
+                'message' => "Máquina {$maquinaDestino->codigo} no soporta Ø{$diametro} (rango: {$maquinaDestino->diametro_min}-{$maquinaDestino->diametro_max})"
+            ];
+        }
+
+        // 3. Validar CM: solo elementos con dobles_barra = 0
+        if ($maquinaDestino->codigo === 'CM' && $dobles !== 0) {
+            return [
+                'success' => false,
+                'message' => "Elemento {$elemento->codigo} tiene dobles_barra={$dobles}, no puede ir a cortadora manual CM"
+            ];
+        }
+
+        // 4. Estribos (dobles >= 4 Y diámetro <= 16) solo van a estriberas
+        $esEstribo = $dobles >= 4 && $diametro <= 16;
+        $codigosEstriberas = ['F12', 'PS12', 'MS16'];
+
+        if ($esEstribo && !in_array($maquinaDestino->codigo, $codigosEstriberas)) {
+            return [
+                'success' => false,
+                'message' => "Elemento {$elemento->codigo} es estribo (dobles={$dobles}, Ø{$diametro}), solo puede ir a estriberas (F12, PS12, MS16)"
+            ];
+        }
+
+        // 5. Elementos con dobleces (dobles > 0) no pueden ir a CM
+        if ($dobles > 0 && $maquinaDestino->codigo === 'CM') {
+            return [
+                'success' => false,
+                'message' => "Elemento {$elemento->codigo} tiene dobleces (dobles={$dobles}), no puede ir a cortadora manual CM"
+            ];
+        }
+
+        // 6. Elementos con dobleces solo van a cortadoras_dobladoras o estribadoras
+        if ($dobles > 0 && !in_array($maquinaDestino->tipo, ['cortadora_dobladora', 'estribera', 'estribadora'])) {
+            return [
+                'success' => false,
+                'message' => "Elemento {$elemento->codigo} con dobleces solo puede ir a cortadora_dobladora o estribadora, no a {$maquinaDestino->tipo}"
+            ];
+        }
+
+        return ['success' => true, 'message' => 'OK'];
     }
 
     /**

@@ -133,23 +133,5 @@ window.abrirModalOptimizar = function() {
     });
 };
 
-// Modal balanceo
-window.abrirModalBalanceo = function() {
-    Swal.fire({
-        title: 'Balancear carga',
-        text: '¿Deseas balancear la carga entre máquinas?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Sí, balancear',
-        cancelButtonText: 'Cancelar'
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            // Aquí iría la lógica de balanceo
-            Swal.fire({
-                icon: 'info',
-                title: 'Función en desarrollo',
-                text: 'El balanceo de carga estará disponible próximamente'
-            });
-        }
-    });
-};
+// Modal balanceo - La implementación real está en maquinas.blade.php
+// NO definir aquí para evitar sobrescribir la versión completa del blade
