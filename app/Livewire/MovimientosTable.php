@@ -158,6 +158,32 @@ class MovimientosTable extends Component
             $filtros[] = "<strong>Producto/Paquete:</strong> {$this->producto_paquete}";
         }
 
+        // Añadir ordenamiento
+        if (!empty($this->sort)) {
+            $nombresCampos = [
+                'id' => 'ID',
+                'tipo' => 'Tipo',
+                'pedido_producto_id' => 'Línea Pedido',
+                'producto_base' => 'Producto',
+                'descripcion' => 'Descripción',
+                'nave_id' => 'Nave',
+                'prioridad' => 'Prioridad',
+                'solicitado_por' => 'Solicitado',
+                'ejecutado_por' => 'Ejecutado',
+                'estado' => 'Estado',
+                'fecha_solicitud' => 'F. Solicitud',
+                'fecha_ejecucion' => 'F. Ejecución',
+                'origen' => 'Origen',
+                'destino' => 'Destino',
+                'producto_paquete' => 'Prod/Paq',
+                'created_at' => 'Fecha Creación',
+            ];
+
+            $nombreCampo = $nombresCampos[$this->sort] ?? ucfirst($this->sort);
+            $direccion = $this->order === 'asc' ? '↑ Ascendente' : '↓ Descendente';
+            $filtros[] = "<strong>Ordenado por:</strong> {$nombreCampo} ({$direccion})";
+        }
+
         return $filtros;
     }
 

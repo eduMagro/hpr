@@ -129,43 +129,11 @@
                     </header>
 
                     <div class="p-3">
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full text-sm">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Marca</th>
-                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Situacion</th>
-                                        <th class="px-3 py-2 text-center font-medium text-gray-600">Cant.</th>
-                                        <th class="px-3 py-2 text-center font-medium text-gray-600">Long.</th>
-                                        <th class="px-3 py-2 text-center font-medium text-gray-600">Barras</th>
-                                        <th class="px-3 py-2 text-center font-medium text-gray-600">Estribos</th>
-                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Distribucion</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100">
-                                    @foreach ($planilla->entidades as $entidad)
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-3 py-2 font-medium text-gray-900">{{ $entidad->marca }}</td>
-                                            <td class="px-3 py-2 text-gray-700">{{ $entidad->situacion ?: '-' }}</td>
-                                            <td class="px-3 py-2 text-center text-gray-700">{{ $entidad->cantidad }}</td>
-                                            <td class="px-3 py-2 text-center text-gray-700">{{ number_format($entidad->longitud_ensamblaje, 2) }}m</td>
-                                            <td class="px-3 py-2 text-center">
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                                    {{ $entidad->total_barras }}
-                                                </span>
-                                            </td>
-                                            <td class="px-3 py-2 text-center">
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                                    {{ $entidad->total_estribos }}
-                                                </span>
-                                            </td>
-                                            <td class="px-3 py-2 text-gray-600 text-xs">
-                                                {{ $entidad->resumen_distribucion }}
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                        {{-- Grid de tarjetas de entidades con visualizacion grafica --}}
+                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                            @foreach ($planilla->entidades as $entidad)
+                                <x-entidad.ensamblaje :entidad="$entidad" :planilla="$planilla" />
+                            @endforeach
                         </div>
                     </div>
                 </section>
@@ -616,6 +584,50 @@
 
         // Mensaje de consola para ayudar con debugging
         console.log('Sistema de navegación con flechas cargado. Usa ← y → para navegar entre planillas.');
+
+        /**
+         * Imprime una tarjeta de entidad/ensamblaje
+         */
+        function imprimirEntidad(entidadId) {
+            const contenedor = document.getElementById(entidadId);
+            if (!contenedor) {
+                alert('No se encontró la entidad para imprimir');
+                return;
+            }
+
+            // Clonar y limpiar
+            const clone = contenedor.cloneNode(true);
+            clone.querySelectorAll('.no-print').forEach(el => el.remove());
+
+            // Expandir el contenido si está colapsado
+            const contenidoExpandible = clone.querySelector('[x-show]');
+            if (contenidoExpandible) {
+                contenidoExpandible.style.display = 'block';
+                contenidoExpandible.removeAttribute('x-show');
+                contenidoExpandible.removeAttribute('x-collapse');
+            }
+
+            const css = `
+                @page { size: A4 landscape; margin: 10mm; }
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; }
+                .entidad-ensamblaje-card { border: 1px solid #ccc; border-radius: 8px; overflow: hidden; }
+                svg { max-width: 100%; }
+            `;
+
+            const w = window.open('', '_blank');
+            w.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head><title>Imprimir Ensamblaje</title><style>${css}</style></head>
+                <body>${clone.outerHTML}</body>
+                </html>
+            `);
+            w.document.close();
+            w.onload = () => {
+                w.print();
+                setTimeout(() => w.close(), 500);
+            };
+        }
     </script>
 
 </x-app-layout>

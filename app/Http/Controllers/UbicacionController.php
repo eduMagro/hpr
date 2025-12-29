@@ -22,13 +22,19 @@ class UbicacionController extends Controller
     {
         try {
             // 1) Obtener todas las obras del cliente "Hierros Paco Reyes"
+            // Orden personalizado: Nave A, Nave B, Almacén
             $obras = Obra::with('cliente')
                 ->whereHas(
                     'cliente',
                     fn($q) =>
                     $q->where('empresa', 'LIKE', '%hierros paco reyes%')
                 )
-                ->orderBy('obra')
+                ->orderByRaw("CASE
+                    WHEN LOWER(obra) LIKE '%nave a%' THEN 1
+                    WHEN LOWER(obra) LIKE '%nave b%' THEN 2
+                    WHEN LOWER(obra) LIKE '%almacen%' OR LOWER(obra) LIKE '%almacén%' THEN 3
+                    ELSE 4
+                END")
                 ->get();
 
             // 2) Determinar la obra activa (?obra=ID) o la primera por defecto
@@ -134,10 +140,15 @@ class UbicacionController extends Controller
 
             $ubicacionesPorSector = $ubicaciones->groupBy('sector');
 
-            // 6) Listado de obras válidas (HPR)
+            // 6) Listado de obras válidas (HPR) - Orden: Nave A, Nave B, Almacén
             $obras = Obra::with('cliente')
                 ->whereHas('cliente', fn($q) => $q->where('empresa', 'like', '%hierros paco reyes%'))
-                ->orderBy('obra')
+                ->orderByRaw("CASE
+                    WHEN LOWER(obra) LIKE '%nave a%' THEN 1
+                    WHEN LOWER(obra) LIKE '%nave b%' THEN 2
+                    WHEN LOWER(obra) LIKE '%almacen%' OR LOWER(obra) LIKE '%almacén%' THEN 3
+                    ELSE 4
+                END")
                 ->get();
 
             // 7) Vista
