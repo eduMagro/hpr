@@ -275,11 +275,19 @@ class FerrawinBulkImportService
             return;
         }
 
-        // Solo actualizar si hay elementos pendientes
+        // Actualizar entidades siempre (eliminar existentes y crear nuevas)
+        $entidades = $data['entidades'] ?? [];
+        if (!empty($entidades)) {
+            PlanillaEntidad::where('planilla_id', $planilla->id)->delete();
+            $this->crearEntidades($planilla, $entidades);
+        }
+
+        // Solo actualizar elementos si hay pendientes
         $pendientes = $planilla->elementos()->where('estado', 'pendiente')->count();
 
         if ($pendientes === 0) {
-            Log::channel('ferrawin_sync')->debug("⏭️ [BULK] Planilla {$codigo}: sin elementos pendientes, omitida");
+            Log::channel('ferrawin_sync')->debug("⏭️ [BULK] Planilla {$codigo}: entidades actualizadas, elementos sin cambios");
+            $this->stats['planillas_actualizadas']++;
             return;
         }
 
@@ -293,13 +301,6 @@ class FerrawinBulkImportService
 
         // Reimportar elementos
         $this->crearElementosBulk($planilla, $data['elementos'] ?? []);
-
-        // Actualizar entidades (eliminar existentes y crear nuevas)
-        $entidades = $data['entidades'] ?? [];
-        if (!empty($entidades)) {
-            PlanillaEntidad::where('planilla_id', $planilla->id)->delete();
-            $this->crearEntidades($planilla, $entidades);
-        }
 
         // Reasignar máquinas
         $this->asignador->repartirPlanilla($planilla->id);
