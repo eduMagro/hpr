@@ -69,7 +69,7 @@
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <table class="w-full border-collapse text-sm">
             <thead>
-                <tr class="bg-gradient-to-r from-slate-800 to-slate-700">
+                <tr class="bg-gradient-to-r from-slate-800 to-slate-700 border-l-4 border-slate-800">
                     <th
                         class="px-4 py-2.5 text-left font-black text-slate-50 uppercase tracking-widest text-[10px] w-40">
                         Línea</th>
@@ -373,12 +373,12 @@
                                                     action="{{ route('pedidos.lineas.editarDesactivar', [$pedido->id, $linea->id]) }}">
                                                     @csrf @method('DELETE')
                                                     <button type="submit"
-                                                        class="w-7 h-7 flex items-center justify-center bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-lg transition-all duration-200 border border-rose-100"
+                                                        class="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-lg transition-all duration-200 border border-rose-100"
                                                         title="Deshabilitar Suministro">
-                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor"
                                                             viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2.5"
+                                                                stroke-width="1.5"
                                                                 d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                         </svg>
                                                     </button>
@@ -388,12 +388,12 @@
                                                     action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea->id]) }}">
                                                     @csrf @method('PUT')
                                                     <button type="submit"
-                                                        class="w-7 h-7 flex items-center justify-center bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white rounded-lg transition-all duration-200 border border-amber-100"
+                                                        class="w-10 h-10 flex items-center justify-center bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white rounded-lg transition-all duration-200 border border-amber-100"
                                                         title="Activar para Producción">
-                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                        <svg class="w-10 h-10" fill="none" stroke="currentColor"
                                                             viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2.5"
+                                                                stroke-width="1.2"
                                                                 d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                                                         </svg>
                                                     </button>
@@ -401,12 +401,12 @@
                                             @endif
 
                                             <button type="button" onclick="abrirEdicionLinea({{ $linea->id }})"
-                                                class="btn-editar-linea-{{ $linea->id }} w-7 h-7 flex items-center justify-center bg-slate-100 text-slate-800 hover:bg-slate-900 hover:text-white rounded-lg transition-all duration-200 border border-slate-200"
+                                                class="btn-editar-linea-{{ $linea->id }} w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-800 hover:bg-slate-900 hover:text-white rounded-lg transition-all duration-200 border border-slate-200"
                                                 title="Configurar Línea">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2.5"
+                                                        stroke-width="1.5"
                                                         d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                                 </svg>
                                             </button>
