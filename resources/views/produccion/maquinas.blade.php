@@ -2288,8 +2288,9 @@
                     slotLabelContent: function(arg) {
                         // Obtener la fecha inicial del calendario
                         const initialDateStr = "{{ $initialDate }}";
-                        // Parsear la fecha correctamente para evitar problemas de zona horaria
-                        const [year, month, day] = initialDateStr.split('-').map(Number);
+                        // Parsear la fecha correctamente (puede venir como "Y-m-d" o "Y-m-d H:i:s")
+                        const datePart = initialDateStr.split(' ')[0]; // Tomar solo la parte de fecha
+                        const [year, month, day] = datePart.split('-').map(Number);
                         const calendarInitialDate = new Date(year, month - 1, day, 0, 0, 0, 0);
 
                         // arg.text contiene solo la hora del día (0-23), NO las horas acumuladas
@@ -2906,7 +2907,8 @@
                                 // Convertir el tiempo del slot a una fecha para comparar
                                 const [hours, minutes] = slotTime.split(':').map(Number);
                                 const initialDateStr = "{{ $initialDate }}";
-                                const [year, month, day] = initialDateStr.split('-').map(Number);
+                                const datePart = initialDateStr.split(' ')[0]; // Tomar solo la parte de fecha
+                                const [year, month, day] = datePart.split('-').map(Number);
                                 const initialDate = new Date(year, month - 1, day, 0, 0, 0, 0);
 
                                 // Calcular la fecha/hora del slot
@@ -6596,7 +6598,64 @@
             // 🚀 INICIALIZACIÓN ROBUSTA SPA / LIVEWIRE
             // ============================================================
 
-            window.initProduccionMaquinasPage = function() {
+            // Función para cargar scripts de FullCalendar dinámicamente
+            window.cargarFullCalendarScripts = function() {
+                return new Promise((resolve, reject) => {
+                    // Si ya está cargado, resolver inmediatamente
+                    if (typeof FullCalendar !== 'undefined') {
+                        resolve();
+                        return;
+                    }
+
+                    console.log('📦 Cargando FullCalendar dinámicamente...');
+
+                    // Lista de scripts a cargar en orden
+                    const scripts = [
+                        'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js',
+                        'https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js',
+                        'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js'
+                    ];
+
+                    // Cargar CSS si no existe
+                    if (!document.querySelector('link[href*="fullcalendar"]')) {
+                        const css = document.createElement('link');
+                        css.rel = 'stylesheet';
+                        css.href = 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css';
+                        document.head.appendChild(css);
+                    }
+
+                    // Cargar scripts en secuencia
+                    let loadIndex = 0;
+                    const loadNext = () => {
+                        if (loadIndex >= scripts.length) {
+                            console.log('✅ FullCalendar cargado correctamente');
+                            resolve();
+                            return;
+                        }
+
+                        const src = scripts[loadIndex];
+                        // Verificar si ya existe
+                        if (document.querySelector(`script[src="${src}"]`)) {
+                            loadIndex++;
+                            loadNext();
+                            return;
+                        }
+
+                        const script = document.createElement('script');
+                        script.src = src;
+                        script.onload = () => {
+                            loadIndex++;
+                            loadNext();
+                        };
+                        script.onerror = () => reject(new Error(`Error cargando: ${src}`));
+                        document.head.appendChild(script);
+                    };
+
+                    loadNext();
+                });
+            };
+
+            window.initProduccionMaquinasPage = async function() {
                 // Verificar si estamos estrictamente en la página de máquinas
                 // Buscamos el elemento de datos específico o el atributo de tipo
                 const isMaquinasPage = document.getElementById('calendario-maquinas-data') &&
@@ -6611,6 +6670,14 @@
                         }
                         window.stopPolling();
                     }
+                    return;
+                }
+
+                // Asegurar que FullCalendar esté cargado
+                try {
+                    await window.cargarFullCalendarScripts();
+                } catch (error) {
+                    console.error('❌ Error cargando FullCalendar:', error);
                     return;
                 }
 

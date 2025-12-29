@@ -301,15 +301,52 @@ class MovimientosTable extends Component
         $query = $this->aplicarFiltros($query);
 
         // Aplicar ordenamiento
-        $columnasPermitidas = [
-            'id', 'tipo', 'pedido_producto_id', 'descripcion', 'prioridad',
+        $columnasDirectas = [
+            'id', 'tipo', 'pedido_producto_id', 'descripcion', 'nave_id', 'prioridad',
             'estado', 'fecha_solicitud', 'fecha_ejecucion', 'created_at'
         ];
 
-        $sortBy = in_array($this->sort, $columnasPermitidas) ? $this->sort : 'created_at';
         $orderDir = strtolower($this->order) === 'asc' ? 'asc' : 'desc';
 
-        $query->orderBy($sortBy, $orderDir);
+        if (in_array($this->sort, $columnasDirectas)) {
+            $query->orderBy($this->sort, $orderDir);
+        } elseif ($this->sort === 'producto_base') {
+            // Ordenar por producto base (tipo + diámetro)
+            $query->leftJoin('productos_base', 'movimientos.producto_base_id', '=', 'productos_base.id')
+                  ->orderBy('productos_base.tipo', $orderDir)
+                  ->orderBy('productos_base.diametro', $orderDir)
+                  ->select('movimientos.*');
+        } elseif ($this->sort === 'solicitado_por') {
+            // Ordenar por nombre del usuario que solicitó
+            $query->leftJoin('users as solicitante', 'movimientos.solicitado_por', '=', 'solicitante.id')
+                  ->orderBy('solicitante.name', $orderDir)
+                  ->select('movimientos.*');
+        } elseif ($this->sort === 'ejecutado_por') {
+            // Ordenar por nombre del usuario que ejecutó
+            $query->leftJoin('users as ejecutor', 'movimientos.ejecutado_por', '=', 'ejecutor.id')
+                  ->orderBy('ejecutor.name', $orderDir)
+                  ->select('movimientos.*');
+        } elseif ($this->sort === 'origen') {
+            // Ordenar por origen (ubicación o máquina)
+            $query->leftJoin('ubicaciones as uo', 'movimientos.ubicacion_origen_id', '=', 'uo.id')
+                  ->leftJoin('maquinas as mo', 'movimientos.maquina_origen_id', '=', 'mo.id')
+                  ->orderByRaw("COALESCE(uo.nombre, mo.nombre) {$orderDir}")
+                  ->select('movimientos.*');
+        } elseif ($this->sort === 'destino') {
+            // Ordenar por destino (ubicación o máquina)
+            $query->leftJoin('ubicaciones as ud', 'movimientos.ubicacion_destino_id', '=', 'ud.id')
+                  ->leftJoin('maquinas as md', 'movimientos.maquina_destino_id', '=', 'md.id')
+                  ->orderByRaw("COALESCE(ud.nombre, md.nombre) {$orderDir}")
+                  ->select('movimientos.*');
+        } elseif ($this->sort === 'producto_paquete') {
+            // Ordenar por código de producto o paquete
+            $query->leftJoin('productos as prod', 'movimientos.producto_id', '=', 'prod.id')
+                  ->leftJoin('paquetes as paq', 'movimientos.paquete_id', '=', 'paq.id')
+                  ->orderByRaw("COALESCE(prod.codigo, paq.codigo) {$orderDir}")
+                  ->select('movimientos.*');
+        } else {
+            $query->orderBy('created_at', $orderDir);
+        }
 
         $movimientos = $query->paginate($this->perPage);
 

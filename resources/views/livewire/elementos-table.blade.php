@@ -287,7 +287,7 @@
 
                             <!-- PLANILLA -->
                             <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('elementos.index', ['planilla_id' => $elemento->planilla_id]) }}"
+                                <a href="{{ route('planillas.index', ['codigo' => $elemento->planilla->codigo ?? '']) }}"
                                     wire:navigate class="text-blue-500 hover:underline">
                                     {{ $elemento->planilla->codigo_limpio ?? 'N/A' }}
                                 </a>
@@ -295,7 +295,7 @@
 
                             <!-- ETIQUETA -->
                             <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}"
+                                <a href="{{ route('etiquetas.index', ['etiqueta_id' => $elemento->etiquetaRelacion?->id ?? '']) }}"
                                     wire:navigate class="text-blue-500 hover:underline">
                                     {{ $elemento->etiquetaRelacion?->id ?? 'N/A' }}
                                 </a>
@@ -303,7 +303,7 @@
 
                             <!-- SUBETIQUETA -->
                             <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}"
+                                <a href="{{ route('etiquetas.index', ['etiqueta_sub_id' => $elemento->subetiqueta ?? '']) }}"
                                     wire:navigate class="text-blue-500 hover:underline">
                                     {{ $elemento->subetiqueta ?? 'N/A' }}
                                 </a>

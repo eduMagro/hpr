@@ -64,6 +64,11 @@ class ProductoController extends Controller
             });
         }
 
+        // Producto Base ID (select exacto)
+        if ($request->filled('producto_base_id')) {
+            $query->where('producto_base_id', (int) $request->producto_base_id);
+        }
+
         // Tipo (ProductoBase) - contains
         if ($request->filled('tipo')) {
             $buscar = trim($request->tipo);

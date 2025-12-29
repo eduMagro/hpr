@@ -12,105 +12,38 @@
         <!-- Botones superiores -->
         <div class="mb-6 flex flex-wrap justify-center gap-3">
             @if (auth()->check() && auth()->id() === 1)
-                <x-tabla.boton-azul :href="route('entradas.create')">
-                    ➕ Crear Nueva Entrada
-                </x-tabla.boton-azul>
+                <a href="{{ route('entradas.create') }}"
+                    class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hidden md:inline-flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    Nuevo Producto
+                </a>
             @endif
 
             <a href="{{ route('coladas.index') }}"
-                class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 inline-flex items-center gap-2">
+                class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hidden md:inline-flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
                     <path fill-rule="evenodd"
                         d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
                         clip-rule="evenodd" />
                 </svg>
-                Gestion de Coladas
+                Gestión de Coladas
             </a>
 
-            <button onclick="abrirModal()"
-                class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hidden md:inline-flex items-center gap-2">
+            <button onclick="abrirModalImprimir()"
+                class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hidden md:inline-flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path
-                        d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                    <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zM13 3a1 1 0 00-1 1v3a1 1 0 001 1h3a1 1 0 001-1V4a1 1 0 00-1-1h-3zm1 2v1h1V5h-1z" clip-rule="evenodd" />
+                    <path d="M11 4a1 1 0 10-2 0v1a1 1 0 002 0V4zM10 7a1 1 0 011 1v1h2a1 1 0 110 2h-3a1 1 0 01-1-1V8a1 1 0 011-1zM16 9a1 1 0 100 2 1 1 0 000-2zM9 13a1 1 0 011-1h1a1 1 0 110 2v2a1 1 0 11-2 0v-3zM16 13a1 1 0 100 2h1a1 1 0 100-2h-1z" />
                 </svg>
-                Generar Códigos QR
+                Generar e Imprimir QR
             </button>
         </div>
 
         <!-- 🖥️ Tabla solo en pantallas medianas o grandes -->
         <div class="hidden md:block">
-
-            <button onclick="abrirModal()"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow">
-                Generar códigos
-            </button>
-            <button onclick="abrirModalImprimir()"
-                class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow">
-                Generar e Imprimir QR
-            </button>
-
-            <div id="modalGenerarCodigos"
-                class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
-                <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
-                    <h2 class="text-xl font-semibold mb-4">Generar y exportar códigos</h2>
-
-                    <form action="{{ route('productos.generar.crearExportar') }}" method="POST" class="space-y-4">
-                        @csrf
-
-                        <div>
-                            <label for="cantidad" class="block text-sm font-medium text-gray-700">Cantidad a
-                                generar</label>
-                            <input type="number" id="cantidad" name="cantidad" value="10" min="1"
-                                class="w-full p-2 border border-gray-300 rounded-lg" required>
-                        </div>
-
-                        <div class="flex justify-end pt-2 space-x-2">
-                            <p class="text-xs text-gray-500 mt-2">
-                                ⚠️ Esta exportación es importante. Exporta solo si vas a imprimir etiquetas QR para
-                                evitar duplicados.
-                            </p>
-
-                            <button type="button" onclick="cerrarModal()"
-                                class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">
-                                Cancelar
-                            </button>
-                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                                Generar
-                            </button>
-                        </div>
-                    </form>
-
-                </div>
-            </div>
-            <script>
-                function abrirModal() {
-                    const modal = document.getElementById('modalGenerarCodigos');
-                    modal.classList.remove('hidden');
-                    modal.classList.add('flex');
-                }
-
-                function cerrarModal() {
-                    const modal = document.getElementById('modalGenerarCodigos');
-                    modal.classList.remove('flex');
-                    modal.classList.add('hidden');
-                }
-
-                // Opcional: cerrar con tecla ESC
-                document.addEventListener('keydown', function(event) {
-                    if (event.key === 'Escape') {
-                        cerrarModal();
-                    }
-                });
-
-                // Opcional: cerrar si se hace clic fuera del contenido
-                window.addEventListener('click', function(event) {
-                    const modal = document.getElementById('modalGenerarCodigos');
-                    if (event.target === modal) {
-                        cerrarModal();
-                    }
-                });
-            </script>
 
             <!-- Modal Generar e Imprimir QR -->
             <div id="modalImprimirQR"
@@ -603,28 +536,37 @@
             @endif
             </form>
         </div> --}}
-            <!-- Buscador con filtros personalizados -->
+            <!-- Filtros compactos en una fila -->
             <div class="mb-4">
-                <form method="GET" action="{{ route('productos.index') }}"
-                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-end">
+                <form method="GET" action="{{ route('productos.index') }}" class="flex gap-2 items-center">
+                    <input type="text" name="codigo" placeholder="Código QR..."
+                        value="{{ request('codigo') }}"
+                        class="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onchange="this.form.submit()">
 
-                    <x-tabla.input name="codigo" label="Código" placeholder="Buscar por QR..." autofocus
-                        autocomplete="off" />
-
-                    <select id="producto_base_id" name="producto_base_id"
-                        class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="" disabled selected>Seleccione un producto base</option>
-                        <option value="">NINGUNO</option>
+                    <select name="producto_base_id"
+                        class="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onchange="this.form.submit()">
+                        <option value="" {{ !request('producto_base_id') ? 'selected' : '' }}>Producto base</option>
                         @foreach ($productosBase as $producto)
                             <option value="{{ $producto->id }}"
-                                {{ old('producto_base_id') == $producto->id ? 'selected' : '' }}>
-                                {{ strtoupper($producto->tipo) }} |
-                                Ø{{ $producto->diametro }}{{ $producto->longitud ? ' | ' . $producto->longitud . ' m' : '' }}
+                                {{ request('producto_base_id') == $producto->id ? 'selected' : '' }}>
+                                {{ strtoupper($producto->tipo) }} Ø{{ $producto->diametro }}{{ $producto->longitud ? ' ' . $producto->longitud . 'm' : '' }}
                             </option>
                         @endforeach
                     </select>
 
-                    <x-tabla.botones-filtro ruta="productos.index" />
+                    @if(request('codigo') || request('producto_base_id'))
+                        <a href="{{ route('productos.index') }}"
+                            class="px-2 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded flex items-center justify-center"
+                            title="Restablecer filtros">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
+                            </svg>
+                        </a>
+                    @endif
                 </form>
             </div>
 

@@ -5,37 +5,21 @@
         <table class="min-w-full table-auto">
             <thead class="bg-blue-500 text-white text-10">
                 <tr class="text-center text-xs uppercase">
-                    <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('id')" wire:navigate">
-                        ID @if($sort === 'id'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('tipo')" wire:navigate">
-                        Tipo @if($sort === 'tipo'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('pedido_producto_id')" wire:navigate">
-                        Línea Pedido @if($sort === 'pedido_producto_id'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border">Producto</th>
-                    <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('descripcion')" wire:navigate">
-                        Descripción @if($sort === 'descripcion'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border">Nave</th>
-                    <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('prioridad')" wire:navigate">
-                        Prioridad @if($sort === 'prioridad'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border">Solicitado por</th>
-                    <th class="p-2 border">Ejecutado por</th>
-                    <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('estado')" wire:navigate">
-                        Estado @if($sort === 'estado'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('fecha_solicitud')" wire:navigate">
-                        Fecha Solicitud @if($sort === 'fecha_solicitud'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('fecha_ejecucion')" wire:navigate">
-                        Fecha Ejecución @if($sort === 'fecha_ejecucion'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border">Origen</th>
-                    <th class="p-2 border">Destino</th>
-                    <th class="p-2 border">Producto/Paquete</th>
+                    <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
+                    <x-tabla.encabezado-ordenable campo="tipo" :sortActual="$sort" :orderActual="$order" texto="Tipo" />
+                    <x-tabla.encabezado-ordenable campo="pedido_producto_id" :sortActual="$sort" :orderActual="$order" texto="Línea Pedido" />
+                    <x-tabla.encabezado-ordenable campo="producto_base" :sortActual="$sort" :orderActual="$order" texto="Producto" />
+                    <x-tabla.encabezado-ordenable campo="descripcion" :sortActual="$sort" :orderActual="$order" texto="Descripción" />
+                    <x-tabla.encabezado-ordenable campo="nave_id" :sortActual="$sort" :orderActual="$order" texto="Nave" />
+                    <x-tabla.encabezado-ordenable campo="prioridad" :sortActual="$sort" :orderActual="$order" texto="Prioridad" />
+                    <x-tabla.encabezado-ordenable campo="solicitado_por" :sortActual="$sort" :orderActual="$order" texto="Solicitado" />
+                    <x-tabla.encabezado-ordenable campo="ejecutado_por" :sortActual="$sort" :orderActual="$order" texto="Ejecutado" />
+                    <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order" texto="Estado" />
+                    <x-tabla.encabezado-ordenable campo="fecha_solicitud" :sortActual="$sort" :orderActual="$order" texto="F. Solicitud" />
+                    <x-tabla.encabezado-ordenable campo="fecha_ejecucion" :sortActual="$sort" :orderActual="$order" texto="F. Ejecución" />
+                    <x-tabla.encabezado-ordenable campo="origen" :sortActual="$sort" :orderActual="$order" texto="Origen" />
+                    <x-tabla.encabezado-ordenable campo="destino" :sortActual="$sort" :orderActual="$order" texto="Destino" />
+                    <x-tabla.encabezado-ordenable campo="producto_paquete" :sortActual="$sort" :orderActual="$order" texto="Prod/Paq" />
                     <th class="p-2 border">Acciones</th>
                 </tr>
 

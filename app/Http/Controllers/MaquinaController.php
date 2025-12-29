@@ -559,6 +559,9 @@ class MaquinaController extends Controller
             'esBarra'               => $esBarra,
             'longitudesPorDiametro' => $longitudesPorDiametro,
             'diametroPorEtiqueta'   => $diametroPorEtiqueta,
+
+            // productos base compatibles
+            'productosBaseCompatibles' => $productosBaseCompatibles,
         ]));
     }
 
@@ -1351,6 +1354,11 @@ class MaquinaController extends Controller
                 'planillaFabricacion'       => $planilla,
                 // Ubicación (null para grúa, se asigna después en el mapa)
                 'ubicacion'                 => null,
+                // Productos base compatibles (vacío para grúa en modo fabricación)
+                'productosBaseCompatibles'  => collect(),
+                // Grupos de resumen (vacíos para modo fabricación)
+                'gruposResumen'             => collect(),
+                'etiquetasEnGrupos'         => [],
             ]
         ));
     }
