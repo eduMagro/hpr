@@ -26,7 +26,6 @@ class FerrawinBulkImportService
     protected array $advertencias = [];
     protected array $cacheClientes = [];
     protected array $cacheObras = [];
-    protected int $contadorElementos = 0;
 
     public function __construct(
         protected CodigoEtiqueta $codigoService,
@@ -68,9 +67,8 @@ class FerrawinBulkImportService
                 'existentes' => count($existentes),
             ]);
 
-            // 3. Inicializar contadores
+            // 3. Inicializar contador de etiquetas
             $this->codigoService->inicializarContadorBatch();
-            $this->inicializarContadorElementos();
 
             // 4. Procesar en transacción
             DB::beginTransaction();
@@ -194,73 +192,120 @@ class FerrawinBulkImportService
     }
 
     /**
-     * Crea elementos en bulk para una planilla.
+     * Crea elementos para una planilla (mismo sistema que importación manual).
      */
     protected function crearElementosBulk(Planilla $planilla, array $elementos): void
     {
-        // Agrupar por descripción (etiqueta)
+        // Agrupar por número de etiqueta (igual que importación manual)
         $porEtiqueta = [];
-        foreach ($elementos as $elem) {
-            $nombreEtiqueta = $elem['descripcion_fila'] ?? $elem['nombre_etiqueta'] ?? 'Sin nombre';
-            $marca = $elem['marca'] ?? '';
-            $clave = $nombreEtiqueta . '|' . $marca;
+        foreach ($elementos as $index => $elem) {
+            // Usar etiqueta del elemento o índice como fallback
+            $numEtiqueta = $elem['etiqueta'] ?? $elem['descripcion_fila'] ?? ('grupo_' . $index);
 
-            if (!isset($porEtiqueta[$clave])) {
-                $porEtiqueta[$clave] = [
-                    'nombre' => $nombreEtiqueta,
-                    'elementos' => [],
-                ];
+            if (!isset($porEtiqueta[$numEtiqueta])) {
+                $porEtiqueta[$numEtiqueta] = [];
             }
-            $porEtiqueta[$clave]['elementos'][] = $elem;
+            $porEtiqueta[$numEtiqueta][] = $elem;
         }
 
-        // Crear etiquetas y elementos
-        foreach ($porEtiqueta as $grupo) {
-            // Crear etiqueta padre
-            $codigoPadre = $this->codigoService->generarCodigoPadre();
-            $etiqueta = Etiqueta::create([
-                'codigo' => $codigoPadre,
-                'planilla_id' => $planilla->id,
-                'nombre' => $grupo['nombre'],
-            ]);
+        Log::channel('ferrawin_sync')->info("📦 [BULK] Planilla {$planilla->codigo}: " . count($porEtiqueta) . " grupos de etiquetas");
+
+        // Crear etiquetas y elementos (igual que PlanillaProcessor)
+        foreach ($porEtiqueta as $numEtiqueta => $filasEtiqueta) {
+            // Crear etiqueta padre con retry logic (igual que importación manual)
+            $etiquetaPadre = $this->crearEtiquetaPadreConRetry($planilla, $filasEtiqueta, $numEtiqueta);
+
+            if (!$etiquetaPadre) {
+                Log::channel('ferrawin_sync')->error("❌ [BULK] No se pudo crear etiqueta para grupo {$numEtiqueta}");
+                continue;
+            }
 
             $this->stats['etiquetas_creadas']++;
 
-            // Preparar datos para bulk insert
-            $elementosInsert = [];
-            $now = now();
-
-            foreach ($grupo['elementos'] as $elem) {
-                $elementosInsert[] = [
-                    'codigo' => $this->generarCodigoElementoBatch(),
-                    'planilla_id' => $planilla->id,
-                    'etiqueta_id' => $etiqueta->id,
-                    'figura' => $elem['figura'] ?? null,
-                    'fila' => $elem['fila'] ?? null,
-                    'marca' => $elem['marca'] ?? null,
-                    'diametro' => (int)($elem['diametro'] ?? 0),
-                    'longitud' => (float)($elem['longitud'] ?? 0),
-                    'barras' => (int)($elem['barras'] ?? 0),
-                    'dobles_barra' => (int)($elem['dobles_barra'] ?? 0),
-                    'peso' => (float)($elem['peso'] ?? 0),
-                    'dimensiones' => $elem['dimensiones'] ?? null,
-                    'tiempo_fabricacion' => $this->calcularTiempo(
-                        (int)($elem['barras'] ?? 0),
-                        (int)($elem['dobles_barra'] ?? 0)
-                    ),
-                    'estado' => 'pendiente',
-                    'elaborado' => ($elem['dobles_barra'] ?? 0) > 0 ? 1 : 0,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
+            // Crear elementos uno por uno (igual que importación manual)
+            foreach ($filasEtiqueta as $elem) {
+                $this->crearElemento($planilla, $etiquetaPadre, $elem);
             }
 
-            // Bulk insert en chunks de 100
-            foreach (array_chunk($elementosInsert, 100) as $chunk) {
-                Elemento::insert($chunk);
-                $this->stats['elementos_creados'] += count($chunk);
+            Log::channel('ferrawin_sync')->debug("   ✅ Etiqueta {$etiquetaPadre->codigo} con " . count($filasEtiqueta) . " elementos");
+        }
+    }
+
+    /**
+     * Crea etiqueta padre con retry logic (igual que PlanillaProcessor).
+     */
+    protected function crearEtiquetaPadreConRetry(Planilla $planilla, array $filasEtiqueta, $numEtiqueta, int $maxIntentos = 3): ?Etiqueta
+    {
+        $intento = 0;
+        $nombreEtiqueta = $filasEtiqueta[0]['descripcion_fila'] ?? $filasEtiqueta[0]['nombre_etiqueta'] ?? 'Sin nombre';
+
+        while ($intento < $maxIntentos) {
+            try {
+                $codigoPadre = $this->codigoService->generarCodigoPadre();
+
+                Log::channel('ferrawin_sync')->debug("🏷️ [BULK] Grupo {$numEtiqueta} → Código: {$codigoPadre} (intento " . ($intento + 1) . ")");
+
+                $etiquetaPadre = Etiqueta::create([
+                    'codigo' => $codigoPadre,
+                    'planilla_id' => $planilla->id,
+                    'nombre' => $nombreEtiqueta,
+                ]);
+
+                return $etiquetaPadre;
+
+            } catch (\Illuminate\Database\QueryException $e) {
+                $intento++;
+
+                if ($e->errorInfo[0] === '23000' && str_contains($e->getMessage(), 'codigo')) {
+                    Log::channel('ferrawin_sync')->warning("⚠️ [BULK] Código duplicado, reintentando ({$intento}/{$maxIntentos})");
+
+                    if ($intento >= $maxIntentos) {
+                        Log::channel('ferrawin_sync')->error("❌ [BULK] No se pudo generar código único después de {$maxIntentos} intentos");
+                        return null;
+                    }
+
+                    usleep(100 * pow(2, $intento - 1) * 1000);
+                    continue;
+                }
+
+                Log::channel('ferrawin_sync')->error("❌ [BULK] Error creando etiqueta: " . $e->getMessage());
+                throw $e;
             }
         }
+
+        return null;
+    }
+
+    /**
+     * Crea un elemento individual (igual que PlanillaProcessor).
+     */
+    protected function crearElemento(Planilla $planilla, Etiqueta $etiquetaPadre, array $elem): void
+    {
+        $doblesBarra = (int)($elem['dobles_barra'] ?? 0);
+        $barras = (int)($elem['barras'] ?? 0);
+
+        Elemento::create([
+            'codigo' => Elemento::generarCodigo(),
+            'planilla_id' => $planilla->id,
+            'etiqueta_id' => $etiquetaPadre->id,
+            'etiqueta_sub_id' => null,
+            'maquina_id' => null,
+            'figura' => $elem['figura'] ?? null,
+            'fila' => $elem['fila'] ?? null,
+            'marca' => $elem['marca'] ?? null,
+            'etiqueta' => $elem['etiqueta'] ?? null,
+            'diametro' => (int)($elem['diametro'] ?? 0),
+            'longitud' => (float)($elem['longitud'] ?? 0),
+            'barras' => $barras,
+            'dobles_barra' => $doblesBarra,
+            'peso' => (float)($elem['peso'] ?? 0),
+            'dimensiones' => $elem['dimensiones'] ?? null,
+            'tiempo_fabricacion' => $this->calcularTiempo($barras, $doblesBarra),
+            'estado' => 'pendiente',
+            'elaborado' => $doblesBarra > 0 ? 1 : 0,
+        ]);
+
+        $this->stats['elementos_creados']++;
     }
 
     /**
@@ -388,34 +433,6 @@ class FerrawinBulkImportService
     }
 
     /**
-     * Inicializa el contador de elementos obteniendo el último usado.
-     */
-    protected function inicializarContadorElementos(): void
-    {
-        $prefijo = 'EL' . now()->format('ym');
-
-        $ultimo = Elemento::where('codigo', 'like', "$prefijo%")
-            ->orderByDesc(DB::raw("CAST(SUBSTRING(codigo, LENGTH('$prefijo') + 1) AS UNSIGNED)"))
-            ->value('codigo');
-
-        if ($ultimo) {
-            $this->contadorElementos = (int)substr($ultimo, strlen($prefijo));
-        } else {
-            $this->contadorElementos = 0;
-        }
-    }
-
-    /**
-     * Genera código único para elemento en batch.
-     */
-    protected function generarCodigoElementoBatch(): string
-    {
-        $this->contadorElementos++;
-        $prefijo = 'EL' . now()->format('ym');
-        return $prefijo . str_pad($this->contadorElementos, 5, '0', STR_PAD_LEFT);
-    }
-
-    /**
      * Calcula tiempo de fabricación.
      */
     protected function calcularTiempo(int $barras, int $dobles): float
@@ -479,7 +496,6 @@ class FerrawinBulkImportService
         $this->advertencias = [];
         $this->cacheClientes = [];
         $this->cacheObras = [];
-        $this->contadorElementos = 0;
     }
 
     /**
