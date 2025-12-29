@@ -107,6 +107,70 @@
 
     <div class="w-full sm:px-4 py-6">
         <div class="space-y-6">
+            {{-- ========================================= --}}
+            {{-- SECCIÓN DE ENTIDADES/ENSAMBLAJES --}}
+            {{-- ========================================= --}}
+            @if ($planilla->entidades->isNotEmpty())
+                <section class="bg-white border shadow rounded-lg">
+                    <header class="p-3 border-b flex items-center justify-between bg-amber-50">
+                        <h3 class="font-semibold text-lg text-amber-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-5 h-5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
+                            Ensamblajes ({{ $planilla->entidades->count() }})
+                        </h3>
+                        <span class="text-sm text-amber-600">
+                            {{ $planilla->entidades->sum('total_barras') }} barras |
+                            {{ $planilla->entidades->sum('total_estribos') }} estribos
+                        </span>
+                    </header>
+
+                    <div class="p-3">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Marca</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Situacion</th>
+                                        <th class="px-3 py-2 text-center font-medium text-gray-600">Cant.</th>
+                                        <th class="px-3 py-2 text-center font-medium text-gray-600">Long.</th>
+                                        <th class="px-3 py-2 text-center font-medium text-gray-600">Barras</th>
+                                        <th class="px-3 py-2 text-center font-medium text-gray-600">Estribos</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-600">Distribucion</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    @foreach ($planilla->entidades as $entidad)
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-3 py-2 font-medium text-gray-900">{{ $entidad->marca }}</td>
+                                            <td class="px-3 py-2 text-gray-700">{{ $entidad->situacion ?: '-' }}</td>
+                                            <td class="px-3 py-2 text-center text-gray-700">{{ $entidad->cantidad }}</td>
+                                            <td class="px-3 py-2 text-center text-gray-700">{{ number_format($entidad->longitud_ensamblaje, 2) }}m</td>
+                                            <td class="px-3 py-2 text-center">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                                    {{ $entidad->total_barras }}
+                                                </span>
+                                            </td>
+                                            <td class="px-3 py-2 text-center">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                    {{ $entidad->total_estribos }}
+                                                </span>
+                                            </td>
+                                            <td class="px-3 py-2 text-gray-600 text-xs">
+                                                {{ $entidad->resumen_distribucion }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            @endif
+
             @foreach ($maquinas as $clave => $maquina)
                 @php
                     $bloque = $etiquetasPorMaquina->get($maquina->id ?? 'sin', collect());

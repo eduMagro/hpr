@@ -45,37 +45,8 @@ class PapeleraController extends Controller
             return back()->with('error', 'No tienes permisos para acceder a la papelera.');
         }
 
-        // Obtener todos los registros eliminados
-        $deletedData = [
-            'productos' => Producto::onlyTrashed()->with('obra', 'productoBase')->get(),
-            'planillas' => Planilla::onlyTrashed()->with('cliente', 'obra')->get(),
-            'etiquetas' => Etiqueta::onlyTrashed()->with('planilla')->get(),
-            'paquetes' => Paquete::onlyTrashed()->with('planilla')->get(),
-            'elementos' => Elemento::onlyTrashed()->with('etiquetaRelacion')->get(),
-            'pedidos' => Pedido::onlyTrashed()->with('fabricante')->get(),
-            'pedidos_globales' => PedidoGlobal::onlyTrashed()->get(),
-            'movimientos' => Movimiento::onlyTrashed()->get(),
-            'entradas' => Entrada::onlyTrashed()->get(),
-            'salidas' => Salida::onlyTrashed()->get(),
-            'asignaciones_turnos' => AsignacionTurno::onlyTrashed()->with('user', 'turno', 'maquina')->get(),
-            'users' => User::onlyTrashed()->get(),
-            'clientes' => Cliente::onlyTrashed()->get(),
-            'obras' => Obra::onlyTrashed()->get(),
-            'maquinas' => Maquina::onlyTrashed()->get(),
-            'productos_base' => ProductoBase::onlyTrashed()->get(),
-            'ubicaciones' => Ubicacion::onlyTrashed()->get(),
-            'alertas' => Alerta::onlyTrashed()->get(),
-            'departamentos' => Departamento::onlyTrashed()->get(),
-            'secciones' => Seccion::onlyTrashed()->get(),
-            'turnos' => Turno::onlyTrashed()->get(),
-            'camiones' => Camion::onlyTrashed()->with('empresaTransporte')->get(),
-            'empresas_transporte' => EmpresaTransporte::onlyTrashed()->get(),
-            'distribuidores' => Distribuidor::onlyTrashed()->get(),
-            'fabricantes' => Fabricante::onlyTrashed()->get(),
-            'localizaciones' => Localizacion::onlyTrashed()->get(),
-        ];
-
-        return view('papelera.index', compact('deletedData'));
+        // La lógica de paginación se maneja en los componentes Livewire
+        return view('papelera.index');
     }
 
     public function restore($model, $id)

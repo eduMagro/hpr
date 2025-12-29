@@ -374,6 +374,7 @@ class PlanillaController extends Controller
             // No restringimos columnas de etiquetas/elementos para evitar problemas con accessors
             'etiquetas',
             'elementos.maquina:id,nombre,tipo',
+            'entidades',
         ])->findOrFail($id);
 
         // ------ Color por estado (igual que antes)
