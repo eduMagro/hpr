@@ -24,16 +24,16 @@ return new class extends Migration
             $table->boolean('editado')->default(false);
 
             $table->string('seleccion_pedido', 20)->nullable(); // recomendado|manual
-            $table->unsignedBigInteger('id_pedido_productos_recomendado')->nullable()->index();
-            $table->unsignedBigInteger('id_pedido_productos_seleccion_manual')->nullable()->index();
+            $table->unsignedBigInteger('id_recomendado')->nullable()->index();
+            $table->unsignedBigInteger('id_seleccion_manual')->nullable()->index();
 
             $table->timestamps();
 
             // MySQL has a 64-char identifier limit; use short FK names.
             $table->foreign('ocr_log_id', 'apaa_ocr_fk')->references('id')->on('entrada_import_logs')->nullOnDelete();
             $table->foreign('user_id', 'apaa_user_fk')->references('id')->on('users')->nullOnDelete();
-            $table->foreign('id_pedido_productos_recomendado', 'apaa_reco_fk')->references('id')->on('pedido_productos')->nullOnDelete();
-            $table->foreign('id_pedido_productos_seleccion_manual', 'apaa_manual_fk')->references('id')->on('pedido_productos')->nullOnDelete();
+            $table->foreign('id_recomendado', 'apaa_reco_fk')->references('id')->on('pedido_productos')->nullOnDelete();
+            $table->foreign('id_seleccion_manual', 'apaa_manual_fk')->references('id')->on('pedido_productos')->nullOnDelete();
         });
     }
 
