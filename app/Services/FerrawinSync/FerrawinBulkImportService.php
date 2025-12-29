@@ -3,6 +3,7 @@
 namespace App\Services\FerrawinSync;
 
 use App\Models\Planilla;
+use App\Models\PlanillaEntidad;
 use App\Models\Cliente;
 use App\Models\Obra;
 use App\Models\Etiqueta;
@@ -105,6 +106,7 @@ class FerrawinBulkImportService
                 'planillas_omitidas' => $this->stats['planillas_omitidas'],
                 'elementos_creados' => $this->stats['elementos_creados'],
                 'etiquetas_creadas' => $this->stats['etiquetas_creadas'],
+                'entidades_creadas' => $this->stats['entidades_creadas'],
                 'advertencias' => $this->advertencias,
                 'duracion' => $duracion,
             ];
@@ -174,6 +176,12 @@ class FerrawinBulkImportService
 
         // 4. Agrupar elementos por etiqueta y crear bulk
         $this->crearElementosBulk($planilla, $elementos);
+
+        // 4b. Crear entidades si vienen en los datos
+        $entidades = $data["entidades"] ?? [];
+        if (!empty($entidades)) {
+            $this->crearEntidades($planilla, $entidades);
+        }
 
         // 5. Asignar máquinas
         $this->asignador->repartirPlanilla($planilla->id);
@@ -458,10 +466,53 @@ class FerrawinBulkImportService
             'planillas_omitidas' => 0,
             'elementos_creados' => 0,
             'etiquetas_creadas' => 0,
+            'entidades_creadas' => 0,
         ];
         $this->advertencias = [];
         $this->cacheClientes = [];
         $this->cacheObras = [];
         $this->contadorElementos = 0;
+    }
+
+    /**
+     * Crea las entidades/ensamblajes de una planilla.
+     */
+    protected function crearEntidades(Planilla $planilla, array $entidades): void
+    {
+        if (empty($entidades)) {
+            return;
+        }
+
+        $now = now();
+        $entidadesInsert = [];
+
+        foreach ($entidades as $entidad) {
+            $entidadesInsert[] = [
+                "planilla_id" => $planilla->id,
+                "linea" => $entidad["linea"] ?? null,
+                "marca" => $entidad["marca"] ?? "SIN MARCA",
+                "situacion" => $entidad["situacion"] ?? "SIN SITUACION",
+                "cantidad" => (int)($entidad["cantidad"] ?? 1),
+                "miembros" => (int)($entidad["miembros"] ?? 1),
+                "modelo" => $entidad["modelo"] ?? null,
+                "longitud_ensamblaje" => $entidad["resumen"]["longitud_ensamblaje"] ?? null,
+                "peso_total" => $entidad["resumen"]["peso_total"] ?? null,
+                "total_barras" => $entidad["resumen"]["total_barras"] ?? 0,
+                "total_estribos" => $entidad["resumen"]["total_estribos"] ?? 0,
+                "composicion" => json_encode($entidad["composicion"] ?? []),
+                "distribucion" => json_encode($entidad["distribucion"] ?? []),
+                "created_at" => $now,
+                "updated_at" => $now,
+            ];
+        }
+
+        // Bulk insert
+        foreach (array_chunk($entidadesInsert, 50) as $chunk) {
+            PlanillaEntidad::insert($chunk);
+        }
+
+        $this->stats["entidades_creadas"] = ($this->stats["entidades_creadas"] ?? 0) + count($entidadesInsert);
+
+        Log::channel("ferrawin_sync")->debug("   [BULK] " . count($entidadesInsert) . " entidades creadas para planilla " . $planilla->codigo);
     }
 }

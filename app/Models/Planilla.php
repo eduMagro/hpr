@@ -105,6 +105,14 @@ class Planilla extends Model
     }
 
     /**
+     * Relación con las entidades/ensamblajes de la planilla.
+     */
+    public function entidades()
+    {
+        return $this->hasMany(PlanillaEntidad::class, 'planilla_id');
+    }
+
+    /**
      * Relación con la tabla 'users'
      * Una planilla pertenece a un usuario
      */
