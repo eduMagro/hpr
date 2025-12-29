@@ -241,7 +241,14 @@ class FerrawinBulkImportService
     protected function crearEtiquetaPadreConRetry(Planilla $planilla, array $filasEtiqueta, $numEtiqueta, int $maxIntentos = 3): ?Etiqueta
     {
         $intento = 0;
-        $nombreEtiqueta = $filasEtiqueta[0]['descripcion_fila'] ?? $filasEtiqueta[0]['nombre_etiqueta'] ?? 'Sin nombre';
+
+        // Obtener nombre y marca del primer elemento del grupo
+        $primerElem = $filasEtiqueta[0];
+        $descripcionFila = trim($primerElem['descripcion_fila'] ?? '');
+        $marca = trim($primerElem['marca'] ?? '');
+
+        // Usar descripcion_fila como nombre, o marca si está vacío
+        $nombreEtiqueta = $descripcionFila ?: $marca ?: 'Sin nombre';
 
         while ($intento < $maxIntentos) {
             try {
@@ -253,6 +260,7 @@ class FerrawinBulkImportService
                     'codigo' => $codigoPadre,
                     'planilla_id' => $planilla->id,
                     'nombre' => $nombreEtiqueta,
+                    'marca' => $marca ?: null,
                 ]);
 
                 return $etiquetaPadre;
