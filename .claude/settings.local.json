@@ -1,33 +1,33 @@
 {
-    "permissions": {
-        "allow": [
-            "Bash(php artisan cache:clear:*)",
-            "Bash(php artisan config:clear:*)",
-            "Bash(php artisan:*)",
-            "Bash(composer show:*)",
-            "Bash(test:*)",
-            "Bash(composer dump-autoload:*)",
-            "Bash(composer update:*)",
-            "Bash(nul)",
-            "Bash(composer require:*)",
-            "Bash(composer config:*)",
-            "Bash(php artisan:*)",
-            "Bash(nul)",
-            "Bash(dir:*)",
-            "Bash(cat:*)",
-            "Bash(git log:*)",
-            "Bash(php artisan tinker:*)",
-            "Bash(mysql:*)",
-            "Bash(dir \"C:\\xampp\\htdocs\\manager\\database\\migrations\" /b)",
-
-            "Bash(findstr:*)",
-            "Bash(php artisan make:livewire:*)",
-            "Bash(php artisan schema:show:*)",
-            "Bash(php artisan model:show:*)",
-            "Bash(php check_elemento.php:*)",
-            "Bash(php:*)"
-        ],
-        "deny": [],
-        "ask": []
-    }
+  "permissions": {
+    "allow": [
+      "Bash(php artisan cache:clear:*)",
+      "Bash(php artisan config:clear:*)",
+      "Bash(php artisan:*)",
+      "Bash(composer show:*)",
+      "Bash(test:*)",
+      "Bash(composer dump-autoload:*)",
+      "Bash(composer update:*)",
+      "Bash(nul)",
+      "Bash(composer require:*)",
+      "Bash(composer config:*)",
+      "Bash(php artisan:*)",
+      "Bash(nul)",
+      "Bash(dir:*)",
+      "Bash(cat:*)",
+      "Bash(git log:*)",
+      "Bash(php artisan tinker:*)",
+      "Bash(mysql:*)",
+      "Bash(dir \"C:\\xampp\\htdocs\\manager\\database\\migrations\" /b)",
+      "Bash(findstr:*)",
+      "Bash(php artisan make:livewire:*)",
+      "Bash(php artisan schema:show:*)",
+      "Bash(php artisan model:show:*)",
+      "Bash(php check_elemento.php:*)",
+      "Bash(php:*)",
+      "Bash(git pull:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
 }
