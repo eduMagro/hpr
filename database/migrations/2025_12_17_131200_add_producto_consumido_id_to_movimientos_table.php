@@ -13,10 +13,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('movimientos', function (Blueprint $table) {
-            $table->unsignedBigInteger('producto_consumido_id')->nullable()->after('producto_id');
-            $table->foreign('producto_consumido_id')->references('id')->on('productos')->nullOnDelete();
-        });
+        if (!Schema::hasColumn('movimientos', 'producto_consumido_id')) {
+            Schema::table('movimientos', function (Blueprint $table) {
+                $table->unsignedBigInteger('producto_consumido_id')->nullable()->after('producto_id');
+                $table->foreign('producto_consumido_id')->references('id')->on('productos')->nullOnDelete();
+            });
+        }
     }
 
     /**
