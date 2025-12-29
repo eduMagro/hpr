@@ -358,14 +358,14 @@ class FerrawinBulkImportService
             $this->cacheClientes = Cliente::whereIn('codigo', $codigosClientes)
                 ->get()
                 ->keyBy('codigo')
-                ->toArray();
+                ->all();
         }
 
         if (!empty($codigosObras)) {
             $this->cacheObras = Obra::whereIn('cod_obra', $codigosObras)
                 ->get()
                 ->keyBy('cod_obra')
-                ->toArray();
+                ->all();
         }
     }
 
