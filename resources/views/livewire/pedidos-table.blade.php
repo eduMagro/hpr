@@ -1,7 +1,7 @@
 <div>
     {{-- Filtros y Herramientas --}}
     <div
-        class="bg-gradient-to-r from-indigo-600 to-blue-500 p-3 rounded-2xl mb-4 flex flex-wrap items-center gap-3 shadow-lg shadow-indigo-200">
+        class="bg-gradient-to-r from-slate-800 to-slate-700 p-3 rounded-2xl mb-4 flex flex-wrap items-center gap-3 shadow-lg shadow-indigo-200">
         <div class="flex-1 min-w-[250px]">
             <div class="relative group">
                 <span
@@ -52,6 +52,41 @@
                 </select>
             </div>
 
+            {{-- Botones de Ordenación --}}
+            <div class="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-xl">
+                <span class="text-[8px] font-black text-white/60 uppercase tracking-widest px-1">Ordenar:</span>
+                <button wire:click="sortBy('fecha_pedido')"
+                    class="px-2 py-1 text-[9px] font-black uppercase tracking-wide rounded-lg transition-all
+                    {{ $sort === 'fecha_pedido' ? 'bg-white text-slate-800' : 'text-white/90 hover:bg-white/20' }}"
+                    title="Ordenar por Fecha de Emisión">
+                    <span class="flex items-center gap-1">
+                        F. Emisión
+                        @if ($sort === 'fecha_pedido')
+                            <svg class="w-3 h-3 {{ $order === 'asc' ? '' : 'rotate-180' }}" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 15l7-7 7 7" />
+                            </svg>
+                        @endif
+                    </span>
+                </button>
+                <button wire:click="sortBy('fecha_estimada_entrega')"
+                    class="px-2 py-1 text-[9px] font-black uppercase tracking-wide rounded-lg transition-all
+                    {{ $sort === 'fecha_estimada_entrega' ? 'bg-white text-slate-800' : 'text-white/90 hover:bg-white/20' }}"
+                    title="Ordenar por Fecha de Entrega">
+                    <span class="flex items-center gap-1">
+                        F. Entrega
+                        @if ($sort === 'fecha_estimada_entrega')
+                            <svg class="w-3 h-3 {{ $order === 'asc' ? '' : 'rotate-180' }}" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 15l7-7 7 7" />
+                            </svg>
+                        @endif
+                    </span>
+                </button>
+            </div>
+
             <button wire:click="limpiarFiltros"
                 class="p-2.5 bg-white/20 hover:bg-white/40 text-white border-0 rounded-xl transition-all active:scale-95"
                 title="Limpiar filtros">
@@ -83,9 +118,19 @@
                     <th
                         class="px-4 py-2.5 text-right font-black text-slate-50 uppercase tracking-widest text-[10px] w-24">
                         Recep.</th>
-                    <th
-                        class="px-4 py-2.5 text-center font-black text-slate-50 uppercase tracking-widest text-[10px] w-28">
-                        F. Entrega</th>
+                    <th class="px-4 py-2.5 text-center font-black text-slate-50 uppercase tracking-widest text-[10px] w-28 cursor-pointer hover:bg-slate-600 transition-colors"
+                        wire:click="sortBy('fecha_estimada_entrega')">
+                        <div class="flex items-center justify-center gap-1">
+                            F. Entrega
+                            @if ($sort === 'fecha_estimada_entrega')
+                                <svg class="w-3 h-3 {{ $order === 'asc' ? '' : 'rotate-180' }}" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 15l7-7 7 7" />
+                                </svg>
+                            @endif
+                        </div>
+                    </th>
                     <th
                         class="px-4 py-2.5 text-right font-black text-slate-50 uppercase tracking-widest text-[10px] w-24">
                         Estado</th>
@@ -168,7 +213,8 @@
                                             title="Eliminar Pedido completo">
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="2.5"
                                                     d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                             </svg>
                                         </button>

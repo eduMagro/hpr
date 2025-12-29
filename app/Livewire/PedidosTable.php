@@ -251,6 +251,7 @@ class PedidosTable extends Component
         $columnasPermitidas = [
             'codigo',
             'fecha_estimada_entrega',
+            'fecha_pedido',
             'estado',
             'created_at'
         ];
