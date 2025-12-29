@@ -21,7 +21,6 @@
             const exists = this.cart.find(i => i.id === item.id);
             if (!exists) {
                 this.cart.push(item);
-                this.notify('Añadido al pedido');
             }
         },
         removeFromCart(id) {

@@ -1,7 +1,7 @@
 <div>
     {{-- Filtros y Herramientas --}}
     <div
-        class="bg-slate-800 p-4 rounded-3xl border border-slate-200 mb-8 flex flex-wrap items-center gap-4 shadow-inner">
+        class="bg-slate-800 p-3 rounded-2xl border border-slate-200 mb-4 flex flex-wrap items-center gap-3 shadow-inner">
         <div class="flex-1 min-w-[250px]">
             <div class="relative group">
                 <span
@@ -12,7 +12,7 @@
                     </svg>
                 </span>
                 <input type="text" wire:model.live.debounce.300ms="codigo" placeholder="ID de Pedido o Referencia..."
-                    class="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 focus:border-slate-900 focus:ring-4 focus:ring-slate-900/10 rounded-2xl text-sm font-black text-slate-700 transition-all placeholder:text-slate-400">
+                    class="w-full pl-11 pr-4 py-2 bg-white border border-slate-200 focus:border-slate-900 focus:ring-4 focus:ring-slate-900/10 rounded-xl text-xs font-black text-slate-700 transition-all placeholder:text-slate-400">
             </div>
         </div>
 
@@ -66,30 +66,31 @@
 
     {{-- Tabla de resultados --}}
     {{-- Tabla de resultados --}}
-    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <table class="w-full border-collapse text-sm">
             <thead>
                 <tr class="bg-slate-800 border-b border-slate-200">
-                    <th class="px-6 py-5 text-left font-black text-slate-50 uppercase tracking-widest text-[10px] w-48">
+                    <th
+                        class="px-4 py-2.5 text-left font-black text-slate-50 uppercase tracking-widest text-[10px] w-40">
                         Línea</th>
-                    <th class="px-6 py-5 text-left font-black text-slate-50 uppercase tracking-widest text-[10px]">
+                    <th class="px-4 py-2.5 text-left font-black text-slate-50 uppercase tracking-widest text-[10px]">
                         Producto</th>
-                    <th class="px-6 py-5 text-left font-black text-slate-50 uppercase tracking-widest text-[10px]">
+                    <th class="px-4 py-2.5 text-left font-black text-slate-50 uppercase tracking-widest text-[10px]">
                         Entrega</th>
                     <th
-                        class="px-6 py-5 text-right font-black text-slate-50 uppercase tracking-widest text-[10px] w-32">
+                        class="px-4 py-2.5 text-right font-black text-slate-50 uppercase tracking-widest text-[10px] w-24">
                         Pedido</th>
                     <th
-                        class="px-6 py-5 text-right font-black text-slate-50 uppercase tracking-widest text-[10px] w-32">
+                        class="px-4 py-2.5 text-right font-black text-slate-50 uppercase tracking-widest text-[10px] w-24">
                         Recep.</th>
                     <th
-                        class="px-6 py-5 text-center font-black text-slate-50 uppercase tracking-widest text-[10px] w-40">
+                        class="px-4 py-2.5 text-center font-black text-slate-50 uppercase tracking-widest text-[10px] w-28">
                         F. Entrega</th>
                     <th
-                        class="px-6 py-5 text-right font-black text-slate-50 uppercase tracking-widest text-[10px] w-32">
+                        class="px-4 py-2.5 text-right font-black text-slate-50 uppercase tracking-widest text-[10px] w-24">
                         Estado</th>
                     <th
-                        class="px-6 py-5 text-right font-black text-slate-50 uppercase tracking-widest text-[10px] w-44">
+                        class="px-4 py-2.5 text-right font-black text-slate-50 uppercase tracking-widest text-[10px] w-32">
                         Acciones</th>
                 </tr>
             </thead>
@@ -107,35 +108,22 @@
 
                     {{-- CABECERA DEL PEDIDO (GRUPO) --}}
                     <tr class="bg-slate-100 border-t-2 relative group/row">
-                        <td colspan="6" class="px-6 py-6 border-l-4 border-slate-900 transition-all duration-300">
-                            <div class="flex items-center gap-10">
+                        <td colspan="6" class="px-4 py-2.5 border-l-4 border-slate-900 transition-all duration-300">
+                            <div class="flex items-center gap-6">
                                 <div class="flex flex-col">
                                     <span
-                                        class="text-lg font-black text-slate-900 tracking-tight">{{ $pedido?->codigo ?? '—' }}</span>
+                                        class="text-sm font-black text-slate-900 tracking-tight">{{ $pedido?->codigo ?? '—' }}</span>
                                 </div>
 
                                 <div class="flex flex-col">
                                     <span
-                                        class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Entorno
-                                        de Suministro</span>
-                                    <div class="flex items-center gap-3">
-                                        <span
-                                            class="text-sm font-black text-slate-800">{{ $pedido?->fabricante?->nombre ?? 'Directo' }}</span>
-                                        @if ($pedido?->distribuidor)
-                                            <svg class="w-3 h-3 text-slate-300" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
-                                                    d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                            </svg>
-                                            <span
-                                                class="text-xs font-bold text-slate-500 uppercase tracking-tighter">{{ $pedido->distribuidor->nombre }}</span>
-                                        @endif
-                                    </div>
+                                        class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Proveedor</span>
+                                    <span
+                                        class="text-xs font-black text-slate-800">{{ $pedido?->fabricante?->nombre ?? $pedido?->distribuidor?->nombre }}</span>
                                 </div>
 
                                 <div class="flex flex-col">
-                                    <span
-                                        class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Fecha
+                                    <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">F.
                                         Emisión</span>
                                     <span
                                         class="text-xs font-black text-slate-600 tracking-tight uppercase">{{ $pedido?->fecha_pedido_formateada ?? '—' }}</span>
@@ -144,7 +132,7 @@
                         </td>
 
                         {{-- ESTADO DEL PEDIDO (GRUPO) --}}
-                        <td class="px-6 py-6 text-right align-middle">
+                        <td class="px-4 py-2.5 text-right align-middle">
                             <div class="flex flex-col items-end">
                                 <span
                                     class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider
@@ -158,14 +146,14 @@
                         </td>
 
                         {{-- ACCIONES DEL PEDIDO (GRUPO) --}}
-                        <td class="px-6 py-6 text-right align-middle">
-                            <div class="flex items-center justify-end gap-3">
+                        <td class="px-4 py-2.5 text-right align-middle">
+                            <div class="flex items-center justify-end gap-2">
                                 @if ($pedido && !$pedidoCancelado && !$pedidoCompletado)
                                     <form method="POST" action="{{ route('pedidos.cancelar', $pedido->id) }}"
                                         onsubmit="return confirm('¿Cancelar pedido {{ $pedido->codigo }}?')">
                                         @csrf @method('PUT')
                                         <button type="submit"
-                                            class="px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest bg-white border border-slate-200 rounded-xl hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all duration-300 shadow-sm">
+                                            class="px-3 py-1.5 text-[9px] font-black text-slate-500 uppercase tracking-widest bg-white border border-slate-200 rounded-lg hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all duration-300 shadow-sm">
                                             Anular
                                         </button>
                                     </form>
@@ -175,12 +163,11 @@
                                         onsubmit="return confirm('¿ELIMINAR pedido {{ $pedido->codigo }}?')">
                                         @csrf @method('DELETE')
                                         <button type="submit"
-                                            class="p-2.5 text-rose-400 hover:text-white hover:bg-rose-500 border border-transparent hover:border-rose-600 rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-rose-100"
+                                            class="p-1.5 text-rose-400 hover:text-white hover:bg-rose-500 border border-transparent hover:border-rose-600 rounded-lg transition-all duration-300"
                                             title="Eliminar Pedido completo">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    stroke-width="2.5"
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                                                     d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                             </svg>
                                         </button>
@@ -194,19 +181,20 @@
                     @foreach ($lineasDelPedido as $linea)
                         @php
                             $estadoLinea = strtolower(trim($linea->estado));
+
                             $claseLinea = match ($estadoLinea) {
+                                'activo' => 'bg-amber-100',
                                 'facturado' => 'bg-green-500/50',
                                 'completado' => 'bg-indigo-400/50',
-                                'activo' => 'bg-slate-50',
                                 'cancelado' => 'opacity-50 grayscale bg-slate-50',
                                 default => '',
                             };
                         @endphp
 
                         <tr wire:key="linea-{{ $linea->id }}" class="group {{ $claseLinea }}">
-                            <td class="px-6 py-5 align-middle border-l-4 border-slate-200 group-hover:border-blue-400">
+                            <td class="px-4 py-2 align-middle border-l-4 border-slate-200 group-hover:border-blue-400">
                                 @if ($linea->codigo)
-                                    <div class="flex flex-col gap-1.5">
+                                    <div class="flex flex-col gap-0.5">
                                         <div class="flex items-center gap-1">
                                             <span
                                                 class="text-[10px] font-black text-slate-700 tracking-tighter">{{ explode('–', $linea->codigo)[0] ?? '' }}</span>
@@ -216,22 +204,22 @@
                                         @if ($pedido)
                                             <a href="{{ route('entradas.index', ['pedido_codigo' => $pedido->codigo, 'pedido_producto_id' => $linea->id]) }}"
                                                 class="flex items-center gap-1 justify-start text-[9px] font-black text-slate-700 hover:text-slate-900 hover:underline hover:underline-offset-4 transition-colors uppercase tracking-widest group/link w-fit">
-                                                Historial Entradas
+                                                Entradas
                                             </a>
                                         @endif
                                     </div>
                                 @endif
                             </td>
 
-                            <td class="px-6 py-5">
+                            <td class="px-4 py-2">
                                 <div class="producto-view-{{ $linea->id }} flex items-center gap-3">
                                     <span
-                                        class="px-2 py-1 bg-slate-900 text-white text-[9px] font-black rounded-lg uppercase tracking-widest shadow-sm">
+                                        class="px-1.5 py-0.5 bg-slate-900 text-white text-[8px] font-black rounded uppercase tracking-wide">
                                         {{ $linea->tipo }}
                                     </span>
                                     <div class="flex items-baseline gap-1">
                                         <span
-                                            class="text-base font-black text-slate-900 tracking-tight">Ø{{ $linea->diametro }}</span>
+                                            class="text-sm font-black text-slate-900 tracking-tight">Ø{{ $linea->diametro }}</span>
                                         @if ($linea->tipo === 'barra' && $linea->longitud && $linea->longitud !== '—')
                                             <span class="text-xs font-bold text-slate-400">/
                                                 {{ $linea->longitud }}m</span>
@@ -259,13 +247,12 @@
                                 </div>
                             </td>
 
-                            <td class="px-6 py-5">
+                            <td class="px-4 py-2">
                                 <div class="lugar-entrega-view-{{ $linea->id }} flex items-center gap-2">
                                     <div
                                         class="w-1.5 h-1.5 rounded-full {{ $linea->obra_id ? 'bg-slate-900' : 'bg-amber-400' }}">
                                     </div>
-                                    <span
-                                        class="text-sm font-black text-slate-600 truncate max-w-[150px] tracking-tight"
+                                    <span class="text-xs font-bold text-slate-600 truncate max-w-[120px]"
                                         title="{{ $linea->obra?->obra ?? $linea->obra_manual }}">
                                         {{ $linea->obra?->obra ?? ($linea->obra_manual ?? 'Sin Destino') }}
                                     </span>
@@ -292,19 +279,19 @@
                                 </div>
                             </td>
 
-                            <td class="px-6 py-5 text-right">
+                            <td class="px-4 py-2 text-right">
                                 <span
-                                    class="text-base font-black text-slate-900 tracking-tighter">{{ number_format($linea->cantidad ?? 0, 0, ',', '.') }}</span>
-                                <span class="text-[10px] font-black text-slate-700 uppercase ml-0.5">kg</span>
+                                    class="text-sm font-black text-slate-900 tracking-tighter">{{ number_format($linea->cantidad ?? 0, 0, ',', '.') }}</span>
+                                <span class="text-[9px] font-black text-slate-700 uppercase">kg</span>
                             </td>
 
-                            <td class="px-6 py-5 text-right">
+                            <td class="px-4 py-2 text-right">
                                 <div class="flex flex-col items-center">
-                                    <div class="flex items-baseline gap-1">
-                                        <span class="text-base font-black tracking-tighter text-slate-800">
+                                    <div class="flex items-baseline gap-0.5">
+                                        <span class="text-sm font-black tracking-tighter text-slate-800">
                                             {{ number_format($linea->cantidad_recepcionada ?? 0, 0, ',', '.') }}
                                         </span>
-                                        <span class="text-[10px] font-black text-slate-700 uppercase">kg</span>
+                                        <span class="text-[9px] font-black text-slate-700 uppercase">kg</span>
                                     </div>
                                     @php
                                         $porcentaje =
@@ -313,23 +300,22 @@
                                                 : 0;
                                     @endphp
                                     <div
-                                        class="w-20 h-2 bg-slate-200 border {{ $porcentaje >= 100 ? 'border-emerald-700' : 'border-slate-700' }} rounded-full mt-1.5 overflow-hidden">
+                                        class="w-16 h-1.5 bg-slate-200 border {{ $porcentaje >= 100 ? 'border-emerald-700' : 'border-slate-700' }} rounded-full mt-1 overflow-hidden">
                                         <div class="h-full {{ $porcentaje >= 100 ? 'bg-emerald-500' : 'bg-indigo-400' }} rounded-full"
                                             style="width: {{ min(100, $porcentaje) }}%"></div>
                                     </div>
                                 </div>
                             </td>
 
-                            <td class="px-6 py-5 text-center">
+                            <td class="px-4 py-2 text-center">
                                 <div class="inline-flex flex-col items-center">
-                                    <span
-                                        class="px-2.5 py-1 bg-slate-100 text-slate-700 text-[11px] font-black rounded-lg tracking-tight shadow-sm border border-slate-200/50">
+                                    <span class="text-slate-700 text-[10px] font-bold rounded tracking-tight">
                                         {{ $linea->fecha_estimada_entrega_formateada ?? 'S/F' }}
                                     </span>
                                 </div>
                             </td>
 
-                            <td class="px-6 py-5 text-right">
+                            <td class="px-4 py-2 text-right">
                                 <div class="flex flex-col items-end">
                                     <span
                                         class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider
@@ -342,7 +328,7 @@
                                 </div>
                             </td>
 
-                            <td class="px-6 py-5 text-right">
+                            <td class="px-4 py-2 text-right">
                                 <div class="flex items-center justify-end gap-2">
                                     @php
                                         $estado = strtolower(trim($linea->estado));
@@ -358,16 +344,16 @@
                                     {{-- BOTONES DE ACCIÓN --}}
                                     @if ($pedido)
                                         <div
-                                            class="botones-estado-{{ $linea->id }} flex items-center justify-end gap-2 {{ $esFinalizado ? 'hidden' : '' }}">
+                                            class="botones-estado-{{ $linea->id }} flex items-center justify-end gap-1 {{ $esFinalizado ? 'hidden' : '' }}">
                                             @if ($esEntregaDirecta)
                                                 <form method="POST"
                                                     action="{{ route('pedidos.editarCompletarLineaManual', [$pedido->id, $linea->id]) }}"
                                                     onsubmit="return confirmarCompletarLinea(this)">
                                                     @csrf
                                                     <button type="submit"
-                                                        class="w-10 h-10 flex items-center justify-center bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-xl transition-all duration-300 shadow-sm border border-emerald-100"
+                                                        class="w-7 h-7 flex items-center justify-center bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-all duration-200 border border-emerald-100"
                                                         title="Finalizar/Recepcionar">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
                                                             viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                                 stroke-width="2.5" d="M5 13l4 4L19 7" />
@@ -381,9 +367,9 @@
                                                     action="{{ route('pedidos.lineas.editarDesactivar', [$pedido->id, $linea->id]) }}">
                                                     @csrf @method('DELETE')
                                                     <button type="submit"
-                                                        class="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl transition-all duration-300 shadow-sm border border-rose-100"
+                                                        class="w-7 h-7 flex items-center justify-center bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-lg transition-all duration-200 border border-rose-100"
                                                         title="Deshabilitar Suministro">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
                                                             viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                                 stroke-width="2.5"
@@ -396,9 +382,9 @@
                                                     action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea->id]) }}">
                                                     @csrf @method('PUT')
                                                     <button type="submit"
-                                                        class="w-10 h-10 flex items-center justify-center bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white rounded-xl transition-all duration-300 shadow-sm border border-amber-100"
+                                                        class="w-7 h-7 flex items-center justify-center bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white rounded-lg transition-all duration-200 border border-amber-100"
                                                         title="Activar para Producción">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
                                                             viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                                 stroke-width="2.5"
@@ -409,9 +395,9 @@
                                             @endif
 
                                             <button type="button" onclick="abrirEdicionLinea({{ $linea->id }})"
-                                                class="btn-editar-linea-{{ $linea->id }} w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-800 hover:bg-slate-900 hover:text-white rounded-xl transition-all duration-300 shadow-sm border border-slate-200"
+                                                class="btn-editar-linea-{{ $linea->id }} w-7 h-7 flex items-center justify-center bg-slate-100 text-slate-800 hover:bg-slate-900 hover:text-white rounded-lg transition-all duration-200 border border-slate-200"
                                                 title="Configurar Línea">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         stroke-width="2.5"
@@ -421,11 +407,11 @@
                                         </div>
 
                                         {{-- BOTONES DE EDICIÓN --}}
-                                        <div class="flex items-center gap-2">
+                                        <div class="flex items-center gap-1">
                                             <button type="button"
                                                 onclick="guardarLinea({{ $linea->id }}, {{ $pedido->id }})"
-                                                class="btn-guardar-linea-{{ $linea->id }} hidden w-10 h-10 items-center justify-center bg-slate-900 text-white rounded-xl shadow-lg shadow-slate-200 hover:bg-black transition-all">
-                                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                                class="btn-guardar-linea-{{ $linea->id }} hidden w-7 h-7 items-center justify-center bg-slate-900 text-white rounded-lg hover:bg-black transition-all">
+                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24"
                                                     stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         stroke-width="3" d="M5 13l4 4L19 7" />
@@ -434,8 +420,8 @@
 
                                             <button type="button"
                                                 onclick="cancelarEdicionLinea({{ $linea->id }})"
-                                                class="btn-cancelar-edicion-{{ $linea->id }} hidden w-10 h-10 items-center justify-center bg-slate-200 text-slate-600 rounded-xl hover:bg-slate-300 transition-all">
-                                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                                class="btn-cancelar-edicion-{{ $linea->id }} hidden w-7 h-7 items-center justify-center bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300 transition-all">
+                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24"
                                                     stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         stroke-width="3" d="M6 18L18 6M6 6l12 12" />
@@ -449,7 +435,7 @@
                     @endforeach
                 @empty
                     <tr>
-                        <td colspan="8" class="px-6 py-12 text-center">
+                        <td colspan="8" class="px-4 py-8 text-center">
                             <div class="flex flex-col items-center gap-2">
                                 <span class="text-4xl">🔎</span>
                                 <h3 class="text-sm font-bold text-slate-800">No se encontraron líneas</h3>
