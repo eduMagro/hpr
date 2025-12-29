@@ -3,22 +3,16 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration {
     public function up()
     {
-        Schema::table('incorporacion_documentos', function (Blueprint $table) {
-            // Check if index exists before dropping? Schema::hasIndex is not standard.
-            // Using try-catch or raw sql might be safer, but dropUnique usually works if exists.
-            // We'll rely on Illuminate logic.
-
-            // To be safe against "Drop failed check that column/key exists", we can just try.
-            try {
-                $table->dropUnique('uk_incorporacion_tipo');
-            } catch (\Exception $e) {
-                // Ignore if it doesn't exist
-            }
-        });
+        try {
+            DB::statement('ALTER TABLE `incorporacion_documentos` DROP INDEX `uk_incorporacion_tipo`');
+        } catch (\Exception $e) {
+            // Ignorar si el índice no existe
+        }
     }
 
     public function down()
