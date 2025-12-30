@@ -1059,10 +1059,24 @@ Inesperados: ${inesperados.join(', ') || ''}
             modalConsumo: false,
             openSectors: {},
             estadoUbicaciones: {},
-            estadoSectores: {},
-            showLeyenda: false,
             listaConsumos: [],
             consumoCargando: false,
+            refreshCounter: 0,
+            getPendientesSector(sector) {
+                this.refreshCounter; // Acceso para disparar reactividad
+                if (!window.productosPorUbicacion) return 0;
+                let pendientes = 0;
+                Object.entries(window.productosPorUbicacion).forEach(([ubicId, info]) => {
+                    if (window.ubicacionSectorMap && window.ubicacionSectorMap[ubicId] == sector) {
+                        const escaneados = JSON.parse(localStorage.getItem(`inv-${ubicId}`) || '[]');
+                        const productos = Array.isArray(info.productos) ? info.productos : [];
+                        productos.forEach(p => {
+                            if (!escaneados.includes(p)) pendientes++;
+                        });
+                    }
+                });
+                return pendientes;
+            },
             borrarTodosEscaneos() {
                 const ids = Array.isArray(window.ubicacionIdsInventario) ? window.ubicacionIdsInventario : [];
                 if (!ids.length) {
@@ -1273,6 +1287,9 @@ Inesperados: ${inesperados.join(', ') || ''}
                 this.estadoSectores[sector] = final;
             },
             init() {
+                window.addEventListener('inventario-actualizado', () => {
+                    this.refreshCounter++;
+                });
                 window.addEventListener('ubicacion-estado', (e) => {
                     const {
                         ubicacionId,
@@ -1297,7 +1314,7 @@ Inesperados: ${inesperados.join(', ') || ''}
 <x-app-layout>
     <x-menu.ubicaciones :obras="$obras" :obra-actual-id="$obraActualId" color-base="emerald" />
 
-    <div x-data="paginaUbicaciones()" x-init="openModal = false" class="max-w-7xl mx-auto space-y-4 h-[calc(100vh-12rem)]">
+    <div x-data="paginaUbicaciones()" x-init="openModal = false" class="max-w-7xl mx-auto space-y-4 min-h-[calc(100vh-8rem)] pb-8">
         <div
             class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-4 lg:p-6">
             <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -1405,11 +1422,8 @@ Inesperados: ${inesperados.join(', ') || ''}
             </button>
         </div>
 
-        {{-- Sectores (scroll en desktop para evitar scroll global) --}}
-        <div class="space-y-2 md:space-y-4 lg:overflow-y-auto lg:pr-1"
-            :class="$store.inv && $store.inv.modoInventario ?
-                'lg:max-h-[calc(100vh-360px)]' :
-                'lg:max-h-[calc(100vh-300px)]'">
+        {{-- Sectores --}}
+        <div class="space-y-2 md:space-y-4">
             @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
                 <div x-init="if (openSectors['{{ $sector }}'] === undefined) openSectors['{{ $sector }}'] = false"
                     class="border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
@@ -1435,7 +1449,20 @@ Inesperados: ${inesperados.join(', ') || ''}
                             <div class="flex flex-col gap-1 items-start">
                                 <p class="text-base sm:text-lg font-semibold leading-tight">Sector {{ $sector }}
                                 </p>
-                                <p class="text-[11px] sm:text-xs text-white/80">Material en sector: {{ $totalMP }}
+                                <p class="text-[11px] sm:text-xs text-white/80">
+                                    <span x-show="!($store.inv && $store.inv.modoInventario)">Material en sector:
+                                        {{ $totalMP }}</span>
+                                    <span x-show="$store.inv && $store.inv.modoInventario" x-cloak
+                                        class="flex items-center gap-2">
+                                        <span>Material: {{ $totalMP }}</span>
+                                        <span class="opacity-40">|</span>
+                                        <span class="flex items-center gap-1 font-medium"
+                                            :class="getPendientesSector('{{ $sector }}') > 0 ? 'text-orange-300' :
+                                                'text-green-400'">
+                                            Pendientes: <span
+                                                x-text="getPendientesSector('{{ $sector }}')"></span>
+                                        </span>
+                                    </span>
                                 </p>
                             </div>
                         </div>
@@ -1529,7 +1556,8 @@ Inesperados: ${inesperados.join(', ') || ''}
                                     'cursor-pointer hover:ring-2 hover:ring-blue-400' : '',
                                     $store.inv && $store.inv.modoInventario ?
                                     (estado === 'ok' ? 'border-green-400 bg-green-200 dark:bg-green-950' :
-                                        estado === 'fabricando' ? 'border-purple-400 bg-purple-200 dark:bg-purple-950' :
+                                        estado === 'fabricando' ?
+                                        'border-purple-400 bg-purple-200 dark:bg-purple-950' :
                                         estado === 'consumido' ? 'border-blue-400 bg-blue-200 dark:bg-blue-950' :
                                         estado === 'ambar' ? 'border-amber-400 bg-amber-200 dark:bg-amber-950' :
                                         estado === 'rojo' ? 'border-red-500 bg-red-200 dark:bg-red-950' :
@@ -1599,7 +1627,8 @@ Inesperados: ${inesperados.join(', ') || ''}
         </div>
 
 
-        <div class="flex max-md:flex-col gap-3 max-sm:pb-4">
+        {{-- Botones de acción --}}
+        <div class="flex max-md:flex-col gap-3">
             <div
                 class="w-full h-14 md:h-16 flex flex-col items-center justify-center border border-blue-200 dark:border-blue-700/70 rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/80 hover:border-blue-500 hover:shadow-md transition">
                 <button @click="openModal = true"
