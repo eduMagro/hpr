@@ -149,7 +149,7 @@
                                 </svg>
                             </div>
 
-                            <div class="md:col-span-2 bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100">
+                            <div class="md:col-span-2 bg-white p-6 rounded-[1.5rem] shadow-sm border border-gray-100">
                                 <div class="flex items-center gap-3 mb-4">
                                     <div class="p-2 bg-gray-50 rounded-xl">
                                         <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor"
@@ -328,7 +328,7 @@
 
                         {{-- CARRITO VACÍO --}}
                         <div x-show="cart.length === 0"
-                            class="bg-white rounded-[2.5rem] p-12 text-center border-2 border-dashed border-slate-200">
+                            class="bg-white rounded-[1.5rem] p-12 text-center border-2 border-dashed border-slate-200">
                             <div
                                 class="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
                                 🛒</div>
@@ -448,9 +448,9 @@
 
             {{-- MODAL CONFIRMACIÓN PEDIDO --}}
             <div id="modalConfirmacion"
-                class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 transition-all duration-300">
+                class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-[9999] transition-all duration-300">
                 <div
-                    class="bg-white rounded-[2.5rem] w-full max-w-5xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[95vh] m-4">
+                    class="bg-white rounded-[1.5rem] w-full max-w-5xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[95vh] m-4">
                     {{-- Header --}}
                     <div
                         class="bg-gradient-to-r from-blue-600 to-indigo-700 px-8 py-6 text-white flex justify-between items-center shrink-0">
@@ -479,6 +479,7 @@
                                     <label for="fabricante"
                                         class="block text-[10px] font-black uppercase tracking-widest text-gray-400">Fabricante</label>
                                     <select name="fabricante_id" id="fabricante"
+                                        onchange="if(this.value) document.getElementById('distribuidor').value = ''"
                                         class="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm font-bold text-gray-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none">
                                         <option value="">-- Seleccionar fabricante --</option>
                                         @foreach ($fabricantes as $fabricante)
@@ -490,6 +491,7 @@
                                     <label for="distribuidor"
                                         class="block text-[10px] font-black uppercase tracking-widest text-gray-400">Distribuidor</label>
                                     <select name="distribuidor_id" id="distribuidor"
+                                        onchange="if(this.value) document.getElementById('fabricante').value = ''"
                                         class="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm font-bold text-gray-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none">
                                         <option value="">-- Seleccionar distribuidor --</option>
                                         @foreach ($distribuidores as $distribuidor)
@@ -514,7 +516,7 @@
                                                 HPR</label>
                                             <select name="obra_id_hpr" id="obra_id_hpr_modal"
                                                 class="w-full bg-transparent border-none p-0 text-sm font-black text-gray-800 focus:ring-0 cursor-pointer"
-                                                onchange="limpiarObraManual()">
+                                                onchange="if(this.value) { document.getElementById('obra_id_externa_modal').value = ''; document.getElementById('obra_manual_modal').value = ''; }">
                                                 <option value="">Seleccionar nave</option>
                                                 @foreach ($navesHpr as $nave)
                                                     <option value="{{ $nave->id }}">{{ $nave->obra }}</option>
@@ -531,7 +533,7 @@
                                                 Externa</label>
                                             <select name="obra_id_externa" id="obra_id_externa_modal"
                                                 class="w-full bg-transparent border-none p-0 text-sm font-black text-gray-800 focus:ring-0 cursor-pointer"
-                                                onchange="limpiarObraManual()">
+                                                onchange="if(this.value) { document.getElementById('obra_id_hpr_modal').value = ''; document.getElementById('obra_manual_modal').value = ''; }">
                                                 <option value="">Seleccionar obra</option>
                                                 @foreach ($obrasExternas as $obra)
                                                     <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
@@ -548,7 +550,8 @@
                                                 / Libre</label>
                                             <input type="text" name="obra_manual" id="obra_manual_modal"
                                                 class="w-full bg-transparent border-none p-0 text-sm font-black text-gray-800 focus:ring-0 placeholder-gray-300"
-                                                placeholder="Dirección manual" oninput="limpiarSelectsObra()"
+                                                placeholder="Dirección manual"
+                                                oninput="if(this.value) { document.getElementById('obra_id_hpr_modal').value = ''; document.getElementById('obra_id_externa_modal').value = ''; }"
                                                 value="{{ old('obra_manual') }}">
                                         </div>
                                     </div>
