@@ -1059,10 +1059,114 @@ Inesperados: ${inesperados.join(', ') || ''}
             modalConsumo: false,
             openSectors: {},
             estadoUbicaciones: {},
+            estadoSectores: {},
             listaConsumos: [],
             listaConsumosAgrupada: {},
             consumoCargando: false,
             refreshCounter: 0,
+            modalBackups: false,
+            listaBackups: [],
+            backupCargando: false,
+            async crearBackup() {
+                const snapshot = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key.startsWith('inv-') || key.startsWith('sospechosos-')) {
+                        snapshot[key] = localStorage.getItem(key);
+                    }
+                }
+
+                if (Object.keys(snapshot).length === 0) {
+                    swalToast.fire({
+                        icon: 'info',
+                        title: 'Sin datos',
+                        text: 'No hay escaneos locales para guardar.'
+                    });
+                    return;
+                }
+
+                this.backupCargando = true;
+                try {
+                    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    const resp = await fetch('{{ route('inventario-backups.store') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': token
+                        },
+                        body: JSON.stringify({
+                            almacen_id: '{{ $obraActualId }}',
+                            data: snapshot
+                        })
+                    });
+                    const data = await resp.json();
+                    if (data.ok) {
+                        swalToast.fire({
+                            icon: 'success',
+                            title: 'Backup guardado',
+                            text: 'El estado de tus escaneos se ha subido a la nube.'
+                        });
+                        this.cargarBackups();
+                    }
+                } catch (e) {
+                    console.error('Error guardando backup', e);
+                } finally {
+                    this.backupCargando = false;
+                }
+            },
+            async cargarBackups() {
+                try {
+                    const resp = await fetch(
+                        '{{ route('inventario-backups.index') }}?almacen_id={{ $obraActualId }}');
+                    const data = await resp.json();
+                    if (data.ok) {
+                        this.listaBackups = data.backups;
+                    }
+                } catch (e) {
+                    console.error('Error cargando backups', e);
+                }
+            },
+            async restaurarBackup(backup) {
+                // Cerrar temporalmente para que no tape el Swal
+                this.modalBackups = false;
+
+                const result = await swalDialog({
+                    icon: 'warning',
+                    title: '¿Restaurar este backup?',
+                    text: 'Esto reemplazará tus escaneos actuales por los de este backup del ' +
+                        new Date(backup.created_at).toLocaleString(),
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, restaurar',
+                    cancelButtonText: 'Cancelar'
+                });
+
+                if (!result.isConfirmed) {
+                    this.modalBackups = true; // Reabrir si cancela
+                    return;
+                }
+
+                // Limpiar actuales
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const key = localStorage.key(i);
+                    if (key && (key.startsWith('inv-') || key.startsWith('sospechosos-'))) {
+                        localStorage.removeItem(key);
+                    }
+                }
+
+                // Cargar backup
+                Object.entries(backup.data).forEach(([key, val]) => {
+                    localStorage.setItem(key, val);
+                });
+
+                window.dispatchEvent(new CustomEvent('inventario-actualizado', {}));
+                swalToast.fire({
+                    icon: 'success',
+                    title: 'Backup restaurado',
+                    text: 'Los escaneos han sido sincronizados.'
+                });
+                // Ya estaba cerrado, pero nos aseguramos
+                this.modalBackups = false;
+            },
             getPendientesSector(sector) {
                 this.refreshCounter; // Acceso para disparar reactividad
                 if (!window.productosPorUbicacion) return 0;
@@ -1317,6 +1421,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                     }
                 });
                 this.openModal = false;
+                this.cargarBackups();
             }
         };
     };
@@ -1325,7 +1430,7 @@ Inesperados: ${inesperados.join(', ') || ''}
 <x-app-layout>
     <x-menu.ubicaciones :obras="$obras" :obra-actual-id="$obraActualId" color-base="emerald" />
 
-    <div x-data="paginaUbicaciones()" x-init="openModal = false" class="max-w-7xl mx-auto space-y-4 min-h-[calc(100vh-8rem)] pb-8">
+    <div x-data="paginaUbicaciones()" class="max-w-7xl mx-auto space-y-4 min-h-[calc(100vh-8rem)] pb-8">
         <div
             class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-4 lg:p-6">
             <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -1345,6 +1450,31 @@ Inesperados: ${inesperados.join(', ') || ''}
                     </button>
 
                     <div class="flex gap-3 items-center">
+                        <!-- Botón Sincronización en la nube -->
+                        <div class="relative" x-show="$store.inv.modoInventario" x-cloak>
+                            <div
+                                class="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-full border border-gray-200 dark:border-gray-700">
+                                <button @click="crearBackup()"
+                                    class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-orange-600 hover:bg-orange-700 text-white shadow transition-all"
+                                    :class="backupCargando ? 'animate-pulse opacity-50' : ''"
+                                    title="Guardar backup en la nube">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                </button>
+                                <button @click="modalBackups = true; cargarBackups()"
+                                    class="inline-flex items-center justify-center h-8 px-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-all"
+                                    title="Ver historial de backups">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span class="text-xs font-bold ml-1" x-text="listaBackups.length"></span>
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- Botón Leyenda (Solo visible en modo inventario) -->
                         <div x-data="{ showLeyenda: false }" class="relative" x-show="$store.inv.modoInventario" x-cloak>
                             <button @click="showLeyenda = !showLeyenda"
@@ -1394,18 +1524,18 @@ Inesperados: ${inesperados.join(', ') || ''}
                                 </div>
                             </div>
                         </div>
-
-                        <button @click="$store.inv.toggleModoInventario()"
-                            class="inline-flex items-center gap-2 px-4 py-2 h-10 rounded-lg text-white font-semibold shadow transition-all text-xs md:text-sm w-[160px] justify-center"
-                            :class="$store.inv.modoInventario ?
-                                'bg-gradient-to-tr from-red-600 to-red-500 hover:from-red-700 hover:to-red-600' :
-                                'bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900'">
-                            <span class="text-xs md:text-sm">📦</span>
-                            <span class="text-xs md:text-sm"
-                                x-text="$store.inv.modoInventario ? 'Salir de inventario' : 'Hacer inventario'"></span>
-                        </button>
-
                     </div>
+
+                    <button @click="$store.inv.toggleModoInventario()"
+                        class="inline-flex items-center gap-2 px-4 py-2 h-10 rounded-lg text-white font-semibold shadow transition-all text-xs md:text-sm w-[160px] justify-center"
+                        :class="$store.inv.modoInventario ?
+                            'bg-gradient-to-tr from-red-600 to-red-500 hover:from-red-700 hover:to-red-600' :
+                            'bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900'">
+                        <span class="text-xs md:text-sm">📦</span>
+                        <span class="text-xs md:text-sm"
+                            x-text="$store.inv.modoInventario ? 'Salir de inventario' : 'Hacer inventario'"></span>
+                    </button>
+
                 </div>
             </div>
         </div>
@@ -1478,10 +1608,11 @@ Inesperados: ${inesperados.join(', ') || ''}
                             </div>
                         </div>
                         <div class="flex items-center gap-3">
-                            <span class="text-xs sm:text-sm text-white/70">{{ count($ubicaciones) }} ubicaciones</span>
+                            <span class="text-xs sm:text-sm text-white/70">{{ count($ubicaciones) }}
+                                ubicaciones</span>
                             <svg :class="openSectors['{{ $sector }}'] ? 'rotate-180' : ''"
-                                class="w-4 h-4 sm:w-5 sm:h-5 transition-transform" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                                class="w-4 h-4 sm:w-5 sm:h-5 transition-transform" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M19 9l-7 7-7-7" />
                             </svg>
@@ -1835,6 +1966,74 @@ Inesperados: ${inesperados.join(', ') || ''}
                                 </svg>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+        <!-- Modal Historial de Backups -->
+        <template x-teleport="body">
+            <div x-show="modalBackups" x-transition x-cloak
+                class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur overflow-y-auto">
+                <div @click.away="modalBackups = false"
+                    class="bg-white dark:bg-gray-900 w-full max-w-lg p-6 rounded-xl shadow-2xl mx-4 my-4 border border-gray-200 dark:border-gray-800">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Historial de backups (Últimos 3)
+                        </h2>
+                        <button @click="modalBackups = false"
+                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <template x-if="listaBackups.length === 0">
+                            <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                                No hay backups guardados en la nube para este almacén.
+                            </div>
+                        </template>
+
+                        <template x-for="backup in listaBackups" :key="backup.id">
+                            <div
+                                class="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-orange-500 transition-colors group">
+                                <div class="flex items-center justify-between gap-4">
+                                    <div class="flex flex-col">
+                                        <span class="text-sm font-bold text-gray-900 dark:text-white"
+                                            x-text="new Date(backup.created_at).toLocaleString()"></span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400"
+                                            x-text="'Subido por: ' + (backup.user ? backup.user.name : 'Desconocido')"></span>
+                                    </div>
+                                    <button @click="restaurarBackup(backup)"
+                                        class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs font-bold text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:border-orange-200 transition-all flex items-center gap-1 shadow-sm">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                        </svg>
+                                        Restaurar
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="mt-8 pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-center">
+                        <button @click="crearBackup()"
+                            class="text-xs font-bold text-gray-400 hover:text-orange-600 transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            Realizar nuevo backup ahora
+                        </button>
                     </div>
                 </div>
             </div>
@@ -2661,4 +2860,5 @@ Inesperados: ${inesperados.join(', ') || ''}
     <audio id="sonido-estaEnOtraUbi" src="{{ asset('sonidos/scan-error.mp3') }}" preload="auto"></audio>
     <audio id="sonido-noTieneUbicacion" src="{{ asset('sonidos/scan-error.mp3') }}" preload="auto"></audio>
     <audio id="sonido-consumido" src="{{ asset('sonidos/scan-error.mp3') }}" preload="auto"></audio>
+    </div>
 </x-app-layout>
