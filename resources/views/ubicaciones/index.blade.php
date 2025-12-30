@@ -1060,6 +1060,7 @@ Inesperados: ${inesperados.join(', ') || ''}
             openSectors: {},
             estadoUbicaciones: {},
             listaConsumos: [],
+            listaConsumosAgrupada: {},
             consumoCargando: false,
             refreshCounter: 0,
             getPendientesSector(sector) {
@@ -1139,6 +1140,16 @@ Inesperados: ${inesperados.join(', ') || ''}
                     if (byUbic !== 0) return byUbic;
                     return (a.codigo || '').toString().localeCompare((b.codigo || '').toString());
                 });
+
+                // Agrupar por ubicación
+                const grupos = {};
+                this.listaConsumos.forEach(item => {
+                    const u = item.ubicacion || 'Sin ubicación';
+                    if (!grupos[u]) grupos[u] = [];
+                    grupos[u].push(item);
+                });
+                this.listaConsumosAgrupada = grupos;
+
                 this.modalConsumo = true;
                 this.$nextTick(() => window.dispatchEvent(new CustomEvent('modal-consumo-abierto')));
             },
@@ -1723,9 +1734,16 @@ Inesperados: ${inesperados.join(', ') || ''}
                 <div @click.away="modalConsumo = false"
                     class="bg-white dark:bg-gray-900 w-screen md:max-w-4xl h-screen md:h-auto md:rounded-xl shadow-2xl md:mx-4 md:my-4 border border-gray-200 dark:border-gray-800">
                     <div class="flex items-center justify-between p-6">
-                        <h2 class="text-base md:text-lg lg:text-xl font-bold text-gray-800 dark:text-white">
-                            Materiales pendientes
-                        </h2>
+                        <div class="flex flex-col">
+                            <h2 class="text-base md:text-lg lg:text-xl font-bold text-gray-800 dark:text-white">
+                                Materiales pendientes
+                            </h2>
+                            <p class="text-xs md:text-sm text-gray-500 dark:text-gray-400">
+                                Total: <span x-text="listaConsumos.length"
+                                    class="font-bold text-orange-600 dark:text-orange-400"></span> materiales sin
+                                escanear
+                            </p>
+                        </div>
                         <button @click="modalConsumo = false"
                             class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1736,49 +1754,55 @@ Inesperados: ${inesperados.join(', ') || ''}
                     </div>
 
                     <div
-                        class="bg-gray-50 dark:bg-gray-800 border-y md:border-x border-gray-200 dark:border-gray-700 md:rounded-lg overflow-hidden">
-                        <div class="max-h-[80vh] overflow-y-auto">
-                            <table class="min-w-full text-sm">
-                                <thead class="bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200">
-                                    <tr>
-                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">
-                                            Ubicación</th>
-                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Código
-                                        </th>
-                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Colada
-                                        </th>
-                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Estado
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                                    <template x-if="!listaConsumos.length">
-                                        <tr>
-                                            <td colspan="4"
-                                                class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
-                                                No hay materiales cargados en la nave.
-                                            </td>
-                                        </tr>
-                                    </template>
-                                    <template x-for="item in listaConsumos" :key="`${item.ubicacion}-${item.codigo}`">
-                                        <tr>
-                                            <td class="px-2 md:px-4 py-2 font-semibold text-gray-800 dark:text-gray-100 text-xs md:text-base"
-                                                x-text="item.ubicacion"></td>
-                                            <td class="px-2 md:px-4 py-2 font-mono text-gray-700 dark:text-gray-200 text-xs md:text-base"
-                                                x-text="item.codigo"></td>
-                                            <td class="px-2 md:px-4 py-2 text-gray-600 dark:text-gray-300 text-xs md:text-base"
-                                                x-text="item.colada"></td>
-                                            <td class="px-2 md:px-4 py-2">
-                                                <span x-text="item.estado"
-                                                    :class="item.estado === 'OK' ?
-                                                        'bg-green-100 text-green-700' :
-                                                        'bg-amber-100 text-amber-700'"
-                                                    class="inline-flex items-center px-2 md:px-2.5 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-semibold"></span>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
+                        class="bg-gray-50 dark:bg-gray-900/50 border-y border-gray-200 dark:border-gray-800 max-h-[80vh] md:h-auto md:max-h-[60vh] overflow-y-auto p-4">
+                        <template x-if="!listaConsumos.length">
+                            <div
+                                class="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+                                <svg class="w-16 h-16 mb-4 opacity-20" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                </svg>
+                                <p class="text-lg font-medium">No hay materiales pendientes</p>
+                                <p class="text-sm">Todos los materiales han sido escaneados u operados.</p>
+                            </div>
+                        </template>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <template x-for="(items, ubicacion) in listaConsumosAgrupada" :key="ubicacion">
+                                <div
+                                    class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+                                    <div
+                                        class="bg-gray-100 dark:bg-gray-700/50 px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                                        <span class="font-bold text-gray-900 dark:text-white"
+                                            x-text="ubicacion"></span>
+                                        <span
+                                            class="bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                            x-text="items.length + ' pend.'"></span>
+                                    </div>
+                                    <div class="p-0">
+                                        <table class="min-w-full text-[11px] md:text-xs">
+                                            <thead class="bg-gray-50/50 dark:bg-gray-800 text-gray-500">
+                                                <tr>
+                                                    <th class="px-3 py-1.5 text-left font-medium">Código</th>
+                                                    <th class="px-3 py-1.5 text-left font-medium">Colada</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                                <template x-for="item in items" :key="item.codigo">
+                                                    <tr
+                                                        class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                                        <td class="px-3 py-2 font-mono font-medium text-gray-800 dark:text-gray-200"
+                                                            x-text="item.codigo"></td>
+                                                        <td class="px-3 py-2 text-gray-500 dark:text-gray-400"
+                                                            x-text="item.colada"></td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </div>
 
