@@ -1754,7 +1754,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                     </div>
 
                     <div
-                        class="bg-gray-50 dark:bg-gray-900/50 border-y border-gray-200 dark:border-gray-800 max-h-[80vh] md:h-auto md:max-h-[60vh] overflow-y-auto p-4">
+                        class="bg-gray-50 dark:bg-gray-900/50 border-y border-gray-200 dark:border-gray-800 h-[80vh] md:h-auto md:max-h-[60vh] overflow-y-auto p-4">
                         <template x-if="!listaConsumos.length">
                             <div
                                 class="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
@@ -1820,8 +1820,12 @@ Inesperados: ${inesperados.join(', ') || ''}
                             </div>
 
                             <div x-ref="handle"
-                                class="absolute top-1 left-1 h-10 w-10 rounded-full bg-white text-orange-600 flex items-center justify-center shadow-md cursor-pointer transition-transform duration-150 active:scale-95"
-                                :class="processing ? 'opacity-70 cursor-not-allowed' : ''"
+                                class="absolute top-1 left-1 h-10 w-10 rounded-full bg-white text-orange-600 flex items-center justify-center shadow-md cursor-pointer active:scale-95"
+                                :class="{
+                                    'transition-transform duration-300': !dragging,
+                                    'transition-transform duration-75': dragging,
+                                    'opacity-70 cursor-not-allowed': processing
+                                }"
                                 :style="`transform: translateX(${handleX}px);`"
                                 @pointerdown.prevent="startDrag($event)" @touchstart.prevent="startDrag($event)">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
