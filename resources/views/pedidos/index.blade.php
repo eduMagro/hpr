@@ -141,11 +141,15 @@
                                     <p class="text-[10px] text-blue-100/70 font-bold uppercase">Consolidado todas las
                                         naves</p>
                                 </div>
-                                <svg class="absolute -right-4 -bottom-4 w-32 h-32 text-white/10 group-hover:scale-110 transition-transform duration-500"
-                                    fill="currentColor" viewBox="0 0 20 20">
-                                    <path
-                                        d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z">
-                                    </path>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round"
+                                    class="absolute -bottom-8 -right-8 w-40 h-40 text-white opacity-10 transform rotate-12 group-hover:scale-110 group-hover:rotate-0 transition-all duration-500 pointer-events-none lucide lucide-anvil-icon lucide-anvil">
+                                    <path d="M7 10H6a4 4 0 0 1-4-4 1 1 0 0 1 1-1h4" />
+                                    <path d="M7 5a1 1 0 0 1 1-1h13a1 1 0 0 1 1 1 7 7 0 0 1-7 7H8a1 1 0 0 1-1-1z" />
+                                    <path d="M9 12v5" />
+                                    <path d="M15 12v5" />
+                                    <path d="M5 20a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3 1 1 0 0 1-1 1H6a1 1 0 0 1-1-1" />
                                 </svg>
                             </div>
 
@@ -455,7 +459,7 @@
                     <div
                         class="bg-gradient-to-r from-blue-600 to-indigo-700 px-8 py-6 text-white flex justify-between items-center shrink-0">
                         <div>
-                            <h3 class="text-2xl font-black italic tracking-tight uppercase">CONFIRMAR PEDIDO</h3>
+                            <h3 class="text-2xl font-black tracking-tight uppercase">CONFIRMAR PEDIDO</h3>
                             <p class="text-blue-100 text-sm font-medium opacity-80">Revisa los detalles antes de
                                 generar la orden de compra</p>
                         </div>

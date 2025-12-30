@@ -57,7 +57,7 @@
     @endphp
 
 
-    <div class="overflow-x-auto bg-white shadow-lg border border-gray-300">
+    <div class="overflow-x-auto bg-white shadow-lg border rounded-[2.5rem] border-gray-300">
         <table class="w-full text-sm text-center border-collapse">
             <thead>
                 <tr class="bg-blue-900 text-white text-xs">
@@ -252,7 +252,7 @@
             {{-- Espacio para posibles acciones futuras --}}
         </div>
 
-        <div class="bg-white shadow-lg border border-blue-100">
+        <div class="bg-white shadow-lg border border-blue-100 overflow-x-auto rounded-[2.5rem]">
             <table class="min-w-full text-sm text-center border-collapse">
                 <thead class="bg-blue-900 text-white text-xs">
                     <tr>
@@ -438,7 +438,7 @@
         </div>
 
         <div class="flex flex-col gap-8 items-start">
-            <div class="flex-1 overflow-x-auto bg-white shadow-lg border border-blue-100 w-full">
+            <div class="flex-1 overflow-x-auto bg-white shadow-lg border border-blue-100 w-full rounded-[2.5rem]">
                 <table class="min-w-full text-sm text-center border-collapse">
                     <thead class="bg-blue-900 text-white text-xs">
                         <tr>
