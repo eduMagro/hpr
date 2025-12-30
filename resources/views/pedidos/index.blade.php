@@ -138,20 +138,21 @@
                         </div>
 
                         {{-- SECCIÓN DE STOCK --}}
-                        <div
-                            class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-wrap items-center justify-between gap-4">
+                        <div class="p-6 rounded-3xl flex flex-wrap items-center justify-between gap-4">
                             <div class="flex items-center gap-4">
-                                <div class="p-3 bg-blue-50 rounded-2xl">
-                                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
-                                        </path>
+                                <div class="p-3 bg-blue-50 rounded-2xl ring-1 ring-blue-100">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-blue-600">
+                                        <path
+                                            d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 class="text-base font-bold text-gray-900">Análisis detallado</h3>
-                                    <p class="text-xs text-gray-500">Filtrar tabla de reposición por nave</p>
+                                    <h3 class="text-xl font-black text-gray-900 tracking-tight italic uppercase">
+                                        Análisis detallado</h3>
+                                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Filtrar
+                                        tabla de reposición por nave</p>
                                 </div>
                             </div>
 
