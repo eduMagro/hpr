@@ -130,8 +130,18 @@
 
                                         <label class="inline-flex items-center gap-1">
                                             <input type="checkbox" name="seleccionados[]"
-                                                value="encarretado-{{ $diametro }}">
-                                            <input type="hidden" name="detalles[encarretado-{{ $diametro }}][tipo]"
+                                                value="encarretado-{{ $diametro }}"
+                                                @change="toggleItem({ 
+                                                    id: 'encarretado-{{ $diametro }}', 
+                                                    tipo: 'encarretado', 
+                                                    diametro: '{{ $diametro }}', 
+                                                    cantidad: '{{ round(max(0, $necesarioVal - $stockVal), 2) }}',
+                                                    base_id: '{{ $productoBaseInfo['encarretado'][$diametro]['id'] ?? '' }}'
+                                                })"
+                                                :checked="isInCart('encarretado-{{ $diametro }}')"
+                                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <input type="hidden"
+                                                name="detalles[encarretado-{{ $diametro }}][tipo]"
                                                 value="encarretado">
                                             <input type="hidden"
                                                 name="detalles[encarretado-{{ $diametro }}][diametro]"
@@ -168,7 +178,17 @@
 
                                         <label class="inline-flex items-center gap-1">
                                             <input type="checkbox" name="seleccionados[]"
-                                                value="barra-{{ $diametro }}-{{ $longitud }}">
+                                                value="barra-{{ $diametro }}-{{ $longitud }}"
+                                                @change="toggleItem({ 
+                                                    id: 'barra-{{ $diametro }}-{{ $longitud }}', 
+                                                    tipo: 'barra', 
+                                                    diametro: '{{ $diametro }}', 
+                                                    longitud: '{{ $longitud }}',
+                                                    cantidad: '{{ round($necesarioVal, 0) }}',
+                                                    base_id: '{{ $productoBaseInfo['barras'][$diametro][$longitud]['id'] ?? '' }}'
+                                                })"
+                                                :checked="isInCart('barra-{{ $diametro }}-{{ $longitud }}')"
+                                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                                             <input type="hidden"
                                                 name="detalles[barra-{{ $diametro }}-{{ $longitud }}][tipo]"
                                                 value="barra">
@@ -206,18 +226,8 @@
         </table>
     </div>
 
-    <div class="mt-4 flex justify-end">
+    {{-- Botones de acción ahora en el sidebar del padre --}}
 
-        <button type="button" onclick="mostrarConfirmacion()"
-            class="bg-blue-600 text-white px-4 py-2 mr-4 rounded hover:bg-blue-700">
-            Crear pedido con seleccionados
-        </button>
-
-
-        <span class="bg-gray-700 text-white rounded px-4 py-2 font-bold shadow">
-            📌 Total general disponible: {{ number_format($totalGeneral, 2, ',', '.') }} kg
-        </span>
-    </div>
 
     {{-- 📊 CONSUMO HISTÓRICO --}}
     @if (!empty($resumenReposicion))
