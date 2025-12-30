@@ -135,7 +135,7 @@
                                                     id: 'encarretado-{{ $diametro }}', 
                                                     tipo: 'encarretado', 
                                                     diametro: '{{ $diametro }}', 
-                                                    cantidad: '{{ round(max(0, $necesarioVal - $stockVal), 2) }}',
+                                                    cantidad: {{ $pedidoVal > 0 ? $pedidoVal : max(0, $necesarioVal - $stockVal) }},
                                                     base_id: '{{ $productoBaseInfo['encarretado'][$diametro]['id'] ?? '' }}'
                                                 })"
                                                 :checked="isInCart('encarretado-{{ $diametro }}')"
@@ -184,7 +184,7 @@
                                                     tipo: 'barra', 
                                                     diametro: '{{ $diametro }}', 
                                                     longitud: '{{ $longitud }}',
-                                                    cantidad: '{{ round($necesarioVal, 0) }}',
+                                                    cantidad: {{ $pedidoVal > 0 ? $pedidoVal : $necesarioVal }},
                                                     base_id: '{{ $productoBaseInfo['barras'][$diametro][$longitud]['id'] ?? '' }}'
                                                 })"
                                                 :checked="isInCart('barra-{{ $diametro }}-{{ $longitud }}')"
@@ -477,13 +477,7 @@
                     </tbody>
                 </table>
             </div>
-
-            <div
-                class="w-full xl:w-96 shrink-0 bg-gradient-to-br from-blue-50 to-indigo-50/30 p-8 rounded-[2.5rem] border border-blue-100/50 shadow-sm relative overflow-hidden group">
-                <div
-                    class="absolute -right-8 -top-8 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-all duration-700">
-                </div>
-            </div>
+        </div>
     @endif
 
 </div>

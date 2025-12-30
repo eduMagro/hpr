@@ -1,6 +1,45 @@
 <x-app-layout>
     <x-slot name="title">Pedidos - {{ config('app.name') }}</x-slot>
 
+    {{-- Estilos personalizados para el carrito --}}
+    <style>
+        /* Ocultar spinners del input number */
+        .cart-input::-webkit-outer-spin-button,
+        .cart-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .cart-input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        /* Scrollbar personalizada para el carrito */
+        .cart-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .cart-scrollbar::-webkit-scrollbar-track {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 10px;
+        }
+
+        .cart-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(71, 85, 105, 0.8);
+            border-radius: 10px;
+        }
+
+        .cart-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 116, 139, 1);
+        }
+
+        /* Firefox */
+        .cart-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(71, 85, 105, 0.8) rgba(30, 41, 59, 0.5);
+        }
+    </style>
+
     <div class="px-4 py-6" x-data="{
         activeTab: 'activos',
         cart: [],
@@ -9,7 +48,11 @@
             if (idx > -1) {
                 this.cart.splice(idx, 1);
             } else {
-                this.cart.push(item);
+                // Convertir cantidad a número al añadir
+                this.cart.push({
+                    ...item,
+                    cantidad: parseFloat(item.cantidad) || 0
+                });
             }
         },
         isInCart(id) {
@@ -69,10 +112,11 @@
             </div>
 
             <div x-show="activeTab === 'analisis'" x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
-                class="relative">
-                <div class="flex flex-col xl:flex-row gap-8">
-                    <div class="flex-1 space-y-8">
+                x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0">
+                {{-- LAYOUT GRID: Contenido + Carrito --}}
+                <div class="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-8 items-start">
+                    {{-- COLUMNA IZQUIERDA: Contenido Principal --}}
+                    <div class="space-y-8 min-w-0">
                         {{-- SUMMARY CARDS --}}
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div
@@ -188,91 +232,114 @@
                         </div>
                     </div>
 
-                    {{-- CARRITO SIDEBAR --}}
-                    <aside class="w-full xl:w-96 shrink-0" x-show="cart.length > 0"
-                        x-transition:enter="transition ease-out duration-300"
-                        x-transition:enter-start="opacity-0 translate-x-10"
-                        x-transition:enter-end="opacity-100 translate-x-0">
-                        <div
-                            class="sticky top-6 bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-white p-6 space-y-6 flex flex-col max-h-[calc(100vh-100px)]">
-                            <div class="flex items-center justify-between border-b pb-4 border-gray-100">
-                                <div class="flex items-center gap-3">
-                                    <div class="p-2 bg-emerald-50 rounded-lg">
-                                        <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
-                                        </svg>
-                                    </div>
-                                    <h3 class="text-lg font-extrabold text-gray-900">Carrito</h3>
-                                </div>
-                                <button @click="cart = []"
-                                    class="text-xs text-red-500 font-bold hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">Vaciar</button>
+                    {{-- COLUMNA DERECHA: Carrito (Sticky) --}}
+                    <div class="hidden xl:block sticky top-6 self-start">
+                        {{-- CARRITO CON ITEMS --}}
+                        <div x-show="cart.length > 0" x-transition:enter="transition ease-out duration-300"
+                            x-transition:enter-start="opacity-0 translate-x-10"
+                            x-transition:enter-end="opacity-100 translate-x-0"
+                            class="bg-slate-900 rounded-[1.5rem] p-5 text-white shadow-2xl shadow-blue-900/20 border border-slate-800 flex flex-col max-h-[70vh] relative overflow-hidden">
+                            {{-- Background Glow --}}
+                            <div class="absolute -top-24 -right-24 w-64 h-64 bg-blue-600/10 rounded-full blur-[80px]">
                             </div>
 
-                            <div class="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-200">
-                                <template x-for="item in cart" :key="item.id">
-                                    <div
-                                        class="group bg-gray-50/50 p-4 rounded-2xl border border-gray-100 hover:border-blue-200 hover:bg-white hover:shadow-lg transition-all duration-300">
-                                        <div class="flex justify-between items-start mb-2">
-                                            <div class="flex flex-col">
-                                                <span
-                                                    class="text-[10px] font-black uppercase tracking-wider text-gray-400"
-                                                    x-text="item.tipo"></span>
-                                                <span class="text-sm font-bold text-gray-900"
-                                                    x-text="'Ø' + item.diametro + (item.longitud ? ' x ' + item.longitud + 'm' : '')"></span>
-                                            </div>
-                                            <button @click="toggleItem(item)"
-                                                class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                                </svg>
-                                            </button>
-                                        </div>
-                                        <div class="flex items-end justify-between">
-                                            <div class="flex flex-col flex-1">
-                                                <span
-                                                    class="text-[10px] text-gray-400 font-bold uppercase tracking-tight mb-1">Kg
-                                                    a pedir</span>
-                                                <div class="flex items-center gap-2">
-                                                    <input type="number" x-model="item.cantidad"
-                                                        class="w-full text-base font-black text-blue-600 bg-white border border-gray-200 rounded-lg px-2 py-1 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none">
+                            <div class="relative z-10 flex flex-col h-full">
+                                <div class="flex items-center justify-between mb-4 shrink-0">
+                                    <h3 class="text-xl font-black tracking-tight">Borrador</h3>
+                                    <div class="flex items-center gap-2">
+                                        <span
+                                            class="px-2.5 py-0.5 bg-blue-500 text-white text-[10px] font-black rounded-full"
+                                            x-text="cart.length"></span>
+                                        <button @click="cart = []"
+                                            class="text-[9px] font-black text-slate-500 uppercase hover:text-white transition-colors">Limpiar</button>
+                                    </div>
+                                </div>
+
+                                {{-- Cart Items (Scrollable) --}}
+                                <div class="flex-1 overflow-y-auto cart-scrollbar pr-1 space-y-2 mb-4 max-h-[35vh]">
+                                    <template x-for="item in cart" :key="item.id">
+                                        <div
+                                            class="p-3 bg-slate-800/40 rounded-xl border border-slate-700/50 hover:bg-slate-800/80 transition-all duration-200">
+                                            <div class="flex flex-col gap-2">
+                                                <div class="flex items-start justify-between">
+                                                    <div class="flex flex-col">
+                                                        <span
+                                                            class="text-[11px] font-bold text-slate-200 leading-tight"
+                                                            x-text="'Ø' + item.diametro + (item.longitud ? ' x ' + item.longitud + 'm' : '')"></span>
+                                                        <span
+                                                            class="text-[8px] font-black text-slate-500 uppercase tracking-widest"
+                                                            x-text="item.tipo"></span>
+                                                    </div>
+                                                    <button @click="toggleItem(item)"
+                                                        class="text-slate-500 hover:text-rose-400 transition-colors">
+                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="3" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+
+                                                <div class="relative">
+                                                    <input type="number" x-model.number="item.cantidad"
+                                                        class="cart-input w-full bg-slate-950 border border-slate-700 rounded-lg pl-2 pr-8 py-1 text-[10px] font-black text-blue-400 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                                                        step="100">
                                                     <span
-                                                        class="text-[10px] font-black text-gray-400 uppercase">kg</span>
+                                                        class="absolute right-2 top-1 text-[8px] font-black text-slate-600">KG</span>
                                                 </div>
                                             </div>
-                                            <div class="p-2 bg-blue-50 text-blue-600 rounded-lg ml-4">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                                </svg>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                {{-- Totals & Call to Action (Fixed at bottom) --}}
+                                <div class="shrink-0 border-t border-slate-800 pt-4 space-y-4">
+                                    <div class="flex justify-between items-center">
+                                        <div class="flex flex-col">
+                                            <p class="text-[8px] font-black text-slate-500 uppercase tracking-widest">
+                                                Peso
+                                                Total</p>
+                                            <div class="flex items-baseline gap-1">
+                                                <p class="text-2xl font-black text-white"
+                                                    x-text="cartTotal.toLocaleString('es-ES')"></p>
+                                                <span class="text-[9px] font-bold text-slate-500 uppercase">kg</span>
                                             </div>
                                         </div>
+                                        <div
+                                            class="px-2 py-1 bg-slate-800 rounded-lg border border-slate-700/50 flex items-center gap-1.5">
+                                            <span class="text-[10px]">🚛</span>
+                                            <span class="text-[10px] font-black text-slate-300"
+                                                x-text="Math.ceil(cartTotal / 25000)"></span>
+                                        </div>
                                     </div>
-                                </template>
-                            </div>
 
-                            <div class="pt-6 border-t border-gray-100 space-y-4">
-                                <div class="flex items-center justify-between text-sm px-1">
-                                    <span class="text-gray-500 font-bold uppercase tracking-widest text-[10px]">Total
-                                        Estimado</span>
-                                    <span class="text-xl font-black text-gray-900"
-                                        x-text="cartTotal.toLocaleString('es-ES') + ' kg'"></span>
+                                    <button type="button" @click="mostrarConfirmacion(cart)"
+                                        class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3.5 rounded-xl shadow-lg shadow-blue-900/20 transition-all transform active:scale-95 flex items-center justify-center gap-2 group/btn">
+                                        <span class="text-xs uppercase tracking-wider">Continuar Pedido</span>
+                                        <svg class="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform"
+                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                                d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                        </svg>
+                                    </button>
                                 </div>
-                                <button @click="mostrarConfirmacion(cart)"
-                                    class="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-2xl font-bold shadow-xl shadow-blue-500/20 hover:shadow-blue-500/40 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3">
-                                    Confirmar Pedido
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
-                                    </svg>
-                                </button>
                             </div>
                         </div>
-                    </aside>
+
+                        {{-- CARRITO VACÍO --}}
+                        <div x-show="cart.length === 0"
+                            class="bg-white rounded-[2.5rem] p-12 text-center border-2 border-dashed border-slate-200">
+                            <div
+                                class="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
+                                🛒</div>
+                            <h4 class="text-sm font-black text-slate-400 uppercase tracking-widest">Carrito de
+                                Reposición
+                            </h4>
+                            <p class="text-xs text-slate-400 mt-3 font-medium leading-relaxed">Añade productos del
+                                análisis
+                                de stock para configurar un nuevo pedido de compra.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1077,9 +1144,9 @@
                 </td>
                 <td class="px-6 py-5 whitespace-nowrap w-40">
                     <div class="flex items-center gap-2 group">
-                        <input type="number" class="peso-total w-full bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm font-black text-blue-600 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none"
+                        <input type="number" class="peso-total w-24 bg-gray-100 border border-gray-300 rounded-xl px-3 py-2 text-sm font-black text-gray-900 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all outline-none"
                                name="detalles[${clave}][cantidad]" value="${cantidad}" step="500" min="0">
-                        <span class="text-[10px] font-black text-gray-400">kg</span>
+                        <span class="text-xs font-black text-gray-500">kg</span>
                     </div>
                 </td>
                 <td class="px-6 py-5 min-w-[300px]">
