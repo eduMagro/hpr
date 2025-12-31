@@ -2428,6 +2428,9 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                 get esConsumido() {
                                                     return (this.estado === 'consumido');
                                                 },
+                                                get esAlmacenado() {
+                                                    return (this.estado === 'almacenado');
+                                                },
                                                 get maquinaId() {
                                                     return (window.productosMaquinas && Object.prototype.hasOwnProperty.call(window.productosMaquinas, codigo)) ? window.productosMaquinas[codigo] : null;
                                                 },
@@ -2485,7 +2488,13 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                 class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
                                                 Asignar aquí
                                             </button>
-                                            <span x-show="!esConsumido && !esFabricando && !hasId"
+                                            {{-- Producto almacenado sin ubicación: permitir asignar --}}
+                                            <button x-show="!esConsumido && !esFabricando && !hasId && esAlmacenado"
+                                                @click="reasignarProducto(codigo)"
+                                                class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
+                                                Asignar aquí
+                                            </button>
+                                            <span x-show="!esConsumido && !esFabricando && !hasId && !esAlmacenado"
                                                 class="text-gray-500 text-xs flex-shrink-0">
                                                 No asignable
                                             </span>
@@ -2597,6 +2606,9 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                 get esConsumido() {
                                                     return (this.estado === 'consumido');
                                                 },
+                                                get esAlmacenado() {
+                                                    return (this.estado === 'almacenado');
+                                                },
                                                 get maquinaId() {
                                                     return (window.productosMaquinas && Object.prototype.hasOwnProperty.call(window.productosMaquinas, codigo)) ? window.productosMaquinas[codigo] : null;
                                                 },
@@ -2609,8 +2621,10 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                 'text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800 bg-white dark:bg-gray-800': esFabricando,
                                                 'text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-800':
                                                     !esConsumido && !esFabricando && hasId,
+                                                'text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 bg-white dark:bg-gray-800':
+                                                    !esConsumido && !esFabricando && !hasId && esAlmacenado,
                                                 'text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 bg-white dark:bg-gray-800':
-                                                    !esConsumido && !esFabricando && !hasId
+                                                    !esConsumido && !esFabricando && !hasId && !esAlmacenado
                                             }">
 
                                             <div class="flex flex-col items-start min-w-0 flex-1">
@@ -2620,7 +2634,8 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                     <span x-show="esFabricando">Fabricando</span>
                                                     <span x-show="!esConsumido && !esFabricando && hasId">Otra
                                                         ubicación</span>
-                                                    <span x-show="!esConsumido && !esFabricando && !hasId">Sin
+                                                    <span x-show="!esConsumido && !esFabricando && !hasId && esAlmacenado">Almacenado sin ubicación</span>
+                                                    <span x-show="!esConsumido && !esFabricando && !hasId && !esAlmacenado">Sin
                                                         registrar</span>
                                                 </span>
                                             </div>
@@ -2636,6 +2651,12 @@ Inesperados: ${inesperados.join(', ') || ''}
                                             <button x-show="!esConsumido && !esFabricando && hasId"
                                                 @click="reasignarProducto(codigo)"
                                                 class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
+                                                Asignar aquí
+                                            </button>
+                                            {{-- Producto almacenado sin ubicación: permitir asignar --}}
+                                            <button x-show="!esConsumido && !esFabricando && !hasId && esAlmacenado"
+                                                @click="reasignarProducto(codigo)"
+                                                class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
                                                 Asignar aquí
                                             </button>
                                         </div>
