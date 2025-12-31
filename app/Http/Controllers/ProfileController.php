@@ -1457,6 +1457,7 @@ class ProfileController extends Controller
     }
     /**
      * Obtener datos de vacaciones de un usuario para cálculo frontend
+     * Incluye desglose por año para el período de gracia (1 enero - 31 marzo)
      */
     public function getVacationData(User $user)
     {
@@ -1465,9 +1466,31 @@ class ProfileController extends Controller
             return response()->json(['error' => 'No autorizado'], 403);
         }
 
+        $currentYear = (int) date('Y');
+        $previousYear = $currentYear - 1;
+
+        // Días de vacaciones usados en total
+        $diasAsignadosTotal = $user->asignacionesTurnos()->where('estado', 'vacaciones')->count();
+
+        // Días usados del año anterior (vacaciones asignadas en fechas del año anterior)
+        $diasAsignadosAnterior = $user->asignacionesTurnos()
+            ->where('estado', 'vacaciones')
+            ->whereYear('fecha', $previousYear)
+            ->count();
+
+        // Días usados del año actual (vacaciones asignadas en fechas del año actual)
+        $diasAsignadosActual = $user->asignacionesTurnos()
+            ->where('estado', 'vacaciones')
+            ->whereYear('fecha', $currentYear)
+            ->count();
+
         return response()->json([
             'fecha_incorporacion' => $user->fecha_incorporacion_efectiva ? $user->fecha_incorporacion_efectiva->format('Y-m-d') : null,
-            'dias_asignados' => $user->asignacionesTurnos()->where('estado', 'vacaciones')->count(),
+            'dias_asignados' => $diasAsignadosTotal,
+            'dias_asignados_anterior' => $diasAsignadosAnterior,
+            'dias_asignados_actual' => $diasAsignadosActual,
+            'year_anterior' => $previousYear,
+            'year_actual' => $currentYear,
         ]);
     }
 }

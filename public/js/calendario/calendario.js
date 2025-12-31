@@ -679,11 +679,12 @@
                                 const clickDate = new Date(clicked);
                                 
                                 if (clickDate >= incorpDate) {
-                                    const diffTime = Math.abs(clickDate - incorpDate);
-                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-                                    const generadas = (diffDays / 30) * 2.5;
-                                    const disponibles = generadas - diasVacacionesAsignados;
-
+                                    const clickYear = clickDate.getFullYear();
+                                    const clickMonth = clickDate.getMonth(); // 0-indexed (0=enero, 2=marzo)
+                                    
+                                    // Detectar período de gracia: 1 enero - 31 marzo
+                                    const isGracePeriod = clickMonth <= 2; // enero, febrero, marzo
+                                    
                                     const modal = document.getElementById('vacation-bottom-modal');
                                     const content = document.getElementById('vacation-bottom-content');
                                     
@@ -691,17 +692,77 @@
                                         modal.classList.remove('translate-y-full');
                                         modal.classList.add('translate-y-0');
                                         
-                                        const colorClass = disponibles >= 0 ? 'text-green-400' : 'text-red-400';
-                                        content.innerHTML = `
-                                            <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm">
-                                                <span class="text-gray-400">
-                                                    (Generadas: ${generadas.toFixed(0)} - Usadas: ${diasVacacionesAsignados})
-                                                </span>
-                                                <span class="${colorClass} font-bold text-lg">
-                                                    ${disponibles.toFixed(0)} días disponibles
-                                                </span>
-                                            </div>
-                                        `;
+                                        if (isGracePeriod && incorpDate < new Date(clickYear, 0, 1)) {
+                                            // --- PERÍODO DE GRACIA: mostrar desglose año anterior + año actual ---
+                                            const previousYear = clickYear - 1;
+                                            
+                                            // Fecha fin del año anterior (31 diciembre)
+                                            const endOfPrevYear = new Date(previousYear, 11, 31);
+                                            
+                                            // Días generados del año ANTERIOR (desde incorporación hasta 31 dic)
+                                            const prevYearStart = incorpDate > new Date(previousYear, 0, 1) ? incorpDate : new Date(previousYear, 0, 1);
+                                            const diffTimePrev = Math.max(0, endOfPrevYear - prevYearStart);
+                                            const diffDaysPrev = Math.ceil(diffTimePrev / (1000 * 60 * 60 * 24)) + 1;
+                                            const generadasAnterior = Math.min((diffDaysPrev / 30) * 2.5, 30); // Max 30 días
+                                            
+                                            // Días generados del año ACTUAL (desde 1 enero hasta fecha clickeada)
+                                            const startOfCurrentYear = new Date(clickYear, 0, 1);
+                                            const diffTimeCurrent = Math.max(0, clickDate - startOfCurrentYear);
+                                            const diffDaysCurrent = Math.ceil(diffTimeCurrent / (1000 * 60 * 60 * 24)) + 1;
+                                            const generadasActual = (diffDaysCurrent / 30) * 2.5;
+                                            
+                                            // Días usados por año (del API)
+                                            const usadasAnterior = data.dias_asignados_anterior || 0;
+                                            const usadasActual = data.dias_asignados_actual || 0;
+                                            
+                                            // Disponibles por año
+                                            const disponiblesAnterior = generadasAnterior - usadasAnterior;
+                                            const disponiblesActual = generadasActual - usadasActual;
+                                            const disponiblesTotal = disponiblesAnterior + disponiblesActual;
+                                            
+                                            const colorAnterior = disponiblesAnterior >= 0 ? 'text-amber-400' : 'text-red-400';
+                                            const colorActual = disponiblesActual >= 0 ? 'text-green-400' : 'text-red-400';
+                                            const colorTotal = disponiblesTotal >= 0 ? 'text-emerald-400' : 'text-red-400';
+                                            
+                                            content.innerHTML = `
+                                                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm">
+                                                    <div class="flex flex-col items-center px-3 py-1 bg-gray-800 rounded-lg">
+                                                        <span class="text-xs text-gray-500">${previousYear}</span>
+                                                        <span class="${colorAnterior} font-semibold">${disponiblesAnterior.toFixed(1)} días</span>
+                                                        <span class="text-xs text-gray-500">(${generadasAnterior.toFixed(0)}-${usadasAnterior})</span>
+                                                    </div>
+                                                    <span class="text-gray-600 hidden sm:block">+</span>
+                                                    <div class="flex flex-col items-center px-3 py-1 bg-gray-800 rounded-lg">
+                                                        <span class="text-xs text-gray-500">${clickYear}</span>
+                                                        <span class="${colorActual} font-semibold">${disponiblesActual.toFixed(1)} días</span>
+                                                        <span class="text-xs text-gray-500">(${generadasActual.toFixed(1)}-${usadasActual})</span>
+                                                    </div>
+                                                    <span class="text-gray-600 hidden sm:block">=</span>
+                                                    <div class="flex flex-col items-center px-3 py-1 bg-gradient-to-r from-gray-800 to-gray-700 rounded-lg border border-gray-600">
+                                                        <span class="text-xs text-gray-400">Total</span>
+                                                        <span class="${colorTotal} font-bold text-lg">${disponiblesTotal.toFixed(1)} días</span>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        } else {
+                                            // --- FUERA DEL PERÍODO DE GRACIA: cálculo normal ---
+                                            const diffTime = Math.abs(clickDate - incorpDate);
+                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                                            const generadas = (diffDays / 30) * 2.5;
+                                            const disponibles = generadas - diasVacacionesAsignados;
+                                            
+                                            const colorClass = disponibles >= 0 ? 'text-green-400' : 'text-red-400';
+                                            content.innerHTML = `
+                                                <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm">
+                                                    <span class="text-gray-400">
+                                                        (Generadas: ${generadas.toFixed(0)} - Usadas: ${diasVacacionesAsignados})
+                                                    </span>
+                                                    <span class="${colorClass} font-bold text-lg">
+                                                        ${disponibles.toFixed(0)} días disponibles
+                                                    </span>
+                                                </div>
+                                            `;
+                                        }
                                     }
                                 }
                             }
