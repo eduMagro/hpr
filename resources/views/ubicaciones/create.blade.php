@@ -12,7 +12,7 @@
             @csrf
 
             {{-- Almacén --}}
-            <x-tabla.select name="almacen" :options="['0A' => '0A', '0B' => '0B', '0C' => '0C']" label="Almacén" placeholder="Selecciona el almacén" />
+            <x-tabla.select name="almacen" :options="['0A' => 'Nave A', '0B' => 'Nave B', 'AL' => 'Almacén']" label="Almacén" placeholder="Selecciona el almacén" />
 
             {{-- Sector --}}
             <x-tabla.select name="sector" :options="collect(range(1, 20))
