@@ -331,6 +331,9 @@
     },
 
     toggleSidebar() {
+        // Evitar múltiples toggles simultáneos
+        if (this.isToggling) return;
+
         // Activar estado de transición
         this.isToggling = true;
 
@@ -486,7 +489,7 @@
                     class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
             </a>
 
-            <button @click="toggleSidebar()" id="tooglesidebarbtn"
+            <button @click="if (!isToggling) toggleSidebar()" id="tooglesidebarbtn"
                 class="p-2 hover:bg-gray-800 rounded-lg transition-all duration-300"
                 title="Toggle Sidebar (Ctrl+B)">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor"
@@ -648,7 +651,8 @@
                     <!-- Sección Principal -->
                     <div class="relative" id="menu-section-{{ $section['id'] }}">
                         <button
-                            @click="if (open) {
+                            @click="if (isToggling) return;
+                            if (open) {
                                 const id = '{{ $section['id'] }}';
                                 if (activeSections.includes(id)) {
                                     activeSections = activeSections.filter(s => s !== id);
