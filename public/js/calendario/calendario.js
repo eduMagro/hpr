@@ -665,44 +665,227 @@
                     updateTempHighlight(calendar, clicked, clicked, false); // false para que SI limpie/actualice el modal
 
                     // AJAX Fetch para datos frescos de vacaciones (solo en el primer clic)
-                    const fetchUrl = routes.vacationDataUrl || `/api/usuarios/${userId}/vacation-data`;
+                    // Enviar la fecha clickeada para que el backend calcule relativo a esa fecha
+                    const baseUrl = routes.vacationDataUrl || `/api/usuarios/${userId}/vacation-data`;
+                    const fetchUrl = `${baseUrl}?fecha=${clicked}`;
                     fetch(fetchUrl)
-                        .then(r => r.json())
+                        .then(r => {
+                            if (!r.ok) {
+                                throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+                            }
+                            const contentType = r.headers.get('content-type') || '';
+                            if (!contentType.includes('application/json')) {
+                                throw new Error('La respuesta no es JSON');
+                            }
+                            return r.json();
+                        })
                         .then(data => {
                             if (data.error) throw new Error(data.error);
                             
                             fechaIncorporacion = data.fecha_incorporacion;
                             diasVacacionesAsignados = data.dias_asignados;
 
+                            const modal = document.getElementById('vacation-bottom-modal');
+                            const content = document.getElementById('vacation-bottom-content');
+                            
                             if (fechaIncorporacion) {
                                 const incorpDate = new Date(fechaIncorporacion);
                                 const clickDate = new Date(clicked);
                                 
                                 if (clickDate >= incorpDate) {
-                                    const diffTime = Math.abs(clickDate - incorpDate);
-                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-                                    const generadas = (diffDays / 30) * 2.5;
-                                    const disponibles = generadas - diasVacacionesAsignados;
-
-                                    const modal = document.getElementById('vacation-bottom-modal');
-                                    const content = document.getElementById('vacation-bottom-content');
+                                    const clickYear = clickDate.getFullYear();
+                                    const clickMonth = clickDate.getMonth(); // 0-indexed (0=enero, 2=marzo)
+                                    
+                                    // Detectar período de gracia: 1 enero - 31 marzo
+                                    const isGracePeriod = clickMonth <= 2; // enero, febrero, marzo
+                                    const previousYear = clickYear - 1;
                                     
                                     if (modal && content) {
                                         modal.classList.remove('translate-y-full');
                                         modal.classList.add('translate-y-0');
                                         
-                                        const colorClass = disponibles >= 0 ? 'text-green-400' : 'text-red-400';
-                                        content.innerHTML = `
-                                            <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm">
-                                                <span class="text-gray-400">
-                                                    (Generadas: ${generadas.toFixed(0)} - Usadas: ${diasVacacionesAsignados})
-                                                </span>
-                                                <span class="${colorClass} font-bold text-lg">
-                                                    ${disponibles.toFixed(0)} días disponibles
-                                                </span>
-                                            </div>
-                                        `;
+                                        // Calcular vacaciones GENERADAS del año anterior (hasta 31 dic)
+                                        const endOfPrevYear = new Date(previousYear, 11, 31);
+                                        let generadasAnterior = 0;
+                                        
+                                        if (incorpDate < new Date(clickYear, 0, 1)) {
+                                            // La persona ya trabajaba antes de este año
+                                            const prevYearStart = incorpDate > new Date(previousYear, 0, 1) ? incorpDate : new Date(previousYear, 0, 1);
+                                            const diffTimePrev = Math.max(0, endOfPrevYear - prevYearStart);
+                                            const diffDaysPrev = Math.ceil(diffTimePrev / (1000 * 60 * 60 * 24)) + 1;
+                                            generadasAnterior = Math.floor(Math.min((diffDaysPrev / 30) * 2.5, 30)); // Truncado, Max 30 días
+                                        }
+                                        
+                                        // Días usados del año anterior (en fechas del año anterior)
+                                        const usadasAnteriorDirec = data.dias_asignados_anterior || 0;
+                                        
+                                        // Saldo del año anterior AL FINALIZAR el año anterior
+                                        const saldoAnteriorAlFinalizar = generadasAnterior - usadasAnteriorDirec;
+                                        
+                                        // Días usados durante el período de gracia (1 ene - 31 mar del año actual)
+                                        const usadasPeriodoGracia = data.dias_usados_periodo_gracia || 0;
+                                        
+                                        // Días usados después del período de gracia (1 abril en adelante)
+                                        const usadasPostGracia = data.dias_usados_post_gracia || 0;
+                                        
+                                        if (isGracePeriod && incorpDate < new Date(clickYear, 0, 1)) {
+                                            // === PERÍODO DE GRACIA (1 ene - 31 mar) ===
+                                            // Las vacaciones del período de gracia se descuentan PRIMERO del año anterior
+                                            
+                                            // Cuántas del año anterior quedan después de descontar las del período de gracia
+                                            const usadasDelAnterior = Math.min(usadasPeriodoGracia, Math.max(0, saldoAnteriorAlFinalizar));
+                                            const disponiblesAnterior = Math.max(0, saldoAnteriorAlFinalizar - usadasPeriodoGracia);
+                                            
+                                            // Si usó más que las del año anterior, el exceso viene del año actual
+                                            const excesoSobreAnterior = Math.max(0, usadasPeriodoGracia - Math.max(0, saldoAnteriorAlFinalizar));
+                                            
+                                            // Días generados del año ACTUAL (desde 1 enero hasta fecha clickeada)
+                                            const startOfCurrentYear = new Date(clickYear, 0, 1);
+                                            const diffTimeCurrent = Math.max(0, clickDate - startOfCurrentYear);
+                                            const diffDaysCurrent = Math.ceil(diffTimeCurrent / (1000 * 60 * 60 * 24)) + 1;
+                                            const generadasActual = Math.floor((diffDaysCurrent / 30) * 2.5); // Truncado
+                                            
+                                            // Disponibles del año actual = generadas - exceso que se usó del actual
+                                            const disponiblesActual = generadasActual - excesoSobreAnterior;
+                                            const disponiblesTotal = disponiblesAnterior + disponiblesActual;
+                                            
+                                            // === SIN VACACIONES FUTURAS ===
+                                            const usadasPeriodoGraciaHastaFecha = data.dias_usados_periodo_gracia_hasta_fecha || 0;
+                                            const usadasDelAnteriorSinFuturas = Math.min(usadasPeriodoGraciaHastaFecha, Math.max(0, saldoAnteriorAlFinalizar));
+                                            const disponiblesAnteriorSinFuturas = Math.max(0, saldoAnteriorAlFinalizar - usadasPeriodoGraciaHastaFecha);
+                                            const excesoSobreAnteriorSinFuturas = Math.max(0, usadasPeriodoGraciaHastaFecha - Math.max(0, saldoAnteriorAlFinalizar));
+                                            const disponiblesActualSinFuturas = generadasActual - excesoSobreAnteriorSinFuturas;
+                                            const disponiblesTotalSinFuturas = disponiblesAnteriorSinFuturas + disponiblesActualSinFuturas;
+                                            
+                                            const colorAnterior = disponiblesAnterior >= 0 ? 'text-amber-400' : 'text-red-400';
+                                            const colorActual = disponiblesActual >= 0 ? 'text-green-400' : 'text-red-400';
+                                            const colorTotal = disponiblesTotal >= 0 ? 'text-emerald-400' : 'text-red-400';
+                                            
+                                            // Mostrar "sin futuras" solo si hay diferencia
+                                            const sinFuturasHtml = disponiblesTotal !== disponiblesTotalSinFuturas 
+                                                ? `<span class="text-xs text-gray-500">(${disponiblesTotalSinFuturas} sin futuras)</span>` 
+                                                : '';
+                                            
+                                            content.innerHTML = `
+                                                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm">
+                                                    <div class="flex flex-col items-center px-3 py-1 bg-gray-800 rounded-lg">
+                                                        <span class="text-xs text-gray-500">${previousYear}</span>
+                                                        <span class="${colorAnterior} font-semibold">${disponiblesAnterior} días</span>
+                                                        <span class="text-xs text-gray-500">(${saldoAnteriorAlFinalizar} - ${usadasDelAnterior})</span>
+                                                    </div>
+                                                    <span class="text-gray-600 hidden sm:block">+</span>
+                                                    <div class="flex flex-col items-center px-3 py-1 bg-gray-800 rounded-lg">
+                                                        <span class="text-xs text-gray-500">${clickYear}</span>
+                                                        <span class="${colorActual} font-semibold">${disponiblesActual} días</span>
+                                                        <span class="text-xs text-gray-500">(${generadasActual} - ${excesoSobreAnterior})</span>
+                                                    </div>
+                                                    <span class="text-gray-600 hidden sm:block">=</span>
+                                                    <div class="flex flex-col items-center px-3 py-1 bg-gradient-to-r from-gray-800 to-gray-700 rounded-lg border border-gray-600">
+                                                        <span class="text-xs text-gray-400">Total</span>
+                                                        <span class="${colorTotal} font-bold text-lg">${disponiblesTotal} días</span>
+                                                        ${sinFuturasHtml}
+                                                    </div>
+                                                </div>
+                                            `;
+                                        } else if (!isGracePeriod && incorpDate < new Date(clickYear, 0, 1)) {
+                                            // === DESPUÉS DEL PERÍODO DE GRACIA (1 abril en adelante) ===
+                                            // Las vacaciones del año anterior CADUCAN
+                                            // Solo cuentan las del año actual (desde 1 enero hasta fecha clickeada)
+                                            
+                                            // Las vacaciones del período de gracia se consumieron del año anterior primero
+                                            const usadasDelAnteriorEnGracia = Math.min(usadasPeriodoGracia, Math.max(0, saldoAnteriorAlFinalizar));
+                                            const excesoSobreAnterior = Math.max(0, usadasPeriodoGracia - Math.max(0, saldoAnteriorAlFinalizar));
+                                            
+                                            // Vacaciones perdidas del año anterior (las que no se usaron y caducaron)
+                                            const perdidas = Math.max(0, saldoAnteriorAlFinalizar - usadasPeriodoGracia);
+                                            
+                                            // Días generados del año ACTUAL (desde 1 enero hasta fecha clickeada)
+                                            const startOfCurrentYear = new Date(clickYear, 0, 1);
+                                            const diffTimeCurrent = Math.max(0, clickDate - startOfCurrentYear);
+                                            const diffDaysCurrent = Math.ceil(diffTimeCurrent / (1000 * 60 * 60 * 24)) + 1;
+                                            const generadasActual = Math.floor((diffDaysCurrent / 30) * 2.5); // Truncado
+                                            
+                                            // Total usadas del año actual = exceso del periodo gracia + usadas post gracia
+                                            const usadasTotalActual = excesoSobreAnterior + usadasPostGracia;
+                                            const disponiblesActual = generadasActual - usadasTotalActual;
+                                            
+                                            // === SIN VACACIONES FUTURAS ===
+                                            const usadasPostGraciaHastaFecha = data.dias_usados_post_gracia_hasta_fecha || 0;
+                                            const usadasTotalActualSinFuturas = excesoSobreAnterior + usadasPostGraciaHastaFecha;
+                                            const disponiblesActualSinFuturas = generadasActual - usadasTotalActualSinFuturas;
+                                            
+                                            const colorClass = disponiblesActual >= 0 ? 'text-green-400' : 'text-red-400';
+                                            
+                                            let perdidasHtml = '';
+                                            if (perdidas > 0) {
+                                                perdidasHtml = `<span class="text-xs text-red-400">(⚠️ ${perdidas} días de ${previousYear} caducaron)</span>`;
+                                            }
+                                            
+                                            // Mostrar "sin futuras" solo si hay diferencia
+                                            const sinFuturasHtml = disponiblesActual !== disponiblesActualSinFuturas 
+                                                ? `<span class="text-xs text-gray-500">(${disponiblesActualSinFuturas} sin futuras)</span>` 
+                                                : '';
+                                            
+                                            content.innerHTML = `
+                                                <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm">
+                                                    <span class="text-gray-400">
+                                                        Año ${clickYear}: ${generadasActual} generadas - ${usadasTotalActual} usadas
+                                                    </span>
+                                                    <span class="${colorClass} font-bold text-lg">
+                                                        ${disponiblesActual} días disponibles
+                                                    </span>
+                                                    ${sinFuturasHtml}
+                                                    ${perdidasHtml}
+                                                </div>
+                                            `;
+                                        } else {
+                                            // === CASO NORMAL: persona incorporada este año o clic en año anterior ===
+                                            const diffTime = Math.abs(clickDate - incorpDate);
+                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                                            const generadas = Math.floor((diffDays / 30) * 2.5); // Truncado
+                                            const disponibles = generadas - diasVacacionesAsignados;
+                                            
+                                            // === SIN VACACIONES FUTURAS ===
+                                            const diasUsadosHastaFecha = data.dias_usados_hasta_fecha || 0;
+                                            const disponiblesSinFuturas = generadas - diasUsadosHastaFecha;
+                                            
+                                            const colorClass = disponibles >= 0 ? 'text-green-400' : 'text-red-400';
+                                            
+                                            // Mostrar "sin futuras" solo si hay diferencia
+                                            const sinFuturasHtml = disponibles !== disponiblesSinFuturas 
+                                                ? `<span class="text-xs text-gray-500">(${disponiblesSinFuturas} sin futuras)</span>` 
+                                                : '';
+                                            
+                                            content.innerHTML = `
+                                                <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm">
+                                                    <span class="text-gray-400">
+                                                        (Generadas: ${generadas} - Usadas: ${diasVacacionesAsignados})
+                                                    </span>
+                                                    <span class="${colorClass} font-bold text-lg">
+                                                        ${disponibles} días disponibles
+                                                    </span>
+                                                    ${sinFuturasHtml}
+                                                </div>
+                                            `;
+                                        }
                                     }
+                                }
+                            } else {
+                                // Mostrar mensaje cuando no hay fecha de incorporación
+                                if (modal && content) {
+                                    modal.classList.remove('translate-y-full');
+                                    modal.classList.add('translate-y-0');
+                                    
+                                    content.innerHTML = `
+                                        <div class="flex items-center gap-2 text-sm">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                            <span class="text-yellow-400">
+                                                Configure la fecha de incorporación para ver el cálculo de vacaciones
+                                            </span>
+                                        </div>
+                                    `;
                                 }
                             }
                         })
