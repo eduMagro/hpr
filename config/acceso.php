@@ -22,6 +22,7 @@ return [
         'entradas.',       // ✅ acceso permitido
         'movimientos.',    // ✅ acceso permitido
         'ubicaciones.',
+        'inventario-backups.', // ✅ acceso para ver backups de inventario
         'incorporaciones.descargarMiContrato', // ✅ acceso para descargar su contrato
     ],
 

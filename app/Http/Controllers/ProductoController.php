@@ -327,28 +327,36 @@ class ProductoController extends Controller
             ->get();
 
         // Ubicaciones por sector para el modal de movimiento libre
-        $primeraObraId = array_key_first($navesSelect);
-        $primeraObraNombre = $primeraObraId ? ($navesSelect[$primeraObraId] ?? null) : null;
-        $codigoAlmacen = $primeraObraNombre ? Ubicacion::codigoDesdeNombreNave($primeraObraNombre) : null;
+        // Prioridad: 1) Obra de la máquina del usuario, 2) Nave A por defecto
+        $codigoAlmacen = null;
+        $usuario = auth()->user();
+
+        // Si el usuario tiene máquina asignada, usar la obra de esa máquina
+        if ($usuario && $usuario->maquina && $usuario->maquina->obra) {
+            $codigoAlmacen = Ubicacion::codigoDesdeNombreNave($usuario->maquina->obra->obra);
+        }
+
+        // Si no se obtuvo código, usar Nave A por defecto (tiene más ubicaciones)
+        if (!$codigoAlmacen) {
+            $codigoAlmacen = '0A'; // Nave A por defecto
+        }
 
         $ubicacionesPorSector = collect();
         $sectores = [];
         $sectorPorDefecto = null;
 
-        if ($codigoAlmacen) {
-            $ubicacionesPorSector = Ubicacion::where('almacen', $codigoAlmacen)
-                ->orderBy('sector', 'asc')
-                ->orderBy('ubicacion', 'asc')
-                ->get()
-                ->map(function ($ubicacion) {
-                    $ubicacion->nombre_sin_prefijo = Str::after($ubicacion->nombre, 'Almacén ');
-                    return $ubicacion;
-                })
-                ->groupBy('sector');
+        $ubicacionesPorSector = Ubicacion::where('almacen', $codigoAlmacen)
+            ->orderBy('sector', 'asc')
+            ->orderBy('ubicacion', 'asc')
+            ->get()
+            ->map(function ($ubicacion) {
+                $ubicacion->nombre_sin_prefijo = Str::after($ubicacion->nombre, 'Almacén ');
+                return $ubicacion;
+            })
+            ->groupBy('sector');
 
-            $sectores = $ubicacionesPorSector->keys()->toArray();
-            $sectorPorDefecto = !empty($sectores) ? $sectores[0] : null;
-        }
+        $sectores = $ubicacionesPorSector->keys()->toArray();
+        $sectorPorDefecto = !empty($sectores) ? $sectores[0] : null;
 
         return view('productos.index', compact('registrosProductos', 'productosBase', 'filtrosActivos', 'ordenables', 'totalPesoInicial', 'navesSelect', 'maquinasDisponibles', 'ubicacionesPorSector', 'sectores', 'sectorPorDefecto'));
     }

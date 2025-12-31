@@ -6,7 +6,7 @@
 @php
     $mapaData = $mapaData ?? [];
     // Obtener el nave_id (obra_id) de la máquina si está disponible
-    $naveIdMapa = $maquina->obra_id ?? 1;
+    $naveIdMapa = isset($maquina) && $maquina ? ($maquina->obra_id ?? 1) : 1;
 @endphp
 
 {{-- 🔄 MODAL MOVIMIENTO GENERAL --}}
@@ -116,63 +116,83 @@
     // Usar window para evitar errores de re-declaración con Livewire prefetch
     window.ubicacionesPorSectorGrua = @json($ubicacionesPorSector ?? []);
 
-    document.addEventListener('DOMContentLoaded', function() {
-        // Selecciona solo los inputs del modal movimiento general
-        const inputs = document.querySelectorAll(
-            '#modalMovimientoLibre input');
-
-        inputs.forEach(input => {
-            input.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e
-                        .preventDefault(); // ⛔ Bloquea el enter automático del escáner
-                    // No hace ni submit ni salta a otro campo
-                }
-            });
-        });
-
-        // ===== Lógica para cambio de sector =====
+    // Función de inicialización del modal de movimiento libre
+    function initModalMovimientoLibre() {
         const sectorSelect = document.getElementById('sector_destino');
         const ubicacionSelect = document.getElementById('ubicacion_destino_select');
 
-        if (sectorSelect && ubicacionSelect) {
-            sectorSelect.addEventListener('change', function() {
-                const sectorSeleccionado = this.value;
-                const ubicacionesDelSector = window.ubicacionesPorSectorGrua[sectorSeleccionado] || [];
+        if (!sectorSelect || !ubicacionSelect) {
+            return;
+        }
 
-                // Limpiar y reconstruir opciones de ubicaciones
-                ubicacionSelect.innerHTML = '';
+        // Evitar inicialización múltiple en el mismo elemento
+        if (sectorSelect.dataset.sectorInitialized === 'true') {
+            return;
+        }
+        sectorSelect.dataset.sectorInitialized = 'true';
 
+        // Selecciona solo los inputs del modal movimiento general
+        const inputs = document.querySelectorAll('#modalMovimientoLibre input');
+        inputs.forEach(input => {
+            if (input.dataset.enterBlocked !== 'true') {
+                input.dataset.enterBlocked = 'true';
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                    }
+                });
+            }
+        });
+
+        // ===== Lógica para cambio de sector =====
+        // Función que actualiza las ubicaciones según el sector
+        function actualizarUbicacionesPorSector(sectorSeleccionado) {
+            const datos = window.ubicacionesPorSectorGrua || {};
+            const ubicacionesDelSector = datos[sectorSeleccionado] || [];
+
+            // Limpiar select
+            ubicacionSelect.innerHTML = '';
+
+            if (ubicacionesDelSector.length === 0) {
+                const optionVacia = document.createElement('option');
+                optionVacia.value = '';
+                optionVacia.textContent = '-- Sin ubicaciones en este sector --';
+                ubicacionSelect.appendChild(optionVacia);
+            } else {
                 ubicacionesDelSector.forEach(ubicacion => {
                     const option = document.createElement('option');
                     option.value = ubicacion.id;
-                    option.textContent = ubicacion.nombre_sin_prefijo;
+                    option.textContent = ubicacion.nombre_sin_prefijo || ubicacion.nombre || `Ubicación ${ubicacion.id}`;
                     ubicacionSelect.appendChild(option);
                 });
-            });
+            }
         }
+
+        // Evento change del selector de sector
+        sectorSelect.addEventListener('change', function() {
+            actualizarUbicacionesPorSector(this.value);
+        });
 
         // ===== Lógica para checkbox de escanear ubicación =====
         const scanCheckbox = document.getElementById('scan_ubicacion_checkbox');
         const scanWrapper = document.getElementById('scan_ubicacion_wrapper');
         const scanInput = document.getElementById('ubicacion_destino_scan');
 
-        if (scanCheckbox && scanWrapper && sectorSelect && ubicacionSelect) {
+        if (scanCheckbox && scanWrapper && scanCheckbox.dataset.checkboxInitialized !== 'true') {
+            scanCheckbox.dataset.checkboxInitialized = 'true';
             scanCheckbox.addEventListener('change', function() {
                 if (this.checked) {
-                    // Ocultar selects, mostrar input de escaneo
                     sectorSelect.style.display = 'none';
-                    sectorSelect.previousElementSibling.style.display = 'none'; // label
+                    sectorSelect.previousElementSibling.style.display = 'none';
                     ubicacionSelect.style.display = 'none';
-                    ubicacionSelect.previousElementSibling.style.display = 'none'; // label
-                    ubicacionSelect.removeAttribute('name'); // quitar name del select
+                    ubicacionSelect.previousElementSibling.style.display = 'none';
+                    ubicacionSelect.removeAttribute('name');
                     scanWrapper.classList.remove('hidden');
                     if (scanInput) {
                         scanInput.setAttribute('name', 'ubicacion_destino');
                         scanInput.focus();
                     }
                 } else {
-                    // Mostrar selects, ocultar input de escaneo
                     sectorSelect.style.display = 'block';
                     sectorSelect.previousElementSibling.style.display = 'block';
                     ubicacionSelect.style.display = 'block';
@@ -186,7 +206,32 @@
                 }
             });
         }
-    });
+    }
+
+    // Inicializar en carga normal y navegación Livewire
+    // Usamos una flag para evitar registrar el listener múltiples veces
+    if (!window._modalMovimientoLibreListenersRegistered) {
+        window._modalMovimientoLibreListenersRegistered = true;
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initModalMovimientoLibre);
+        } else {
+            initModalMovimientoLibre();
+        }
+
+        document.addEventListener('livewire:navigated', function() {
+            // Después de navegación Livewire, los elementos son nuevos, limpiar flags
+            const sectorSelect = document.getElementById('sector_destino');
+            if (sectorSelect) {
+                delete sectorSelect.dataset.sectorInitialized;
+            }
+            initModalMovimientoLibre();
+        });
+    } else {
+        // Si ya está registrado pero el script se ejecuta de nuevo (Livewire prefetch)
+        // simplemente inicializamos
+        initModalMovimientoLibre();
+    }
 </script>
 
 {{-- 🔄 MODAL BAJADA PAQUETE --}}
