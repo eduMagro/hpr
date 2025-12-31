@@ -1457,17 +1457,94 @@ class ProfileController extends Controller
     }
     /**
      * Obtener datos de vacaciones de un usuario para cálculo frontend
+     * Incluye desglose por año para el período de gracia (1 enero - 31 marzo)
+     * @param User $user
+     * @param Request $request - Puede incluir ?fecha=YYYY-MM-DD para calcular relativo a esa fecha
      */
-    public function getVacationData(User $user)
+    public function getVacationData(User $user, Request $request)
     {
         // Solo oficina o el propio usuario
         if (auth()->user()->rol !== 'oficina' && auth()->id() !== $user->id) {
             return response()->json(['error' => 'No autorizado'], 403);
         }
 
+        // Usar la fecha clickeada si se proporciona, sino la fecha actual
+        $fechaReferencia = $request->input('fecha') ? Carbon::parse($request->input('fecha')) : Carbon::now();
+        $clickYear = (int) $fechaReferencia->format('Y');
+        $previousYear = $clickYear - 1;
+
+        // === CON VACACIONES FUTURAS (todas las del año) ===
+
+        // Días de vacaciones usados en total (SIN LÍMITE de fecha para contar las futuras también)
+        $diasAsignadosTotal = $user->asignacionesTurnos()
+            ->where('estado', 'vacaciones')
+            ->count();
+
+        // Días usados del año anterior al clickado (todas las vacaciones del año anterior)
+        $diasAsignadosAnterior = $user->asignacionesTurnos()
+            ->where('estado', 'vacaciones')
+            ->whereYear('fecha', $previousYear)
+            ->count();
+
+        // Días usados del año clickado (TODAS las vacaciones del año, incluyendo futuras)
+        $diasAsignadosActual = $user->asignacionesTurnos()
+            ->where('estado', 'vacaciones')
+            ->whereYear('fecha', $clickYear)
+            ->count();
+
+        // Días usados durante el período de gracia del año clickado (1 ene - 31 mar)
+        // TODAS las del período, incluyendo futuras si las hay
+        $diasUsadosPeriodoGracia = $user->asignacionesTurnos()
+            ->where('estado', 'vacaciones')
+            ->whereYear('fecha', $clickYear)
+            ->whereMonth('fecha', '<=', 3) // enero, febrero, marzo
+            ->count();
+
+        // Días usados después del período de gracia (1 abril en adelante)
+        $diasUsadosPostGracia = $user->asignacionesTurnos()
+            ->where('estado', 'vacaciones')
+            ->whereYear('fecha', $clickYear)
+            ->whereMonth('fecha', '>', 3) // abril en adelante
+            ->count();
+
+        // === SIN VACACIONES FUTURAS (solo hasta la fecha clickeada) ===
+
+        // Días usados hasta la fecha clickeada
+        $diasUsadosHastaFecha = $user->asignacionesTurnos()
+            ->where('estado', 'vacaciones')
+            ->whereDate('fecha', '<=', $fechaReferencia->toDateString())
+            ->count();
+
+        // Días usados del periodo de gracia hasta la fecha clickeada
+        $diasUsadosPeriodoGraciaHastaFecha = $user->asignacionesTurnos()
+            ->where('estado', 'vacaciones')
+            ->whereYear('fecha', $clickYear)
+            ->whereMonth('fecha', '<=', 3)
+            ->whereDate('fecha', '<=', $fechaReferencia->toDateString())
+            ->count();
+
+        // Días usados post-gracia hasta la fecha clickeada
+        $diasUsadosPostGraciaHastaFecha = $user->asignacionesTurnos()
+            ->where('estado', 'vacaciones')
+            ->whereYear('fecha', $clickYear)
+            ->whereMonth('fecha', '>', 3)
+            ->whereDate('fecha', '<=', $fechaReferencia->toDateString())
+            ->count();
+
         return response()->json([
             'fecha_incorporacion' => $user->fecha_incorporacion_efectiva ? $user->fecha_incorporacion_efectiva->format('Y-m-d') : null,
-            'dias_asignados' => $user->asignacionesTurnos()->where('estado', 'vacaciones')->count(),
+            'dias_asignados' => $diasAsignadosTotal,
+            'dias_asignados_anterior' => $diasAsignadosAnterior,
+            'dias_asignados_actual' => $diasAsignadosActual,
+            'dias_usados_periodo_gracia' => $diasUsadosPeriodoGracia,
+            'dias_usados_post_gracia' => $diasUsadosPostGracia,
+            // Sin vacaciones futuras
+            'dias_usados_hasta_fecha' => $diasUsadosHastaFecha,
+            'dias_usados_periodo_gracia_hasta_fecha' => $diasUsadosPeriodoGraciaHastaFecha,
+            'dias_usados_post_gracia_hasta_fecha' => $diasUsadosPostGraciaHastaFecha,
+            'year_anterior' => $previousYear,
+            'year_actual' => $clickYear,
+            'fecha_referencia' => $fechaReferencia->toDateString(),
         ]);
     }
 }
