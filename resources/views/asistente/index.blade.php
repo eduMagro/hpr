@@ -2,18 +2,37 @@
     <style>
         /* Animaciones personalizadas */
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         @keyframes slideIn {
-            from { transform: translateX(-20px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            from {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
         @keyframes slideInFromLeft {
-            from { transform: translateX(-100%); }
-            to { transform: translateX(0); }
+            from {
+                transform: translateX(-100%);
+            }
+
+            to {
+                transform: translateX(0);
+            }
         }
 
         .mensaje-enter {
@@ -81,13 +100,26 @@
         }
 
         /* Syntax highlighting básico */
-        .sql-keyword { color: #0ea5e9; font-weight: 600; }
-        .sql-string { color: #10b981; }
-        .sql-number { color: #f59e0b; }
-        .sql-function { color: #8b5cf6; }
+        .sql-keyword {
+            color: #0ea5e9;
+            font-weight: 600;
+        }
+
+        .sql-string {
+            color: #10b981;
+        }
+
+        .sql-number {
+            color: #f59e0b;
+        }
+
+        .sql-function {
+            color: #8b5cf6;
+        }
 
         /* Responsive: Ocultar elementos en móvil */
         @media (max-width: 768px) {
+
             /* Header principal reducido en móvil */
             .header-desktop {
                 display: none;
@@ -148,11 +180,13 @@
     <div class="py-0 md:py-4" :data-theme="tema">
         <div class="max-w-7xl mx-auto px-0 md:px-4 lg:px-8">
             <!-- Header mejorado con gradiente - SOLO DESKTOP -->
-            <div class="header-desktop mb-4 flex justify-between items-center p-6 rounded-xl bg-gray-900 text-white shadow-xl relative overflow-hidden border border-gray-800">
+            <div
+                class="header-desktop mb-4 flex justify-between items-center p-6 rounded-xl bg-gray-900 text-white shadow-xl relative overflow-hidden border border-gray-800">
 
                 <div class="relative z-10">
                     <h1 class="text-4xl font-bold flex items-center gap-3">
-                        <img src="{{ asset('imagenes/iconos/asistente-sin-fondo.png') }}" alt="Ferrallin" class="w-16 h-16 object-contain">
+                        <img src="{{ asset('imagenes/iconos/asistente-sin-fondo.png') }}" alt="Ferrallin"
+                            class="w-16 h-16 object-contain">
                         <div>
                             <span class="block">FERRALLIN</span>
                             <span class="text-xl font-normal text-gray-300">Asistente Virtual Inteligente</span>
@@ -164,14 +198,15 @@
                     </p>
                 </div>
                 <div class="flex gap-3">
-                    @if(Auth::user()->esAdminDepartamento())
-                    <a href="{{ route('asistente.permisos') }}" wire:navigate
-                       class="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-5 rounded-xl transition duration-200 flex items-center gap-2 border border-gray-700">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                        </svg>
-                        Permisos
-                    </a>
+                    @if (Auth::user()->esAdminDepartamento())
+                        <a href="{{ route('asistente.permisos') }}" wire:navigate
+                            class="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-5 rounded-xl transition duration-200 flex items-center gap-2 border border-gray-700">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            Permisos
+                        </a>
                     @endif
                 </div>
             </div>
@@ -183,16 +218,18 @@
     </div>
 
     @push('scripts')
-    <script type="module">
-        import { createApp } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
-        import axios from 'https://cdn.jsdelivr.net/npm/axios@1.6.0/+esm'
+        <script type="module">
+            import {
+                createApp
+            } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
+            import axios from 'https://cdn.jsdelivr.net/npm/axios@1.6.0/+esm'
 
-        // Configurar axios con CSRF token
-        axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
-        axios.defaults.headers.common['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]').content;
+            // Configurar axios con CSRF token
+            axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+            axios.defaults.headers.common['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]').content;
 
-        const AsistenteVirtual = {
-            template: `
+            const AsistenteVirtual = {
+                template: `
                 <div class="flex h-full relative" :class="tema === 'dark' ? 'bg-gray-900' : 'bg-white'">
                     <!-- Overlay para cerrar sidebar en móvil -->
                     <div v-if="sidebarAbierto"
@@ -364,7 +401,7 @@
                                         </button>
                                     </div>
                                 </div>
-                                <div v-else>
+                                <div v-else class="flex flex-col h-full gap-4">
                                     <!-- Mensajes con avatares y diseño responsive -->
                                     <div v-for="mensaje in mensajes"
                                          :key="mensaje.id"
@@ -514,325 +551,330 @@
                     </div>
                 </div>
             `,
-            data() {
-                return {
-                    conversaciones: [],
-                    conversacionActual: null,
-                    mensajes: [],
-                    mensajeNuevo: '',
-                    cargandoConversaciones: false,
-                    cargandoMensajes: false,
-                    enviando: false,
-                    escribiendo: false,
-                    sugerencias: [],
-                    sugerenciasMostradas: [],
-                    tema: localStorage.getItem('tema-asistente') || 'light',
-                    busquedaConversacion: '',
-                    sidebarAbierto: false,
-                    isMobile: window.innerWidth < 768
-                }
-            },
-            computed: {
-                conversacionesFiltradas() {
-                    if (!this.busquedaConversacion.trim()) {
-                        return this.conversaciones
+                data() {
+                    return {
+                        conversaciones: [],
+                        conversacionActual: null,
+                        mensajes: [],
+                        mensajeNuevo: '',
+                        cargandoConversaciones: false,
+                        cargandoMensajes: false,
+                        enviando: false,
+                        escribiendo: false,
+                        sugerencias: [],
+                        sugerenciasMostradas: [],
+                        tema: localStorage.getItem('tema-asistente') || 'light',
+                        busquedaConversacion: '',
+                        sidebarAbierto: false,
+                        isMobile: window.innerWidth < 768
                     }
-                    const busqueda = this.busquedaConversacion.toLowerCase()
-                    return this.conversaciones.filter(conv =>
-                        conv.titulo.toLowerCase().includes(busqueda)
-                    )
-                }
-            },
-            async mounted() {
-                await this.cargarConversaciones()
-                await this.cargarSugerencias()
+                },
+                computed: {
+                    conversacionesFiltradas() {
+                        if (!this.busquedaConversacion.trim()) {
+                            return this.conversaciones
+                        }
+                        const busqueda = this.busquedaConversacion.toLowerCase()
+                        return this.conversaciones.filter(conv =>
+                            conv.titulo.toLowerCase().includes(busqueda)
+                        )
+                    }
+                },
+                async mounted() {
+                    await this.cargarConversaciones()
+                    await this.cargarSugerencias()
 
-                // Si ya hay conversaciones, seleccionar la más reciente
-                // Si no hay, crear una nueva
-                if (this.conversaciones.length > 0) {
-                    await this.seleccionarConversacion(this.conversaciones[0].id)
-                } else {
-                    await this.crearNuevaConversacion()
-                }
+                    // Si ya hay conversaciones, seleccionar la más reciente
+                    // Si no hay, crear una nueva
+                    if (this.conversaciones.length > 0) {
+                        await this.seleccionarConversacion(this.conversaciones[0].id)
+                    } else {
+                        await this.crearNuevaConversacion()
+                    }
 
-                // Agregar atajos de teclado
-                document.addEventListener('keydown', this.manejarAtajos)
+                    // Agregar atajos de teclado
+                    document.addEventListener('keydown', this.manejarAtajos)
 
-                // Detectar cambios de tamaño de pantalla
-                window.addEventListener('resize', this.handleResize)
-            },
-            beforeUnmount() {
-                // Limpiar event listeners
-                document.removeEventListener('keydown', this.manejarAtajos)
-                window.removeEventListener('resize', this.handleResize)
-            },
-            methods: {
-                handleResize() {
-                    this.isMobile = window.innerWidth < 768
-                    // Cerrar sidebar en desktop
-                    if (!this.isMobile) {
+                    // Detectar cambios de tamaño de pantalla
+                    window.addEventListener('resize', this.handleResize)
+                },
+                beforeUnmount() {
+                    // Limpiar event listeners
+                    document.removeEventListener('keydown', this.manejarAtajos)
+                    window.removeEventListener('resize', this.handleResize)
+                },
+                methods: {
+                    handleResize() {
+                        this.isMobile = window.innerWidth < 768
+                        // Cerrar sidebar en desktop
+                        if (!this.isMobile) {
+                            this.sidebarAbierto = false
+                        }
+                    },
+                    abrirSidebar() {
+                        this.sidebarAbierto = true
+                    },
+                    cerrarSidebar() {
                         this.sidebarAbierto = false
-                    }
-                },
-                abrirSidebar() {
-                    this.sidebarAbierto = true
-                },
-                cerrarSidebar() {
-                    this.sidebarAbierto = false
-                },
-                toggleTema() {
-                    this.tema = this.tema === 'light' ? 'dark' : 'light'
-                    localStorage.setItem('tema-asistente', this.tema)
-                    document.body.setAttribute('data-theme', this.tema)
-                },
-                highlightSQL(sql) {
-                    if (!sql) return ''
+                    },
+                    toggleTema() {
+                        this.tema = this.tema === 'light' ? 'dark' : 'light'
+                        localStorage.setItem('tema-asistente', this.tema)
+                        document.body.setAttribute('data-theme', this.tema)
+                    },
+                    highlightSQL(sql) {
+                        if (!sql) return ''
 
-                    const keywords = ['SELECT', 'FROM', 'WHERE', 'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER',
-                                     'ON', 'AND', 'OR', 'ORDER', 'BY', 'GROUP', 'HAVING', 'LIMIT',
-                                     'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE', 'CREATE',
-                                     'TABLE', 'ALTER', 'DROP', 'AS', 'DISTINCT', 'COUNT', 'SUM', 'AVG',
-                                     'MAX', 'MIN', 'LIKE', 'IN', 'BETWEEN', 'IS', 'NULL', 'NOT']
+                        const keywords = ['SELECT', 'FROM', 'WHERE', 'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER',
+                            'ON', 'AND', 'OR', 'ORDER', 'BY', 'GROUP', 'HAVING', 'LIMIT',
+                            'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE', 'CREATE',
+                            'TABLE', 'ALTER', 'DROP', 'AS', 'DISTINCT', 'COUNT', 'SUM', 'AVG',
+                            'MAX', 'MIN', 'LIKE', 'IN', 'BETWEEN', 'IS', 'NULL', 'NOT'
+                        ]
 
-                    let highlighted = sql
+                        let highlighted = sql
 
-                    keywords.forEach(keyword => {
-                        const regex = new RegExp('\\b' + keyword + '\\b', 'gi')
-                        highlighted = highlighted.replace(regex, '<span class="sql-keyword">' + keyword.toUpperCase() + '</span>')
-                    })
-
-                    highlighted = highlighted.replace(/'([^']*)'/g, '<span class="sql-string">\'$1\'</span>')
-                    highlighted = highlighted.replace(/"([^"]*)"/g, '<span class="sql-string">"$1"</span>')
-                    highlighted = highlighted.replace(/\b(\d+)\b/g, '<span class="sql-number">$1</span>')
-                    highlighted = highlighted.replace(/\b([A-Z_]+)\(/g, '<span class="sql-function">$1</span>(')
-
-                    return highlighted
-                },
-                async cargarConversaciones() {
-                    this.cargandoConversaciones = true
-                    try {
-                        const response = await axios.get('/api/asistente/conversaciones')
-                        this.conversaciones = response.data.conversaciones
-                    } catch (error) {
-                        console.error('Error cargando conversaciones:', error)
-                        this.mostrarError('Error al cargar las conversaciones')
-                    } finally {
-                        this.cargandoConversaciones = false
-                    }
-                },
-                async cargarSugerencias() {
-                    try {
-                        const response = await axios.get('/api/asistente/sugerencias')
-                        this.sugerencias = response.data.sugerencias
-                        this.sugerenciasMostradas = this.sugerencias.slice(0, 6)
-                    } catch (error) {
-                        console.error('Error cargando sugerencias:', error)
-                    }
-                },
-                async crearNuevaConversacion() {
-                    try {
-                        const response = await axios.post('/api/asistente/conversaciones')
-                        const nuevaConv = response.data.conversacion
-                        this.conversaciones.unshift(nuevaConv)
-                        await this.seleccionarConversacion(nuevaConv.id)
-                    } catch (error) {
-                        console.error('Error creando conversación:', error)
-                        this.mostrarError('Error al crear la conversación')
-                    }
-                },
-                async seleccionarConversacion(id) {
-                    this.conversacionActual = id
-                    this.mensajes = []
-                    this.cargandoMensajes = true
-
-                    // Cerrar sidebar en móvil al seleccionar conversación
-                    if (this.isMobile) {
-                        this.cerrarSidebar()
-                    }
-
-                    try {
-                        const response = await axios.get(`/api/asistente/conversaciones/${id}/mensajes`)
-                        this.mensajes = response.data.mensajes
-                        await this.$nextTick()
-                        this.scrollToBottom()
-                    } catch (error) {
-                        console.error('Error cargando mensajes:', error)
-                        this.mostrarError('Error al cargar los mensajes')
-                    } finally {
-                        this.cargandoMensajes = false
-                    }
-                },
-                async enviarMensaje() {
-                    if (!this.mensajeNuevo.trim() || this.enviando) return
-
-                    const mensaje = this.mensajeNuevo.trim()
-                    this.mensajeNuevo = ''
-                    this.enviando = true
-                    this.escribiendo = true
-
-                    this.mensajes.push({
-                        id: Date.now(),
-                        role: 'user',
-                        contenido: mensaje,
-                        created_at: new Date().toLocaleString('es-ES')
-                    })
-
-                    await this.$nextTick()
-                    this.scrollToBottom()
-
-                    try {
-                        const response = await axios.post('/api/asistente/mensaje', {
-                            conversacion_id: this.conversacionActual,
-                            mensaje: mensaje
+                        keywords.forEach(keyword => {
+                            const regex = new RegExp('\\b' + keyword + '\\b', 'gi')
+                            highlighted = highlighted.replace(regex, '<span class="sql-keyword">' + keyword
+                                .toUpperCase() + '</span>')
                         })
 
-                        this.mensajes.push(response.data.mensaje)
-                        await this.cargarConversaciones()
+                        highlighted = highlighted.replace(/'([^']*)'/g, '<span class="sql-string">\'$1\'</span>')
+                        highlighted = highlighted.replace(/"([^"]*)"/g, '<span class="sql-string">"$1"</span>')
+                        highlighted = highlighted.replace(/\b(\d+)\b/g, '<span class="sql-number">$1</span>')
+                        highlighted = highlighted.replace(/\b([A-Z_]+)\(/g, '<span class="sql-function">$1</span>(')
+
+                        return highlighted
+                    },
+                    async cargarConversaciones() {
+                        this.cargandoConversaciones = true
+                        try {
+                            const response = await axios.get('/api/asistente/conversaciones')
+                            this.conversaciones = response.data.conversaciones
+                        } catch (error) {
+                            console.error('Error cargando conversaciones:', error)
+                            this.mostrarError('Error al cargar las conversaciones')
+                        } finally {
+                            this.cargandoConversaciones = false
+                        }
+                    },
+                    async cargarSugerencias() {
+                        try {
+                            const response = await axios.get('/api/asistente/sugerencias')
+                            this.sugerencias = response.data.sugerencias
+                            this.sugerenciasMostradas = this.sugerencias.slice(0, 6)
+                        } catch (error) {
+                            console.error('Error cargando sugerencias:', error)
+                        }
+                    },
+                    async crearNuevaConversacion() {
+                        try {
+                            const response = await axios.post('/api/asistente/conversaciones')
+                            const nuevaConv = response.data.conversacion
+                            this.conversaciones.unshift(nuevaConv)
+                            await this.seleccionarConversacion(nuevaConv.id)
+                        } catch (error) {
+                            console.error('Error creando conversación:', error)
+                            this.mostrarError('Error al crear la conversación')
+                        }
+                    },
+                    async seleccionarConversacion(id) {
+                        this.conversacionActual = id
+                        this.mensajes = []
+                        this.cargandoMensajes = true
+
+                        // Cerrar sidebar en móvil al seleccionar conversación
+                        if (this.isMobile) {
+                            this.cerrarSidebar()
+                        }
+
+                        try {
+                            const response = await axios.get(`/api/asistente/conversaciones/${id}/mensajes`)
+                            this.mensajes = response.data.mensajes
+                            await this.$nextTick()
+                            this.scrollToBottom()
+                        } catch (error) {
+                            console.error('Error cargando mensajes:', error)
+                            this.mostrarError('Error al cargar los mensajes')
+                        } finally {
+                            this.cargandoMensajes = false
+                        }
+                    },
+                    async enviarMensaje() {
+                        if (!this.mensajeNuevo.trim() || this.enviando) return
+
+                        const mensaje = this.mensajeNuevo.trim()
+                        this.mensajeNuevo = ''
+                        this.enviando = true
+                        this.escribiendo = true
+
+                        this.mensajes.push({
+                            id: Date.now(),
+                            role: 'user',
+                            contenido: mensaje,
+                            created_at: new Date().toLocaleString('es-ES')
+                        })
+
                         await this.$nextTick()
                         this.scrollToBottom()
-                    } catch (error) {
-                        console.error('Error enviando mensaje:', error)
-                        this.mostrarError('Error al enviar el mensaje')
-                    } finally {
-                        this.enviando = false
-                        this.escribiendo = false
-                    }
-                },
-                async eliminarConversacionActual() {
-                    if (!confirm('¿Estás seguro de que quieres eliminar esta conversación?')) return
 
-                    try {
-                        await axios.delete(`/api/asistente/conversaciones/${this.conversacionActual}`)
-                        this.conversaciones = this.conversaciones.filter(c => c.id !== this.conversacionActual)
-                        this.conversacionActual = null
-                        this.mensajes = []
-                    } catch (error) {
-                        console.error('Error eliminando conversación:', error)
-                        this.mostrarError('Error al eliminar la conversación')
-                    }
-                },
-                formatearMensaje(contenido) {
-                    if (!contenido) return ''
+                        try {
+                            const response = await axios.post('/api/asistente/mensaje', {
+                                conversacion_id: this.conversacionActual,
+                                mensaje: mensaje
+                            })
 
-                    let html = contenido
-
-                    const escapeHtml = (text) => {
-                        const map = {
-                            '&': '&amp;',
-                            '<': '&lt;',
-                            '>': '&gt;'
+                            this.mensajes.push(response.data.mensaje)
+                            await this.cargarConversaciones()
+                            await this.$nextTick()
+                            this.scrollToBottom()
+                        } catch (error) {
+                            console.error('Error enviando mensaje:', error)
+                            this.mostrarError('Error al enviar el mensaje')
+                        } finally {
+                            this.enviando = false
+                            this.escribiendo = false
                         }
-                        return text.replace(/[&<>]/g, m => map[m])
-                    }
+                    },
+                    async eliminarConversacionActual() {
+                        if (!confirm('¿Estás seguro de que quieres eliminar esta conversación?')) return
 
-                    const codeBlocks = []
-                    html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
-                        const placeholder = `___CODE_BLOCK_${codeBlocks.length}___`
-                        codeBlocks.push(`<div class="my-3 rounded-lg overflow-hidden border ${this.tema === 'dark' ? 'border-gray-700' : 'border-gray-300'}">
+                        try {
+                            await axios.delete(`/api/asistente/conversaciones/${this.conversacionActual}`)
+                            this.conversaciones = this.conversaciones.filter(c => c.id !== this.conversacionActual)
+                            this.conversacionActual = null
+                            this.mensajes = []
+                        } catch (error) {
+                            console.error('Error eliminando conversación:', error)
+                            this.mostrarError('Error al eliminar la conversación')
+                        }
+                    },
+                    formatearMensaje(contenido) {
+                        if (!contenido) return ''
+
+                        let html = contenido
+
+                        const escapeHtml = (text) => {
+                            const map = {
+                                '&': '&amp;',
+                                '<': '&lt;',
+                                '>': '&gt;'
+                            }
+                            return text.replace(/[&<>]/g, m => map[m])
+                        }
+
+                        const codeBlocks = []
+                        html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+                            const placeholder = `___CODE_BLOCK_${codeBlocks.length}___`
+                            codeBlocks.push(`<div class="my-3 rounded-lg overflow-hidden border ${this.tema === 'dark' ? 'border-gray-700' : 'border-gray-300'}">
                             <div class="${this.tema === 'dark' ? 'bg-gray-800 text-gray-300' : 'bg-gray-200 text-gray-700'} px-3 py-1 text-xs font-semibold border-b ${this.tema === 'dark' ? 'border-gray-700' : 'border-gray-300'}">
                                 ${lang ? '📄 ' + lang.toUpperCase() : 'CODE'}
                             </div>
                             <pre class="${this.tema === 'dark' ? 'bg-gray-900 text-gray-300' : 'bg-gray-50 text-gray-800'} p-3 overflow-x-auto"><code>${escapeHtml(code.trim())}</code></pre>
                         </div>`)
-                        return placeholder
-                    })
+                            return placeholder
+                        })
 
-                    html = html.replace(/^### (.*?)$/gm, '<h3 class="text-lg font-bold mt-4 mb-2">$1</h3>')
-                    html = html.replace(/^## (.*?)$/gm, '<h2 class="text-xl font-bold mt-4 mb-2">$1</h2>')
-                    html = html.replace(/^# (.*?)$/gm, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>')
-                    html = html.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
-                    html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>')
-                    html = html.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
-                    html = html.replace(/`(.*?)`/g, `<code class="px-2 py-0.5 rounded font-mono text-sm ${this.tema === 'dark' ? 'bg-gray-700 text-blue-300' : 'bg-gray-100 text-blue-600'}">$1</code>`)
-                    html = html.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2" class="text-blue-500 hover:text-blue-700 underline" target="_blank">$1</a>')
-                    html = html.replace(/^\d+\.\s+(.*?)$/gm, '<li class="ml-4">$1</li>')
-                    html = html.replace(/^[-•]\s+(.*?)$/gm, '<li class="ml-4">$1</li>')
-                    html = html.replace(/(<li class="ml-4">.*<\/li>\n?)+/g, match => {
-                        return `<ul class="list-disc pl-5 my-2 space-y-1">${match}</ul>`
-                    })
-                    html = html.replace(/\n\n/g, '</p><p class="my-2">')
-                    html = html.replace(/\n/g, '<br>')
+                        html = html.replace(/^### (.*?)$/gm, '<h3 class="text-lg font-bold mt-4 mb-2">$1</h3>')
+                        html = html.replace(/^## (.*?)$/gm, '<h2 class="text-xl font-bold mt-4 mb-2">$1</h2>')
+                        html = html.replace(/^# (.*?)$/gm, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>')
+                        html = html.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
+                        html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>')
+                        html = html.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+                        html = html.replace(/`(.*?)`/g,
+                            `<code class="px-2 py-0.5 rounded font-mono text-sm ${this.tema === 'dark' ? 'bg-gray-700 text-blue-300' : 'bg-gray-100 text-blue-600'}">$1</code>`
+                        )
+                        html = html.replace(/\[([^\]]+)\]\(([^\)]+)\)/g,
+                            '<a href="$2" class="text-blue-500 hover:text-blue-700 underline" target="_blank">$1</a>')
+                        html = html.replace(/^\d+\.\s+(.*?)$/gm, '<li class="ml-4">$1</li>')
+                        html = html.replace(/^[-•]\s+(.*?)$/gm, '<li class="ml-4">$1</li>')
+                        html = html.replace(/(<li class="ml-4">.*<\/li>\n?)+/g, match => {
+                            return `<ul class="list-disc pl-5 my-2 space-y-1">${match}</ul>`
+                        })
+                        html = html.replace(/\n\n/g, '</p><p class="my-2">')
+                        html = html.replace(/\n/g, '<br>')
 
-                    codeBlocks.forEach((block, i) => {
-                        html = html.replace(`___CODE_BLOCK_${i}___`, block)
-                    })
+                        codeBlocks.forEach((block, i) => {
+                            html = html.replace(`___CODE_BLOCK_${i}___`, block)
+                        })
 
-                    if (!html.startsWith('<')) {
-                        html = `<p>${html}</p>`
-                    }
+                        if (!html.startsWith('<')) {
+                            html = `<p>${html}</p>`
+                        }
 
-                    return html
-                },
-                scrollToBottom() {
-                    const container = this.$refs.mensajesContainer
-                    if (container) {
-                        container.scrollTop = container.scrollHeight
-                    }
-                },
-                usarSugerencia(sugerencia) {
-                    this.mensajeNuevo = sugerencia
-                    this.enviarMensaje()
-                },
-                copiarTexto(texto) {
-                    navigator.clipboard.writeText(texto).then(() => {
+                        return html
+                    },
+                    scrollToBottom() {
+                        const container = this.$refs.mensajesContainer
+                        if (container) {
+                            container.scrollTop = container.scrollHeight
+                        }
+                    },
+                    usarSugerencia(sugerencia) {
+                        this.mensajeNuevo = sugerencia
+                        this.enviarMensaje()
+                    },
+                    copiarTexto(texto) {
+                        navigator.clipboard.writeText(texto).then(() => {
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: '¡Copiado!',
+                                    text: 'SQL copiado al portapapeles',
+                                    timer: 1500,
+                                    showConfirmButton: false,
+                                    toast: true,
+                                    position: 'top-end'
+                                })
+                            }
+                        }).catch(err => {
+                            console.error('Error copiando texto:', err)
+                        })
+                    },
+                    manejarEnter(e) {
+                        // Si se presiona Shift+Enter, permite salto de línea (no hacer nada)
+                        if (e.shiftKey) {
+                            return
+                        }
+
+                        // Si es solo Enter, prevenir default y enviar mensaje
+                        e.preventDefault()
+                        if (this.mensajeNuevo.trim() && this.conversacionActual && !this.enviando) {
+                            this.enviarMensaje()
+                        }
+                    },
+                    manejarAtajos(e) {
+                        if (e.key === 'Escape') {
+                            this.mensajeNuevo = ''
+                            document.querySelector('textarea')?.blur()
+                        }
+                        if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                            e.preventDefault()
+                            this.crearNuevaConversacion()
+                        }
+                    },
+                    mostrarError(mensaje) {
                         if (typeof Swal !== 'undefined') {
                             Swal.fire({
-                                icon: 'success',
-                                title: '¡Copiado!',
-                                text: 'SQL copiado al portapapeles',
-                                timer: 1500,
-                                showConfirmButton: false,
-                                toast: true,
-                                position: 'top-end'
+                                icon: 'error',
+                                title: 'Error',
+                                text: mensaje
                             })
+                        } else {
+                            alert(mensaje)
                         }
-                    }).catch(err => {
-                        console.error('Error copiando texto:', err)
-                    })
-                },
-                manejarEnter(e) {
-                    // Si se presiona Shift+Enter, permite salto de línea (no hacer nada)
-                    if (e.shiftKey) {
-                        return
-                    }
-
-                    // Si es solo Enter, prevenir default y enviar mensaje
-                    e.preventDefault()
-                    if (this.mensajeNuevo.trim() && this.conversacionActual && !this.enviando) {
-                        this.enviarMensaje()
-                    }
-                },
-                manejarAtajos(e) {
-                    if (e.key === 'Escape') {
-                        this.mensajeNuevo = ''
-                        document.querySelector('textarea')?.blur()
-                    }
-                    if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-                        e.preventDefault()
-                        this.crearNuevaConversacion()
-                    }
-                },
-                mostrarError(mensaje) {
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: mensaje
-                        })
-                    } else {
-                        alert(mensaje)
                     }
                 }
             }
-        }
 
-        const app = createApp({
-            components: {
-                'asistente-virtual': AsistenteVirtual
-            }
-        })
+            const app = createApp({
+                components: {
+                    'asistente-virtual': AsistenteVirtual
+                }
+            })
 
-        app.mount('#asistente-app')
-    </script>
+            app.mount('#asistente-app')
+        </script>
     @endpush
 </x-app-layout>
