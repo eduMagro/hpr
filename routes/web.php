@@ -59,6 +59,7 @@ use App\Services\PlanillaService;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\AlbaranesScanController;
 use App\Http\Controllers\EtiquetaEnsamblajeController;
+use App\Http\Controllers\InventarioBackupController;
 
 Route::get('/', [PageController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -271,6 +272,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/ubicaciones/inventario', [UbicacionController::class, 'inventario'])->name('ubicaciones.verInventario');
     Route::resource('ubicaciones', UbicacionController::class);
     Route::get('/ubicaciones/{ubicacion}', [UbicacionController::class, 'show'])->name('ubicaciones.show');
+
+    // Backups de Inventario
+    Route::post('/inventario-backups', [InventarioBackupController::class, 'store'])->name('inventario-backups.store');
+    Route::get('/inventario-backups', [InventarioBackupController::class, 'index'])->name('inventario-backups.index');
 
     // === LOCALIZACIONES ===
     Route::resource('localizaciones', LocalizacionController::class);

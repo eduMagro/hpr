@@ -30,46 +30,95 @@ class StockService
             // cualquier otra cosa inesperada => ignoramos
             $obraIds = null;
         }
-        $stockData            = $this->getStockData($obraIds); // estocaje = global (no depende de obra)
-        $pedidosPorDiametro   = $this->getPedidosPorDiametro($obraIds);     // 🔎 filtrado por obra si aplica
+        $stockData = $this->getStockData($obraIds); // estocaje = global (no depende de obra)
+        $pedidosPorDiametro = $this->getPedidosPorDiametro($obraIds);     // 🔎 filtrado por obra si aplica
         $necesarioPorDiametro = $this->getNecesarioPorDiametro($obraIds);   // 🔎 filtrado por obra si aplica
-        $comparativa          = $this->getComparativa($stockData, $pedidosPorDiametro, $necesarioPorDiametro);
+        $comparativa = $this->getComparativa($stockData, $pedidosPorDiametro, $necesarioPorDiametro);
 
         $consumosMensuales = $this->obtenerConsumosMensuales();
-        $consumoOrigen     = $this->getConsumoTotalOrigen();
+        $consumoOrigen = $this->getConsumoTotalOrigen();
         $resumenReposicion = $this->getResumenReposicion($consumosMensuales['consumos']);
-        $ids               = $this->getIds($consumosMensuales['consumos']);
+        $ids = $this->getIds($consumosMensuales['consumos']);
         $recomendacionReposicion = $this->getRecomendacionReposicion($resumenReposicion, $consumosMensuales['consumos']);
 
         $configuracionVistaStock = $this->obtenerConfiguracionVistaStock($obraIds);
         // dd($configuracionVistaStock);
         return [
-            'stockData'                => $stockData,
-            'pedidosPorDiametro'       => $pedidosPorDiametro,
-            'necesarioPorDiametro'     => $necesarioPorDiametro,
-            'comparativa'              => $comparativa,
-            'totalGeneral'             => $stockData->sum(fn($d) => $d['encarretado']) + $stockData->sum(fn($d) => $d['barras_total']),
-            'consumoOrigen'            => $consumoOrigen,
-            'consumosPorMes'           => $consumosMensuales['consumos'],
-            'nombreMeses'              => $consumosMensuales['nombreMeses'],
-            'productoBaseInfo'         => $this->getProductoBaseInfo(),
-            'stockPorProductoBase'     => $this->getStockPorProductoBase(),
+            'stockData' => $stockData,
+            'pedidosPorDiametro' => $pedidosPorDiametro,
+            'necesarioPorDiametro' => $necesarioPorDiametro,
+            'comparativa' => $comparativa,
+            'totalGeneral' => $stockData->sum(fn($d) => $d['encarretado']) + $stockData->sum(fn($d) => $d['barras_total']),
+            'consumoOrigen' => $consumoOrigen,
+            'consumosPorMes' => $consumosMensuales['consumos'],
+            'nombreMeses' => $consumosMensuales['nombreMeses'],
+            'productoBaseInfo' => $this->getProductoBaseInfo(),
+            'stockPorProductoBase' => $this->getStockPorProductoBase(),
             'kgPedidosPorProductoBase' => $this->getKgPedidosPorProductoBase(),
-            'resumenReposicion'        => $resumenReposicion,
-            'recomendacionReposicion'  => $recomendacionReposicion,
-            'ids'                      => $ids,
-            'obraIds_filtradas'        => $obraIds,
-            'clienteLike'              => $clienteLike,
+            'resumenReposicion' => $resumenReposicion,
+            'recomendacionReposicion' => $recomendacionReposicion,
+            'ids' => $ids,
+            'obraIds_filtradas' => $obraIds,
+            'clienteLike' => $clienteLike,
             'configuracion_vista_stock' => $configuracionVistaStock,
         ];
+    }
+
+    /**
+     * Obtiene el stock total agrupado por naves (obras de HPR)
+     */
+    public function obtenerStockPorNaves(): array
+    {
+        $clientIds = \App\Models\Cliente::where('empresa', 'like', '%Hierros Paco Reyes%')->pluck('id');
+
+        if ($clientIds->isEmpty())
+            return [];
+
+        $naves = \App\Models\Obra::whereIn('cliente_id', $clientIds)
+            ->withSum([
+                'productos as total_stock' => function ($query) {
+                    $query->where('estado', 'almacenado');
+                }
+            ], 'peso_inicial')
+            ->orderBy('obra')
+            ->get();
+
+        $resumen = [];
+        foreach ($naves as $nave) {
+            $resumen[] = [
+                'id' => $nave->id,
+                'nombre' => $nave->obra,
+                'total' => (float) ($nave->total_stock ?? 0)
+            ];
+        }
+
+        // Ordenar por total descendente
+        usort($resumen, fn($a, $b) => $b['total'] <=> $a['total']);
+        return $resumen;
+    }
+
+    /**
+     * Obtiene el stock total de toda la empresa
+     */
+    public function obtenerTotalStockEmpresa(): float
+    {
+        $clientIds = \App\Models\Cliente::where('empresa', 'like', '%Hierros Paco Reyes%')->pluck('id');
+
+        if ($clientIds->isEmpty())
+            return 0;
+
+        return (float) \App\Models\Producto::where('estado', 'almacenado')
+            ->whereIn('obra_id', \App\Models\Obra::whereIn('cliente_id', $clientIds)->pluck('id'))
+            ->sum('peso_inicial');
     }
 
     // 🔧 robusto: detecta columna de nombre en 'clientes' y obtiene obras por LIKE
     private function getObraIdsByClienteLike(string $like): array
     {
         $posiblesCols = ['nombre', 'razon_social', 'cliente', 'name'];
-        $colsValidas  = array_values(array_filter($posiblesCols, fn($c) => Schema::hasColumn('clientes', $c)));
-        if (empty($colsValidas)) return [];
+        $colsValidas = array_values(array_filter($posiblesCols, fn($c) => Schema::hasColumn('clientes', $c)));
+        if (empty($colsValidas))
+            return [];
 
         $clienteIds = Cliente::query()
             ->where(function ($q) use ($colsValidas, $like) {
@@ -79,7 +128,8 @@ class StockService
             })
             ->pluck('id');
 
-        if ($clienteIds->isEmpty()) return [];
+        if ($clienteIds->isEmpty())
+            return [];
 
         return Obra::whereIn('cliente_id', $clienteIds)->pluck('id')->all();
     }
@@ -89,7 +139,8 @@ class StockService
      */
     private function esNaveAlmacen(?array $idsObrasFiltradas): bool
     {
-        if (empty($idsObrasFiltradas)) return false;
+        if (empty($idsObrasFiltradas))
+            return false;
 
         // intenta con 'nombre' (con y sin tilde), y como respaldo otras columnas comunes
         return Obra::whereIn('id', $idsObrasFiltradas)
@@ -109,18 +160,18 @@ class StockService
 
         if ($esAlmacen) {
             return [
-                'es_nave_almacen'          => true,
-                'diametros_considerados'   => [6, 8, 10, 12, 16, 20, 25, 32],
-                'longitudes_barras'        => [6, 12],     // solo barras de 12 m y 6 m
-                'incluir_encarretado'      => false,       // se ignora encarrete
+                'es_nave_almacen' => true,
+                'diametros_considerados' => [6, 8, 10, 12, 16, 20, 25, 32],
+                'longitudes_barras' => [6, 12],     // solo barras de 12 m y 6 m
+                'incluir_encarretado' => false,       // se ignora encarrete
             ];
         }
 
         return [
-            'es_nave_almacen'          => false,
-            'diametros_considerados'   => [6, 8, 10, 12, 16, 20, 25, 32],
-            'longitudes_barras'        => [12, 14, 15, 16],
-            'incluir_encarretado'      => true,
+            'es_nave_almacen' => false,
+            'diametros_considerados' => [6, 8, 10, 12, 16, 20, 25, 32],
+            'longitudes_barras' => [12, 14, 15, 16],
+            'incluir_encarretado' => true,
         ];
     }
 
@@ -142,22 +193,24 @@ class StockService
         $resultadoStock = [];
         foreach ($configuracionVistaStock['diametros_considerados'] as $diametro) {
             $resultadoStock[$diametro] = [
-                'encarretado'   => 0.0,
-                'barras'        => collect($configuracionVistaStock['longitudes_barras'])
-                    ->mapWithKeys(fn($longitud) => [(int)$longitud => 0.0])
+                'encarretado' => 0.0,
+                'barras' => collect($configuracionVistaStock['longitudes_barras'])
+                    ->mapWithKeys(fn($longitud) => [(int) $longitud => 0.0])
                     ->all(),
-                'barras_total'  => 0.0,
-                'total'         => 0.0,
+                'barras_total' => 0.0,
+                'total' => 0.0,
             ];
         }
 
         // Recorremos productos
         foreach ($productosAlmacenados as $producto) {
             $productoBase = $producto->productoBase;
-            if (!$productoBase) continue;
+            if (!$productoBase)
+                continue;
 
             $diametro = (int) $productoBase->diametro;
-            if (!array_key_exists($diametro, $resultadoStock)) continue;
+            if (!array_key_exists($diametro, $resultadoStock))
+                continue;
 
             if ($productoBase->tipo === 'encarretado') {
                 if ($configuracionVistaStock['incluir_encarretado']) {
@@ -201,21 +254,22 @@ class StockService
         $resultadoNecesario = [];
         foreach ($configuracionVistaStock['diametros_considerados'] as $diametro) {
             $resultadoNecesario[$diametro] = [
-                'encarretado'   => 0.0,
-                'barras'        => collect($configuracionVistaStock['longitudes_barras'])
-                    ->mapWithKeys(fn($longitud) => [(int)$longitud => 0.0])
+                'encarretado' => 0.0,
+                'barras' => collect($configuracionVistaStock['longitudes_barras'])
+                    ->mapWithKeys(fn($longitud) => [(int) $longitud => 0.0])
                     ->all(),
-                'barras_total'  => 0.0,
-                'total'         => 0.0,
+                'barras_total' => 0.0,
+                'total' => 0.0,
             ];
         }
 
         foreach ($elementosPendientes as $elemento) {
             $diametro = (int) $elemento->diametro;
-            if (!isset($resultadoNecesario[$diametro])) continue;
+            if (!isset($resultadoNecesario[$diametro]))
+                continue;
 
             $pesoNecesario = (float) ($elemento->peso ?? 0);
-            $tipoMaterial  = $elemento->maquina->tipo_material; // 'barra' | 'encarretado'
+            $tipoMaterial = $elemento->maquina->tipo_material; // 'barra' | 'encarretado'
 
             if ($tipoMaterial === 'encarretado') {
                 if ($configuracionVistaStock['incluir_encarretado']) {
@@ -251,18 +305,19 @@ class StockService
         $resultadoPedidos = [];
         foreach ($configuracionVistaStock['diametros_considerados'] as $diametro) {
             $resultadoPedidos[$diametro] = [
-                'encarretado'   => 0.0,
-                'barras'        => collect($configuracionVistaStock['longitudes_barras'])
-                    ->mapWithKeys(fn($longitud) => [(int)$longitud => 0.0])
+                'encarretado' => 0.0,
+                'barras' => collect($configuracionVistaStock['longitudes_barras'])
+                    ->mapWithKeys(fn($longitud) => [(int) $longitud => 0.0])
                     ->all(),
-                'barras_total'  => 0.0,
-                'total'         => 0.0,
+                'barras_total' => 0.0,
+                'total' => 0.0,
             ];
         }
 
         foreach ($lineasPedidos as $linea) {
             $diametro = (int) $linea->diametro;
-            if (!isset($resultadoPedidos[$diametro])) continue;
+            if (!isset($resultadoPedidos[$diametro]))
+                continue;
 
             if ($linea->tipo === 'encarretado') {
                 if ($configuracionVistaStock['incluir_encarretado']) {
@@ -315,16 +370,16 @@ class StockService
 
             // ---- opcional: detalle por longitud en barras ----
             foreach ($data['barras'] as $L => $dispL) {
-                $pendL  = $necesarioPorDiametro[$diametro]['barras'][$L] ?? 0;
-                $pedL   = $pedidosPendientes[$diametro]['barras'][$L] ?? 0;
-                $difL   = $dispL + $pedL - $pendL;
+                $pendL = $necesarioPorDiametro[$diametro]['barras'][$L] ?? 0;
+                $pedL = $pedidosPendientes[$diametro]['barras'][$L] ?? 0;
+                $difL = $dispL + $pedL - $pendL;
 
                 $comparativa["barra-{$diametro}-{$L}"] = [
-                    'tipo'       => 'barra',
-                    'diametro'   => $diametro,
-                    'longitud'   => (int)$L,
-                    'pendiente'  => $pendL,
-                    'pedido'     => $pedL,
+                    'tipo' => 'barra',
+                    'diametro' => $diametro,
+                    'longitud' => (int) $L,
+                    'pendiente' => $pendL,
+                    'pedido' => $pedL,
                     'disponible' => $dispL,
                     'diferencia' => $difL,
                 ];
@@ -373,9 +428,9 @@ class StockService
     //Este no lo usamos ya, pendiente de quitar
     private function getResumenReposicion($consumosPorMes)
     {
-        $stockPorProductoBase     = $this->getStockPorProductoBase();
+        $stockPorProductoBase = $this->getStockPorProductoBase();
         $kgPedidosPorProductoBase = $this->getKgPedidosPorProductoBase();
-        $productosBase            = $this->getProductoBaseInfo();
+        $productosBase = $this->getProductoBaseInfo();
 
         // Unimos todas las claves de los tres meses
         $idsParaResumen = collect($consumosPorMes['mes_hace_dos'])->keys()
@@ -386,35 +441,30 @@ class StockService
 
 
         // Construimos la colección
-        $coleccion = $idsParaResumen->map(function ($id) use (
-            $productosBase,
-            $consumosPorMes,
-            $stockPorProductoBase,
-            $kgPedidosPorProductoBase,
-        ) {
+        $coleccion = $idsParaResumen->map(function ($id) use ($productosBase, $consumosPorMes, $stockPorProductoBase, $kgPedidosPorProductoBase, ) {
             $info = $productosBase[$id] ?? ['tipo' => 'desconocido', 'diametro' => 0, 'longitud' => null];
 
             $consumoMesH2 = $consumosPorMes['mes_hace_dos'][$id] ?? 0;
             $consumoMesAnt = $consumosPorMes['mes_anterior'][$id] ?? 0;
             $consumoMesAct = $consumosPorMes['mes_actual'][$id] ?? 0;
 
-            $stock  = $stockPorProductoBase[$id] ?? 0;
+            $stock = $stockPorProductoBase[$id] ?? 0;
             $pedido = $kgPedidosPorProductoBase[$id] ?? 0;
 
             // referencia: consumo mes anterior
             $reposicionNecesaria = max($consumoMesAnt - $stock - $pedido, 0);
 
             return [
-                'id'             => $id,
-                'tipo'           => $info['tipo'],
-                'diametro'       => $info['diametro'],
-                'longitud'       => $info['longitud'],
-                'consumo_hace2'  => $consumoMesH2,
-                'consumo_ant'    => $consumoMesAnt,
+                'id' => $id,
+                'tipo' => $info['tipo'],
+                'diametro' => $info['diametro'],
+                'longitud' => $info['longitud'],
+                'consumo_hace2' => $consumoMesH2,
+                'consumo_ant' => $consumoMesAnt,
                 'consumo_actual' => $consumoMesAct,
-                'stock'          => $stock,
-                'pedido'         => $pedido,
-                'reposicion'     => round($reposicionNecesaria, 2),
+                'stock' => $stock,
+                'pedido' => $pedido,
+                'reposicion' => round($reposicionNecesaria, 2),
             ];
         });
 
@@ -430,7 +480,7 @@ class StockService
     private function getRecomendacionReposicion($resumenReposicion, $consumosPorMes): array
     {
         return collect($resumenReposicion)->map(function ($item, $id) use ($consumosPorMes) {
-            $consumoMayo  = $consumosPorMes['mes_hace_dos'][$id] ?? 0;
+            $consumoMayo = $consumosPorMes['mes_hace_dos'][$id] ?? 0;
             $consumoJunio = $consumosPorMes['mes_anterior'][$id] ?? 0;
             $consumoJulio = $consumosPorMes['mes_actual'][$id] ?? 0;
 
@@ -445,15 +495,15 @@ class StockService
             $reponer = $stockObjetivo - $stockActual - $pedido;
 
             return [
-                'id'            => $id,
-                'tipo'          => $item['tipo'],
-                'diametro'      => $item['diametro'],
-                'longitud'      => $item['longitud'],
-                'tendencia'     => round($tendencia, 2),
+                'id' => $id,
+                'tipo' => $item['tipo'],
+                'diametro' => $item['diametro'],
+                'longitud' => $item['longitud'],
+                'tendencia' => round($tendencia, 2),
                 'stock_objetivo' => round($stockObjetivo, 2),
-                'stock_actual'  => $stockActual,
-                'pedido'        => $pedido,
-                'reponer'       => round($reponer, 2),
+                'stock_actual' => $stockActual,
+                'pedido' => $pedido,
+                'reponer' => round($reponer, 2),
             ];
         })
             // ❌ quitamos el filter para no excluir nada
@@ -468,29 +518,29 @@ class StockService
 
         // Fechas de corte
         $inicioHaceDosMeses = $hoy->copy()->subMonthsNoOverflow(2)->startOfMonth();
-        $finHaceDosMeses    = $inicioHaceDosMeses->copy()->endOfMonth();
+        $finHaceDosMeses = $inicioHaceDosMeses->copy()->endOfMonth();
 
-        $inicioMesAnterior  = $hoy->copy()->subMonthNoOverflow()->startOfMonth();
-        $finMesAnterior     = $inicioMesAnterior->copy()->endOfMonth();
+        $inicioMesAnterior = $hoy->copy()->subMonthNoOverflow()->startOfMonth();
+        $finMesAnterior = $inicioMesAnterior->copy()->endOfMonth();
 
-        $inicioMesActual    = $hoy->copy()->startOfMonth();
-        $finHoy             = $hoy;
+        $inicioMesActual = $hoy->copy()->startOfMonth();
+        $finHoy = $hoy;
 
         // Calcular consumos unificados
         $consumoHaceDosMeses = $this->getConsumosUnificados($inicioHaceDosMeses, $finHaceDosMeses);
-        $consumoMesAnterior  = $this->getConsumosUnificados($inicioMesAnterior, $finMesAnterior);
-        $consumoMesActual    = $this->getConsumosUnificados($inicioMesActual, $finHoy);
+        $consumoMesAnterior = $this->getConsumosUnificados($inicioMesAnterior, $finMesAnterior);
+        $consumoMesActual = $this->getConsumosUnificados($inicioMesActual, $finHoy);
 
         return [
             'nombreMeses' => [
                 'haceDosMeses' => ucfirst($inicioHaceDosMeses->locale('es')->monthName),
-                'mesAnterior'  => ucfirst($inicioMesAnterior->locale('es')->monthName),
-                'mesActual'    => ucfirst($hoy->locale('es')->monthName),
+                'mesAnterior' => ucfirst($inicioMesAnterior->locale('es')->monthName),
+                'mesActual' => ucfirst($hoy->locale('es')->monthName),
             ],
             'consumos' => [
                 'mes_hace_dos' => $consumoHaceDosMeses,
                 'mes_anterior' => $consumoMesAnterior,
-                'mes_actual'   => $consumoMesActual,
+                'mes_actual' => $consumoMesActual,
             ],
         ];
     }

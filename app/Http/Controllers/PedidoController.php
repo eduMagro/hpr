@@ -431,8 +431,12 @@ class PedidoController extends Controller
         $clienteLike = (!$obraIds && $soloHpr) ? '%Hierros Paco Reyes%' : null;
 
         $datosStock = $stockService->obtenerDatosStock($obraIds, $clienteLike);
+        $stockPorNaves = $stockService->obtenerStockPorNaves();
+        $totalStockEmpresa = $stockService->obtenerTotalStockEmpresa();
 
         return view('pedidos.index', array_merge([
+            'stockPorNaves' => $stockPorNaves,
+            'totalStockEmpresa' => $totalStockEmpresa,
             'pedidos' => $pedidos,
             'navesHpr' => $navesHpr,
             'fabricantes' => $fabricantes,

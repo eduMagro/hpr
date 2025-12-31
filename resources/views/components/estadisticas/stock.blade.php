@@ -57,7 +57,7 @@
     @endphp
 
 
-    <div class="overflow-x-auto bg-white shadow-lg rounded-lg border border-gray-300">
+    <div class="overflow-x-auto bg-white shadow-lg border rounded-[2.5rem] border-gray-300">
         <table class="w-full text-sm text-center border-collapse">
             <thead>
                 <tr class="bg-blue-900 text-white text-xs">
@@ -130,8 +130,18 @@
 
                                         <label class="inline-flex items-center gap-1">
                                             <input type="checkbox" name="seleccionados[]"
-                                                value="encarretado-{{ $diametro }}">
-                                            <input type="hidden" name="detalles[encarretado-{{ $diametro }}][tipo]"
+                                                value="encarretado-{{ $diametro }}"
+                                                @change="toggleItem({ 
+                                                    id: 'encarretado-{{ $diametro }}', 
+                                                    tipo: 'encarretado', 
+                                                    diametro: '{{ $diametro }}', 
+                                                    cantidad: {{ $pedidoVal > 0 ? $pedidoVal : max(0, $necesarioVal - $stockVal) }},
+                                                    base_id: '{{ $productoBaseInfo['encarretado'][$diametro]['id'] ?? '' }}'
+                                                })"
+                                                :checked="isInCart('encarretado-{{ $diametro }}')"
+                                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <input type="hidden"
+                                                name="detalles[encarretado-{{ $diametro }}][tipo]"
                                                 value="encarretado">
                                             <input type="hidden"
                                                 name="detalles[encarretado-{{ $diametro }}][diametro]"
@@ -168,7 +178,17 @@
 
                                         <label class="inline-flex items-center gap-1">
                                             <input type="checkbox" name="seleccionados[]"
-                                                value="barra-{{ $diametro }}-{{ $longitud }}">
+                                                value="barra-{{ $diametro }}-{{ $longitud }}"
+                                                @change="toggleItem({ 
+                                                    id: 'barra-{{ $diametro }}-{{ $longitud }}', 
+                                                    tipo: 'barra', 
+                                                    diametro: '{{ $diametro }}', 
+                                                    longitud: '{{ $longitud }}',
+                                                    cantidad: {{ $pedidoVal > 0 ? $pedidoVal : $necesarioVal }},
+                                                    base_id: '{{ $productoBaseInfo['barras'][$diametro][$longitud]['id'] ?? '' }}'
+                                                })"
+                                                :checked="isInCart('barra-{{ $diametro }}-{{ $longitud }}')"
+                                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                                             <input type="hidden"
                                                 name="detalles[barra-{{ $diametro }}-{{ $longitud }}][tipo]"
                                                 value="barra">
@@ -206,24 +226,33 @@
         </table>
     </div>
 
-    <div class="mt-4 flex justify-end">
+    {{-- Botones de acción ahora en el sidebar del padre --}}
 
-        <button type="button" onclick="mostrarConfirmacion()"
-            class="bg-blue-600 text-white px-4 py-2 mr-4 rounded hover:bg-blue-700">
-            Crear pedido con seleccionados
-        </button>
-
-
-        <span class="bg-gray-700 text-white rounded px-4 py-2 font-bold shadow">
-            📌 Total general disponible: {{ number_format($totalGeneral, 2, ',', '.') }} kg
-        </span>
-    </div>
 
     {{-- 📊 CONSUMO HISTÓRICO --}}
     @if (!empty($resumenReposicion))
-        <h2 class="text-2xl font-bold text-blue-900 mt-4">📊 Consumo histórico por producto base</h2>
+        <div class="p-6 rounded-3xl flex flex-wrap items-center justify-between gap-4 mt-8 mb-6">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-blue-50 rounded-2xl ring-1 ring-blue-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" class="w-6 h-6 text-blue-600">
+                        <path d="M3 3v18h18" />
+                        <path d="M18 17V9" />
+                        <path d="M13 17V5" />
+                        <path d="M8 17v-3" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-black text-gray-900 tracking-tight italic uppercase">Consumo Histórico</h2>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Desglose por producto
+                        base</p>
+                </div>
+            </div>
+            {{-- Espacio para posibles acciones futuras --}}
+        </div>
 
-        <div class="overflow-x-auto bg-white shadow-lg rounded-lg border border-blue-200">
+        <div class="bg-white shadow-lg border border-blue-100 overflow-x-auto rounded-[2.5rem]">
             <table class="min-w-full text-sm text-center border-collapse">
                 <thead class="bg-blue-900 text-white text-xs">
                     <tr>
@@ -384,74 +413,70 @@
     @endif --}}
 
     {{-- 📦 RECOMENDACION REPOSICIÓN --}}
+    {{-- 📦 RECOMENDACION REPOSICIÓN --}}
     @if (!empty($recomendacionReposicion))
-        <div class="p-4 bg-blue-50 rounded border border-blue-200 mb-4 text-sm text-blue-900 leading-relaxed">
-            <h3 class="font-bold text-lg mb-2">🔎 ¿Cómo se calcula la recomendación de reposición?</h3>
-            <p>
-                Para cada producto base (distinguiendo tipo, diámetro y longitud) se analizan los consumos de los
-                últimos tres meses:
-                <strong>{{ $nombreMeses['haceDosMeses'] }}</strong>,
-                <strong>{{ $nombreMeses['mesAnterior'] }}</strong> y <strong>{{ $nombreMeses['mesActual'] }}</strong>.
-            </p>
-            <p class="mt-2">
-                A partir de esos tres valores, calculamos una <strong>tendencia de consumo mensual</strong> usando un
-                promedio ponderado:
-                el mes más reciente pesa un 50 %, el mes anterior un 30 % y el mes de hace dos meses un 20 %.
-            </p>
-            <p class="mt-2">
-                Con esa tendencia mensual calculada, definimos un <strong>stock objetivo</strong> equivalente a
-                <strong>dos meses de consumo</strong>
-                (para asegurar cobertura suficiente ante variaciones).
-            </p>
-            <p class="mt-2">
-                Finalmente, comparamos ese stock objetivo con tu <strong>stock actual</strong> y con los <strong>pedidos
-                    pendientes</strong>.
-                Si <code>stock objetivo - stock actual - pedidos</code> es mayor que cero, el resultado es la
-                <strong>cantidad recomendada a reponer</strong>.
-            </p>
-            <p class="mt-2 font-semibold">
-                En la tabla de abajo puedes ver, para cada producto, la tendencia detectada, el stock objetivo, el stock
-                actual y la cantidad a pedir si es necesario.
-            </p>
+        <div class="p-6 rounded-3xl  flex flex-wrap items-center justify-between gap-4 mt-12 mb-6">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-blue-50 rounded-2xl ring-1 ring-blue-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" class="w-6 h-6 text-blue-600">
+                        <path d="m7.5 4.27 9 5.15" />
+                        <path
+                            d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                        <path d="m3.3 7 8.7 5 8.7-5" />
+                        <path d="M12 22V12" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-black text-gray-900 tracking-tight italic uppercase">Recomendación Sugerida
+                    </h2>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Acciones de reposición
+                        necesarias</p>
+                </div>
+            </div>
         </div>
 
-        <h2 class="text-2xl font-bold text-blue-900 mt-4">📦 Recomendación de Reposición</h2>
-        <div class="overflow-x-auto bg-white shadow-lg rounded-lg border border-blue-200 mt-4">
-            <table class="min-w-full text-sm text-center border-collapse">
-                <thead class="bg-blue-900 text-white text-xs">
-                    <tr>
-                        <th class="px-4 py-2 border">Tipo</th>
-                        <th class="px-4 py-2 border">Ø mm</th>
-                        <th class="px-4 py-2 border">Longitud</th>
-                        <th class="px-4 py-2 border">Tendencia consumo</th>
-                        <th class="px-4 py-2 border">Stock objetivo (2 meses)</th>
-                        <th class="px-4 py-2 border">Stock actual</th>
-                        <th class="px-4 py-2 border">Pedidos</th>
-                        <th class="px-4 py-2 border">A pedir</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white">
-                    @foreach ($recomendacionReposicion as $rec)
-                        <tr class="hover:bg-blue-50 transition">
-                            <td class="px-4 py-2 border">{{ ucfirst($rec['tipo']) }}</td>
-                            <td class="px-4 py-2 border">{{ $rec['diametro'] }}</td>
-                            <td class="px-4 py-2 border">{{ $rec['longitud'] ?? '—' }}</td>
-                            <td class="px-4 py-2 border">{{ number_format($rec['tendencia'], 0, ',', '.') }} kg/mes
-                            </td>
-                            <td class="px-4 py-2 border">{{ number_format($rec['stock_objetivo'], 0, ',', '.') }} kg
-                            </td>
-                            <td class="px-4 py-2 border">{{ number_format($rec['stock_actual'], 0, ',', '.') }} kg
-                            </td>
-                            <td class="px-4 py-2 border">{{ number_format($rec['pedido'], 0, ',', '.') }} kg</td>
-                            <td
-                                class="px-4 py-2 border font-bold {{ $rec['reponer'] > 0 ? 'text-red-600' : 'text-green-600' }}">
-                                {{ number_format($rec['reponer'], 0, ',', '.') }} kg
-                            </td>
-
+        <div class="flex flex-col gap-8 items-start">
+            <div class="flex-1 overflow-x-auto bg-white shadow-lg border border-blue-100 w-full rounded-[2.5rem]">
+                <table class="min-w-full text-sm text-center border-collapse">
+                    <thead class="bg-blue-900 text-white text-xs">
+                        <tr>
+                            <th class="px-4 py-2 border">Tipo</th>
+                            <th class="px-4 py-2 border">Ø mm</th>
+                            <th class="px-4 py-2 border">Longitud</th>
+                            <th class="px-4 py-2 border">Tendencia consumo</th>
+                            <th class="px-4 py-2 border">Stock objetivo (2 meses)</th>
+                            <th class="px-4 py-2 border">Stock actual</th>
+                            <th class="px-4 py-2 border">Pedidos</th>
+                            <th class="px-4 py-2 border">A pedir</th>
                         </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="bg-white">
+                        @foreach ($recomendacionReposicion as $rec)
+                            <tr class="hover:bg-blue-50 transition">
+                                <td class="px-4 py-2 border">{{ ucfirst($rec['tipo']) }}</td>
+                                <td class="px-4 py-2 border">{{ $rec['diametro'] }}</td>
+                                <td class="px-4 py-2 border">{{ $rec['longitud'] ?? '—' }}</td>
+                                <td class="px-4 py-2 border">{{ number_format($rec['tendencia'], 0, ',', '.') }}
+                                    kg/mes
+                                </td>
+                                <td class="px-4 py-2 border">{{ number_format($rec['stock_objetivo'], 0, ',', '.') }}
+                                    kg
+                                </td>
+                                <td class="px-4 py-2 border">{{ number_format($rec['stock_actual'], 0, ',', '.') }} kg
+                                </td>
+                                <td class="px-4 py-2 border">{{ number_format($rec['pedido'], 0, ',', '.') }} kg</td>
+                                <td
+                                    class="px-4 py-2 border font-bold {{ $rec['reponer'] > 0 ? 'text-red-600' : 'text-green-600' }}">
+                                    {{ number_format($rec['reponer'], 0, ',', '.') }} kg
+                                </td>
+
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
         </div>
     @endif
 

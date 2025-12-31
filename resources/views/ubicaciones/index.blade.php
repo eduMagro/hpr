@@ -1060,9 +1060,128 @@ Inesperados: ${inesperados.join(', ') || ''}
             openSectors: {},
             estadoUbicaciones: {},
             estadoSectores: {},
-            showLeyenda: false,
             listaConsumos: [],
+            listaConsumosAgrupada: {},
             consumoCargando: false,
+            refreshCounter: 0,
+            modalBackups: false,
+            listaBackups: [],
+            backupCargando: false,
+            async crearBackup() {
+                const snapshot = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key.startsWith('inv-') || key.startsWith('sospechosos-')) {
+                        snapshot[key] = localStorage.getItem(key);
+                    }
+                }
+
+                if (Object.keys(snapshot).length === 0) {
+                    swalToast.fire({
+                        icon: 'info',
+                        title: 'Sin datos',
+                        text: 'No hay escaneos locales para guardar.'
+                    });
+                    return;
+                }
+
+                this.backupCargando = true;
+                try {
+                    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    const resp = await fetch('{{ route('inventario-backups.store') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': token
+                        },
+                        body: JSON.stringify({
+                            almacen_id: '{{ $obraActualId }}',
+                            data: snapshot
+                        })
+                    });
+                    const data = await resp.json();
+                    if (data.ok) {
+                        swalToast.fire({
+                            icon: 'success',
+                            title: 'Backup guardado',
+                            text: 'El estado de tus escaneos se ha subido a la nube.'
+                        });
+                        this.cargarBackups();
+                    }
+                } catch (e) {
+                    console.error('Error guardando backup', e);
+                } finally {
+                    this.backupCargando = false;
+                }
+            },
+            async cargarBackups() {
+                try {
+                    const resp = await fetch(
+                        '{{ route('inventario-backups.index') }}?almacen_id={{ $obraActualId }}');
+                    const data = await resp.json();
+                    if (data.ok) {
+                        this.listaBackups = data.backups;
+                    }
+                } catch (e) {
+                    console.error('Error cargando backups', e);
+                }
+            },
+            async restaurarBackup(backup) {
+                // Cerrar temporalmente para que no tape el Swal
+                this.modalBackups = false;
+
+                const result = await swalDialog({
+                    icon: 'warning',
+                    title: '¿Restaurar este backup?',
+                    text: 'Esto reemplazará tus escaneos actuales por los de este backup del ' +
+                        new Date(backup.created_at).toLocaleString(),
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, restaurar',
+                    cancelButtonText: 'Cancelar'
+                });
+
+                if (!result.isConfirmed) {
+                    this.modalBackups = true; // Reabrir si cancela
+                    return;
+                }
+
+                // Limpiar actuales
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const key = localStorage.key(i);
+                    if (key && (key.startsWith('inv-') || key.startsWith('sospechosos-'))) {
+                        localStorage.removeItem(key);
+                    }
+                }
+
+                // Cargar backup
+                Object.entries(backup.data).forEach(([key, val]) => {
+                    localStorage.setItem(key, val);
+                });
+
+                window.dispatchEvent(new CustomEvent('inventario-actualizado', {}));
+                swalToast.fire({
+                    icon: 'success',
+                    title: 'Backup restaurado',
+                    text: 'Los escaneos han sido sincronizados.'
+                });
+                // Ya estaba cerrado, pero nos aseguramos
+                this.modalBackups = false;
+            },
+            getPendientesSector(sector) {
+                this.refreshCounter; // Acceso para disparar reactividad
+                if (!window.productosPorUbicacion) return 0;
+                let pendientes = 0;
+                Object.entries(window.productosPorUbicacion).forEach(([ubicId, info]) => {
+                    if (window.ubicacionSectorMap && window.ubicacionSectorMap[ubicId] == sector) {
+                        const escaneados = JSON.parse(localStorage.getItem(`inv-${ubicId}`) || '[]');
+                        const productos = Array.isArray(info.productos) ? info.productos : [];
+                        productos.forEach(p => {
+                            if (!escaneados.includes(p)) pendientes++;
+                        });
+                    }
+                });
+                return pendientes;
+            },
             borrarTodosEscaneos() {
                 const ids = Array.isArray(window.ubicacionIdsInventario) ? window.ubicacionIdsInventario : [];
                 if (!ids.length) {
@@ -1125,6 +1244,16 @@ Inesperados: ${inesperados.join(', ') || ''}
                     if (byUbic !== 0) return byUbic;
                     return (a.codigo || '').toString().localeCompare((b.codigo || '').toString());
                 });
+
+                // Agrupar por ubicación
+                const grupos = {};
+                this.listaConsumos.forEach(item => {
+                    const u = item.ubicacion || 'Sin ubicación';
+                    if (!grupos[u]) grupos[u] = [];
+                    grupos[u].push(item);
+                });
+                this.listaConsumosAgrupada = grupos;
+
                 this.modalConsumo = true;
                 this.$nextTick(() => window.dispatchEvent(new CustomEvent('modal-consumo-abierto')));
             },
@@ -1273,6 +1402,9 @@ Inesperados: ${inesperados.join(', ') || ''}
                 this.estadoSectores[sector] = final;
             },
             init() {
+                window.addEventListener('inventario-actualizado', () => {
+                    this.refreshCounter++;
+                });
                 window.addEventListener('ubicacion-estado', (e) => {
                     const {
                         ubicacionId,
@@ -1289,6 +1421,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                     }
                 });
                 this.openModal = false;
+                this.cargarBackups();
             }
         };
     };
@@ -1297,7 +1430,7 @@ Inesperados: ${inesperados.join(', ') || ''}
 <x-app-layout>
     <x-menu.ubicaciones :obras="$obras" :obra-actual-id="$obraActualId" color-base="emerald" />
 
-    <div x-data="paginaUbicaciones()" x-init="openModal = false" class="max-w-7xl mx-auto space-y-4 h-[calc(100vh-12rem)]">
+    <div x-data="paginaUbicaciones()" class="max-w-7xl mx-auto space-y-4 min-h-[calc(100vh-8rem)] pb-8">
         <div
             class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-4 lg:p-6">
             <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -1317,6 +1450,31 @@ Inesperados: ${inesperados.join(', ') || ''}
                     </button>
 
                     <div class="flex gap-3 items-center">
+                        <!-- Botón Sincronización en la nube -->
+                        <div class="relative" x-show="$store.inv.modoInventario" x-cloak>
+                            <div
+                                class="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-full border border-gray-200 dark:border-gray-700">
+                                <button @click="crearBackup()"
+                                    class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-orange-600 hover:bg-orange-700 text-white shadow transition-all"
+                                    :class="backupCargando ? 'animate-pulse opacity-50' : ''"
+                                    title="Guardar backup en la nube">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                </button>
+                                <button @click="modalBackups = true; cargarBackups()"
+                                    class="inline-flex items-center justify-center h-8 px-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-all"
+                                    title="Ver historial de backups">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span class="text-xs font-bold ml-1" x-text="listaBackups.length"></span>
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- Botón Leyenda (Solo visible en modo inventario) -->
                         <div x-data="{ showLeyenda: false }" class="relative" x-show="$store.inv.modoInventario" x-cloak>
                             <button @click="showLeyenda = !showLeyenda"
@@ -1366,18 +1524,18 @@ Inesperados: ${inesperados.join(', ') || ''}
                                 </div>
                             </div>
                         </div>
-
-                        <button @click="$store.inv.toggleModoInventario()"
-                            class="inline-flex items-center gap-2 px-4 py-2 h-10 rounded-lg text-white font-semibold shadow transition-all text-xs md:text-sm w-[160px] justify-center"
-                            :class="$store.inv.modoInventario ?
-                                'bg-gradient-to-tr from-red-600 to-red-500 hover:from-red-700 hover:to-red-600' :
-                                'bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900'">
-                            <span class="text-xs md:text-sm">📦</span>
-                            <span class="text-xs md:text-sm"
-                                x-text="$store.inv.modoInventario ? 'Salir de inventario' : 'Hacer inventario'"></span>
-                        </button>
-
                     </div>
+
+                    <button @click="$store.inv.toggleModoInventario()"
+                        class="inline-flex items-center gap-2 px-4 py-2 h-10 rounded-lg text-white font-semibold shadow transition-all text-xs md:text-sm w-[160px] justify-center"
+                        :class="$store.inv.modoInventario ?
+                            'bg-gradient-to-tr from-red-600 to-red-500 hover:from-red-700 hover:to-red-600' :
+                            'bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900'">
+                        <span class="text-xs md:text-sm">📦</span>
+                        <span class="text-xs md:text-sm"
+                            x-text="$store.inv.modoInventario ? 'Salir de inventario' : 'Hacer inventario'"></span>
+                    </button>
+
                 </div>
             </div>
         </div>
@@ -1405,11 +1563,8 @@ Inesperados: ${inesperados.join(', ') || ''}
             </button>
         </div>
 
-        {{-- Sectores (scroll en desktop para evitar scroll global) --}}
-        <div class="space-y-2 md:space-y-4 lg:overflow-y-auto lg:pr-1"
-            :class="$store.inv && $store.inv.modoInventario ?
-                'lg:max-h-[calc(100vh-360px)]' :
-                'lg:max-h-[calc(100vh-300px)]'">
+        {{-- Sectores --}}
+        <div class="space-y-2 md:space-y-4">
             @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
                 <div x-init="if (openSectors['{{ $sector }}'] === undefined) openSectors['{{ $sector }}'] = false"
                     class="border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
@@ -1435,15 +1590,29 @@ Inesperados: ${inesperados.join(', ') || ''}
                             <div class="flex flex-col gap-1 items-start">
                                 <p class="text-base sm:text-lg font-semibold leading-tight">Sector {{ $sector }}
                                 </p>
-                                <p class="text-[11px] sm:text-xs text-white/80">Material en sector: {{ $totalMP }}
+                                <p class="text-[11px] sm:text-xs text-white/80">
+                                    <span x-show="!($store.inv && $store.inv.modoInventario)">Material en sector:
+                                        {{ $totalMP }}</span>
+                                    <span x-show="$store.inv && $store.inv.modoInventario" x-cloak
+                                        class="flex items-center gap-2">
+                                        <span>Material: {{ $totalMP }}</span>
+                                        <span class="opacity-40">|</span>
+                                        <span class="flex items-center gap-1 font-medium"
+                                            :class="getPendientesSector('{{ $sector }}') > 0 ? 'text-orange-300' :
+                                                'text-green-400'">
+                                            Pendientes: <span
+                                                x-text="getPendientesSector('{{ $sector }}')"></span>
+                                        </span>
+                                    </span>
                                 </p>
                             </div>
                         </div>
                         <div class="flex items-center gap-3">
-                            <span class="text-xs sm:text-sm text-white/70">{{ count($ubicaciones) }} ubicaciones</span>
+                            <span class="text-xs sm:text-sm text-white/70">{{ count($ubicaciones) }}
+                                ubicaciones</span>
                             <svg :class="openSectors['{{ $sector }}'] ? 'rotate-180' : ''"
-                                class="w-4 h-4 sm:w-5 sm:h-5 transition-transform" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                                class="w-4 h-4 sm:w-5 sm:h-5 transition-transform" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M19 9l-7 7-7-7" />
                             </svg>
@@ -1529,7 +1698,8 @@ Inesperados: ${inesperados.join(', ') || ''}
                                     'cursor-pointer hover:ring-2 hover:ring-blue-400' : '',
                                     $store.inv && $store.inv.modoInventario ?
                                     (estado === 'ok' ? 'border-green-400 bg-green-200 dark:bg-green-950' :
-                                        estado === 'fabricando' ? 'border-purple-400 bg-purple-200 dark:bg-purple-950' :
+                                        estado === 'fabricando' ?
+                                        'border-purple-400 bg-purple-200 dark:bg-purple-950' :
                                         estado === 'consumido' ? 'border-blue-400 bg-blue-200 dark:bg-blue-950' :
                                         estado === 'ambar' ? 'border-amber-400 bg-amber-200 dark:bg-amber-950' :
                                         estado === 'rojo' ? 'border-red-500 bg-red-200 dark:bg-red-950' :
@@ -1599,7 +1769,8 @@ Inesperados: ${inesperados.join(', ') || ''}
         </div>
 
 
-        <div class="flex max-md:flex-col gap-3 max-sm:pb-4">
+        {{-- Botones de acción --}}
+        <div class="flex max-md:flex-col gap-3">
             <div
                 class="w-full h-14 md:h-16 flex flex-col items-center justify-center border border-blue-200 dark:border-blue-700/70 rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/80 hover:border-blue-500 hover:shadow-md transition">
                 <button @click="openModal = true"
@@ -1694,9 +1865,16 @@ Inesperados: ${inesperados.join(', ') || ''}
                 <div @click.away="modalConsumo = false"
                     class="bg-white dark:bg-gray-900 w-screen md:max-w-4xl h-screen md:h-auto md:rounded-xl shadow-2xl md:mx-4 md:my-4 border border-gray-200 dark:border-gray-800">
                     <div class="flex items-center justify-between p-6">
-                        <h2 class="text-base md:text-lg lg:text-xl font-bold text-gray-800 dark:text-white">
-                            Materiales pendientes
-                        </h2>
+                        <div class="flex flex-col">
+                            <h2 class="text-base md:text-lg lg:text-xl font-bold text-gray-800 dark:text-white">
+                                Materiales pendientes
+                            </h2>
+                            <p class="text-xs md:text-sm text-gray-500 dark:text-gray-400">
+                                Total: <span x-text="listaConsumos.length"
+                                    class="font-bold text-orange-600 dark:text-orange-400"></span> materiales sin
+                                escanear
+                            </p>
+                        </div>
                         <button @click="modalConsumo = false"
                             class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1707,49 +1885,55 @@ Inesperados: ${inesperados.join(', ') || ''}
                     </div>
 
                     <div
-                        class="bg-gray-50 dark:bg-gray-800 border-y md:border-x border-gray-200 dark:border-gray-700 md:rounded-lg overflow-hidden">
-                        <div class="max-h-[80vh] overflow-y-auto">
-                            <table class="min-w-full text-sm">
-                                <thead class="bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200">
-                                    <tr>
-                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">
-                                            Ubicación</th>
-                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Código
-                                        </th>
-                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Colada
-                                        </th>
-                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Estado
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                                    <template x-if="!listaConsumos.length">
-                                        <tr>
-                                            <td colspan="4"
-                                                class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
-                                                No hay materiales cargados en la nave.
-                                            </td>
-                                        </tr>
-                                    </template>
-                                    <template x-for="item in listaConsumos" :key="`${item.ubicacion}-${item.codigo}`">
-                                        <tr>
-                                            <td class="px-2 md:px-4 py-2 font-semibold text-gray-800 dark:text-gray-100 text-xs md:text-base"
-                                                x-text="item.ubicacion"></td>
-                                            <td class="px-2 md:px-4 py-2 font-mono text-gray-700 dark:text-gray-200 text-xs md:text-base"
-                                                x-text="item.codigo"></td>
-                                            <td class="px-2 md:px-4 py-2 text-gray-600 dark:text-gray-300 text-xs md:text-base"
-                                                x-text="item.colada"></td>
-                                            <td class="px-2 md:px-4 py-2">
-                                                <span x-text="item.estado"
-                                                    :class="item.estado === 'OK' ?
-                                                        'bg-green-100 text-green-700' :
-                                                        'bg-amber-100 text-amber-700'"
-                                                    class="inline-flex items-center px-2 md:px-2.5 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-semibold"></span>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
+                        class="bg-gray-50 dark:bg-gray-900/50 border-y border-gray-200 dark:border-gray-800 h-[80vh] md:h-auto md:max-h-[60vh] overflow-y-auto p-4">
+                        <template x-if="!listaConsumos.length">
+                            <div
+                                class="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+                                <svg class="w-16 h-16 mb-4 opacity-20" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                </svg>
+                                <p class="text-lg font-medium">No hay materiales pendientes</p>
+                                <p class="text-sm">Todos los materiales han sido escaneados u operados.</p>
+                            </div>
+                        </template>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <template x-for="(items, ubicacion) in listaConsumosAgrupada" :key="ubicacion">
+                                <div
+                                    class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+                                    <div
+                                        class="bg-gray-100 dark:bg-gray-700/50 px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                                        <span class="font-bold text-gray-900 dark:text-white"
+                                            x-text="ubicacion"></span>
+                                        <span
+                                            class="bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                            x-text="items.length + ' pend.'"></span>
+                                    </div>
+                                    <div class="p-0">
+                                        <table class="min-w-full text-[11px] md:text-xs">
+                                            <thead class="bg-gray-50/50 dark:bg-gray-800 text-gray-500">
+                                                <tr>
+                                                    <th class="px-3 py-1.5 text-left font-medium">Código</th>
+                                                    <th class="px-3 py-1.5 text-left font-medium">Colada</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                                <template x-for="item in items" :key="item.codigo">
+                                                    <tr
+                                                        class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                                        <td class="px-3 py-2 font-mono font-medium text-gray-800 dark:text-gray-200"
+                                                            x-text="item.codigo"></td>
+                                                        <td class="px-3 py-2 text-gray-500 dark:text-gray-400"
+                                                            x-text="item.colada"></td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </div>
 
@@ -1767,8 +1951,12 @@ Inesperados: ${inesperados.join(', ') || ''}
                             </div>
 
                             <div x-ref="handle"
-                                class="absolute top-1 left-1 h-10 w-10 rounded-full bg-white text-orange-600 flex items-center justify-center shadow-md cursor-pointer transition-transform duration-150 active:scale-95"
-                                :class="processing ? 'opacity-70 cursor-not-allowed' : ''"
+                                class="absolute top-1 left-1 h-10 w-10 rounded-full bg-white text-orange-600 flex items-center justify-center shadow-md cursor-pointer active:scale-95"
+                                :class="{
+                                    'transition-transform duration-300': !dragging,
+                                    'transition-transform duration-75': dragging,
+                                    'opacity-70 cursor-not-allowed': processing
+                                }"
                                 :style="`transform: translateX(${handleX}px);`"
                                 @pointerdown.prevent="startDrag($event)" @touchstart.prevent="startDrag($event)">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
@@ -1778,6 +1966,74 @@ Inesperados: ${inesperados.join(', ') || ''}
                                 </svg>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+        <!-- Modal Historial de Backups -->
+        <template x-teleport="body">
+            <div x-show="modalBackups" x-transition x-cloak
+                class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur overflow-y-auto">
+                <div @click.away="modalBackups = false"
+                    class="bg-white dark:bg-gray-900 w-full max-w-lg p-6 rounded-xl shadow-2xl mx-4 my-4 border border-gray-200 dark:border-gray-800">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Historial de backups
+                        </h2>
+                        <button @click="modalBackups = false"
+                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <template x-if="listaBackups.length === 0">
+                            <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                                No hay backups guardados en la nube para este almacén.
+                            </div>
+                        </template>
+
+                        <template x-for="backup in listaBackups" :key="backup.id">
+                            <div
+                                class="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-orange-500 transition-colors group">
+                                <div class="flex items-center justify-between gap-4">
+                                    <div class="flex flex-col">
+                                        <span class="text-sm font-bold text-gray-900 dark:text-white"
+                                            x-text="new Date(backup.created_at).toLocaleString()"></span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400"
+                                            x-text="'Subido por: ' + (backup.user ? backup.user.name : 'Desconocido')"></span>
+                                    </div>
+                                    <button @click="restaurarBackup(backup)"
+                                        class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs font-bold text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:border-orange-200 transition-all flex items-center gap-1 shadow-sm">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                        </svg>
+                                        Restaurar
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="mt-8 pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-center">
+                        <button @click="crearBackup()"
+                            class="text-xs font-bold text-gray-400 hover:text-orange-600 transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            Realizar nuevo backup ahora
+                        </button>
                     </div>
                 </div>
             </div>
@@ -2604,4 +2860,5 @@ Inesperados: ${inesperados.join(', ') || ''}
     <audio id="sonido-estaEnOtraUbi" src="{{ asset('sonidos/scan-error.mp3') }}" preload="auto"></audio>
     <audio id="sonido-noTieneUbicacion" src="{{ asset('sonidos/scan-error.mp3') }}" preload="auto"></audio>
     <audio id="sonido-consumido" src="{{ asset('sonidos/scan-error.mp3') }}" preload="auto"></audio>
+    </div>
 </x-app-layout>
