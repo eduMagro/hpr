@@ -617,3 +617,160 @@ composer update
 Archivos importantes a respaldar:
 - `ferrawin-sync/.env` (configuracion)
 - `ferrawin-sync/logs/` (historico de sincronizaciones)
+
+---
+
+## Datos de Ensamblaje (Actualizado 2025-12-30)
+
+### Nuevos campos para dibujo de etiquetas
+
+Se han agregado campos adicionales para mejorar la representacion grafica de las etiquetas de ensamblaje:
+
+#### Campo `cotas` (planilla_entidades)
+
+Representacion visual de las dimensiones de la barra/estribo, extraido del campo `ZCOTAS` de la tabla `PROD_DETI` en FerraWin.
+
+**Ejemplos de formato:**
+```
+"30 |_____130______"           -> Barra en L: 30mm + 130mm
+"40 |______224______| 40"      -> Barra con ganchos: 40 + 224 + 40
+"VERT--> A=20 B=397"           -> Barra vertical con segmentos A y B
+"ESTRIBO 20 x 20 Solape= 10"   -> Estribo con dimensiones y solape
+```
+
+#### Campo `secuencia_doblado` (en composicion.barras/estribos)
+
+Array estructurado que describe la secuencia de doblado de cada elemento, parseado del campo `ZFIGURA` de la tabla `ORD_BAR`.
+
+**Formato de entrada en FerraWin (ZFIGURA):**
+```
+"345\t90d\t30"    -> Tab separado: longitud, angulo+d, longitud
+"100\t90d\t200\t90d\t200\t90d\t200\t90d\t100"  -> Estribo rectangular
+```
+
+**Formato de salida (secuencia_doblado):**
+```json
+// Barra en L
+[
+  {"tipo": "longitud", "valor": 345},
+  {"tipo": "doblez", "angulo": 90},
+  {"tipo": "longitud", "valor": 30}
+]
+
+// Estribo rectangular
+[
+  {"tipo": "longitud", "valor": 100},
+  {"tipo": "doblez", "angulo": 90},
+  {"tipo": "longitud", "valor": 200},
+  {"tipo": "doblez", "angulo": 90},
+  {"tipo": "longitud", "valor": 200},
+  {"tipo": "doblez", "angulo": 90},
+  {"tipo": "longitud", "valor": 200},
+  {"tipo": "doblez", "angulo": 90},
+  {"tipo": "longitud", "valor": 100}
+]
+```
+
+### Tablas FerraWin adicionales
+
+| Tabla | Campo | Descripcion |
+|-------|-------|-------------|
+| `PROD_DETI` | `ZCOTAS` | Dimensiones visuales de la barra |
+| `PROD_DETI` | `ZLONGITUD` | Longitud de ensamblaje |
+| `ORD_BAR` | `ZFIGURA` | Secuencia de doblado (formato tab-separado) |
+
+### Relacion entre tablas
+
+```
+ORD_HEAD (planilla)
+    |
+    +-- ORD_DET (entidades/situaciones)
+    |       |
+    |       +-- PROD_DETI (datos de produccion con ZCOTAS)
+    |              JOIN: ZCONTA + ZCODPLA + ZCODLIN
+    |
+    +-- ORD_BAR (barras individuales con ZFIGURA)
+            JOIN: ZCONTA + ZCODIGO + ZMARCA
+```
+
+**Nota:** `PROD_DETI` solo contiene datos para planillas que han pasado por el proceso de produccion. Planillas nuevas sin procesar no tendran datos de cotas.
+
+### Archivos modificados para soportar estos datos
+
+**ferrawin-sync:**
+- `src/FerrawinQuery.php` - Metodo `parsearSecuenciaDoblado()` y JOIN con PROD_DETI
+
+**manager:**
+- `database/migrations/2025_12_30_155216_add_cotas_to_planilla_entidades.php`
+- `app/Models/PlanillaEntidad.php` - Campo `cotas` en fillable
+- `app/Services/FerrawinSync/FerrawinBulkImportService.php` - Guardar cotas
+
+---
+
+## Etiquetas de Ensamblaje Mejoradas (2025-12-30)
+
+### Helper para renderizado SVG
+
+Se creo `app/Helpers/SvgBarraHelper.php` para convertir `secuencia_doblado` en graficos SVG.
+
+**Metodos principales:**
+
+```php
+// Convertir secuencia a path SVG
+SvgBarraHelper::secuenciaASvg(array $secuencia, array $opciones): array
+
+// Renderizar elemento completo con forma y dimensiones
+SvgBarraHelper::renderizarForma(array $elemento, ?string $cotas, string $letra, array $opciones): string
+
+// Renderizar seccion completa de formas
+SvgBarraHelper::renderizarSeccionFormas(array $composicion, ?string $cotas, array $armaduraConLetras, float $longitudTotal): string
+```
+
+**Algoritmo de renderizado:**
+1. Punto inicial (0,0), direccion = 0 grados (derecha)
+2. Para `longitud`: dibujar linea en direccion actual
+3. Para `doblez`: rotar direccion por el angulo
+4. Calcular bounds y escalar para ajustar al area
+5. Generar `<path d="M x y L x y..."/>`
+
+### Componente de etiqueta actualizado
+
+`resources/views/components/entidad/ensamblaje.blade.php`
+
+**Cambio principal:** La VISTA LATERAL fue reemplazada por FORMAS DETALLADAS que muestra:
+- Hasta 4 tipos de barra/estribo
+- SVG con la forma real del hierro (usando secuencia_doblado)
+- Diametro y dimensiones (usando cotas)
+
+**Layout actual:**
+```
++------------------+------------------------------------------+
+| SECCION          |  FORMAS DE ARMADURA                      |
+| TRANSVERSAL      |  (A) [===forma SVG===]  Ø16  130+30mm    |
+| (estribo)        |  (B) [===forma SVG===]  Ø12  200mm       |
+|  oA      oA      |  (C) [===forma SVG===]  Ø8   20x20cm     |
+|  oB      oB      |  Longitud: 6.50m                         |
++------------------+------------------------------------------+
+| LEYENDA: A:2o12(sup) B:2o12(inf) C:15o8 c/15cm             |
++-------------------------------------------------------------+
+```
+
+### Planillas de prueba con datos
+
+Las siguientes planillas tienen datos de `cotas` y `secuencia_doblado`:
+- `2025-008690` - 20 entidades con cotas
+- `2025-008693` - 1 entidad con cotas
+- `2025-008437` - 6 entidades con cotas
+
+**Comando para sincronizar planillas especificas:**
+```bash
+cd C:\xampp\htdocs\ferrawin-sync
+php sync_codigos.php 2025-008690 2025-008693 2025-008437
+```
+
+### Proximos pasos sugeridos
+
+1. **Ajustar estilos de impresion** - Verificar que las formas SVG se imprimen correctamente en A6
+2. **Mejorar parseo de cotas** - Extraer dimensiones numericas del string de cotas
+3. **Agregar indicadores de angulo** - Mostrar los angulos de doblado en el SVG
+4. **Soporte para radios** - El campo `tipo: 'radio'` esta preparado pero no renderizado

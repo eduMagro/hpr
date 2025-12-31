@@ -25,6 +25,7 @@ class PlanillaEntidad extends Model
         'cantidad',
         'miembros',
         'modelo',
+        'cotas',
         'longitud_ensamblaje',
         'peso_total',
         'total_barras',

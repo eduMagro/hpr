@@ -113,7 +113,8 @@
 </div>
 <script>
     // Datos de ubicaciones por sector para el modal de movimiento libre
-    const ubicacionesPorSectorGrua = @json($ubicacionesPorSector ?? []);
+    // Usar window para evitar errores de re-declaración con Livewire prefetch
+    window.ubicacionesPorSectorGrua = @json($ubicacionesPorSector ?? []);
 
     document.addEventListener('DOMContentLoaded', function() {
         // Selecciona solo los inputs del modal movimiento general
@@ -137,7 +138,7 @@
         if (sectorSelect && ubicacionSelect) {
             sectorSelect.addEventListener('change', function() {
                 const sectorSeleccionado = this.value;
-                const ubicacionesDelSector = ubicacionesPorSectorGrua[sectorSeleccionado] || [];
+                const ubicacionesDelSector = window.ubicacionesPorSectorGrua[sectorSeleccionado] || [];
 
                 // Limpiar y reconstruir opciones de ubicaciones
                 ubicacionSelect.innerHTML = '';
@@ -458,7 +459,8 @@
         }
     });
 
-    let paqueteEsperadoId = null;
+    // Usar window para evitar errores de re-declaración con Livewire prefetch
+    if (typeof window.paqueteEsperadoId === 'undefined') window.paqueteEsperadoId = null;
 
     function abrirModalBajadaPaquete(data) {
         document.getElementById('movimiento_id').value = data.id;
@@ -468,7 +470,7 @@
         document.getElementById('descripcion_paquete').innerText = data
             .descripcion;
 
-        paqueteEsperadoId = data.paquete_id;
+        window.paqueteEsperadoId = data.paquete_id;
         document.getElementById('codigo_general').value = '';
         document.getElementById('estado_verificacion').innerText = '';
         document.getElementById('codigo_general').classList.remove(
@@ -750,7 +752,8 @@
 
 {{-- Scripts para el modal de mover paquete --}}
 <script>
-    let paqueteMoverData = null;
+    // Usar window para evitar errores de re-declaración con Livewire prefetch
+    if (typeof window.paqueteMoverData === 'undefined') window.paqueteMoverData = null;
     function ajustarModalSegunGrid(modalId) {
         const modal = document.getElementById(modalId);
         if (!modal) return;
@@ -813,17 +816,17 @@
             }
         }
 
-        paqueteMoverData = null;
+        window.paqueteMoverData = null;
     }
 
     function mostrarPasoMapa() {
         document.getElementById('paso-escanear-paquete').classList.add('hidden');
         document.getElementById('paso-mapa-paquete').classList.remove('hidden');
 
-        const codigoPak = (paqueteMoverData?.codigo || '').toString().trim();
-        const etiquetasCount = paqueteMoverData?.etiquetas_count || 0;
-        const elementosCount = paqueteMoverData?.elementos_count || 0;
-        const tieneLocalizacion = paqueteMoverData?.tiene_localizacion;
+        const codigoPak = (window.paqueteMoverData?.codigo || '').toString().trim();
+        const etiquetasCount = window.paqueteMoverData?.etiquetas_count || 0;
+        const elementosCount = window.paqueteMoverData?.elementos_count || 0;
+        const tieneLocalizacion = window.paqueteMoverData?.tiene_localizacion;
 
         document.getElementById('paquete-codigo-mapa').textContent = codigoPak;
         document.getElementById('paquete-info-mapa').textContent =
@@ -835,7 +838,7 @@
             mostrarPaqueteEnMapaModal('modal-mover-paquete', codigoPak);
         } else if (codigoPak && !tieneLocalizacion) {
             // Paquete SIN localización: crear ghost para asignar ubicación
-            crearGhostEnMapaModal('modal-mover-paquete', paqueteMoverData);
+            crearGhostEnMapaModal('modal-mover-paquete', window.paqueteMoverData);
         }
     }
 
@@ -859,7 +862,7 @@
             }
         }
 
-        paqueteMoverData = null;
+        window.paqueteMoverData = null;
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -910,7 +913,7 @@
                     'Paquete no encontrado');
             }
 
-            paqueteMoverData = data;
+            window.paqueteMoverData = data;
 
             // Ir directamente al mapa
             document.getElementById('loading-paquete-mover').classList.add('hidden');
@@ -1139,7 +1142,8 @@
 
 {{-- Scripts para modal de ejecutar salida --}}
 <script>
-    let salidaData = null;
+    // Usar window para evitar errores de re-declaración con Livewire prefetch
+    if (typeof window.salidaData === 'undefined') window.salidaData = null;
     let paquetesSalida = [];
     let etiquetasEscaneadas = new Set();
     let paquetesLocalizados = new Set();
@@ -1163,7 +1167,7 @@
         paquetesLocalizados.clear();
         paqueteSeleccionadoId = null;
         paquetesSalida = [];
-        salidaData = {
+        window.salidaData = {
             movimientoId: movimientoId,
             salidaId: salidaId
         };
@@ -1218,7 +1222,7 @@
         paquetesLocalizados.clear();
         paqueteSeleccionadoId = null;
         paquetesSalida = [];
-        salidaData = null;
+        window.salidaData = null;
         actualizarContadores();
     }
 
@@ -1234,8 +1238,8 @@
                 throw new Error(data.message || 'Error al cargar datos de la salida');
             }
 
-            salidaData = {
-                ...salidaData,
+            window.salidaData = {
+                ...window.salidaData,
                 ...data.salida
             };
             paquetesSalida = data.paquetes || [];
@@ -1434,7 +1438,7 @@
         }
 
         try {
-            const response = await fetch(`/salidas/completar-desde-movimiento/${salidaData.movimientoId}`, {
+            const response = await fetch(`/salidas/completar-desde-movimiento/${window.salidaData.movimientoId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

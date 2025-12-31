@@ -25,7 +25,10 @@
       "Bash(php artisan model:show:*)",
       "Bash(php check_elemento.php:*)",
       "Bash(php:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(curl:*)",
+      "Bash(del \"C:\\\\xampp\\\\htdocs\\\\manager\\\\check_planillas.php\")",
+      "Bash(del \"C:\\\\xampp\\\\htdocs\\\\manager\\\\database\\\\migrations\\\\2025_12_29_000001_create_etiquetas_ensamblaje_table.php\")"
     ],
     "deny": [],
     "ask": []
