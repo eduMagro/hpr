@@ -1826,7 +1826,7 @@ Inesperados: ${inesperados.join(', ') || ''}
 
                     <form method="POST" action="{{ route('ubicaciones.store') }}" class="space-y-4">
                         @csrf
-                        <input type="hidden" name="almacen" value="{{ $obraActualId }}">
+                        <input type="hidden" name="almacen" value="{{ $codigoAlmacen }}">
 
                         <x-tabla.select name="sector" label="Sector" :options="collect(range(1, 20))
                             ->mapWithKeys(

@@ -115,10 +115,10 @@ class UbicacionController extends Controller
 
             // 4) Traducir obra → código de almacén
             $almacen = match (Str::lower((string) $obra->obra)) {
-                'nave a'  => '0A',
-                'nave b'  => '0B',
+                'nave a' => '0A',
+                'nave b' => '0B',
                 'almacén' => 'AL',
-                default   => null,
+                default => null,
             };
 
             if (!$almacen) {
@@ -154,9 +154,9 @@ class UbicacionController extends Controller
             // 7) Vista
             return view('ubicaciones.inventario', [
                 'ubicacionesPorSector' => $ubicacionesPorSector,
-                'almacen'              => $almacen,
-                'obraActualId'         => $obra->id,
-                'obras'                => $obras,
+                'almacen' => $almacen,
+                'obraActualId' => $obra->id,
+                'obras' => $obras,
             ]);
         } catch (Exception $e) {
             Log::error('Error en inventario: ' . $e->getMessage());
@@ -199,22 +199,22 @@ class UbicacionController extends Controller
         try {
             // Validación de los datos del formulario
             $request->validate([
-                'almacen'     => 'required|string|max:2',
-                'sector'      => 'required|string|max:2',
-                'ubicacion'   => 'required|string|max:2',
+                'almacen' => 'required|string|max:2',
+                'sector' => 'required|string|max:2',
+                'ubicacion' => 'required|string|max:2',
                 'descripcion' => 'nullable|string|max:255',
             ], [
-                'almacen.required'   => 'El campo "almacén" es obligatorio.',
-                'almacen.string'     => 'El campo "almacén" debe ser una cadena de texto.',
-                'almacen.max'        => 'El campo "almacén" no puede tener más de 2 caracteres.',
-                'sector.required'    => 'El campo "sector" es obligatorio.',
-                'sector.string'      => 'El campo "sector" debe ser una cadena de texto.',
-                'sector.max'         => 'El campo "sector" no puede tener más de 2 caracteres.',
+                'almacen.required' => 'El campo "almacén" es obligatorio.',
+                'almacen.string' => 'El campo "almacén" debe ser una cadena de texto.',
+                'almacen.max' => 'El campo "almacén" no puede tener más de 2 caracteres.',
+                'sector.required' => 'El campo "sector" es obligatorio.',
+                'sector.string' => 'El campo "sector" debe ser una cadena de texto.',
+                'sector.max' => 'El campo "sector" no puede tener más de 2 caracteres.',
                 'ubicacion.required' => 'El campo "ubicación" es obligatorio.',
-                'ubicacion.string'   => 'El campo "ubicación" debe ser una cadena de texto.',
-                'ubicacion.max'      => 'El campo "ubicación" no puede tener más de 2 caracteres.',
+                'ubicacion.string' => 'El campo "ubicación" debe ser una cadena de texto.',
+                'ubicacion.max' => 'El campo "ubicación" no puede tener más de 2 caracteres.',
                 'descripcion.string' => 'El campo "descripción" debe ser una cadena de texto.',
-                'descripcion.max'    => 'El campo "descripción" no puede tener más de 255 caracteres.',
+                'descripcion.max' => 'El campo "descripción" no puede tener más de 255 caracteres.',
             ]);
 
             // Generar código único
@@ -234,25 +234,18 @@ class UbicacionController extends Controller
 
             // Crear nueva ubicación
             Ubicacion::create([
-                'codigo'      => $codigo,
-                'nombre'      => $nombre,
-                'almacen'     => $request->almacen,
-                'sector'      => $request->sector,
-                'ubicacion'   => $request->ubicacion,
+                'codigo' => $codigo,
+                'nombre' => $nombre,
+                'almacen' => $request->almacen,
+                'sector' => $request->sector,
+                'ubicacion' => $request->ubicacion,
                 'descripcion' => $request->descripcion,
             ]);
 
             DB::commit();
 
-            // 🔁 Redirigir según la nave (almacen)
-            $ruta = match ($request->almacen) {
-                '0A' => 'ubicaciones.verNave-a',
-                '0B' => 'ubicaciones.verNave-b',
-                'AL' => 'ubicaciones.verAlmacen',
-                default => 'ubicaciones.index', // fallback general
-            };
 
-            return redirect()->route($ruta)->with('success', 'Ubicación creada con éxito.');
+            return redirect()->route('ubicaciones.index')->with('success', 'Ubicación creada con éxito.');
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Error al crear ubicación: ' . $e->getMessage());
