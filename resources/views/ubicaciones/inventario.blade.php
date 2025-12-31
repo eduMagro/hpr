@@ -248,7 +248,8 @@
                                             <li class="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg border px-3 py-2 shadow-sm"
                                                 :class="idx % 2 === 0 ? 'bg-white border-gray-200' :
                                                     'bg-gray-50 border-gray-200'"
-                                                x-data="{ ubic: null, hasId: false, misma: false, estado: null, esConsumido: false }" x-init="ubic = (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) ? asignados[codigo] : null;
+                                                x-data="{ ubic: null, existeEnSistema: false, hasId: false, misma: false, estado: null, esConsumido: false }" x-init="existeEnSistema = (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo));
+                                                ubic = existeEnSistema ? asignados[codigo] : null;
                                                 hasId = (ubic !== null && ubic !== '' && ubic !== undefined);
                                                 misma = (hasId && ubic.toString() === nombreUbicacion.toString());
                                                 estado = (estados && Object.prototype.hasOwnProperty.call(estados, codigo)) ? (estados[codigo] ?? null) : null;
@@ -259,12 +260,12 @@
                                                         <!-- Punto de estado -->
                                                         <span class="inline-block h-2.5 w-2.5 rounded-full"
                                                             :class="esConsumido ? 'bg-blue-500/80' : (hasId ?
-                                                                'bg-amber-500/80' : 'bg-red-500/80')"></span>
+                                                                'bg-amber-500/80' : (existeEnSistema ? 'bg-orange-500/80' : 'bg-red-500/80'))"></span>
 
                                                         <!-- Código -->
                                                         <span class="text-xs sm:text-base break-all font-sans"
                                                             :class="esConsumido ? 'text-blue-600' : (hasId ? 'text-amber-500' :
-                                                                'text-red-800')"
+                                                                (existeEnSistema ? 'text-orange-600' : 'text-red-800'))"
                                                             x-text="codigo"></span>
 
                                                         <!-- Subtexto/Chip -->
@@ -277,7 +278,9 @@
                                                                 Ubicación: <span x-text="ubic"></span>
                                                             </span>
                                                             <span class="text-gray-900"
-                                                                x-show="!esConsumido && !hasId">Sin registrar</span>
+                                                                x-show="!esConsumido && existeEnSistema && !hasId">Sin ubicación</span>
+                                                            <span class="text-gray-900"
+                                                                x-show="!esConsumido && !existeEnSistema">No registrado</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -285,16 +288,16 @@
                                                 <!-- DERECHA: acción -->
                                                 <button
                                                     class="bg-blue-600 text-white px-3 py-1.5 rounded-md text-xs sm:text-base w-24 sm:w-auto"
-                                                    x-show="!esConsumido && hasId && !misma"
+                                                    x-show="!esConsumido && existeEnSistema && !misma"
                                                     @click="reasignarProducto(codigo)">
                                                     Asignar aquí
                                                 </button>
 
-                                                <!-- Sólo si no es consumido -->
+                                                <!-- Sólo si no existe en el sistema -->
                                                 <span
                                                     class="text-gray-800 px-3 py-1.5 rounded-md text-xs sm:text-base w-24 sm:w-auto"
-                                                    x-show="!esConsumido && !hasId">
-                                                    No asignable
+                                                    x-show="!esConsumido && !existeEnSistema">
+                                                    No registrado
                                                 </span>
                                             </li>
 
@@ -353,7 +356,8 @@
     @push('scripts')
         <script>
             window.inventarioCtx = {
-                asignados: @json(\App\Models\Producto::whereNotNull('ubicacion_id')->pluck('ubicacion_id', 'codigo')),
+                // Incluir todos los productos (con o sin ubicación) para poder asignar productos sin ubicacion_id
+                asignados: @json(\App\Models\Producto::pluck('ubicacion_id', 'codigo')),
                 detalles: @json($detalles),
                 estados: @json(\App\Models\Producto::pluck('estado', 'codigo')),
                 rutaAlerta: @json(route('alertas.store')),

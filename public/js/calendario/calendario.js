@@ -669,13 +669,25 @@
                     const baseUrl = routes.vacationDataUrl || `/api/usuarios/${userId}/vacation-data`;
                     const fetchUrl = `${baseUrl}?fecha=${clicked}`;
                     fetch(fetchUrl)
-                        .then(r => r.json())
+                        .then(r => {
+                            if (!r.ok) {
+                                throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+                            }
+                            const contentType = r.headers.get('content-type') || '';
+                            if (!contentType.includes('application/json')) {
+                                throw new Error('La respuesta no es JSON');
+                            }
+                            return r.json();
+                        })
                         .then(data => {
                             if (data.error) throw new Error(data.error);
                             
                             fechaIncorporacion = data.fecha_incorporacion;
                             diasVacacionesAsignados = data.dias_asignados;
 
+                            const modal = document.getElementById('vacation-bottom-modal');
+                            const content = document.getElementById('vacation-bottom-content');
+                            
                             if (fechaIncorporacion) {
                                 const incorpDate = new Date(fechaIncorporacion);
                                 const clickDate = new Date(clicked);
@@ -687,9 +699,6 @@
                                     // Detectar período de gracia: 1 enero - 31 marzo
                                     const isGracePeriod = clickMonth <= 2; // enero, febrero, marzo
                                     const previousYear = clickYear - 1;
-                                    
-                                    const modal = document.getElementById('vacation-bottom-modal');
-                                    const content = document.getElementById('vacation-bottom-content');
                                     
                                     if (modal && content) {
                                         modal.classList.remove('translate-y-full');
@@ -860,6 +869,23 @@
                                             `;
                                         }
                                     }
+                                }
+                            } else {
+                                // Mostrar mensaje cuando no hay fecha de incorporación
+                                if (modal && content) {
+                                    modal.classList.remove('translate-y-full');
+                                    modal.classList.add('translate-y-0');
+                                    
+                                    content.innerHTML = `
+                                        <div class="flex items-center gap-2 text-sm">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                            <span class="text-yellow-400">
+                                                Configure la fecha de incorporación para ver el cálculo de vacaciones
+                                            </span>
+                                        </div>
+                                    `;
                                 }
                             }
                         })

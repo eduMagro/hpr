@@ -114,7 +114,8 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Documentos
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Inc.
+                                </th>
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones
                                 </th>
                             </tr>
@@ -175,8 +176,23 @@
                                             </span>
                                         @endif
                                     </td>
-                                    <td class="px-6 py-4 text-sm text-gray-500">
-                                        {{ $inc->created_at->format('d/m/Y') }}
+                                    <td class="px-6 py-4">
+                                        @if ($inc->fecha_incorporacion)
+                                            <span class="text-sm text-gray-700 font-medium">
+                                                {{ $inc->fecha_incorporacion->format('d/m/Y') }}
+                                            </span>
+                                        @else
+                                            <span
+                                                class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-300">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
+                                                Sin fecha
+                                            </span>
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 text-right">
                                         <a href="{{ route('incorporaciones.show', $inc) }}"

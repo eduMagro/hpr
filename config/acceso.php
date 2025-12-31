@@ -22,7 +22,9 @@ return [
         'entradas.',       // ✅ acceso permitido
         'movimientos.',    // ✅ acceso permitido
         'ubicaciones.',
+        'inventario-backups.', // ✅ acceso para ver backups de inventario
         'incorporaciones.descargarMiContrato', // ✅ acceso para descargar su contrato
+        'usuarios.getVacationData', // ✅ acceso para ver datos de vacaciones propios
     ],
 
     // 📌 Prefijos que deben salir en el dashboard para operarios
@@ -73,6 +75,7 @@ return [
         'vacaciones.solicitar',
         'users.verEventos-turnos',
         'users.verResumen-asistencia',
+        'usuarios.getVacationData', // ✅ datos de vacaciones propios
         'api.mapaNave', // ✅ mapa de nave (usado en grúa y otras vistas)
     ],
 

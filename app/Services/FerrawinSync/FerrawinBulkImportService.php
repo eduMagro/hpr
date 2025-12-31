@@ -531,6 +531,7 @@ class FerrawinBulkImportService
                 "cantidad" => (int)($entidad["cantidad"] ?? 1),
                 "miembros" => (int)($entidad["miembros"] ?? 1),
                 "modelo" => $entidad["modelo"] ?? null,
+                "cotas" => $entidad["cotas"] ?? null,
                 "longitud_ensamblaje" => $entidad["resumen"]["longitud_ensamblaje"] ?? null,
                 "peso_total" => $entidad["resumen"]["peso_total"] ?? null,
                 "total_barras" => $entidad["resumen"]["total_barras"] ?? 0,

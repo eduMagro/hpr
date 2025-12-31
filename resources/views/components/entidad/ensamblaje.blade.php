@@ -298,72 +298,13 @@
                     
                 </g>
 
-                {{-- === VISTA LATERAL (derecha) === --}}
-                <g transform="translate(170, 5)">
-                    <text x="190" y="14" text-anchor="middle" font-size="11" font-weight="bold" fill="#000">VISTA LATERAL</text>
-                    <text x="190" y="26" text-anchor="middle" font-size="9" fill="#000">(L = {{ number_format($longitudCm/100, 2, '.', '') }}m)</text>
-
-                    {{-- Fondo elemento --}}
-                    <rect x="5" y="32" width="370" height="120" fill="#fff" stroke="#000" stroke-width="1" rx="3"/>
-
-                    {{-- Barras superiores --}}
-                    @if($totalSuperiores > 0)
-                        <line x1="12" y1="52" x2="368" y2="52" stroke="#000" stroke-width="5" stroke-linecap="round"/>
-                        <text x="30" y="45" font-size="12" fill="#000" font-weight="bold">{{ $letraSup ?? 'A' }}</text>
-                        <text x="340" y="45" font-size="12" fill="#000" font-weight="bold">{{ $letraSup ?? 'A' }}</text>
-                    @endif
-
-                    {{-- Barras inferiores --}}
-                    @if($totalInferiores > 0)
-                        <line x1="12" y1="132" x2="368" y2="132" stroke="#000" stroke-width="5" stroke-linecap="round"/>
-                        <text x="30" y="160" font-size="12" fill="#000" font-weight="bold">{{ $letraInf ?? 'B' }}</text>
-                        <text x="340" y="160" font-size="12" fill="#000" font-weight="bold">{{ $letraInf ?? 'B' }}</text>
-                    @endif
-
-                    {{-- Estribos (con soporte para zonas de solape) --}}
-                    @if($tieneSolape && $longitudSolapeCm > 0)
-                        {{-- CON SOLAPE: zona sombreada sin estribos --}}
-                        @php
-                            $proporcionSolape = $longitudSolapeCm / max(1, $longitudCm);
-                            $anchoSolape = min(370 * $proporcionSolape, 100);
-                            $inicioEstribos = ($posicionSolape === "inferior" || $posicionSolape === "ambos") ? $anchoSolape : 0;
-                            $finEstribos = ($posicionSolape === "superior" || $posicionSolape === "ambos") ? (370 - $anchoSolape) : 370;
-                            $anchoZonaEstribos = max(1, $finEstribos - $inicioEstribos);
-                            $numEst = min($cantidadEstribos, 20);
-                            $espacEst = $anchoZonaEstribos / max(1, $numEst - 1);
-                        @endphp
-                        {{-- Zona de solape sombreada --}}
-                        @if($posicionSolape === "inferior" || $posicionSolape === "ambos")
-                            <rect x="5" y="32" width="{{ $anchoSolape }}" height="120" fill="#f0f0f0" stroke="#999" stroke-width="1" stroke-dasharray="4,2"/>
-                            <text x="{{ 5 + $anchoSolape/2 }}" y="95" text-anchor="middle" font-size="7" fill="#666">SOLAPE</text>
-                        @endif
-                        @if($posicionSolape === "superior" || $posicionSolape === "ambos")
-                            <rect x="{{ 375 - $anchoSolape }}" y="32" width="{{ $anchoSolape }}" height="120" fill="#f0f0f0" stroke="#999" stroke-width="1" stroke-dasharray="4,2"/>
-                            <text x="{{ 375 - $anchoSolape/2 }}" y="95" text-anchor="middle" font-size="7" fill="#666">SOLAPE</text>
-                        @endif
-                        {{-- Estribos solo en zona sin solape --}}
-                        @for($i = 0; $i < $numEst; $i++)
-                            <line x1="{{ 5 + $inicioEstribos + ($i * $espacEst) }}" y1="40" x2="{{ 5 + $inicioEstribos + ($i * $espacEst) }}" y2="144" stroke="#000" stroke-width="1.5"/>
-                        @endfor
-                    @else
-                        {{-- SIN SOLAPE: estribos en toda la longitud --}}
-                        @php
-                            $numEst = min($cantidadEstribos, 25);
-                            $espacEst = 350 / max(1, $numEst - 1);
-                        @endphp
-                        @for($i = 0; $i < $numEst; $i++)
-                            <line x1="{{ 15 + ($i * $espacEst) }}" y1="40" x2="{{ 15 + ($i * $espacEst) }}" y2="144" stroke="#000" stroke-width="1.5"/>
-                        @endfor
-                    @endif
-
-                    {{-- Cota --}}
-                    <line x1="5" y1="162" x2="375" y2="162" stroke="#000" stroke-width="1"/>
-                    <line x1="5" y1="157" x2="5" y2="167" stroke="#000" stroke-width="1"/>
-                    <line x1="375" y1="157" x2="375" y2="167" stroke="#000" stroke-width="1"/>
-                    <text x="190" y="177" text-anchor="middle" font-size="10" fill="#000" font-weight="bold">{{ number_format($longitudCm, 0, '.', '') }} cm</text>
-
-                    
-                </g>
+                {{-- === FORMAS DETALLADAS (derecha) === --}}
+                {!! \App\Helpers\SvgBarraHelper::renderizarSeccionFormas(
+                    $composicion,
+                    $entidad->cotas ?? null,
+                    $armaduraConLetras,
+                    $etiqueta->longitud ?? $entidad->longitud_ensamblaje ?? 0
+                ) !!}
 
                 {{-- === LEYENDA COMPLETA (abajo) === --}}
                 <g transform="translate(10, 205)">

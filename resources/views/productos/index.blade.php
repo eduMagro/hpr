@@ -162,7 +162,8 @@
             </div>
 
             <script>
-                const PRINT_SERVICE_URL = 'http://localhost:8765';
+                // Usar window para evitar errores de re-declaración con Livewire prefetch
+                if (typeof window.PRINT_SERVICE_URL === 'undefined') window.PRINT_SERVICE_URL = 'http://localhost:8765';
 
                 // Verificar si el servicio de impresion esta corriendo
                 async function verificarServicioImpresion() {
@@ -170,7 +171,7 @@
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos
 
-                        const response = await fetch(PRINT_SERVICE_URL, {
+                        const response = await fetch(window.PRINT_SERVICE_URL, {
                             method: 'GET',
                             mode: 'cors',
                             signal: controller.signal
@@ -300,7 +301,7 @@
                             const printController = new AbortController();
                             const printTimeout = setTimeout(() => printController.abort(), 30000);
 
-                            printResponse = await fetch(PRINT_SERVICE_URL + '/print', {
+                            printResponse = await fetch(window.PRINT_SERVICE_URL + '/print', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
@@ -627,11 +628,11 @@
                                     Mover
                                 </button>
 
-                                <a href="{{ route('productos.editarConsumir', $producto->id) }}" wire:navigate
+                                <button type="button"
                                     data-consumir="{{ route('productos.editarConsumir', $producto->id) }}"
                                     class="btn-consumir flex-1 bg-red-500 hover:bg-red-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
                                     Consumir
-                                </a>
+                                </button>
 
                                 <form action="{{ route('productos.destroy', $producto->id) }}" method="POST"
                                     class="form-eliminar flex-1">
