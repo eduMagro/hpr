@@ -473,7 +473,8 @@
         class="sidebar-mobile-hidden bg-gray-900 dark:bg-gray-950 text-white flex-shrink-0 flex flex-col fixed md:static inset-y-0 left-0 z-[9999] md:z-auto">
 
         <!-- Header del Sidebar -->
-        <div class="px-4 h-14 flex items-center justify-around border-b border-gray-800 border-r-0 overflow-hidden">
+        <div class="px-4 h-14 flex items-center border-b border-gray-800 border-r-0 overflow-hidden"
+            :class="open ? 'justify-between' : 'justify-center'">
 
             <!-- Logo del Sidebar (visible cuando sidebar está abierto) -->
             <a x-show="open && !isToggling"
@@ -489,8 +490,8 @@
                     class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
             </a>
 
-            <button @click="if (!isToggling) toggleSidebar()" id="tooglesidebarbtn"
-                class="p-2 hover:bg-gray-800 rounded-lg transition-all duration-300"
+            <button @click.stop="if (!isToggling) toggleSidebar()" id="tooglesidebarbtn"
+                class="p-2 hover:bg-gray-800 rounded-lg transition-all duration-300 relative z-50 flex-shrink-0"
                 title="Toggle Sidebar (Ctrl+B)">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor"
                     viewBox="0 0 24 24">
