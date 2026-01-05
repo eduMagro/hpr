@@ -2525,9 +2525,38 @@
             init: function() {
                 if (this.initialized) return;
                 this.initialized = true;
+
+                // Cargar cache de memoria si existe
+                const savedCache = localStorage.getItem('lastScanMobileCache');
+                if (savedCache) {
+                    try {
+                        this.dataCache = JSON.parse(savedCache);
+                        // console.log('Cache recuperado de localStorage:', this.dataCache);
+                        if (this.dataCache.resultado) {
+                            poblarVista2ConDatos(this.dataCache.resultado);
+                            if (this.dataCache.simulacion) {
+                                poblarVista3ConPedido(this.dataCache.simulacion);
+                                poblarVista4ConColadas(this.dataCache.simulacion);
+                                if (this.dataCache.lineaSeleccionada) {
+                                    actualizarVista3ConLineaSeleccionada(this.dataCache.lineaSeleccionada);
+                                }
+                            }
+                            this.maxStep = this.dataCache.lastStep || 2;
+                        }
+                    } catch (e) {
+                        console.error('Error cargando cache:', e);
+                        localStorage.removeItem('lastScanMobileCache');
+                    }
+                }
+
                 this.attachEventListeners();
                 this.updateNavigation();
                 this.updateProgressBar();
+
+                // Si hay un paso guardado, ir a él
+                if (this.dataCache.lastStep && this.dataCache.lastStep > 1) {
+                    this.goToStep(this.dataCache.lastStep, true);
+                }
             },
 
             goToStep: function(stepNumber, forceAdvance = false) {
@@ -2578,6 +2607,10 @@
 
                 this.updateNavigation();
                 this.updateProgressBar();
+
+                // Guardar progreso en memoria
+                this.dataCache.lastStep = this.currentStep;
+                localStorage.setItem('lastScanMobileCache', JSON.stringify(this.dataCache));
 
                 // Mostrar botón continuar en paso 1 si ya hay datos
                 if (stepNumber === 1) {
@@ -2949,6 +2982,12 @@
             if (mobileImageInput) mobileImageInput.value = '';
             if (mobileCameraInput) mobileCameraInput.value = '';
             document.getElementById('mobile-file-feedback').classList.add('hidden');
+
+            // Limpiar también la memoria del último escaneo
+            localStorage.removeItem('lastScanMobileCache');
+            window.mobileStepManager.dataCache = {};
+            window.mobileStepManager.maxStep = 1;
+
             refreshMobileButton();
         };
 
@@ -3066,7 +3105,8 @@
                     // console.log('Avanzando a Vista 2...');
                     window.mobileStepManager.next(true);
 
-                    // console.log('Current step:', window.mobileStepManager.currentStep);
+                    // Guardar progreso en memoria después de procesar
+                    localStorage.setItem('lastScanMobileCache', JSON.stringify(window.mobileStepManager.dataCache));
                 } else if (!data.success) {
                     console.error('Error en respuesta:', data);
                     alert('Error al procesar el albar【n. Por favor, intenta de nuevo.');
@@ -3295,27 +3335,27 @@
                             <span class="font-semibold text-gray-900">${lineaPropuesta.codigo_linea || '—'}</span>
                         </div>
                         ${pedidoHprEscaneado ? `
-                                                                                                                        <div class="hidden">
-                                                                                                                            <span class="text-gray-500">Pedido HPR (escaneado):</span>
-                                                                                                                            <span class="font-semibold text-gray-900">${pedidoHprEscaneado}</span>
-                                                                                                                        </div>
-                                                                                                                    ` : ''}
+                                                                                                                                        <div class="hidden">
+                                                                                                                                            <span class="text-gray-500">Pedido HPR (escaneado):</span>
+                                                                                                                                            <span class="font-semibold text-gray-900">${pedidoHprEscaneado}</span>
+                                                                                                                                        </div>
+                                                                                                                                    ` : ''}
                         <div class="hidden">
                             <span class="text-gray-500">Pedido (BD):</span>
                             <span class="font-semibold text-gray-900">${lineaPropuesta.pedido_codigo || '—'}</span>
                         </div>
                         ${fabricanteNombre ? `
-                                                                                                                        <div>
-                                                                                                                            <span class="text-gray-500">Fabricante:</span>
-                                                                                                                            <span class="font-medium text-gray-900">${fabricanteNombre}</span>
-                                                                                                                        </div>
-                                                                                                                    ` : ''}
+                                                                                                                                        <div>
+                                                                                                                                            <span class="text-gray-500">Fabricante:</span>
+                                                                                                                                            <span class="font-medium text-gray-900">${fabricanteNombre}</span>
+                                                                                                                                        </div>
+                                                                                                                                    ` : ''}
                         ${distribuidorNombre ? `
-                                                                                                                        <div>
-                                                                                                                            <span class="text-gray-500">Distribuidor:</span>
-                                                                                                                            <span class="font-medium text-gray-900">${distribuidorNombre}</span>
-                                                                                                                        </div>
-                                                                                                                    ` : ''}
+                                                                                                                                        <div>
+                                                                                                                                            <span class="text-gray-500">Distribuidor:</span>
+                                                                                                                                            <span class="font-medium text-gray-900">${distribuidorNombre}</span>
+                                                                                                                                        </div>
+                                                                                                                                    ` : ''}
                         <div>
                             <span class="text-gray-500">Producto:</span>
                             <span class="font-medium text-gray-900">${lineaPropuesta.producto || '—'}</span>
@@ -3449,6 +3489,17 @@
                 totalBultos += parseInt(cb.dataset.bultos) || 0;
                 totalPeso += parseFloat(cb.dataset.peso) || 0;
             });
+
+            // FALLBACK PESO TOTAL: Si todos los checks están marcados y el peso sumado es 0 (o inconsistente),
+            // usar el peso_total detectado en el albarán.
+            const totalCheckboxes = document.querySelectorAll('.mobile-colada-checkbox');
+            const cache = window.mobileStepManager.dataCache;
+            if (checkboxes.length > 0 && checkboxes.length === totalCheckboxes.length) {
+                const pesoAlbaran = parseFloat(cache.parsed?.peso_total || 0);
+                if (pesoAlbaran > 0 && (totalPeso <= 0 || Math.abs(totalPeso - pesoAlbaran) > 0.1)) {
+                    totalPeso = pesoAlbaran;
+                }
+            }
 
             // Actualizar UI
             const bultosEl = document.getElementById('mobile-bultos-seleccionados');
@@ -4235,17 +4286,17 @@
                             <span class="ml-2 text-gray-900">${linea.pedido_codigo || '—'}</span>
                         </div>
                             ${fabricanteNombre ? `
-                                                                                                                            <div>
-                                                                                                                                <span class="text-gray-500">Fabricante:</span>
-                                                                                                                                <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
-                                                                                                                            </div>
-                                                                                                                        ` : ''}
+                                                                                                                                            <div>
+                                                                                                                                                <span class="text-gray-500">Fabricante:</span>
+                                                                                                                                                <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
+                                                                                                                                            </div>
+                                                                                                                                        ` : ''}
                             ${distribuidorNombre ? `
-                                                                                                                            <div>
-                                                                                                                                <span class="text-gray-500">Distribuidor:</span>
-                                                                                                                                <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
-                                                                                                                            </div>
-                                                                                                                        ` : ''}
+                                                                                                                                            <div>
+                                                                                                                                                <span class="text-gray-500">Distribuidor:</span>
+                                                                                                                                                <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
+                                                                                                                                            </div>
+                                                                                                                                        ` : ''}
                             <div>
                                 <span class="text-gray-500">Producto:</span>
                                 <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
@@ -4255,21 +4306,21 @@
                                 <span class="ml-2 text-gray-900">${linea.fecha_entrega_fmt || linea.fecha_entrega || '—'}</span>
                             </div>
                             ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
                             <div class="flex items-center justify-between pt-2 border-t border-gray-100">
                                 <div>
                                         <span class="text-gray-500">Pendiente:</span>
                                         <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                                     </div>
                                     ${linea.score ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 font-bold">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        Score: ${formatScorePoints(linea.score)} pts.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 font-bold">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        Score: ${formatScorePoints(linea.score)} pts.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ` : ''}
                             </div>
                         </div>
                     </div>
@@ -4392,27 +4443,27 @@
                             <span class="ml-2 font-semibold text-gray-900">${linea.codigo_linea || '—'}</span>
                         </div>
                         ${pedidoHprEscaneado ? `
-                                                                                                                        <div class="hidden">
-                                                                                                                            <span class="text-gray-500">Pedido HPR (escaneado):</span>
-                                                                                                                            <span class="ml-2 font-semibold text-gray-900">${pedidoHprEscaneado}</span>
-                                                                                                                        </div>
-                                                                                                                    ` : ''}
+                                                                                                                                        <div class="hidden">
+                                                                                                                                            <span class="text-gray-500">Pedido HPR (escaneado):</span>
+                                                                                                                                            <span class="ml-2 font-semibold text-gray-900">${pedidoHprEscaneado}</span>
+                                                                                                                                        </div>
+                                                                                                                                    ` : ''}
                         <div class="hidden">
                             <span class="text-gray-500">Pedido (BD):</span>
                             <span class="ml-2 font-semibold text-gray-900">${linea.pedido_codigo || '—'}</span>
                         </div>
                         ${fabricanteNombre ? `
-                                                                                                                        <div>
-                                                                                                                            <span class="text-gray-500">Fabricante:</span>
-                                                                                                                            <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
-                                                                                                                        </div>
-                                                                                                                    ` : ''}
+                                                                                                                                        <div>
+                                                                                                                                            <span class="text-gray-500">Fabricante:</span>
+                                                                                                                                            <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
+                                                                                                                                        </div>
+                                                                                                                                    ` : ''}
                         ${distribuidorNombre ? `
-                                                                                                                        <div>
-                                                                                                                            <span class="text-gray-500">Distribuidor:</span>
-                                                                                                                            <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
-                                                                                                                        </div>
-                                                                                                                    ` : ''}
+                                                                                                                                        <div>
+                                                                                                                                            <span class="text-gray-500">Distribuidor:</span>
+                                                                                                                                            <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
+                                                                                                                                        </div>
+                                                                                                                                    ` : ''}
                         <div>
                             <span class="text-gray-500">Producto:</span>
                             <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
@@ -4422,11 +4473,11 @@
                             <span class="ml-2 text-gray-900">${linea.fecha_entrega_fmt || linea.fecha_entrega || '—'}</span>
                         </div>
                         ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
                         <div class="pt-2 border-t border-gray-100">
                             <span class="text-gray-500">Cantidad Pendiente:</span>
                             <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>

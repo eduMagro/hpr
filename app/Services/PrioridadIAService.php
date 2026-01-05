@@ -88,6 +88,8 @@ class PrioridadIAService
             return [
                 'id' => $c['id'],
                 'pedido_codigo' => $c['pedido_codigo'],
+                'fabricante' => $c['fabricante'],
+                'distribuidor' => $c['distribuidor'],
                 'obra' => $c['obra'],
                 'producto' => $c['producto'],
                 'diametro' => $c['diametro'],
@@ -99,8 +101,14 @@ class PrioridadIAService
         }, $candidatos);
 
         return json_encode([
-            'instruccion' => 'Analiza el albarán y los pedidos candidatos. Devuelve un JSON con la clave "ranking_ids" (array de IDs ordenados por prioridad) y "razonamiento" (breve explicación). IMPORTANTE: Si un pedido candidato tiene "coincide_codigo": true, es casi seguro que es el correcto y debe ir el primero.',
-            'albaran_escaneado' => $datosOCR,
+            'instruccion' => 'Analiza el albarán y los pedidos candidatos. Devuelve un JSON con la clave "ranking_ids" (array de IDs ordenados por prioridad) y "razonamiento" (breve explicación). IMPORTANTE: Si un pedido candidato tiene "coincide_codigo": true, es casi seguro que es el correcto y debe ir el primero. PRIORIDAD SELECCIÓN: Si el albarán indica "tipo_compra": "directo", el pedido recomendado DEBE ser directamente del fabricante (sin distribuidor). Si indica "distribuidor", el pedido DEBE coincidir con el distribuidor indicado.',
+            'albaran_escaneado' => [
+                'proveedor_texto' => $datosOCR['proveedor_texto'] ?? null,
+                'tipo_compra' => $datosOCR['tipo_compra'] ?? 'directo',
+                'distribuidor_recomendado' => $datosOCR['distribuidor_recomendado'] ?? null,
+                'pedido_cliente' => $datosOCR['pedido_cliente'] ?? null,
+                'productos' => $datosOCR['productos'] ?? [],
+            ],
             'pedidos_candidatos' => $candidatosSimplificados,
             'contexto_historico' => $memoria
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);

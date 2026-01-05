@@ -509,13 +509,32 @@ class AlbaranesScanController extends Controller
             $fabricanteNombre = $fabricante?->nombre ?? 'Balboa';
         }
 
-        // Buscar líneas de pedidos de COMPRA pendientes (filtrar solo por FABRICANTE)
+        // Fallback: si no tenemos fabricanteId por el tipo de proveedor, intentar buscarlo por el texto editado
+        $proveedorTexto = $parsed['proveedor_texto'] ?? $parsed['fabricante'] ?? null;
+        if (!$fabricanteId && $proveedorTexto) {
+            $f = \App\Models\Fabricante::where('nombre', 'LIKE', "%{$proveedorTexto}%")->first();
+            if ($f) {
+                $fabricanteId = $f->id;
+                $fabricanteNombre = $f->nombre;
+            }
+        }
+
+        // Obtener tipo de compra y distribuidor de los datos parseados/editados
+        $tipoCompra = $parsed['tipo_compra'] ?? null;
+        $distribuidorNombre = $parsed['distribuidor_recomendado'] ?? null;
+        $distribuidorId = null;
+
+        if ($distribuidorNombre) {
+            $distribuidorId = \App\Models\Distribuidor::where('nombre', $distribuidorNombre)->value('id');
+        }
+
+        // Buscar líneas de pedidos de COMPRA pendientes (filtrar solo por FABRICANTE y TIPO DE COMPRA)
         $lineasPendientes = \App\Models\PedidoProducto::query()
             ->with(['pedido.fabricante', 'pedido.distribuidor', 'productoBase', 'obra'])
             ->whereHas('pedido')
             ->whereNotIn('estado', ['completado', 'cancelado', 'facturado'])
             ->get()
-            ->filter(fn($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados));
+            ->filter(fn($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados, $tipoCompra, $distribuidorId));
 
         $hoy = now();
         $lineasConScoring = $lineasPendientes->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $fabricanteId, $normalizedPedidoCodigo, $normalizeCode, $isCodeMatch) {
@@ -604,7 +623,7 @@ class AlbaranesScanController extends Controller
                 $q->whereNotIn('estado', ['completado', 'cancelado', 'facturado']);
             })
             ->get()
-            ->filter(fn($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados));
+            ->filter(fn($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados, $tipoCompra, $distribuidorId));
 
         $todasLasLineas = $todasLasLineasQuery->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $normalizedPedidoCodigo, $normalizeCode, $fabricanteId, $isCodeMatch) {
             $cantidadPendiente = ($linea->cantidad ?? 0) - ($linea->cantidad_recepcionada ?? 0);
@@ -724,15 +743,38 @@ class AlbaranesScanController extends Controller
         ];
     }
 
-    protected function esLineaPermitida($linea, ?int $fabricanteId, array $diametrosEscaneados): bool
+    protected function esLineaPermitida($linea, ?int $fabricanteId, array $diametrosEscaneados, ?string $tipoCompra = null, ?int $distribuidorId = null): bool
     {
         if (!$linea || !$linea->pedido) {
             return false;
         }
 
-        $lineaFabricanteId = $linea->pedido->fabricante_id ?? null;
+        $pedido = $linea->pedido;
+
+        // 1. Filtrado por FABRICANTE (si se ha especificado uno)
+        $lineaFabricanteId = $pedido->fabricante_id ?? null;
         if ($fabricanteId && $lineaFabricanteId && $lineaFabricanteId !== $fabricanteId) {
             return false;
+        }
+
+        // 2. Filtrado por TIPO DE COMPRA y DISTRIBUIDOR (CRÍTICO)
+        if ($tipoCompra) {
+            $tipoCompra = mb_strtolower($tipoCompra);
+            if ($tipoCompra === 'directo') {
+                // Si es directo, el pedido NO puede tener distribuidor
+                if ($pedido->distribuidor_id !== null) {
+                    return false;
+                }
+            } elseif ($tipoCompra === 'distribuidor') {
+                // Si es compra a distribuidor, el pedido DEBE tener el distribuidor correcto
+                if ($distribuidorId && $pedido->distribuidor_id !== $distribuidorId) {
+                    return false;
+                }
+                // Si no tenemos distribuidorId pero el tipo es distribuidor, al menos asegurar que tenga alguno
+                if (!$distribuidorId && $pedido->distribuidor_id === null) {
+                    return false;
+                }
+            }
         }
 
         $diametroLinea = $linea->productoBase->diametro ?? null;
