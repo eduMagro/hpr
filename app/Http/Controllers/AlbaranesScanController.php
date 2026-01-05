@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Distribuidor;
 use App\Models\PedidoProducto;
+use App\Models\IAAprendizajePrioridad;
 use App\Services\AlbaranOcrService;
+use App\Services\PrioridadIAService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -47,7 +50,7 @@ class AlbaranesScanController extends Controller
         if ($request->hasFile('imagenes')) {
             foreach ($request->file('imagenes') as $imagen) {
                 try {
-                    $log = $service->parseAndLog($imagen, auth()->id(), $proveedor);
+                    $log = $service->parseAndLog($imagen, Auth::id(), $proveedor);
                     $parsed = $log->parsed_payload ?? [];
                     $statusMessages = $parsed['_ai_status'] ?? [];
                     $aiMeta = $parsed['_ai_meta'] ?? [];
@@ -132,7 +135,7 @@ class AlbaranesScanController extends Controller
         if ($request->hasFile('imagenes')) {
             foreach ($request->file('imagenes') as $imagen) {
                 try {
-                    $log = $service->parseAndLog($imagen, auth()->id(), $proveedor);
+                    $log = $service->parseAndLog($imagen, Auth::id(), $proveedor);
                     $parsed = $log->parsed_payload ?? [];
                     $statusMessages = $parsed['_ai_status'] ?? [];
                     $aiMeta = $parsed['_ai_meta'] ?? [];
@@ -514,7 +517,7 @@ class AlbaranesScanController extends Controller
             $incompatibilidades = [];
 
             if (!$linea->obra && !$linea->obra_manual) {
-                \Log::info('Pedido pendiente sin obra detectado', [
+                Log::info('Pedido pendiente sin obra detectado', [
                     'linea_id' => $linea->id,
                     'codigo' => $linea->codigo,
                     'pedido_codigo' => $linea->pedido?->codigo,
@@ -776,47 +779,17 @@ class AlbaranesScanController extends Controller
             ->values()
             ->toArray();
 
-        // Línea propuesta (siempre seleccionar una): priorizar coincidencia de código (si existe alguna línea abierta)
-        $lineaPropuesta = $lineasConScoring[0] ?? null;
-        $tipoRecomendacion = null;
+        // Re-priorizar con IA si hay candidatos
+        $lineasConScoring = collect($lineasConScoring);
+        if ($lineasConScoring->isNotEmpty()) {
+            $aiService = app(PrioridadIAService::class);
+            $candidatos = $lineasConScoring->toArray();
+            $reordenados = $aiService->recomendarPrioridades($source, $candidatos);
+            $lineasConScoring = collect($reordenados);
 
-        if ($lineaPropuesta) {
-            if ($normalizedPedidoCodigo !== '') {
-                $coincidentes = collect($lineasConScoring)
-                    ->filter(function ($l) use ($normalizeCode, $normalizedPedidoCodigo) {
-                        $codigoLinea = $normalizeCode($l['pedido_codigo'] ?? '');
-                        return $codigoLinea !== '' && str_contains($codigoLinea, $normalizedPedidoCodigo);
-                    })
-                    ->values()
-                    ->all();
-
-                if (!empty($coincidentes)) {
-                    $lineaPropuesta = $coincidentes[0]; // ya vienen ordenadas por score
-                }
-            }
-
-            $propuestaNorm = $normalizeCode($lineaPropuesta['pedido_codigo'] ?? '');
-            if ($normalizedPedidoCodigo !== '' && $propuestaNorm === $normalizedPedidoCodigo) {
-                $tipoRecomendacion = 'exacta';
-            } elseif ($normalizedPedidoCodigo !== '' && str_contains($propuestaNorm, $normalizedPedidoCodigo)) {
-                $tipoRecomendacion = 'parcial';
-            } else {
-                $tipoRecomendacion = 'por_score';
-            }
-        } else {
-            // Si no hay coincidencias con código, buscar en TODAS las líneas por score
-            if (!empty($todasLasLineas)) {
-                $lineaPropuesta = $todasLasLineas[0]; // Ya está ordenado por score
-                $tipoRecomendacion = 'por_score';
-                // Agregar campos faltantes para compatibilidad
-                $lineaPropuesta['razones'] = [
-                    "⚠ No se encontró pedido con código '{$pedidoCodigo}'",
-                ];
-                $lineaPropuesta['incompatibilidades'] = [
-                    "⚠ El código de pedido del albarán no coincide con ningún pedido en BD"
-                ];
-                $lineaPropuesta['es_viable'] = true;
-            }
+            // La nueva propuesta es la primera de la lista reordenada por la IA
+            $lineaPropuesta = $lineasConScoring->first();
+            $tipoRecomendacion = 'ia_recomendada';
         }
 
         // Agregar tipo de recomendación a la línea propuesta
@@ -956,5 +929,36 @@ class AlbaranesScanController extends Controller
             'balboa' => 'Balboa',
             default => 'Otro / No identificado',
         };
+    }
+
+    /**
+     * Guarda el aprendizaje/retroalimentación de la IA cuando el usuario elige un pedido.
+     */
+    public function guardarAprendizaje(Request $request)
+    {
+        $request->validate([
+            'ocr_log_id' => 'required|exists:entrada_import_logs,id',
+            'payload_ocr' => 'required|array',
+            'recomendaciones_ia' => 'required|array',
+            'pedido_seleccionado_id' => 'required',
+            'es_discrepancia' => 'required|boolean',
+            'motivo_usuario' => 'nullable|string',
+        ]);
+
+        IAAprendizajePrioridad::create([
+            'entrada_import_log_id' => $request->ocr_log_id,
+            'payload_ocr' => $request->payload_ocr,
+            'recomendaciones_ia' => $request->recomendaciones_ia,
+            'pedido_seleccionado_id' => $request->pedido_seleccionado_id,
+            'es_discrepancia' => $request->es_discrepancia,
+            'motivo_usuario' => $request->motivo_usuario,
+            'contexto_sistema' => [
+                'user_id' => Auth::id(),
+                'ip' => $request->ip(),
+                'timestamp' => now()->toDateTimeString(),
+            ],
+        ]);
+
+        return response()->json(['success' => true]);
     }
 }

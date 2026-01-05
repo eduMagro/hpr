@@ -69,6 +69,7 @@ Route::post('/albaranes/scan/procesar', [AlbaranesScanController::class, 'proces
 Route::post('/albaranes/scan/procesar-ajax', [AlbaranesScanController::class, 'procesarAjax'])->name('albaranes.scan.procesar.ajax');
 Route::post('/albaranes/scan/buscar-pedido', [AlbaranesScanController::class, 'buscarPedido'])->name('albaranes.scan.pedido.lookup');
 Route::post('/albaranes/scan/simular', [AlbaranesScanController::class, 'simular'])->name('albaranes.scan.simular');
+Route::post('/albaranes/scan/guardar-aprendizaje', [AlbaranesScanController::class, 'guardarAprendizaje'])->name('albaranes.scan.aprendizaje.guardar');
 
 // Alias legacy (compatibilidad)
 Route::get('/pruebasScanAlbaran', [AlbaranesScanController::class, 'index'])->name('albaranes.scan.legacy.index');
