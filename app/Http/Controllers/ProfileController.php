@@ -1531,6 +1531,13 @@ class ProfileController extends Controller
             ->whereDate('fecha', '<=', $fechaReferencia->toDateString())
             ->count();
 
+        // === VACACIONES FUTURAS (después de la fecha clickeada) ===
+        // Cuenta TODAS las vacaciones posteriores a la fecha clickeada, de cualquier año
+        $diasVacacionesFuturas = $user->asignacionesTurnos()
+            ->where('estado', 'vacaciones')
+            ->whereDate('fecha', '>', $fechaReferencia->toDateString())
+            ->count();
+
         return response()->json([
             'fecha_incorporacion' => $user->fecha_incorporacion_efectiva ? $user->fecha_incorporacion_efectiva->format('Y-m-d') : null,
             'dias_asignados' => $diasAsignadosTotal,
@@ -1542,6 +1549,8 @@ class ProfileController extends Controller
             'dias_usados_hasta_fecha' => $diasUsadosHastaFecha,
             'dias_usados_periodo_gracia_hasta_fecha' => $diasUsadosPeriodoGraciaHastaFecha,
             'dias_usados_post_gracia_hasta_fecha' => $diasUsadosPostGraciaHastaFecha,
+            // Nuevo: vacaciones futuras para mostrar en el frontend
+            'dias_vacaciones_futuras' => $diasVacacionesFuturas,
             'year_anterior' => $previousYear,
             'year_actual' => $clickYear,
             'fecha_referencia' => $fechaReferencia->toDateString(),
