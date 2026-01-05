@@ -209,7 +209,17 @@ class AlbaranesScanController extends Controller
         ]);
 
         $codigo = (string) $request->input('codigo', '');
-        $normalized = preg_replace('/\s+/', '', mb_strtolower($codigo));
+        $normalizeCode = fn($c) => preg_replace('/\s+/', '', mb_strtolower($c ?? ''));
+        $normalized = $normalizeCode($codigo);
+
+        $isCodeMatch = function ($scannedCode, $dbCode) use ($normalizeCode) {
+            $s = $normalizeCode($scannedCode);
+            $d = $normalizeCode($dbCode);
+            if (!$s || !$d)
+                return false;
+            return str_contains($s, $d) || str_contains($d, $s);
+        };
+
         $diametros = collect($request->input('diametros', []))
             ->filter(fn($v) => $v !== null && $v !== '')
             ->map(fn($v) => (float) $v)
@@ -226,27 +236,26 @@ class AlbaranesScanController extends Controller
             ]);
         }
 
-        // Normaliza código de pedido padre en BD eliminando espacios y pasando a minúsculas.
         $pedidoExpr = "LOWER(REPLACE(codigo, ' ', ''))";
-
         $baseWith = ['pedido.fabricante', 'pedido.distribuidor', 'productoBase', 'obra'];
 
-        $exactQuery = PedidoProducto::query()
+        // Búsqueda eficiente por código (exacto o contenido)
+        $lineas = PedidoProducto::query()
             ->with($baseWith)
-            ->whereHas('pedido', fn($q) => $q->whereRaw("{$pedidoExpr} = ?", [$normalized]));
-        $exactCount = (clone $exactQuery)->count();
-        $lineas = (clone $exactQuery)->orderByDesc('created_at')->limit(50)->get();
+            ->whereHas('pedido', function ($q) use ($normalized, $pedidoExpr) {
+                $q->where(function ($subQ) use ($normalized, $pedidoExpr) {
+                    $subQ->whereRaw("{$pedidoExpr} = ?", [$normalized])
+                        ->orWhereRaw("{$pedidoExpr} LIKE ?", ['%' . $normalized . '%'])
+                        ->orWhereRaw("? LIKE CONCAT('%', {$pedidoExpr}, '%')", [$normalized]);
+                });
+            })
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get();
 
-        $matchType = $lineas->isNotEmpty() ? 'exact' : 'contains';
-        $containsCount = null;
-
-        if ($lineas->isEmpty()) {
-            $containsQuery = PedidoProducto::query()
-                ->with($baseWith)
-                ->whereHas('pedido', fn($q) => $q->whereRaw("{$pedidoExpr} LIKE ?", ['%' . $normalized . '%']));
-            $containsCount = (clone $containsQuery)->count();
-            $lineas = (clone $containsQuery)->orderByDesc('created_at')->limit(50)->get();
-        }
+        $exactCount = $lineas->count(); // Simplificado para móvil
+        $matchType = $lineas->isNotEmpty() ? 'exact' : 'none';
+        $containsCount = 0;
 
         if ($lineas->isEmpty()) {
             return response()->json([
@@ -399,6 +408,14 @@ class AlbaranesScanController extends Controller
 
         $normalizedPedidoCodigo = $normalizeCode($pedidoCodigo);
 
+        $isCodeMatch = function ($scannedCode, $dbCode) use ($normalizeCode) {
+            $s = $normalizeCode($scannedCode);
+            $d = $normalizeCode($dbCode);
+            if (!$s || !$d)
+                return false;
+            return str_contains($s, $d) || str_contains($d, $s);
+        };
+
         // Recopilar todos los line_items de todos los productos
         $allLineItems = [];
         foreach ((array) $productos as $producto) {
@@ -501,7 +518,7 @@ class AlbaranesScanController extends Controller
             ->filter(fn($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados));
 
         $hoy = now();
-        $lineasConScoring = $lineasPendientes->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $fabricanteId, $normalizedPedidoCodigo, $normalizeCode) {
+        $lineasConScoring = $lineasPendientes->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $fabricanteId, $normalizedPedidoCodigo, $normalizeCode, $isCodeMatch) {
             $razones = [];
             $incompatibilidades = [];
 
@@ -537,9 +554,9 @@ class AlbaranesScanController extends Controller
             }
 
             // Información de Código de Pedido (Prioridad Máxima Heurística)
-            $coincideCodigo = $normalizedPedidoCodigo && $normalizeCode($linea->pedido->codigo) === $normalizedPedidoCodigo;
+            $coincideCodigo = $normalizedPedidoCodigo && $isCodeMatch($linea->pedido->codigo, $normalizedPedidoCodigo);
             if ($coincideCodigo) {
-                $razones[] = "★ Código de pedido coincide exactamente";
+                $razones[] = "★ Código de pedido coincide";
                 $score = 1000;
             } else {
                 $score = 0;
@@ -589,7 +606,7 @@ class AlbaranesScanController extends Controller
             ->get()
             ->filter(fn($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados));
 
-        $todasLasLineas = $todasLasLineasQuery->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $normalizedPedidoCodigo, $normalizeCode, $fabricanteId) {
+        $todasLasLineas = $todasLasLineasQuery->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $normalizedPedidoCodigo, $normalizeCode, $fabricanteId, $isCodeMatch) {
             $cantidadPendiente = ($linea->cantidad ?? 0) - ($linea->cantidad_recepcionada ?? 0);
             $diametroLinea = $linea->productoBase->diametro ?? null;
             $diametroLineaInt = $diametroLinea !== null ? (int) round((float) $diametroLinea) : null;
@@ -597,7 +614,7 @@ class AlbaranesScanController extends Controller
             $distribuidor = $linea->pedido->distribuidor->nombre ?? null;
             $productoDescripcion = $linea->productoBase->nombre ?? ($diametroLineaInt ? "Ø{$diametroLineaInt}mm" : "ProductoBase #{$linea->producto_base_id}");
             $coincideDiametro = $diametroLineaInt && in_array($diametroLineaInt, $diametrosEscaneados, true);
-            $coincideCodigo = $normalizedPedidoCodigo && $normalizeCode($linea->pedido->codigo) === $normalizedPedidoCodigo;
+            $coincideCodigo = $normalizedPedidoCodigo && $isCodeMatch($linea->pedido->codigo, $normalizedPedidoCodigo);
 
             return [
                 'id' => $linea->id,
@@ -633,7 +650,15 @@ class AlbaranesScanController extends Controller
             $reordenados = $aiService->recomendarPrioridades($source, $candidatos);
             $lineasConScoring = collect($reordenados);
 
-            // La nueva propuesta es la primera de la lista reordenada por la IA
+            // SOBREESCRITURA DE SEGURIDAD: Si hay alguno que coincida por código, FORZARLO al principio.
+            // Para el usuario esto es "prioridad absoluta".
+            $matchCodigoIdx = $lineasConScoring->search(fn($linea) => !empty($linea['coincide_codigo']));
+            if ($matchCodigoIdx !== false) {
+                $match = $lineasConScoring->splice($matchCodigoIdx, 1)->first();
+                $lineasConScoring->prepend($match);
+            }
+
+            // La nueva propuesta es la primera de la lista reordenada (con nuestro override de seguridad)
             $lineaPropuesta = $lineasConScoring->first();
             $tipoRecomendacion = 'ia_recomendada';
         }
