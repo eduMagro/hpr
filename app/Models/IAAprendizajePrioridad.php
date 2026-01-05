@@ -18,13 +18,13 @@ class IAAprendizajePrioridad extends Model
         'pedido_seleccionado_id',
         'es_discrepancia',
         'motivo_usuario',
-        'contexto_systema',
+        'contexto_sistema',
     ];
 
     protected $casts = [
         'payload_ocr' => 'array',
         'recomendaciones_ia' => 'array',
-        'contexto_systema' => 'array',
+        'contexto_sistema' => 'array',
         'es_discrepancia' => 'boolean',
     ];
 

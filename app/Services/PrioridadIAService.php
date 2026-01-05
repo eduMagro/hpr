@@ -93,12 +93,13 @@ class PrioridadIAService
                 'diametro' => $c['diametro'],
                 'cantidad_pendiente' => $c['cantidad_pendiente'],
                 'fecha_creacion' => $c['fecha_creacion'],
+                'coincide_codigo' => $c['coincide_codigo'] ?? false,
                 'score_heuristico' => $c['score'],
             ];
         }, $candidatos);
 
         return json_encode([
-            'instruccion' => 'Analiza el albarán y los pedidos candidatos. Devuelve un JSON con la clave "ranking_ids" (array de IDs ordenados por prioridad) y "razonamiento" (breve explicación).',
+            'instruccion' => 'Analiza el albarán y los pedidos candidatos. Devuelve un JSON con la clave "ranking_ids" (array de IDs ordenados por prioridad) y "razonamiento" (breve explicación). IMPORTANTE: Si un pedido candidato tiene "coincide_codigo": true, es casi seguro que es el correcto y debe ir el primero.',
             'albaran_escaneado' => $datosOCR,
             'pedidos_candidatos' => $candidatosSimplificados,
             'contexto_historico' => $memoria

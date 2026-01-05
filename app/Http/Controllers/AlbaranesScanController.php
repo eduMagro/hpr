@@ -500,116 +500,55 @@ class AlbaranesScanController extends Controller
             ->get()
             ->filter(fn($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados));
 
-        // Preparar información y scoring de líneas pendientes
         $hoy = now();
-
-        // Encontrar el pedido más antiguo para calcular puntuación por regla de 3
-        $fechaPedidoMasAntigua = $lineasPendientes
-            ->map(fn($linea) => $linea->pedido?->created_at)
-            ->filter()
-            ->min();
-        $diasMaximos = $fechaPedidoMasAntigua ? $fechaPedidoMasAntigua->diffInDays($hoy) : 0;
-        $puntajeAntiguedadMaximo = 10; // Puntos máximos por antigüedad
-
-        $lineasConScoring = $lineasPendientes->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $normalizedPedidoCodigo, $normalizeCode, $fabricanteId, $hoy, $diasMaximos, $puntajeAntiguedadMaximo) {
-            $score = 0;
+        $lineasConScoring = $lineasPendientes->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $fabricanteId, $normalizedPedidoCodigo, $normalizeCode) {
             $razones = [];
             $incompatibilidades = [];
 
+            // Validación básica de obra
             if (!$linea->obra && !$linea->obra_manual) {
                 Log::info('Pedido pendiente sin obra detectado', [
                     'linea_id' => $linea->id,
                     'codigo' => $linea->codigo,
                     'pedido_codigo' => $linea->pedido?->codigo,
                     'pedido_id' => $linea->pedido_id,
-                    'codigo_linea' => $linea->codigo ?? null,
                 ]);
             }
 
-            // SCORING 0: Fabricante (El más importante)
-            if ($fabricanteId) {
-                if ($linea->pedido->fabricante_id == $fabricanteId) {
-                    $score += 200; // Impacto masivo
-                    $razones[] = "✓ Fabricante coincide con el seleccionado";
-                } elseif (is_null($linea->pedido->fabricante_id)) {
-                    $score += 50; // Prioridad media (mejor que distinto)
-                    $razones[] = "⚠ Pedido sin fabricante asignado (prioridad media)";
-                } else {
-                    $score -= 50; // Penalización
-                    $incompatibilidades[] = "⚠ Fabricante distinto al seleccionado (" . ($linea->pedido->fabricante->nombre ?? 'Desconocido') . ")";
-                }
+            // Información de Fabricante
+            if ($fabricanteId && $linea->pedido->fabricante_id == $fabricanteId) {
+                $razones[] = "✓ Fabricante coincide";
             }
 
-            // Obtener diámetro del producto base
+            // Información de Diámetro
             $diametroLinea = $linea->productoBase->diametro ?? null;
             $diametroLineaInt = $diametroLinea !== null ? (int) round((float) $diametroLinea) : null;
-
-            // SCORING 1: Coincidencia de diámetro (crítico)
             if ($diametroLineaInt && in_array($diametroLineaInt, $diametrosEscaneados, true)) {
-                $score += 50;
                 $razones[] = "✓ Diámetro Ø{$diametroLineaInt} coincide";
-            } elseif (!empty($diametrosEscaneados)) {
-                $incompatibilidades[] = "✗ Diámetro Ø{$diametroLineaInt} no coincide con escaneado: Ø" . implode(', Ø', $diametrosEscaneados);
             }
 
-            // SCORING 2: Coincidencia de código de pedido
-            $lineaCodigo = (string) ($linea->pedido->codigo ?? '');
-            $normalizedLineaCodigo = $normalizeCode($lineaCodigo);
-            if ($normalizedPedidoCodigo !== '' && $normalizedLineaCodigo === $normalizedPedidoCodigo) {
-                $score += 30;
-                $razones[] = "✓ Código de pedido coincide exactamente";
-            } elseif ($normalizedPedidoCodigo !== '' && str_contains($normalizedLineaCodigo, $normalizedPedidoCodigo)) {
-                $score += 15;
-                $razones[] = "≈ Código de pedido similar";
-            }
-
-            $hoy = now();
-
-            // SCORING 3: Cantidad pendiente suficiente
+            // Información de Cantidad
             $cantidadPendienteKg = ($linea->cantidad ?? 0) - ($linea->cantidad_recepcionada ?? 0);
             if ($pesoTotal <= $cantidadPendienteKg) {
-                $score += 10;
                 $razones[] = "✓ Cantidad pendiente suficiente ({$cantidadPendienteKg} kg)";
             } else {
                 $sobra = $pesoTotal - $cantidadPendienteKg;
-                $incompatibilidades[] = "⚠ Cantidad importada supera la pendiente en {$sobra} kg ({$cantidadPendienteKg} kg esperados < {$pesoTotal} kg)";
+                $incompatibilidades[] = "⚠ Cantidad importada supera la pendiente en {$sobra} kg";
             }
 
-            // SCORING 4: Antigüedad del pedido (regla de 3 basada en el más antiguo)
-            $diasDesdeCreacion = $linea->pedido->created_at->diffInDays($hoy);
-            if ($diasMaximos > 0) {
-                // Regla de 3: el pedido más antiguo obtiene el máximo puntaje
-                $puntajeAntiguedad = ($diasDesdeCreacion / $diasMaximos) * $puntajeAntiguedadMaximo;
-                $score += $puntajeAntiguedad;
-
-                if ($diasDesdeCreacion == $diasMaximos) {
-                    $razones[] = "✓ Pedido MÁS ANTIGUO ({$diasDesdeCreacion} días) - máxima prioridad";
-                } elseif ($puntajeAntiguedad >= 7) {
-                    $razones[] = "✓ Pedido muy antiguo ({$diasDesdeCreacion} días)";
-                } elseif ($puntajeAntiguedad >= 5) {
-                    $razones[] = "✓ Pedido antiguo ({$diasDesdeCreacion} días)";
-                } elseif ($puntajeAntiguedad >= 3) {
-                    $razones[] = "✓ Pedido con antigüedad media ({$diasDesdeCreacion} días)";
-                } else {
-                    $razones[] = "⚠ Pedido reciente ({$diasDesdeCreacion} días) - prioridad baja";
-                }
+            // Información de Código de Pedido (Prioridad Máxima Heurística)
+            $coincideCodigo = $normalizedPedidoCodigo && $normalizeCode($linea->pedido->codigo) === $normalizedPedidoCodigo;
+            if ($coincideCodigo) {
+                $razones[] = "★ Código de pedido coincide exactamente";
+                $score = 1000;
             } else {
-                // Si todos los pedidos tienen la misma fecha, no hay diferencia de antigüedad
-                $razones[] = "≈ Mismo día que otros pedidos";
+                $score = 0;
             }
 
-
-            // Obtener fabricante (TODOS los pedidos tienen fabricante)
+            // Descripciones
             $fabricante = $linea->pedido->fabricante->nombre ?? null;
             $distribuidor = $linea->pedido->distribuidor->nombre ?? null;
-
-            // Construir descripción del producto
-            $productoDescripcion = $linea->productoBase->nombre ?? null;
-            if (!$productoDescripcion && $diametroLineaInt) {
-                $productoDescripcion = "Ø{$diametroLineaInt}mm";
-            } elseif (!$productoDescripcion) {
-                $productoDescripcion = "ProductoBase #{$linea->producto_base_id} (no encontrado)";
-            }
+            $productoDescripcion = $linea->productoBase->nombre ?? ($diametroLineaInt ? "Ø{$diametroLineaInt}mm" : "ProductoBase #{$linea->producto_base_id}");
 
             return [
                 'id' => $linea->id,
@@ -629,33 +568,13 @@ class AlbaranesScanController extends Controller
                 'fecha_entrega' => $linea->fecha_estimada_entrega?->toDateString(),
                 'fecha_entrega_fmt' => $linea->fecha_estimada_entrega?->format('d/m/Y'),
                 'score' => $score,
+                'coincide_codigo' => $coincideCodigo,
                 'razones' => $razones,
                 'incompatibilidades' => $incompatibilidades,
                 'es_viable' => count($incompatibilidades) === 0,
             ];
         })
-            ->sort(function (array $a, array $b) {
-                $aScore = (float) ($a['score'] ?? 0);
-                $bScore = (float) ($b['score'] ?? 0);
-                if (abs($aScore - $bScore) > 1e-6) {
-                    return $bScore <=> $aScore;
-                }
-
-                $aFecha = $a['fecha_entrega'] ?? null;
-                $bFecha = $b['fecha_entrega'] ?? null;
-
-                if ($aFecha !== $bFecha) {
-                    if ($aFecha === null) {
-                        return 1; // sin fecha al final
-                    }
-                    if ($bFecha === null) {
-                        return -1;
-                    }
-                    return $aFecha <=> $bFecha; // mas antigua primero (incluye fechas pasadas)
-                }
-
-                return ($a['id'] ?? 0) <=> ($b['id'] ?? 0);
-            })
+            ->sortBy('fecha_entrega') // Orden básico por fecha antes de la IA
             ->values()
             ->toArray();
 
@@ -670,68 +589,15 @@ class AlbaranesScanController extends Controller
             ->get()
             ->filter(fn($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados));
 
-        // Encontrar el pedido más antiguo de TODAS las líneas para calcular puntuación
-        $fechaPedidoMasAntiguaTodas = $todasLasLineasQuery
-            ->map(fn($linea) => $linea->pedido?->created_at)
-            ->filter()
-            ->min();
-        $diasMaximosTodas = $fechaPedidoMasAntiguaTodas ? $fechaPedidoMasAntiguaTodas->diffInDays(now()) : 0;
-
-        $todasLasLineas = $todasLasLineasQuery->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $normalizedPedidoCodigo, $normalizeCode, $fabricanteId, $diasMaximosTodas, $puntajeAntiguedadMaximo) {
-            // Calcular scoring para cada línea (mismo algoritmo que arriba)
-            $score = 0;
+        $todasLasLineas = $todasLasLineasQuery->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $normalizedPedidoCodigo, $normalizeCode, $fabricanteId) {
             $cantidadPendiente = ($linea->cantidad ?? 0) - ($linea->cantidad_recepcionada ?? 0);
             $diametroLinea = $linea->productoBase->diametro ?? null;
             $diametroLineaInt = $diametroLinea !== null ? (int) round((float) $diametroLinea) : null;
             $fabricante = $linea->pedido->fabricante->nombre ?? null;
             $distribuidor = $linea->pedido->distribuidor->nombre ?? null;
-
-            // SCORING 0: Fabricante
-            if ($fabricanteId) {
-                if ($linea->pedido->fabricante_id == $fabricanteId) {
-                    $score += 200;
-                } elseif (is_null($linea->pedido->fabricante_id)) {
-                    $score += 50;
-                } else {
-                    $score -= 50;
-                }
-            }
-
-            // SCORING 1: Diámetro
-            if ($diametroLineaInt && in_array($diametroLineaInt, $diametrosEscaneados, true)) {
-                $score += 50;
-            }
-
-            // SCORING 2: Código de pedido
-            $lineaCodigo = (string) ($linea->pedido->codigo ?? '');
-            $normalizedLineaCodigo = $normalizeCode($lineaCodigo);
-            if ($normalizedPedidoCodigo !== '' && $normalizedLineaCodigo === $normalizedPedidoCodigo) {
-                $score += 30;
-            } elseif ($normalizedPedidoCodigo !== '' && str_contains($normalizedLineaCodigo, $normalizedPedidoCodigo)) {
-                $score += 15;
-            }
-
-            // SCORING 3: Cantidad pendiente
-            if ($cantidadPendiente >= $pesoTotal) {
-                $score += 10;
-            }
-
-            // SCORING 4: Antigüedad (regla de 3 basada en el más antiguo)
-            $diasDesdeCreacion = $linea->pedido->created_at->diffInDays(now());
-            if ($diasMaximosTodas > 0) {
-                $puntajeAntiguedad = ($diasDesdeCreacion / $diasMaximosTodas) * $puntajeAntiguedadMaximo;
-                $score += $puntajeAntiguedad;
-            }
-
-            $productoDescripcion = $linea->productoBase->nombre ?? null;
-            if (!$productoDescripcion && $diametroLineaInt) {
-                $productoDescripcion = "Ø{$diametroLineaInt}mm";
-            } elseif (!$productoDescripcion) {
-                $productoDescripcion = "ProductoBase #{$linea->producto_base_id} (no encontrado)";
-            }
-
-            // Indicar si coincide con diámetros escaneados
+            $productoDescripcion = $linea->productoBase->nombre ?? ($diametroLineaInt ? "Ø{$diametroLineaInt}mm" : "ProductoBase #{$linea->producto_base_id}");
             $coincideDiametro = $diametroLineaInt && in_array($diametroLineaInt, $diametrosEscaneados, true);
+            $coincideCodigo = $normalizedPedidoCodigo && $normalizeCode($linea->pedido->codigo) === $normalizedPedidoCodigo;
 
             return [
                 'id' => $linea->id,
@@ -750,32 +616,12 @@ class AlbaranesScanController extends Controller
                 'fecha_creacion' => $linea->pedido->created_at->format('d/m/Y'),
                 'fecha_entrega' => $linea->fecha_estimada_entrega?->toDateString(),
                 'fecha_entrega_fmt' => $linea->fecha_estimada_entrega?->format('d/m/Y'),
-                'score' => $score,
+                'score' => 0,
                 'coincide_diametro' => $coincideDiametro,
+                'coincide_codigo' => $coincideCodigo,
             ];
         })
-            ->sort(function (array $a, array $b) {
-                $aScore = (float) ($a['score'] ?? 0);
-                $bScore = (float) ($b['score'] ?? 0);
-                if (abs($aScore - $bScore) > 1e-6) {
-                    return $bScore <=> $aScore;
-                }
-
-                $aFecha = $a['fecha_entrega'] ?? null;
-                $bFecha = $b['fecha_entrega'] ?? null;
-
-                if ($aFecha !== $bFecha) {
-                    if ($aFecha === null) {
-                        return 1;
-                    }
-                    if ($bFecha === null) {
-                        return -1;
-                    }
-                    return $aFecha <=> $bFecha;
-                }
-
-                return ($a['id'] ?? 0) <=> ($b['id'] ?? 0);
-            })  // Ordenar por score (desc) y entrega (asc)
+            ->sortBy('fecha_entrega')
             ->values()
             ->toArray();
 
