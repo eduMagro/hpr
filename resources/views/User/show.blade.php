@@ -253,14 +253,14 @@
     <div id="vacation-bottom-modal"
         class="fixed bottom-0 left-0 right-0 z-[9999] transform translate-y-full transition-transform duration-300 ease-in-out shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] pb-[env(safe-area-inset-bottom)]">
         <div
-            class="bg-gray-900 text-white px-6 py-4 flex flex-col sm:flex-row justify-center items-center gap-4 border-t border-gray-700">
+            class="bg-gray-900 text-white px-6 py-2 flex flex-col sm:flex-row justify-center items-center gap-2 border-t border-gray-700">
             <div class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400" fill="none"
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <span class="text-lg font-medium">Estimación de vacaciones</span>
+                <span class="font-medium">Estimación de vacaciones</span>
             </div>
             <div id="vacation-bottom-content" class="flex items-center gap-3">
                 <!-- Content injected via JS -->
