@@ -57,22 +57,22 @@ $schedule->command('fichajes:verificar-entradas --turno=noche')
     ->timezone('Europe/Madrid');
 
 // =====================================================================
-// TAREAS ANUALES
+// TAREAS ANUALES (1 de enero)
 // =====================================================================
 
-// Generar turnos para el nuevo año (1 de enero a medianoche)
-$schedule->command('turnos:generar-anuales')
-    ->yearlyOn(1, 1, '00:00')
-    ->timezone('Europe/Madrid');
-
-// Resetear días de vacaciones (1 de enero a medianoche)
-$schedule->command('vacaciones:reset')
-    ->yearlyOn(1, 1, '00:00')
-    ->timezone('Europe/Madrid');
-
-// Sincronizar festivos del año nuevo (1 de enero a las 01:10)
+// 1. Sincronizar festivos del año nuevo (primero, para que los turnos los respeten)
 $schedule->command('festivos:sincronizar')
-    ->yearlyOn(1, 1, '01:10')
+    ->yearlyOn(1, 1, '00:05')
+    ->timezone('Europe/Madrid');
+
+// 2. Generar turnos para el nuevo año (después de tener los festivos)
+$schedule->command('turnos:generar-anuales')
+    ->yearlyOn(1, 1, '00:15')
+    ->timezone('Europe/Madrid');
+
+// 3. Resetear días de vacaciones
+$schedule->command('vacaciones:reset')
+    ->yearlyOn(1, 1, '00:20')
     ->timezone('Europe/Madrid');
 
 // =====================================================================
