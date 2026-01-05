@@ -717,7 +717,7 @@
                             // Botón cancelar con estilo inline para máximo contraste
                             const cancelarBtnHtml = `
                                 <button id="btn-cancelar-seleccion" style="background:#ef4444;color:white;padding:4px 12px;border-radius:6px;font-weight:600;font-size:12px;display:flex;align-items:center;gap:4px;border:none;cursor:pointer;">
-                                    ✕ Cancelar
+                                    Cancelar
                                 </button>
                             `;
                             
@@ -786,16 +786,23 @@
                                             const vacacionesFuturas = data.dias_vacaciones_futuras || 0;
                                             const diasLibres = disponiblesTotal - vacacionesFuturas;
                                             
-                                            const colorClass = diasLibres >= 0 ? 'text-emerald-400' : 'text-red-400';
+                                            // Colores según disponibilidad
+                                            const colorAnterior = disponiblesAnterior >= 0 ? 'text-amber-400' : 'text-red-400';
+                                            const colorActual = disponiblesActual >= 0 ? 'text-green-400' : 'text-red-400';
+                                            const colorTotal = diasLibres >= 0 ? 'text-emerald-400' : 'text-red-400';
                                             
                                             // Mostrar "ya asignadas" solo si hay vacaciones futuras
                                             const yaAsignadasHtml = vacacionesFuturas > 0 
-                                                ? `<span class="text-xs text-gray-400">(${vacacionesFuturas} ya asignadas)</span>` 
+                                                ? `<span class="text-[11px] text-gray-400">(${vacacionesFuturas} futuras)</span>` 
                                                 : '';
                                             
                                             content.innerHTML = `
-                                                <div class="flex items-center gap-2 text-xs sm:text-sm">
-                                                    <span class="${colorClass} font-bold">${diasLibres} días</span>
+                                                <div class="flex items-center gap-2 text-[11px] sm:text-sm">
+                                                    <span class="${colorAnterior}">${previousYear}: ${disponiblesAnterior}d</span>
+                                                    <span class="text-gray-500">+</span>
+                                                    <span class="${colorActual}">${clickYear}: ${disponiblesActual}d</span>
+                                                    <span class="text-gray-500">=</span>
+                                                    <span class="${colorTotal} font-bold">${diasLibres} días</span>
                                                     ${yaAsignadasHtml}
                                                     ${cancelarBtnHtml}
                                                 </div>
@@ -835,7 +842,7 @@
                                             
                                             // Mostrar "ya asignadas" solo si hay vacaciones futuras
                                             const yaAsignadasHtml = vacacionesFuturas > 0 
-                                                ? `<span class="text-xs text-gray-400">(${vacacionesFuturas} ya asignadas)</span>` 
+                                                ? `<span class="text-[11px] text-gray-400">(${vacacionesFuturas} futuras)</span>` 
                                                 : '';
                                             
                                             content.innerHTML = `
@@ -861,7 +868,7 @@
                                             
                                             // Mostrar "ya asignadas" solo si hay vacaciones futuras
                                             const yaAsignadasHtml = vacacionesFuturas > 0 
-                                                ? `<span class="text-xs text-gray-400">(${vacacionesFuturas} ya asignadas)</span>` 
+                                                ? `<span class="text-[11px] text-gray-400">(${vacacionesFuturas} futuras)</span>` 
                                                 : '';
                                             
                                             content.innerHTML = `
