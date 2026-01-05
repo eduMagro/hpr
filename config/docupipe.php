@@ -13,8 +13,8 @@ return [
     */
 
     'enabled' => env('DOCUPIPE_ENABLED', false),
-    'base_url' => rtrim(env('DOCUPIPE_BASE_URL', 'https://api.docupipe.ai'), '/'),
-    'submit_path' => env('DOCUPIPE_SUBMIT_PATH', '/v1/documents'),
+    'base_url' => rtrim(env('DOCUPIPE_BASE_URL', 'https://app.docupipe.ai'), '/'),
+    'submit_path' => env('DOCUPIPE_SUBMIT_PATH', '/document'),
     'api_key' => env('DOCUPIPE_API_KEY'),
     'request_timeout' => env('DOCUPIPE_REQUEST_TIMEOUT', 120),
 
