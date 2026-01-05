@@ -70,11 +70,6 @@ $schedule->command('turnos:generar-anuales')
     ->yearlyOn(1, 1, '00:15')
     ->timezone('Europe/Madrid');
 
-// 3. Resetear días de vacaciones
-$schedule->command('vacaciones:reset')
-    ->yearlyOn(1, 1, '00:20')
-    ->timezone('Europe/Madrid');
-
 // =====================================================================
 // SINCRONIZACIÓN FERRAWIN
 // =====================================================================
