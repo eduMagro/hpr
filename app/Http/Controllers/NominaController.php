@@ -799,7 +799,7 @@ class NominaController extends Controller
 
     /**
      * Notifica solo a los usuarios cuya nómina fue importada (por DNI)
-     * Evita duplicados verificando si ya existe una alerta para ese mes/año
+     * Si ya tenían alerta previa, envía mensaje de reimportación
      *
      * @param string $mes Nombre del mes en español
      * @param string $anio Año
@@ -816,22 +816,16 @@ class NominaController extends Controller
             $alertaService = app(AlertaService::class);
             $emisorId = auth()->id();
 
-            $mensaje = "Tu nómina de {$mes} {$anio} ya está disponible. Puedes solicitarla desde tu perfil.";
-
-            // Buscar usuarios que ya tienen alerta de nómina para este mes/año
-            $usuariosYaNotificados = \App\Models\Alerta::where('tipo', 'nomina')
-                ->where('mensaje', $mensaje)
-                ->pluck('destinatario_id')
-                ->toArray();
+            $mensajeNuevo = "Tu nómina de {$mes} {$anio} ya está disponible. Puedes solicitarla desde tu perfil.";
+            $mensajeReimportacion = "Se ha reimportado tu nómina de {$mes} {$anio}. Puedes solicitarla desde tu perfil.";
 
             // Normalizar DNIs importados para comparación
             $dnisNormalizados = array_map(function($dni) {
                 return strtoupper(preg_replace('/[^A-Z0-9]/', '', $dni));
             }, $dnisImportados);
 
-            // Buscar usuarios cuyo DNI está en la lista de importados y NO hayan sido notificados
-            $usuarios = User::where('estado', 'activo')
-                ->whereNotIn('id', $usuariosYaNotificados)
+            // Buscar todos los usuarios activos cuyo DNI está en la lista de importados
+            $usuariosConNomina = User::where('estado', 'activo')
                 ->get()
                 ->filter(function($user) use ($dnisNormalizados) {
                     if (!$user->dni) return false;
@@ -839,21 +833,43 @@ class NominaController extends Controller
                     return in_array($dniUsuario, $dnisNormalizados);
                 });
 
-            if ($usuarios->isEmpty()) {
-                \Log::info("ℹ️ No hay usuarios nuevos para notificar nóminas de {$mes} {$anio}");
+            if ($usuariosConNomina->isEmpty()) {
+                \Log::info("ℹ️ No hay usuarios con DNI coincidente para {$mes} {$anio}");
                 return;
             }
 
-            foreach ($usuarios as $usuario) {
-                $alertaService->crearAlerta(
-                    emisorId: $emisorId,
-                    destinatarioId: $usuario->id,
-                    mensaje: $mensaje,
-                    tipo: 'nomina'
-                );
+            // Buscar usuarios que ya tienen alerta de nómina para este mes/año (mensaje original)
+            $usuariosYaNotificados = \App\Models\Alerta::where('tipo', 'nomina')
+                ->where('mensaje', $mensajeNuevo)
+                ->pluck('destinatario_id')
+                ->toArray();
+
+            $contadorNuevos = 0;
+            $contadorReimportados = 0;
+
+            foreach ($usuariosConNomina as $usuario) {
+                if (in_array($usuario->id, $usuariosYaNotificados)) {
+                    // Ya tenía alerta previa → enviar mensaje de reimportación
+                    $alertaService->crearAlerta(
+                        emisorId: $emisorId,
+                        destinatarioId: $usuario->id,
+                        mensaje: $mensajeReimportacion,
+                        tipo: 'nomina'
+                    );
+                    $contadorReimportados++;
+                } else {
+                    // Primera vez → enviar mensaje nuevo
+                    $alertaService->crearAlerta(
+                        emisorId: $emisorId,
+                        destinatarioId: $usuario->id,
+                        mensaje: $mensajeNuevo,
+                        tipo: 'nomina'
+                    );
+                    $contadorNuevos++;
+                }
             }
 
-            \Log::info("✅ Alertas de nóminas enviadas a " . $usuarios->count() . " usuarios cuya nómina fue importada");
+            \Log::info("✅ Alertas de nóminas: {$contadorNuevos} nuevas, {$contadorReimportados} reimportaciones");
 
         } catch (\Throwable $e) {
             \Log::error('❌ Error notificando nóminas importadas: ' . $e->getMessage());
