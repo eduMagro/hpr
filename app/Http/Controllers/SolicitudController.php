@@ -12,7 +12,14 @@ class SolicitudController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(15);
 
-        $users = \App\Models\User::where('rol', 'oficina')->orderBy('name')->get(); // Solo usuarios de oficina (programadores)
+        // Intentamos buscar usuarios en departamentos técnicos o con rol oficina
+        $users = \App\Models\User::where('rol', 'oficina')
+            ->orWhereHas('departamentos', function ($q) {
+                $q->where('nombre', 'like', '%Programación%')
+                    ->orWhere('nombre', 'like', '%Sistemas%');
+            })
+            ->orderBy('name')
+            ->get();
 
         $prioridades = ['Alta', 'Media', 'Baja'];
         $estados = ['Nueva', 'Lanzada', 'En revisión', 'Merged', 'Completada'];

@@ -189,122 +189,145 @@
                                         placeholder="Vacío">
                                 </td>
 
-                                <!-- Estado (Custom Dropdown) -->
+                                <!-- Estado -->
                                 <td class="px-2 py-1 border-r border-gray-200">
+                                    @php
+                                        $estLower = strtolower($solicitud->estado);
+                                        $colors = [
+                                            'nueva' => [
+                                                'dot' => 'bg-gray-400',
+                                                'bg' => 'bg-gray-100',
+                                                'text' => 'text-gray-700',
+                                            ],
+                                            'lanzada' => [
+                                                'dot' => 'bg-blue-500',
+                                                'bg' => 'bg-blue-100',
+                                                'text' => 'text-blue-700',
+                                            ],
+                                            'en revisión' => [
+                                                'dot' => 'bg-amber-500',
+                                                'bg' => 'bg-amber-100',
+                                                'text' => 'text-amber-700',
+                                            ],
+                                            'merged' => [
+                                                'dot' => 'bg-emerald-500',
+                                                'bg' => 'bg-emerald-100',
+                                                'text' => 'text-emerald-700',
+                                            ],
+                                            'completada' => [
+                                                'dot' => 'bg-green-600',
+                                                'bg' => 'bg-green-100',
+                                                'text' => 'text-green-700',
+                                            ],
+                                        ];
+                                        $c = $colors[$estLower] ?? [
+                                            'dot' => 'bg-gray-300',
+                                            'bg' => 'bg-gray-50',
+                                            'text' => 'text-gray-600',
+                                        ];
+                                    @endphp
                                     <div x-data="{
                                         open: false,
-                                        selected: '{{ $solicitud->estado }}',
-                                        estados: @json($estados),
-                                        getColor(val) {
-                                            const v = val.toLowerCase();
-                                            if (v === 'nueva') return { dot: 'bg-gray-400', bg: 'bg-gray-100', text: 'text-gray-700' };
-                                            if (v === 'lanzada') return { dot: 'bg-blue-500', bg: 'bg-blue-100', text: 'text-blue-700' };
-                                            if (v === 'en revisión') return { dot: 'bg-amber-500', bg: 'bg-amber-100', text: 'text-amber-700' };
-                                            if (v === 'merged') return { dot: 'bg-emerald-500', bg: 'bg-emerald-100', text: 'text-emerald-700' };
-                                            if (v === 'completada') return { dot: 'bg-green-600', bg: 'bg-green-100', text: 'text-green-700' };
-                                            return { dot: 'bg-gray-300', bg: 'bg-gray-100', text: 'text-gray-600' };
-                                        },
-                                        select(val) {
+                                        selected: @json($solicitud->estado),
+                                        update(val) {
                                             this.selected = val;
                                             this.open = false;
                                             updateField({{ $solicitud->id }}, 'estado', val);
                                         }
                                     }" class="relative">
                                         <button @click="open = !open" type="button"
-                                            class="flex items-center gap-2 h-7 pl-2 pr-6 rounded text-xs font-semibold cursor-pointer w-full transition-all"
-                                            :class="getColor(selected).bg + ' ' + getColor(selected).text">
-                                            <span class="w-2 h-2 rounded-full shrink-0"
-                                                :class="getColor(selected).dot"></span>
-                                            <span x-text="selected"></span>
-                                            <svg class="w-3 h-3 ml-auto text-gray-400" fill="none"
+                                            class="flex items-center gap-2 h-7 w-full px-2 rounded text-[11px] font-bold transition-all {{ $c['bg'] }} {{ $c['text'] }} hover:ring-1 hover:ring-gray-300">
+                                            <span class="w-2 h-2 rounded-full {{ $c['dot'] }}"></span>
+                                            <span class="truncate" x-text="selected">{{ $solicitud->estado }}</span>
+                                            <svg class="w-3 h-3 ml-auto opacity-40" fill="none"
                                                 stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M19 9l-7 7-7-7" />
+                                                <path d="M19 9l-7 7-7-7" stroke-width="2" stroke-linecap="round"
+                                                    stroke-linejoin="round" />
                                             </svg>
                                         </button>
                                         <div x-show="open" @click.away="open = false"
-                                            x-transition:enter="transition ease-out duration-100"
-                                            x-transition:enter-start="opacity-0 scale-95"
-                                            x-transition:enter-end="opacity-100 scale-100"
-                                            x-transition:leave="transition ease-in duration-75"
-                                            x-transition:leave-start="opacity-100 scale-100"
-                                            x-transition:leave-end="opacity-0 scale-95"
-                                            class="absolute z-50 mt-1 w-full bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden">
-                                            <template x-for="est in estados" :key="est">
-                                                <button @click="select(est)" type="button"
-                                                    class="flex items-center gap-2 w-full px-3 py-1.5 text-xs font-medium hover:bg-gray-50 transition-colors"
-                                                    :class="getColor(est).text">
-                                                    <span class="w-2 h-2 rounded-full shrink-0"
-                                                        :class="getColor(est).dot"></span>
-                                                    <span x-text="est"></span>
-                                                    <svg x-show="selected === est"
-                                                        class="w-3 h-3 ml-auto text-emerald-500" fill="currentColor"
-                                                        viewBox="0 0 20 20">
-                                                        <path fill-rule="evenodd"
-                                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                            clip-rule="evenodd" />
-                                                    </svg>
+                                            class="absolute z-[100] mt-1 w-40 bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden"
+                                            x-cloak style="display: none;">
+                                            @foreach ($estados as $est)
+                                                <button @click="update('{{ $est }}')" type="button"
+                                                    class="flex items-center gap-2 w-full px-3 py-1.5 text-[11px] font-semibold hover:bg-gray-50 text-gray-700">
+                                                    <span
+                                                        class="w-2 h-2 rounded-full 
+                                                        @if (strtolower($est) == 'nueva') bg-gray-400
+                                                        @elseif(strtolower($est) == 'lanzada') bg-blue-500
+                                                        @elseif(strtolower($est) == 'en revisión') bg-amber-500
+                                                        @elseif(strtolower($est) == 'merged') bg-emerald-500
+                                                        @elseif(strtolower($est) == 'completada') bg-green-600
+                                                        @else bg-gray-300 @endif"></span>
+                                                    {{ $est }}
                                                 </button>
-                                            </template>
+                                            @endforeach
                                         </div>
                                     </div>
                                 </td>
 
-                                <!-- Prioridad (Custom Dropdown) -->
+                                <!-- Prioridad -->
                                 <td class="px-2 py-1 border-r border-gray-200">
+                                    @php
+                                        $priLower = strtolower($solicitud->prioridad);
+                                        $pColors = [
+                                            'alta' => [
+                                                'dot' => 'bg-red-500',
+                                                'bg' => 'bg-red-100',
+                                                'text' => 'text-red-700',
+                                            ],
+                                            'media' => [
+                                                'dot' => 'bg-yellow-500',
+                                                'bg' => 'bg-yellow-100',
+                                                'text' => 'text-yellow-700',
+                                            ],
+                                            'baja' => [
+                                                'dot' => 'bg-sky-400',
+                                                'bg' => 'bg-sky-100',
+                                                'text' => 'text-sky-700',
+                                            ],
+                                        ];
+                                        $pc = $pColors[$priLower] ?? [
+                                            'dot' => 'bg-gray-300',
+                                            'bg' => 'bg-gray-50',
+                                            'text' => 'text-gray-600',
+                                        ];
+                                    @endphp
                                     <div x-data="{
                                         open: false,
-                                        selected: '{{ $solicitud->prioridad }}',
-                                        prioridades: @json($prioridades),
-                                        getColor(val) {
-                                            const v = val.toLowerCase();
-                                            if (v === 'alta') return { dot: 'bg-red-500', bg: 'bg-red-100', text: 'text-red-700' };
-                                            if (v === 'media') return { dot: 'bg-yellow-500', bg: 'bg-yellow-100', text: 'text-yellow-700' };
-                                            if (v === 'baja') return { dot: 'bg-sky-400', bg: 'bg-sky-100', text: 'text-sky-700' };
-                                            return { dot: 'bg-gray-300', bg: 'bg-gray-100', text: 'text-gray-600' };
-                                        },
-                                        select(val) {
+                                        selected: @json($solicitud->prioridad),
+                                        update(val) {
                                             this.selected = val;
                                             this.open = false;
                                             updateField({{ $solicitud->id }}, 'prioridad', val);
                                         }
                                     }" class="relative">
                                         <button @click="open = !open" type="button"
-                                            class="flex items-center gap-2 h-7 pl-2 pr-6 rounded text-xs font-semibold cursor-pointer w-full transition-all"
-                                            :class="getColor(selected).bg + ' ' + getColor(selected).text">
-                                            <span class="w-2 h-2 rounded-full shrink-0"
-                                                :class="getColor(selected).dot"></span>
-                                            <span x-text="selected"></span>
-                                            <svg class="w-3 h-3 ml-auto text-gray-400" fill="none"
+                                            class="flex items-center gap-2 h-7 w-full px-2 rounded text-[11px] font-bold transition-all {{ $pc['bg'] }} {{ $pc['text'] }} hover:ring-1 hover:ring-gray-300">
+                                            <span class="w-2 h-2 rounded-full {{ $pc['dot'] }}"></span>
+                                            <span class="truncate"
+                                                x-text="selected">{{ $solicitud->prioridad }}</span>
+                                            <svg class="w-3 h-3 ml-auto opacity-40" fill="none"
                                                 stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M19 9l-7 7-7-7" />
+                                                <path d="M19 9l-7 7-7-7" stroke-width="2" stroke-linecap="round"
+                                                    stroke-linejoin="round" />
                                             </svg>
                                         </button>
                                         <div x-show="open" @click.away="open = false"
-                                            x-transition:enter="transition ease-out duration-100"
-                                            x-transition:enter-start="opacity-0 scale-95"
-                                            x-transition:enter-end="opacity-100 scale-100"
-                                            x-transition:leave="transition ease-in duration-75"
-                                            x-transition:leave-start="opacity-100 scale-100"
-                                            x-transition:leave-end="opacity-0 scale-95"
-                                            class="absolute z-50 mt-1 w-full bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden">
-                                            <template x-for="pri in prioridades" :key="pri">
-                                                <button @click="select(pri)" type="button"
-                                                    class="flex items-center gap-2 w-full px-3 py-1.5 text-xs font-medium hover:bg-gray-50 transition-colors"
-                                                    :class="getColor(pri).text">
-                                                    <span class="w-2 h-2 rounded-full shrink-0"
-                                                        :class="getColor(pri).dot"></span>
-                                                    <span x-text="pri"></span>
-                                                    <svg x-show="selected === pri"
-                                                        class="w-3 h-3 ml-auto text-emerald-500" fill="currentColor"
-                                                        viewBox="0 0 20 20">
-                                                        <path fill-rule="evenodd"
-                                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                            clip-rule="evenodd" />
-                                                    </svg>
+                                            class="absolute z-[100] mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden"
+                                            x-cloak style="display: none;">
+                                            @foreach ($prioridades as $pri)
+                                                <button @click="update('{{ $pri }}')" type="button"
+                                                    class="flex items-center gap-2 w-full px-3 py-1.5 text-[11px] font-semibold hover:bg-gray-50 text-gray-700">
+                                                    <span
+                                                        class="w-2 h-2 rounded-full 
+                                                        @if (strtolower($pri) == 'alta') bg-red-500
+                                                        @elseif(strtolower($pri) == 'media') bg-yellow-500
+                                                        @elseif(strtolower($pri) == 'baja') bg-sky-400
+                                                        @else bg-gray-300 @endif"></span>
+                                                    {{ $pri }}
                                                 </button>
-                                            </template>
+                                            @endforeach
                                         </div>
                                     </div>
                                 </td>
@@ -314,13 +337,13 @@
                                     <div class="flex items-center gap-2 h-full">
                                         @if ($solicitud->asignado)
                                             <div
-                                                class="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-[10px] font-bold text-indigo-600 shrink-0">
+                                                class="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-[9px] font-bold text-indigo-600 shrink-0 shadow-sm border border-indigo-200">
                                                 {{ substr($solicitud->asignado->name, 0, 1) }}
                                             </div>
                                         @endif
                                         <select
                                             @change="updateField({{ $solicitud->id }}, 'asignado_a', $event.target.value)"
-                                            class="w-full h-8 pl-0 pr-6 py-0 bg-transparent border-none focus:ring-1 focus:ring-blue-500 rounded text-xs text-gray-600 cursor-pointer text-ellipsis overflow-hidden">
+                                            class="w-full h-7 pl-0 pr-6 py-0 bg-transparent border-none focus:ring-0 rounded text-[11px] font-bold text-gray-600 cursor-pointer text-ellipsis overflow-hidden">
                                             <option value="">Sin asignar</option>
                                             @foreach ($users as $user)
                                                 <option value="{{ $user->id }}"
