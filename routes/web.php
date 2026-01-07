@@ -688,6 +688,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/ayuda', [AyudaController::class, 'index'])->name('ayuda.index');
 
     // === DEPARTAMENTOS Y SECCIONES ===
+    Route::put('/departamentos/alertas', [DepartamentoController::class, 'updateAlertSettings'])->name('departamentos.updateAlertSettings')->middleware(['auth', 'verified']);
     Route::resource('departamentos', DepartamentoController::class)->names('departamentos');
     Route::post('/departamentos/{departamento}/asignar-usuarios', [DepartamentoController::class, 'asignarUsuarios'])->name('departamentos.asignar.usuarios');
     Route::post('/departamentos/{departamento}/asignar-secciones', [DepartamentoController::class, 'asignarSecciones'])->name('departamentos.asignarSecciones');

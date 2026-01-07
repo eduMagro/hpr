@@ -1322,7 +1322,7 @@
                                 📌
                             </span>
                         </div>
-                        <p class="text-sm leading-relaxed whitespace-pre-wrap">${mensaje.mensaje}</p>
+                        <p class="mensaje-mensaje text-sm leading-relaxed whitespace-pre-wrap">${mensaje.mensaje}</p>
                     </div>
                     <span class="text-xs text-gray-500 mt-1 ${esPropio ? 'text-right' : 'text-left'} px-2">${mensaje.created_at}</span>
                 </div>
@@ -1561,6 +1561,10 @@
 
         #hiloContenido::-webkit-scrollbar-thumb:hover {
             background: rgba(0, 0, 0, 0.3);
+        }
+
+        .mensaje-mensaje a {
+            color: white !important;
         }
     </style>
 </x-app-layout>

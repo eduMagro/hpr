@@ -199,8 +199,8 @@
                                         <img x-show="previewImage" :src="previewImage"
                                             class="absolute inset-0 w-full h-full object-cover" />
 
-                                        <input name="fotos[]" type="file" class="hidden" multiple accept="image/*"
-                                            @change="handleFileSelect" />
+                                        <input name="imagen" type="file" id="imagenInput" style="display:none;"
+                                            accept="image/*" @change="handleFileSelect" />
                                     </label>
                                 </div>
 

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 
 class DepartamentoController extends Controller
 {
+
     public function index()
     {
         $departamentos = Departamento::with('usuarios')->get();
@@ -23,14 +24,45 @@ class DepartamentoController extends Controller
         // Secciones del dashboard ordenadas
         $seccionesDashboard = Seccion::where('mostrar_en_dashboard', true)->orderBy('orden')->get();
 
+        // Configuración de alertas
+        $roles = User::distinct()->pluck('rol')->filter()->values();
+        $todosUsuarios = User::with('categoria')->select('id', 'name', 'primer_apellido', 'segundo_apellido', 'rol', 'categoria_id', 'imagen')->orderBy('name')->get();
+
+        $alertasConfig = \App\Models\Configuracion::get('alertas_averias_destinatarios', [
+            'roles' => ['oficina'], // Default to 'oficina' to match standard behavior
+            'departamentos' => [],
+            'usuarios' => []
+        ]);
+
         return view('departamentos.index', compact(
             'departamentos',
             'usuariosOficina',
             'todasLasSecciones',
             'departamentoOperarios',
-            'seccionesDashboard'
+            'seccionesDashboard',
+            'roles',
+            'todosUsuarios',
+            'alertasConfig'
         ));
     }
+
+    public function updateAlertSettings(Request $request)
+    {
+        $validated = $request->validate([
+            'roles' => 'array',
+            'departamentos' => 'array',
+            'usuarios' => 'array',
+        ]);
+
+        \App\Models\Configuracion::set('alertas_averias_destinatarios', [
+            'roles' => $request->input('roles', []),
+            'departamentos' => $request->input('departamentos', []),
+            'usuarios' => $request->input('usuarios', []),
+        ], 'Destinatarios de alertas de averías');
+
+        return back()->with('success', 'Configuración de alertas actualizada correctamente.');
+    }
+
 
     public function asignarUsuarios(Request $request, Departamento $departamento)
     {
@@ -96,8 +128,8 @@ class DepartamentoController extends Controller
     {
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
-            'accion'  => 'required|in:ver,crear,editar',
-            'valor'   => 'required|boolean',
+            'accion' => 'required|in:ver,crear,editar',
+            'valor' => 'required|boolean',
         ]);
 
         // Obtener todas las secciones de ese departamento
@@ -105,9 +137,9 @@ class DepartamentoController extends Controller
 
         foreach ($secciones as $seccion) {
             $permiso = PermisoAcceso::firstOrNew([
-                'user_id'        => $validated['user_id'],
+                'user_id' => $validated['user_id'],
                 'departamento_id' => $departamento->id,
-                'seccion_id'     => $seccion->id,
+                'seccion_id' => $seccion->id,
             ]);
 
             $campo = 'puede_' . $validated['accion'];

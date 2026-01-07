@@ -125,12 +125,69 @@ class IncidenciaController extends Controller
         ]);
 
         // Update machine status if provided
+
         $maquina = \App\Models\Maquina::find($request->maquina_id);
         if ($maquina) {
             // Default to 'averiada' only if not provided, for backward compatibility or safety
             $nuevoEstado = $request->input('estado_maquina', 'averiada');
             $maquina->estado = $nuevoEstado;
             $maquina->save();
+
+            // Send Alert
+            try {
+                $mensaje = "Incidencia en máquina: {$maquina->nombre} | {$request->titulo} | Solicitado por " . auth()->user()->name . " | <a class='text-blue-500 hover:underline hover:text-blue-600' href='" . route('incidencias.show', $incidencia->id) . "'>[Incidencia]</a>";
+
+                // Get configuration or default to 'oficina' role
+                $config = \App\Models\Configuracion::get('alertas_averias_destinatarios', [
+                    'roles' => ['oficina'],
+                    'departamentos' => [],
+                    'usuarios' => []
+                ]);
+
+                $recipientIds = collect();
+
+                // By Role
+                if (!empty($config['roles'])) {
+                    $ids = \App\Models\User::whereIn('rol', $config['roles'])->pluck('id');
+                    $recipientIds = $recipientIds->merge($ids);
+                }
+
+                // By Department
+                if (!empty($config['departamentos'])) {
+                    $ids = \App\Models\User::whereHas('departamentos', function ($q) use ($config) {
+                        $q->whereIn('nombre', $config['departamentos']);
+                    })->pluck('id');
+                    $recipientIds = $recipientIds->merge($ids);
+                }
+
+                // By specific Users
+                if (!empty($config['usuarios'])) {
+                    $recipientIds = $recipientIds->merge($config['usuarios']);
+                }
+
+                $recipientIds = $recipientIds->unique();
+
+                if ($recipientIds->isNotEmpty()) {
+                    $alerta = \App\Models\Alerta::create([
+                        'mensaje' => $mensaje,
+                        'user_id_1' => auth()->id(),
+                        'destino' => 'Averías',
+                        'leida' => false,
+                    ]);
+
+                    foreach ($recipientIds as $userId) {
+                        \App\Models\AlertaLeida::create([
+                            'alerta_id' => $alerta->id,
+                            'user_id' => $userId,
+                            'leida_en' => null,
+                        ]);
+                    }
+                }
+
+            } catch (\Throwable $e) {
+                // Log error but allow flow to continue
+                \Illuminate\Support\Facades\Log::error('Error enviando alerta de incidencia: ' . $e->getMessage());
+            }
         }
 
         return redirect()->route('incidencias.show', $incidencia->id)->with('success', 'Incidencia reportada correctamente');

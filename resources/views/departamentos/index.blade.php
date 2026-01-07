@@ -659,6 +659,149 @@
             </div>
         </div>
 
+        <!-- ═══════════════════════════════════════════════════════════════════════════════
+             CONFIGURACIÓN DE ALERTAS DE AVERÍAS
+        ═══════════════════════════════════════════════════════════════════════════════ -->
+        <div class="mt-12 bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
+            <div class="bg-gradient-to-r from-red-500 to-rose-500 px-6 py-4">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    Configuración de Alertas de Averías
+                </h3>
+                <p class="text-red-100 text-sm mt-1">Define quién recibirá las notificaciones cuando se reporte una
+                    incidencia en máquinas.</p>
+            </div>
+
+            <div class="p-6">
+                <form action="{{ route('departamentos.updateAlertSettings') }}" method="POST">
+                    @csrf
+                    @method('PUT')
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <!-- Roles -->
+                        <div>
+                            <h4 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                Por Rol
+                            </h4>
+                            <div
+                                class="space-y-2 bg-gray-50 p-4 rounded-lg border border-gray-200 max-h-60 overflow-y-auto">
+                                @foreach ($roles as $rol)
+                                    <label
+                                        class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
+                                        <input type="checkbox" name="roles[]" value="{{ $rol }}"
+                                            class="text-red-600 rounded focus:ring-transparent"
+                                            {{ in_array($rol, $alertasConfig['roles'] ?? []) ? 'checked' : '' }}>
+                                        <span class="text-sm text-gray-700 uppercase">{{ $rol }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <!-- Departamentos -->
+                        <div>
+                            <h4 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                </svg>
+                                Por Departamento
+                            </h4>
+                            <div
+                                class="space-y-2 bg-gray-50 p-4 rounded-lg border border-gray-200 max-h-60 overflow-y-auto">
+                                @foreach ($departamentos as $dep)
+                                    <label
+                                        class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
+                                        <input type="checkbox" name="departamentos[]" value="{{ $dep->nombre }}"
+                                            class="text-red-600 rounded focus:ring-transparent"
+                                            {{ in_array($dep->nombre, $alertasConfig['departamentos'] ?? []) ? 'checked' : '' }}>
+                                        <span class="text-sm text-gray-700">{{ $dep->nombre }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <!-- Usuarios Específicos -->
+                        <div>
+                            <h4 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                Usuarios Específicos
+                            </h4>
+                            <div
+                                class="space-y-2 bg-gray-50 p-4 rounded-lg border border-gray-200 max-h-60 overflow-y-auto">
+                                <input type="text" placeholder="Buscar usuario..."
+                                    class="w-full text-xs border-gray-300 rounded mb-2 focus:border-red-500 focus:ring-transparent"
+                                    onkeyup="filtrarUsuarios(this)">
+                                <div id="lista-usuarios-alertas">
+                                    @foreach ($todosUsuarios as $usuario)
+                                        <label
+                                            class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1 rounded usuario-item">
+                                            <input type="checkbox" name="usuarios[]" value="{{ $usuario->id }}"
+                                                class="text-red-600 rounded focus:ring-transparent"
+                                                {{ in_array($usuario->id, $alertasConfig['usuarios'] ?? []) ? 'checked' : '' }}>
+                                            <img src="{{ $usuario->ruta_imagen }}"
+                                                class="w-8 h-8 rounded-full object-cover" alt=""
+                                                onerror="this.onerror=null; this.outerHTML=`<svg xmlns='' width='28' height='28'
+        viewBox='0 0 24 24' fill='none' stroke='currentColor'
+        stroke-width='1' stroke-linecap='round' stroke-linejoin='round'
+        class='lucide lucide-circle-user-round-icon lucide-circle-user-round w-8 h-8 text-neutral-800'>
+        <path d='M18 20a6 6 0 0 0-12 0' />
+        <circle cx='12' cy='10' r='4' />
+        <circle cx='12' cy='12' r='10' />
+    </svg>`" />
+
+
+                                            <div class="text-xs">
+                                                <div class="font-medium text-gray-800">{{ $usuario->name }}
+                                                    {{ $usuario->primer_apellido }} {{ $usuario->segundo_apellido }}
+                                                </div>
+                                                <div class="text-gray-500">{{ $usuario->rol }}</div>
+                                            </div>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end">
+                        <button type="submit"
+                            class="bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-6 rounded-lg shadow-lg flex items-center gap-2 transition-all transform hover:scale-[1.01] duration-50">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                            </svg>
+                            Guardar Configuración de Alertas
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            function filtrarUsuarios(input) {
+                const filtro = input.value.toLowerCase();
+                const items = document.querySelectorAll('#lista-usuarios-alertas .usuario-item');
+
+                items.forEach(item => {
+                    const texto = item.innerText.toLowerCase();
+                    item.style.display = texto.includes(filtro) ? 'flex' : 'none';
+                });
+            }
+        </script>
+
         <!-- Script para Drag & Drop con SortableJS -->
         <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
         <script>

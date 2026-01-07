@@ -52,7 +52,7 @@
                                      class="hidden absolute inset-0 w-full h-full object-cover rounded-xl opacity-90" />
                              </label>
                              <input id="imagenIncidencia" name="imagen" type="file" accept="image/*"
-                                 capture="environment" class="hidden" required onchange="previewImage(event)">
+                                 capture="environment" class="hidden" onchange="previewImage(event)">
                          </div>
                      </div>
 
