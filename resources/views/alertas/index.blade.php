@@ -780,39 +780,44 @@
 
                 <!-- Header -->
                 <div class="bg-emerald-600 px-4 py-3 flex items-center gap-3 shrink-0">
-                    <button onclick="cerrarModalMensaje()" class="text-white p-1.5 hover:bg-emerald-700 rounded-lg transition-all -ml-1">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <button onclick="cerrarModalMensaje()"
+                        class="text-white p-1.5 hover:bg-emerald-700 rounded-lg transition-all -ml-1">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5"
+                            viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
                     <svg class="w-6 h-6 shrink-0" fill="white" viewBox="0 0 24 24">
-                        <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+                        <path
+                            d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z" />
                     </svg>
                     <div class="flex-1 min-w-0">
-                        <h2 id="headerNombreContacto" class="text-white text-lg font-semibold truncate">Conversacion</h2>
+                        <h2 id="headerNombreContacto" class="text-white text-lg font-semibold truncate">Conversacion
+                        </h2>
                         <p id="contadorRespuestas" class="text-emerald-200 text-sm"></p>
                     </div>
                 </div>
 
                 <!-- Area de chat -->
-                <div id="hiloContenido" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-slate-50 to-slate-100 min-h-[280px]">
+                <div id="hiloContenido"
+                    class="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-slate-50 to-slate-100 min-h-[280px]">
                     <!-- Mensajes -->
                 </div>
 
                 <!-- Input -->
                 <div class="bg-white border-t border-slate-200 px-3 py-2 flex items-center gap-3 shrink-0">
-                    <div class="flex-1 bg-slate-100 rounded-2xl overflow-hidden transition-all duration-200 focus-within:bg-slate-50 focus-within:ring-2 focus-within:ring-emerald-500/30">
+                    <div
+                        class="flex-1 bg-slate-100 rounded-2xl overflow-hidden transition-all duration-200 focus-within:bg-slate-50 focus-within:ring-2 focus-within:ring-emerald-500/30">
                         <textarea id="textoRespuesta"
                             class="w-full resize-none border-0 bg-transparent focus:ring-0 focus:outline-none text-[15px] text-slate-800 leading-6 placeholder-slate-400 py-2.5 px-4 block"
-                            rows="1" placeholder="Escribe un mensaje..."
-                            oninput="ajustarAlturaTextarea(this)"
+                            rows="1" placeholder="Escribe un mensaje..." oninput="ajustarAlturaTextarea(this)"
                             onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); enviarRespuesta(); }"
                             style="height: 44px; max-height: 120px; overflow-y: auto;"></textarea>
                     </div>
                     <button onclick="enviarRespuesta()" id="btnEnviarMensaje"
                         class="w-11 h-11 bg-emerald-600 hover:bg-emerald-700 active:scale-95 rounded-full flex items-center justify-center text-white shrink-0 transition-all duration-150">
                         <svg class="w-5 h-5 ml-0.5" fill="white" viewBox="0 0 24 24">
-                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                         </svg>
                     </button>
                 </div>
@@ -1243,7 +1248,8 @@
                             }
 
                             mostrarMensajePadre(data.hilo);
-                            const totalRespuestas = data.hilo.respuestas ? contarRespuestas(data.hilo.respuestas) : 0;
+                            const totalRespuestas = data.hilo.respuestas ? contarRespuestas(data.hilo
+                                .respuestas) : 0;
                             const totalMensajes = totalRespuestas + 1;
                             document.getElementById('contadorRespuestas').textContent =
                                 `${totalMensajes} ${totalMensajes === 1 ? 'mensaje' : 'mensajes'}`;
@@ -1268,26 +1274,26 @@
                 mensajeDiv.className = `flex ${esPropio ? 'justify-end' : 'justify-start'}`;
                 mensajeDiv.innerHTML = `
                       <div class="flex flex-col max-w-[85%]">
-                        <div class="chat-bubble ${bubbleClass} ${bgColor} ${textColor} ${borderRadius} px-4 py-3 shadow-md">
+                        <div class="chat-bubble ${bubbleClass} px-4 py-3 shadow-md">
 
                           ${!esPropio ? `
-                            <div class="flex items-center gap-2 mb-1">
-                              <span class="font-bold text-sm">${mensaje.emisor}</span>
-                              <span class="px-2 py-0.5 bg-white bg-opacity-20 text-xs rounded-full font-medium">📌</span>
-                            </div>
-                          ` : ''}
+                                    <div class="flex items-center gap-2 mb-1">
+                                      <span class="font-bold text-sm">${mensaje.emisor}</span>
+                                      <span class="px-2 py-0.5 bg-white bg-opacity-20 text-xs rounded-full font-medium">📌</span>
+                                    </div>
+                                  ` : ''}
 
                           <p class="mensaje-mensaje text-[15px] leading-relaxed whitespace-pre-wrap">${mensaje.mensaje}</p>
 
                           <div class="flex items-center justify-end gap-1.5 mt-1.5 -mb-0.5">
                             <span class="text-[11px] text-slate-500">${mensaje.created_at}</span>
                             ${esPropio ? `
-                              <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                  clip-rule="evenodd"/>
-                              </svg>
-                            ` : ''}
+                                      <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                          clip-rule="evenodd"/>
+                                      </svg>
+                                    ` : ''}
                           </div>
 
                         </div>
@@ -1451,30 +1457,37 @@
             opacity: 0;
             transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
         #modalVerMensaje .modal-content {
             opacity: 0;
             transform: translateY(100%) scale(0.95);
             transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
         }
+
         @media (min-width: 768px) {
             #modalVerMensaje .modal-content {
                 transform: translateY(30px) scale(0.95);
             }
         }
+
         #modalVerMensaje.show .modal-overlay {
             opacity: 1;
         }
+
         #modalVerMensaje.show .modal-content {
             opacity: 1;
             transform: translateY(0) scale(1);
         }
+
         #modalVerMensaje.closing .modal-overlay {
             opacity: 0;
         }
+
         #modalVerMensaje.closing .modal-content {
             opacity: 0;
             transform: translateY(100%) scale(0.95);
         }
+
         @media (min-width: 768px) {
             #modalVerMensaje.closing .modal-content {
                 transform: translateY(30px) scale(0.95);
@@ -1482,28 +1495,44 @@
         }
 
         /* ===== MENSAJES ===== */
-        #hiloContenido > div {
+        #hiloContenido>div {
             animation: msgAppear 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
+
         @keyframes msgAppear {
-            from { opacity: 0; transform: translateY(10px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.98);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
 
         /* ===== SCROLL ===== */
         #hiloContenido {
             scroll-behavior: smooth;
             scrollbar-width: thin;
-            scrollbar-color: rgba(0,0,0,0.12) transparent;
+            scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
         }
-        #hiloContenido::-webkit-scrollbar { width: 6px; }
-        #hiloContenido::-webkit-scrollbar-track { background: transparent; }
+
+        #hiloContenido::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #hiloContenido::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
         #hiloContenido::-webkit-scrollbar-thumb {
-            background: rgba(0,0,0,0.12);
+            background: rgba(0, 0, 0, 0.12);
             border-radius: 10px;
         }
+
         #hiloContenido::-webkit-scrollbar-thumb:hover {
-            background: rgba(0,0,0,0.2);
+            background: rgba(0, 0, 0, 0.2);
         }
 
         /* ===== INPUT ===== */
@@ -1516,20 +1545,22 @@
         .chat-bubble {
             position: relative;
             word-wrap: break-word;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
         }
+
         .chat-bubble-out {
             background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
             border-radius: 18px 18px 4px 18px;
         }
+
         .chat-bubble-in {
             background: white;
             border-radius: 18px 18px 18px 4px;
-            border: 1px solid rgba(0,0,0,0.04);
+            border: 1px solid rgba(0, 0, 0, 0.04);
         }
 
-        .mensaje-mensaje a {
+        /* .mensaje-mensaje a {
             color: white !important;
-        }
+        } */
     </style>
 </x-app-layout>
