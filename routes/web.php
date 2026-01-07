@@ -60,6 +60,18 @@ use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\AlbaranesScanController;
 use App\Http\Controllers\EtiquetaEnsamblajeController;
 use App\Http\Controllers\InventarioBackupController;
+use App\Http\Controllers\IncidenciaController;
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/incidencias', [IncidenciaController::class, 'index'])->name('incidencias.index');
+    // AJAX List
+    Route::get('/incidencias/ajax/list', [IncidenciaController::class, 'listAjax'])->name('incidencias.list.ajax');
+
+    Route::get('/incidencias/create', [IncidenciaController::class, 'create'])->name('incidencias.create');
+    Route::post('/incidencias', [IncidenciaController::class, 'store'])->name('incidencias.store');
+    Route::get('/incidencias/{id}', [IncidenciaController::class, 'show'])->name('incidencias.show');
+    Route::put('/incidencias/{id}/resolver', [IncidenciaController::class, 'resolve'])->name('incidencias.resolve');
+});
 
 Route::get('/', [PageController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -690,6 +702,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/ayuda', [AyudaController::class, 'index'])->name('ayuda.index');
 
     // === DEPARTAMENTOS Y SECCIONES ===
+    Route::put('/departamentos/alertas', [DepartamentoController::class, 'updateAlertSettings'])->name('departamentos.updateAlertSettings')->middleware(['auth', 'verified']);
     Route::resource('departamentos', DepartamentoController::class)->names('departamentos');
     Route::post('/departamentos/{departamento}/asignar-usuarios', [DepartamentoController::class, 'asignarUsuarios'])->name('departamentos.asignar.usuarios');
     Route::post('/departamentos/{departamento}/asignar-secciones', [DepartamentoController::class, 'asignarSecciones'])->name('departamentos.asignarSecciones');

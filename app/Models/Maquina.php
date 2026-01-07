@@ -62,38 +62,13 @@ class Maquina extends Model
         return $this->hasMany(Elemento::class, 'maquina_id');
     }
 
-    // Elementos que tienen esta máquina como secundaria
-    public function elementosSecundarios()
-    {
-        return $this->hasMany(Elemento::class, 'maquina_id_2');
-    }
-    // Elementos que tienen esta máquina como terciaria
-    public function elementosTerciarios()
-    {
-        return $this->hasMany(Elemento::class, 'maquina_id_3');
-    }
     public function obra()
     {
-        return $this->belongsTo(Obra::class);
+        return $this->belongsTo(Obra::class, 'obra_id');
     }
 
-    public static function naveA()
+    public function incidencias()
     {
-        return self::whereHas('obra', fn($q) => $q->where('obra', 'Nave A'));
-    }
-
-    public static function naveB()
-    {
-        return self::whereHas('obra', fn($q) => $q->where('obra', 'Nave B'));
-    }
-
-    public function localizacion()
-    {
-        return $this->hasOne(Localizacion::class, 'maquina_id');
-    }
-
-    public function ordenPlanillas()
-    {
-        return $this->hasMany(OrdenPlanilla::class, 'maquina_id');
+        return $this->hasMany(Incidencia::class);
     }
 }

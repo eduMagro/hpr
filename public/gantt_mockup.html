@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gantt de Producción Avanzado - HPR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#151f32',
+                            900: '#0f172a',
+                            950: '#020617',
+                        },
+                        primary: {
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gantt-grid {
+            background-image: linear-gradient(to right, #334155 1px, transparent 1px);
+            background-size: 50px 100%; /* 50px represents 1 hour */
+        }
+        .task-bar {
+            transition: all 0.3s ease;
+        }
+        .task-bar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            z-index: 50;
+        }
+        .dependency-line {
+            stroke: #64748b;
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: 4;
+            animation: dash 20s linear infinite;
+        }
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -100;
+            }
+        }
+        /* Scroller styling */
+        .custom-scroll::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        
+        .stripe-bg {
+            background-image: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 5px,
+                rgba(0, 0, 0, 0.1) 5px,
+                rgba(0, 0, 0, 0.1) 10px
+            );
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 h-screen flex overflow-hidden selection:bg-primary-500 selection:text-white">
+
+    <!-- Sidebar Simulation -->
+    <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col z-20 shrink-0">
+        <div class="p-6 flex items-center gap-3">
+             <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">H</div>
+             <span class="font-bold text-xl tracking-tight text-white">HPR ERP</span>
+        </div>
+        
+        <nav class="flex-1 px-4 space-y-2 mt-4">
+            <div class="px-4 py-2 text-slate-500 text-xs uppercase font-bold tracking-wider">Producción</div>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-blue-600/10 to-transparent text-blue-400 rounded-lg border-l-2 border-blue-500 shadow-sm">
+                <i class="fa-solid fa-chart-gantt"></i>
+                <span class="font-medium">Planificación Gantt</span>
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-100 hover:bg-slate-800/50 rounded-lg transition-colors">
+                <i class="fa-solid fa-industry"></i>
+                <span>Máquinas</span>
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-slate-100 hover:bg-slate-800/50 rounded-lg transition-colors">
+                <i class="fa-solid fa-clipboard-list"></i>
+                <span>Planillas</span>
+            </a>
+        </nav>
+        
+        <div class="p-4 border-t border-slate-800">
+            <button class="w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm text-slate-300 transition-colors border border-slate-700">
+                <i class="fa-solid fa-sliders mr-2"></i> Configuración
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-950 relative">
+        
+        <!-- Header -->
+        <header class="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur flex items-center justify-between px-6 z-10">
+            <div class="flex items-center gap-4">
+                <h1 class="text-lg font-semibold text-white">Planificación Multi-Recurso</h1>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-green-500/10 text-green-400 border border-green-500/20 shadow-[0_0_10px_rgba(34,197,94,0.1)]">En vivo</span>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                
+                <div class="flex items-center gap-2 mr-4 text-xs text-slate-400">
+                     <span class="w-2 h-2 rounded-full bg-blue-500"></span> Corte
+                     <span class="w-2 h-2 rounded-full bg-emerald-500 ml-2"></span> Doblado
+                     <span class="w-2 h-2 rounded-full bg-purple-500 ml-2"></span> Armado
+                </div>
+
+                <div class="h-8 w-[1px] bg-slate-800 mx-1"></div>
+                
+                <div class="relative group">
+                     <button class="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-slate-700 transition hover:text-white text-slate-400">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                     </button>
+                     <span class="absolute top-0 right-0 w-2.5 h-2.5 bg-amber-500 border-2 border-slate-900 rounded-full animate-pulse"></span>
+                </div>
+                
+                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 border border-blue-400/20">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Optimizar Cola
+                </button>
+            </div>
+        </header>
+
+        <!-- Toolbar -->
+        <div class="h-14 border-b border-slate-800 bg-slate-900/50 flex items-center px-6 justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="flex bg-slate-800 p-1 rounded-lg border border-slate-700">
+                    <button class="px-3 py-1 rounded-md bg-slate-700 text-white shadow text-xs font-medium border border-slate-600">8 Horas</button>
+                    <button class="px-3 py-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700/50 transition text-xs font-medium">Turno</button>
+                    <button class="px-3 py-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700/50 transition text-xs font-medium">Semana</button>
+                </div>
+                
+                <div class="relative">
+                    <i class="fa-solid fa-filter absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                    <select class="pl-8 pr-8 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm focus:outline-none focus:border-blue-500 text-slate-300 appearance-none cursor-pointer hover:bg-slate-750">
+                        <option>Todos los recursos</option>
+                        <option>Solo Cuellos de Botella</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-400">Escala:</span>
+                <input type="range" min="50" max="150" value="100" class="w-24 accent-blue-500 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+        </div>
+
+        <!-- Gantt Chart Area -->
+        <div class="flex-1 flex overflow-hidden relative" id="gantt-container">
+            
+            <!-- SVG Layer for Links (Will sit on top of content but pointer events disabled) -->
+            <svg id="dependency-layer" class="absolute inset-0 pointer-events-none z-30 w-full h-full overflow-visible"></svg>
+
+            <!-- Resources Column -->
+            <div class="w-64 bg-slate-900/90 backdrop-blur border-r border-slate-800 flex-shrink-0 z-40 shadow-xl overflow-y-auto custom-scroll relative">
+                <div class="h-10 border-b border-slate-800 flex items-center px-4 sticky top-0 bg-slate-900 z-50 font-semibold text-xs text-slate-400 uppercase tracking-wide">
+                    Recurso
+                </div>
+                
+                <!-- Group: Corte -->
+                <div class="group">
+                    <div class="px-4 py-1.5 bg-slate-800/80 text-[10px] font-bold text-slate-400 uppercase tracking-wider sticky top-10 backdrop-blur border-y border-slate-800">
+                        <i class="fa-solid fa-scissors mr-1.5"></i> Corte
+                    </div>
+                    <div class="h-16 border-b border-slate-800/50 flex items-center px-4 hover:bg-slate-800/30 transition relative group-resource cursor-pointer">
+                        <div class="w-1 h-full absolute left-0 top-0 bg-blue-500"></div>
+                        <div class="w-full">
+                            <div class="flex justify-between items-center">
+                                <div class="font-medium text-slate-200 text-sm">Cortadora #1</div>
+                                <span class="text-[10px] px-1.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">92%</span>
+                            </div>
+                            <div class="text-xs text-slate-500 mt-0.5">Automática • Ø12-32mm</div>
+                        </div>
+                    </div>
+                    <div class="h-16 border-b border-slate-800/50 flex items-center px-4 hover:bg-slate-800/30 transition relative group-resource cursor-pointer">
+                        <div class="w-1 h-full absolute left-0 top-0 bg-blue-500"></div>
+                         <div class="w-full">
+                            <div class="flex justify-between items-center">
+                                <div class="font-medium text-slate-200 text-sm">Cortadora #2</div>
+                                <span class="text-[10px] px-1.5 rounded bg-green-500/10 text-green-400 border border-green-500/20">60%</span>
+                            </div>
+                            <div class="text-xs text-slate-500 mt-0.5">Manual • Ø8-16mm</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group: Doblado -->
+                <div class="group">
+                    <div class="px-4 py-1.5 bg-slate-800/80 text-[10px] font-bold text-slate-400 uppercase tracking-wider sticky top-10 backdrop-blur border-y border-slate-800">
+                         <i class="fa-solid fa-shapes mr-1.5"></i> Doblado
+                    </div>
+                     <div class="h-16 border-b border-slate-800/50 flex items-center px-4 hover:bg-slate-800/30 transition relative group-resource cursor-pointer">
+                        <div class="w-1 h-full absolute left-0 top-0 bg-emerald-500"></div>
+                        <div class="w-full">
+                            <div class="font-medium text-slate-200 text-sm">Dobladora Robot</div>
+                            <div class="text-xs text-slate-500 mt-0.5">Alta velocidad</div>
+                        </div>
+                    </div>
+                    <div class="h-16 border-b border-slate-800/50 flex items-center px-4 hover:bg-slate-800/30 transition relative group-resource cursor-pointer">
+                        <div class="w-1 h-full absolute left-0 top-0 bg-emerald-500"></div>
+                        <div class="w-full">
+                            <div class="font-medium text-slate-200 text-sm">Dobladora Manual</div>
+                            <div class="text-xs text-slate-500 mt-0.5">Piezas complejas</div>
+                        </div>
+                    </div>
+                </div>
+                
+                 <!-- Group: Armado -->
+                 <div class="group">
+                    <div class="px-4 py-1.5 bg-slate-800/80 text-[10px] font-bold text-slate-400 uppercase tracking-wider sticky top-10 backdrop-blur border-y border-slate-800">
+                         <i class="fa-solid fa-people-group mr-1.5"></i> Armado
+                    </div>
+                     <div class="h-16 border-b border-slate-800/50 flex items-center px-4 hover:bg-slate-800/30 transition relative group-resource cursor-pointer">
+                        <div class="w-1 h-full absolute left-0 top-0 bg-purple-500"></div>
+                       <div class="w-full">
+                            <div class="font-medium text-slate-200 text-sm">Mesa Ensamblaje A</div>
+                            <div class="text-xs text-slate-500 mt-0.5">Pilotes 15m</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline Scroll Area -->
+            <div class="flex-1 overflow-x-auto overflow-y-auto bg-slate-900/30 relative custom-scroll" id="timeline-scroll-area">
+                <div class="min-w-[1200px] h-full relative" style="width: 2000px;">
+                    
+                    <!-- Time Header -->
+                    <div class="h-10 border-b border-slate-800 flex sticky top-0 bg-slate-900 z-20 shadow-sm" id="time-header">
+                        <!-- Generated via JS -->
+                    </div>
+
+                    <!-- Grid Background -->
+                    <div class="absolute inset-0 top-10 gantt-grid z-0 opacity-10 pointer-events-none border-b border-slate-800/30"></div>
+
+                    <!-- Current Time Line -->
+                    <div class="absolute top-10 bottom-0 w-[2px] bg-red-500 z-30 shadow-[0_0_8px_rgba(239,68,68,0.8)] pointer-events-none" style="left: 320px;">
+                        <div class="absolute -top-1 -translate-x-1/2 bg-red-500 text-white text-[9px] font-bold px-1 py-0.5 rounded shadow-sm">11:15</div>
+                    </div>
+
+                    <!-- --- TRACKS --- -->
+                    <div class="relative top-0 pt-[28px] pb-20"> <!-- Padding to match sticky headers -->
+                        
+                        <!-- Track: Cortadora 1 -->
+                        <div class="h-16 relative w-full flex items-center group/track hover:bg-slate-800/10 transition">
+                            <!-- Task 1 -->
+                            <div id="task-1" class="absolute h-10 bg-blue-600/20 border border-blue-500 rounded-lg shadow-sm flex items-center px-3 gap-2 cursor-pointer task-bar group hover:bg-blue-600/40 backdrop-blur-sm" style="left: 100px; width: 200px; top: 12px;">
+                                <!-- Progress Bar inside -->
+                                <div class="absolute left-0 top-0 bottom-0 bg-blue-500/20 w-[60%] z-0"></div>
+                                
+                                <span class="relative z-10 w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_5px_rgba(96,165,250,0.8)]"></span>
+                                <div class="relative z-10 flex flex-col overflow-hidden">
+                                     <span class="text-[11px] font-bold text-white truncate leading-tight">Planilla #4020</span>
+                                     <span class="text-[9px] text-blue-200/80 truncate">Columas A1 • 1500kg</span>
+                                </div>
+
+                                <!-- Tooltip -->
+                                <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-3 py-2 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none border border-slate-700 whitespace-nowrap z-50 flex flex-col gap-1">
+                                    <div class="font-bold">Planilla #4020</div>
+                                    <div class="text-[10px] text-slate-400">Progreso: 60% • Fin: 13:00</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Task 2 -->
+                            <div id="task-2" class="absolute h-10 bg-slate-700/40 border border-slate-600 rounded-lg shadow-sm flex items-center px-3 gap-2 cursor-pointer task-bar hover:bg-slate-700/60" style="left: 350px; width: 140px; top: 12px;">
+                                <i class="fa-solid fa-lock text-slate-500 text-[10px]"></i>
+                                <div class="text-[11px] font-medium text-slate-400 truncate">PL-4022 (Espera)</div>
+                            </div>
+                        </div>
+
+                        <!-- Track: Cortadora 2 -->
+                         <div class="h-16 relative w-full flex items-center group/track hover:bg-slate-800/10 transition border-t border-slate-800/20">
+                             <!-- Conflict Task -->
+                             <div id="task-3" class="absolute h-10 bg-amber-900/20 border border-amber-500/50 rounded-lg shadow-sm flex items-center px-2 gap-2 cursor-pointer task-bar stripe-bg hover:bg-amber-900/40" style="left: 100px; width: 180px; top: 12px;">
+                                <div class="w-5 h-5 bg-amber-500/20 rounded flex items-center justify-center text-amber-400 border border-amber-500/30">
+                                    <i class="fa-solid fa-triangle-exclamation text-[10px]"></i>
+                                </div>
+                                <div class="flex flex-col overflow-hidden">
+                                     <span class="text-[11px] font-bold text-amber-100 truncate">PL-4100: Muros</span>
+                                     <span class="text-[9px] text-amber-400/80 truncate">⚠ Stock Ø20mm Bajo</span>
+                                </div>
+                            </div>
+                         </div>
+                    </div>
+
+                     <!-- Group Spacer (Match Sticky Header Height approx) -->
+                    <div class="h-[30px] border-t border-slate-800/50 bg-slate-900/20"></div> 
+
+                    <div class="relative pt-[2px]">
+                        <!-- Track: Dobladora Auto -->
+                        <div class="h-16 relative w-full flex items-center group/track hover:bg-slate-800/10 transition">
+                             <!-- Dependent Task -->
+                             <div id="task-4" class="absolute h-10 bg-emerald-600/20 border border-emerald-500 rounded-lg shadow-sm flex items-center px-3 gap-2 cursor-pointer task-bar opacity-90 hover:bg-emerald-600/40" style="left: 330px; width: 180px; top: 12px;">
+                                <div class="relative">
+                                    <i class="fa-solid fa-link text-emerald-400 text-[10px]"></i>
+                                    <div class="absolute -top-1 -right-1 w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping opacity-75"></div>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-[11px] font-bold text-emerald-100 truncate">PL-4020: Doblado</span>
+                                    <span class="text-[9px] text-emerald-300/60 truncate">Esperando Corte...</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                         <!-- Track: Dobladora Manual -->
+                        <div class="h-16 relative w-full flex items-center group/track hover:bg-slate-800/10 transition border-t border-slate-800/20">
+                              <div class="absolute h-10 bg-slate-800 border-2 border-slate-700 border-dashed rounded-lg flex items-center px-3 gap-2 cursor-not-allowed opacity-60" style="left: 50px; width: 180px; top: 12px;">
+                                <i class="fa-solid fa-screwdriver-wrench text-slate-500 text-xs"></i>
+                                <div class="text-[11px] font-medium text-slate-400 truncate tracking-wide">MANTENIMIENTO</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Group Spacer -->
+                    <div class="h-[30px] border-t border-slate-800/50 bg-slate-900/20"></div>
+
+                     <div class="relative pt-[2px]">
+                        <!-- Track: Ensambladora -->
+                        <div class="h-16 relative w-full flex items-center group/track hover:bg-slate-800/10 transition">
+                              <!-- Dependent Task Level 2 -->
+                             <div id="task-5" class="absolute h-10 bg-purple-600/20 border border-purple-500 rounded-lg shadow-sm flex items-center px-3 gap-2 cursor-pointer task-bar opacity-70 hover:bg-purple-600/40 hover:opacity-100" style="left: 550px; width: 250px; top: 12px;">
+                                <i class="fa-solid fa-link text-purple-400 text-[10px]"></i>
+                                <div class="flex flex-col">
+                                    <span class="text-[11px] font-bold text-purple-100 truncate">PL-4020: Armado Final</span>
+                                    <span class="text-[9px] text-purple-300/60 truncate">Secuencia 3/3</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Generate Time Header
+        const header = document.getElementById('time-header');
+        const startHour = 6;
+        for(let i=0; i<30; i++) { // show more than 24h
+            const h = (startHour + i) % 24;
+            const div = document.createElement('div');
+            // Shift styling
+            let shiftColor = '';
+            if(h >= 6 && h < 14) shiftColor = 'text-yellow-500/50';
+            else if(h >= 14 && h < 22) shiftColor = 'text-orange-500/50';
+            else shiftColor = 'text-blue-500/50';
+
+            div.className = 'flex-shrink-0 w-[50px] h-full flex flex-col items-center justify-center border-r border-slate-800/50 relative group';
+            
+            // Hour Label
+            const span = document.createElement('span');
+            span.className = 'text-[10px] font-medium text-slate-500 group-hover:text-white transition-colors';
+            span.textContent = `${h}:00`;
+            
+            // Shift Indicator dot
+            const dot = document.createElement('div');
+            dot.className = `w-1 h-1 rounded-full mb-0.5 \${shiftColor}`;
+            
+            div.appendChild(dot);
+            div.appendChild(span);
+            header.appendChild(div);
+        }
+
+        // Draw Dependency Lines
+        function updateLines() {
+            const svg = document.getElementById('dependency-layer');
+            svg.innerHTML = ''; // Clear previous
+
+            // Arrow Marker
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+            marker.setAttribute('id', 'arrow-head');
+            marker.setAttribute('markerWidth', '10');
+            marker.setAttribute('markerHeight', '7');
+            marker.setAttribute('refX', '9');
+            marker.setAttribute('refY', '3.5');
+            marker.setAttribute('orient', 'auto');
+            
+            const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+            polygon.setAttribute('fill', '#64748b'); // Slate-500
+            
+            marker.appendChild(polygon);
+            defs.appendChild(marker);
+            svg.appendChild(defs);
+
+            drawConnection('task-1', 'task-4', '#3b82f6'); // Blue link
+            drawConnection('task-4', 'task-5', '#10b981'); // Emerald link
+        }
+
+        function drawConnection(startId, endId, color) {
+            const startEl = document.getElementById(startId);
+            const endEl = document.getElementById(endId);
+            const svg = document.getElementById('dependency-layer');
+            const container = document.getElementById('timeline-scroll-area');
+
+            if(!startEl || !endEl) return;
+
+            // Coordinates must be relative to the SVG container (which fills the scroll area)
+            // Note: SVG is absolute inset-0 inside the RELATIVE scroll-area wrapper.
+            // But content scrolls inside div, SVG needs to scroll OR positions must account for scroll.
+            // To make lines scroll WITH content, SVG needs width=contentWidth. 
+            // Here SVG is width=100% of Viewport, so lines would detach if we scroll.
+            // Fix: Put SVG inside the scrollable content div (min-w-[1200px] container)
+            
+            // Moving SVG inside the inner container for proper scrolling:
+            const innerContainer = container.children[0];
+            if(svg.parentNode !== innerContainer) {
+                 innerContainer.appendChild(svg);
+            }
+
+            // Calc coords relative to offsetParent (innerContainer)
+            const startLeft = startEl.offsetLeft + startEl.offsetWidth;
+            const startTop = startEl.offsetTop + startEl.offsetHeight / 2;
+            
+            const endLeft = endEl.offsetLeft;
+            const endTop = endEl.offsetTop + endEl.offsetHeight / 2;
+
+            // Bezier Path
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            
+            // Control points for S-curve
+            const dist = endLeft - startLeft;
+            const cp1x = startLeft + dist * 0.5;
+            const cp2x = endLeft - dist * 0.5;
+            
+            const d = `M ${startLeft} ${startTop} C ${cp1x} ${startTop}, ${cp2x} ${endTop}, ${endLeft} ${endTop}`;
+            
+            path.setAttribute('d', d);
+            path.setAttribute('stroke', '#475569'); // Neutral color line
+            path.setAttribute('stroke-width', '1.5');
+            path.setAttribute('fill', 'none');
+            // path.setAttribute('stroke-dasharray', '4');
+            path.setAttribute('marker-end', 'url(#arrow-head)');
+            
+            svg.appendChild(path);
+        }
+
+        // Init
+        setTimeout(updateLines, 100);
+        window.addEventListener('resize', updateLines);
+
+    </script>
+</body>
+</html>

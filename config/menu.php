@@ -19,6 +19,15 @@ return [
                     ]
                 ],
                 [
+                    'label' => 'Incidencias',
+                    'route' => 'incidencias.index',
+                    'icon' => '🔧',
+                    'actions' => [
+                        ['label' => 'Ver todas', 'route' => 'incidencias.index', 'permission' => 'ver'],
+                        ['label' => 'Nueva incidencia', 'route' => 'incidencias.create', 'permission' => 'crear'],
+                    ]
+                ],
+                [
                     'label' => 'Materia Prima',
                     'route' => 'productos.index',
                     'icon' => '🧱',

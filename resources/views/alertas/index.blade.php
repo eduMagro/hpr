@@ -1267,12 +1267,32 @@
                 const mensajeDiv = document.createElement('div');
                 mensajeDiv.className = `flex ${esPropio ? 'justify-end' : 'justify-start'}`;
                 mensajeDiv.innerHTML = `
-                <div class="chat-bubble ${bubbleClass} max-w-[85%] px-4 py-2.5">
-                    ${!esPropio ? `<p class="text-xs font-semibold text-emerald-600 mb-1">${mensaje.emisor}</p>` : ''}
-                    <p class="text-[15px] text-slate-800 leading-relaxed whitespace-pre-wrap">${mensaje.mensaje}</p>
-                    <div class="flex items-center justify-end gap-1.5 mt-1.5 -mb-0.5">
-                        <span class="text-[11px] text-slate-500">${mensaje.created_at}</span>
-                        ${esPropio ? '<svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>' : ''}
+                      <div class="flex flex-col max-w-[85%]">
+                        <div class="chat-bubble ${bubbleClass} ${bgColor} ${textColor} ${borderRadius} px-4 py-3 shadow-md">
+
+                          ${!esPropio ? `
+                            <div class="flex items-center gap-2 mb-1">
+                              <span class="font-bold text-sm">${mensaje.emisor}</span>
+                              <span class="px-2 py-0.5 bg-white bg-opacity-20 text-xs rounded-full font-medium">📌</span>
+                            </div>
+                          ` : ''}
+
+                          <p class="mensaje-mensaje text-[15px] leading-relaxed whitespace-pre-wrap">${mensaje.mensaje}</p>
+
+                          <div class="flex items-center justify-end gap-1.5 mt-1.5 -mb-0.5">
+                            <span class="text-[11px] text-slate-500">${mensaje.created_at}</span>
+                            ${esPropio ? `
+                              <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clip-rule="evenodd"/>
+                              </svg>
+                            ` : ''}
+                          </div>
+
+                        </div>
+                      </div>
+
                     </div>
                 </div>`;
                 hiloContenido.appendChild(mensajeDiv);
@@ -1506,6 +1526,10 @@
             background: white;
             border-radius: 18px 18px 18px 4px;
             border: 1px solid rgba(0,0,0,0.04);
+        }
+
+        .mensaje-mensaje a {
+            color: white !important;
         }
     </style>
 </x-app-layout>
