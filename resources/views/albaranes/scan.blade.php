@@ -129,6 +129,12 @@
             animation: slideInFromBottom 300ms ease-out;
         }
 
+        #mobile-back-btn {
+            z-index: 50;
+            cursor: pointer;
+            position: relative;
+        }
+
         @keyframes slideInFromBottom {
             from {
                 opacity: 0;
@@ -327,12 +333,12 @@
                                                 ? "Ø{$sim['linea_propuesta']['diametro']}"
                                                 : '') .
                                             ($sim['linea_propuesta']['cantidad']
-                                                ? ' • ' .
+                                                ? ' (' .
                                                     number_format($sim['linea_propuesta']['cantidad'], 0, ',', '.') .
-                                                    ' kg'
+                                                    ' kg)'
                                                 : ''),
                                     )
-                                    : 'Línea propuesta sin identificadores';
+                                    : 'No se encontró pedido coincidente.';
                                 $lineaInfoAttr = e($lineaInfoText);
                             @endphp
                             <div class="mt-3 text-xs text-gray-600" id="linea-info-{{ $idx }}"
@@ -1241,7 +1247,7 @@
     <!-- VISTA WIZARD DE 5 PASOS (para todas las resoluciones) -->
     <!-- ========================================== -->
     <div id="mobileStepContainer" class="block relative overflow-hidden min-h-[calc(100vh-56px)] pb-4 bg-gray-100">
-        <!-- Header fijo superior -->
+        <!-- Header superior -->
         <div class="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
             <div class="flex items-center justify-between px-4 py-3">
                 <!-- Botón retroceder -->
@@ -1279,7 +1285,6 @@
             <!-- ===== VISTA 1: SUBIR FOTO ===== -->
             <div id="step-1" class="w-full flex-shrink-0 px-4 py-6">
                 <div class="max-w-lg mx-auto space-y-3">
-                    <h3 class="text-xl font-semibold text-gray-900">Subir Albarán</h3>
                     <p class="text-sm text-gray-600">Selecciona el proveedor y sube una foto del albarán</p>
 
                     <!-- Formulario móvil -->
@@ -1360,30 +1365,38 @@
                         </div>
 
                         <!-- Botón procesar -->
-                        <button type="button" id="processBtn-mobile" onclick="procesarAlbaranMobile()"
-                            class="relative w-full px-4 py-3 bg-gray-300 text-gray-500 rounded-lg font-semibold text-lg shadow-lg disabled:cursor-not-allowed transition overflow-hidden flex items-center justify-center"
-                            disabled>
-                            <span id="processBtnLabel-mobile">Procesar albarán</span>
-                            <span id="processing-mobile" class="processing-overlay hidden">
-                                <svg class="processing-circle" width="60" height="60" viewBox="0 0 50 50">
-                                    <g fill="none" stroke="#ffffff" stroke-width="2">
-                                        <path d="M15 10h15l5 5v20H15V10">
-                                            <animate attributeName="stroke-dasharray" values="0,100;100,0"
-                                                dur="2s" repeatCount="indefinite"></animate>
-                                        </path>
-                                        <path d="M30 10v5h5">
-                                            <animate attributeName="opacity" values="0;1;0" dur="2s"
-                                                repeatCount="indefinite"></animate>
-                                        </path>
-                                        <path d="M20 20h10M20 25h10M20 30h10">
-                                            <animate attributeName="stroke-dasharray" values="0,60;60,0"
-                                                dur="2s" repeatCount="indefinite"></animate>
-                                        </path>
-                                    </g>
-                                </svg>
-                                <span>Procesando albarán</span>
-                            </span>
-                        </button>
+                        <div class="space-y-3">
+                            <button type="button" id="processBtn-mobile" onclick="procesarAlbaranMobile()"
+                                class="relative w-full px-4 py-3 bg-indigo-600 text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition overflow-hidden flex items-center justify-center">
+                                <span id="processBtnLabel-mobile">Procesar albarán</span>
+                                <span id="processing-mobile" class="processing-overlay hidden">
+                                    <svg class="processing-circle" width="60" height="60"
+                                        viewBox="0 0 50 50">
+                                        <g fill="none" stroke="#ffffff" stroke-width="2">
+                                            <path d="M15 10h15l5 5v20H15V10">
+                                                <animate attributeName="stroke-dasharray" values="0,100;100,0"
+                                                    dur="2s" repeatCount="indefinite"></animate>
+                                            </path>
+                                            <path d="M30 10v5h5">
+                                                <animate attributeName="opacity" values="0;1;0" dur="2s"
+                                                    repeatCount="indefinite"></animate>
+                                            </path>
+                                            <path d="M20 20h10M20 25h10M20 30h10">
+                                                <animate attributeName="stroke-dasharray" values="0,60;60,0"
+                                                    dur="2s" repeatCount="indefinite"></animate>
+                                            </path>
+                                        </g>
+                                    </svg>
+                                    <span>Procesando</span>
+                                </span>
+                            </button>
+
+                            <!-- Botón continuar (solo si ya tenemos datos) -->
+                            <button type="button" id="mobile-step1-continue-btn" data-mobile-next
+                                class="hidden w-full px-4 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium border border-gray-300 transition">
+                                Continuar con datos actuales
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -1550,7 +1563,8 @@
                         <h4 class="font-semibold text-gray-900">Estado Final</h4>
                         <div class="grid grid-cols-3 gap-3 text-sm text-gray-600">
                             <div class="text-center">
-                                <span class="text-gray-600 text-[7px] uppercase tracking-wide">Kg seleccionados</span>
+                                <span class="text-gray-600 text-[7px] uppercase tracking-wide">Kg
+                                    seleccionados</span>
                                 <p id="mobile-peso-seleccionado" class="font-bold text-gray-900 text-lg">0 kg</p>
                             </div>
                             <div class="text-center">
@@ -1606,18 +1620,22 @@
                         <div>
                             <div class="grid grid-cols-3 gap-3 text-sm text-gray-600">
                                 <div class="text-center">
-                                    <span class="text-xs uppercase tracking-wide text-gray-500">Kg seleccionados</span>
+                                    <span class="text-xs uppercase tracking-wide text-gray-500">Kg
+                                        seleccionados</span>
                                     <p id="mobile-resumen-kg-seleccionados" class="font-bold text-gray-900 text-lg">0
                                         kg</p>
                                 </div>
                                 <div class="text-center">
                                     <span class="text-xs uppercase tracking-wide text-gray-500">Kg restantes</span>
-                                    <p id="mobile-resumen-kg-restantes" class="font-bold text-gray-900 text-lg">0 kg
+                                    <p id="mobile-resumen-kg-restantes" class="font-bold text-gray-900 text-lg">0
+                                        kg
                                     </p>
                                 </div>
                                 <div class="text-center">
-                                    <span class="text-xs uppercase tracking-wide text-gray-500">Estado pedido</span>
-                                    <p id="mobile-resumen-estado" class="font-bold text-gray-900 text-lg">Pendiente
+                                    <span class="text-xs uppercase tracking-wide text-gray-500">Estado
+                                        pedido</span>
+                                    <p id="mobile-resumen-estado" class="font-bold text-gray-900 text-lg">
+                                        Pendiente
                                     </p>
                                 </div>
                             </div>
@@ -1675,6 +1693,46 @@
                     class="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium">
                     Cerrar
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL MOTIVO CAMBIO (IA LEARNING) -->
+    <div id="motivo-cambio-modal"
+        class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm hidden items-center justify-center z-[60] p-4">
+        <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden animate-slid-up">
+            <div class="bg-amber-500 p-4 text-white">
+                <h3 class="text-lg font-bold flex items-center gap-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Decisión manual
+                </h3>
+            </div>
+            <div class="p-5 space-y-4">
+                <p class="text-sm text-gray-600">
+                    Has elegido <span id="motivo-pedido-actual" class="font-bold text-gray-900"></span> en lugar
+                    de la
+                    recomendación de la IA.
+                </p>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">¿Por qué este pedido es el
+                        correcto?</label>
+                    <textarea id="motivo-text-area" rows="3"
+                        class="w-full rounded-xl border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm"
+                        placeholder="Ej: El pedido recomendado es para otra obra o ya fue recibido parcialmente..."></textarea>
+                </div>
+                <div class="flex flex-col gap-2 pt-2">
+                    <button type="button" onclick="aceptarMotivoCambio()"
+                        class="w-full py-3 bg-amber-500 text-white rounded-xl font-bold shadow-lg hover:bg-amber-600 transition">
+                        Confirmar y ayudar a la IA
+                    </button>
+                    <button type="button" onclick="cancelarMotivoCambio()"
+                        class="w-full py-2 text-gray-500 font-medium hover:text-gray-700">
+                        Volver a la lista
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -2034,9 +2092,7 @@
                 // resetToRecommended(resultadoIdx); 
                 // BUT resetToRecommended might hide the manual selection UI which is correct.
                 // We should probably allow the user to see it. 
-                // Let's stick to closing it if it was the behavior used before, or maybe keep it open?
-                // The previous code closed it: closePendingOrdersModal(resultadoIdx);
-                // I will keep closing it for usability unless they want to keep exploring.
+                // Let's stick to closing it for usability unless they want to keep exploring.
                 // Actually, if I update the button state, maybe I shouldn't close it instantly? 
                 // Let's close it as per previous flow to avoid confusion, but updating buttons ensures consistency if reopened.
                 closePendingOrdersModal(resultadoIdx);
@@ -2258,7 +2314,8 @@
                 <p class="text-sm text-slate-300 mt-2">
                     Registrar coladas y bultos asociados (opcional)
                 </p>
-                <p id="modal-linea-info" class="text-sm text-slate-200 mt-1">Selecciona las coladas deseadas antes de
+                <p id="modal-linea-info" class="text-sm text-slate-200 mt-1">Selecciona las coladas deseadas antes
+                    de
                     continuar.</p>
             </div>
             <div class="p-6">
@@ -2468,9 +2525,38 @@
             init: function() {
                 if (this.initialized) return;
                 this.initialized = true;
+
+                // Cargar cache de memoria si existe
+                const savedCache = localStorage.getItem('lastScanMobileCache');
+                if (savedCache) {
+                    try {
+                        this.dataCache = JSON.parse(savedCache);
+                        // console.log('Cache recuperado de localStorage:', this.dataCache);
+                        if (this.dataCache.resultado) {
+                            poblarVista2ConDatos(this.dataCache.resultado);
+                            if (this.dataCache.simulacion) {
+                                poblarVista3ConPedido(this.dataCache.simulacion);
+                                poblarVista4ConColadas(this.dataCache.simulacion);
+                                if (this.dataCache.lineaSeleccionada) {
+                                    actualizarVista3ConLineaSeleccionada(this.dataCache.lineaSeleccionada);
+                                }
+                            }
+                            this.maxStep = this.dataCache.lastStep || 2;
+                        }
+                    } catch (e) {
+                        console.error('Error cargando cache:', e);
+                        localStorage.removeItem('lastScanMobileCache');
+                    }
+                }
+
                 this.attachEventListeners();
                 this.updateNavigation();
                 this.updateProgressBar();
+
+                // Si hay un paso guardado, ir a él
+                if (this.dataCache.lastStep && this.dataCache.lastStep > 1) {
+                    this.goToStep(this.dataCache.lastStep, true);
+                }
             },
 
             goToStep: function(stepNumber, forceAdvance = false) {
@@ -2521,6 +2607,22 @@
 
                 this.updateNavigation();
                 this.updateProgressBar();
+
+                // Guardar progreso en memoria
+                this.dataCache.lastStep = this.currentStep;
+                localStorage.setItem('lastScanMobileCache', JSON.stringify(this.dataCache));
+
+                // Mostrar botón continuar en paso 1 si ya hay datos
+                if (stepNumber === 1) {
+                    const continueBtn = document.getElementById('mobile-step1-continue-btn');
+                    if (continueBtn) {
+                        if (this.maxStep >= 2) {
+                            continueBtn.classList.remove('hidden');
+                        } else {
+                            continueBtn.classList.add('hidden');
+                        }
+                    }
+                }
             },
 
             next: function(forceAdvance = false) {
@@ -2533,6 +2635,7 @@
             },
 
             back: function() {
+                // console.log('Retrocediendo paso...', this.currentStep);
                 if (this.currentStep > 1) {
                     this.goToStep(this.currentStep - 1);
                 }
@@ -2541,11 +2644,16 @@
             updateNavigation: function() {
                 // Mostrar/ocultar botón retroceder
                 const backBtn = document.getElementById('mobile-back-btn');
+                const title = document.getElementById('mobile-step-title');
                 if (backBtn) {
                     if (this.currentStep > 1) {
                         backBtn.classList.remove('hidden');
+                        backBtn.style.display = 'flex';
+                        backBtn.style.visibility = 'visible';
+                        backBtn.style.opacity = '1';
                     } else {
                         backBtn.classList.add('hidden');
+                        backBtn.style.display = 'none';
                     }
                 }
 
@@ -2587,10 +2695,34 @@
             validateCurrentStep: function() {
                 const cache = this.dataCache || {};
 
+                // Paso 1: Validar proveedor e imagen
+                if (this.currentStep === 1) {
+                    const proveedor = document.getElementById('proveedor-mobile')?.value;
+                    const imagenes = document.getElementById('imagenes-mobile')?.files;
+                    const camera = document.getElementById('camera-mobile')?.files;
+                    if (!proveedor) {
+                        toastMobile('warning', 'Selecciona un proveedor');
+                        return false;
+                    }
+                    // Si ya tenemos datos en cache, permitimos avanzar (el botón continuar se encarga)
+                    // pero si estamos en el paso 1 debemos tener al menos el proveedor
+                    const hasDataInCache = cache.resultado && cache.parsed;
+                    if (!hasDataInCache) {
+                        if ((!imagenes || imagenes.length === 0) && (!camera || camera.length === 0)) {
+                            toastMobile('warning', 'Sube una foto del albarán');
+                            return false;
+                        }
+                    }
+                }
+
                 // Paso 2: si tipo_compra es distribuidor, exigir distribuidor seleccionado
                 if (this.currentStep === 2) {
                     const tipo = (document.getElementById('edit-tipo-compra')?.value || '').toString()
                         .toLowerCase();
+                    if (!tipo) {
+                        toastMobile('warning', 'Selecciona el tipo de compra');
+                        return false;
+                    }
                     if (tipo === 'distribuidor') {
                         const dist = (document.getElementById('edit-distribuidor-select')?.value || '').toString()
                             .trim();
@@ -2598,6 +2730,14 @@
                             toastMobile('warning', 'Selecciona un distribuidor');
                             return false;
                         }
+                    }
+                }
+
+                // Paso 3: exigir linea seleccionada
+                if (this.currentStep === 3) {
+                    if (!cache.lineaSeleccionada) {
+                        toastMobile('warning', 'Selecciona un pedido para continuar');
+                        return false;
                     }
                 }
 
@@ -2709,6 +2849,9 @@
                         throw new Error(message);
                     }
 
+                    // Enviar aprendizaje a la IA (feedback)
+                    enviarAprendizajeIA(cache);
+
                     if (window.Swal?.fire) {
                         toastMobile('success', 'Activado correctamente');
                     }
@@ -2742,6 +2885,42 @@
                     toastMobile('error', err?.message || 'Error al activar');
                     setMobileActionLoading('mobile-btn-activar', 'mobile-activar-loading', false);
                 });
+        }
+
+        /**
+         * Envía feedback del usuario a la IA para aprendizaje continuo.
+         */
+        function enviarAprendizajeIA(cache) {
+            const recommendedId = cache.recommendedId || cache.simulacion?.linea_propuesta?.id;
+            const selectedId = cache.lineaSeleccionada?.id;
+
+            if (!selectedId) return;
+
+            const payload = {
+                ocr_log_id: cache?.ocr_log_id ?? cache?.resultado?.ocr_log_id,
+                payload_ocr: cache.parsed, // JSON extraído
+                recomendaciones_ia: cache.simulacion?.lineas_pendientes || [], // Todos los candidatos rankeados
+                pedido_seleccionado_id: selectedId,
+                es_discrepancia: recommendedId && selectedId != recommendedId,
+                motivo_usuario: cache.motivoDiscrepanciaIA || null
+            };
+
+            fetch("{{ route('albaranes.scan.aprendizaje.guardar') }}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // console.log('Aprendizaje IA guardado');
+                    }
+                })
+                .catch(err => console.error('Error al guardar aprendizaje IA:', err));
         }
 
         // ========================================
@@ -2803,6 +2982,12 @@
             if (mobileImageInput) mobileImageInput.value = '';
             if (mobileCameraInput) mobileCameraInput.value = '';
             document.getElementById('mobile-file-feedback').classList.add('hidden');
+
+            // Limpiar también la memoria del último escaneo
+            localStorage.removeItem('lastScanMobileCache');
+            window.mobileStepManager.dataCache = {};
+            window.mobileStepManager.maxStep = 1;
+
             refreshMobileButton();
         };
 
@@ -2854,12 +3039,12 @@
             const archivo = (archivoInput?.files[0]) || (cameraInput?.files[0]);
 
             if (!proveedor) {
-                alert('Por favor selecciona un proveedor');
+                toastMobile('warning', 'Por favor selecciona un proveedor');
                 return;
             }
 
             if (!archivo) {
-                alert('Por favor selecciona una imagen del albarán o toma una foto');
+                toastMobile('warning', 'Por favor selecciona una imagen o toma una foto');
                 return;
             }
 
@@ -2920,7 +3105,8 @@
                     // console.log('Avanzando a Vista 2...');
                     window.mobileStepManager.next(true);
 
-                    // console.log('Current step:', window.mobileStepManager.currentStep);
+                    // Guardar progreso en memoria después de procesar
+                    localStorage.setItem('lastScanMobileCache', JSON.stringify(window.mobileStepManager.dataCache));
                 } else if (!data.success) {
                     console.error('Error en respuesta:', data);
                     alert('Error al procesar el albar【n. Por favor, intenta de nuevo.');
@@ -3123,7 +3309,21 @@
                 badgeText = 'COINCIDENCIA PARCIAL';
             }
 
+            let codeMatchBadge = '';
+            if (lineaPropuesta.coincide_codigo) {
+                codeMatchBadge = `
+                    <div class="absolute top-3 right-3 bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
+                        <span class="flex items-center gap-1">★ CÓDIGO</span>
+                    </div>
+                `;
+                container.classList.add('relative', 'ring-2', 'ring-emerald-500', 'bg-emerald-50/30');
+            } else {
+                container.classList.remove('relative', 'ring-2', 'ring-emerald-500', 'bg-emerald-50/30');
+            }
+
+
             container.innerHTML = `
+                ${codeMatchBadge}
                 <div class="space-y-3">
                     <span class="inline-block px-3 py-1 rounded-full text-xs font-bold ${badgeClass}">
                         ${badgeText}
@@ -3135,27 +3335,27 @@
                             <span class="font-semibold text-gray-900">${lineaPropuesta.codigo_linea || '—'}</span>
                         </div>
                         ${pedidoHprEscaneado ? `
-                                                <div class="hidden">
-                                                    <span class="text-gray-500">Pedido HPR (escaneado):</span>
-                                                    <span class="font-semibold text-gray-900">${pedidoHprEscaneado}</span>
-                                                </div>
-                                            ` : ''}
+                                                                                                                                        <div class="hidden">
+                                                                                                                                            <span class="text-gray-500">Pedido HPR (escaneado):</span>
+                                                                                                                                            <span class="font-semibold text-gray-900">${pedidoHprEscaneado}</span>
+                                                                                                                                        </div>
+                                                                                                                                    ` : ''}
                         <div class="hidden">
                             <span class="text-gray-500">Pedido (BD):</span>
                             <span class="font-semibold text-gray-900">${lineaPropuesta.pedido_codigo || '—'}</span>
                         </div>
                         ${fabricanteNombre ? `
-                                                <div>
-                                                    <span class="text-gray-500">Fabricante:</span>
-                                                    <span class="font-medium text-gray-900">${fabricanteNombre}</span>
-                                                </div>
-                                            ` : ''}
+                                                                                                                                        <div>
+                                                                                                                                            <span class="text-gray-500">Fabricante:</span>
+                                                                                                                                            <span class="font-medium text-gray-900">${fabricanteNombre}</span>
+                                                                                                                                        </div>
+                                                                                                                                    ` : ''}
                         ${distribuidorNombre ? `
-                                                <div>
-                                                    <span class="text-gray-500">Distribuidor:</span>
-                                                    <span class="font-medium text-gray-900">${distribuidorNombre}</span>
-                                                </div>
-                                            ` : ''}
+                                                                                                                                        <div>
+                                                                                                                                            <span class="text-gray-500">Distribuidor:</span>
+                                                                                                                                            <span class="font-medium text-gray-900">${distribuidorNombre}</span>
+                                                                                                                                        </div>
+                                                                                                                                    ` : ''}
                         <div>
                             <span class="text-gray-500">Producto:</span>
                             <span class="font-medium text-gray-900">${lineaPropuesta.producto || '—'}</span>
@@ -3168,7 +3368,7 @@
                             <span class="text-gray-500">Cantidad pendiente:</span>
                             <span class="font-medium text-gray-900">${lineaPropuesta.cantidad_pendiente || 0} kg</span>
                         </div>
-                        ${renderScoreRow(lineaPropuesta.score)}
+                        ${renderScoreRow(lineaPropuesta)}
                     </div>
                 </div>
             `;
@@ -3289,6 +3489,17 @@
                 totalBultos += parseInt(cb.dataset.bultos) || 0;
                 totalPeso += parseFloat(cb.dataset.peso) || 0;
             });
+
+            // FALLBACK PESO TOTAL: Si todos los checks están marcados y el peso sumado es 0 (o inconsistente),
+            // usar el peso_total detectado en el albarán.
+            const totalCheckboxes = document.querySelectorAll('.mobile-colada-checkbox');
+            const cache = window.mobileStepManager.dataCache;
+            if (checkboxes.length > 0 && checkboxes.length === totalCheckboxes.length) {
+                const pesoAlbaran = parseFloat(cache.parsed?.peso_total || 0);
+                if (pesoAlbaran > 0 && (totalPeso <= 0 || Math.abs(totalPeso - pesoAlbaran) > 0.1)) {
+                    totalPeso = pesoAlbaran;
+                }
+            }
 
             // Actualizar UI
             const bultosEl = document.getElementById('mobile-bultos-seleccionados');
@@ -3562,16 +3773,9 @@
             return Math.round(n).toLocaleString('es-ES');
         }
 
-        function renderScoreRow(score) {
-            if (!score) return '';
-            return `
-                <div class="mt-2 pt-2 border-t border-gray-200 flex items-center justify-between">
-                    <span class="text-gray-500">Score:</span>
-                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">
-                        ${formatScorePoints(score)} pts.
-                    </span>
-                </div>
-            `;
+        function renderScoreRow(linea) {
+            // No mostrar scores visualmente para simplificar la UI
+            return "";
         }
 
         function setMobileActionLoading(buttonId, loadingId, isLoading) {
@@ -4053,10 +4257,18 @@
                 }
                 if (isRecommended) {
                     badges.push(`
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
-                            Recomendado
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+                             ✨ IA RECOMENDADO
                         </span>
                     `);
+
+                    if (linea.ia_razonamiento) {
+                        badges.push(`
+                            <div class="text-[10px] text-emerald-800 bg-emerald-50 p-2 rounded-lg border border-emerald-100 mt-1 italic">
+                                <b>¿Por qué?</b> ${linea.ia_razonamiento}
+                            </div>
+                        `);
+                    }
                 }
 
                 return `
@@ -4074,17 +4286,17 @@
                             <span class="ml-2 text-gray-900">${linea.pedido_codigo || '—'}</span>
                         </div>
                             ${fabricanteNombre ? `
-                                                    <div>
-                                                        <span class="text-gray-500">Fabricante:</span>
-                                                        <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
-                                                    </div>
-                                                ` : ''}
+                                                                                                                                            <div>
+                                                                                                                                                <span class="text-gray-500">Fabricante:</span>
+                                                                                                                                                <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
+                                                                                                                                            </div>
+                                                                                                                                        ` : ''}
                             ${distribuidorNombre ? `
-                                                    <div>
-                                                        <span class="text-gray-500">Distribuidor:</span>
-                                                        <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
-                                                    </div>
-                                                ` : ''}
+                                                                                                                                            <div>
+                                                                                                                                                <span class="text-gray-500">Distribuidor:</span>
+                                                                                                                                                <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
+                                                                                                                                            </div>
+                                                                                                                                        ` : ''}
                             <div>
                                 <span class="text-gray-500">Producto:</span>
                                 <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
@@ -4094,21 +4306,21 @@
                                 <span class="ml-2 text-gray-900">${linea.fecha_entrega_fmt || linea.fecha_entrega || '—'}</span>
                             </div>
                             ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                        <div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                            <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                            <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                    ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
                             <div class="flex items-center justify-between pt-2 border-t border-gray-100">
                                 <div>
                                         <span class="text-gray-500">Pendiente:</span>
                                         <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                                     </div>
                                     ${linea.score ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 font-bold">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                Score: ${formatScorePoints(linea.score)} pts.
-                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                       ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 font-bold">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        Score: ${formatScorePoints(linea.score)} pts.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ` : ''}
                             </div>
                         </div>
                     </div>
@@ -4127,20 +4339,65 @@
             if (index < 0 || index >= lineasPendientes.length) return;
 
             const lineaSeleccionada = lineasPendientes[index];
+            const recommendedId = cache.recommendedId || cache.simulacion?.linea_propuesta?.id || null;
 
-            // Actualizar cache
-            cache.lineaSeleccionada = lineaSeleccionada;
+            // Si hay discrepancia, pediremos el motivo al confirmar (Step 3 a 4) 
+            // o podrías pedirlo aquí mismo en un modal.
+            // Para una experiencia fluida, lo pediremos en un modal si NO es el recomendado.
+            if (recommendedId && lineaSeleccionada.id != recommendedId) {
+                // Preparamos los datos para el modal de motivo
+                document.getElementById('motivo-pedido-actual').textContent = lineaSeleccionada.pedido_codigo ||
+                    'Pedido ID: ' + lineaSeleccionada.id;
+                document.getElementById('motivo-cambio-modal').classList.remove('hidden');
+                document.getElementById('motivo-cambio-modal').classList.add('flex');
 
-            // Actualizar Vista 3 con la nueva línea
-            actualizarVista3ConLineaSeleccionada(lineaSeleccionada);
-            // Refrescar banner de BD con la línea seleccionada (si existe lookup previo)
+                // Guardamos temporalmente el ID seleccionado para usarlo al confirmar el motivo
+                window._tempPendingSelectionIndex = index;
+                return; // Pausamos selección hasta que dé el motivo
+            }
+
+            confirmarSeleccionPedidoMobile(lineaSeleccionada);
+        }
+
+        function confirmarSeleccionPedidoMobile(linea) {
+            const cache = window.mobileStepManager.dataCache;
+            cache.lineaSeleccionada = linea;
+            cache.motivoDiscrepanciaIA = window._lastUserReason || null;
+            window._lastUserReason = null; // Limpiar
+
+            actualizarVista3ConLineaSeleccionada(linea);
             if (cache.pedidoDbInfo) {
                 renderPedidoDbBannerMobile(cache.pedidoDbInfo, cache.lastPedidoLookupCodigo || cache.parsed
                     ?.pedido_cliente || '');
             }
-
-            // Cerrar modal
             cerrarModalPedidosMobile();
+        }
+
+        function aceptarMotivoCambio() {
+            const motivo = document.getElementById('motivo-text-area').value;
+            if (!motivo || motivo.trim().length < 5) {
+                alert('Por favor, indica un motivo breve (mínimo 5 caracteres) para ayudar a la IA a aprender.');
+                return;
+            }
+
+            window._lastUserReason = motivo;
+            const index = window._tempPendingSelectionIndex;
+            const cache = window.mobileStepManager.dataCache;
+            const lineasPendientes = cache.lineasFiltradas || cache.simulacion?.lineas_pendientes || [];
+            const linea = lineasPendientes[index];
+
+            document.getElementById('motivo-cambio-modal').classList.add('hidden');
+            document.getElementById('motivo-cambio-modal').classList.remove('flex');
+            document.getElementById('motivo-text-area').value = '';
+
+            confirmarSeleccionPedidoMobile(linea);
+        }
+
+        function cancelarMotivoCambio() {
+            document.getElementById('motivo-cambio-modal').classList.add('hidden');
+            document.getElementById('motivo-cambio-modal').classList.remove('flex');
+            document.getElementById('motivo-text-area').value = '';
+            window._tempPendingSelectionIndex = null;
         }
 
         /**
@@ -4186,27 +4443,27 @@
                             <span class="ml-2 font-semibold text-gray-900">${linea.codigo_linea || '—'}</span>
                         </div>
                         ${pedidoHprEscaneado ? `
-                                                <div class="hidden">
-                                                    <span class="text-gray-500">Pedido HPR (escaneado):</span>
-                                                    <span class="ml-2 font-semibold text-gray-900">${pedidoHprEscaneado}</span>
-                                                </div>
-                                            ` : ''}
+                                                                                                                                        <div class="hidden">
+                                                                                                                                            <span class="text-gray-500">Pedido HPR (escaneado):</span>
+                                                                                                                                            <span class="ml-2 font-semibold text-gray-900">${pedidoHprEscaneado}</span>
+                                                                                                                                        </div>
+                                                                                                                                    ` : ''}
                         <div class="hidden">
                             <span class="text-gray-500">Pedido (BD):</span>
                             <span class="ml-2 font-semibold text-gray-900">${linea.pedido_codigo || '—'}</span>
                         </div>
                         ${fabricanteNombre ? `
-                                                <div>
-                                                    <span class="text-gray-500">Fabricante:</span>
-                                                    <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
-                                                </div>
-                                            ` : ''}
+                                                                                                                                        <div>
+                                                                                                                                            <span class="text-gray-500">Fabricante:</span>
+                                                                                                                                            <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
+                                                                                                                                        </div>
+                                                                                                                                    ` : ''}
                         ${distribuidorNombre ? `
-                                                <div>
-                                                    <span class="text-gray-500">Distribuidor:</span>
-                                                    <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
-                                                </div>
-                                            ` : ''}
+                                                                                                                                        <div>
+                                                                                                                                            <span class="text-gray-500">Distribuidor:</span>
+                                                                                                                                            <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
+                                                                                                                                        </div>
+                                                                                                                                    ` : ''}
                         <div>
                             <span class="text-gray-500">Producto:</span>
                             <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
@@ -4216,11 +4473,11 @@
                             <span class="ml-2 text-gray-900">${linea.fecha_entrega_fmt || linea.fecha_entrega || '—'}</span>
                         </div>
                         ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                    <div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                        <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
                         <div class="pt-2 border-t border-gray-100">
                             <span class="text-gray-500">Cantidad Pendiente:</span>
                             <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>

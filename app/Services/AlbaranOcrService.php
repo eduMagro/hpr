@@ -59,7 +59,9 @@ class AlbaranOcrService
 
         $absolute = Storage::disk('private')->path($storedPath);
         $extension = strtolower($file->getClientOriginalExtension());
+
         [$rawText, $parsed] = $this->extractWithDocupipe($absolute, $extension, $proveedor);
+
         if ($proveedor) {
             $parsed['proveedor'] = $proveedor;
         }
@@ -146,7 +148,10 @@ class AlbaranOcrService
 
     protected function docupipeUpload(string $path, string $apiKey): array
     {
-        $url = 'https://app.docupipe.ai/document';
+        $baseUrl = config('docupipe.base_url');
+        $submitPath = config('docupipe.submit_path', '/document');
+        $url = rtrim($baseUrl, '/') . $submitPath;
+
         // Ensure file exists
         if (!file_exists($path)) {
             throw new \RuntimeException("File not found for upload: $path");
@@ -168,7 +173,7 @@ class AlbaranOcrService
             'X-API-Key' => $apiKey,
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
-        ])->timeout(120)->post($url, $payload);
+        ])->timeout(config('docupipe.request_timeout', 120))->post($url, $payload);
 
         if (!$response->successful()) {
             throw new \RuntimeException('Error subiendo a Docupipe: ' . $response->body());
@@ -179,7 +184,8 @@ class AlbaranOcrService
 
     protected function docupipeStandardize(string $docId, string $schemaId, string $apiKey): array
     {
-        $url = 'https://app.docupipe.ai/v2/standardize/batch';
+        $baseUrl = config('docupipe.base_url');
+        $url = rtrim($baseUrl, '/') . '/v2/standardize/batch';
         $payload = [
             'schemaId' => $schemaId,
             'documentIds' => [$docId],
@@ -200,7 +206,8 @@ class AlbaranOcrService
 
     protected function docupipePoll(string $jobId, string $apiKey): void
     {
-        $url = "https://app.docupipe.ai/job/{$jobId}";
+        $baseUrl = config('docupipe.base_url');
+        $url = rtrim($baseUrl, '/') . "/job/{$jobId}";
         $maxAttempts = 40;
         $attempt = 0;
         $wait = 2;
@@ -246,7 +253,8 @@ class AlbaranOcrService
 
     protected function docupipeRetrieve(string $stdId, string $apiKey): array
     {
-        $url = "https://app.docupipe.ai/standardization/{$stdId}";
+        $baseUrl = config('docupipe.base_url');
+        $url = rtrim($baseUrl, '/') . "/standardization/{$stdId}";
         $response = Http::withHeaders([
             'X-API-Key' => $apiKey,
             'Accept' => 'application/json',
@@ -361,24 +369,24 @@ class AlbaranOcrService
             'Authorization' => 'Bearer ' . $apiKey,
             'Content-Type' => 'application/json',
         ])->timeout(120)->post('https://api.openai.com/v1/chat/completions', [
-            'model' => $model,
-            'messages' => [
-                [
-                    'role' => 'user',
-                    'content' => [
-                        ['type' => 'text', 'text' => $prompt],
+                    'model' => $model,
+                    'messages' => [
                         [
-                            'type' => 'image_url',
-                            'image_url' => [
-                                'url' => "data:{$mimeType};base64,{$base64}",
-                                'detail' => 'high',
+                            'role' => 'user',
+                            'content' => [
+                                ['type' => 'text', 'text' => $prompt],
+                                [
+                                    'type' => 'image_url',
+                                    'image_url' => [
+                                        'url' => "data:{$mimeType};base64,{$base64}",
+                                        'detail' => 'high',
+                                    ],
+                                ],
                             ],
                         ],
                     ],
-                ],
-            ],
-            'temperature' => 0,
-        ]);
+                    'temperature' => 0,
+                ]);
 
         if (!$response->successful()) {
             $msg = $response->json('error.message') ?? 'OpenAI devolvió un error';
@@ -922,5 +930,38 @@ class AlbaranOcrService
             return 'BARRA';
         }
         return 'BARRA';
+    }
+
+    /**
+     * Devuelve el prompt para realizar OCR con modelos generales (OpenAI/Gemini).
+     */
+    protected function getOcrPrompt(): string
+    {
+        return "Extrae la información de este albarán de entrega de ferralla (hierro para construcción).\n" .
+            "Devuelve EXCLUSIVAMENTE un objeto JSON con la siguiente estructura:\n" .
+            "{\n" .
+            "  \"albaran\": \"número de albarán\",\n" .
+            "  \"fecha\": \"YYYY-MM-DD\",\n" .
+            "  \"proveedor_texto\": \"nombre del proveedor\",\n" .
+            "  \"pedido_codigo\": \"código de pedido de compra si aparece\",\n" .
+            "  \"pedido_cliente\": \"código de pedido del cliente si aparece\",\n" .
+            "  \"peso_total\": numerico_en_kg,\n" .
+            "  \"bultos_total\": numerico,\n" .
+            "  \"productos\": [\n" .
+            "    {\n" .
+            "      \"descripcion\": \"descripción del producto\",\n" .
+            "      \"diametro\": numerico_en_mm,\n" .
+            "      \"longitud\": numerico_en_mm,\n" .
+            "      \"calidad\": \"B400S/B500S/etc\",\n" .
+            "      \"line_items\": [\n" .
+            "        {\n" .
+            "          \"colada\": \"número de colada si aparece\",\n" .
+            "          \"bultos\": numerico\n" .
+            "        }\n" .
+            "      ]\n" .
+            "    }\n" .
+            "  ]\n" .
+            "}\n" .
+            "Si un dato no aparece, déjalo como null o array vacío. No inventes datos.";
     }
 }

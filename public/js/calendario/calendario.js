@@ -664,6 +664,35 @@
                     startClick = clicked;
                     updateTempHighlight(calendar, clicked, clicked, false); // false para que SI limpie/actualice el modal
 
+                    // Mostrar inmediatamente el modal con instrucciones de selección
+                    const modal = document.getElementById('vacation-bottom-modal');
+                    const content = document.getElementById('vacation-bottom-content');
+                    
+                    if (modal && content) {
+                        modal.classList.remove('translate-y-full');
+                        modal.classList.add('translate-y-0');
+                        
+                        // Mostrar mensaje de selección activa con botón de cancelar - COMPACTO
+                        content.innerHTML = `
+                            <div class="flex items-center gap-3 text-xs sm:text-sm">
+                                <span class="text-amber-300">Selecciona día final</span>
+                                <button id="btn-cancelar-seleccion" style="background:#ef4444;color:white;padding:4px 12px;border-radius:6px;font-weight:600;font-size:12px;display:flex;align-items:center;gap:4px;border:none;cursor:pointer;">
+                                    ✕ Cancelar
+                                </button>
+                            </div>
+                        `;
+                        
+                        // Agregar event listener al botón de cancelar
+                        const btnCancelar = document.getElementById('btn-cancelar-seleccion');
+                        if (btnCancelar) {
+                            btnCancelar.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                startClick = null;
+                                clearTempHighlight(calendar, false);
+                            });
+                        }
+                    }
+
                     // AJAX Fetch para datos frescos de vacaciones (solo en el primer clic)
                     // Enviar la fecha clickeada para que el backend calcule relativo a esa fecha
                     const baseUrl = routes.vacationDataUrl || `/api/usuarios/${userId}/vacation-data`;
@@ -685,8 +714,12 @@
                             fechaIncorporacion = data.fecha_incorporacion;
                             diasVacacionesAsignados = data.dias_asignados;
 
-                            const modal = document.getElementById('vacation-bottom-modal');
-                            const content = document.getElementById('vacation-bottom-content');
+                            // Botón cancelar con estilo inline para máximo contraste
+                            const cancelarBtnHtml = `
+                                <button id="btn-cancelar-seleccion" style="background:#ef4444;color:white;padding:4px 12px;border-radius:6px;font-weight:600;font-size:12px;display:flex;align-items:center;gap:4px;border:none;cursor:pointer;">
+                                    Cancelar
+                                </button>
+                            `;
                             
                             if (fechaIncorporacion) {
                                 const incorpDate = new Date(fechaIncorporacion);
@@ -749,42 +782,29 @@
                                             const disponiblesActual = generadasActual - excesoSobreAnterior;
                                             const disponiblesTotal = disponiblesAnterior + disponiblesActual;
                                             
-                                            // === SIN VACACIONES FUTURAS ===
-                                            const usadasPeriodoGraciaHastaFecha = data.dias_usados_periodo_gracia_hasta_fecha || 0;
-                                            const usadasDelAnteriorSinFuturas = Math.min(usadasPeriodoGraciaHastaFecha, Math.max(0, saldoAnteriorAlFinalizar));
-                                            const disponiblesAnteriorSinFuturas = Math.max(0, saldoAnteriorAlFinalizar - usadasPeriodoGraciaHastaFecha);
-                                            const excesoSobreAnteriorSinFuturas = Math.max(0, usadasPeriodoGraciaHastaFecha - Math.max(0, saldoAnteriorAlFinalizar));
-                                            const disponiblesActualSinFuturas = generadasActual - excesoSobreAnteriorSinFuturas;
-                                            const disponiblesTotalSinFuturas = disponiblesAnteriorSinFuturas + disponiblesActualSinFuturas;
+                                            // Días LIBRES = total disponibles - vacaciones futuras (ya asignadas)
+                                            const vacacionesFuturas = data.dias_vacaciones_futuras || 0;
+                                            const diasLibres = disponiblesTotal - vacacionesFuturas;
                                             
+                                            // Colores según disponibilidad
                                             const colorAnterior = disponiblesAnterior >= 0 ? 'text-amber-400' : 'text-red-400';
                                             const colorActual = disponiblesActual >= 0 ? 'text-green-400' : 'text-red-400';
-                                            const colorTotal = disponiblesTotal >= 0 ? 'text-emerald-400' : 'text-red-400';
+                                            const colorTotal = diasLibres >= 0 ? 'text-emerald-400' : 'text-red-400';
                                             
-                                            // Mostrar "sin futuras" solo si hay diferencia
-                                            const sinFuturasHtml = disponiblesTotal !== disponiblesTotalSinFuturas 
-                                                ? `<span class="text-xs text-gray-500">(${disponiblesTotalSinFuturas} sin futuras)</span>` 
+                                            // Mostrar "ya asignadas" solo si hay vacaciones futuras
+                                            const yaAsignadasHtml = vacacionesFuturas > 0 
+                                                ? `<span class="text-[11px] text-gray-400">(${vacacionesFuturas} futuras)</span>` 
                                                 : '';
                                             
                                             content.innerHTML = `
-                                                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm">
-                                                    <div class="flex flex-col items-center px-3 py-1 bg-gray-800 rounded-lg">
-                                                        <span class="text-xs text-gray-500">${previousYear}</span>
-                                                        <span class="${colorAnterior} font-semibold">${disponiblesAnterior} días</span>
-                                                        <span class="text-xs text-gray-500">(${saldoAnteriorAlFinalizar} - ${usadasDelAnterior})</span>
-                                                    </div>
-                                                    <span class="text-gray-600 hidden sm:block">+</span>
-                                                    <div class="flex flex-col items-center px-3 py-1 bg-gray-800 rounded-lg">
-                                                        <span class="text-xs text-gray-500">${clickYear}</span>
-                                                        <span class="${colorActual} font-semibold">${disponiblesActual} días</span>
-                                                        <span class="text-xs text-gray-500">(${generadasActual} - ${excesoSobreAnterior})</span>
-                                                    </div>
-                                                    <span class="text-gray-600 hidden sm:block">=</span>
-                                                    <div class="flex flex-col items-center px-3 py-1 bg-gradient-to-r from-gray-800 to-gray-700 rounded-lg border border-gray-600">
-                                                        <span class="text-xs text-gray-400">Total</span>
-                                                        <span class="${colorTotal} font-bold text-lg">${disponiblesTotal} días</span>
-                                                        ${sinFuturasHtml}
-                                                    </div>
+                                                <div class="flex items-center gap-2 text-[11px] sm:text-sm">
+                                                    <span class="${colorAnterior}">${previousYear}: ${disponiblesAnterior}d</span>
+                                                    <span class="text-gray-500">+</span>
+                                                    <span class="${colorActual}">${clickYear}: ${disponiblesActual}d</span>
+                                                    <span class="text-gray-500">=</span>
+                                                    <span class="${colorTotal} font-bold">${diasLibres} días</span>
+                                                    ${yaAsignadasHtml}
+                                                    ${cancelarBtnHtml}
                                                 </div>
                                             `;
                                         } else if (!isGracePeriod && incorpDate < new Date(clickYear, 0, 1)) {
@@ -809,33 +829,28 @@
                                             const usadasTotalActual = excesoSobreAnterior + usadasPostGracia;
                                             const disponiblesActual = generadasActual - usadasTotalActual;
                                             
-                                            // === SIN VACACIONES FUTURAS ===
-                                            const usadasPostGraciaHastaFecha = data.dias_usados_post_gracia_hasta_fecha || 0;
-                                            const usadasTotalActualSinFuturas = excesoSobreAnterior + usadasPostGraciaHastaFecha;
-                                            const disponiblesActualSinFuturas = generadasActual - usadasTotalActualSinFuturas;
+                                            // Días LIBRES = disponibles - vacaciones futuras (ya asignadas)
+                                            const vacacionesFuturas = data.dias_vacaciones_futuras || 0;
+                                            const diasLibres = disponiblesActual - vacacionesFuturas;
                                             
-                                            const colorClass = disponiblesActual >= 0 ? 'text-green-400' : 'text-red-400';
+                                            const colorClass = diasLibres >= 0 ? 'text-emerald-400' : 'text-red-400';
                                             
                                             let perdidasHtml = '';
                                             if (perdidas > 0) {
-                                                perdidasHtml = `<span class="text-xs text-red-400">(⚠️ ${perdidas} días de ${previousYear} caducaron)</span>`;
+                                                perdidasHtml = `<span class="text-xs text-red-400">(⚠️ ${perdidas}d caducaron)</span>`;
                                             }
                                             
-                                            // Mostrar "sin futuras" solo si hay diferencia
-                                            const sinFuturasHtml = disponiblesActual !== disponiblesActualSinFuturas 
-                                                ? `<span class="text-xs text-gray-500">(${disponiblesActualSinFuturas} sin futuras)</span>` 
+                                            // Mostrar "ya asignadas" solo si hay vacaciones futuras
+                                            const yaAsignadasHtml = vacacionesFuturas > 0 
+                                                ? `<span class="text-[11px] text-gray-400">(${vacacionesFuturas} futuras)</span>` 
                                                 : '';
                                             
                                             content.innerHTML = `
-                                                <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm">
-                                                    <span class="text-gray-400">
-                                                        Año ${clickYear}: ${generadasActual} generadas - ${usadasTotalActual} usadas
-                                                    </span>
-                                                    <span class="${colorClass} font-bold text-lg">
-                                                        ${disponiblesActual} días disponibles
-                                                    </span>
-                                                    ${sinFuturasHtml}
+                                                <div class="flex items-center gap-2 text-xs sm:text-sm">
+                                                    <span class="${colorClass} font-bold">${diasLibres} días</span>
+                                                    ${yaAsignadasHtml}
                                                     ${perdidasHtml}
+                                                    ${cancelarBtnHtml}
                                                 </div>
                                             `;
                                         } else {
@@ -845,28 +860,34 @@
                                             const generadas = Math.floor((diffDays / 30) * 2.5); // Truncado
                                             const disponibles = generadas - diasVacacionesAsignados;
                                             
-                                            // === SIN VACACIONES FUTURAS ===
-                                            const diasUsadosHastaFecha = data.dias_usados_hasta_fecha || 0;
-                                            const disponiblesSinFuturas = generadas - diasUsadosHastaFecha;
+                                            // Días LIBRES = disponibles - vacaciones futuras (ya asignadas)
+                                            const vacacionesFuturas = data.dias_vacaciones_futuras || 0;
+                                            const diasLibres = disponibles - vacacionesFuturas;
                                             
-                                            const colorClass = disponibles >= 0 ? 'text-green-400' : 'text-red-400';
+                                            const colorClass = diasLibres >= 0 ? 'text-emerald-400' : 'text-red-400';
                                             
-                                            // Mostrar "sin futuras" solo si hay diferencia
-                                            const sinFuturasHtml = disponibles !== disponiblesSinFuturas 
-                                                ? `<span class="text-xs text-gray-500">(${disponiblesSinFuturas} sin futuras)</span>` 
+                                            // Mostrar "ya asignadas" solo si hay vacaciones futuras
+                                            const yaAsignadasHtml = vacacionesFuturas > 0 
+                                                ? `<span class="text-[11px] text-gray-400">(${vacacionesFuturas} futuras)</span>` 
                                                 : '';
                                             
                                             content.innerHTML = `
-                                                <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm">
-                                                    <span class="text-gray-400">
-                                                        (Generadas: ${generadas} - Usadas: ${diasVacacionesAsignados})
-                                                    </span>
-                                                    <span class="${colorClass} font-bold text-lg">
-                                                        ${disponibles} días disponibles
-                                                    </span>
-                                                    ${sinFuturasHtml}
+                                                <div class="flex items-center gap-2 text-xs sm:text-sm">
+                                                    <span class="${colorClass} font-bold">${diasLibres} días</span>
+                                                    ${yaAsignadasHtml}
+                                                    ${cancelarBtnHtml}
                                                 </div>
                                             `;
+                                        }
+                                        
+                                        // Re-agregar event listener al botón de cancelar después de actualizar el HTML
+                                        const btnCancelar = document.getElementById('btn-cancelar-seleccion');
+                                        if (btnCancelar) {
+                                            btnCancelar.addEventListener('click', function(e) {
+                                                e.stopPropagation();
+                                                startClick = null;
+                                                clearTempHighlight(calendar, false);
+                                            });
                                         }
                                     }
                                 }
@@ -877,15 +898,21 @@
                                     modal.classList.add('translate-y-0');
                                     
                                     content.innerHTML = `
-                                        <div class="flex items-center gap-2 text-sm">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                            </svg>
-                                            <span class="text-yellow-400">
-                                                Configure la fecha de incorporación para ver el cálculo de vacaciones
-                                            </span>
+                                        <div class="flex items-center gap-2 text-xs sm:text-sm">
+                                            <span class="text-yellow-400">⚠️ Sin fecha incorporación</span>
+                                            ${cancelarBtnHtml}
                                         </div>
                                     `;
+                                    
+                                    // Re-agregar event listener al botón de cancelar
+                                    const btnCancelar = document.getElementById('btn-cancelar-seleccion');
+                                    if (btnCancelar) {
+                                        btnCancelar.addEventListener('click', function(e) {
+                                            e.stopPropagation();
+                                            startClick = null;
+                                            clearTempHighlight(calendar, false);
+                                        });
+                                    }
                                 }
                             }
                         })
