@@ -67,6 +67,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // AJAX List
     Route::get('/incidencias/ajax/list', [IncidenciaController::class, 'listAjax'])->name('incidencias.list.ajax');
 
+    Route::resource('solicitudes', \App\Http\Controllers\SolicitudController::class);
+
     Route::get('/incidencias/create', [IncidenciaController::class, 'create'])->name('incidencias.create');
     Route::post('/incidencias', [IncidenciaController::class, 'store'])->name('incidencias.store');
     Route::get('/incidencias/{id}', [IncidenciaController::class, 'show'])->name('incidencias.show');
