@@ -25,6 +25,8 @@ use App\Models\EventoFicticioObra;
 use App\Models\TrabajadorFicticio;
 use App\Models\SnapshotProduccion;
 use App\Models\Etiqueta;
+use App\Models\OrdenPlanillaEnsamblaje;
+use App\Models\PlanillaEntidad;
 use Throwable;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\File;
@@ -657,6 +659,99 @@ class ProduccionController extends Controller
             'filtro_fecha_fin'                 => $fechaFin,
             'filtro_turno'                     => $turnoFiltro,
             'initialDate'                     => $initialDate,
+        ]);
+    }
+
+    /**
+     * Vista de control de máquinas ensambladoras.
+     * Muestra todas las ensambladoras con sus colas de trabajo y estado actual.
+     */
+    public function maquinasEnsamblaje(Request $request)
+    {
+        // 1. Obtener todas las máquinas ensambladoras
+        $maquinas = Maquina::where('tipo', 'ensambladora')
+            ->orderBy('nombre')
+            ->get();
+
+        if ($maquinas->isEmpty()) {
+            return view('produccion.maquinas-ensamblaje', [
+                'maquinas' => collect(),
+                'maquinasConCola' => collect(),
+                'entidadesListasSinAsignar' => collect(),
+                'totales' => [
+                    'en_proceso' => 0,
+                    'pendientes' => 0,
+                    'completadas_hoy' => 0,
+                ],
+            ]);
+        }
+
+        $maquinaIds = $maquinas->pluck('id')->all();
+
+        // 2. Obtener todas las órdenes de ensamblaje para estas máquinas
+        $ordenes = OrdenPlanillaEnsamblaje::with([
+                'entidad.planilla.obra',
+                'entidad.planilla.cliente',
+                'entidad.elementos',
+                'asignadoPor'
+            ])
+            ->whereIn('maquina_id', $maquinaIds)
+            ->orderBy('posicion')
+            ->get();
+
+        // 3. Agrupar órdenes por máquina y estado
+        $maquinasConCola = $maquinas->map(function ($maquina) use ($ordenes) {
+            $ordenesMaquina = $ordenes->where('maquina_id', $maquina->id);
+
+            // Entidad actualmente en proceso
+            $enProceso = $ordenesMaquina->where('estado', 'en_proceso')->first();
+
+            // Cola pendiente (ordenada por posición)
+            $colaPendiente = $ordenesMaquina
+                ->whereIn('estado', ['pendiente', 'pausada'])
+                ->sortBy('posicion')
+                ->values();
+
+            // Completadas hoy
+            $completadasHoy = $ordenesMaquina
+                ->where('estado', 'completada')
+                ->filter(fn($o) => $o->fecha_fin && Carbon::parse($o->fecha_fin)->isToday())
+                ->count();
+
+            return [
+                'maquina' => $maquina,
+                'en_proceso' => $enProceso,
+                'cola_pendiente' => $colaPendiente,
+                'completadas_hoy' => $completadasHoy,
+                'total_en_cola' => $colaPendiente->count(),
+            ];
+        });
+
+        // 4. Entidades listas para ensamblar pero sin asignar a ninguna máquina
+        $idsEnCola = $ordenes->pluck('planilla_entidad_id')->unique()->all();
+
+        $entidadesListasSinAsignar = PlanillaEntidad::with(['planilla.obra', 'planilla.cliente', 'elementos'])
+            ->listasParaEnsamblaje()
+            ->whereNotIn('id', $idsEnCola)
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get();
+
+        // 5. Totales generales
+        $totales = [
+            'en_proceso' => $ordenes->where('estado', 'en_proceso')->count(),
+            'pendientes' => $ordenes->whereIn('estado', ['pendiente', 'pausada'])->count(),
+            'completadas_hoy' => $ordenes
+                ->where('estado', 'completada')
+                ->filter(fn($o) => $o->fecha_fin && Carbon::parse($o->fecha_fin)->isToday())
+                ->count(),
+        ];
+
+        return view('produccion.maquinas-ensamblaje', [
+            'maquinas' => $maquinas,
+            'maquinasConCola' => $maquinasConCola,
+            'entidadesListasSinAsignar' => $entidadesListasSinAsignar,
+            'totales' => $totales,
         ]);
     }
 

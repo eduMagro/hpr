@@ -2457,27 +2457,37 @@ class EtiquetaController extends Controller
             ->doesntExist();
 
         if ($todosElementosPlanillaCompletos) {
-            $planilla->fecha_finalizacion = now();
-            $planilla->estado = 'completada';
-            $planilla->save();
+            // Determinar si la planilla tiene ensamblaje en taller
+            $tieneEnsamblajeTaller = $planilla->tieneEnsamblajeTaller();
 
-            DB::transaction(function () use ($planilla, $maquina) {
-                // 1. Eliminar el registro de esa planilla en esta máquina
-                OrdenPlanilla::where('planilla_id', $planilla->id)
-                    ->where('maquina_id', $maquina->id)
-                    ->delete();
+            if ($tieneEnsamblajeTaller) {
+                // Si tiene ensamblaje en taller → estado 'fabricada' (pendiente de ensamblar)
+                $planilla->estado = 'fabricada';
+                $planilla->save();
+            } else {
+                // Si NO tiene ensamblaje en taller → estado 'completada'
+                $planilla->fecha_finalizacion = now();
+                $planilla->estado = 'completada';
+                $planilla->save();
 
-                // 2. Reordenar las posiciones de las planillas restantes en esta máquina
-                $ordenes = OrdenPlanilla::where('maquina_id', $maquina->id)
-                    ->orderBy('posicion')
-                    ->lockForUpdate()
-                    ->get();
+                DB::transaction(function () use ($planilla, $maquina) {
+                    // 1. Eliminar el registro de esa planilla en esta máquina
+                    OrdenPlanilla::where('planilla_id', $planilla->id)
+                        ->where('maquina_id', $maquina->id)
+                        ->delete();
 
-                foreach ($ordenes as $index => $orden) {
-                    $orden->posicion = $index;
-                    $orden->save();
-                }
-            });
+                    // 2. Reordenar las posiciones de las planillas restantes en esta máquina
+                    $ordenes = OrdenPlanilla::where('maquina_id', $maquina->id)
+                        ->orderBy('posicion')
+                        ->lockForUpdate()
+                        ->get();
+
+                    foreach ($ordenes as $index => $orden) {
+                        $orden->posicion = $index;
+                        $orden->save();
+                    }
+                });
+            }
         }
 
         return true;

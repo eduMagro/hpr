@@ -19,7 +19,8 @@
     // 👉 Items predefinidos del menú de planificación
     $items = [
         'produccion.verMaquinas' => '📋 Planificación Planillas',
-        'produccion.verTrabajadores' => '📋 Planificación Trabajadores Almacén',
+        'produccion.maquinasEnsamblaje' => '🔧 Planificación Ensamblaje',
+        'produccion.verTrabajadores' => '👷 Planificación Trabajadores Almacén',
         'produccion.verTrabajadoresObra' => '⏱️ Planificación Trabajadores Obra',
     ];
 @endphp

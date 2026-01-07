@@ -358,9 +358,11 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/api/usuarios/operarios', [ProfileController::class, 'getOperarios'])->name('api.usuarios.operarios');
     Route::get('/api/usuarios/operarios-agrupados', [ProfileController::class, 'getOperariosAgrupados'])->name('api.usuarios.operarios.agrupados');
     Route::post('/festivos/editar', [VacacionesController::class, 'moverFestivo'])->name('festivos.mover');
-    Route::put('/festivos/{festivo}/fecha', [FestivoController::class, 'actualizarFecha'])->name('festivos.actualizarFecha');
-    Route::delete('/festivos/{festivo}', [FestivoController::class, 'destroy'])->name('festivos.eliminar');
+    Route::get('/festivos', [FestivoController::class, 'index'])->name('festivos.index');
     Route::post('/festivos', [FestivoController::class, 'store'])->name('festivos.store');
+    Route::put('/festivos/{festivo}', [FestivoController::class, 'update'])->name('festivos.update');
+    Route::put('/festivos/{festivo}/fecha', [FestivoController::class, 'actualizarFecha'])->name('festivos.actualizarFecha');
+    Route::delete('/festivos/{festivo}', [FestivoController::class, 'destroy'])->name('festivos.destroy');
     Route::post('/asignaciones-turno/asignar-obra', [AsignacionTurnoController::class, 'asignarObra'])->name('asignaciones-turnos.asignarObra');
     Route::post('/asignaciones-turno/asignar-multiple', [AsignacionTurnoController::class, 'asignarObraMultiple'])->name('asignaciones-turnos.asignarObraMultiple');
     Route::put('/asignaciones-turno/{id}/quitar-obra', [AsignacionTurnoController::class, 'quitarObra'])->name('asignaciones-turnos.quitarObra');
@@ -388,12 +390,21 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/maquinas/movimientos-completados/{naveId}', [MaquinaController::class, 'getMovimientosCompletados'])->name('maquinas.movimientos-completados');
     Route::post('/turnos/cambiar-maquina', [Maquinacontroller::class, 'cambiarMaquina'])->name('turno.cambiarMaquina');
     Route::put('/maquinas/{maquina}/imagen', [MaquinaController::class, 'actualizarImagen'])->name('maquinas.imagen');
+
+    // === PLANIFICACIÓN DE ENSAMBLAJE ===
+    Route::get('/ensamblaje/planificacion', [App\Http\Controllers\PlanificacionEnsamblajeController::class, 'index'])->name('ensamblaje.planificacion');
+    Route::post('/ensamblaje/asignar', [App\Http\Controllers\PlanificacionEnsamblajeController::class, 'asignar'])->name('ensamblaje.asignar');
+    Route::post('/ensamblaje/asignar-multiple', [App\Http\Controllers\PlanificacionEnsamblajeController::class, 'asignarMultiple'])->name('ensamblaje.asignar-multiple');
+    Route::post('/ensamblaje/quitar', [App\Http\Controllers\PlanificacionEnsamblajeController::class, 'quitar'])->name('ensamblaje.quitar');
+    Route::post('/ensamblaje/reordenar', [App\Http\Controllers\PlanificacionEnsamblajeController::class, 'reordenar'])->name('ensamblaje.reordenar');
+
     Route::get('/planillas/eventos', [ProduccionController::class, 'eventosPlanillas'])
         ->name('planillas.eventos');
 
     Route::get('/produccion/trabajadores', [ProduccionController::class, 'trabajadores'])->name('produccion.verTrabajadores');
     Route::get('/produccion/trabajadores-obra', [ProduccionController::class, 'trabajadoresObra'])->name('produccion.verTrabajadoresObra');
     Route::get('/produccion/maquinas', [ProduccionController::class, 'maquinas'])->name('produccion.verMaquinas');
+    Route::get('/produccion/maquinas-ensamblaje', [ProduccionController::class, 'maquinasEnsamblaje'])->name('produccion.maquinasEnsamblaje');
     Route::get('/produccion/cargas-maquinas', [ProduccionController::class, 'cargasMaquinas'])->name('produccion.cargasMaquinas');
 
     // Endpoints dinámicos para el calendario de máquinas
@@ -499,6 +510,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === PLANILLAS Y PLANIFICACIÓN ===
     Route::post('/planillas/{planilla}/marcar-revisada', [PlanillaController::class, 'marcarRevisada'])->name('planillas.marcarRevisada');
     Route::resource('planillas', PlanillaController::class);
+    Route::get('/planillas/{planilla}/ensamblaje', [PlanillaController::class, 'ensamblaje'])->name('planillas.ensamblaje');
     Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.crearImport');
     Route::post('/planillas/reordenar', [ProduccionController::class, 'reordenarPlanillas'])->name('planillas.editarReordenar');
     Route::resource('planificacion', PlanificacionController::class)->only(['index', 'store', 'update', 'destroy']);
@@ -524,6 +536,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->name('etiquetas-ensamblaje.completar');
     Route::post('/etiquetas-ensamblaje/{etiqueta}/marcar-impresa', [EtiquetaEnsamblajeController::class, 'marcarImpresa'])
         ->name('etiquetas-ensamblaje.marcar-impresa');
+    Route::put('/etiquetas-ensamblaje/{id}/estado', [EtiquetaEnsamblajeController::class, 'actualizarEstado'])
+        ->name('etiquetas-ensamblaje.actualizar-estado');
 
     // === EMPRESAS TRANSPORTE ===
     Route::resource('empresas-transporte', EmpresaTransporteController::class);

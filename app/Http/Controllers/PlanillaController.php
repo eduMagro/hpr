@@ -1321,4 +1321,23 @@ class PlanillaController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Muestra la información de ensamblaje de una planilla.
+     */
+    public function ensamblaje(Planilla $planilla)
+    {
+        $planilla->load([
+            'cliente',
+            'obra',
+            'entidades' => function ($query) {
+                $query->orderBy('linea');
+            },
+            'entidades.elementos' => function ($query) {
+                $query->orderBy('marca');
+            }
+        ]);
+
+        return view('planillas.ensamblaje', compact('planilla'));
+    }
 }

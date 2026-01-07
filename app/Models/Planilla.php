@@ -121,6 +121,54 @@ class Planilla extends Model
     }
 
     /**
+     * Determina si la planilla tiene ensamblaje en taller.
+     * Se basa en el campo 'ensamblado' y la existencia de entidades con etiquetas.
+     */
+    public function tieneEnsamblajeTaller(): bool
+    {
+        // Verificar campo ensamblado (puede contener "TALLER", "ENSAMBLADO TALLER", etc.)
+        $ensamblado = strtoupper(trim($this->ensamblado ?? ''));
+
+        if (empty($ensamblado)) {
+            return false;
+        }
+
+        // Palabras clave que indican ensamblaje en taller
+        $palabrasTaller = ['TALLER', 'FABRICA', 'PLANTA'];
+
+        foreach ($palabrasTaller as $palabra) {
+            if (str_contains($ensamblado, $palabra)) {
+                // Además debe tener entidades con etiquetas de ensamblaje
+                return $this->entidades()->exists() && $this->etiquetasEnsamblaje()->exists();
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Verifica si todas las etiquetas de ensamblaje están completadas.
+     */
+    public function ensamblajeCompletado(): bool
+    {
+        if (!$this->tieneEnsamblajeTaller()) {
+            return true; // Sin ensamblaje en taller, se considera completado
+        }
+
+        $totalEtiquetas = $this->etiquetasEnsamblaje()->count();
+
+        if ($totalEtiquetas === 0) {
+            return true;
+        }
+
+        $completadas = $this->etiquetasEnsamblaje()
+            ->where('estado', 'completada')
+            ->count();
+
+        return $completadas >= $totalEtiquetas;
+    }
+
+    /**
      * Relación con la tabla 'users'
      * Una planilla pertenece a un usuario
      */

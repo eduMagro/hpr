@@ -32,15 +32,15 @@
         const usuario = '{{ auth()->user()->name ?? 'Usuario desconocido' }}';
         const email = '{{ auth()->user()->email ?? 'Email no disponible' }}';
 
-        // ✅ Mensaje completo con contexto mejorado
-        const mensajeCompleto = `🔗 URL: ${urlActual}
+        // Mensaje completo con contexto mejorado (sin emojis para compatibilidad DB)
+        const mensajeCompleto = `URL: ${urlActual}
 
-👤 Usuario: ${usuario} (${email})
-📅 Fecha/Hora: ${new Date().toLocaleString('es-ES')}
+Usuario: ${usuario} (${email})
+Fecha/Hora: ${new Date().toLocaleString('es-ES')}
 
-📋 ${asunto}
+Asunto: ${asunto}
 
-📜 Mensaje:
+Mensaje:
 ${mensaje}
 
 ---
@@ -158,6 +158,22 @@ Navegador: ${navigator.userAgent}`;
                     console.log('Operación exitosa:', mensaje);
                 });
             }
+        @endif
+
+        // Procesar mensaje de error
+        @if (session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: @json(session('error')),
+                confirmButtonColor: '#d33',
+                showCancelButton: true,
+                cancelButtonText: "Reportar Error"
+            }).then((result) => {
+                if (result.dismiss === Swal.DismissReason.cancel) {
+                    notificarProgramador(@json(session('error')));
+                }
+            });
         @endif
 
         // Procesar mensaje de info

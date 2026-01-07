@@ -11,6 +11,47 @@ use App\Models\ProductoBase;
 class AsignarMaquinaService
 {
     /**
+     * Longitudes de productos base válidas para grúa (en mm).
+     * Excluye 6m porque requiere corte en la mayoría de casos.
+     */
+    protected const LONGITUDES_GRUA_MM = [12000, 14000, 15000, 16000];
+
+    /**
+     * Tolerancia en mm para comparar longitudes.
+     */
+    protected const TOLERANCIA_LONGITUD_MM = 10;
+
+    /**
+     * Determina si un elemento debe ir a la grúa (no requiere elaboración).
+     *
+     * Va a grúa si:
+     * - dobles_barra = 0 (barra recta)
+     * - longitud coincide con producto base (12, 14, 15, 16m), excluyendo 6m
+     *
+     * @param Elemento $elemento
+     * @return bool true si debe ir a grúa
+     */
+    protected function debeIrAGrua(Elemento $elemento): bool
+    {
+        $dobles = (int)$elemento->dobles_barra;
+        $longitud = (float)$elemento->longitud;
+
+        // Si tiene dobleces, no va a grúa
+        if ($dobles > 0) {
+            return false;
+        }
+
+        // Verificar si la longitud coincide con alguna longitud base para grúa
+        foreach (self::LONGITUDES_GRUA_MM as $longitudBase) {
+            if (abs($longitud - $longitudBase) <= self::TOLERANCIA_LONGITUD_MM) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Normaliza las dimensiones para comparación consistente.
      * Mismo método que usa ResumenEtiquetaService para garantizar consistencia.
      *
@@ -126,15 +167,16 @@ class AsignarMaquinaService
         // Calcular cargas actuales
         $cargas = $this->cargasPendientesPorMaquina();
 
-        // 📦 PASO 1: Elementos sin elaboración (única dimensión) → Grúa de Nave A
-        $sinElaborar = $elementos->filter(fn($e) => (int)($e->elaborado ?? 1) === 0);
+        // 📦 PASO 1: Elementos para grúa (barra recta con longitud de producto base, excluye 6m)
+        $paraGrua = $elementos->filter(fn($e) => $this->debeIrAGrua($e));
 
-        if ($sinElaborar->isNotEmpty()) {
-            $this->asignarElementosAGrua($planilla, $sinElaborar, 'A', $cargas);
+        if ($paraGrua->isNotEmpty()) {
+            Log::channel('planilla_import')->info("🏗️ [AsignarMaquina] {$paraGrua->count()} elementos van a grúa (longitud 12/14/15/16m, sin dobleces)");
+            $this->asignarElementosAGrua($planilla, $paraGrua, 'A', $cargas);
         }
 
-        // 🔧 PASO 2: Elementos que SÍ requieren elaboración (elaborado = 1)
-        $elementosAElaborar = $elementos->reject(fn($e) => (int)($e->elaborado ?? 1) === 0);
+        // 🔧 PASO 2: Elementos que SÍ requieren elaboración (corte/doblado)
+        $elementosAElaborar = $elementos->reject(fn($e) => $this->debeIrAGrua($e));
 
         if ($elementosAElaborar->isEmpty()) return;
 
@@ -755,15 +797,16 @@ class AsignarMaquinaService
         // Calcular cargas actuales
         $cargas = $this->cargasPendientesPorMaquina();
 
-        // 📦 PASO 1: Elementos sin elaboración (única dimensión) → Grúa de Nave B
-        $sinElaborar = $elementos->filter(fn($e) => (int)($e->elaborado ?? 1) === 0);
+        // 📦 PASO 1: Elementos para grúa (barra recta con longitud de producto base, excluye 6m)
+        $paraGrua = $elementos->filter(fn($e) => $this->debeIrAGrua($e));
 
-        if ($sinElaborar->isNotEmpty()) {
-            $this->asignarElementosAGrua($planilla, $sinElaborar, 'B', $cargas);
+        if ($paraGrua->isNotEmpty()) {
+            Log::channel('planilla_import')->info("🏗️ [AsignarMaquina/NaveB] {$paraGrua->count()} elementos van a grúa (longitud 12/14/15/16m, sin dobleces)");
+            $this->asignarElementosAGrua($planilla, $paraGrua, 'B', $cargas);
         }
 
         // 🔧 PASO 2: Elementos que SÍ requieren elaboración
-        $elementosAElaborar = $elementos->reject(fn($e) => (int)($e->elaborado ?? 1) === 0);
+        $elementosAElaborar = $elementos->reject(fn($e) => $this->debeIrAGrua($e));
 
         if ($elementosAElaborar->isEmpty()) {
             Log::channel('planilla_import')->info("✅ [AsignarMaquina/NaveB] Solo había elementos sin elaborar, reparto completado");
@@ -852,14 +895,13 @@ class AsignarMaquinaService
     {
         $dobles = (int)$elemento->dobles_barra;
         $diametro = (int)$elemento->diametro;
-        $elaborado = (int)($elemento->elaborado ?? 1);
 
-        // 1. Elementos sin elaborar solo pueden ir a grúas
-        if ($elaborado === 0) {
+        // 1. Elementos que deben ir a grúa (barra recta con longitud base 12/14/15/16m)
+        if ($this->debeIrAGrua($elemento)) {
             if ($maquinaDestino->tipo !== 'grua') {
                 return [
                     'success' => false,
-                    'message' => "Elemento {$elemento->codigo} sin elaborar solo puede ir a grúas, no a {$maquinaDestino->codigo}"
+                    'message' => "Elemento {$elemento->codigo} (longitud " . ($elemento->longitud / 1000) . "m, sin dobleces) solo puede ir a grúas, no a {$maquinaDestino->codigo}"
                 ];
             }
         }

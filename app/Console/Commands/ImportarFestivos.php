@@ -40,14 +40,10 @@ class ImportarFestivos extends Command
         }
 
         // Festivos locales de Los Palacios
+        // NOTA: La Feria de Los Palacios tiene fecha variable cada año, añadir manualmente
         Festivo::updateOrCreate(
             ['fecha' => "$anio-08-05", 'anio' => $anio],
             ['titulo' => 'Festividad de Nuestra Señora de las Nieves', 'editable' => true]
-        );
-
-        Festivo::updateOrCreate(
-            ['fecha' => "$anio-09-25", 'anio' => $anio],
-            ['titulo' => 'Feria Los Palacios y Vfca', 'editable' => true]
         );
 
         $this->info("Festivos importados correctamente.");

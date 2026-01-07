@@ -39,17 +39,11 @@ class FestivoService
         }
 
         // Añade aquí tus festivos locales (ajústalos a tu municipio)
+        // NOTA: La Feria de Los Palacios tiene fecha variable cada año, añadir manualmente
         $festivosLocales = collect([
             [
                 'titulo' => 'Festividad de Nuestra Señora de las Nieves',
                 'fecha'  => "{$anio}-08-05",
-                'anio'   => $anio,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'titulo' => 'Feria Los Palacios y Vfca',
-                'fecha'  => "{$anio}-09-25",
                 'anio'   => $anio,
                 'created_at' => now(),
                 'updated_at' => now(),

@@ -8,35 +8,52 @@ use Carbon\Carbon;
 
 class FestivoController extends Controller
 {
+    public function index()
+    {
+        $anioActual = (int) date('Y');
+        $festivos = Festivo::orderBy('fecha', 'desc')->get();
+
+        return view('festivos.index', compact('festivos', 'anioActual'));
+    }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'fecha'  => 'required|date',           // 'Y-m-d'
+            'fecha'  => 'required|date',
             'titulo' => 'nullable|string|max:120',
         ]);
 
         $fecha = Carbon::parse($data['fecha'])->startOfDay();
-        $festivo = Festivo::updateOrCreate(
-            ['anio' => (int)$fecha->year, 'fecha' => $fecha->toDateString()],
-            ['titulo' => $data['titulo'] ?: 'Festivo']
-        );
-
-        return response()->json([
-            'ok' => true,
-            'festivo' => [
-                'id'     => $festivo->id,
-                'titulo' => $festivo->titulo,
-                'fecha'  => $festivo->fecha->toDateString(),
-                'anio'   => $festivo->anio,
-            ],
+        Festivo::create([
+            'fecha'  => $fecha->toDateString(),
+            'titulo' => $data['titulo'] ?: 'Festivo',
+            'anio'   => (int) $fecha->year,
         ]);
+
+        return redirect()->route('festivos.index')->with('success', 'Festivo creado correctamente.');
+    }
+
+    public function update(Request $request, Festivo $festivo)
+    {
+        $data = $request->validate([
+            'fecha'  => 'required|date',
+            'titulo' => 'nullable|string|max:120',
+        ]);
+
+        $fecha = Carbon::parse($data['fecha'])->startOfDay();
+        $festivo->update([
+            'fecha'  => $fecha->toDateString(),
+            'titulo' => $data['titulo'] ?: 'Festivo',
+            'anio'   => (int) $fecha->year,
+        ]);
+
+        return redirect()->route('festivos.index')->with('success', 'Festivo actualizado correctamente.');
     }
 
     public function actualizarFecha(Request $request, Festivo $festivo)
     {
         $data = $request->validate([
-            'fecha' => 'required|date', // formato 'Y-m-d'
+            'fecha' => 'required|date',
         ]);
 
         $nueva = Carbon::parse($data['fecha'])->startOfDay();
@@ -58,6 +75,6 @@ class FestivoController extends Controller
     {
         $festivo->delete();
 
-        return response()->json(['ok' => true]);
+        return redirect()->route('festivos.index')->with('success', 'Festivo eliminado correctamente.');
     }
 }

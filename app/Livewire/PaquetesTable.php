@@ -246,7 +246,8 @@ class PaquetesTable extends Component
             'nave',
             'ubicacion',
             'user',
-            'etiquetas'
+            'etiquetas',
+            'localizacionPaquete'
         ]);
 
         $query = $this->aplicarFiltros($query);

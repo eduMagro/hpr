@@ -14,6 +14,7 @@ use App\Services\OrdenPlanillaService;
 use App\Services\PlanillaImport\CodigoEtiqueta;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Helpers\ZobjetoParser;
 
 /**
  * Servicio de importación masiva optimizado para FerraWin.
@@ -173,14 +174,15 @@ class FerrawinBulkImportService
 
         $this->stats['planillas_creadas']++;
 
-        // 4. Agrupar elementos por etiqueta y crear bulk
-        $this->crearElementosBulk($planilla, $elementos);
-
-        // 4b. Crear entidades si vienen en los datos
+        // 4. Crear entidades PRIMERO (para poder vincular elementos)
         $entidades = $data["entidades"] ?? [];
+        $mapaEntidades = [];
         if (!empty($entidades)) {
-            $this->crearEntidades($planilla, $entidades);
+            $mapaEntidades = $this->crearEntidades($planilla, $entidades);
         }
+
+        // 5. Agrupar elementos por etiqueta y crear bulk (con mapa de entidades)
+        $this->crearElementosBulk($planilla, $elementos, $mapaEntidades);
 
         // 5. Asignar máquinas
         $this->asignador->repartirPlanilla($planilla->id);
@@ -197,8 +199,12 @@ class FerrawinBulkImportService
 
     /**
      * Crea elementos para una planilla (mismo sistema que importación manual).
+     *
+     * @param Planilla $planilla
+     * @param array $elementos
+     * @param array $mapaEntidades Mapa de linea normalizada -> planilla_entidad_id
      */
-    protected function crearElementosBulk(Planilla $planilla, array $elementos): void
+    protected function crearElementosBulk(Planilla $planilla, array $elementos, array $mapaEntidades = []): void
     {
         // Agrupar por número de etiqueta (igual que importación manual)
         $porEtiqueta = [];
@@ -228,7 +234,7 @@ class FerrawinBulkImportService
 
             // Crear elementos uno por uno (igual que importación manual)
             foreach ($filasEtiqueta as $elem) {
-                $this->crearElemento($planilla, $etiquetaPadre, $elem);
+                $this->crearElemento($planilla, $etiquetaPadre, $elem, $mapaEntidades);
             }
 
             Log::channel('ferrawin_sync')->debug("   ✅ Etiqueta {$etiquetaPadre->codigo} con " . count($filasEtiqueta) . " elementos");
@@ -290,34 +296,90 @@ class FerrawinBulkImportService
 
     /**
      * Crea un elemento individual (igual que PlanillaProcessor).
+     *
+     * @param Planilla $planilla
+     * @param Etiqueta $etiquetaPadre
+     * @param array $elem
+     * @param array $mapaEntidades Mapa de linea normalizada -> planilla_entidad_id
      */
-    protected function crearElemento(Planilla $planilla, Etiqueta $etiquetaPadre, array $elem): void
+    protected function crearElemento(Planilla $planilla, Etiqueta $etiquetaPadre, array $elem, array $mapaEntidades = []): void
     {
         $doblesBarra = (int)($elem['dobles_barra'] ?? 0);
         $barras = (int)($elem['barras'] ?? 0);
+        $longitud = (float)($elem['longitud'] ?? 0);
+
+        // Buscar planilla_entidad_id usando la fila del elemento
+        $planillaEntidadId = null;
+        $fila = isset($elem['fila']) ? trim($elem['fila']) : null;
+
+        // Convertir fila vacía a null
+        if ($fila === '' || $fila === null) {
+            $fila = null;
+        }
+
+        if ($fila !== null && !empty($mapaEntidades)) {
+            $filaNormalizada = (string)$fila;
+            $planillaEntidadId = $mapaEntidades[$filaNormalizada] ?? null;
+        }
+
+        // Determinar si requiere elaboración:
+        // - elaborado = 0: barra recta (dobles=0) con longitud igual a producto base (excluye 6m)
+        // - elaborado = 1: requiere corte o doblado
+        $elaborado = $this->requiereElaboracion($doblesBarra, $longitud) ? 1 : 0;
 
         Elemento::create([
             'codigo' => Elemento::generarCodigo(),
             'planilla_id' => $planilla->id,
+            'planilla_entidad_id' => $planillaEntidadId,
             'etiqueta_id' => $etiquetaPadre->id,
             'etiqueta_sub_id' => null,
             'maquina_id' => null,
             'figura' => $elem['figura'] ?? null,
-            'fila' => $elem['fila'] ?? null,
+            'fila' => $fila,
             'marca' => $elem['marca'] ?? null,
             'etiqueta' => $elem['etiqueta'] ?? null,
             'diametro' => (int)($elem['diametro'] ?? 0),
-            'longitud' => (float)($elem['longitud'] ?? 0),
+            'longitud' => $longitud,
             'barras' => $barras,
             'dobles_barra' => $doblesBarra,
             'peso' => (float)($elem['peso'] ?? 0),
             'dimensiones' => $elem['dimensiones'] ?? null,
             'tiempo_fabricacion' => $this->calcularTiempo($barras, $doblesBarra),
             'estado' => 'pendiente',
-            'elaborado' => $doblesBarra > 0 ? 1 : 0,
+            'elaborado' => $elaborado,
         ]);
 
         $this->stats['elementos_creados']++;
+    }
+
+    /**
+     * Determina si un elemento requiere elaboración (corte/doblado).
+     *
+     * NO requiere elaboración (va a grúa) si:
+     * - dobles_barra = 0 (barra recta)
+     * - longitud coincide con longitud de producto base (excluyendo 6m)
+     *
+     * Longitudes base válidas para grúa: 12, 14, 15, 16 metros (en mm: 12000, 14000, 15000, 16000)
+     */
+    protected function requiereElaboracion(int $doblesBarra, float $longitudMm): bool
+    {
+        // Si tiene dobleces, siempre requiere elaboración
+        if ($doblesBarra > 0) {
+            return true;
+        }
+
+        // Longitudes de productos base en mm (excluyendo 6m = 6000mm)
+        $longitudesBaseGrua = [12000, 14000, 15000, 16000];
+
+        // Tolerancia de 10mm para comparación
+        foreach ($longitudesBaseGrua as $longitudBase) {
+            if (abs($longitudMm - $longitudBase) <= 10) {
+                return false; // No requiere elaboración, va a grúa
+            }
+        }
+
+        // Cualquier otra longitud requiere corte
+        return true;
     }
 
     /**
@@ -512,17 +574,22 @@ class FerrawinBulkImportService
 
     /**
      * Crea las entidades/ensamblajes de una planilla.
+     *
+     * @return array Mapa de linea normalizada -> planilla_entidad_id
      */
-    protected function crearEntidades(Planilla $planilla, array $entidades): void
+    protected function crearEntidades(Planilla $planilla, array $entidades): array
     {
         if (empty($entidades)) {
-            return;
+            return [];
         }
 
         $now = now();
         $entidadesInsert = [];
 
         foreach ($entidades as $entidad) {
+            // Construir datos de dibujo a partir de los elementos de composición
+            $dibujoData = $this->construirDibujoData($entidad);
+
             $entidadesInsert[] = [
                 "planilla_id" => $planilla->id,
                 "linea" => $entidad["linea"] ?? null,
@@ -538,6 +605,7 @@ class FerrawinBulkImportService
                 "total_estribos" => $entidad["resumen"]["total_estribos"] ?? 0,
                 "composicion" => json_encode($entidad["composicion"] ?? []),
                 "distribucion" => json_encode($entidad["distribucion"] ?? []),
+                "dibujo_data" => json_encode($dibujoData),
                 "created_at" => $now,
                 "updated_at" => $now,
             ];
@@ -551,5 +619,95 @@ class FerrawinBulkImportService
         $this->stats["entidades_creadas"] = ($this->stats["entidades_creadas"] ?? 0) + count($entidadesInsert);
 
         Log::channel("ferrawin_sync")->debug("   [BULK] " . count($entidadesInsert) . " entidades creadas para planilla " . $planilla->codigo);
+
+        // Construir mapa de linea normalizada -> id
+        $mapaEntidades = [];
+        $entidadesCreadas = PlanillaEntidad::where('planilla_id', $planilla->id)->get();
+
+        foreach ($entidadesCreadas as $entidad) {
+            $lineaNormalizada = ltrim($entidad->linea, '0');
+            if (empty($lineaNormalizada)) {
+                $lineaNormalizada = '0';
+            }
+            $mapaEntidades[$lineaNormalizada] = $entidad->id;
+        }
+
+        return $mapaEntidades;
+    }
+
+    /**
+     * Construye los datos de dibujo a partir de la entidad.
+     *
+     * Procesa los campos ZOBJETO y ZFIGURA de cada elemento para extraer
+     * coordenadas y parámetros de representación gráfica.
+     */
+    protected function construirDibujoData(array $entidad): array
+    {
+        $dibujoData = [
+            'elementos' => [],
+            'canvas' => [
+                'width' => 0,
+                'height' => 0,
+            ],
+        ];
+
+        $maxWidth = 0;
+        $maxHeight = 0;
+
+        // Procesar barras
+        $barras = $entidad['composicion']['barras'] ?? [];
+        foreach ($barras as $index => $barra) {
+            $zobjeto = $barra['zobjeto'] ?? null;
+            $figura = $barra['figura'] ?? null;
+
+            $elementoDibujo = ZobjetoParser::buildDibujoData($zobjeto, $figura, [
+                'tipo' => 'barra',
+                'index' => $index,
+                'diametro' => $barra['diametro'] ?? null,
+                'cantidad' => $barra['cantidad'] ?? 1,
+                'longitud' => $barra['longitud'] ?? null,
+                'dobleces' => 0,
+            ]);
+
+            // Actualizar dimensiones máximas del canvas
+            if (($elementoDibujo['canvas']['width'] ?? 0) > $maxWidth) {
+                $maxWidth = $elementoDibujo['canvas']['width'];
+            }
+            if (($elementoDibujo['canvas']['height'] ?? 0) > $maxHeight) {
+                $maxHeight = $elementoDibujo['canvas']['height'];
+            }
+
+            $dibujoData['elementos'][] = $elementoDibujo;
+        }
+
+        // Procesar estribos
+        $estribos = $entidad['composicion']['estribos'] ?? [];
+        foreach ($estribos as $index => $estribo) {
+            $zobjeto = $estribo['zobjeto'] ?? null;
+            $figura = $estribo['figura'] ?? null;
+
+            $elementoDibujo = ZobjetoParser::buildDibujoData($zobjeto, $figura, [
+                'tipo' => 'estribo',
+                'index' => $index,
+                'diametro' => $estribo['diametro'] ?? null,
+                'cantidad' => $estribo['cantidad'] ?? 1,
+                'longitud' => $estribo['longitud'] ?? null,
+                'dobleces' => $estribo['dobleces'] ?? 0,
+            ]);
+
+            if (($elementoDibujo['canvas']['width'] ?? 0) > $maxWidth) {
+                $maxWidth = $elementoDibujo['canvas']['width'];
+            }
+            if (($elementoDibujo['canvas']['height'] ?? 0) > $maxHeight) {
+                $maxHeight = $elementoDibujo['canvas']['height'];
+            }
+
+            $dibujoData['elementos'][] = $elementoDibujo;
+        }
+
+        $dibujoData['canvas']['width'] = $maxWidth;
+        $dibujoData['canvas']['height'] = $maxHeight;
+
+        return $dibujoData;
     }
 }

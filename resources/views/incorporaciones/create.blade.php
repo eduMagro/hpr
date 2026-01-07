@@ -24,28 +24,15 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         Empresa destino <span class="text-red-500">*</span>
                     </label>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <label class="relative flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition
-                            {{ old('empresa_destino') === 'hpr_servicios' ? 'border-purple-500 bg-purple-50' : 'border-gray-200' }}">
-                            <input type="radio" name="empresa_destino" value="hpr_servicios"
-                                class="sr-only" {{ old('empresa_destino') === 'hpr_servicios' ? 'checked' : '' }}
-                                onchange="this.closest('form').querySelectorAll('label[class*=border]').forEach(l => l.classList.remove('border-purple-500', 'bg-purple-50', 'border-indigo-500', 'bg-indigo-50')); this.closest('label').classList.add('border-purple-500', 'bg-purple-50')">
-                            <div>
-                                <div class="font-medium text-gray-900">HPR Servicios</div>
-                                <div class="text-sm text-gray-500">Trabajo en obra</div>
-                            </div>
-                        </label>
-                        <label class="relative flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition
-                            {{ old('empresa_destino') === 'hierros_paco_reyes' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200' }}">
-                            <input type="radio" name="empresa_destino" value="hierros_paco_reyes"
-                                class="sr-only" {{ old('empresa_destino') === 'hierros_paco_reyes' ? 'checked' : '' }}
-                                onchange="this.closest('form').querySelectorAll('label[class*=border]').forEach(l => l.classList.remove('border-purple-500', 'bg-purple-50', 'border-indigo-500', 'bg-indigo-50')); this.closest('label').classList.add('border-indigo-500', 'bg-indigo-50')">
-                            <div>
-                                <div class="font-medium text-gray-900">Hierros Paco Reyes</div>
-                                <div class="text-sm text-gray-500">Trabajo en nave</div>
-                            </div>
-                        </label>
-                    </div>
+                    <select name="empresa_destino" required
+                        class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">-- Seleccionar empresa --</option>
+                        @foreach($empresas as $empresa)
+                            <option value="{{ $empresa->id }}" {{ old('empresa_destino') == $empresa->id ? 'selected' : '' }}>
+                                {{ $empresa->nombre }}
+                            </option>
+                        @endforeach
+                    </select>
                     @error('empresa_destino')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror

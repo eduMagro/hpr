@@ -71,6 +71,14 @@ class EtiquetaEnsamblaje extends Model
     }
 
     /**
+     * Relación con los elementos asignados a esta etiqueta de ensamblaje
+     */
+    public function elementos()
+    {
+        return $this->hasMany(Elemento::class, 'etiqueta_ensamblaje_id');
+    }
+
+    /**
      * Genera el código de etiqueta
      * Formato: ENS-{MARCA}-{ID_ENTIDAD}-{N}/{TOTAL}
      */

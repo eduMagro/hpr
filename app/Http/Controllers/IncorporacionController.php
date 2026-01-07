@@ -12,6 +12,10 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\IncorporacionPendienteCeoMail;
 use App\Mail\IncorporacionAprobadaCeoMail;
+use App\Models\Empresa;
+use App\Models\Categoria;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -62,18 +66,20 @@ class IncorporacionController extends Controller
             'completadas' => Incorporacion::where('estado', 'completada')->count(),
         ];
 
-        return view('incorporaciones.index', compact('incorporaciones', 'stats'));
+        $empresas = Empresa::orderBy('nombre')->get();
+        return view('incorporaciones.index', compact('incorporaciones', 'stats', 'empresas'));
     }
 
     public function create()
     {
-        return view('incorporaciones.create');
+        $empresas = Empresa::orderBy('nombre')->get();
+        return view('incorporaciones.create', compact('empresas'));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'empresa_destino' => 'required|in:hpr_servicios,hierros_paco_reyes',
+            'empresa_destino' => 'required|exists:empresas,id',
             'name' => 'required|string|max:255',
             'primer_apellido' => 'nullable|string|max:255',
             'segundo_apellido' => 'nullable|string|max:255',
@@ -446,6 +452,22 @@ class IncorporacionController extends Controller
             ], 422);
         }
 
+        // Verificar que la incorporación tenga los datos necesarios para crear el usuario
+        if (!$incorporacion->dni || !$incorporacion->email) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La incorporación no tiene los datos completos (DNI o email). El candidato debe completar el formulario primero.',
+            ], 422);
+        }
+
+        // Crear el usuario si no existe aún
+        $usuario = null;
+        if (!$incorporacion->user_id) {
+            $usuario = $this->crearUsuarioDesdeIncorporacion($incorporacion);
+            $incorporacion->update(['user_id' => $usuario->id]);
+            $incorporacion->registrarLog('usuario_creado', "Usuario creado: {$usuario->nombre_completo} (ID: {$usuario->id})");
+        }
+
         $incorporacion->update([
             'aprobado_ceo' => true,
             'aprobado_ceo_at' => now(),
@@ -460,9 +482,59 @@ class IncorporacionController extends Controller
         // Enviar email a usuarios de RRHH
         $this->enviarEmailARrhh($incorporacion, $usuariosRrhh);
 
+        $mensaje = 'Incorporación aprobada. Se ha notificado a RRHH.';
+        if ($usuario) {
+            $mensaje .= " Usuario creado: {$usuario->nombre_completo}";
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'Incorporación aprobada. Se ha notificado a RRHH.',
+            'message' => $mensaje,
+        ]);
+    }
+
+    /**
+     * Crear usuario a partir de los datos de la incorporación
+     */
+    private function crearUsuarioDesdeIncorporacion(Incorporacion $incorporacion): User
+    {
+        $dni = strtoupper($incorporacion->dni);
+
+        // Verificar si ya existe un usuario con este DNI
+        $usuarioExistente = User::withoutGlobalScopes()->where('dni', $dni)->first();
+        if ($usuarioExistente) {
+            if ($usuarioExistente->estado !== 'activo') {
+                $usuarioExistente->update(['estado' => 'activo']);
+            }
+            return $usuarioExistente;
+        }
+
+        // empresa_destino ya almacena el ID de la empresa
+        $empresaId = $incorporacion->empresa_destino;
+
+        // Obtener categoría por defecto
+        $categoriaId = Categoria::first()?->id ?? 1;
+
+        // Contraseña: DNI sin la letra (los 8 primeros caracteres numéricos)
+        $password = preg_replace('/[^0-9]/', '', $dni);
+
+        Log::info('Creando usuario desde aprobación CEO', [
+            'incorporacion_id' => $incorporacion->id,
+            'nombre' => $incorporacion->name,
+            'dni' => $dni,
+        ]);
+
+        return User::create([
+            'name' => $incorporacion->name,
+            'primer_apellido' => $incorporacion->primer_apellido,
+            'segundo_apellido' => $incorporacion->segundo_apellido,
+            'dni' => $dni,
+            'email' => strtolower($incorporacion->email),
+            'movil_personal' => $incorporacion->telefono,
+            'password' => Hash::make($password),
+            'empresa_id' => $empresaId,
+            'categoria_id' => $categoriaId,
+            'estado' => 'activo',
         ]);
     }
 

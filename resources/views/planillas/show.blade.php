@@ -178,18 +178,21 @@
         </div>
     </div>
     {{-- === Variables que LEE canvasMaquina.js === --}}
-    <script data-navigate-reload>
-        // 👇 ESTE nombre es el que usa canvasMaquina.js
+    <script>
+        // Datos para canvasMaquina.js
         window.elementosAgrupadosScript = @json($elementosAgrupadosScript);
-        // otros datasets opcionales que tu script pudiera consultar:
         window.pesosElementos = @json($pesosElementos ?? []);
         window.SUGERENCIAS = window.SUGERENCIAS || {};
 
         // Función para renderizar todas las etiquetas de esta planilla
         window._renderizarEtiquetasPlanilla = function() {
             const grupos = window.elementosAgrupadosScript;
-            if (!grupos || !window.renderizarGrupoSVG) return;
+            if (!grupos || !window.renderizarGrupoSVG) {
+                console.log('Esperando renderizarGrupoSVG...');
+                return false;
+            }
 
+            console.log('Renderizando', grupos.length, 'grupos de etiquetas');
             grupos.forEach(function(grupo, gidx) {
                 window.renderizarGrupoSVG(grupo, gidx);
             });
@@ -198,25 +201,65 @@
             document.querySelectorAll('.proceso').forEach(el => {
                 el.style.opacity = '1';
             });
+            return true;
         };
-
-        // Ejecutar inmediatamente si canvasMaquina.js ya está cargado (navegación SPA)
-        // DOMContentLoaded no se dispara en navegación SPA, así que necesitamos esto
-        if (window.renderizarGrupoSVG && document.readyState !== 'loading') {
-            setTimeout(window._renderizarEtiquetasPlanilla, 100);
-        }
     </script>
 
-    {{-- Solo los JS necesarios. Ojo al orden: datasets -> canvasMaquina --}}
-    <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}" data-navigate-reload></script>
+    {{-- canvasMaquina.js define renderizarGrupoSVG --}}
+    <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
 
-    {{-- Fallback: si canvasMaquina.js se acaba de cargar, renderizar ahora --}}
-    <script data-navigate-reload>
-        // Este script se ejecuta DESPUÉS de canvasMaquina.js
-        // Si DOMContentLoaded ya pasó (navegación SPA), renderizar manualmente
-        if (document.readyState !== 'loading' && window._renderizarEtiquetasPlanilla) {
-            setTimeout(window._renderizarEtiquetasPlanilla, 150);
-        }
+    {{-- Inicialización robusta para SPA y carga normal --}}
+    <script>
+        (function() {
+            let intentos = 0;
+            const maxIntentos = 30;
+
+            function inicializarEtiquetas() {
+                // Verificar que canvasMaquina.js esté cargado (define renderizarGrupoSVG)
+                if (!window.renderizarGrupoSVG) {
+                    intentos++;
+                    if (intentos < maxIntentos) {
+                        setTimeout(inicializarEtiquetas, 100);
+                    }
+                    return;
+                }
+
+                // Verificar que los contenedores DOM existan
+                const contenedores = document.querySelectorAll('.proceso');
+                if (contenedores.length === 0) {
+                    intentos++;
+                    if (intentos < maxIntentos) {
+                        setTimeout(inicializarEtiquetas, 100);
+                    }
+                    return;
+                }
+
+                // Ya está todo disponible, renderizar
+                if (window._renderizarEtiquetasPlanilla) {
+                    window._renderizarEtiquetasPlanilla();
+                }
+            }
+
+            // Resetear contador al navegar
+            function onNavegar() {
+                intentos = 0;
+                setTimeout(inicializarEtiquetas, 100);
+            }
+
+            // Ejecutar ahora si el DOM está listo
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                setTimeout(inicializarEtiquetas, 100);
+            }
+
+            // También en DOMContentLoaded (carga normal)
+            document.addEventListener('DOMContentLoaded', function() {
+                intentos = 0;
+                inicializarEtiquetas();
+            });
+
+            // Para navegación SPA de Livewire
+            document.addEventListener('livewire:navigated', onNavegar);
+        })();
     </script>
     <script src="{{ asset('js/imprimirQrS.js') }}"></script>
 

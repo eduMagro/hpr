@@ -1,5 +1,16 @@
 # Sistema de Sincronizacion FerraWin - Manager
 
+> **IMPORTANTE - DONDE SE EJECUTA**
+>
+> El script `ferrawin-sync` **DEBE ejecutarse desde un equipo en la red local** donde está FerraWin.
+> **NO puede ejecutarse desde el hosting compartido** porque FerraWin (192.168.0.7) es una IP privada
+> inaccesible desde internet.
+>
+> ```
+> Hosting compartido ──X──> FerraWin (192.168.0.7)  ← NO FUNCIONA
+> Servidor oficina ──────> FerraWin (192.168.0.7)  ← CORRECTO
+> ```
+
 ## Indice
 
 1. [Descripcion General](#descripcion-general)
@@ -774,3 +785,174 @@ php sync_codigos.php 2025-008690 2025-008693 2025-008437
 2. **Mejorar parseo de cotas** - Extraer dimensiones numericas del string de cotas
 3. **Agregar indicadores de angulo** - Mostrar los angulos de doblado en el SVG
 4. **Soporte para radios** - El campo `tipo: 'radio'` esta preparado pero no renderizado
+
+---
+
+## Configuracion en Servidor de Oficina (Actualizado 2026-01-05)
+
+### Por que el servidor local
+
+El **hosting compartido NO puede acceder a FerraWin** porque:
+- FerraWin usa IP privada (192.168.0.7) solo accesible desde la red local
+- El hosting está en internet, fuera de la red de la oficina
+- No hay VPN configurada entre el hosting y la red local
+
+**Solucion:** Ejecutar `ferrawin-sync` desde el **servidor de la oficina** que:
+- Está siempre encendido
+- Tiene acceso a FerraWin (misma red)
+- Tiene acceso a internet (para enviar al hosting)
+
+### Configurar Task Scheduler en el servidor
+
+**Opcion 1: Usar el script automático**
+```batch
+cd C:\xampp\htdocs\ferrawin-sync
+create-task.bat
+```
+Esto crea una tarea que ejecuta sync.php a las 14:00 diariamente.
+
+**Opcion 2: Configuración manual**
+
+1. Abrir Task Scheduler (taskschd.msc)
+2. Crear tarea básica:
+   - **Nombre:** FerraWin Sync
+   - **Trigger:** Diariamente a las 14:00
+   - **Acción:** Iniciar programa
+   - **Programa:** `C:\xampp\php\php.exe`
+   - **Argumentos:** `C:\xampp\htdocs\ferrawin-sync\sync.php`
+   - **Iniciar en:** `C:\xampp\htdocs\ferrawin-sync`
+
+3. Propiedades avanzadas:
+   - [x] Ejecutar tanto si el usuario inició sesión como si no
+   - [x] Ejecutar con privilegios más altos
+
+### Verificar que funciona
+
+```bash
+cd C:\xampp\htdocs\ferrawin-sync
+
+# Probar conexiones
+php test-connection.php
+
+# Prueba rápida (2 planillas, sin enviar)
+php sync.php --test 2 --dry-run
+
+# Sincronización real de prueba
+php sync.php --test 2
+```
+
+### Requisitos del servidor
+
+- PHP 8.1+ con extensiones:
+  - `pdo_sqlsrv` (driver SQL Server)
+  - `curl`
+  - `mbstring`
+  - `json`
+- Acceso red a 192.168.0.7:1433 (FerraWin)
+- Acceso internet HTTPS (hosting)
+
+### Verificar extensión sqlsrv
+
+```bash
+php -m | findstr sqlsrv
+```
+
+Si no aparece, instalar drivers:
+1. Descargar de https://docs.microsoft.com/en-us/sql/connect/php/download-drivers-php-sql-server
+2. Copiar DLLs a `C:\xampp\php\ext\`
+3. Agregar a `php.ini`:
+   ```ini
+   extension=php_sqlsrv_82_nts_x64.dll
+   extension=php_pdo_sqlsrv_82_nts_x64.dll
+   ```
+
+---
+
+## RECORDATORIO - ULTIMO TRABAJO (2026-01-05)
+
+### Sistema de Ensamblaje - Lo que se hizo hoy:
+
+1. **Etiqueta completamente en Blanco y Negro**
+   - Vista 3D: strokes negros, fills blancos, opacidad para profundidad
+   - Seccion transversal: B&W con letra en cada barra
+   - Leyenda: todos los textos y formas en negro
+
+2. **Modal de Mapa de Ubicacion**
+   - Al hacer clic en un elemento de la leyenda (con icono azul 📍), se abre modal
+   - Modal muestra mapa de la nave con el paquete destacado (pulsando en azul)
+   - Auto-scroll al paquete seleccionado
+   - Icono solo aparece si el paquete tiene localizacion asignada
+
+3. **Cotas/Dimensiones en la Leyenda**
+   - Altura de leyenda aumentada de 50px a 60px
+   - Nueva linea con dimensiones debajo de la forma del elemento
+   - Funcion `formatearCotasLegible()` para convertir formato FerraWin a legible:
+     - Estribos: "25×30"
+     - Barras dobladas: "5+320+5"
+   - Dimensiones se obtienen del campo `$elemento->dimensiones`
+
+4. **Correccion de Unidades**
+   - `longitud_ensamblaje` y `elemento.longitud` estan en **milimetros (mm)**, no cm
+   - Header: `/ 1000` para convertir a metros
+   - `$longitudCm`: `/ 10` para convertir mm a cm
+   - Lista de elementos: `/ 1000` para metros
+   - Leyenda SVG: `/ 1000` para metros
+
+### Archivos modificados:
+
+- `app/Helpers/SvgBarraHelper.php`:
+  - `renderizarLeyenda()` - elementos clickeables, icono ubicacion, cotas
+  - `formatearCotasLegible()` - nueva funcion para formatear dimensiones
+  - `renderizarVista3D()` - B&W con opacidad
+  - `renderizarSeccionDetallada()` - B&W con letra en cada barra
+
+- `resources/views/components/entidad/ensamblaje.blade.php`:
+  - Modal de ubicacion con mapa dinamico
+  - JavaScript para cargar mapa via API y resaltar paquete
+  - Correccion de unidades (mm → m)
+  - Variable `$ubicacionesParaJS` para datos de ubicacion
+
+### Estructura de la etiqueta actual:
+
+```
++---------------------------+-------------------+
+|    VISTA 3D ISOMETRICA    |     SECCION       |
+|    (barras y estribos     |   TRANSVERSAL     |
+|     en perspectiva)       | (con letras A,B,C)|
+|    L = 3.20m              |   32×30 cm        |
+|    Estribos c/15cm        |                   |
++---------------------------+-------------------+
+|              LEYENDA ELEMENTOS                |
+| (A) 📍        | (B) 📍        | (C) 📍        |
+|  [forma]      |  [forma]      |  [forma]      |
+|  5+320+5      |  340          |  25×30        |  ← COTAS
+| 4×Ø16 3.4m   | 4×Ø12 3.4m   | 10×Ø8 c/15    |
++-----------------------------------------------+
+```
+
+### Flujo de ubicacion:
+
+```
+Usuario hace clic en elemento con 📍
+         ↓
+JavaScript detecta data-tiene-ubicacion="1"
+         ↓
+Abre modal y llama a /api/mapa-nave/{naveId}
+         ↓
+Renderiza mapa con zonas, maquinas, paquetes
+         ↓
+Paquete correspondiente parpadea en azul
+         ↓
+Auto-scroll centra el paquete en vista
+```
+
+### Pendiente:
+
+1. **Probar impresion** - Verificar que B&W se imprime correctamente
+2. **Configurar Task Scheduler** en servidor de oficina
+3. **Limpiar datos de prueba** cuando no se necesiten:
+   ```php
+   Elemento::where('codigo', 'like', 'TEST-ENS-%')->delete();
+   ```
+
+---

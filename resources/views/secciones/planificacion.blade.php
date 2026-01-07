@@ -23,6 +23,16 @@
                     </div>
                 </a>
 
+                <a href="{{ route('produccion.maquinasEnsamblaje') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                    <div class="bg-gradient-to-br from-orange-500 to-orange-600 p-6 text-center">
+                        <span class="text-6xl">🔧</span>
+                    </div>
+                    <div class="p-4 text-center">
+                        <h3 class="font-bold text-gray-800 group-hover:text-orange-600 transition">Planificación Ensamblaje</h3>
+                        <p class="text-xs text-gray-500 mt-1">Control de ensambladoras</p>
+                    </div>
+                </a>
+
                 <a href="{{ route('planificacion.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-purple-500 to-purple-600 p-6 text-center">
                         <span class="text-6xl">🚚</span>

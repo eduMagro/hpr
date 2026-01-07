@@ -32,6 +32,7 @@ class PlanillaEntidad extends Model
         'total_estribos',
         'composicion',
         'distribucion',
+        'dibujo_data',
     ];
 
     protected $casts = [
@@ -43,6 +44,7 @@ class PlanillaEntidad extends Model
         'total_estribos' => 'integer',
         'composicion' => 'array',
         'distribucion' => 'array',
+        'dibujo_data' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -62,6 +64,14 @@ class PlanillaEntidad extends Model
     public function etiquetasEnsamblaje()
     {
         return $this->hasMany(EtiquetaEnsamblaje::class, 'planilla_entidad_id');
+    }
+
+    /**
+     * Relación con los elementos que componen esta entidad.
+     */
+    public function elementos()
+    {
+        return $this->hasMany(Elemento::class, 'planilla_entidad_id');
     }
 
     /**
@@ -130,5 +140,83 @@ class PlanillaEntidad extends Model
         }
 
         return implode(' + ', $partes) ?: 'Sin distribución';
+    }
+
+    /**
+     * Relación con las órdenes de ensamblaje.
+     */
+    public function ordenesEnsamblaje()
+    {
+        return $this->hasMany(OrdenPlanillaEnsamblaje::class, 'planilla_entidad_id');
+    }
+
+    /**
+     * Verifica si la entidad tiene todos sus elementos fabricados.
+     * Una entidad está "lista" cuando todos sus elementos tienen estado 'fabricado' o 'completado'.
+     */
+    public function listaParaEnsamblaje(): bool
+    {
+        $totalElementos = $this->elementos()->count();
+
+        // Si no tiene elementos asignados, no está lista
+        if ($totalElementos === 0) {
+            return false;
+        }
+
+        $elementosFabricados = $this->elementos()
+            ->whereIn('estado', ['fabricado', 'completado'])
+            ->count();
+
+        return $elementosFabricados >= $totalElementos;
+    }
+
+    /**
+     * Obtiene el número de elementos fabricados vs total.
+     */
+    public function getElementosFabricadosAttribute(): array
+    {
+        $total = $this->elementos()->count();
+        $fabricados = $this->elementos()
+            ->whereIn('estado', ['fabricado', 'completado'])
+            ->count();
+
+        return [
+            'fabricados' => $fabricados,
+            'total' => $total,
+            'porcentaje' => $total > 0 ? round(($fabricados / $total) * 100, 1) : 0,
+            'listo' => $total > 0 && $fabricados >= $total,
+        ];
+    }
+
+    /**
+     * Scope: Solo entidades listas para ensamblaje.
+     */
+    public function scopeListasParaEnsamblaje($query)
+    {
+        return $query->whereHas('elementos', function ($q) {
+            $q->whereIn('estado', ['fabricado', 'completado']);
+        })->whereDoesntHave('elementos', function ($q) {
+            $q->whereNotIn('estado', ['fabricado', 'completado']);
+        });
+    }
+
+    /**
+     * Scope: Entidades con al menos un elemento fabricado.
+     */
+    public function scopeConElementosFabricados($query)
+    {
+        return $query->whereHas('elementos', function ($q) {
+            $q->whereIn('estado', ['fabricado', 'completado']);
+        });
+    }
+
+    /**
+     * Scope: Entidades sin orden de ensamblaje asignada.
+     */
+    public function scopeSinOrdenEnsamblaje($query, int $maquinaId)
+    {
+        return $query->whereDoesntHave('ordenesEnsamblaje', function ($q) use ($maquinaId) {
+            $q->where('maquina_id', $maquinaId);
+        });
     }
 }
