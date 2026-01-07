@@ -34,6 +34,9 @@ use App\Services\AsignarMaquinaService;
 use App\Services\PlanillaColaService;
 use App\Services\ActionLoggerService;
 use App\Models\GrupoResumen;
+use App\Models\EtiquetaEnsamblaje;
+use App\Models\PlanillaEntidad;
+use App\Models\OrdenPlanillaEnsamblaje;
 
 class MaquinaController extends Controller
 {
@@ -190,6 +193,17 @@ class MaquinaController extends Controller
                 $base,
                 ['maquina' => $maquina],
                 $grua
+            ));
+        }
+
+        // 1.5) Rama ENSAMBLADORA: cargar contexto específico de ensamblaje
+        if ($this->esEnsambladora($maquina)) {
+            $base = $this->cargarContextoBase($maquina);
+            $ensambladora = $this->cargarContextoEnsambladora($maquina);
+            return view('maquinas.show', array_merge(
+                $base,
+                ['maquina' => $maquina],
+                $ensambladora
             ));
         }
 
@@ -660,7 +674,12 @@ class MaquinaController extends Controller
         return stripos((string)$m->tipo, 'grua') !== false || stripos((string)$m->nombre, 'grua') !== false;
     }
 
-    // Si tienes un campo explícito para “segunda” úsalo aquí.
+    private function esEnsambladora(Maquina $m): bool
+    {
+        return stripos((string)$m->tipo, 'ensambladora') !== false || stripos((string)$m->nombre, 'ensambladora') !== false;
+    }
+
+    // Si tienes un campo explícito para "segunda" úsalo aquí.
     // Por defecto asumo “segunda” = máquinas que trabajan como post-proceso, p.ej. ensambladora.
     private function esSegundaMaquina(Maquina $m): bool
     {
@@ -810,6 +829,89 @@ class MaquinaController extends Controller
             'ubicacionesPorSector'                  => $ubicacionesPorSector,
             'sectores'                              => $sectores,
             'sectorPorDefecto'                      => $sectorPorDefecto,
+        ];
+    }
+
+    /**
+     * Carga el contexto específico para máquinas ensambladoras.
+     * Usa la tabla orden_planillas_ensamblaje que ordena entidades individuales.
+     */
+    private function cargarContextoEnsambladora(Maquina $maquina): array
+    {
+        // Obtener entidades de la cola de ensamblaje (ordenadas por posición)
+        $ordenesEnsamblaje = OrdenPlanillaEnsamblaje::with([
+                'entidad.planilla.obra',
+                'entidad.planilla.cliente',
+                'entidad.etiquetasEnsamblaje.operario',
+                'entidad.elementos'
+            ])
+            ->where('maquina_id', $maquina->id)
+            ->whereIn('estado', ['pendiente', 'en_proceso'])
+            ->orderBy('posicion', 'asc')
+            ->take(5) // Máximo 5 entidades en vista
+            ->get();
+
+        // Filtrar solo entidades con todos elementos fabricados
+        $ordenesListos = $ordenesEnsamblaje->filter(function ($orden) {
+            return $orden->entidad && $orden->entidad->listaParaEnsamblaje();
+        });
+
+        // Obtener las entidades
+        $entidadesActivas = $ordenesListos->map(fn($orden) => $orden->entidad)->values();
+
+        // Obtener planillas únicas de las entidades activas
+        $planillasActivas = $entidadesActivas
+            ->pluck('planilla')
+            ->filter()
+            ->unique('id')
+            ->values();
+
+        // Obtener etiquetas de ensamblaje de las entidades activas
+        $entidadIds = $entidadesActivas->pluck('id');
+        $etiquetasEnsamblaje = EtiquetaEnsamblaje::with(['entidad', 'planilla', 'operario'])
+            ->whereIn('planilla_entidad_id', $entidadIds)
+            ->whereIn('estado', ['pendiente', 'en_proceso'])
+            ->orderBy('planilla_entidad_id')
+            ->orderBy('numero_unidad')
+            ->get();
+
+        // Agrupar etiquetas
+        $etiquetasPorPlanilla = $etiquetasEnsamblaje->groupBy('planilla_id');
+        $etiquetasPorEntidad = $etiquetasEnsamblaje->groupBy('planilla_entidad_id');
+
+        // Estadísticas
+        $totalEtiquetasPendientes = $etiquetasEnsamblaje->where('estado', 'pendiente')->count();
+        $totalEtiquetasEnProceso = $etiquetasEnsamblaje->where('estado', 'en_proceso')->count();
+        $totalCompletadas = EtiquetaEnsamblaje::whereIn('planilla_entidad_id', $entidadIds)
+            ->where('estado', 'completada')
+            ->count();
+
+        // Elementos fabricados de las entidades activas
+        $elementosFabricados = Elemento::with(['entidad', 'planilla'])
+            ->whereIn('planilla_entidad_id', $entidadIds)
+            ->whereIn('estado', ['fabricado', 'completado'])
+            ->get();
+
+        $elementosPorDiametro = $elementosFabricados->groupBy('diametro')->sortKeys();
+
+        // Órdenes con estado de elementos para mostrar progreso
+        $ordenesConEstado = $ordenesEnsamblaje->map(function ($orden) {
+            $orden->estado_elementos = $orden->entidad?->elementos_fabricados ?? [];
+            return $orden;
+        });
+
+        return [
+            'planillasActivas'          => $planillasActivas,
+            'entidadesActivas'          => $entidadesActivas,
+            'ordenesEnsamblaje'         => $ordenesConEstado,
+            'etiquetasEnsamblaje'       => $etiquetasEnsamblaje,
+            'etiquetasPorPlanilla'      => $etiquetasPorPlanilla,
+            'etiquetasPorEntidad'       => $etiquetasPorEntidad,
+            'elementosFabricados'       => $elementosFabricados,
+            'elementosPorDiametro'      => $elementosPorDiametro,
+            'totalEtiquetasPendientes'  => $totalEtiquetasPendientes,
+            'totalEtiquetasEnProceso'   => $totalEtiquetasEnProceso,
+            'totalCompletadas'          => $totalCompletadas,
         ];
     }
 

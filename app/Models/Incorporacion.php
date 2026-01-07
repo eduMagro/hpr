@@ -63,9 +63,6 @@ class Incorporacion extends Model
     const ESTADO_COMPLETADA = 'completada';
     const ESTADO_CANCELADA = 'cancelada';
 
-    // Empresas
-    const EMPRESA_HPR = 'hpr_servicios';
-    const EMPRESA_HIERROS = 'hierros_paco_reyes';
 
     // Tipos de documentos post-incorporación
     const DOCUMENTOS_POST = [
@@ -142,6 +139,11 @@ class Incorporacion extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function empresa()
+    {
+        return $this->belongsTo(Empresa::class, 'empresa_destino');
+    }
+
     // Accessors
     public function getNombreCompletoAttribute()
     {
@@ -155,9 +157,7 @@ class Incorporacion extends Model
 
     public function getEmpresaNombreAttribute()
     {
-        return $this->empresa_destino === self::EMPRESA_HPR
-            ? 'HPR Servicios'
-            : 'Hierros Paco Reyes';
+        return $this->empresa?->nombre ?? 'Sin empresa';
     }
 
     public function getEstadoBadgeAttribute()

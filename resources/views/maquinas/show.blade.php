@@ -12,7 +12,7 @@
             </h2>
 
             <div class="flex flex-wrap items-center gap-4">
-                @if ($maquina->tipo !== 'grua')
+                @if ($maquina->tipo !== 'grua' && $maquina->tipo !== 'ensambladora')
                     {{-- Selectores de posiciones de planillas --}}
                     <div class="contenedor-selectores-planilla">
                         <select id="posicion_1" name="posicion_1" onchange="cambiarPosicionesPlanillas()">
@@ -617,16 +617,17 @@
                     <x-maquinas.tipo.tipo-grua :maquina="$maquina" :movimientos-pendientes="$movimientosPendientes" :movimientos-completados="$movimientosCompletados"
                         :ubicaciones-disponibles-por-producto-base="$ubicacionesDisponiblesPorProductoBase" />
                     @include('components.maquinas.modales.grua.modales-grua')
-                    {{-- @elseif ($maquina->tipo === 'dobladora_manual')
-                    <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
-                        <x-maquinas.tipo.tipo-dobladora-manual :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
-                            :productosBaseCompatibles="$productosBaseCompatibles" />
-                    </div>
-                @elseif ($maquina->tipo === 'cortadora_manual')
-                    <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
-                        <x-maquinas.tipo.tipo-cortadora-manual :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
-                            :productosBaseCompatibles="$productosBaseCompatibles" />
-                    </div> --}}
+
+            @elseif ($maquina->tipo === 'ensambladora')
+                <x-maquinas.tipo.tipo-ensamblado
+                    :maquina="$maquina"
+                    :planillasActivas="$planillasActivas ?? collect()"
+                    :ordenesEnsamblaje="$ordenesEnsamblaje ?? collect()"
+                    :entidadesActivas="$entidadesActivas ?? collect()"
+                    :elementosPorDiametro="$elementosPorDiametro ?? collect()"
+                    :etiquetasPorEntidad="$etiquetasPorEntidad ?? collect()"
+                />
+
                 @else
                     <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementos-agrupados="$elementosAgrupados" :productos-base-compatibles="$productosBaseCompatibles"
                         :producto-base-solicitados="$productoBaseSolicitados" :planillas-activas="$planillasActivas" :elementos-por-planilla="$elementosPorPlanilla" :es-barra="$esBarra" :longitudes-por-diametro="$longitudesPorDiametro"
@@ -647,13 +648,13 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
         <script src="{{ asset('js/imprimirQrS.js') }}"></script>
 
-        {{-- Script del sistema de resumen de etiquetas (NO necesario para grúa) --}}
-        @if ($maquina->tipo !== 'grua')
+        {{-- Script del sistema de resumen de etiquetas (NO necesario para grúa ni ensambladora) --}}
+        @if ($maquina->tipo !== 'grua' && $maquina->tipo !== 'ensambladora')
             <script src="{{ asset('js/resumir-etiquetas.js') }}"></script>
         @endif
 
         <script>
-            @if ($maquina->tipo !== 'grua')
+            @if ($maquina->tipo !== 'grua' && $maquina->tipo !== 'ensambladora')
                 window.SUGERENCIAS = @json($sugerenciasPorElemento ?? []);
                 window.elementosAgrupadosScript = @json($elementosAgrupadosScript ?? null);
                 window.gruposResumenData = @json($gruposResumen ?? []);

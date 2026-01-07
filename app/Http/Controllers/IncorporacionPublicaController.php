@@ -170,11 +170,8 @@ class IncorporacionPublicaController extends Controller
         DB::beginTransaction();
 
         try {
-            // Crear el usuario automáticamente
-            $usuario = $this->crearUsuario($incorporacion, $validated);
-
-            // Carpeta del usuario: nombre_id (sin caracteres especiales)
-            $carpetaUsuario = $this->generarNombreCarpeta($usuario);
+            // Carpeta temporal basada en la incorporación (el usuario se crea cuando el CEO aprueba)
+            $carpetaUsuario = $this->generarNombreCarpetaIncorporacion($incorporacion, $validated);
 
             // Guardar imágenes del DNI (desde request o desde temporal)
             $nombreDniFrontal = $this->guardarArchivoFinal(
@@ -199,7 +196,7 @@ class IncorporacionPublicaController extends Controller
                 $carpetaUsuario
             );
 
-            // Actualizar datos personales y vincular usuario
+            // Actualizar datos personales (el usuario se crea cuando el CEO aprueba)
             $datosActualizacion = [
                 'dni' => strtoupper($validated['dni']),
                 'numero_afiliacion_ss' => $validated['numero_afiliacion_ss'],
@@ -208,7 +205,6 @@ class IncorporacionPublicaController extends Controller
                 'certificado_bancario' => $nombreCert,
                 'datos_completados_at' => now(),
                 'estado' => Incorporacion::ESTADO_DATOS_RECIBIDOS,
-                'user_id' => $usuario->id,
             ];
 
             // Actualizar nombre y apellidos con los datos del formulario (verificados por el usuario)
@@ -357,14 +353,14 @@ class IncorporacionPublicaController extends Controller
     }
 
     /**
-     * Generar nombre de carpeta para el usuario: nombre_apellido_id
+     * Generar nombre de carpeta basada en la incorporación (antes de crear el usuario)
      */
-    private function generarNombreCarpeta(User $usuario): string
+    private function generarNombreCarpetaIncorporacion(Incorporacion $incorporacion, array $datos): string
     {
-        $nombre = Str::slug($usuario->name, '_');
-        $apellido = Str::slug($usuario->primer_apellido, '_');
+        $nombre = Str::slug($datos['nombre_final'], '_');
+        $apellido = Str::slug($datos['primer_apellido_final'], '_');
 
-        return "{$nombre}_{$apellido}_{$usuario->id}";
+        return "{$nombre}_{$apellido}_inc{$incorporacion->id}";
     }
 
     private function guardarFormacion(Incorporacion $incorporacion, $archivo, $tipo, $nombre = null, $carpetaUsuario = null)

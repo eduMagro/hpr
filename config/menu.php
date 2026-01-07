@@ -102,7 +102,15 @@ return [
                     'route' => 'produccion.verMaquinas',
                     'icon' => '⚙️',
                     'actions' => [
-                        ['label' => 'Ver planificación', 'route' => 'produccion.maquinas', 'permission' => 'ver'],
+                        ['label' => 'Ver planificación', 'route' => 'produccion.verMaquinas', 'permission' => 'ver'],
+                    ]
+                ],
+                [
+                    'label' => 'Planificación Ensamblaje',
+                    'route' => 'produccion.maquinasEnsamblaje',
+                    'icon' => '🔧',
+                    'actions' => [
+                        ['label' => 'Ver ensambladoras', 'route' => 'produccion.maquinasEnsamblaje', 'permission' => 'ver'],
                     ]
                 ],
                 [

@@ -63,11 +63,11 @@
                 <div>
                     <select name="empresa" class="rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                         <option value="">Todas las empresas</option>
-                        <option value="hpr_servicios" {{ request('empresa') == 'hpr_servicios' ? 'selected' : '' }}>HPR
-                            Servicios</option>
-                        <option value="hierros_paco_reyes"
-                            {{ request('empresa') == 'hierros_paco_reyes' ? 'selected' : '' }}>Hierros Paco Reyes
-                        </option>
+                        @foreach($empresas as $empresa)
+                            <option value="{{ $empresa->id }}" {{ request('empresa') == $empresa->id ? 'selected' : '' }}>
+                                {{ $empresa->nombre }}
+                            </option>
+                        @endforeach
                     </select>
                 </div>
                 <div class="flex items-center gap-2">
@@ -134,9 +134,7 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                            {{ $inc->empresa_destino === 'hpr_servicios' ? 'bg-purple-100 text-purple-800' : 'bg-indigo-100 text-indigo-800' }}">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                             {{ $inc->empresa_nombre }}
                                         </span>
                                         @if ($inc->puesto)

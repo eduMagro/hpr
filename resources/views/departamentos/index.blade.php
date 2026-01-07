@@ -11,11 +11,8 @@
         openModalSecciones: false,
         openNuevoDepartamentoModal: false,
         openNuevaSeccionModal: false,
-        openPermisosModal: false,
         departamentoId: null,
-        selectedUserId: null,
-        usuariosMarcados: [],
-        permisos: {}
+        usuariosMarcados: []
     }">
 
         <!-- Success/Error Messages -->
@@ -1175,80 +1172,6 @@
                 </div>
             </div>
         </template>
-        <!-- ───────────── Modal Permisos ───────────── -->
-        <div x-show="openPermisosModal" x-cloak
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-
-            <div @click.away="openPermisosModal = false"
-                class="bg-white w-full max-w-3xl rounded-lg shadow-lg p-6 space-y-6 overflow-y-auto max-h-[90vh]">
-
-                <h3 class="text-xl font-semibold text-gray-800 mb-2">
-                    Permisos por sección
-                </h3>
-
-                <!-- Selector de usuario (solo los asignados al departamento) -->
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-1">Usuario</label>
-                    <select x-model="selectedUserId" class="w-full border rounded px-3 py-2">
-                        <option value="" disabled selected>— Selecciona usuario —</option>
-                        @foreach ($departamento->usuarios as $u)
-                            <option value="{{ $u->id }}">{{ $u->nombre_completo }} ({{ $u->email }})
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <!-- Tabla de secciones y permisos -->
-                <template x-if="selectedUserId">
-                    <form method="POST" :action="`{{ url('departamentos') }}/${departamentoId}/permisos`">
-                        @csrf
-                        <input type="hidden" name="user_id" :value="selectedUserId">
-
-                        <table class="w-full table-auto text-sm">
-                            <thead>
-                                <tr class="bg-gray-100 text-gray-700">
-                                    <th class="px-4 py-2 text-left">Sección</th>
-                                    <th class="px-4 py-2 text-center">Ver</th>
-                                    <th class="px-4 py-2 text-center">Crear</th>
-                                    <th class="px-4 py-2 text-center">Editar</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($departamento->secciones as $s)
-                                    @php
-                                        $perm = $s->permisosAcceso->firstWhere('user_id', $u->id ?? null);
-                                    @endphp
-                                    <tr class="border-t">
-                                        <td class="px-4 py-2">{{ $s->nombre }}</td>
-
-                                        @foreach (['ver', 'crear', 'editar'] as $accion)
-                                            <td class="px-4 py-2 text-center">
-                                                <input type="checkbox"
-                                                    :checked="permisos[{{ $s->id }}]?.puede_ver"
-                                                    :name="`permisos[{{ $s->id }}][ver]`">
-
-                                            </td>
-                                        @endforeach
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-
-                        <div class="mt-6 text-right">
-                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
-                                Guardar
-                            </button>
-                        </div>
-                    </form>
-                </template>
-
-                <div class="text-right">
-                    <button @click="openPermisosModal = false" class="mt-4 text-gray-600 hover:underline">
-                        Cerrar
-                    </button>
-                </div>
-            </div>
-        </div>
 
     </div>
 </x-app-layout>

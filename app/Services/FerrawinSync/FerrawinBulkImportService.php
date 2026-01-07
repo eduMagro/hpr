@@ -173,14 +173,15 @@ class FerrawinBulkImportService
 
         $this->stats['planillas_creadas']++;
 
-        // 4. Agrupar elementos por etiqueta y crear bulk
-        $this->crearElementosBulk($planilla, $elementos);
-
-        // 4b. Crear entidades si vienen en los datos
+        // 4. Crear entidades PRIMERO (para poder vincular elementos)
         $entidades = $data["entidades"] ?? [];
+        $mapaEntidades = [];
         if (!empty($entidades)) {
-            $this->crearEntidades($planilla, $entidades);
+            $mapaEntidades = $this->crearEntidades($planilla, $entidades);
         }
+
+        // 5. Agrupar elementos por etiqueta y crear bulk (con mapa de entidades)
+        $this->crearElementosBulk($planilla, $elementos, $mapaEntidades);
 
         // 5. Asignar máquinas
         $this->asignador->repartirPlanilla($planilla->id);
@@ -197,8 +198,12 @@ class FerrawinBulkImportService
 
     /**
      * Crea elementos para una planilla (mismo sistema que importación manual).
+     *
+     * @param Planilla $planilla
+     * @param array $elementos
+     * @param array $mapaEntidades Mapa de linea normalizada -> planilla_entidad_id
      */
-    protected function crearElementosBulk(Planilla $planilla, array $elementos): void
+    protected function crearElementosBulk(Planilla $planilla, array $elementos, array $mapaEntidades = []): void
     {
         // Agrupar por número de etiqueta (igual que importación manual)
         $porEtiqueta = [];
@@ -228,7 +233,7 @@ class FerrawinBulkImportService
 
             // Crear elementos uno por uno (igual que importación manual)
             foreach ($filasEtiqueta as $elem) {
-                $this->crearElemento($planilla, $etiquetaPadre, $elem);
+                $this->crearElemento($planilla, $etiquetaPadre, $elem, $mapaEntidades);
             }
 
             Log::channel('ferrawin_sync')->debug("   ✅ Etiqueta {$etiquetaPadre->codigo} con " . count($filasEtiqueta) . " elementos");
@@ -290,20 +295,34 @@ class FerrawinBulkImportService
 
     /**
      * Crea un elemento individual (igual que PlanillaProcessor).
+     *
+     * @param Planilla $planilla
+     * @param Etiqueta $etiquetaPadre
+     * @param array $elem
+     * @param array $mapaEntidades Mapa de linea normalizada -> planilla_entidad_id
      */
-    protected function crearElemento(Planilla $planilla, Etiqueta $etiquetaPadre, array $elem): void
+    protected function crearElemento(Planilla $planilla, Etiqueta $etiquetaPadre, array $elem, array $mapaEntidades = []): void
     {
         $doblesBarra = (int)($elem['dobles_barra'] ?? 0);
         $barras = (int)($elem['barras'] ?? 0);
 
+        // Buscar planilla_entidad_id usando la fila del elemento
+        $planillaEntidadId = null;
+        $fila = $elem['fila'] ?? null;
+        if ($fila !== null && !empty($mapaEntidades)) {
+            $filaNormalizada = (string)$fila;
+            $planillaEntidadId = $mapaEntidades[$filaNormalizada] ?? null;
+        }
+
         Elemento::create([
             'codigo' => Elemento::generarCodigo(),
             'planilla_id' => $planilla->id,
+            'planilla_entidad_id' => $planillaEntidadId,
             'etiqueta_id' => $etiquetaPadre->id,
             'etiqueta_sub_id' => null,
             'maquina_id' => null,
             'figura' => $elem['figura'] ?? null,
-            'fila' => $elem['fila'] ?? null,
+            'fila' => $fila,
             'marca' => $elem['marca'] ?? null,
             'etiqueta' => $elem['etiqueta'] ?? null,
             'diametro' => (int)($elem['diametro'] ?? 0),
@@ -512,11 +531,13 @@ class FerrawinBulkImportService
 
     /**
      * Crea las entidades/ensamblajes de una planilla.
+     *
+     * @return array Mapa de linea normalizada -> planilla_entidad_id
      */
-    protected function crearEntidades(Planilla $planilla, array $entidades): void
+    protected function crearEntidades(Planilla $planilla, array $entidades): array
     {
         if (empty($entidades)) {
-            return;
+            return [];
         }
 
         $now = now();
@@ -551,5 +572,19 @@ class FerrawinBulkImportService
         $this->stats["entidades_creadas"] = ($this->stats["entidades_creadas"] ?? 0) + count($entidadesInsert);
 
         Log::channel("ferrawin_sync")->debug("   [BULK] " . count($entidadesInsert) . " entidades creadas para planilla " . $planilla->codigo);
+
+        // Construir mapa de linea normalizada -> id
+        $mapaEntidades = [];
+        $entidadesCreadas = PlanillaEntidad::where('planilla_id', $planilla->id)->get();
+
+        foreach ($entidadesCreadas as $entidad) {
+            $lineaNormalizada = ltrim($entidad->linea, '0');
+            if (empty($lineaNormalizada)) {
+                $lineaNormalizada = '0';
+            }
+            $mapaEntidades[$lineaNormalizada] = $entidad->id;
+        }
+
+        return $mapaEntidades;
     }
 }

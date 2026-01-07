@@ -28,6 +28,8 @@ class Elemento extends Model
         'id',
         'codigo',
         'planilla_id',
+        'planilla_entidad_id',
+        'etiqueta_ensamblaje_id',
         'elaborado',
         'orden_planilla_id',
         'etiqueta_id',
@@ -99,6 +101,22 @@ class Elemento extends Model
     public function planilla()
     {
         return $this->belongsTo(Planilla::class, 'planilla_id');
+    }
+
+    /**
+     * Relación con la entidad de ensamblaje (pilar, viga, etc.)
+     */
+    public function entidad()
+    {
+        return $this->belongsTo(PlanillaEntidad::class, 'planilla_entidad_id');
+    }
+
+    /**
+     * Relación con la etiqueta de ensamblaje específica (unidad)
+     */
+    public function etiquetaEnsamblaje()
+    {
+        return $this->belongsTo(EtiquetaEnsamblaje::class, 'etiqueta_ensamblaje_id');
     }
 
 
