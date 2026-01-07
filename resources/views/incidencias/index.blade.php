@@ -110,7 +110,11 @@
 
         {{-- Incidents List --}}
         <div id="incidencias-list-container" class="space-y-4 transition-all duration-100 ease-in-out">
-            @include('incidencias.partials.lista', ['incidencias' => $incidencias])
+            @include('incidencias.partials.lista', ['grupos' => $grupos])
+        </div>
+
+        <div class="mt-4">
+            {{ $grupos->appends(['tab' => 'incidencias'])->onEachSide(1)->links() }}
         </div>
 
         {{-- Create Modal --}}
@@ -168,6 +172,7 @@
                     <form action="{{ route('incidencias.store') }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         <div class="p-8">
+
                             <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
 
                                 <!-- Left Column: Photo Upload -->

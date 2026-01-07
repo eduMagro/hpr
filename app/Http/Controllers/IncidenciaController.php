@@ -8,15 +8,8 @@ class IncidenciaController extends Controller
 {
     public function index(Request $request)
     {
-        $query = \App\Models\Incidencia::with(['maquina', 'user'])->latest('fecha_reporte');
-
-        if ($request->has('ver_inactivas')) {
-            $query->where('estado', 'resuelta');
-        } else {
-            $query->where('estado', '!=', 'resuelta');
-        }
-
-        $incidencias = $query->paginate(10);
+        $filterResult = $this->getFilteredGroups($request);
+        $grupos = $filterResult['grupos'];
 
         // Count active incidents for the header
         $activasCount = \App\Models\Incidencia::where('estado', '!=', 'resuelta')->count();
@@ -24,22 +17,47 @@ class IncidenciaController extends Controller
         // Get machines for the create modal
         $maquinas = \App\Models\Maquina::with('obra:id,obra')->orderBy('nombre')->get(['id', 'nombre', 'codigo', 'imagen', 'obra_id']);
 
-        return view('incidencias.index', compact('incidencias', 'activasCount', 'maquinas'));
+        return view('incidencias.index', compact('grupos', 'activasCount', 'maquinas'));
     }
 
     public function listAjax(Request $request)
     {
-        $query = \App\Models\Incidencia::with(['maquina', 'user'])->latest('fecha_reporte');
+        $filterResult = $this->getFilteredGroups($request);
+        $grupos = $filterResult['grupos'];
 
-        if ($request->has('ver_inactivas')) {
-            $query->where('estado', 'resuelta');
-        } else {
-            $query->where('estado', '!=', 'resuelta');
-        }
+        return view('incidencias.partials.lista', compact('grupos'))->render();
+    }
 
-        $incidencias = $query->paginate(10);
+    private function getFilteredGroups(Request $request)
+    {
+        // Define the filter based on request
+        $incidentState = $request->has('ver_inactivas') ? 'resuelta' : '!=,resuelta';
+        $operator = $request->has('ver_inactivas') ? '=' : '!=';
 
-        return view('incidencias.partials.lista', compact('incidencias'))->render();
+        // Use a subquery to order machines by their latest relevant incident
+        $latestIncidentSubquery = \App\Models\Incidencia::select('fecha_reporte')
+            ->whereColumn('maquina_id', 'maquinas.id')
+            ->where('estado', $operator, 'resuelta')
+            ->latest('fecha_reporte')
+            ->take(1);
+
+        // Query machines that have relevant incidents
+        $grupos = \App\Models\Maquina::whereHas('incidencias', function ($query) use ($operator) {
+            $query->where('estado', $operator, 'resuelta');
+        })
+            ->with([
+                'incidencias' => function ($query) use ($operator) {
+                    $query->where('estado', $operator, 'resuelta')
+                        ->with('user')
+                        ->latest('fecha_reporte');
+                },
+                'obra:id,obra'
+            ])
+            ->addSelect(['latest_incident_date' => $latestIncidentSubquery])
+            ->orderByDesc('latest_incident_date')
+            ->paginate(10);
+
+        return ['grupos' => $grupos];
     }
 
     public function show($id)
