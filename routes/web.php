@@ -498,6 +498,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === PLANILLAS Y PLANIFICACIÓN ===
     Route::post('/planillas/{planilla}/marcar-revisada', [PlanillaController::class, 'marcarRevisada'])->name('planillas.marcarRevisada');
     Route::resource('planillas', PlanillaController::class);
+    Route::get('/planillas/{planilla}/ensamblaje', [PlanillaController::class, 'ensamblaje'])->name('planillas.ensamblaje');
     Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.crearImport');
     Route::post('/planillas/reordenar', [ProduccionController::class, 'reordenarPlanillas'])->name('planillas.editarReordenar');
     Route::resource('planificacion', PlanificacionController::class)->only(['index', 'store', 'update', 'destroy']);

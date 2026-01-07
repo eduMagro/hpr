@@ -181,6 +181,26 @@
     border: 2px solid #ec4899;
 }
 
+/* Paquete resaltado/seleccionado */
+.loc-paquete--highlight {
+    animation: pulse-highlight 1.5s ease-in-out infinite;
+    box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.4),
+                0 0 20px rgba(168, 85, 247, 0.6);
+    z-index: 30 !important;
+    border-width: 3px !important;
+}
+
+@keyframes pulse-highlight {
+    0%, 100% {
+        box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.4),
+                    0 0 20px rgba(168, 85, 247, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(168, 85, 247, 0.2),
+                    0 0 30px rgba(168, 85, 247, 0.8);
+    }
+}
+
 /* ZONAS - z-index bajo para que queden en el fondo */
 .loc-zona.tipo-transitable {
     background: rgba(107, 114, 128, 0.15);

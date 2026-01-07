@@ -194,17 +194,25 @@
                             </td>
                             <td class="p-2 text-center border">{{ $planilla->cliente->codigo ?? 'N/A' }}</td>
                             <td class="p-2 text-center border">
-                                <a href="{{ route('clientes.index', ['id' => $planilla->cliente_id]) }}"
-                                    class="text-blue-500 hover:underline">
+                                @if ($planilla->cliente_id)
+                                    <a href="{{ route('clientes.index', ['id' => $planilla->cliente_id]) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $planilla->cliente->empresa ?? 'N/A' }}
+                                    </a>
+                                @else
                                     {{ $planilla->cliente->empresa ?? 'N/A' }}
-                                </a>
+                                @endif
                             </td>
                             <td class="p-2 text-center border">{{ $planilla->obra->cod_obra ?? 'N/A' }}</td>
                             <td class="p-2 text-center border">
-                                <a href="{{ route('clientes.show', ['cliente' => $planilla->cliente_id]) }}"
-                                    class="text-blue-500 hover:underline">
+                                @if ($planilla->cliente_id)
+                                    <a href="{{ route('clientes.show', ['cliente' => $planilla->cliente_id]) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $planilla->obra->obra ?? 'N/A' }}
+                                    </a>
+                                @else
                                     {{ $planilla->obra->obra ?? 'N/A' }}
-                                </a>
+                                @endif
                             </td>
                             <td class="p-2 text-center border">{{ $planilla->seccion }}</td>
                             <td class="p-2 text-center border">{{ $planilla->descripcion }}</td>
@@ -295,6 +303,18 @@
                                                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                                         </svg>
                                     </button>
+
+                                    <!-- Botón Ver Ensamblaje -->
+                                    @if($planilla->entidades_count > 0)
+                                        <a href="{{ route('planillas.ensamblaje', $planilla->id) }}"
+                                            class="w-6 h-6 bg-emerald-100 text-emerald-600 rounded hover:bg-emerald-200 flex items-center justify-center"
+                                            title="Ver ensamblaje ({{ $planilla->entidades_count }} entidades)">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                                            </svg>
+                                        </a>
+                                    @endif
 
                                     <!-- Botón Ver -->
                                     <x-tabla.boton-ver :href="route('planillas.show', $planilla->id)" />

@@ -444,7 +444,8 @@ class PlanillasTable extends Component
             'elementos as suma_peso_completados' => function ($query) {
                 $query->where('estado', 'fabricado');
             }
-        ], 'peso');
+        ], 'peso')
+        ->withCount('entidades');
 
         // Filtro "solo mis planillas" salvo admins
         if (!$esAdmin) {

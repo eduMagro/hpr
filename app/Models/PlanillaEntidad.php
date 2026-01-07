@@ -32,6 +32,7 @@ class PlanillaEntidad extends Model
         'total_estribos',
         'composicion',
         'distribucion',
+        'dibujo_data',
     ];
 
     protected $casts = [
@@ -43,6 +44,7 @@ class PlanillaEntidad extends Model
         'total_estribos' => 'integer',
         'composicion' => 'array',
         'distribucion' => 'array',
+        'dibujo_data' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
