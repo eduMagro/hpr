@@ -659,6 +659,15 @@ $ordenablesAlertas = [];
             $alerta = Alerta::with(['usuario1', 'usuario2', 'destinatarioUser'])->findOrFail($id);
             $user = auth()->user();
 
+            // Determinar quién es el contacto (la otra persona)
+            $contacto = null;
+            if ($alerta->user_id_1 === $user->id) {
+                $contacto = $alerta->usuario2 ?? $alerta->destinatarioUser;
+            } else {
+                $contacto = $alerta->usuario1;
+            }
+            $nombreContacto = $contacto ? ($contacto->nombre_completo ?? $contacto->name) : 'Contacto';
+
             // Obtener el mensaje raíz
             $mensajeRaiz = $alerta->mensajeRaiz();
 
@@ -667,7 +676,8 @@ $ordenablesAlertas = [];
 
             return response()->json([
                 'success' => true,
-                'hilo' => $hilo
+                'hilo' => $hilo,
+                'contacto' => $nombreContacto
             ]);
         } catch (\Throwable $e) {
             Log::error('❌ Error al obtener hilo: ' . $e->getMessage());
