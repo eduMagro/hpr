@@ -1,7 +1,7 @@
 @if (isset($incidencias))
     @forelse($incidencias as $incidencia)
         <div
-            class="bg-white rounded-xl {{ $incidencia->estado == 'resuelta' ? 'border-green-500 opacity-75 hover:opacity-100' : 'border-red-500 shadow-sm hover:shadow-md' }} border border-gray-200 overflow-hidden transition-all group relative">
+            class="bg-white rounded-xl {{ $incidencia->estado == 'resuelta' ? 'border-green-500 opacity-75 hover:opacity-100' : 'border-red-500 shadow-sm hover:shadow-md' }} border-x-4 border-gray-200 overflow-hidden transition-all group relative">
             <div class="p-6">
                 <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div class="flex gap-4">
@@ -58,7 +58,7 @@
                         @if ($incidencia->fecha_resolucion)
                             <div class="mt-1 text-xs text-green-600 font-medium">
                                 Resuelta en
-                                {{ $incidencia->fecha_reporte->diffInHours($incidencia->fecha_resolucion) }}h
+                                {{ round($incidencia->fecha_reporte->diffInMinutes($incidencia->fecha_resolucion) / 60, 2) }}h
                             </div>
                         @endif
                     </div>

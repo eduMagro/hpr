@@ -38,7 +38,7 @@
                 container.style.opacity = '0';
         
                 // Wait for exit animation
-                await new Promise(r => setTimeout(r, 200));
+                await new Promise(r => setTimeout(r, 100));
         
                 // 2. Fetch new data
                 const url = new URL('{{ route('incidencias.list.ajax') }}');
@@ -69,7 +69,7 @@
                     void container.offsetWidth;
         
                     // 5. Enter animation
-                    container.style.transition = 'all 300ms ease-out';
+                    container.style.transition = 'all 150ms ease-out';
                     container.style.transform = 'translateX(0)';
                     container.style.opacity = '1';
         

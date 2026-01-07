@@ -72,11 +72,11 @@
                         Historial Reciente
                     </h3>
 
-                    <div class="space-y-8 relative pl-5 border-l-2 border-gray-100 ml-3">
+                    <div class="space-y-8 relative pl-5 border-l-2 border-gray-300 ml-3">
                         @foreach ($historial as $h)
                             <div class="relative group">
                                 <div
-                                    class="absolute -left-[29px] top-0 w-8 h-8 rounded-full bg-white border-2 {{ $h->estado == 'resuelta' ? 'border-green-500 text-green-500' : 'border-red-500 text-red-500' }} flex items-center justify-center shadow-sm">
+                                    class="absolute -left-[26px] top-0 w-8 h-8 rounded-full bg-white outline outline-4 outline-white border-2 {{ $h->estado == 'resuelta' ? 'border-green-500 text-green-500' : 'border-red-500 text-red-500' }} flex items-center justify-center shadow-sm">
                                     @if ($h->estado == 'resuelta')
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
