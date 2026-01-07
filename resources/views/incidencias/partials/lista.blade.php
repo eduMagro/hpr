@@ -1,7 +1,7 @@
 @if (isset($incidencias))
     @forelse($incidencias as $incidencia)
         <div
-            class="bg-white rounded-xl border-l-4 {{ $incidencia->estado == 'resuelta' ? 'border-green-500 opacity-75 hover:opacity-100' : 'border-red-500 shadow-sm hover:shadow-md' }} border-y border-r border-gray-200 overflow-hidden transition-all group relative">
+            class="bg-white rounded-xl {{ $incidencia->estado == 'resuelta' ? 'border-green-500 opacity-75 hover:opacity-100' : 'border-red-500 shadow-sm hover:shadow-md' }} border border-gray-200 overflow-hidden transition-all group relative">
             <div class="p-6">
                 <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div class="flex gap-4">

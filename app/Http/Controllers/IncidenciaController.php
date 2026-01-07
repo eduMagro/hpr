@@ -8,14 +8,32 @@ class IncidenciaController extends Controller
 {
     public function index(Request $request)
     {
-        return redirect()->route('maquinas.index', array_merge(['tab' => 'incidencias'], $request->all()));
+        $query = \App\Models\Incidencia::with(['maquina', 'user'])->latest('fecha_reporte');
+
+        if ($request->has('ver_inactivas')) {
+            $query->where('estado', 'resuelta');
+        } else {
+            $query->where('estado', '!=', 'resuelta');
+        }
+
+        $incidencias = $query->paginate(10);
+
+        // Count active incidents for the header
+        $activasCount = \App\Models\Incidencia::where('estado', '!=', 'resuelta')->count();
+
+        // Get machines for the create modal
+        $maquinas = \App\Models\Maquina::with('obra:id,obra')->orderBy('nombre')->get(['id', 'nombre', 'codigo', 'imagen', 'obra_id']);
+
+        return view('incidencias.index', compact('incidencias', 'activasCount', 'maquinas'));
     }
 
     public function listAjax(Request $request)
     {
         $query = \App\Models\Incidencia::with(['maquina', 'user'])->latest('fecha_reporte');
 
-        if (!$request->has('ver_inactivas')) {
+        if ($request->has('ver_inactivas')) {
+            $query->where('estado', 'resuelta');
+        } else {
             $query->where('estado', '!=', 'resuelta');
         }
 
@@ -49,33 +67,51 @@ class IncidenciaController extends Controller
     {
         $request->validate([
             'maquina_id' => 'required|exists:maquinas,id',
-            'descripcion' => 'required',
+            'descripcion' => 'nullable|string', // Changed to nullable as per modal optional hint
             'titulo' => 'required',
-            'fotos.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048'
+            'fotos.*' => 'image|mimes:jpeg,png,jpg,gif|max:10240', // Increased max size
+            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240', // Added validation for single file
+            'estado_maquina' => 'nullable|in:activa,averiada,pausa,mantenimiento'
         ]);
 
         $paths = [];
+
+        // Helper to save file to public directory
+        $saveFile = function ($file) use (&$paths) {
+            $filename = uniqid() . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('incidencias-archivos'), $filename);
+            $paths[] = 'incidencias-archivos/' . $filename;
+        };
+
+        // Handle multiple files
         if ($request->hasFile('fotos')) {
             foreach ($request->file('fotos') as $file) {
-                $paths[] = $file->store('incidencias', 'public');
+                $saveFile($file);
             }
+        }
+
+        // Handle single file (from mobile modal)
+        if ($request->hasFile('imagen')) {
+            $saveFile($request->file('imagen'));
         }
 
         $incidencia = \App\Models\Incidencia::create([
             'maquina_id' => $request->maquina_id,
             'user_id' => auth()->id(),
             'titulo' => $request->titulo,
-            'descripcion' => $request->descripcion,
+            'descripcion' => $request->descripcion ?? '',
             'fotos' => $paths,
             'prioridad' => $request->prioridad ?? 'media',
             'estado' => 'abierta',
             'fecha_reporte' => now(),
         ]);
 
-        // Set machine status to 'averiada' ?? Optional, user request implied handling machine status
+        // Update machine status if provided
         $maquina = \App\Models\Maquina::find($request->maquina_id);
         if ($maquina) {
-            $maquina->estado = 'averiada';
+            // Default to 'averiada' only if not provided, for backward compatibility or safety
+            $nuevoEstado = $request->input('estado_maquina', 'averiada');
+            $maquina->estado = $nuevoEstado;
             $maquina->save();
         }
 

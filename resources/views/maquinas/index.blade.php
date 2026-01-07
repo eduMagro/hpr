@@ -16,48 +16,16 @@
         }
     </style>
 
-    <div class="p-4 sm:p-6 lg:p-10 bg-gray-50 min-h-screen" x-data="{ activeTab: '{{ request('tab') == 'incidencias' || request('incidencias_page') ? 'incidencias' : 'listado' }}' }">
+    <div class="p-4 sm:p-6 lg:p-10 min-h-screen">
 
         {{-- Header con filtro --}}
         <div class="mb-6 flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between">
 
             <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 <h1 class="text-2xl font-bold text-gray-900">Máquinas</h1>
-
-                {{-- Navegación Tab Estilo Pedidos --}}
-                <div
-                    class="inline-flex p-1.5 bg-gray-100/80 backdrop-blur-md rounded-2xl border border-gray-200 shadow-inner">
-                    <button @click="activeTab = 'listado'"
-                        :class="activeTab === 'listado' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
-                            'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
-                        class="px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
-                            </path>
-                        </svg>
-                        Listado
-                    </button>
-                    <button @click="activeTab = 'incidencias'"
-                        :class="activeTab === 'incidencias' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
-                            'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
-                        class="px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 relative">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        Incidencias
-                        @if (($activasCount ?? 0) > 0)
-                            <span
-                                class="absolute -top-1 right-1 bg-red-500 text-white text-[8px] font-bold rounded-full min-w-[12px] h-[12px] flex items-center justify-center shadow-sm ring-2 ring-gray-100/80">
-                                {{ $activasCount }}
-                            </span>
-                        @endif
-                    </button>
-                </div>
             </div>
 
-            <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto" x-show="activeTab === 'listado'">
+            <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 {{-- Filtro de nave --}}
                 <select id="naveFilter"
                     class="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
@@ -84,7 +52,7 @@
         </div>
 
         {{-- Listado Section --}}
-        <div x-show="activeTab === 'listado'" class="space-y-6">
+        <div class="space-y-6">
             {{-- Grid responsive para las tarjetas --}}
             <div id="machinesGrid"
                 class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
@@ -225,8 +193,7 @@
                         <div class="bg-gray-50 px-3 py-3 border-t border-gray-200 flex flex-col gap-2 mt-auto">
                             <a href="{{ route('maquinas.show', $maquina->id) }}" wire:navigate
                                 class="w-full inline-flex items-center justify-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
-                                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                                 </svg>
@@ -273,119 +240,7 @@
             @endif
         </div>
 
-        {{-- CONTENT: Incidencias --}}
-        <div x-show="activeTab === 'incidencias'" style="display: none;" class="space-y-6">
 
-            {{-- Header/Toolbar for Incidencias --}}
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div class="bg-white p-1 rounded-xl border border-gray-200 inline-flex items-center gap-2">
-                    <div class="flex items-center gap-2 px-3 py-1">
-                        <label class="flex items-center cursor-pointer group select-none">
-                            <div class="relative">
-                                <input type="checkbox" id="checkVerInactivas" name="ver_inactivas" value="1"
-                                    {{ request('ver_inactivas') ? 'checked' : '' }} class="sr-only peer"
-                                    onchange="loadIncidencias()">
-                                <div
-                                    class="w-5 h-5 bg-gray-100 border-2 border-gray-300 rounded peer-checked:bg-blue-500 peer-checked:border-blue-500 transition-all flex items-center justify-center">
-                                    <svg class="w-3 h-3 text-white hidden peer-checked:block" fill="none"
-                                        stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
-                                            d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <span
-                                class="ml-2 text-sm font-medium text-gray-600 group-hover:text-blue-600 transition-colors">Ver
-                                historial (Resueltas)</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-3">
-                    <div
-                        class="text-sm font-medium text-gray-500 bg-white px-4 py-2 rounded-xl border border-gray-200">
-                        <span class="font-bold text-gray-900">{{ $activasCount ?? 0 }}</span> activas
-                    </div>
-
-                    <a href="{{ route('incidencias.create') }}"
-                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl shadow-lg shadow-red-500/20 transition-all font-bold text-sm flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        Nueva Incidencia
-                    </a>
-                </div>
-            </div>
-
-            {{-- Incidents List Container --}}
-            <div id="incidencias-container" class="space-y-4 min-h-[200px] relative">
-                {{-- Initial Load from Partial --}}
-                @include('incidencias.partials.lista', ['incidencias' => $incidencias ?? collect()])
-            </div>
-
-            {{-- Loading Overlay --}}
-            <div id="incidencias-loading"
-                class="hidden absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-xl">
-                <svg class="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none"
-                    viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                        stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                    </path>
-                </svg>
-            </div>
-        </div>
-
-        <script>
-            function loadIncidencias(page = 1) {
-                const container = document.getElementById('incidencias-container');
-                const loading = document.getElementById('incidencias-loading');
-                const showInactive = document.getElementById('checkVerInactivas').checked ? 1 : 0;
-
-                // Show loading state manually if needed
-                container.style.opacity = '0.5';
-                loading.classList.remove('hidden');
-
-                const url = `{{ route('incidencias.list.ajax') }}?ver_inactivas=${showInactive}&page=${page}`;
-
-                fetch(url)
-                    .then(response => response.text())
-                    .then(html => {
-                        container.innerHTML = html;
-                        container.style.opacity = '1';
-                        loading.classList.add('hidden');
-
-                        // Re-attach pagination listeners
-                        attachPaginationListeners();
-                    })
-                    .catch(error => {
-                        console.error('Error loading incidencias:', error);
-                        container.style.opacity = '1';
-                        loading.classList.add('hidden');
-                    });
-            }
-
-            function attachPaginationListeners() {
-                const container = document.getElementById('incidencias-container');
-                const navLinks = container.querySelectorAll('nav a');
-
-                navLinks.forEach(link => {
-                    link.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        const url = new URL(this.href);
-                        const page = url.searchParams.get('page');
-                        loadIncidencias(page);
-                    });
-                });
-            }
-
-            // Init listeners on load
-            document.addEventListener('DOMContentLoaded', () => {
-                attachPaginationListeners();
-            });
-        </script>
 
         {{-- Modal de edición --}}
         <div id="editModal"

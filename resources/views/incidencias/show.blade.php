@@ -49,12 +49,14 @@
                     <div class="grid grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t border-gray-100">
                         <div class="text-center">
                             <div class="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">Nave</div>
-                            <div class="font-bold text-gray-800">{{ $incidencia->maquina->obra->obra ?? 'Sin Asignar' }}
+                            <div class="font-bold text-gray-800">
+                                {{ $incidencia->maquina->obra->obra ?? 'Sin Asignar' }}
                             </div>
                         </div>
                         <div class="text-center border-l border-gray-100">
                             <div class="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">Modelo</div>
-                            <div class="font-bold text-gray-800">{{ $incidencia->maquina->tipo ?? 'Desconocido' }}
+                            <div class="font-bold text-gray-800">
+                                {{ $incidencia->maquina->tipo ?? 'Desconocido' }}
                             </div>
                         </div>
                     </div>
@@ -233,8 +235,8 @@
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     @foreach ($incidencia->fotos as $foto)
                                         <div class="group relative aspect-video bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-sm cursor-zoom-in"
-                                            onclick="window.open('{{ asset('storage/' . $foto) }}', '_blank')">
-                                            <img src="{{ asset('storage/' . $foto) }}"
+                                            onclick="window.open('{{ asset($foto) }}', '_blank')">
+                                            <img src="{{ asset($foto) }}"
                                                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                 alt="Evidencia">
                                             <div
