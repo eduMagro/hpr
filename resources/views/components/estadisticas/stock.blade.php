@@ -42,14 +42,14 @@
                 return '';
             }
             if ($tipo === 'encarretado' && in_array($diametro, [25, 32])) {
-                return 'bg-red-200';
+                return 'bg-blue-800';
             }
             if ($tipo === 'barra') {
                 if (in_array($diametro, [6, 8, 10])) {
-                    return 'bg-red-200';
+                    return 'bg-blue-800';
                 }
                 if ($diametro == 12 && in_array($longitud, [15, 16])) {
-                    return 'bg-red-200';
+                    return 'bg-blue-800';
                 }
             }
             return '';

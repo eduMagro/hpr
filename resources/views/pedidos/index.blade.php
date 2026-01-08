@@ -1371,6 +1371,9 @@
                 });
                 htmlResumen += '</ul>';
 
+                // Cerrar el modal de confirmación antes de mostrar el Swal
+                cerrarModalConfirmacion();
+
                 Swal.fire({
                     title: '¿Crear pedido de compra?',
                     html: htmlResumen,
@@ -1385,6 +1388,9 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         ev.target.submit();
+                    } else {
+                        // Si cancela, volver a abrir el modal de confirmación
+                        mostrarConfirmacion();
                     }
                 });
             });
