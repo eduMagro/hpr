@@ -89,6 +89,30 @@
                     @enderror
                 </div>
 
+                <!-- Aprobaciones requeridas -->
+                <div class="bg-gray-50 rounded-lg p-4 border">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">
+                        Aprobaciones requeridas
+                    </label>
+                    <div class="space-y-3">
+                        <label class="flex items-center">
+                            <input type="checkbox" name="necesita_aprobacion_rrhh" value="1"
+                                {{ old('necesita_aprobacion_rrhh', true) ? 'checked' : '' }}
+                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm text-gray-700">Requiere aprobación de RRHH</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" name="necesita_aprobacion_ceo" value="1"
+                                {{ old('necesita_aprobacion_ceo', true) ? 'checked' : '' }}
+                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm text-gray-700">Requiere aprobación del CEO</span>
+                        </label>
+                    </div>
+                    <p class="mt-2 text-xs text-gray-500">
+                        Si no se requieren aprobaciones, el usuario se creará automáticamente cuando el trabajador complete el formulario.
+                    </p>
+                </div>
+
                 <!-- Botones -->
                 <div class="flex justify-end gap-4 pt-4 border-t">
                     <a href="{{ route('incorporaciones.index') }}"

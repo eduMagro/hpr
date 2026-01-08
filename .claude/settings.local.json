@@ -51,7 +51,15 @@
       "Bash(powershell:*)",
       "Bash(xxd:*)",
       "Bash(C:/xampp/apache/bin/httpd.exe:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(cmd /c del \"C:\\\\xampp\\\\htdocs\\\\manager\\\\import_ensamblaje_ferrawin.php\")",
+      "Bash(cmd /c del \"C:\\\\xampp\\\\htdocs\\\\manager\\\\import_ferrawin_completo.php\")",
+      "Bash(cmd /c del \"C:\\\\xampp\\\\htdocs\\\\manager\\\\check_planillas.php\")",
+      "Bash(cmd /c del \"C:\\\\xampp\\\\htdocs\\\\manager\\\\check_dibujo_ferrawin.php\" \"C:\\\\xampp\\\\htdocs\\\\manager\\\\check_export_format.php\" \"C:\\\\xampp\\\\htdocs\\\\manager\\\\check_zobjeto.php\" \"C:\\\\xampp\\\\htdocs\\\\manager\\\\test_import_dibujo.php\" \"C:\\\\xampp\\\\htdocs\\\\manager\\\\update_ferrawin_query.php\" \"C:\\\\xampp\\\\htdocs\\\\manager\\\\check_ferrawin_campos.php\")",
+      "Bash(timeout:*)",
+      "Bash(tasklist /FI \"IMAGENAME eq php.exe\")",
+      "Bash(wmic process where \"name like ''%php%''\" get processid,commandline)",
+      "Bash(start /B cmd /c \"sync-all.bat > sync-all.log 2>&1\")"
     ],
     "deny": [],
     "ask": []

@@ -11,15 +11,16 @@
     <div class="w-full px-6 py-4">
         <!-- Botones superiores -->
         <div class="mb-6 flex flex-wrap justify-center gap-3">
-            @if (auth()->check() && auth()->id() === 1)
-                <a href="{{ route('entradas.create') }}"
-                    class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hidden md:inline-flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-                    </svg>
-                    Nuevo Producto
-                </a>
-            @endif
+
+            <a href="{{ route('entradas.create') }}"
+                class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hidden md:inline-flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd"
+                        d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                        clip-rule="evenodd" />
+                </svg>
+                Nuevo Producto
+            </a>
 
             <a href="{{ route('coladas.index') }}"
                 class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hidden md:inline-flex items-center gap-2">
@@ -35,8 +36,11 @@
             <button onclick="abrirModalImprimir()"
                 class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hidden md:inline-flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zM13 3a1 1 0 00-1 1v3a1 1 0 001 1h3a1 1 0 001-1V4a1 1 0 00-1-1h-3zm1 2v1h1V5h-1z" clip-rule="evenodd" />
-                    <path d="M11 4a1 1 0 10-2 0v1a1 1 0 002 0V4zM10 7a1 1 0 011 1v1h2a1 1 0 110 2h-3a1 1 0 01-1-1V8a1 1 0 011-1zM16 9a1 1 0 100 2 1 1 0 000-2zM9 13a1 1 0 011-1h1a1 1 0 110 2v2a1 1 0 11-2 0v-3zM16 13a1 1 0 100 2h1a1 1 0 100-2h-1z" />
+                    <path fill-rule="evenodd"
+                        d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zM13 3a1 1 0 00-1 1v3a1 1 0 001 1h3a1 1 0 001-1V4a1 1 0 00-1-1h-3zm1 2v1h1V5h-1z"
+                        clip-rule="evenodd" />
+                    <path
+                        d="M11 4a1 1 0 10-2 0v1a1 1 0 002 0V4zM10 7a1 1 0 011 1v1h2a1 1 0 110 2h-3a1 1 0 01-1-1V8a1 1 0 011-1zM16 9a1 1 0 100 2 1 1 0 000-2zM9 13a1 1 0 011-1h1a1 1 0 110 2v2a1 1 0 11-2 0v-3zM16 13a1 1 0 100 2h1a1 1 0 100-2h-1z" />
                 </svg>
                 Generar e Imprimir QR
             </button>
@@ -413,9 +417,9 @@
                             </button>
                             <button @click="open = !open"
                                 class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :class="{ 'rotate-180': open }"
-                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                    style="transition: transform 0.2s;">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                    :class="{ 'rotate-180': open }" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" style="transition: transform 0.2s;">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M19 9l-7 7-7-7" />
                                 </svg>
@@ -540,29 +544,30 @@
             <!-- Filtros compactos en una fila -->
             <div class="mb-4">
                 <form method="GET" action="{{ route('productos.index') }}" class="flex gap-2 items-center">
-                    <input type="text" name="codigo" placeholder="Código QR..."
-                        value="{{ request('codigo') }}"
+                    <input type="text" name="codigo" placeholder="Código QR..." value="{{ request('codigo') }}"
                         class="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         onchange="this.form.submit()">
 
                     <select name="producto_base_id"
                         class="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         onchange="this.form.submit()">
-                        <option value="" {{ !request('producto_base_id') ? 'selected' : '' }}>Producto base</option>
+                        <option value="" {{ !request('producto_base_id') ? 'selected' : '' }}>Producto base
+                        </option>
                         @foreach ($productosBase as $producto)
                             <option value="{{ $producto->id }}"
                                 {{ request('producto_base_id') == $producto->id ? 'selected' : '' }}>
-                                {{ strtoupper($producto->tipo) }} Ø{{ $producto->diametro }}{{ $producto->longitud ? ' ' . $producto->longitud . 'm' : '' }}
+                                {{ strtoupper($producto->tipo) }}
+                                Ø{{ $producto->diametro }}{{ $producto->longitud ? ' ' . $producto->longitud . 'm' : '' }}
                             </option>
                         @endforeach
                     </select>
 
-                    @if(request('codigo') || request('producto_base_id'))
+                    @if (request('codigo') || request('producto_base_id'))
                         <a href="{{ route('productos.index') }}"
                             class="px-2 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded flex items-center justify-center"
                             title="Restablecer filtros">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
                             </svg>

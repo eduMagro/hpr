@@ -32,7 +32,12 @@
                     </th>
 
                     <th class="border p-1"></th>
-                    <th class="border p-1"></th>
+
+                    {{-- Código SAGE --}}
+                    <th class="border p-1">
+                        <input type="text" wire:model.live.debounce.300ms="codigo_sage" placeholder="SAGE"
+                            class="bg-white text-gray-800 border border-gray-300 rounded text-xs text-center w-full h-6">
+                    </th>
 
                     {{-- Nave --}}
                     <th class="border p-1">

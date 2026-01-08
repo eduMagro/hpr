@@ -89,6 +89,10 @@ class IncorporacionController extends Controller
         $validated['created_by'] = auth()->id();
         $validated['token'] = Str::random(64);
 
+        // Checkboxes: si no están marcados no se envían
+        $validated['necesita_aprobacion_rrhh'] = $request->has('necesita_aprobacion_rrhh');
+        $validated['necesita_aprobacion_ceo'] = $request->has('necesita_aprobacion_ceo');
+
         $incorporacion = Incorporacion::create($validated);
 
         // Registrar log

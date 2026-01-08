@@ -117,9 +117,12 @@
         
         console.log('🔧 Config Calendario:', { userId, permissions, fechaIncorporacion, diasVacacionesAsignados });
 
-        // Estado de selección “clic-clic”
+        // Estado de selección "clic-clic"
         let startClick = null;
         let hoverDayEvs = [];
+
+        // Datos de vacaciones para actualización dinámica
+        let vacationData = null;
 
         function ensureTempEvents(calendar) {
             if (hoverRangeEv && hoverStartEv && hoverEndEv) return;
@@ -158,6 +161,64 @@
                 modal.classList.remove('translate-y-0');
                 modal.classList.add('translate-y-full');
             }
+            vacationData = null;
+        }
+
+        // Actualiza el modal con los días seleccionados
+        function updateVacationModal(diasSeleccionados) {
+            if (!vacationData) return;
+
+            const modal = document.getElementById('vacation-bottom-modal');
+            const content = document.getElementById('vacation-bottom-content');
+            if (!modal || !content) return;
+
+            modal.classList.remove('translate-y-full');
+            modal.classList.add('translate-y-0');
+
+            const { disponiblesTotal, disponiblesAnterior, previousYear, clickYear, colorBase, perdidas } = vacationData;
+            const restantes = disponiblesTotal - diasSeleccionados;
+            const colorClass = restantes >= 0 ? colorBase : 'text-red-400';
+
+            const desgloseHtml = disponiblesAnterior > 0
+                ? `<span class="text-gray-500 text-xs">(${disponiblesAnterior} de ${previousYear} + ${disponiblesTotal - disponiblesAnterior} de ${clickYear})</span>`
+                : '';
+
+            const seleccionHtml = diasSeleccionados > 1
+                ? `<span class="text-blue-400 text-xs">(-${diasSeleccionados})</span>`
+                : '';
+
+            const perdidasHtml = perdidas && perdidas > 0
+                ? `<span class="text-xs text-red-400 ml-2">(perdiste ${perdidas} del año pasado)</span>`
+                : '';
+
+            const cancelarBtnHtml = `
+                <button id="btn-cancelar-seleccion" style="background:#ef4444;color:white;padding:4px 12px;border-radius:6px;font-weight:600;font-size:12px;display:flex;align-items:center;gap:4px;border:none;cursor:pointer;margin-left:auto;">
+                    ✕ Cancelar
+                </button>
+            `;
+
+            content.innerHTML = `
+                <div class="flex items-center gap-4 text-sm">
+                    <div class="flex items-center gap-2">
+                        <span class="text-gray-400">Dias disponibles:</span>
+                        <span class="${colorClass} font-bold text-lg">${restantes}</span>
+                        ${seleccionHtml}
+                        ${desgloseHtml}
+                        ${perdidasHtml}
+                    </div>
+                    ${cancelarBtnHtml}
+                </div>
+            `;
+
+            // Añadir listener al botón cancelar
+            const btnCancelar = document.getElementById('btn-cancelar-seleccion');
+            if (btnCancelar) {
+                btnCancelar.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    startClick = null;
+                    clearTempHighlight(window.calendar, false);
+                });
+            }
         }
 
         function clearTempHighlight(calendar, keepBadges = false) {
@@ -178,6 +239,40 @@
                 days.push(d.toISOString().split("T")[0]);
             }
             return days;
+        }
+
+        // Cuenta días laborables (excluye fines de semana, festivos y vacaciones)
+        function contarDiasLaborables(aStr, bStr, calendar) {
+            const days = eachDayStr(aStr, bStr);
+            const eventos = calendar.getEvents();
+
+            // Crear set de fechas a excluir (festivos y vacaciones)
+            const fechasExcluidas = new Set();
+            eventos.forEach(ev => {
+                const id = ev.id || '';
+                const estado = ev.extendedProps?.estado || '';
+                // Excluir festivos y vacaciones ya asignadas
+                if (id.startsWith('festivo-') || estado === 'vacaciones') {
+                    const fechaEvento = ev.startStr?.split('T')[0] || ev.start?.toISOString().split('T')[0];
+                    if (fechaEvento) fechasExcluidas.add(fechaEvento);
+                }
+            });
+
+            let count = 0;
+            days.forEach(dayStr => {
+                const date = new Date(dayStr);
+                const diaSemana = date.getDay(); // 0=domingo, 6=sábado
+
+                // Excluir fines de semana
+                if (diaSemana === 0 || diaSemana === 6) return;
+
+                // Excluir festivos y vacaciones
+                if (fechasExcluidas.has(dayStr)) return;
+
+                count++;
+            });
+
+            return count;
         }
 
         // pilla el día anterior al siguiente en string YYYY-MM-DD
@@ -558,6 +653,55 @@
             if (horaEntrada) body.entrada = horaEntrada;
             if (horaSalida) body.salida = horaSalida;
 
+            // Si es vacaciones y hay días del año anterior disponibles, preguntar si usarlos primero
+            if (tipoSeleccionado === 'vacaciones' && vacationData && vacationData.disponiblesAnterior > 0) {
+                const fechaInicioDate = new Date(fechaInicio);
+                const mes = fechaInicioDate.getMonth(); // 0=enero, 1=febrero, 2=marzo
+
+                // Solo preguntar si estamos en período de gracia (enero-marzo)
+                if (mes <= 2) {
+                    const anioActual = fechaInicioDate.getFullYear();
+                    const anioAnterior = anioActual - 1;
+                    const diasSeleccionados = contarDiasLaborables(fechaInicio, fechaFin, calendar);
+
+                    const { isConfirmed: usarAnterior } = await Swal.fire({
+                        title: 'Días del año anterior',
+                        html: `
+                            <p class="text-sm text-gray-600 mb-4">Tienes <strong>${vacationData.disponiblesAnterior} días</strong> del año ${anioAnterior} que caducan el 31 de marzo.</p>
+                            <p class="text-sm text-gray-600 mb-4">Estás solicitando <strong>${diasSeleccionados} días</strong> de vacaciones.</p>
+                            <p class="text-sm text-gray-600 mb-4">¿Quieres usar primero los días del año ${anioAnterior}?</p>
+                            ${diasSeleccionados > vacationData.disponiblesAnterior ?
+                                `<p class="text-xs text-blue-600 mt-2"><em>Se asignarán ${Math.min(diasSeleccionados, vacationData.disponiblesAnterior)} días al ${anioAnterior} y ${diasSeleccionados - vacationData.disponiblesAnterior} días al ${anioActual}.</em></p>` :
+                                ''}
+                        `,
+                        showCancelButton: true,
+                        showDenyButton: true,
+                        confirmButtonText: `Sí, usar días de ${anioAnterior}`,
+                        denyButtonText: `No, usar solo ${anioActual}`,
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#1e3a5f',
+                        denyButtonColor: '#6b7280',
+                    });
+
+                    if (Swal.DismissReason && Swal.DismissReason.cancel) {
+                        // Usuario canceló
+                    }
+
+                    // Si el usuario confirma, usar año anterior primero
+                    if (usarAnterior === true) {
+                        body.usar_anterior_primero = true;
+                        body.dias_disponibles_anterior = vacationData.disponiblesAnterior;
+                        body.anio_anterior = anioAnterior;
+                    } else if (usarAnterior === false) {
+                        // Usuario eligió "No", usar solo año actual
+                        body.anio_cargo = anioActual;
+                    } else {
+                        // Usuario canceló
+                        return;
+                    }
+                }
+            }
+
             fetch(routes.storeUrl, {
                 method: "POST",
                 headers: {
@@ -763,131 +907,67 @@
                                         
                                         if (isGracePeriod && incorpDate < new Date(clickYear, 0, 1)) {
                                             // === PERÍODO DE GRACIA (1 ene - 31 mar) ===
-                                            // Las vacaciones del período de gracia se descuentan PRIMERO del año anterior
-                                            
-                                            // Cuántas del año anterior quedan después de descontar las del período de gracia
                                             const usadasDelAnterior = Math.min(usadasPeriodoGracia, Math.max(0, saldoAnteriorAlFinalizar));
                                             const disponiblesAnterior = Math.max(0, saldoAnteriorAlFinalizar - usadasPeriodoGracia);
-                                            
-                                            // Si usó más que las del año anterior, el exceso viene del año actual
                                             const excesoSobreAnterior = Math.max(0, usadasPeriodoGracia - Math.max(0, saldoAnteriorAlFinalizar));
-                                            
-                                            // Días generados del año ACTUAL (desde 1 enero hasta fecha clickeada)
-                                            const startOfCurrentYear = new Date(clickYear, 0, 1);
-                                            const diffTimeCurrent = Math.max(0, clickDate - startOfCurrentYear);
-                                            const diffDaysCurrent = Math.ceil(diffTimeCurrent / (1000 * 60 * 60 * 24)) + 1;
-                                            const generadasActual = Math.floor((diffDaysCurrent / 30) * 2.5); // Truncado
-                                            
-                                            // Disponibles del año actual = generadas - exceso que se usó del actual
+
+                                            // Si entró antes de este año, tiene los 22 días completos
+                                            const generadasActual = 22;
                                             const disponiblesActual = generadasActual - excesoSobreAnterior;
                                             const disponiblesTotal = disponiblesAnterior + disponiblesActual;
-                                            
-                                            // Días LIBRES = total disponibles - vacaciones futuras (ya asignadas)
-                                            const vacacionesFuturas = data.dias_vacaciones_futuras || 0;
-                                            const diasLibres = disponiblesTotal - vacacionesFuturas;
-                                            
-                                            // Colores según disponibilidad
-                                            const colorAnterior = disponiblesAnterior >= 0 ? 'text-amber-400' : 'text-red-400';
-                                            const colorActual = disponiblesActual >= 0 ? 'text-green-400' : 'text-red-400';
-                                            const colorTotal = diasLibres >= 0 ? 'text-emerald-400' : 'text-red-400';
-                                            
-                                            // Mostrar "ya asignadas" solo si hay vacaciones futuras
-                                            const yaAsignadasHtml = vacacionesFuturas > 0 
-                                                ? `<span class="text-[11px] text-gray-400">(${vacacionesFuturas} futuras)</span>` 
-                                                : '';
-                                            
-                                            content.innerHTML = `
-                                                <div class="flex items-center gap-2 text-[11px] sm:text-sm">
-                                                    <span class="${colorAnterior}">${previousYear}: ${disponiblesAnterior}d</span>
-                                                    <span class="text-gray-500">+</span>
-                                                    <span class="${colorActual}">${clickYear}: ${disponiblesActual}d</span>
-                                                    <span class="text-gray-500">=</span>
-                                                    <span class="${colorTotal} font-bold">${diasLibres} días</span>
-                                                    ${yaAsignadasHtml}
-                                                    ${cancelarBtnHtml}
-                                                </div>
-                                            `;
+
+                                            // Guardar datos para actualización dinámica
+                                            vacationData = {
+                                                disponiblesTotal,
+                                                disponiblesAnterior,
+                                                previousYear,
+                                                clickYear,
+                                                colorBase: 'text-emerald-400'
+                                            };
+
+                                            // Mostrar modal inicial
+                                            updateVacationModal(0);
                                         } else if (!isGracePeriod && incorpDate < new Date(clickYear, 0, 1)) {
                                             // === DESPUÉS DEL PERÍODO DE GRACIA (1 abril en adelante) ===
-                                            // Las vacaciones del año anterior CADUCAN
-                                            // Solo cuentan las del año actual (desde 1 enero hasta fecha clickeada)
-                                            
-                                            // Las vacaciones del período de gracia se consumieron del año anterior primero
                                             const usadasDelAnteriorEnGracia = Math.min(usadasPeriodoGracia, Math.max(0, saldoAnteriorAlFinalizar));
                                             const excesoSobreAnterior = Math.max(0, usadasPeriodoGracia - Math.max(0, saldoAnteriorAlFinalizar));
-                                            
-                                            // Vacaciones perdidas del año anterior (las que no se usaron y caducaron)
                                             const perdidas = Math.max(0, saldoAnteriorAlFinalizar - usadasPeriodoGracia);
-                                            
-                                            // Días generados del año ACTUAL (desde 1 enero hasta fecha clickeada)
-                                            const startOfCurrentYear = new Date(clickYear, 0, 1);
-                                            const diffTimeCurrent = Math.max(0, clickDate - startOfCurrentYear);
-                                            const diffDaysCurrent = Math.ceil(diffTimeCurrent / (1000 * 60 * 60 * 24)) + 1;
-                                            const generadasActual = Math.floor((diffDaysCurrent / 30) * 2.5); // Truncado
-                                            
-                                            // Total usadas del año actual = exceso del periodo gracia + usadas post gracia
+
+                                            // Si entró antes de este año, tiene los 22 días completos
+                                            const generadasActual = 22;
                                             const usadasTotalActual = excesoSobreAnterior + usadasPostGracia;
                                             const disponiblesActual = generadasActual - usadasTotalActual;
-                                            
-                                            // Días LIBRES = disponibles - vacaciones futuras (ya asignadas)
-                                            const vacacionesFuturas = data.dias_vacaciones_futuras || 0;
-                                            const diasLibres = disponiblesActual - vacacionesFuturas;
-                                            
-                                            const colorClass = diasLibres >= 0 ? 'text-emerald-400' : 'text-red-400';
-                                            
-                                            let perdidasHtml = '';
-                                            if (perdidas > 0) {
-                                                perdidasHtml = `<span class="text-xs text-red-400">(⚠️ ${perdidas}d caducaron)</span>`;
-                                            }
-                                            
-                                            // Mostrar "ya asignadas" solo si hay vacaciones futuras
-                                            const yaAsignadasHtml = vacacionesFuturas > 0 
-                                                ? `<span class="text-[11px] text-gray-400">(${vacacionesFuturas} futuras)</span>` 
-                                                : '';
-                                            
-                                            content.innerHTML = `
-                                                <div class="flex items-center gap-2 text-xs sm:text-sm">
-                                                    <span class="${colorClass} font-bold">${diasLibres} días</span>
-                                                    ${yaAsignadasHtml}
-                                                    ${perdidasHtml}
-                                                    ${cancelarBtnHtml}
-                                                </div>
-                                            `;
+
+                                            // Guardar datos para actualización dinámica
+                                            vacationData = {
+                                                disponiblesTotal: disponiblesActual,
+                                                disponiblesAnterior: 0,
+                                                previousYear,
+                                                clickYear,
+                                                colorBase: 'text-green-400',
+                                                perdidas
+                                            };
+
+                                            // Mostrar modal inicial
+                                            updateVacationModal(0);
                                         } else {
-                                            // === CASO NORMAL: persona incorporada este año o clic en año anterior ===
+                                            // === PERSONA INCORPORADA ESTE AÑO: cálculo proporcional ===
                                             const diffTime = Math.abs(clickDate - incorpDate);
-                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-                                            const generadas = Math.floor((diffDays / 30) * 2.5); // Truncado
+                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                            const generadas = Math.floor(Math.min((diffDays / 30) * 2.5, 22));
                                             const disponibles = generadas - diasVacacionesAsignados;
-                                            
-                                            // Días LIBRES = disponibles - vacaciones futuras (ya asignadas)
-                                            const vacacionesFuturas = data.dias_vacaciones_futuras || 0;
-                                            const diasLibres = disponibles - vacacionesFuturas;
-                                            
-                                            const colorClass = diasLibres >= 0 ? 'text-emerald-400' : 'text-red-400';
-                                            
-                                            // Mostrar "ya asignadas" solo si hay vacaciones futuras
-                                            const yaAsignadasHtml = vacacionesFuturas > 0 
-                                                ? `<span class="text-[11px] text-gray-400">(${vacacionesFuturas} futuras)</span>` 
-                                                : '';
-                                            
-                                            content.innerHTML = `
-                                                <div class="flex items-center gap-2 text-xs sm:text-sm">
-                                                    <span class="${colorClass} font-bold">${diasLibres} días</span>
-                                                    ${yaAsignadasHtml}
-                                                    ${cancelarBtnHtml}
-                                                </div>
-                                            `;
-                                        }
-                                        
-                                        // Re-agregar event listener al botón de cancelar después de actualizar el HTML
-                                        const btnCancelar = document.getElementById('btn-cancelar-seleccion');
-                                        if (btnCancelar) {
-                                            btnCancelar.addEventListener('click', function(e) {
-                                                e.stopPropagation();
-                                                startClick = null;
-                                                clearTempHighlight(calendar, false);
-                                            });
+
+                                            // Guardar datos para actualización dinámica
+                                            vacationData = {
+                                                disponiblesTotal: disponibles,
+                                                disponiblesAnterior: 0,
+                                                previousYear: clickDate.getFullYear() - 1,
+                                                clickYear: clickDate.getFullYear(),
+                                                colorBase: 'text-green-400'
+                                            };
+
+                                            // Mostrar modal inicial
+                                            updateVacationModal(0);
                                         }
                                     }
                                 }
@@ -896,15 +976,16 @@
                                 if (modal && content) {
                                     modal.classList.remove('translate-y-full');
                                     modal.classList.add('translate-y-0');
-                                    
+
                                     content.innerHTML = `
-                                        <div class="flex items-center gap-2 text-xs sm:text-sm">
-                                            <span class="text-yellow-400">⚠️ Sin fecha incorporación</span>
+                                        <div class="flex items-center gap-4 text-sm">
+                                            <span class="text-yellow-400">
+                                                Falta configurar tu fecha de incorporacion
+                                            </span>
                                             ${cancelarBtnHtml}
                                         </div>
                                     `;
-                                    
-                                    // Re-agregar event listener al botón de cancelar
+
                                     const btnCancelar = document.getElementById('btn-cancelar-seleccion');
                                     if (btnCancelar) {
                                         btnCancelar.addEventListener('click', function(e) {
@@ -1068,7 +1149,12 @@
                 cell.addEventListener("mouseenter", () => {
                     if (!startClick) return;
                     const day = cell.getAttribute("data-date");
-                    if (day) updateTempHighlight(calendar, startClick, day, true); // true = keep badges
+                    if (day) {
+                        updateTempHighlight(calendar, startClick, day, true);
+                        // Calcular días laborables (sin fines de semana, festivos ni vacaciones)
+                        const diasSeleccionados = contarDiasLaborables(startClick, day, calendar);
+                        updateVacationModal(diasSeleccionados);
+                    }
                 });
             });
 
@@ -1078,6 +1164,9 @@
                 table.addEventListener('mouseleave', () => {
                     if (startClick) {
                         updateTempHighlight(calendar, startClick, startClick, true);
+                        // Calcular si el día inicial es laborable
+                        const diasSeleccionados = contarDiasLaborables(startClick, startClick, calendar);
+                        updateVacationModal(diasSeleccionados);
                     }
                 });
             }

@@ -1,12 +1,23 @@
 // public/js/calendario/calendario.js
 (function () {
-    if (typeof FullCalendar === "undefined") {
-        console.error("FullCalendar no está cargado.");
-        return;
-    }
-
     const qsAll = (sel, ctx = document) =>
         Array.from(ctx.querySelectorAll(sel));
+
+    // Esperar a que FullCalendar esté disponible (máximo 5 segundos)
+    function waitForFullCalendar(callback, maxAttempts = 50) {
+        let attempts = 0;
+        const check = () => {
+            if (typeof FullCalendar !== "undefined") {
+                callback();
+            } else if (attempts < maxAttempts) {
+                attempts++;
+                setTimeout(check, 100);
+            } else {
+                console.error("FullCalendar no se cargó después de 5 segundos.");
+            }
+        };
+        check();
+    }
     const addDaysStr = (d, days) => {
         const x = new Date(d);
         x.setDate(x.getDate() + days);
@@ -14,55 +25,32 @@
     };
     const addOneDayStr = (d) => addDaysStr(d, 1);
 
-    function mergeDailyEvents(events) {
-        const norm = events.map((ev) => {
-            const startISO =
-                ev.startStr ||
-                ev.start ||
-                ev.startTime ||
-                ev.startDate ||
-                ev.start;
-            const start = new Date(startISO);
-            let endISO = ev.endStr || ev.end;
-            if (!endISO)
-                endISO = addOneDayStr(start.toISOString().split("T")[0]);
-            return {
-                ...ev,
-                start: start.toISOString(),
-                end: new Date(endISO).toISOString(),
-                allDay: ev.allDay !== false,
-            };
-        });
-        norm.sort((a, b) => new Date(a.start) - new Date(b.start));
-        const keyOf = (ev) => {
-            const p = ev.extendedProps || {};
-            // usa una “clave de grupo” estable si existe; si no, cae a título+tipo/estado/turno
-            const grupo = p.grupo || "";
-            return [
-                grupo || ev.title || "",
-                p.tipo || p.estado || p.turno || "",
-            ].join("|");
-        };
-        const merged = [];
-        for (const ev of norm) {
-            const startDay = ev.start.split("T")[0];
-            if (!merged.length) {
-                merged.push({ ...ev, __key: keyOf(ev) });
-                continue;
-            }
-            const last = merged[merged.length - 1];
-            const lastEndDay = last.end.split("T")[0];
-            if (last.__key === keyOf(ev) && startDay === lastEndDay) {
-                last.end = ev.end;
-                if (last.extendedProps) {
-                    last.extendedProps.asignacion_id = null;
-                    last.extendedProps.merged = true;
-                }
+    function normalizeDailyEvents(events) {
+        // Cada evento es individual por día - sin fusionar días consecutivos
+        // NO añadimos 'end' para que FullCalendar los trate como eventos de un solo día
+        return events.map((ev) => {
+            const startISO = ev.startStr || ev.start || ev.startTime || ev.startDate;
+            // Extraer solo la fecha (YYYY-MM-DD) sin hora
+            let startStr;
+            if (typeof startISO === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(startISO)) {
+                // Ya es formato YYYY-MM-DD
+                startStr = startISO;
             } else {
-                merged.push({ ...ev, __key: keyOf(ev) });
+                const startDate = new Date(startISO);
+                startStr = startDate.toISOString().split("T")[0];
             }
-        }
-        return merged.map(({ __key, ...rest }) => rest);
+
+            // Devolver evento sin 'end' para que sea de un solo día
+            const normalized = {
+                ...ev,
+                start: startStr,
+                allDay: true,
+            };
+            // Eliminar 'end' si existe para evitar que se extienda a varios días
+            delete normalized.end;
+            delete normalized.endStr;
+            return normalized;
+        });
     }
 
     function actualizarResumenAsistencia(resumenUrl) {
@@ -119,10 +107,22 @@
             turnos = [], // opcional
             userId = null,
         } = cfg;
+        
+        let {
+            fechaIncorporacion = null,
+            diasVacacionesAsignados = 0,
+        } = cfg;
 
-        // Estado de selección “clic-clic”
+        if (typeof fechaIncorporacion === 'undefined') fechaIncorporacion = null; // Safety check
+        
+        console.log('🔧 Config Calendario:', { userId, permissions, fechaIncorporacion, diasVacacionesAsignados });
+
+        // Estado de selección "clic-clic"
         let startClick = null;
         let hoverDayEvs = [];
+
+        // Datos de vacaciones para actualización dinámica
+        let vacationData = null;
 
         function ensureTempEvents(calendar) {
             if (hoverRangeEv && hoverStartEv && hoverEndEv) return;
@@ -154,7 +154,75 @@
             });
         }
 
-        function clearTempHighlight(calendar) {
+        function clearVacationBadges() {
+            // Limpiar modal INFERIOR
+            const modal = document.getElementById('vacation-bottom-modal');
+            if (modal) {
+                modal.classList.remove('translate-y-0');
+                modal.classList.add('translate-y-full');
+            }
+            vacationData = null;
+        }
+
+        // Actualiza el modal con los días seleccionados
+        function updateVacationModal(diasSeleccionados) {
+            if (!vacationData) return;
+
+            const modal = document.getElementById('vacation-bottom-modal');
+            const content = document.getElementById('vacation-bottom-content');
+            if (!modal || !content) return;
+
+            modal.classList.remove('translate-y-full');
+            modal.classList.add('translate-y-0');
+
+            const { disponiblesTotal, disponiblesAnterior, previousYear, clickYear, colorBase, perdidas } = vacationData;
+            const restantes = disponiblesTotal - diasSeleccionados;
+            const colorClass = restantes >= 0 ? colorBase : 'text-red-400';
+
+            const desgloseHtml = disponiblesAnterior > 0
+                ? `<span class="text-gray-500 text-xs">(${disponiblesAnterior} de ${previousYear} + ${disponiblesTotal - disponiblesAnterior} de ${clickYear})</span>`
+                : '';
+
+            const seleccionHtml = diasSeleccionados > 1
+                ? `<span class="text-blue-400 text-xs">(-${diasSeleccionados})</span>`
+                : '';
+
+            const perdidasHtml = perdidas && perdidas > 0
+                ? `<span class="text-xs text-red-400 ml-2">(perdiste ${perdidas} del año pasado)</span>`
+                : '';
+
+            const cancelarBtnHtml = `
+                <button id="btn-cancelar-seleccion" style="background:#ef4444;color:white;padding:4px 12px;border-radius:6px;font-weight:600;font-size:12px;display:flex;align-items:center;gap:4px;border:none;cursor:pointer;margin-left:auto;">
+                    ✕ Cancelar
+                </button>
+            `;
+
+            content.innerHTML = `
+                <div class="flex items-center gap-4 text-sm">
+                    <div class="flex items-center gap-2">
+                        <span class="text-gray-400">Dias disponibles:</span>
+                        <span class="${colorClass} font-bold text-lg">${restantes}</span>
+                        ${seleccionHtml}
+                        ${desgloseHtml}
+                        ${perdidasHtml}
+                    </div>
+                    ${cancelarBtnHtml}
+                </div>
+            `;
+
+            // Añadir listener al botón cancelar
+            const btnCancelar = document.getElementById('btn-cancelar-seleccion');
+            if (btnCancelar) {
+                btnCancelar.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    startClick = null;
+                    clearTempHighlight(window.calendar, false);
+                });
+            }
+        }
+
+        function clearTempHighlight(calendar, keepBadges = false) {
+            if (!keepBadges) clearVacationBadges();
             if (!hoverDayEvs.length) return;
             calendar.batchRendering(() =>
                 hoverDayEvs.forEach((ev) => ev.remove())
@@ -173,6 +241,40 @@
             return days;
         }
 
+        // Cuenta días laborables (excluye fines de semana, festivos y vacaciones)
+        function contarDiasLaborables(aStr, bStr, calendar) {
+            const days = eachDayStr(aStr, bStr);
+            const eventos = calendar.getEvents();
+
+            // Crear set de fechas a excluir (festivos y vacaciones)
+            const fechasExcluidas = new Set();
+            eventos.forEach(ev => {
+                const id = ev.id || '';
+                const estado = ev.extendedProps?.estado || '';
+                // Excluir festivos y vacaciones ya asignadas
+                if (id.startsWith('festivo-') || estado === 'vacaciones') {
+                    const fechaEvento = ev.startStr?.split('T')[0] || ev.start?.toISOString().split('T')[0];
+                    if (fechaEvento) fechasExcluidas.add(fechaEvento);
+                }
+            });
+
+            let count = 0;
+            days.forEach(dayStr => {
+                const date = new Date(dayStr);
+                const diaSemana = date.getDay(); // 0=domingo, 6=sábado
+
+                // Excluir fines de semana
+                if (diaSemana === 0 || diaSemana === 6) return;
+
+                // Excluir festivos y vacaciones
+                if (fechasExcluidas.has(dayStr)) return;
+
+                count++;
+            });
+
+            return count;
+        }
+
         // pilla el día anterior al siguiente en string YYYY-MM-DD
         const addOneDayStr = (d) => {
             const x = new Date(d);
@@ -180,13 +282,13 @@
             return x.toISOString().split("T")[0];
         };
 
-        function updateTempHighlight(calendar, startStr, hoverStr) {
+        function updateTempHighlight(calendar, startStr, hoverStr, isHover = true) {
             const forward = startStr <= hoverStr;
             const days = eachDayStr(startStr, hoverStr);
             const first = days[0];
             const last = days[days.length - 1];
 
-            clearTempHighlight(calendar);
+            clearTempHighlight(calendar, isHover);
 
             calendar.batchRendering(() => {
                 days.forEach((d) => {
@@ -305,33 +407,171 @@
                 .map((t) => `<option value="${t.nombre}">${t.nombre}</option>`)
                 .join("");
 
-            const mensajeFecha =
-                fechaInicio === fechaFin
-                    ? `<p>${fechaInicio}</p>`
-                    : `<p>Desde: ${fechaInicio}</p><p>Hasta: ${fechaFin}</p>`;
+            const esMismoDia = fechaInicio === fechaFin;
+            const mensajeFecha = esMismoDia
+                ? `<p class="mb-2">${fechaInicio}</p>`
+                : `<p class="mb-2">Desde: ${fechaInicio} — Hasta: ${fechaFin}</p>`;
 
-            const { value: tipoSeleccionado, isConfirmed } = await Swal.fire({
-                title: "Selecciona un turno o estado",
+            // Si es un solo día, buscar horas existentes en los eventos del calendario
+            let entradaExistente = '';
+            let salidaExistente = '';
+            if (esMismoDia) {
+                const eventos = calendar.getEvents();
+                eventos.forEach(ev => {
+                    const props = ev.extendedProps || {};
+                    if (props.fecha === fechaInicio || (ev.startStr && ev.startStr.startsWith(fechaInicio))) {
+                        if (props.entrada && !entradaExistente) {
+                            entradaExistente = props.entrada.substring(0, 5);
+                        }
+                        if (props.salida && !salidaExistente) {
+                            salidaExistente = props.salida.substring(0, 5);
+                        }
+                    }
+                });
+            }
+
+            const { value: formData, isConfirmed } = await Swal.fire({
+                title: null,
                 html: `
-            ${mensajeFecha}
-            <select id="tipo-dia" class="swal2-select">
-                <option value="eliminarTurnoEstado">🗑 Eliminar Turno</option>
-                ${opcionesTurnos}
-                <option value="eliminarEstado">🗑 Eliminar Estado</option>
-                <option value="curso">🎓 Realizando Cursos</option>
-                <option value="vacaciones">🏖 Vacaciones</option>
-                <option value="baja">🤒 Baja</option>
-                <option value="justificada">✅ Falta Justificada</option>
-                <option value="injustificada">❌ Falta Injustificada</option>
-            </select>
-        `,
+                    <div style="text-align: left; overflow-x: hidden;">
+                        <!-- Header con fecha -->
+                        <div style="background: linear-gradient(135deg, #1e3a5f 0%, #111827 100%); color: white; margin: -20px -20px 20px -20px; padding: 20px; border-radius: 8px 8px 0 0;">
+                            <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">📅 Gestionar Asignación</h3>
+                            <p style="margin: 0; font-size: 14px; opacity: 0.9;">
+                                ${esMismoDia ? fechaInicio : `${fechaInicio} → ${fechaFin}`}
+                            </p>
+                        </div>
+
+                        <!-- Selector de turno/estado -->
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px;">
+                                Turno o Estado
+                            </label>
+                            <select id="tipo-dia" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; background: white; cursor: pointer; transition: border-color 0.2s;">
+                                <option value="">⏱️ Solo actualizar horas</option>
+                                <option value="eliminarTurnoEstado">🗑️ Eliminar turno</option>
+                                ${opcionesTurnos}
+                                <option disabled style="font-size: 8px;">─────────</option>
+                                <option value="eliminarEstado">🗑️ Eliminar estado</option>
+                                <option value="curso">🎓 Cursos</option>
+                                <option value="vacaciones">🏖️ Vacaciones</option>
+                                <option value="baja">🤒 Baja</option>
+                                <option value="justificada">✅ Justificada</option>
+                                <option value="injustificada">❌ Injustificada</option>
+                            </select>
+                        </div>
+
+                        <!-- Campos de hora -->
+                        <div style="background: #f9fafb; border-radius: 8px; padding: 16px; border: 1px solid #e5e7eb;">
+                            <label style="display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 12px;">
+                                Horario de fichaje
+                            </label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                <div>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #059669; margin-bottom: 6px; font-weight: 500;">
+                                        <span style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
+                                        Entrada
+                                    </label>
+                                    <input type="time" id="hora-entrada" value="${entradaExistente}"
+                                        style="width: 100%; padding: 10px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 15px; font-family: monospace; transition: border-color 0.2s;">
+                                </div>
+                                <div>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #dc2626; margin-bottom: 6px; font-weight: 500;">
+                                        <span style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%; display: inline-block;"></span>
+                                        Salida
+                                    </label>
+                                    <input type="time" id="hora-salida" value="${salidaExistente}"
+                                        style="width: 100%; padding: 10px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 15px; font-family: monospace; transition: border-color 0.2s;">
+                                </div>
+                            </div>
+                            ${!esMismoDia ? `
+                                <p style="margin: 12px 0 0 0; font-size: 12px; color: #6b7280; display: flex; align-items: center; gap: 6px;">
+                                    <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Deja vacío para mantener las horas actuales
+                                </p>
+                            ` : ''}
+                        </div>
+                    </div>
+                `,
                 showCancelButton: true,
-                confirmButtonText: "Registrar",
+                confirmButtonText: "Guardar",
                 cancelButtonText: "Cancelar",
-                preConfirm: () => document.getElementById("tipo-dia").value,
+                confirmButtonColor: "#1e3a5f",
+                cancelButtonColor: "#6b7280",
+                width: 420,
+                padding: "20px",
+                customClass: {
+                    popup: 'swal-calendario-popup',
+                    confirmButton: 'swal-btn-confirm',
+                    cancelButton: 'swal-btn-cancel'
+                },
+                preConfirm: () => {
+                    return {
+                        tipo: document.getElementById("tipo-dia").value,
+                        entrada: document.getElementById("hora-entrada").value || null,
+                        salida: document.getElementById("hora-salida").value || null,
+                    };
+                },
+                didOpen: () => {
+                    // Añadir efectos hover a los inputs
+                    const inputs = document.querySelectorAll('#hora-entrada, #hora-salida, #tipo-dia');
+                    inputs.forEach(input => {
+                        input.addEventListener('focus', () => input.style.borderColor = '#3b82f6');
+                        input.addEventListener('blur', () => input.style.borderColor = '#e5e7eb');
+                    });
+                }
             });
 
-            if (!isConfirmed) return;
+            if (!isConfirmed || !formData) return;
+
+            const tipoSeleccionado = formData.tipo;
+            const horaEntrada = formData.entrada;
+            const horaSalida = formData.salida;
+
+            // --- Solo actualizar horas (sin cambiar turno/estado) ---
+            if (!tipoSeleccionado) {
+                // Validar que al menos una hora esté especificada
+                if (!horaEntrada && !horaSalida) {
+                    Swal.fire("Aviso", "Debes especificar al menos una hora para actualizar.", "warning");
+                    return;
+                }
+
+                const body = {
+                    user_id: userId,
+                    fecha_inicio: fechaInicio,
+                    fecha_fin: fechaFin,
+                    tipo: "soloHoras",
+                };
+                if (horaEntrada) body.entrada = horaEntrada;
+                if (horaSalida) body.salida = horaSalida;
+
+                fetch(routes.storeUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": csrfToken,
+                    },
+                    body: JSON.stringify(body),
+                })
+                    .then((res) => res.json())
+                    .then((data) => {
+                        if (data.success) {
+                            smartRefetch(calendar, () =>
+                                actualizarResumenAsistencia(routes.resumenUrl)
+                            );
+                            Swal.fire("Actualizado", "Horas actualizadas correctamente.", "success");
+                        } else {
+                            Swal.fire("Error", data.error || "No se pudieron actualizar las horas.", "error");
+                        }
+                    })
+                    .catch((err) => {
+                        console.error("Error:", err);
+                        Swal.fire("Error", "Ocurrió un problema al actualizar las horas.", "error");
+                    });
+                return;
+            }
 
             // --- Lógica de eliminación ---
             if (
@@ -409,6 +649,43 @@
                 tipo: tipoSeleccionado,
             };
 
+            // Añadir horas solo si se han especificado
+            if (horaEntrada) body.entrada = horaEntrada;
+            if (horaSalida) body.salida = horaSalida;
+
+            // Si es vacaciones y hay días del año anterior disponibles, preguntar qué año usar
+            if (tipoSeleccionado === 'vacaciones' && vacationData && vacationData.disponiblesAnterior > 0) {
+                const fechaInicioDate = new Date(fechaInicio);
+                const mes = fechaInicioDate.getMonth(); // 0=enero, 1=febrero, 2=marzo
+
+                // Solo preguntar si estamos en período de gracia (enero-marzo)
+                if (mes <= 2) {
+                    const anioActual = fechaInicioDate.getFullYear();
+                    const anioAnterior = anioActual - 1;
+
+                    const { value: anioElegido, isConfirmed: anioConfirmado } = await Swal.fire({
+                        title: 'Año de cargo',
+                        html: `
+                            <p class="text-sm text-gray-600 mb-4">Tienes <strong>${vacationData.disponiblesAnterior} días</strong> del año ${anioAnterior} disponibles.</p>
+                            <p class="text-sm text-gray-600 mb-4">¿A qué año quieres cargar estas vacaciones?</p>
+                        `,
+                        input: 'radio',
+                        inputOptions: {
+                            [anioAnterior]: `${anioAnterior} (${vacationData.disponiblesAnterior} días disponibles)`,
+                            [anioActual]: `${anioActual} (${vacationData.disponiblesTotal - vacationData.disponiblesAnterior} días disponibles)`
+                        },
+                        inputValue: anioAnterior,
+                        showCancelButton: true,
+                        confirmButtonText: 'Continuar',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#1e3a5f',
+                    });
+
+                    if (!anioConfirmado) return;
+                    body.anio_cargo = parseInt(anioElegido);
+                }
+            }
+
             fetch(routes.storeUrl, {
                 method: "POST",
                 headers: {
@@ -455,6 +732,12 @@
             height: "auto",
             selectable: false, // drag-select desactivado
             selectMirror: false,
+            displayEventTime: false, // La hora ya está en el título
+            displayEventEnd: false,
+            eventDisplay: 'block', // Mostrar eventos timed como bloques
+            nextDayThreshold: '00:00:00', // Eventos que terminan a medianoche no pasan al día siguiente
+            forceEventDuration: true, // Forzar duración por defecto
+            defaultAllDayEventDuration: { days: 1 }, // Duración por defecto de 1 día
             headerToolbar: {
                 left: "prev,next today",
                 center: "title",
@@ -473,7 +756,30 @@
                 }
                 fetch(routes.eventosUrl)
                     .then((r) => r.json())
-                    .then((events) => success(mergeDailyEvents(events)))
+                    .then((events) => {
+                        console.log('📅 Eventos recibidos del servidor:', events.length);
+
+                        // Separar eventos allDay de eventos con hora (fichajes)
+                        const allDayEvents = events.filter(ev => ev.allDay !== false);
+                        const timedEvents = events.filter(ev => ev.allDay === false);
+
+                        console.log('📅 Eventos allDay:', allDayEvents.length, 'Eventos con hora:', timedEvents.length);
+
+                        // Normalizar solo los eventos allDay
+                        const normalized = normalizeDailyEvents(allDayEvents);
+
+                        // Verificar que no hay eventos con end multi-día
+                        normalized.forEach(ev => {
+                            if (ev.end) {
+                                console.warn('⚠️ Evento con end:', ev.id, ev.start, ev.end);
+                            }
+                        });
+
+                        // Combinar ambos tipos
+                        const final = [...normalized, ...timedEvents];
+                        console.log('📅 Total eventos a renderizar:', final.length);
+                        success(final);
+                    })
                     .catch(failure);
             },
 
@@ -482,43 +788,227 @@
                 const clicked = info.dateStr;
 
                 if (!startClick) {
+                    // --- PRIMER CLIC ---
                     startClick = clicked;
-                    updateTempHighlight(calendar, clicked, clicked); // pinta sólo ese día
+                    updateTempHighlight(calendar, clicked, clicked, false); // false para que SI limpie/actualice el modal
+
+                    // Mostrar inmediatamente el modal con instrucciones de selección
+                    const modal = document.getElementById('vacation-bottom-modal');
+                    const content = document.getElementById('vacation-bottom-content');
+                    
+                    if (modal && content) {
+                        modal.classList.remove('translate-y-full');
+                        modal.classList.add('translate-y-0');
+                        
+                        // Mostrar mensaje de selección activa con botón de cancelar - COMPACTO
+                        content.innerHTML = `
+                            <div class="flex items-center gap-3 text-xs sm:text-sm">
+                                <span class="text-amber-300">Selecciona día final</span>
+                                <button id="btn-cancelar-seleccion" style="background:#ef4444;color:white;padding:4px 12px;border-radius:6px;font-weight:600;font-size:12px;display:flex;align-items:center;gap:4px;border:none;cursor:pointer;">
+                                    ✕ Cancelar
+                                </button>
+                            </div>
+                        `;
+                        
+                        // Agregar event listener al botón de cancelar
+                        const btnCancelar = document.getElementById('btn-cancelar-seleccion');
+                        if (btnCancelar) {
+                            btnCancelar.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                startClick = null;
+                                clearTempHighlight(calendar, false);
+                            });
+                        }
+                    }
+
+                    // AJAX Fetch para datos frescos de vacaciones (solo en el primer clic)
+                    // Enviar la fecha clickeada para que el backend calcule relativo a esa fecha
+                    const baseUrl = routes.vacationDataUrl || `/api/usuarios/${userId}/vacation-data`;
+                    const fetchUrl = `${baseUrl}?fecha=${clicked}`;
+                    fetch(fetchUrl)
+                        .then(r => {
+                            if (!r.ok) {
+                                throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+                            }
+                            const contentType = r.headers.get('content-type') || '';
+                            if (!contentType.includes('application/json')) {
+                                throw new Error('La respuesta no es JSON');
+                            }
+                            return r.json();
+                        })
+                        .then(data => {
+                            if (data.error) throw new Error(data.error);
+                            
+                            fechaIncorporacion = data.fecha_incorporacion;
+                            diasVacacionesAsignados = data.dias_asignados;
+
+                            // Botón cancelar con estilo inline para máximo contraste
+                            const cancelarBtnHtml = `
+                                <button id="btn-cancelar-seleccion" style="background:#ef4444;color:white;padding:4px 12px;border-radius:6px;font-weight:600;font-size:12px;display:flex;align-items:center;gap:4px;border:none;cursor:pointer;">
+                                    Cancelar
+                                </button>
+                            `;
+                            
+                            if (fechaIncorporacion) {
+                                const incorpDate = new Date(fechaIncorporacion);
+                                const clickDate = new Date(clicked);
+                                
+                                if (clickDate >= incorpDate) {
+                                    const clickYear = clickDate.getFullYear();
+                                    const clickMonth = clickDate.getMonth(); // 0-indexed (0=enero, 2=marzo)
+                                    
+                                    // Detectar período de gracia: 1 enero - 31 marzo
+                                    const isGracePeriod = clickMonth <= 2; // enero, febrero, marzo
+                                    const previousYear = clickYear - 1;
+                                    
+                                    if (modal && content) {
+                                        modal.classList.remove('translate-y-full');
+                                        modal.classList.add('translate-y-0');
+                                        
+                                        // Calcular vacaciones GENERADAS del año anterior (hasta 31 dic)
+                                        const endOfPrevYear = new Date(previousYear, 11, 31);
+                                        let generadasAnterior = 0;
+                                        
+                                        if (incorpDate < new Date(clickYear, 0, 1)) {
+                                            // La persona ya trabajaba antes de este año
+                                            const prevYearStart = incorpDate > new Date(previousYear, 0, 1) ? incorpDate : new Date(previousYear, 0, 1);
+                                            const diffTimePrev = Math.max(0, endOfPrevYear - prevYearStart);
+                                            const diffDaysPrev = Math.ceil(diffTimePrev / (1000 * 60 * 60 * 24)) + 1;
+                                            generadasAnterior = Math.floor(Math.min((diffDaysPrev / 30) * 2.5, 30)); // Truncado, Max 30 días
+                                        }
+                                        
+                                        // Días usados del año anterior (en fechas del año anterior)
+                                        const usadasAnteriorDirec = data.dias_asignados_anterior || 0;
+                                        
+                                        // Saldo del año anterior AL FINALIZAR el año anterior
+                                        const saldoAnteriorAlFinalizar = generadasAnterior - usadasAnteriorDirec;
+                                        
+                                        // Días usados durante el período de gracia (1 ene - 31 mar del año actual)
+                                        const usadasPeriodoGracia = data.dias_usados_periodo_gracia || 0;
+                                        
+                                        // Días usados después del período de gracia (1 abril en adelante)
+                                        const usadasPostGracia = data.dias_usados_post_gracia || 0;
+                                        
+                                        if (isGracePeriod && incorpDate < new Date(clickYear, 0, 1)) {
+                                            // === PERÍODO DE GRACIA (1 ene - 31 mar) ===
+                                            const usadasDelAnterior = Math.min(usadasPeriodoGracia, Math.max(0, saldoAnteriorAlFinalizar));
+                                            const disponiblesAnterior = Math.max(0, saldoAnteriorAlFinalizar - usadasPeriodoGracia);
+                                            const excesoSobreAnterior = Math.max(0, usadasPeriodoGracia - Math.max(0, saldoAnteriorAlFinalizar));
+
+                                            // Si entró antes de este año, tiene los 22 días completos
+                                            const generadasActual = 22;
+                                            const disponiblesActual = generadasActual - excesoSobreAnterior;
+                                            const disponiblesTotal = disponiblesAnterior + disponiblesActual;
+
+                                            // Guardar datos para actualización dinámica
+                                            vacationData = {
+                                                disponiblesTotal,
+                                                disponiblesAnterior,
+                                                previousYear,
+                                                clickYear,
+                                                colorBase: 'text-emerald-400'
+                                            };
+
+                                            // Mostrar modal inicial
+                                            updateVacationModal(0);
+                                        } else if (!isGracePeriod && incorpDate < new Date(clickYear, 0, 1)) {
+                                            // === DESPUÉS DEL PERÍODO DE GRACIA (1 abril en adelante) ===
+                                            const usadasDelAnteriorEnGracia = Math.min(usadasPeriodoGracia, Math.max(0, saldoAnteriorAlFinalizar));
+                                            const excesoSobreAnterior = Math.max(0, usadasPeriodoGracia - Math.max(0, saldoAnteriorAlFinalizar));
+                                            const perdidas = Math.max(0, saldoAnteriorAlFinalizar - usadasPeriodoGracia);
+
+                                            // Si entró antes de este año, tiene los 22 días completos
+                                            const generadasActual = 22;
+                                            const usadasTotalActual = excesoSobreAnterior + usadasPostGracia;
+                                            const disponiblesActual = generadasActual - usadasTotalActual;
+
+                                            // Guardar datos para actualización dinámica
+                                            vacationData = {
+                                                disponiblesTotal: disponiblesActual,
+                                                disponiblesAnterior: 0,
+                                                previousYear,
+                                                clickYear,
+                                                colorBase: 'text-green-400',
+                                                perdidas
+                                            };
+
+                                            // Mostrar modal inicial
+                                            updateVacationModal(0);
+                                        } else {
+                                            // === PERSONA INCORPORADA ESTE AÑO: cálculo proporcional ===
+                                            const diffTime = Math.abs(clickDate - incorpDate);
+                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                            const generadas = Math.floor(Math.min((diffDays / 30) * 2.5, 22));
+                                            const disponibles = generadas - diasVacacionesAsignados;
+
+                                            // Guardar datos para actualización dinámica
+                                            vacationData = {
+                                                disponiblesTotal: disponibles,
+                                                disponiblesAnterior: 0,
+                                                previousYear: clickDate.getFullYear() - 1,
+                                                clickYear: clickDate.getFullYear(),
+                                                colorBase: 'text-green-400'
+                                            };
+
+                                            // Mostrar modal inicial
+                                            updateVacationModal(0);
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Mostrar mensaje cuando no hay fecha de incorporación
+                                if (modal && content) {
+                                    modal.classList.remove('translate-y-full');
+                                    modal.classList.add('translate-y-0');
+
+                                    content.innerHTML = `
+                                        <div class="flex items-center gap-4 text-sm">
+                                            <span class="text-yellow-400">
+                                                Falta configurar tu fecha de incorporacion
+                                            </span>
+                                            ${cancelarBtnHtml}
+                                        </div>
+                                    `;
+
+                                    const btnCancelar = document.getElementById('btn-cancelar-seleccion');
+                                    if (btnCancelar) {
+                                        btnCancelar.addEventListener('click', function(e) {
+                                            e.stopPropagation();
+                                            startClick = null;
+                                            clearTempHighlight(calendar, false);
+                                        });
+                                    }
+                                }
+                            }
+                        })
+                        .catch(e => console.error("Error fetching vacation data:", e));
+                    
                     return;
                 }
 
-                // ✅ segundo clic en el mismo día → seleccionar 1 solo día
-                if (clicked === startClick) {
-                    const startStr = clicked;
-                    const endStr = clicked;
-                    clearTempHighlight(calendar);
-                    startClick = null;
+                // --- SEGUNDO CLIC ---
+                const startStr = clicked < startClick ? clicked : startClick;
+                const endStr = clicked < startClick ? startClick : clicked;
+                
+                // Limpiamos todo antes de la acción
+                clearTempHighlight(calendar, false);
+                const tempStart = startClick;
+                startClick = null;
 
-                    if (
-                        permissions.canAssignStates ||
-                        permissions.canAssignShifts
-                    ) {
+                if (clicked === tempStart) {
+                    // Un solo día
+                    if (permissions.canAssignStates || permissions.canAssignShifts) {
+                        registrarEventoOficina(clicked, clicked, calendar);
+                    } else if (permissions.canRequestVacations) {
+                        pedirVacaciones(clicked, clicked, calendar);
+                    }
+                } else {
+                    // Rango
+                    if (permissions.canAssignStates || permissions.canAssignShifts) {
                         registrarEventoOficina(startStr, endStr, calendar);
                     } else if (permissions.canRequestVacations) {
                         pedirVacaciones(startStr, endStr, calendar);
                     }
-                    return;
-                }
-
-                // rango normal (días distintos)
-                const startStr = clicked < startClick ? clicked : startClick;
-                const endStr = clicked < startClick ? startClick : clicked;
-
-                clearTempHighlight(calendar);
-                startClick = null;
-
-                if (
-                    permissions.canAssignStates ||
-                    permissions.canAssignShifts
-                ) {
-                    registrarEventoOficina(startStr, endStr, calendar);
-                } else if (permissions.canRequestVacations) {
-                    pedirVacaciones(startStr, endStr, calendar);
                 }
             },
 
@@ -535,6 +1025,96 @@
                     calendar.view.type
                 );
             },
+
+            // Click en evento para mostrar tooltip con detalles
+            eventClick: function (info) {
+                const event = info.event;
+                const props = event.extendedProps || {};
+
+                // Ignorar eventos de fondo (selección de rango)
+                if (event.display === 'background' || props.__tempHover) return;
+
+                // Ignorar festivos y vacaciones pendientes
+                if (event.id?.startsWith('festivo-') || event.id?.startsWith('vac-')) return;
+
+                // Eliminar tooltip existente
+                const existente = document.getElementById('evento-tooltip');
+                if (existente) existente.remove();
+
+                const obraNombre = props.obra_nombre || null;
+                const entrada = props.entrada ? props.entrada.substring(0, 5) : null;
+                const salida = props.salida ? props.salida.substring(0, 5) : null;
+
+                // Si no hay datos que mostrar, no hacer nada
+                if (!obraNombre && !entrada && !salida) return;
+
+                // Crear tooltip
+                const tooltip = document.createElement('div');
+                tooltip.id = 'evento-tooltip';
+                tooltip.style.cssText = `
+                    position: fixed;
+                    z-index: 9999;
+                    background: #1f2937;
+                    color: white;
+                    padding: 8px 12px;
+                    border-radius: 6px;
+                    font-size: 12px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    max-width: 250px;
+                    pointer-events: none;
+                `;
+
+                let html = '';
+                if (obraNombre) {
+                    html += `<div style="margin-bottom: 4px;"><strong>📍 Obra:</strong> ${obraNombre}</div>`;
+                }
+                if (entrada || salida) {
+                    html += `<div><strong>🕐 Horario:</strong> `;
+                    if (entrada) html += entrada;
+                    if (entrada && salida) html += ' - ';
+                    if (salida) html += salida;
+                    html += `</div>`;
+                }
+                tooltip.innerHTML = html;
+
+                document.body.appendChild(tooltip);
+
+                // Posicionar cerca del evento
+                const rect = info.el.getBoundingClientRect();
+                const tooltipRect = tooltip.getBoundingClientRect();
+
+                let top = rect.bottom + 5;
+                let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+
+                // Ajustar si se sale de pantalla
+                if (left < 10) left = 10;
+                if (left + tooltipRect.width > window.innerWidth - 10) {
+                    left = window.innerWidth - tooltipRect.width - 10;
+                }
+                if (top + tooltipRect.height > window.innerHeight - 10) {
+                    top = rect.top - tooltipRect.height - 5;
+                }
+
+                tooltip.style.top = top + 'px';
+                tooltip.style.left = left + 'px';
+
+                // Cerrar al hacer clic en cualquier lugar
+                const cerrarTooltip = (e) => {
+                    if (!tooltip.contains(e.target)) {
+                        tooltip.remove();
+                        document.removeEventListener('click', cerrarTooltip);
+                    }
+                };
+                setTimeout(() => document.addEventListener('click', cerrarTooltip), 10);
+
+                // Auto-cerrar después de 3 segundos
+                setTimeout(() => {
+                    if (document.getElementById('evento-tooltip')) {
+                        tooltip.remove();
+                        document.removeEventListener('click', cerrarTooltip);
+                    }
+                }, 3000);
+            },
         });
 
         // Cancelar rango con ESC
@@ -542,20 +1122,38 @@
             if (ev.key === "Escape" && startClick) {
                 startClick = null;
                 clearTempHighlight(calendar);
+                // clearVacationBadges() is already called inside clearTempHighlight
             }
         });
 
         let rafId = null;
         function bindHoverCells() {
-            // re-bind cada vez que cambia el mes/vista
             const cells = el.querySelectorAll(".fc-daygrid-day");
             cells.forEach((cell) => {
                 cell.addEventListener("mouseenter", () => {
                     if (!startClick) return;
                     const day = cell.getAttribute("data-date");
-                    if (day) updateTempHighlight(calendar, startClick, day);
+                    if (day) {
+                        updateTempHighlight(calendar, startClick, day, true);
+                        // Calcular días laborables (sin fines de semana, festivos ni vacaciones)
+                        const diasSeleccionados = contarDiasLaborables(startClick, day, calendar);
+                        updateVacationModal(diasSeleccionados);
+                    }
                 });
             });
+
+            // Si el cursor sale de la tabla de días, restauramos el highlight solo del primer día
+            const table = el.querySelector('.fc-scrollgrid-sync-table');
+            if (table) {
+                table.addEventListener('mouseleave', () => {
+                    if (startClick) {
+                        updateTempHighlight(calendar, startClick, startClick, true);
+                        // Calcular si el día inicial es laborable
+                        const diasSeleccionados = contarDiasLaborables(startClick, startClick, calendar);
+                        updateVacationModal(diasSeleccionados);
+                    }
+                });
+            }
         }
 
         calendar.render();
@@ -563,21 +1161,45 @@
         actualizarResumenAsistencia(routes.resumenUrl);
 
         calendar.on("datesSet", bindHoverCells);
+
+        // Exponer calendario globalmente para poder refrescar desde otros scripts
+        window.calendar = calendar;
     }
 
-    // Función para inicializar todos los calendarios
-    function inicializarCalendarios() {
-        qsAll(".fc-calendario").forEach(initCalendarOn);
+    // Función para inicializar calendarios que no han sido inicializados
+    function initCalendars() {
+        const calendarios = qsAll(".fc-calendario");
+        if (calendarios.length === 0) return;
+
+        // Esperar a que FullCalendar esté disponible
+        waitForFullCalendar(() => {
+            calendarios.forEach((el) => {
+                // Solo inicializar si no tiene ya un calendario
+                if (!el.classList.contains("fc-initialized")) {
+                    el.classList.add("fc-initialized");
+                    initCalendarOn(el);
+                }
+            });
+        });
     }
 
-    // Inicializar en carga normal de página
-    document.addEventListener("DOMContentLoaded", inicializarCalendarios);
+    // Inicializar en carga inicial
+    if (document.readyState === 'loading') {
+        document.addEventListener("DOMContentLoaded", initCalendars);
+    } else {
+        // DOM ya está listo
+        initCalendars();
+    }
 
-    // Inicializar en navegaciones de Livewire (SPA)
-    document.addEventListener("livewire:navigated", () => {
-        // Solo inicializar si hay calendarios en la página
-        if (document.querySelector('.fc-calendario')) {
-            inicializarCalendarios();
-        }
+    // Reinicializar después de navegación Livewire (SPA)
+    document.addEventListener("livewire:navigated", initCalendars);
+
+    // Recargar eventos cuando se sube un justificante
+    document.addEventListener("livewire:initialized", () => {
+        Livewire.on("justificante-guardado", () => {
+            if (window.calendar) {
+                window.calendar.refetchEvents();
+            }
+        });
     });
 })();

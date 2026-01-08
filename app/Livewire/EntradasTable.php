@@ -43,6 +43,9 @@ class EntradasTable extends Component
     #[Url(keep: true)]
     public $producto_longitud = '';
 
+    #[Url(keep: true)]
+    public $codigo_sage = '';
+
     // Ordenamiento
     #[Url(keep: true)]
     public $sort = 'created_at';
@@ -84,6 +87,7 @@ class EntradasTable extends Component
             'producto_tipo',
             'producto_diametro',
             'producto_longitud',
+            'codigo_sage',
             'sort',
             'order',
             'perPage'
@@ -103,6 +107,11 @@ class EntradasTable extends Component
             $query->whereHas('pedido', function ($q) {
                 $q->where('codigo', 'LIKE', '%' . $this->pedido_codigo . '%');
             });
+        }
+
+        // Filtro por código SAGE
+        if ($this->codigo_sage) {
+            $query->where('codigo_sage', 'LIKE', '%' . $this->codigo_sage . '%');
         }
 
         // Filtro por nave (busca por campo obra)
@@ -178,6 +187,10 @@ class EntradasTable extends Component
 
         if ($this->pedido_codigo) {
             $filtros[] = 'Pedido compra: <strong>' . e($this->pedido_codigo) . '</strong>';
+        }
+
+        if ($this->codigo_sage) {
+            $filtros[] = 'Código SAGE: <strong>' . e($this->codigo_sage) . '</strong>';
         }
 
         if ($this->usuario) {

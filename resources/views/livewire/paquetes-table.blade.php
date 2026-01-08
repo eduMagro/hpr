@@ -517,8 +517,13 @@
                 let pendingPaqueteCodigo = null;
 
                 function abrirModalMapa(naveId, paqueteCodigo) {
+                    console.log('abrirModalMapa:', { naveId, paqueteCodigo, currentNaveId });
                     modalMapaInfo.textContent = `Paquete: ${paqueteCodigo}`;
                     pendingPaqueteCodigo = paqueteCodigo;
+
+                    // Ocultar mensaje de sin ubicación previo
+                    const overlayPrevio = modalMapaContainer.querySelector('.mensaje-sin-ubicacion');
+                    if (overlayPrevio) overlayPrevio.style.display = 'none';
 
                     // Obtener el componente mapa-simple
                     const mapaSimple = modalMapaContainer.querySelector('[data-mapa-simple]');
@@ -538,51 +543,61 @@
 
                         const intentar = () => {
                             intentos++;
+                            console.log('Intento', intentos, 'de mostrar paquete. mostrarPaquete disponible:', typeof mapaSimple.mostrarPaquete);
+
                             if (typeof mapaSimple.mostrarPaquete === 'function') {
                                 // Ocultar todos los paquetes primero
                                 const grid = mapaSimple.querySelector('.cuadricula-mapa');
+                                console.log('Grid encontrado:', !!grid);
+
                                 if (grid) {
-                                    grid.querySelectorAll('.loc-paquete').forEach(p => p.style.display = 'none');
+                                    const paquetes = grid.querySelectorAll('.loc-paquete');
+                                    console.log('Paquetes en el mapa:', paquetes.length);
+                                    paquetes.forEach(p => {
+                                        console.log('  - Paquete:', p.dataset.codigo);
+                                    });
+                                    paquetes.forEach(p => p.style.display = 'none');
                                 }
 
                                 // Mostrar solo el paquete seleccionado
+                                console.log('Llamando mostrarPaquete con código:', pendingPaqueteCodigo);
                                 const resultado = mapaSimple.mostrarPaquete(pendingPaqueteCodigo);
+                                console.log('Resultado de mostrarPaquete:', resultado);
+
                                 if (resultado === false) {
                                     mostrarMensajeSinUbicacion(pendingPaqueteCodigo, naveId);
                                 }
                             } else if (intentos < maxIntentos) {
                                 setTimeout(intentar, 100);
+                            } else {
+                                console.warn('Timeout esperando mostrarPaquete');
                             }
                         };
                         intentar();
                     };
 
-                    // Si es diferente nave, recargar el mapa
-                    if (currentNaveId !== naveId) {
-                        currentNaveId = naveId;
+                    // Siempre recargar el mapa con la nave correcta
+                    console.log('Recargando mapa con naveId:', naveId);
+                    currentNaveId = naveId;
+
+                    // Esperar a que recargarMapa esté disponible
+                    let intentosRecarga = 0;
+                    const esperarYRecargar = () => {
+                        intentosRecarga++;
+                        console.log('Intento recarga', intentosRecarga, '- recargarMapa disponible:', typeof mapaSimple.recargarMapa);
 
                         if (typeof mapaSimple.recargarMapa === 'function') {
+                            console.log('Ejecutando recargarMapa...');
                             mapaSimple.recargarMapa(naveId);
-                            // Esperar a que cargue y luego mostrar el paquete
-                            setTimeout(mostrarPaqueteEnMapa, 500);
+                            // Esperar más tiempo para que cargue completamente
+                            setTimeout(mostrarPaqueteEnMapa, 1500);
+                        } else if (intentosRecarga < 30) {
+                            setTimeout(esperarYRecargar, 100);
                         } else {
-                            // Si no tiene recargarMapa, esperar a que esté disponible
-                            let intentos = 0;
-                            const esperarRecarga = () => {
-                                intentos++;
-                                if (typeof mapaSimple.recargarMapa === 'function') {
-                                    mapaSimple.recargarMapa(naveId);
-                                    setTimeout(mostrarPaqueteEnMapa, 500);
-                                } else if (intentos < 30) {
-                                    setTimeout(esperarRecarga, 100);
-                                }
-                            };
-                            esperarRecarga();
+                            console.error('Timeout esperando recargarMapa');
                         }
-                    } else {
-                        // Misma nave, solo mostrar el paquete
-                        mostrarPaqueteEnMapa();
-                    }
+                    };
+                    esperarYRecargar();
                 }
 
                 function mostrarMensajeSinUbicacion(paqueteCodigo, naveId) {
@@ -609,301 +624,11 @@
                     overlay.style.display = 'flex';
                 }
 
-                function inicializarMapaModal(mapId, data, paqueteCodigo) {
-                    console.log('inicializarMapaModal llamado con mapId:', mapId);
-                    const { ctx, localizacionesZonas, localizacionesMaquinas, paquetesConLocalizacion } = data;
-                    const escenario = document.getElementById(`${mapId}-escenario`);
-                    const grid = document.getElementById(`${mapId}-cuadricula`);
-
-                    console.log('Elementos encontrados:', { escenario: !!escenario, grid: !!grid });
-
-                    if (!escenario || !grid) {
-                        console.error('No se encontraron los elementos del mapa:', mapId);
-                        return;
-                    }
-
-                    const W = ctx.columnasReales;
-                    const H = ctx.filasReales;
-                    const isVertical = !ctx.estaGirado;
-                    const viewCols = W;
-                    const viewRows = H;
-
-                    let cellSize = 15;
-                    let zoomLevel = 1;
-
-                    function realToViewRect(x1r, y1r, x2r, y2r) {
-                        const x1 = Math.min(x1r, x2r);
-                        const x2 = Math.max(x1r, x2r);
-                        const y1 = Math.min(y1r, y2r);
-                        const y2 = Math.max(y1r, y2r);
-
-                        function mapPointToView(x, y) {
-                            if (isVertical) return { x, y: (H - y + 1) };
-                            return { x: y, y: x };
-                        }
-
-                        const p1 = mapPointToView(x1, y1);
-                        const p2 = mapPointToView(x2, y1);
-                        const p3 = mapPointToView(x1, y2);
-                        const p4 = mapPointToView(x2, y2);
-
-                        const xs = [p1.x, p2.x, p3.x, p4.x];
-                        const ys = [p1.y, p2.y, p3.y, p4.y];
-
-                        return {
-                            x: Math.min(...xs),
-                            y: Math.min(...ys),
-                            w: (Math.max(...xs) - Math.min(...xs) + 1),
-                            h: (Math.max(...ys) - Math.min(...ys) + 1),
-                        };
-                    }
-
-                    function renderExistentes() {
-                        grid.querySelectorAll('.loc-existente').forEach(el => {
-                            const rect = realToViewRect(
-                                +el.dataset.x1, +el.dataset.y1,
-                                +el.dataset.x2, +el.dataset.y2
-                            );
-                            el.style.left = ((rect.x - 1) * cellSize) + 'px';
-                            el.style.top = ((rect.y - 1) * cellSize) + 'px';
-                            el.style.width = (rect.w * cellSize) + 'px';
-                            el.style.height = (rect.h * cellSize) + 'px';
-                        });
-                    }
-
-                    function updateMap() {
-                        // Usar tamaño fijo de celda para mejor visualización en el modal
-                        const baseCellSize = 12; // Tamaño base más grande para mejor visibilidad
-                        cellSize = Math.max(8, baseCellSize * zoomLevel);
-
-                        const gridWidth = viewCols * cellSize;
-                        const gridHeight = viewRows * cellSize;
-
-                        console.log('updateMap - grid size:', { gridWidth, gridHeight, cellSize, viewCols, viewRows });
-
-                        grid.style.width = `${gridWidth}px`;
-                        grid.style.height = `${gridHeight}px`;
-                        grid.style.minWidth = `${gridWidth}px`;
-                        grid.style.minHeight = `${gridHeight}px`;
-                        grid.style.backgroundColor = '#ffffff';
-                        grid.style.backgroundSize = `${cellSize}px ${cellSize}px`;
-                        grid.style.backgroundImage = `
-                            linear-gradient(to right, #e5e7eb 1px, transparent 1px),
-                            linear-gradient(to bottom, #e5e7eb 1px, transparent 1px)
-                        `;
-                        grid.style.border = '1px solid #d1d5db';
-                        grid.style.borderRadius = '4px';
-                        grid.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-
-                        renderExistentes();
-                    }
-
-                    function crearElemento(item, claseExtra, label) {
-                        const div = document.createElement('div');
-                        div.className = `loc-existente ${claseExtra}`;
-                        div.dataset.id = item.id;
-                        div.dataset.x1 = item.x1;
-                        div.dataset.y1 = item.y1;
-                        div.dataset.x2 = item.x2;
-                        div.dataset.y2 = item.y2;
-                        div.style.position = 'absolute';
-
-                        if (label) {
-                            const span = document.createElement('span');
-                            span.className = 'loc-label';
-                            span.textContent = label;
-                            div.appendChild(span);
-                        }
-
-                        return div;
-                    }
-
-                    // Renderizar elementos
-                    grid.innerHTML = '';
-
-                    localizacionesMaquinas.forEach(loc => {
-                        const div = crearElemento(loc, 'loc-maquina', loc.nombre);
-                        div.style.backgroundColor = 'rgba(34, 197, 94, 0.2)';
-                        div.style.border = '1px solid #22c55e';
-                        div.style.borderRadius = '2px';
-                        div.style.zIndex = '5';
-                        grid.appendChild(div);
-                    });
-
-                    localizacionesZonas.forEach(loc => {
-                        const tipo = loc.tipo.replace(/-/g, '_');
-                        const div = crearElemento(loc, `loc-zona tipo-${tipo}`, loc.nombre);
-                        div.style.backgroundColor = 'rgba(107, 114, 128, 0.15)';
-                        div.style.border = '1px dashed #6b7280';
-                        div.style.borderRadius = '2px';
-                        div.style.zIndex = '1';
-                        grid.appendChild(div);
-                    });
-
-                    // Renderizar paquetes (ocultos por defecto excepto el seleccionado)
-                    let paqueteEncontrado = null;
-                    console.log('Buscando paquete con código:', paqueteCodigo);
-                    console.log('Paquetes con localización:', paquetesConLocalizacion);
-
-                    paquetesConLocalizacion.forEach(paq => {
-                        const tipo = paq.tipo_contenido || 'mixto';
-                        const div = crearElemento(paq, `loc-paquete tipo-${tipo}`, '');
-                        div.dataset.paqueteId = paq.id;
-                        div.dataset.codigo = paq.codigo;
-
-                        // Estilos base para paquetes
-                        div.style.backgroundColor = 'rgba(168, 85, 247, 0.4)';
-                        div.style.border = '2px solid #a855f7';
-                        div.style.borderRadius = '4px';
-
-                        // Solo mostrar el paquete que buscamos
-                        if (paq.codigo === paqueteCodigo) {
-                            console.log('¡Paquete encontrado!', paq);
-                            div.style.display = 'flex';
-                            div.style.backgroundColor = 'rgba(168, 85, 247, 0.6)';
-                            div.style.border = '3px solid #9333ea';
-                            div.style.boxShadow = '0 0 0 4px rgba(168, 85, 247, 0.3), 0 0 20px rgba(168, 85, 247, 0.5)';
-                            div.style.zIndex = '50';
-                            paqueteEncontrado = div;
-                        } else {
-                            div.style.display = 'none';
-                        }
-
-                        grid.appendChild(div);
-                    });
-
-                    console.log('Paquete encontrado div:', paqueteEncontrado);
-
-                    // Zoom
-                    const zoomInBtn = document.getElementById(`${mapId}-zoom-in`);
-                    const zoomOutBtn = document.getElementById(`${mapId}-zoom-out`);
-
-                    if (zoomInBtn) {
-                        zoomInBtn.addEventListener('click', () => {
-                            zoomLevel = Math.min(3, zoomLevel + 0.2);
-                            updateMap();
-                        });
-                    }
-
-                    if (zoomOutBtn) {
-                        zoomOutBtn.addEventListener('click', () => {
-                            zoomLevel = Math.max(0.5, zoomLevel - 0.2);
-                            updateMap();
-                        });
-                    }
-
-                    // Pan/Drag
-                    let isPanning = false;
-                    let panStartX = 0, panStartY = 0;
-                    let panStartScrollLeft = 0, panStartScrollTop = 0;
-
-                    escenario.addEventListener('mousedown', (e) => {
-                        if (e.target.closest('.loc-existente') || e.target.closest('button')) return;
-                        isPanning = true;
-                        panStartX = e.clientX;
-                        panStartY = e.clientY;
-                        panStartScrollLeft = escenario.scrollLeft;
-                        panStartScrollTop = escenario.scrollTop;
-                        escenario.style.cursor = 'grabbing';
-                        e.preventDefault();
-                    });
-
-                    escenario.addEventListener('mousemove', (e) => {
-                        if (!isPanning) return;
-                        escenario.scrollLeft = panStartScrollLeft - (e.clientX - panStartX);
-                        escenario.scrollTop = panStartScrollTop - (e.clientY - panStartY);
-                    });
-
-                    escenario.addEventListener('mouseup', () => {
-                        isPanning = false;
-                        escenario.style.cursor = 'grab';
-                    });
-
-                    escenario.addEventListener('mouseleave', () => {
-                        isPanning = false;
-                        escenario.style.cursor = 'grab';
-                    });
-
-                    // Inicializar
-                    updateMap();
-
-                    // Centrar en el paquete encontrado
-                    if (paqueteEncontrado) {
-                        console.log('Paquete después de updateMap:', {
-                            left: paqueteEncontrado.style.left,
-                            top: paqueteEncontrado.style.top,
-                            width: paqueteEncontrado.style.width,
-                            height: paqueteEncontrado.style.height,
-                            display: paqueteEncontrado.style.display,
-                            x1: paqueteEncontrado.dataset.x1,
-                            y1: paqueteEncontrado.dataset.y1,
-                            x2: paqueteEncontrado.dataset.x2,
-                            y2: paqueteEncontrado.dataset.y2
-                        });
-
-                        setTimeout(() => {
-                            // Obtener posición del paquete
-                            const paqLeft = parseFloat(paqueteEncontrado.style.left) || 0;
-                            const paqTop = parseFloat(paqueteEncontrado.style.top) || 0;
-                            const paqWidth = parseFloat(paqueteEncontrado.style.width) || 0;
-                            const paqHeight = parseFloat(paqueteEncontrado.style.height) || 0;
-
-                            // Calcular centro del paquete
-                            const paqCenterX = paqLeft + paqWidth / 2;
-                            const paqCenterY = paqTop + paqHeight / 2;
-
-                            // Calcular scroll para centrar el paquete en el viewport
-                            const scrollX = paqCenterX - escenario.clientWidth / 2;
-                            const scrollY = paqCenterY - escenario.clientHeight / 2;
-
-                            console.log('Centrando scroll:', {
-                                paqCenterX, paqCenterY,
-                                escenarioWidth: escenario.clientWidth,
-                                escenarioHeight: escenario.clientHeight,
-                                scrollX, scrollY
-                            });
-
-                            escenario.scrollTo({
-                                left: Math.max(0, scrollX),
-                                top: Math.max(0, scrollY),
-                                behavior: 'smooth'
-                            });
-                        }, 200);
-                    } else {
-                        console.warn('No se encontró el paquete en el mapa');
-                    }
-
-                    // Exponer funciones en el contenedor
-                    const mapaSimple = modalMapaContainer.querySelector('[data-mapa-simple]');
-                    if (mapaSimple) {
-                        mapaSimple.mostrarPaquete = function(codigo) {
-                            grid.querySelectorAll('.loc-paquete').forEach(p => {
-                                if (p.dataset.codigo === codigo) {
-                                    p.style.display = 'flex';
-                                    p.classList.add('loc-paquete--highlight');
-                                    // Centrar
-                                    setTimeout(() => {
-                                        const centerX = (parseFloat(p.style.left) + parseFloat(p.style.width) / 2) - escenario.clientWidth / 2;
-                                        const centerY = (parseFloat(p.style.top) + parseFloat(p.style.height) / 2) - escenario.clientHeight / 2;
-                                        escenario.scrollTo({
-                                            left: Math.max(0, centerX),
-                                            top: Math.max(0, centerY),
-                                            behavior: 'smooth'
-                                        });
-                                    }, 50);
-                                } else {
-                                    p.style.display = 'none';
-                                    p.classList.remove('loc-paquete--highlight');
-                                }
-                            });
-                            // Actualizar info del modal
-                            modalMapaInfo.textContent = `Paquete: ${codigo}`;
-                        };
-                    }
-                }
-
                 function cerrarModalMapaFn() {
                     modalMapa.classList.add('hidden');
+                    // Ocultar mensaje de sin ubicación si existe
+                    const overlay = modalMapaContainer.querySelector('.mensaje-sin-ubicacion');
+                    if (overlay) overlay.style.display = 'none';
                 }
 
                 // Event listener para cerrar

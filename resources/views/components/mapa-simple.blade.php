@@ -943,11 +943,26 @@
 
     // Exponer función para recargar el mapa con diferentes parámetros
     const mapaContainer = document.querySelector(`[data-mapa-simple="${mapId}"]`);
+    let currentNaveId = naveId; // Variable para trackear la nave actual
+
     if (mapaContainer) {
-        mapaContainer.recargarMapa = function(nuevoSalidaId = null) {
-            let url = `/api/mapa-nave/${naveId}`;
-            if (nuevoSalidaId) {
-                url += `?salida_id=${nuevoSalidaId}`;
+        mapaContainer.recargarMapa = function(nuevoNaveIdOrSalidaId = null, nuevoSalidaId = null) {
+            // Si se pasa un número como primer parámetro y no hay segundo, puede ser naveId o salidaId
+            // Para compatibilidad: si nuevoNaveIdOrSalidaId es un número y nuevoSalidaId es null,
+            // interpretamos como nuevo naveId
+            let targetNaveId = currentNaveId;
+            let targetSalidaId = null;
+
+            if (typeof nuevoNaveIdOrSalidaId === 'number' || (typeof nuevoNaveIdOrSalidaId === 'string' && !isNaN(nuevoNaveIdOrSalidaId))) {
+                targetNaveId = parseInt(nuevoNaveIdOrSalidaId);
+                targetSalidaId = nuevoSalidaId;
+            }
+
+            currentNaveId = targetNaveId;
+
+            let url = `/api/mapa-nave/${targetNaveId}`;
+            if (targetSalidaId) {
+                url += `?salida_id=${targetSalidaId}`;
             }
 
             document.getElementById(`${mapId}-container`).classList.add('hidden');
@@ -971,9 +986,30 @@
         // Funciones expuestas para control de paquetes desde fuera
         mapaContainer.mostrarPaquete = function(codigo, autoEditar) {
             const grid = document.getElementById(`${mapId}-cuadricula`);
+            console.log('[mostrarPaquete] Buscando paquete con código:', codigo);
+            console.log('[mostrarPaquete] Paquetes en grid:', grid.querySelectorAll('.loc-paquete').length);
+
             const paquete = grid.querySelector(`.loc-paquete[data-codigo="${codigo}"]`);
+            console.log('[mostrarPaquete] Paquete encontrado:', !!paquete);
+
             if (paquete) {
+                console.log('[mostrarPaquete] Datos del paquete:', {
+                    x1: paquete.dataset.x1,
+                    y1: paquete.dataset.y1,
+                    x2: paquete.dataset.x2,
+                    y2: paquete.dataset.y2,
+                    left: paquete.style.left,
+                    top: paquete.style.top,
+                    width: paquete.style.width,
+                    height: paquete.style.height
+                });
+
                 paquete.style.display = 'flex';
+                // Resaltar el paquete
+                paquete.classList.add('loc-paquete--highlight');
+                paquete.style.boxShadow = '0 0 0 4px rgba(168, 85, 247, 0.5), 0 0 20px rgba(168, 85, 247, 0.7)';
+                paquete.style.zIndex = '100';
+
                 mapaContainer.moverMapaAPaquete(codigo);
                 if (modoEdicion && autoEditar == true) {
                     // Tras centrar el scroll, simular clic y pulsar el lápiz de edición

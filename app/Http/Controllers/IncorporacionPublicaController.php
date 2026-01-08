@@ -246,18 +246,43 @@ class IncorporacionPublicaController extends Controller
                 $this->guardarFormacionConTemporal($incorporacion, $request->file('formacion_especifica'), session()->get("{$sessionKey}.formacion_especifica"), 'formacion_especifica_puesto', null, $carpetaUsuario);
             }
 
-            // Registrar log
-            $incorporacion->registrarLog(
-                IncorporacionLog::ACCION_DATOS_COMPLETADOS,
-                'El candidato ha completado el formulario de incorporación. Usuario creado automáticamente.',
-                null,
-                [
-                    'dni' => $incorporacion->dni,
-                    'email' => $incorporacion->email,
-                    'telefono' => $incorporacion->telefono,
+            // Si no necesita aprobaciones, crear el usuario automáticamente
+            $usuario = null;
+            if (!$incorporacion->necesita_aprobacion_rrhh && !$incorporacion->necesita_aprobacion_ceo) {
+                $usuario = $this->crearUsuario($incorporacion, $validated);
+                $incorporacion->update([
                     'user_id' => $usuario->id,
-                ]
-            );
+                    'aprobado_rrhh' => true,
+                    'aprobado_rrhh_at' => now(),
+                    'aprobado_ceo' => true,
+                    'aprobado_ceo_at' => now(),
+                ]);
+
+                // Registrar log con usuario creado
+                $incorporacion->registrarLog(
+                    IncorporacionLog::ACCION_DATOS_COMPLETADOS,
+                    'El candidato ha completado el formulario. Usuario creado automáticamente (sin aprobaciones requeridas).',
+                    null,
+                    [
+                        'dni' => $incorporacion->dni,
+                        'email' => $incorporacion->email,
+                        'telefono' => $incorporacion->telefono,
+                        'user_id' => $usuario->id,
+                    ]
+                );
+            } else {
+                // Registrar log sin usuario (requiere aprobaciones)
+                $incorporacion->registrarLog(
+                    IncorporacionLog::ACCION_DATOS_COMPLETADOS,
+                    'El candidato ha completado el formulario de incorporación. Pendiente de aprobaciones.',
+                    null,
+                    [
+                        'dni' => $incorporacion->dni,
+                        'email' => $incorporacion->email,
+                        'telefono' => $incorporacion->telefono,
+                    ]
+                );
+            }
 
             DB::commit();
 
