@@ -56,8 +56,6 @@
                                 <div class="flex items-center gap-1">
                                     <span class="uppercase text-[10px]">#</span>
                                 </div>
-                                <div class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 group-hover:bg-gray-300"
-                                    @mousedown="initResize($event)"></div>
                             </th>
 
                             <!-- Title Column -->
@@ -71,8 +69,6 @@
                                     </svg>
                                     <span class="uppercase text-[10px]">Nombre de la solicitud</span>
                                 </div>
-                                <div class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 group-hover:bg-gray-300"
-                                    @mousedown="initResize($event)"></div>
                             </th>
 
                             <!-- Comentario -->
@@ -86,8 +82,6 @@
                                     </svg>
                                     <span class="uppercase text-[10px]">Comentario</span>
                                 </div>
-                                <div class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 group-hover:bg-gray-300"
-                                    @mousedown="initResize($event)"></div>
                             </th>
 
                             <!-- Estado -->
@@ -101,8 +95,6 @@
                                     </svg>
                                     <span class="uppercase text-[10px]">Estado</span>
                                 </div>
-                                <div class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 group-hover:bg-gray-300"
-                                    @mousedown="initResize($event)"></div>
                             </th>
 
                             <!-- Prioridad -->
@@ -116,8 +108,6 @@
                                     </svg>
                                     <span class="uppercase text-[10px]">Prioridad</span>
                                 </div>
-                                <div class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 group-hover:bg-gray-300"
-                                    @mousedown="initResize($event)"></div>
                             </th>
 
                             <!-- Asignado -->
@@ -131,8 +121,6 @@
                                     </svg>
                                     <span class="uppercase text-[10px]">Asignado a</span>
                                 </div>
-                                <div class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 group-hover:bg-gray-300"
-                                    @mousedown="initResize($event)"></div>
                             </th>
 
                             <!-- Fecha -->
@@ -146,8 +134,6 @@
                                     </svg>
                                     <span class="uppercase text-[10px]">Fecha</span>
                                 </div>
-                                <div class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 group-hover:bg-gray-300"
-                                    @mousedown="initResize($event)"></div>
                             </th>
                         </tr>
                     </thead>
@@ -789,26 +775,6 @@
                 updateField(id, field, value) {
                     window.updateField(id, field, value);
                 },
-                // Column Resizing Logic
-                initResize(e) {
-                    const th = e.target.closest('th');
-                    const startX = e.pageX;
-                    const startWidth = th.offsetWidth;
-
-                    const onMouseMove = (e) => {
-                        const newWidth = startWidth + (e.pageX - startX);
-                        th.style.width = newWidth + 'px';
-                        th.style.minWidth = newWidth + 'px'; // Enforce minWidth
-                    };
-
-                    const onMouseUp = () => {
-                        document.removeEventListener('mousemove', onMouseMove);
-                        document.removeEventListener('mouseup', onMouseUp);
-                    };
-
-                    document.addEventListener('mousemove', onMouseMove);
-                    document.addEventListener('mouseup', onMouseUp);
-                }
             }
         }
 
