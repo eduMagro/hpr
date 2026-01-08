@@ -492,7 +492,8 @@
 
                                     <!-- Preview Mode -->
                                     <div x-show="viewMode === 'preview'"
-                                        class="flex-1 prose prose-sm max-w-none text-gray-800" x-html="renderedHtml">
+                                        x-ref="mdPreview"
+                                        class="flex-1 markdown-preview text-gray-800" x-html="renderedHtml">
                                     </div>
                                 </div>
 
@@ -516,6 +517,178 @@
         </div>
 
     </div>
+
+    <style>
+        .markdown-preview {
+            line-height: 1.65;
+        }
+
+        .markdown-preview>*:first-child {
+            margin-top: 0;
+        }
+
+        .markdown-preview h1 {
+            font-size: 1.5rem;
+            line-height: 2rem;
+            font-weight: 800;
+            margin: 1.25rem 0 0.75rem;
+        }
+
+        .markdown-preview h2 {
+            font-size: 1.25rem;
+            line-height: 1.75rem;
+            font-weight: 800;
+            margin: 1.25rem 0 0.75rem;
+        }
+
+        .markdown-preview h3 {
+            font-size: 1.125rem;
+            line-height: 1.75rem;
+            font-weight: 700;
+            margin: 1.1rem 0 0.6rem;
+        }
+
+        .markdown-preview h4,
+        .markdown-preview h5,
+        .markdown-preview h6 {
+            font-size: 1rem;
+            line-height: 1.5rem;
+            font-weight: 700;
+            margin: 1rem 0 0.5rem;
+        }
+
+        .markdown-preview p {
+            margin: 0.6rem 0;
+        }
+
+        .markdown-preview a {
+            color: rgb(37 99 235);
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        .markdown-preview ul,
+        .markdown-preview ol {
+            margin: 0.75rem 0 0.75rem 1.25rem;
+            list-style-position: outside;
+        }
+
+        .markdown-preview ul {
+            list-style-type: disc;
+        }
+
+        .markdown-preview ol {
+            list-style-type: decimal;
+        }
+
+        .markdown-preview li {
+            margin: 0.25rem 0;
+        }
+
+        .markdown-preview code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.875em;
+        }
+
+        .markdown-preview :not(pre)>code {
+            background: rgb(243 244 246);
+            padding: 0.15rem 0.35rem;
+            border-radius: 0.375rem;
+            border: 1px solid rgb(229 231 235);
+        }
+
+        .markdown-preview pre {
+            position: relative;
+            background: rgb(15 23 42);
+            color: rgb(226 232 240);
+            padding: 0.9rem 1rem;
+            border-radius: 0.75rem;
+            overflow: auto;
+            margin: 0.9rem 0;
+            border: 1px solid rgb(30 41 59);
+        }
+
+        .markdown-preview pre code {
+            background: transparent;
+            padding: 0;
+            border: 0;
+            display: block;
+            white-space: pre;
+        }
+
+        .markdown-preview .md-copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            font-size: 0.75rem;
+            line-height: 1rem;
+            font-weight: 700;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid rgb(51 65 85);
+            background: rgba(15, 23, 42, 0.6);
+            color: rgb(226 232 240);
+            opacity: 0;
+            transition: opacity 120ms ease;
+            cursor: pointer;
+        }
+
+        .markdown-preview pre:hover .md-copy-btn {
+            opacity: 1;
+        }
+
+        .markdown-preview blockquote {
+            border-left: 4px solid rgb(209 213 219);
+            padding-left: 1rem;
+            color: rgb(75 85 99);
+            margin: 0.9rem 0;
+        }
+
+        .markdown-preview table {
+            width: 100%;
+            max-width: 100%;
+            border-collapse: collapse;
+            border-spacing: 0;
+            margin: 1rem 0;
+            border: 1px solid rgb(229 231 235);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            display: block;
+            overflow-x: auto;
+        }
+
+        .markdown-preview thead {
+            background: rgb(249 250 251);
+        }
+
+        .markdown-preview th,
+        .markdown-preview td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid rgb(229 231 235);
+            border-right: 1px solid rgb(229 231 235);
+            vertical-align: top;
+            white-space: nowrap;
+        }
+
+        .markdown-preview th:last-child,
+        .markdown-preview td:last-child {
+            border-right: 0;
+        }
+
+        .markdown-preview tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .markdown-preview tbody tr:nth-child(even) td {
+            background: rgb(249 250 251);
+        }
+
+        .markdown-preview hr {
+            border: 0;
+            border-top: 1px solid rgb(229 231 235);
+            margin: 1.25rem 0;
+        }
+    </style>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -607,6 +780,11 @@
                 renderMarkdown() {
                     this.viewMode = 'preview';
                     this.renderedHtml = marked.parse(this.form.descripcion || '');
+                    this.$nextTick(() => {
+                        if (window.hprEnhanceMarkdown && this.$refs.mdPreview) {
+                            window.hprEnhanceMarkdown(this.$refs.mdPreview);
+                        }
+                    });
                 },
                 updateField(id, field, value) {
                     window.updateField(id, field, value);
@@ -638,5 +816,51 @@
         document.addEventListener('livewire:navigated', () => {
             console.log('Livewire Navigated - Solicitudes Ready');
         });
+
+        window.hprEnhanceMarkdown = function(container) {
+            if (!container) return;
+
+            const links = container.querySelectorAll('a[href]');
+            for (const link of links) {
+                link.setAttribute('target', '_blank');
+                link.setAttribute('rel', 'noopener noreferrer');
+            }
+
+            const blocks = container.querySelectorAll('pre');
+            for (const pre of blocks) {
+                if (pre.querySelector('.md-copy-btn')) continue;
+
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'md-copy-btn';
+                button.textContent = 'Copiar';
+
+                button.addEventListener('click', async () => {
+                    const code = pre.querySelector('code');
+                    const text = (code ? code.innerText : pre.innerText) || '';
+
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        button.textContent = 'Copiado';
+                        setTimeout(() => (button.textContent = 'Copiar'), 1200);
+                    } catch (e) {
+                        const range = document.createRange();
+                        range.selectNodeContents(code || pre);
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                        try {
+                            document.execCommand('copy');
+                            button.textContent = 'Copiado';
+                            setTimeout(() => (button.textContent = 'Copiar'), 1200);
+                        } finally {
+                            selection.removeAllRanges();
+                        }
+                    }
+                });
+
+                pre.appendChild(button);
+            }
+        };
     </script>
 </x-app-layout>
