@@ -440,4 +440,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(EpiUsuario::class, 'user_id');
     }
+
+    public function tallas()
+    {
+        return $this->hasOne(TallaTrabajador::class, 'user_id');
+    }
 }

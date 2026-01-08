@@ -403,6 +403,49 @@
                                                 </button>
                                             </div>
                                         </div>
+
+                                        <div
+                                            class="bg-white/95 border border-slate-200 rounded-xl p-4 shadow-md col-span-full">
+                                            <p class="text-xs uppercase tracking-wide text-gray-500">Tallas</p>
+                                            <div class="flex justify-between">
+                                                <div>
+                                                    <label
+                                                        class="block text-[10px] font-medium text-gray-500 uppercase">Guante</label>
+                                                    <input type="text" x-model="selectedUser.tallas.talla_guante"
+                                                        class="w-full mt-1 px-2 py-1 text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                                        placeholder="Ej: 9, L...">
+                                                </div>
+                                                <div>
+                                                    <label
+                                                        class="block text-[10px] font-medium text-gray-500 uppercase">Zapato</label>
+                                                    <input type="text" x-model="selectedUser.tallas.talla_zapato"
+                                                        class="w-full mt-1 px-2 py-1 text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                                        placeholder="Ej: 42, 43...">
+                                                </div>
+                                                <div>
+                                                    <label
+                                                        class="block text-[10px] font-medium text-gray-500 uppercase">Pantalón</label>
+                                                    <input type="text" x-model="selectedUser.tallas.talla_pantalon"
+                                                        class="w-full mt-1 px-2 py-1 text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                                        placeholder="Ej: 44, XL...">
+                                                </div>
+                                                <div>
+                                                    <label
+                                                        class="block text-[10px] font-medium text-gray-500 uppercase">Chaqueta</label>
+                                                    <input type="text" x-model="selectedUser.tallas.talla_chaqueta"
+                                                        class="w-full mt-1 px-2 py-1 text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                                        placeholder="Ej: 52, L...">
+                                                </div>
+                                            </div>
+                                            <div class="mt-4">
+                                                <button type="button"
+                                                    class="w-full px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                                                    @click="saveTallas()" :disabled="saving">
+                                                    <span x-show="!saving">Guardar Tallas</span>
+                                                    <span x-show="saving">Guardando...</span>
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div
@@ -1515,6 +1558,47 @@
                     }
                 },
 
+                async saveTallas() {
+                    if (!this.selectedUser) return;
+                    this.saving = true;
+                    try {
+                        const url = @js(url('/epis/usuarios/__ID__/tallas')).replace('__ID__', this.selectedUser.id);
+                        const res = await this.api(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(this.selectedUser.tallas),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.message || 'No se pudo actualizar las tallas.');
+
+                        // Actualizar en la lista general para que se mantenga si cerramos y abrimos
+                        const idx = this.allUsers.findIndex(u => u.id === this.selectedUser.id);
+                        if (idx !== -1) {
+                            this.allUsers[idx].tallas = {
+                                ...this.selectedUser.tallas
+                            };
+                        }
+
+                        Swal.fire({
+                            position: 'top',
+                            icon: 'success',
+                            title: 'Tallas actualizadas correctamente',
+                            showConfirmButton: false,
+                            timer: 2000,
+                            toast: true,
+                            didOpen: (toast) => {
+                                toast.parentElement.style.zIndex = '10000';
+                            }
+                        });
+                    } catch (e) {
+                        alert(e.message);
+                    } finally {
+                        this.saving = false;
+                    }
+                },
+
                 normalize(str) {
                     return (str || '')
                         .toString()
@@ -1712,6 +1796,9 @@
                         this.historialAsignaciones = data.historial || [];
                         this.recentAssignments = data.recent || [];
                         this.userTotalEnPosesion = data.total_en_posesion || 0;
+                        if (data.user && data.user.tallas) {
+                            this.selectedUser.tallas = data.user.tallas;
+                        }
                     } finally {
                         this.loadingAsignaciones = false;
                     }

@@ -133,6 +133,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/epis/usuarios/{user}/asignaciones', [EpisController::class, 'asignarAUsuario'])->name('epis.usuarios.asignaciones.store');
     Route::patch('/epis/usuarios/{user}/asignaciones/{asignacion}/devolver', [EpisController::class, 'devolverAsignacion'])->name('epis.usuarios.asignaciones.devolver');
     Route::patch('/epis/usuarios/{user}/asignaciones/{asignacion}/fechas', [EpisController::class, 'actualizarFechasAsignacion'])->name('epis.usuarios.asignaciones.fechas');
+    Route::post('/epis/usuarios/{user}/tallas', [EpisController::class, 'apiUpdateTallas'])->name('epis.usuarios.tallas.update');
 });
 
 // Rutas antiguas redirigidas (compatibilidad)

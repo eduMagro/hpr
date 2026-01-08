@@ -149,7 +149,7 @@ class EpisController extends Controller
                     },
                 ]);
             })
-            ->with(['empresa:id,nombre', 'categoria:id,nombre'])
+            ->with(['empresa:id,nombre', 'categoria:id,nombre', 'tallas'])
             ->withSum(
                 [
                     'episAsignaciones as epis_en_posesion' => function ($query) {
@@ -187,6 +187,17 @@ class EpisController extends Controller
                     'epis_en_posesion' => (int) ($user->epis_en_posesion ?? 0),
                     'tiene_epis' => ((int) ($user->epis_en_posesion ?? 0)) > 0,
                     'epi_match' => $epiProvided ? (bool) ($user->epi_match ?? false) : true,
+                    'tallas' => $user->tallas ? [
+                        'talla_guante' => $user->tallas->talla_guante,
+                        'talla_zapato' => $user->tallas->talla_zapato,
+                        'talla_pantalon' => $user->tallas->talla_pantalon,
+                        'talla_chaqueta' => $user->tallas->talla_chaqueta,
+                    ] : [
+                        'talla_guante' => null,
+                        'talla_zapato' => null,
+                        'talla_pantalon' => null,
+                        'talla_chaqueta' => null,
+                    ],
                 ];
             })
             ->values();
@@ -228,6 +239,7 @@ class EpisController extends Controller
 
     public function apiUserAsignaciones(User $user)
     {
+        $user->load('tallas');
         $all = EpiUsuario::query()
             ->where('user_id', $user->id)
             ->with('epi')
@@ -252,6 +264,17 @@ class EpisController extends Controller
                 'email' => $user->email,
                 'movil_personal' => $user->movil_personal,
                 'ruta_imagen' => $user->ruta_imagen,
+                'tallas' => $user->tallas ? [
+                    'talla_guante' => $user->tallas->talla_guante,
+                    'talla_zapato' => $user->tallas->talla_zapato,
+                    'talla_pantalon' => $user->tallas->talla_pantalon,
+                    'talla_chaqueta' => $user->tallas->talla_chaqueta,
+                ] : [
+                    'talla_guante' => null,
+                    'talla_zapato' => null,
+                    'talla_pantalon' => null,
+                    'talla_chaqueta' => null,
+                ],
             ],
             'asignaciones' => $mappedAll,
             'en_posesion' => $enPosesion,
@@ -595,6 +618,23 @@ class EpisController extends Controller
             'entregado_en' => now(),
             'notas' => $data['notas'] ?? null,
         ]);
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function apiUpdateTallas(Request $request, User $user)
+    {
+        $data = $request->validate([
+            'talla_guante' => ['nullable', 'string', 'max:50'],
+            'talla_zapato' => ['nullable', 'string', 'max:50'],
+            'talla_pantalon' => ['nullable', 'string', 'max:50'],
+            'talla_chaqueta' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $user->tallas()->updateOrCreate(
+            ['user_id' => $user->id],
+            $data
+        );
 
         return response()->json(['ok' => true]);
     }
