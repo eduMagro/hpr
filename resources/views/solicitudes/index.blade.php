@@ -459,7 +459,7 @@
                         <!-- Content -->
                         <div class="flex-1 overflow-y-auto bg-white">
                             <form :action="isEditing ? '/funciones/' + form.id : '{{ route('funciones.store') }}'"
-                                method="POST" id="solicitudForm" class="min-h-full flex flex-col">
+                                method="POST" id="solicitudForm" class="h-full flex flex-col">
                                 @csrf
                                 <template x-if="isEditing">
                                     <input type="hidden" name="_method" value="PUT">
@@ -574,15 +574,16 @@
                                     </div>
 
                                     <!-- Edit Mode -->
-                                    <div x-show="viewMode === 'edit'" class="flex-1 min-h-[300px]">
+                                    <div x-show="viewMode === 'edit'" class="flex-1 flex flex-col min-h-0">
                                         <textarea name="descripcion" x-model="form.descripcion"
-                                            class="w-full h-full border-0 focus:ring-0 text-gray-800 text-base resize-none p-0 leading-relaxed"
+                                            class="w-full flex-1 min-h-[200px] border-0 focus:ring-0 text-gray-800 text-base resize-none p-0 leading-relaxed"
                                             placeholder="Escribe aquí los detalles de la función..."></textarea>
                                     </div>
 
                                     <!-- Preview Mode -->
                                     <div x-show="viewMode === 'preview'" x-ref="mdPreview"
-                                        class="flex-1 markdown-preview text-gray-800" x-html="renderedHtml">
+                                        class="flex-1 min-h-0 overflow-y-auto markdown-preview text-gray-800"
+                                        x-html="renderedHtml">
                                     </div>
                                 </div>
 
@@ -771,24 +772,40 @@
             white-space: pre;
         }
 
+        .markdown-preview .md-code-wrapper {
+            position: relative;
+        }
+
         .markdown-preview .md-copy-btn {
             position: absolute;
             top: 0.5rem;
             right: 0.5rem;
-            font-size: 0.75rem;
-            line-height: 1rem;
-            font-weight: 700;
-            padding: 0.25rem 0.5rem;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            padding: 0;
             border-radius: 0.5rem;
             border: 1px solid rgb(51 65 85);
-            background: rgba(15, 23, 42, 0.6);
+            background: rgba(15, 23, 42, 0.8);
             color: rgb(226 232 240);
             opacity: 0;
-            transition: opacity 120ms ease;
+            transition: opacity 120ms ease, background 120ms ease;
             cursor: pointer;
         }
 
-        .markdown-preview pre:hover .md-copy-btn {
+        .markdown-preview .md-copy-btn:hover {
+            background: rgba(51, 65, 85, 0.9);
+        }
+
+        .markdown-preview .md-copy-btn svg {
+            width: 1rem;
+            height: 1rem;
+        }
+
+        .markdown-preview .md-code-wrapper:hover .md-copy-btn {
             opacity: 1;
         }
 
@@ -844,6 +861,21 @@
             margin: 1.25rem 0;
         }
     </style>
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <!-- Common languages -->
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/javascript.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/typescript.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/php.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/sql.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/bash.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/css.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/json.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/xml.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/python.min.js"></script>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -1132,38 +1164,103 @@
 
             const blocks = container.querySelectorAll('pre');
             for (const pre of blocks) {
-                if (pre.querySelector('.md-copy-btn')) continue;
+                const code = pre.querySelector('code');
+
+                // Apply syntax highlighting if hljs is available and not already highlighted
+                if (code && window.hljs && !code.dataset.highlighted) {
+                    // Detect language from class (e.g., language-js, language-sql)
+                    const langClass = Array.from(code.classList).find(c => c.startsWith('language-'));
+                    if (langClass) {
+                        const lang = langClass.replace('language-', '');
+                        // Map common aliases
+                        const langMap = {
+                            'js': 'javascript',
+                            'ts': 'typescript',
+                            'py': 'python',
+                            'sh': 'bash',
+                            'shell': 'bash',
+                            'html': 'xml'
+                        };
+                        const actualLang = langMap[lang] || lang;
+
+                        try {
+                            if (hljs.getLanguage(actualLang)) {
+                                const result = hljs.highlight(code.textContent, {
+                                    language: actualLang
+                                });
+                                code.innerHTML = result.value;
+                                code.dataset.highlighted = 'yes';
+                            } else {
+                                // Fallback to auto-detection
+                                hljs.highlightElement(code);
+                            }
+                        } catch (e) {
+                            // If specific language fails, try auto-detection
+                            hljs.highlightElement(code);
+                        }
+                    } else {
+                        // No language specified, try auto-detection
+                        hljs.highlightElement(code);
+                    }
+                }
+
+                // Wrap pre in a container for proper button positioning
+                if (!pre.parentElement?.classList.contains('md-code-wrapper')) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'md-code-wrapper';
+                    pre.parentNode.insertBefore(wrapper, pre);
+                    wrapper.appendChild(pre);
+                }
+
+                // Add copy button if not already present
+                const wrapper = pre.parentElement;
+                if (wrapper.querySelector('.md-copy-btn')) continue;
 
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = 'md-copy-btn';
-                button.textContent = 'Copiar';
+                button.innerHTML =
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2h-4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/><path d="M16.706 2.706A2.4 2.4 0 0 0 15 2v5a1 1 0 0 0 1 1h5a2.4 2.4 0 0 0-.706-1.706z"/><path d="M5 7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 1.732-1"/></svg>';
+                button.title = 'Copiar código';
+
+                const copyIcon =
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2h-4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/><path d="M16.706 2.706A2.4 2.4 0 0 0 15 2v5a1 1 0 0 0 1 1h5a2.4 2.4 0 0 0-.706-1.706z"/><path d="M5 7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 1.732-1"/></svg>';
+                const checkIcon =
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
 
                 button.addEventListener('click', async () => {
-                    const code = pre.querySelector('code');
-                    const text = (code ? code.innerText : pre.innerText) || '';
+                    const codeEl = pre.querySelector('code');
+                    const text = (codeEl ? codeEl.innerText : pre.innerText) || '';
 
                     try {
                         await navigator.clipboard.writeText(text);
-                        button.textContent = 'Copiado';
-                        setTimeout(() => (button.textContent = 'Copiar'), 1200);
+                        button.innerHTML = checkIcon;
+                        button.style.color = 'rgb(74 222 128)';
+                        setTimeout(() => {
+                            button.innerHTML = copyIcon;
+                            button.style.color = '';
+                        }, 1200);
                     } catch (e) {
                         const range = document.createRange();
-                        range.selectNodeContents(code || pre);
+                        range.selectNodeContents(codeEl || pre);
                         const selection = window.getSelection();
                         selection.removeAllRanges();
                         selection.addRange(range);
                         try {
                             document.execCommand('copy');
-                            button.textContent = 'Copiado';
-                            setTimeout(() => (button.textContent = 'Copiar'), 1200);
+                            button.innerHTML = checkIcon;
+                            button.style.color = 'rgb(74 222 128)';
+                            setTimeout(() => {
+                                button.innerHTML = copyIcon;
+                                button.style.color = '';
+                            }, 1200);
                         } finally {
                             selection.removeAllRanges();
                         }
                     }
                 });
 
-                pre.appendChild(button);
+                wrapper.appendChild(button);
             }
         };
 
