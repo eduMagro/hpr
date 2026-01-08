@@ -197,7 +197,7 @@
             @endauth
 
             <!-- Page Content -->
-            <main class="flex-1 overflow-y-auto bg-neutral-100 dark:bg-gray-900 transition-colors">
+            <main class="flex-1 overflow-y-auto bg-slate-100 dark:bg-gray-900 transition-colors">
                 <div class="py-4 md:px-6 h-full">
                     <!-- Breadcrumbs -->
                     <x-breadcrumbs />
@@ -446,7 +446,9 @@
         // Marcar que ya no es la carga inicial después de que la página esté lista
         document.addEventListener('livewire:navigated', () => {
             isInitialLoad = false;
-        }, { once: true });
+        }, {
+            once: true
+        });
 
         document.addEventListener('livewire:navigating', () => {
             // No mostrar overlay en la carga inicial
