@@ -191,44 +191,18 @@
 
                                 <!-- Estado -->
                                 <td class="px-2 py-1 border-r border-gray-200">
-                                    @php
-                                        $estLower = strtolower($solicitud->estado);
-                                        $colors = [
-                                            'nueva' => [
-                                                'dot' => 'bg-gray-400',
-                                                'bg' => 'bg-gray-100',
-                                                'text' => 'text-gray-700',
-                                            ],
-                                            'lanzada' => [
-                                                'dot' => 'bg-blue-500',
-                                                'bg' => 'bg-blue-100',
-                                                'text' => 'text-blue-700',
-                                            ],
-                                            'en revisión' => [
-                                                'dot' => 'bg-amber-500',
-                                                'bg' => 'bg-amber-100',
-                                                'text' => 'text-amber-700',
-                                            ],
-                                            'merged' => [
-                                                'dot' => 'bg-emerald-500',
-                                                'bg' => 'bg-emerald-100',
-                                                'text' => 'text-emerald-700',
-                                            ],
-                                            'completada' => [
-                                                'dot' => 'bg-green-600',
-                                                'bg' => 'bg-green-100',
-                                                'text' => 'text-green-700',
-                                            ],
-                                        ];
-                                        $c = $colors[$estLower] ?? [
-                                            'dot' => 'bg-gray-300',
-                                            'bg' => 'bg-gray-50',
-                                            'text' => 'text-gray-600',
-                                        ];
-                                    @endphp
                                     <div x-data="{
                                         open: false,
-                                        selected: @json($solicitud->estado),
+                                        selected: @js($solicitud->estado),
+                                        getColor(val) {
+                                            const v = (val || '').toLowerCase();
+                                            if (v === 'nueva') return { dot: 'bg-gray-400', bg: 'bg-gray-100', text: 'text-gray-700' };
+                                            if (v === 'lanzada') return { dot: 'bg-blue-500', bg: 'bg-blue-100', text: 'text-blue-700' };
+                                            if (v === 'en revisión') return { dot: 'bg-amber-500', bg: 'bg-amber-100', text: 'text-amber-700' };
+                                            if (v === 'merged') return { dot: 'bg-emerald-500', bg: 'bg-emerald-100', text: 'text-emerald-700' };
+                                            if (v === 'completada') return { dot: 'bg-green-600', bg: 'bg-green-100', text: 'text-green-700' };
+                                            return { dot: 'bg-gray-300', bg: 'bg-gray-50', text: 'text-gray-600' };
+                                        },
                                         update(val) {
                                             this.selected = val;
                                             this.open = false;
@@ -236,29 +210,26 @@
                                         }
                                     }" class="relative">
                                         <button @click="open = !open" type="button"
-                                            class="flex items-center gap-2 h-7 w-full px-2 rounded text-[11px] font-bold transition-all {{ $c['bg'] }} {{ $c['text'] }} hover:ring-1 hover:ring-gray-300">
-                                            <span class="w-2 h-2 rounded-full {{ $c['dot'] }}"></span>
-                                            <span class="truncate" x-text="selected">{{ $solicitud->estado }}</span>
-                                            <svg class="w-3 h-3 ml-auto opacity-40" fill="none"
+                                            class="flex items-center gap-2 h-7 w-full px-2 rounded text-[11px] font-bold transition-all border border-transparent hover:border-gray-200 shadow-sm"
+                                            :class="getColor(selected).bg + ' ' + getColor(selected).text">
+                                            <span class="w-2 h-2 rounded-full shrink-0"
+                                                :class="getColor(selected).dot"></span>
+                                            <span class="flex-1 text-left" x-text="selected"></span>
+                                            <svg class="w-3 h-3 opacity-40 shrink-0" fill="none"
                                                 stroke="currentColor" viewBox="0 0 24 24">
                                                 <path d="M19 9l-7 7-7-7" stroke-width="2" stroke-linecap="round"
                                                     stroke-linejoin="round" />
                                             </svg>
                                         </button>
                                         <div x-show="open" @click.away="open = false"
-                                            class="absolute z-[100] mt-1 w-40 bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden"
+                                            class="absolute z-[100] mt-1 w-40 bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden left-0"
                                             x-cloak style="display: none;">
                                             @foreach ($estados as $est)
                                                 <button @click="update('{{ $est }}')" type="button"
-                                                    class="flex items-center gap-2 w-full px-3 py-1.5 text-[11px] font-semibold hover:bg-gray-50 text-gray-700">
-                                                    <span
-                                                        class="w-2 h-2 rounded-full 
-                                                        @if (strtolower($est) == 'nueva') bg-gray-400
-                                                        @elseif(strtolower($est) == 'lanzada') bg-blue-500
-                                                        @elseif(strtolower($est) == 'en revisión') bg-amber-500
-                                                        @elseif(strtolower($est) == 'merged') bg-emerald-500
-                                                        @elseif(strtolower($est) == 'completada') bg-green-600
-                                                        @else bg-gray-300 @endif"></span>
+                                                    class="flex items-center gap-2 w-full px-3 py-1.5 text-[11px] font-bold hover:bg-gray-50 transition-colors"
+                                                    :class="getColor('{{ $est }}').text">
+                                                    <span class="w-2 h-2 rounded-full shrink-0"
+                                                        :class="getColor('{{ $est }}').dot"></span>
                                                     {{ $est }}
                                                 </button>
                                             @endforeach
@@ -268,34 +239,16 @@
 
                                 <!-- Prioridad -->
                                 <td class="px-2 py-1 border-r border-gray-200">
-                                    @php
-                                        $priLower = strtolower($solicitud->prioridad);
-                                        $pColors = [
-                                            'alta' => [
-                                                'dot' => 'bg-red-500',
-                                                'bg' => 'bg-red-100',
-                                                'text' => 'text-red-700',
-                                            ],
-                                            'media' => [
-                                                'dot' => 'bg-yellow-500',
-                                                'bg' => 'bg-yellow-100',
-                                                'text' => 'text-yellow-700',
-                                            ],
-                                            'baja' => [
-                                                'dot' => 'bg-sky-400',
-                                                'bg' => 'bg-sky-100',
-                                                'text' => 'text-sky-700',
-                                            ],
-                                        ];
-                                        $pc = $pColors[$priLower] ?? [
-                                            'dot' => 'bg-gray-300',
-                                            'bg' => 'bg-gray-50',
-                                            'text' => 'text-gray-600',
-                                        ];
-                                    @endphp
                                     <div x-data="{
                                         open: false,
-                                        selected: @json($solicitud->prioridad),
+                                        selected: @js($solicitud->prioridad),
+                                        getColor(val) {
+                                            const v = (val || '').toLowerCase();
+                                            if (v === 'alta') return { dot: 'bg-red-500', bg: 'bg-red-100', text: 'text-red-700' };
+                                            if (v === 'media') return { dot: 'bg-yellow-500', bg: 'bg-yellow-100', text: 'text-yellow-700' };
+                                            if (v === 'baja') return { dot: 'bg-sky-400', bg: 'bg-sky-100', text: 'text-sky-700' };
+                                            return { dot: 'bg-gray-300', bg: 'bg-gray-50', text: 'text-gray-600' };
+                                        },
                                         update(val) {
                                             this.selected = val;
                                             this.open = false;
@@ -303,28 +256,26 @@
                                         }
                                     }" class="relative">
                                         <button @click="open = !open" type="button"
-                                            class="flex items-center gap-2 h-7 w-full px-2 rounded text-[11px] font-bold transition-all {{ $pc['bg'] }} {{ $pc['text'] }} hover:ring-1 hover:ring-gray-300">
-                                            <span class="w-2 h-2 rounded-full {{ $pc['dot'] }}"></span>
-                                            <span class="truncate"
-                                                x-text="selected">{{ $solicitud->prioridad }}</span>
-                                            <svg class="w-3 h-3 ml-auto opacity-40" fill="none"
+                                            class="flex items-center gap-2 h-7 w-full px-2 rounded text-[11px] font-bold transition-all border border-transparent hover:border-gray-200 shadow-sm"
+                                            :class="getColor(selected).bg + ' ' + getColor(selected).text">
+                                            <span class="w-2 h-2 rounded-full shrink-0"
+                                                :class="getColor(selected).dot"></span>
+                                            <span class="flex-1 text-left" x-text="selected"></span>
+                                            <svg class="w-3 h-3 opacity-40 shrink-0" fill="none"
                                                 stroke="currentColor" viewBox="0 0 24 24">
                                                 <path d="M19 9l-7 7-7-7" stroke-width="2" stroke-linecap="round"
                                                     stroke-linejoin="round" />
                                             </svg>
                                         </button>
                                         <div x-show="open" @click.away="open = false"
-                                            class="absolute z-[100] mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden"
+                                            class="absolute z-[100] mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden left-0"
                                             x-cloak style="display: none;">
                                             @foreach ($prioridades as $pri)
                                                 <button @click="update('{{ $pri }}')" type="button"
-                                                    class="flex items-center gap-2 w-full px-3 py-1.5 text-[11px] font-semibold hover:bg-gray-50 text-gray-700">
-                                                    <span
-                                                        class="w-2 h-2 rounded-full 
-                                                        @if (strtolower($pri) == 'alta') bg-red-500
-                                                        @elseif(strtolower($pri) == 'media') bg-yellow-500
-                                                        @elseif(strtolower($pri) == 'baja') bg-sky-400
-                                                        @else bg-gray-300 @endif"></span>
+                                                    class="flex items-center gap-2 w-full px-3 py-1.5 text-[11px] font-bold hover:bg-gray-50 transition-colors"
+                                                    :class="getColor('{{ $pri }}').text">
+                                                    <span class="w-2 h-2 rounded-full shrink-0"
+                                                        :class="getColor('{{ $pri }}').dot"></span>
                                                     {{ $pri }}
                                                 </button>
                                             @endforeach
@@ -569,12 +520,14 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
-        // Global function accessible from nested Alpine components
-        function updateField(id, field, value) {
+        // Define functions globally so they are available immediately for Alpine
+        window.updateField = function(id, field, value) {
             fetch(`/solicitudes/${id}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
                     body: JSON.stringify({
@@ -582,16 +535,22 @@
                         [field]: value
                     })
                 })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        console.log('✅ Guardado:', field, '=', value);
+                .then(async (response) => {
+                    const contentType = response.headers.get('content-type') || '';
+                    if (!response.ok) {
+                        const text = await response.text();
+                        throw new Error(text || `HTTP ${response.status}`);
                     }
+                    if (contentType.includes('application/json')) return response.json();
+                    return { success: true };
+                })
+                .then((data) => {
+                    if (data?.success) console.log('✅ Guardado:', field, '=', value);
                 })
                 .catch(error => console.error('Error:', error));
         }
 
-        function solicitudesApp() {
+        window.solicitudesApp = function() {
             return {
                 isModalOpen: false,
                 isEditing: false,
@@ -650,26 +609,7 @@
                     this.renderedHtml = marked.parse(this.form.descripcion || '');
                 },
                 updateField(id, field, value) {
-                    // Send AJAX request
-                    fetch(`/solicitudes/${id}`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                            },
-                            body: JSON.stringify({
-                                _method: 'PUT',
-                                [field]: value
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                console.log('Saved');
-                                // Optional: Show simplified toast
-                            }
-                        })
-                        .catch(error => console.error('Error:', error));
+                    window.updateField(id, field, value);
                 },
                 // Column Resizing Logic
                 initResize(e) {
@@ -693,5 +633,10 @@
                 }
             }
         }
+
+        // Support for Livewire navigation (if needed for other initializations)
+        document.addEventListener('livewire:navigated', () => {
+            console.log('Livewire Navigated - Solicitudes Ready');
+        });
     </script>
 </x-app-layout>

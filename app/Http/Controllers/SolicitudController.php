@@ -59,7 +59,7 @@ class SolicitudController extends Controller
 
         $solicitud->update($validated);
 
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->wantsJson() || $request->expectsJson() || $request->isJson()) {
             return response()->json(['success' => true]);
         }
 
