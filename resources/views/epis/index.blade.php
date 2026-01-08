@@ -221,7 +221,67 @@
                                         </div>
                                     </div>
 
-                                    <div class="flex gap-2">
+                                    <div class="flex gap-2 items-center">
+                                        <!-- Indicador de tallas faltantes -->
+                                        <template
+                                            x-if="(() => {
+                                            const t = u.tallas || {};
+                                            const count = [t.talla_guante, t.talla_zapato, t.talla_pantalon, t.talla_chaqueta].filter(Boolean).length;
+                                            return count < 4;
+                                        })()">
+                                            <div class="relative group/tallas">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                    :class="(() => {
+                                                        const t = u.tallas || {};
+                                                        const count = [t.talla_guante, t.talla_zapato, t
+                                                            .talla_pantalon, t.talla_chaqueta
+                                                        ].filter(Boolean).length;
+                                                        return count === 0 ? 'text-red-500' : 'text-amber-500';
+                                                    })()">
+                                                    <path
+                                                        d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
+                                                    <line x1="12" x2="12" y1="8"
+                                                        y2="12" />
+                                                    <line x1="12" x2="12.01" y1="16"
+                                                        y2="16" />
+                                                </svg>
+                                                <!-- Tooltip -->
+                                                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 text-xs font-medium rounded-lg shadow-lg opacity-0 invisible group-hover/tallas:opacity-100 group-hover/tallas:visible transition-all duration-200 whitespace-nowrap z-50"
+                                                    :class="(() => {
+                                                        const t = u.tallas || {};
+                                                        const count = [t.talla_guante, t.talla_zapato, t
+                                                            .talla_pantalon, t.talla_chaqueta
+                                                        ].filter(Boolean).length;
+                                                        return count === 0 ? 'bg-red-600 text-white' :
+                                                            'bg-amber-500 text-white';
+                                                    })()">
+                                                    <span
+                                                        x-text="(() => {
+                                                        const t = u.tallas || {};
+                                                        const count = [t.talla_guante, t.talla_zapato, t.talla_pantalon, t.talla_chaqueta].filter(Boolean).length;
+                                                        if (count === 0) return 'Usuario sin tallas registradas';
+                                                        const missing = [];
+                                                        if (!t.talla_guante) missing.push('guante');
+                                                        if (!t.talla_zapato) missing.push('calzado');
+                                                        if (!t.talla_pantalon) missing.push('pantalón');
+                                                        if (!t.talla_chaqueta) missing.push('chaqueta');
+                                                        return 'Faltan: ' + missing.join(', ');
+                                                    })()"></span>
+                                                    <div class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent"
+                                                        :class="(() => {
+                                                            const t = u.tallas || {};
+                                                            const count = [t.talla_guante, t.talla_zapato, t
+                                                                .talla_pantalon, t.talla_chaqueta
+                                                            ].filter(Boolean).length;
+                                                            return count === 0 ? 'border-t-red-600' :
+                                                                'border-t-amber-500';
+                                                        })()">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
                                         <button type="button"
                                             class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 shadow-sm hover:shadow-md transition"
                                             @click="openUser(u)">
@@ -1571,7 +1631,8 @@
                             <button type="button" @click="resetTallasFilters()"
                                 :disabled="!filterGuante && !filterZapato && !filterPantalon && !filterChaqueta"
                                 class="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium transition-all flex items-center gap-1.5">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -1636,72 +1697,6 @@
                                 </select>
                             </div>
                         </div>
-                        <template x-if="filterGuante || filterZapato || filterPantalon || filterChaqueta">
-                            <div class="pt-4 border-t border-gray-100">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span class="text-xs font-medium text-gray-500">Filtrando:</span>
-                                    <template x-if="filterGuante">
-                                        <span
-                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs font-bold">
-                                            🧤 <span x-text="filterGuante"></span>
-                                            <button type="button" @click="filterGuante = '';"
-                                                class="hover:text-blue-900 ml-1">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </template>
-                                    <template x-if="filterZapato">
-                                        <span
-                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold">
-                                            👟 <span x-text="filterZapato"></span>
-                                            <button type="button" @click="filterZapato = '';"
-                                                class="hover:text-emerald-900 ml-1">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </template>
-                                    <template x-if="filterPantalon">
-                                        <span
-                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-full text-xs font-bold">
-                                            👖 <span x-text="filterPantalon"></span>
-                                            <button type="button" @click="filterPantalon = '';"
-                                                class="hover:text-amber-900 ml-1">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </template>
-                                    <template x-if="filterChaqueta">
-                                        <span
-                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-700 rounded-full text-xs font-bold">
-                                            🧥 <span x-text="filterChaqueta"></span>
-                                            <button type="button" @click="filterChaqueta = '';"
-                                                class="hover:text-rose-900 ml-1">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </template>
-                                    <span
-                                        class="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-xs font-bold ml-auto"
-                                        x-text="usersWithTallas.length + ' candidatos'"></span>
-                                </div>
-                            </div>
-                        </template>
                     </div>
                 </div>
 
