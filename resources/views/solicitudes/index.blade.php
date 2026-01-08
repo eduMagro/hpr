@@ -1,7 +1,7 @@
 <x-app-layout>
-    <x-slot name="title">Solicitudes - {{ config('app.name') }}</x-slot>
+    <x-slot name="title">Funciones - {{ config('app.name') }}</x-slot>
 
-    <div class="px-4 py-6 max-w-[1920px] mx-auto" x-data="solicitudesApp()">
+    <div class="px-4 py-6 max-w-[1920px] mx-auto" x-data="solicitudesApp()" x-init="initResizableColumns()">
 
         <!-- Header con gradiente -->
         <div
@@ -15,7 +15,7 @@
                     </svg>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold text-white">Solicitudes</h1>
+                    <h1 class="text-2xl font-bold text-white">Funciones</h1>
                     <p class="text-white/70 text-sm">Panel de control de tareas</p>
                 </div>
             </div>
@@ -26,7 +26,7 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
-                    Nueva Solicitud
+                    Nueva Función
                 </button>
             </div>
         </div>
@@ -47,92 +47,122 @@
         <div
             class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden select-none transition-shadow hover:shadow-2xl">
             <div class="overflow-x-auto pb-24" style="min-height: 400px;">
-                <table class="w-full border-collapse text-sm">
+                <table class="w-full border-collapse text-sm table-fixed hpr-solicitudes-table">
+                    <colgroup>
+                        <col data-column-key="id">
+                        <col data-column-key="titulo">
+                        <col data-column-key="comentario">
+                        <col data-column-key="estado">
+                        <col data-column-key="prioridad">
+                        <col data-column-key="asignado_a">
+                        <col data-column-key="fecha">
+                    </colgroup>
                     <thead>
                         <tr class="bg-gray-50 border-b border-gray-200">
                             <!-- ID Column -->
-                            <th
+                            <th data-column-key="id"
                                 class="relative px-2 py-2 text-left font-medium text-gray-500 w-16 border-r border-gray-200 group">
-                                <div class="flex items-center gap-1">
-                                    <span class="uppercase text-[10px]">#</span>
+                                <div class="resizable-column-wrapper">
+                                    <div class="resizable-column-content flex items-center gap-1">
+                                        <span class="resizable-column-label uppercase text-[10px]">#</span>
+                                    </div>
+                                    <div class="resizable-column-handle" aria-hidden="true"></div>
                                 </div>
                             </th>
 
                             <!-- Title Column -->
-                            <th
-                                class="relative px-2 py-2 text-left font-medium text-gray-500 min-w-[300px] border-r border-gray-200 group">
-                                <div class="flex items-center gap-1">
-                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                    <span class="uppercase text-[10px]">Nombre de la solicitud</span>
+                            <th data-column-key="titulo"
+                                class="relative px-2 py-2 text-left font-medium text-gray-500 min-w-[20px] border-r border-gray-200 group">
+                                <div class="resizable-column-wrapper">
+                                    <div class="resizable-column-content flex items-center gap-1">
+                                        <svg class="w-5 h-5 min-w-5 min-h-5 text-gray-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        <span class="resizable-column-label uppercase text-[10px]">Nombre de la función</span>
+                                    </div>
+                                    <div class="resizable-column-handle" aria-hidden="true"></div>
                                 </div>
                             </th>
 
                             <!-- Comentario -->
-                            <th
+                            <th data-column-key="comentario"
                                 class="relative px-2 py-2 text-left font-medium text-gray-500 w-64 border-r border-gray-200 group">
-                                <div class="flex items-center gap-1">
-                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                    </svg>
-                                    <span class="uppercase text-[10px]">Comentario</span>
+                                <div class="resizable-column-wrapper">
+                                    <div class="resizable-column-content flex items-center gap-1">
+                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                        </svg>
+                                        <span class="resizable-column-label uppercase text-[10px]">Comentario</span>
+                                    </div>
+                                    <div class="resizable-column-handle" aria-hidden="true"></div>
                                 </div>
                             </th>
 
                             <!-- Estado -->
-                            <th
+                            <th data-column-key="estado"
                                 class="relative px-2 py-2 text-left font-medium text-gray-500 w-40 border-r border-gray-200 group">
-                                <div class="flex items-center gap-1">
-                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <span class="uppercase text-[10px]">Estado</span>
+                                <div class="resizable-column-wrapper">
+                                    <div class="resizable-column-content flex items-center gap-1">
+                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span class="resizable-column-label uppercase text-[10px]">Estado</span>
+                                    </div>
+                                    <div class="resizable-column-handle" aria-hidden="true"></div>
                                 </div>
                             </th>
 
                             <!-- Prioridad -->
-                            <th
+                            <th data-column-key="prioridad"
                                 class="relative px-2 py-2 text-left font-medium text-gray-500 w-32 border-r border-gray-200 group">
-                                <div class="flex items-center gap-1">
-                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                    </svg>
-                                    <span class="uppercase text-[10px]">Prioridad</span>
+                                <div class="resizable-column-wrapper">
+                                    <div class="resizable-column-content flex items-center gap-1">
+                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                        <span class="resizable-column-label uppercase text-[10px]">Prioridad</span>
+                                    </div>
+                                    <div class="resizable-column-handle" aria-hidden="true"></div>
                                 </div>
                             </th>
 
                             <!-- Asignado -->
-                            <th
+                            <th data-column-key="asignado_a"
                                 class="relative px-2 py-2 text-left font-medium text-gray-500 w-48 border-r border-gray-200 group">
-                                <div class="flex items-center gap-1">
-                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                    </svg>
-                                    <span class="uppercase text-[10px]">Asignado a</span>
+                                <div class="resizable-column-wrapper">
+                                    <div class="resizable-column-content flex items-center gap-1">
+                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        <span class="resizable-column-label uppercase text-[10px]">Asignado a</span>
+                                    </div>
+                                    <div class="resizable-column-handle" aria-hidden="true"></div>
                                 </div>
                             </th>
 
                             <!-- Fecha -->
-                            <th
+                            <th data-column-key="fecha"
                                 class="relative px-2 py-2 text-left font-medium text-gray-500 w-48 border-r border-gray-200 group">
-                                <div class="flex items-center gap-1">
-                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                    <span class="uppercase text-[10px]">Fecha</span>
+                                <div class="resizable-column-wrapper">
+                                    <div class="resizable-column-content flex items-center gap-1">
+                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <span class="resizable-column-label uppercase text-[10px]">Fecha</span>
+                                    </div>
+                                    <div class="resizable-column-handle" aria-hidden="true"></div>
                                 </div>
                             </th>
                         </tr>
@@ -477,8 +507,7 @@
                                     </div>
 
                                     <!-- Preview Mode -->
-                                    <div x-show="viewMode === 'preview'"
-                                        x-ref="mdPreview"
+                                    <div x-show="viewMode === 'preview'" x-ref="mdPreview"
                                         class="flex-1 markdown-preview text-gray-800" x-html="renderedHtml">
                                     </div>
                                 </div>
@@ -505,6 +534,68 @@
     </div>
 
     <style>
+        .resizable-column-wrapper {
+            display: flex;
+            align-items: center;
+        }
+
+        .resizable-column-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .resizable-column-content>svg {
+            flex-shrink: 0;
+        }
+
+        .resizable-column-label {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .resizable-column-handle {
+            width: 10px;
+            margin-right: -8px;
+            cursor: col-resize;
+            flex-shrink: 0;
+            align-self: stretch;
+            opacity: 0;
+            transition: opacity 120ms ease, background-color 120ms ease;
+        }
+
+        th:hover .resizable-column-handle {
+            opacity: 1;
+        }
+
+        .resizable-column-handle:hover {
+            background: rgba(59, 130, 246, 0.25);
+        }
+
+        .hpr-solicitudes-table td {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .hpr-solicitudes-table th {
+            white-space: nowrap;
+            overflow: visible;
+        }
+
+        .hpr-solicitudes-table td>* {
+            min-width: 0;
+        }
+
+        .hpr-solicitudes-table input,
+        .hpr-solicitudes-table button,
+        .hpr-solicitudes-table select {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         .markdown-preview {
             line-height: 1.65;
         }
@@ -701,7 +792,9 @@
                         throw new Error(text || `HTTP ${response.status}`);
                     }
                     if (contentType.includes('application/json')) return response.json();
-                    return { success: true };
+                    return {
+                        success: true
+                    };
                 })
                 .then((data) => {
                     if (data?.success) console.log('✅ Guardado:', field, '=', value);
@@ -715,6 +808,7 @@
                 isEditing: false,
                 viewMode: 'edit',
                 renderedHtml: '',
+                tableColStorageKey: 'hpr.solicitudes.colwidths.v2',
                 form: {
                     id: null,
                     titulo: '',
@@ -723,6 +817,84 @@
                     asignado_a: '',
                     descripcion: '',
                     comentario: ''
+                },
+                initResizableColumns() {
+                    const table = this.$root?.querySelector('table');
+                    if (!table) return;
+
+                    const theadRow = table.querySelector('thead > tr');
+                    const tbodyRows = Array.from(table.querySelectorAll('tbody > tr'));
+                    const colgroup = table.querySelector('colgroup');
+                    if (!theadRow || !colgroup) return;
+
+                    const applyWidthByIndex = (colIndex, widthPx, minWidthPx) => {
+                        const width = Math.max(minWidthPx, Math.round(Number(widthPx) || 0));
+                        const col = colgroup.children[colIndex];
+                        if (col) col.style.width = `${width}px`;
+
+                        const rows = [theadRow, ...tbodyRows];
+                        for (const row of rows) {
+                            const cell = row.children[colIndex];
+                            if (!cell) continue;
+                            cell.style.width = `${width}px`;
+                            cell.style.maxWidth = `${width}px`;
+                        }
+                    };
+
+                    const loadWidths = () => {
+                        try {
+                            const raw = localStorage.getItem(this.tableColStorageKey);
+                            const parsed = raw ? JSON.parse(raw) : {};
+                            return parsed && typeof parsed === 'object' ? parsed : {};
+                        } catch {
+                            return {};
+                        }
+                    };
+
+                    const saveWidths = (widths) => {
+                        try {
+                            localStorage.setItem(this.tableColStorageKey, JSON.stringify(widths || {}));
+                        } catch {
+                            // ignore (private mode / disabled storage)
+                        }
+                    };
+
+                    const minWidths = {
+                        id: 20,
+                        titulo: 20,
+                        comentario: 20,
+                        estado: 20,
+                        prioridad: 20,
+                        asignado_a: 20,
+                        fecha: 20,
+                    };
+
+                    const stored = loadWidths();
+                    const headerCells = Array.from(theadRow.children);
+                    headerCells.forEach((th, i) => {
+                        const key = th?.dataset?.columnKey;
+                        const minW = minWidths[key] ?? 100;
+                        const storedW = stored[key];
+                        if (storedW) applyWidthByIndex(i, storedW, minW);
+                    });
+
+                    if (window.makeColumnsResizable) {
+                        window.makeColumnsResizable(theadRow, {
+                            elementsToPatch: tbodyRows,
+                            columnsMinWidth: minWidths,
+                            DEFAULT_MIN_COLUMN_WIDTH: 20,
+                            onResizeEnd: ({
+                                columnKey,
+                                width
+                            }) => {
+                                if (!columnKey || !Number.isFinite(width)) return;
+                                stored[columnKey] = Math.round(width);
+                                saveWidths(stored);
+                            },
+                            patchWidthByIndex: (index, width, minWidth) => applyWidthByIndex(index, width,
+                                minWidth),
+                        });
+                    }
                 },
                 openCreateModal() {
                     this.resetForm();
@@ -827,6 +999,99 @@
 
                 pre.appendChild(button);
             }
+        };
+
+        window.preventDefault = function(e) {
+            e.preventDefault();
+        };
+
+        // Based on the logic from: https://dev.to/gohomewho/table-make-columns-resizable-2l3h
+        window.makeColumnsResizable = function(columnsContainer, options = {}) {
+            const {
+                elementsToPatch = [],
+                    columnsMinWidth = {},
+                    DEFAULT_MIN_COLUMN_WIDTH = 100,
+                    onResizeEnd = null,
+                    patchWidthByIndex = null,
+            } = options;
+
+            columnsContainer.classList.add('resizable-columns-container');
+            const _elementsToPatch = [columnsContainer, ...elementsToPatch];
+
+            const columnElements = [...columnsContainer.children];
+            columnElements.forEach((column) => {
+                column.classList.add('resizable-column');
+            });
+
+            columnsContainer.addEventListener(
+                'pointerdown',
+                (e) => {
+                    const resizeHandle = e.target.closest('.resizable-column-handle');
+                    if (!resizeHandle) return;
+
+                    e.stopPropagation();
+
+                    const column = e.target.closest('.resizable-column');
+                    const indexOfColumn = [...columnsContainer.children].indexOf(column);
+                    const columnKey = column?.dataset?.columnKey;
+                    const minColumnWidth = Number(columnsMinWidth[columnKey] ?? DEFAULT_MIN_COLUMN_WIDTH);
+
+                    document.addEventListener('selectstart', window.preventDefault);
+
+                    const initialColumnWidth = parseFloat(getComputedStyle(column).width);
+                    const initialCursorX = e.clientX;
+
+                    const elementsToResize = _elementsToPatch
+                        .map((container) => container.children[indexOfColumn])
+                        .filter(Boolean);
+
+                    let lastWidth = initialColumnWidth;
+
+                    function applyWidth(width) {
+                        const nextWidth = Math.max(width, minColumnWidth);
+                        lastWidth = nextWidth;
+
+                        requestAnimationFrame(() => {
+                            if (typeof patchWidthByIndex === 'function') {
+                                patchWidthByIndex(indexOfColumn, nextWidth, minColumnWidth);
+                            }
+
+                            elementsToResize.forEach((element) => {
+                                element.style.width = `${nextWidth}px`;
+                                element.style.maxWidth = `${nextWidth}px`;
+                            });
+                        });
+                    }
+
+                    function handleMove(e) {
+                        const newCursorX = e.clientX;
+                        const moveDistance = newCursorX - initialCursorX;
+                        applyWidth(initialColumnWidth + moveDistance);
+                    }
+
+                    document.addEventListener('pointermove', handleMove);
+
+                    document.addEventListener(
+                        'pointerup',
+                        () => {
+                            document.removeEventListener('pointermove', handleMove);
+                            document.removeEventListener('selectstart', window.preventDefault);
+
+                            if (typeof onResizeEnd === 'function') {
+                                onResizeEnd({
+                                    columnKey,
+                                    width: lastWidth,
+                                    index: indexOfColumn
+                                });
+                            }
+                        }, {
+                            once: true
+                        }
+                    );
+                }, {
+                    capture: true
+                }
+            );
         };
     </script>
 </x-app-layout>
