@@ -66,21 +66,41 @@
 </style>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        fetch("/alertas/sin-leer", {
+        const parseJsonLenient = (text) => {
+            try {
+                return JSON.parse(text);
+            } catch {
+                const first = text.indexOf('{');
+                const last = text.lastIndexOf('}');
+                if (first >= 0 && last > first) {
+                    try {
+                        return JSON.parse(text.slice(first, last + 1));
+                    } catch {}
+                }
+                return null;
+            }
+        };
+
+        fetch("{{ route('alertas.verSinLeer') }}", {
                 headers: {
                     'Accept': 'application/json'
                 },
                 credentials: 'same-origin'
             })
-            .then(response => response.json())
+            .then(async (response) => {
+                const text = await response.text();
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${text}`);
+                return parseJsonLenient(text);
+            })
             .then(data => {
-                if (data.cantidad > 0) {
+                const cantidad = Number(data?.cantidad) || 0;
+                if (cantidad > 0) {
                     let notificacion = document.getElementById("notificacion-alerta");
                     let notificacionTexto = document.getElementById("notificacion-alertas-texto");
 
-                    let mensaje = data.cantidad === 1 ?
+                    let mensaje = cantidad === 1 ?
                         `🔔 Tienes 1 mensaje sin leer` :
-                        `🔔 Tienes ${data.cantidad} mensajes sin leer`;
+                        `🔔 Tienes ${cantidad} mensajes sin leer`;
 
                     notificacion.style.display = "block";
                     notificacion.classList.add("visible");
@@ -92,6 +112,6 @@
                     // }
                 }
             })
-            .catch(error => console.error("Error al obtener alertas:", error));
+            .catch(error => console.warn("Error al obtener alertas:", error));
     });
 </script>

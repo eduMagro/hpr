@@ -67,6 +67,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // AJAX List
     Route::get('/incidencias/ajax/list', [IncidenciaController::class, 'listAjax'])->name('incidencias.list.ajax');
 
+    // Funciones (antes: solicitudes)
+    Route::resource('funciones', \App\Http\Controllers\FuncionController::class)
+        ->only(['index', 'store', 'update', 'destroy'])
+        ->names('funciones');
+    Route::redirect('/solicitudes', '/funciones');
+    Route::redirect('/solicitudes/create', '/funciones');
+    Route::get('/solicitudes/{any}', function ($any) {
+        return redirect("/funciones/{$any}");
+    })->where('any', '.*');
+
     Route::get('/incidencias/create', [IncidenciaController::class, 'create'])->name('incidencias.create');
     Route::post('/incidencias', [IncidenciaController::class, 'store'])->name('incidencias.store');
     Route::get('/incidencias/{id}', [IncidenciaController::class, 'show'])->name('incidencias.show');
