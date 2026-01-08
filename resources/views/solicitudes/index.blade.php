@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="title">Funciones - {{ config('app.name') }}</x-slot>
 
-    <div class="px-4 py-6 max-w-[1920px] mx-auto" x-data="solicitudesApp()" x-init="initResizableColumns()">
+    <div class="px-4 py-6 max-w-[1920px] mx-auto" x-data="solicitudesApp()" x-init="initPage()">
 
         <!-- Header con gradiente -->
         <div
@@ -33,18 +33,29 @@
 
         <!-- Notion-like Tabs -->
         <div class="flex items-center gap-6 mb-4 text-sm border-b border-gray-200 pb-1 overflow-x-auto">
-            <button
-                class="flex items-center gap-2 px-2 py-2 text-gray-900 border-b-2 border-gray-900 font-medium whitespace-nowrap">
-                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button @click="boardView = 'table'"
+                :class="boardView === 'table' ? 'text-gray-900 border-b-2 border-gray-900 font-medium' : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'"
+                class="flex items-center gap-2 px-2 py-2 whitespace-nowrap transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
                 Vista Tabla
             </button>
+
+            <button @click="boardView = 'estado'; $nextTick(() => syncKanbanCounts())"
+                :class="boardView === 'estado' ? 'text-gray-900 border-b-2 border-gray-900 font-medium' : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'"
+                class="flex items-center gap-2 px-2 py-2 whitespace-nowrap transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z" />
+                </svg>
+                Por estado
+            </button>
         </div>
 
         <!-- Excel-like Table Container -->
-        <div
+        <div x-show="boardView === 'table'"
             class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden select-none transition-shadow hover:shadow-2xl">
             <div class="overflow-x-auto pb-24" style="min-height: 400px;">
                 <table class="w-full border-collapse text-sm table-fixed hpr-solicitudes-table">
@@ -206,7 +217,7 @@
                                 </td>
 
                                 <!-- Estado -->
-                                <td class="px-2 py-1 border-r border-gray-200">
+                                <td class="px-2 py-1 border-r border-gray-200 has-dropdown">
                                     <div x-data="{
                                         open: false,
                                         selected: @js($solicitud->estado),
@@ -238,7 +249,7 @@
                                             </svg>
                                         </button>
                                         <div x-show="open" @click.away="open = false"
-                                            class="absolute z-[100] mt-1 w-40 bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden left-0"
+                                            class="absolute z-[9999] mt-1 w-40 bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden left-0"
                                             x-cloak style="display: none;">
                                             @foreach ($estados as $est)
                                                 <button @click="update('{{ $est }}')" type="button"
@@ -254,7 +265,7 @@
                                 </td>
 
                                 <!-- Prioridad -->
-                                <td class="px-2 py-1 border-r border-gray-200">
+                                <td class="px-2 py-1 border-r border-gray-200 has-dropdown">
                                     <div x-data="{
                                         open: false,
                                         selected: @js($solicitud->prioridad),
@@ -284,7 +295,7 @@
                                             </svg>
                                         </button>
                                         <div x-show="open" @click.away="open = false"
-                                            class="absolute z-[100] mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden left-0"
+                                            class="absolute z-[9999] mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden left-0"
                                             x-cloak style="display: none;">
                                             @foreach ($prioridades as $pri)
                                                 <button @click="update('{{ $pri }}')" type="button"
@@ -341,6 +352,64 @@
             <!-- Pagination inside container (footer like) -->
             <div class="px-4 py-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-500">
                 {{ $solicitudes->links() }}
+            </div>
+        </div>
+
+        <!-- Kanban by Estado -->
+        <div x-show="boardView === 'estado'" x-cloak class="pb-24">
+            <div class="flex gap-4 overflow-x-auto items-start">
+                @foreach ($estados as $est)
+                    @php($count = $solicitudes->getCollection()->where('estado', $est)->count())
+                    <div class="w-80 shrink-0 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3"
+                            :class="statusMeta(@js($est)).bg">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="w-2.5 h-2.5 rounded-full shrink-0"
+                                    :class="statusMeta(@js($est)).dot"></span>
+                                <div class="min-w-0">
+                                    <div class="text-sm font-bold truncate" :class="statusMeta(@js($est)).text">
+                                        {{ $est }}
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-white/70 border border-gray-200"
+                                data-kanban-count-for="{{ $est }}">{{ $count }}</span>
+                        </div>
+
+                        <div class="p-3 space-y-2" data-kanban-estado="{{ $est }}">
+                            @foreach ($solicitudes as $solicitud)
+                                @if ($solicitud->estado === $est)
+                                    <div data-kanban-card data-solicitud-id="{{ $solicitud->id }}"
+                                        data-estado="{{ $solicitud->estado }}"
+                                        class="group rounded-xl border border-gray-200 bg-white hover:shadow-md transition-shadow">
+                                        <button type="button" @click='openViewModal(@json($solicitud, JSON_HEX_APOS))'
+                                            class="w-full text-left p-3">
+                                            <div class="flex items-start gap-2">
+                                                <div class="w-2 h-2 rounded-full mt-1.5 shrink-0"
+                                                    :class="statusMeta(@js($est)).dot"></div>
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="text-sm font-semibold text-gray-900 line-clamp-2">
+                                                        {{ $solicitud->titulo }}
+                                                    </div>
+                                                    @if (!empty($solicitud->comentario))
+                                                        <div class="text-xs text-gray-500 mt-1 line-clamp-2">
+                                                            {{ $solicitud->comentario }}
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </button>
+                                    </div>
+                                @endif
+                            @endforeach
+
+                            <button type="button" @click="openCreateModal()"
+                                class="w-full rounded-xl border border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-600 transition-colors">
+                                + Nueva solicitud
+                            </button>
+                        </div>
+                    </div>
+                @endforeach
             </div>
         </div>
 
@@ -579,6 +648,10 @@
             text-overflow: ellipsis;
         }
 
+        .hpr-solicitudes-table td.has-dropdown {
+            overflow: visible;
+        }
+
         .hpr-solicitudes-table th {
             white-space: nowrap;
             overflow: visible;
@@ -797,13 +870,19 @@
                     };
                 })
                 .then((data) => {
-                    if (data?.success) console.log('✅ Guardado:', field, '=', value);
+                    if (data?.success) {
+                        console.log('✅ Guardado:', field, '=', value);
+                        window.dispatchEvent(new CustomEvent('solicitud:updated', {
+                            detail: { id, field, value }
+                        }));
+                    }
                 })
                 .catch(error => console.error('Error:', error));
         }
 
         window.solicitudesApp = function() {
             return {
+                boardView: 'table',
                 isModalOpen: false,
                 isEditing: false,
                 viewMode: 'edit',
@@ -817,6 +896,54 @@
                     asignado_a: '',
                     descripcion: '',
                     comentario: ''
+                },
+                initPage() {
+                    this.initResizableColumns();
+                    this.setupKanbanListeners();
+                    this.syncKanbanCounts();
+                },
+                statusMeta(val) {
+                    const raw = (val || '').toString().toLowerCase();
+                    const normalized = raw.normalize ? raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : raw;
+                    if (normalized === 'nueva') return { dot: 'bg-gray-400', bg: 'bg-gray-50', text: 'text-gray-700' };
+                    if (normalized === 'lanzada') return { dot: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-700' };
+                    if (normalized === 'en revision') return { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-700' };
+                    if (normalized === 'merged') return { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-700' };
+                    if (normalized === 'completada') return { dot: 'bg-green-600', bg: 'bg-green-50', text: 'text-green-700' };
+                    return { dot: 'bg-gray-300', bg: 'bg-gray-50', text: 'text-gray-700' };
+                },
+                syncKanbanCounts() {
+                    const counters = this.$root?.querySelectorAll('[data-kanban-count-for]') || [];
+                    for (const el of counters) {
+                        const estado = el.getAttribute('data-kanban-count-for') || '';
+                        const col = this.$root?.querySelector(`[data-kanban-estado="${CSS.escape(estado)}"]`);
+                        const count = col ? col.querySelectorAll('[data-kanban-card]').length : 0;
+                        el.textContent = String(count);
+                    }
+                },
+                setupKanbanListeners() {
+                    if (this._kanbanListenerAttached) return;
+                    this._kanbanListenerAttached = true;
+
+                    window.addEventListener('solicitud:updated', (e) => {
+                        const detail = e?.detail || {};
+                        if (!detail || detail.field !== 'estado') return;
+
+                        const id = String(detail.id ?? '');
+                        const estado = String(detail.value ?? '');
+                        if (!id || !estado) return;
+
+                        const card = this.$root?.querySelector(
+                            `[data-kanban-card][data-solicitud-id="${CSS.escape(id)}"]`
+                        );
+                        const target = this.$root?.querySelector(`[data-kanban-estado="${CSS.escape(estado)}"]`);
+                        if (!card || !target) return;
+
+                        card.dataset.estado = estado;
+                        const addButton = target.querySelector('button[type="button"]');
+                        target.insertBefore(card, addButton || null);
+                        this.syncKanbanCounts();
+                    });
                 },
                 initResizableColumns() {
                     const table = this.$root?.querySelector('table');
