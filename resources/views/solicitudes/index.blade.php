@@ -34,7 +34,8 @@
         <!-- Notion-like Tabs -->
         <div class="flex items-center gap-6 mb-4 text-sm border-b border-gray-200 pb-1 overflow-x-auto">
             <button @click="boardView = 'table'"
-                :class="boardView === 'table' ? 'text-gray-900 border-b-2 border-gray-900 font-medium' : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'"
+                :class="boardView === 'table' ? 'text-gray-900 border-b-2 border-gray-900 font-medium' :
+                    'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'"
                 class="flex items-center gap-2 px-2 py-2 whitespace-nowrap transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -44,7 +45,8 @@
             </button>
 
             <button @click="boardView = 'estado'; $nextTick(() => syncKanbanCounts())"
-                :class="boardView === 'estado' ? 'text-gray-900 border-b-2 border-gray-900 font-medium' : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'"
+                :class="boardView === 'estado' ? 'text-gray-900 border-b-2 border-gray-900 font-medium' :
+                    'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'"
                 class="flex items-center gap-2 px-2 py-2 whitespace-nowrap transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -91,7 +93,8 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
-                                        <span class="resizable-column-label uppercase text-[10px]">Nombre de la función</span>
+                                        <span class="resizable-column-label uppercase text-[10px]">Nombre de la
+                                            función</span>
                                     </div>
                                     <div class="resizable-column-handle" aria-hidden="true"></div>
                                 </div>
@@ -225,6 +228,7 @@
                                             const v = (val || '').toLowerCase();
                                             if (v === 'nueva') return { dot: 'bg-gray-400', bg: 'bg-gray-100', text: 'text-gray-700' };
                                             if (v === 'lanzada') return { dot: 'bg-blue-500', bg: 'bg-blue-100', text: 'text-blue-700' };
+                                            if (v === 'en progreso') return { dot: 'bg-purple-500', bg: 'bg-purple-100', text: 'text-purple-700' };
                                             if (v === 'en revisión') return { dot: 'bg-amber-500', bg: 'bg-amber-100', text: 'text-amber-700' };
                                             if (v === 'merged') return { dot: 'bg-emerald-500', bg: 'bg-emerald-100', text: 'text-emerald-700' };
                                             if (v === 'completada') return { dot: 'bg-green-600', bg: 'bg-green-100', text: 'text-green-700' };
@@ -367,7 +371,8 @@
                                 <span class="w-2.5 h-2.5 rounded-full shrink-0"
                                     :class="statusMeta(@js($est)).dot"></span>
                                 <div class="min-w-0">
-                                    <div class="text-sm font-bold truncate" :class="statusMeta(@js($est)).text">
+                                    <div class="text-sm font-bold truncate"
+                                        :class="statusMeta(@js($est)).text">
                                         {{ $est }}
                                     </div>
                                 </div>
@@ -453,7 +458,7 @@
 
                         <!-- Content -->
                         <div class="flex-1 overflow-y-auto bg-white">
-                            <form :action="isEditing ? '/solicitudes/' + form.id : '{{ route('solicitudes.store') }}'"
+                            <form :action="isEditing ? '/funciones/' + form.id : '{{ route('funciones.store') }}'"
                                 method="POST" id="solicitudForm" class="min-h-full flex flex-col">
                                 @csrf
                                 <template x-if="isEditing">
@@ -463,7 +468,7 @@
                                 <!-- Notion-like Top Section -->
                                 <div class="px-10 pt-10 pb-4">
                                     <!-- Title -->
-                                    <textarea name="titulo" x-model="form.titulo" placeholder="Nombre de la solicitud"
+                                    <textarea name="titulo" x-model="form.titulo" placeholder="Nombre de la función"
                                         class="w-full text-4xl font-bold border-none focus:ring-0 placeholder-gray-300 px-0 mb-6 text-gray-900 leading-tight resize-none overflow-hidden"
                                         rows="1" @input="$el.style.height = ''; $el.style.height = $el.scrollHeight + 'px'"></textarea>
 
@@ -572,7 +577,7 @@
                                     <div x-show="viewMode === 'edit'" class="flex-1 min-h-[300px]">
                                         <textarea name="descripcion" x-model="form.descripcion"
                                             class="w-full h-full border-0 focus:ring-0 text-gray-800 text-base resize-none p-0 leading-relaxed"
-                                            placeholder="Escribe aquí los detalles de la solicitud... (Markdown soportado)"></textarea>
+                                            placeholder="Escribe aquí los detalles de la función..."></textarea>
                                     </div>
 
                                     <!-- Preview Mode -->
@@ -845,7 +850,7 @@
     <script>
         // Define functions globally so they are available immediately for Alpine
         window.updateField = function(id, field, value) {
-            fetch(`/solicitudes/${id}`, {
+            fetch(`/funciones/${id}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -873,7 +878,11 @@
                     if (data?.success) {
                         console.log('✅ Guardado:', field, '=', value);
                         window.dispatchEvent(new CustomEvent('solicitud:updated', {
-                            detail: { id, field, value }
+                            detail: {
+                                id,
+                                field,
+                                value
+                            }
                         }));
                     }
                 })
@@ -905,12 +914,41 @@
                 statusMeta(val) {
                     const raw = (val || '').toString().toLowerCase();
                     const normalized = raw.normalize ? raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : raw;
-                    if (normalized === 'nueva') return { dot: 'bg-gray-400', bg: 'bg-gray-50', text: 'text-gray-700' };
-                    if (normalized === 'lanzada') return { dot: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-700' };
-                    if (normalized === 'en revision') return { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-700' };
-                    if (normalized === 'merged') return { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-700' };
-                    if (normalized === 'completada') return { dot: 'bg-green-600', bg: 'bg-green-50', text: 'text-green-700' };
-                    return { dot: 'bg-gray-300', bg: 'bg-gray-50', text: 'text-gray-700' };
+                    if (normalized === 'nueva') return {
+                        dot: 'bg-gray-400',
+                        bg: 'bg-gray-50',
+                        text: 'text-gray-700'
+                    };
+                    if (normalized === 'lanzada') return {
+                        dot: 'bg-blue-500',
+                        bg: 'bg-blue-50',
+                        text: 'text-blue-700'
+                    };
+                    if (normalized === 'en progreso') return {
+                        dot: 'bg-purple-500',
+                        bg: 'bg-purple-50',
+                        text: 'text-purple-700'
+                    };
+                    if (normalized === 'en revision') return {
+                        dot: 'bg-amber-500',
+                        bg: 'bg-amber-50',
+                        text: 'text-amber-700'
+                    };
+                    if (normalized === 'merged') return {
+                        dot: 'bg-emerald-500',
+                        bg: 'bg-emerald-50',
+                        text: 'text-emerald-700'
+                    };
+                    if (normalized === 'completada') return {
+                        dot: 'bg-green-600',
+                        bg: 'bg-green-50',
+                        text: 'text-green-700'
+                    };
+                    return {
+                        dot: 'bg-gray-300',
+                        bg: 'bg-gray-50',
+                        text: 'text-gray-700'
+                    };
                 },
                 syncKanbanCounts() {
                     const counters = this.$root?.querySelectorAll('[data-kanban-count-for]') || [];
@@ -936,7 +974,8 @@
                         const card = this.$root?.querySelector(
                             `[data-kanban-card][data-solicitud-id="${CSS.escape(id)}"]`
                         );
-                        const target = this.$root?.querySelector(`[data-kanban-estado="${CSS.escape(estado)}"]`);
+                        const target = this.$root?.querySelector(
+                            `[data-kanban-estado="${CSS.escape(estado)}"]`);
                         if (!card || !target) return;
 
                         card.dataset.estado = estado;

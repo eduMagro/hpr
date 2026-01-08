@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->id();
             $table->string('titulo');
             $table->longText('descripcion')->nullable();
-            $table->string('estado')->default('Nueva'); // Nueva, Lanzada, En revisión, Merged, etc.
+            $table->string('estado')->default('Nueva'); // Nueva, Lanzada, En progreso, En revisión, Merged, etc.
             $table->string('prioridad')->default('Media');
             $table->foreignId('user_id')->constrained('users'); // Creador
             $table->foreignId('asignado_a')->nullable()->constrained('users'); // Asignado

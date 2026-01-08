@@ -1218,19 +1218,33 @@
 
             window.actualizarContadorAlertas = function() {
                 fetch("{{ route('alertas.verSinLeer') }}")
-                    .then(res => res.json())
+                    .then(async (res) => {
+                        const text = await res.text();
+                        if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
+                        try {
+                            return JSON.parse(text);
+                        } catch {
+                            const first = text.indexOf('{');
+                            const last = text.lastIndexOf('}');
+                            if (first >= 0 && last > first) {
+                                return JSON.parse(text.slice(first, last + 1));
+                            }
+                            return null;
+                        }
+                    })
                     .then(data => {
                         const badge = document.getElementById('alerta-count');
                         if (badge) {
-                            if (data.cantidad > 0) {
-                                badge.textContent = data.cantidad;
+                            const cantidad = Number(data?.cantidad) || 0;
+                            if (cantidad > 0) {
+                                badge.textContent = cantidad;
                                 badge.classList.remove('hidden');
                             } else {
                                 badge.classList.add('hidden');
                             }
                         }
                     })
-                    .catch(err => console.error('Error actualizando contador:', err));
+                    .catch(err => console.warn('Error actualizando contador:', err));
             }
 
             window.cargarHiloConversacion = function(alertaId) {

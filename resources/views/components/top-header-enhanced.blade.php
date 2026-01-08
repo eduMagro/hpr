@@ -165,6 +165,21 @@
 
 <!-- Script para actualizar el contador de alertas en la campanita -->
 <script data-navigate-once>
+    function parseJsonLenient(text) {
+        try {
+            return JSON.parse(text);
+        } catch {
+            const first = text.indexOf('{');
+            const last = text.lastIndexOf('}');
+            if (first >= 0 && last > first) {
+                try {
+                    return JSON.parse(text.slice(first, last + 1));
+                } catch {}
+            }
+            return null;
+        }
+    }
+
     function actualizarContadorCampanita() {
         fetch("{{ route('alertas.verSinLeer') }}", {
                 headers: {
@@ -172,12 +187,17 @@
                 },
                 credentials: 'same-origin'
             })
-            .then(response => response.json())
+            .then(async (response) => {
+                const text = await response.text();
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${text}`);
+                return parseJsonLenient(text);
+            })
             .then(data => {
                 const badge = document.getElementById('alerta-count');
                 if (badge) {
-                    if (data.cantidad > 0) {
-                        badge.textContent = data.cantidad;
+                    const cantidad = Number(data?.cantidad) || 0;
+                    if (cantidad > 0) {
+                        badge.textContent = cantidad;
                         badge.classList.remove('hidden');
                         badge.classList.add('flex');
                     } else {
@@ -186,7 +206,7 @@
                     }
                 }
             })
-            .catch(error => console.error("Error al obtener alertas:", error));
+            .catch(error => console.warn("Error al obtener alertas:", error));
     }
 
     document.addEventListener("DOMContentLoaded", function() {
