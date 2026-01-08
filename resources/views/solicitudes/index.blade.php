@@ -212,9 +212,13 @@
                                 </td>
 
                                 <!-- Comentario -->
-                                <td class="px-2 py-1 border-r border-gray-200">
-                                    <input type="text" value="{{ $solicitud->comentario }}"
-                                        @change="updateField({{ $solicitud->id }}, 'comentario', $event.target.value)"
+                                <td class="px-2 py-1 border-r border-gray-200" x-data="{
+                                    solicitudId: {{ $solicitud->id }},
+                                    comentario: @js($solicitud->comentario ?? '')
+                                }"
+                                    @solicitud:updated.window="if ($event.detail.id == solicitudId && $event.detail.field === 'comentario') { comentario = $event.detail.value || ''; $refs.comentarioInput.value = comentario; }">
+                                    <input type="text" x-ref="comentarioInput" :value="comentario"
+                                        @change="updateField({{ $solicitud->id }}, 'comentario', $event.target.value); comentario = $event.target.value"
                                         class="w-full h-8 px-2 bg-transparent border-none focus:ring-1 focus:ring-blue-500 rounded text-sm text-gray-600 placeholder-gray-300 truncate"
                                         placeholder="Vacío">
                                 </td>
@@ -223,6 +227,7 @@
                                 <td class="px-2 py-1 border-r border-gray-200 has-dropdown">
                                     <div x-data="{
                                         open: false,
+                                        solicitudId: {{ $solicitud->id }},
                                         selected: @js($solicitud->estado),
                                         getColor(val) {
                                             const v = (val || '').toLowerCase();
@@ -239,7 +244,9 @@
                                             this.open = false;
                                             updateField({{ $solicitud->id }}, 'estado', val);
                                         }
-                                    }" class="relative">
+                                    }"
+                                        @solicitud:updated.window="if ($event.detail.id == solicitudId && $event.detail.field === 'estado') selected = $event.detail.value"
+                                        class="relative">
                                         <button @click="open = !open" type="button"
                                             class="flex items-center gap-2 h-7 w-full px-2 rounded text-[11px] font-bold transition-all border border-transparent hover:border-gray-200 shadow-sm"
                                             :class="getColor(selected).bg + ' ' + getColor(selected).text">
@@ -272,6 +279,7 @@
                                 <td class="px-2 py-1 border-r border-gray-200 has-dropdown">
                                     <div x-data="{
                                         open: false,
+                                        solicitudId: {{ $solicitud->id }},
                                         selected: @js($solicitud->prioridad),
                                         getColor(val) {
                                             const v = (val || '').toLowerCase();
@@ -285,7 +293,9 @@
                                             this.open = false;
                                             updateField({{ $solicitud->id }}, 'prioridad', val);
                                         }
-                                    }" class="relative">
+                                    }"
+                                        @solicitud:updated.window="if ($event.detail.id == solicitudId && $event.detail.field === 'prioridad') selected = $event.detail.value"
+                                        class="relative">
                                         <button @click="open = !open" type="button"
                                             class="flex items-center gap-2 h-7 w-full px-2 rounded text-[11px] font-bold transition-all border border-transparent hover:border-gray-200 shadow-sm"
                                             :class="getColor(selected).bg + ' ' + getColor(selected).text">
@@ -315,16 +325,23 @@
                                 </td>
 
                                 <!-- Asignado -->
-                                <td class="px-2 py-1 border-r border-gray-200">
+                                <td class="px-2 py-1 border-r border-gray-200" x-data="{
+                                    solicitudId: {{ $solicitud->id }},
+                                    value: '{{ $solicitud->asignado_a ?? '' }}',
+                                    users: @js($users->pluck('name', 'id')),
+                                    getInitial() {
+                                        if (!this.value) return '';
+                                        const name = this.users[this.value] || '';
+                                        return name.charAt(0).toUpperCase();
+                                    }
+                                }"
+                                    @solicitud:updated.window="if ($event.detail.id == solicitudId && $event.detail.field === 'asignado_a') { value = String($event.detail.value || ''); $refs.selectAsignado.value = value; }">
                                     <div class="flex items-center gap-2 h-full">
-                                        @if ($solicitud->asignado)
-                                            <div
-                                                class="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-[9px] font-bold text-indigo-600 shrink-0 shadow-sm border border-indigo-200">
-                                                {{ substr($solicitud->asignado->name, 0, 1) }}
-                                            </div>
-                                        @endif
-                                        <select
-                                            @change="updateField({{ $solicitud->id }}, 'asignado_a', $event.target.value)"
+                                        <div x-show="value" x-cloak
+                                            class="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-[9px] font-bold text-indigo-600 shrink-0 shadow-sm border border-indigo-200"
+                                            x-text="getInitial()"></div>
+                                        <select x-ref="selectAsignado"
+                                            @change="updateField({{ $solicitud->id }}, 'asignado_a', $event.target.value); value = $event.target.value"
                                             class="w-full h-7 pl-0 pr-6 py-0 bg-transparent border-none focus:ring-0 rounded text-[11px] font-bold text-gray-600 cursor-pointer text-ellipsis overflow-hidden">
                                             <option value="">Sin asignar</option>
                                             @foreach ($users as $user)
@@ -447,10 +464,13 @@
                             </div>
                             <div class="flex items-center gap-4">
                                 <button @click="closeModal()"
-                                    class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md p-1 transition-colors">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M6 18L18 6M6 6l12 12" />
+                                    class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md p-1.5 transition-colors"
+                                    title="Cerrar">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                        <path d="M17 12H3" />
+                                        <path d="m11 18 6-6-6-6" />
+                                        <path d="M21 5v14" />
                                     </svg>
                                 </button>
                             </div>
@@ -487,7 +507,8 @@
                                             </div>
                                             <div class="flex-1">
                                                 <select name="estado" x-model="form.estado"
-                                                    class="border-none bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded px-2 py-1 cursor-pointer focus:ring-0 w-auto transition-colors">
+                                                    @change="autoSaveField('estado', form.estado)"
+                                                    class="border-none bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded px-2 py-1 pr-8 cursor-pointer focus:ring-0 w-auto transition-colors">
                                                     @foreach ($estados as $estado)
                                                         <option value="{{ $estado }}">{{ $estado }}
                                                         </option>
@@ -508,7 +529,8 @@
                                             </div>
                                             <div class="flex-1">
                                                 <select name="prioridad" x-model="form.prioridad"
-                                                    class="border-none bg-transparent hover:bg-gray-100 text-gray-700 text-sm rounded px-2 py-1 cursor-pointer focus:ring-0 w-auto transition-colors">
+                                                    @change="autoSaveField('prioridad', form.prioridad)"
+                                                    class="border-none bg-transparent hover:bg-gray-100 text-gray-700 text-sm rounded px-2 py-1 pr-8 cursor-pointer focus:ring-0 w-auto transition-colors">
                                                     @foreach ($prioridades as $prioridad)
                                                         <option value="{{ $prioridad }}">{{ $prioridad }}
                                                         </option>
@@ -530,7 +552,8 @@
                                             </div>
                                             <div class="flex-1">
                                                 <select name="asignado_a" x-model="form.asignado_a"
-                                                    class="border-none bg-transparent hover:bg-gray-100 text-gray-700 text-sm rounded px-2 py-1 cursor-pointer focus:ring-0 w-auto transition-colors">
+                                                    @change="autoSaveField('asignado_a', form.asignado_a)"
+                                                    class="border-none bg-transparent hover:bg-gray-100 text-gray-700 text-sm rounded px-2 py-1 pr-8 cursor-pointer focus:ring-0 w-auto transition-colors">
                                                     <option value="">Sin asignar</option>
                                                     @foreach ($users as $user)
                                                         <option value="{{ $user->id }}">{{ $user->name }}
@@ -553,6 +576,7 @@
                                             </div>
                                             <div class="flex-1">
                                                 <input type="text" name="comentario" x-model="form.comentario"
+                                                    @input="scheduleAutoSave('comentario')"
                                                     class="w-full border-none bg-transparent hover:bg-gray-50 focus:bg-white text-gray-700 text-sm rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
                                                     placeholder="Añadir un comentario...">
                                             </div>
@@ -571,11 +595,54 @@
                                         <button type="button" @click="renderMarkdown()"
                                             :class="{ 'text-gray-900 font-semibold': viewMode === 'preview', 'text-gray-500 hover:text-gray-700': viewMode !== 'preview' }"
                                             class="pb-2 text-sm transition-colors">Vista Previa</button>
+
+                                        <!-- Autosave indicator (icons only) -->
+                                        <div class="flex-1 flex justify-end">
+                                            <div x-show="autoSaveStatus !== 'idle'"
+                                                x-transition:enter="transition ease-out duration-200"
+                                                x-transition:enter-start="opacity-0 scale-50"
+                                                x-transition:enter-end="opacity-100 scale-100"
+                                                x-transition:leave="transition ease-in duration-150"
+                                                x-transition:leave-start="opacity-100 scale-100"
+                                                x-transition:leave-end="opacity-0 scale-50"
+                                                class="flex items-center justify-center w-6 h-6">
+                                                <!-- Saving spinner -->
+                                                <svg x-show="autoSaveStatus === 'saving'"
+                                                    class="w-4 h-4 text-gray-400 animate-spin" fill="none"
+                                                    viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10"
+                                                        stroke="currentColor" stroke-width="3"></circle>
+                                                    <path class="opacity-75" fill="currentColor"
+                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                                    </path>
+                                                </svg>
+                                                <!-- Saved check with pop animation -->
+                                                <svg x-show="autoSaveStatus === 'saved'"
+                                                    x-transition:enter="transition ease-out duration-300"
+                                                    x-transition:enter-start="scale-0"
+                                                    x-transition:enter-end="scale-100"
+                                                    class="w-4 h-4 text-emerald-500" fill="none"
+                                                    stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M5 13l4 4L19 7" />
+                                                </svg>
+                                                <!-- Error icon -->
+                                                <svg x-show="autoSaveStatus === 'error'"
+                                                    x-transition:enter="transition ease-out duration-200"
+                                                    x-transition:enter-start="scale-0"
+                                                    x-transition:enter-end="scale-100" class="w-4 h-4 text-red-500"
+                                                    fill="none" stroke="currentColor" stroke-width="2.5"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <!-- Edit Mode -->
                                     <div x-show="viewMode === 'edit'" class="flex-1 flex flex-col min-h-0">
-                                        <textarea name="descripcion" x-model="form.descripcion"
+                                        <textarea name="descripcion" x-model="form.descripcion" @input="scheduleAutoSave()"
                                             class="w-full flex-1 min-h-[200px] border-0 focus:ring-0 text-gray-800 text-base resize-none p-0 leading-relaxed"
                                             placeholder="Escribe aquí los detalles de la función..."></textarea>
                                     </div>
@@ -587,17 +654,7 @@
                                     </div>
                                 </div>
 
-                                <!-- Footer Actions -->
-                                <div class="p-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
-                                    <button type="button" @click="closeModal()"
-                                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-                                        Cerrar
-                                    </button>
-                                    <button type="submit"
-                                        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm">
-                                        Guardar
-                                    </button>
-                                </div>
+
                             </form>
                         </div>
 
@@ -822,9 +879,6 @@
             border-collapse: collapse;
             border-spacing: 0;
             margin: 1rem 0;
-            border: 1px solid rgb(229 231 235);
-            border-radius: 0.75rem;
-            overflow: hidden;
             display: block;
             overflow-x: auto;
         }
@@ -928,6 +982,8 @@
                 isEditing: false,
                 viewMode: 'edit',
                 renderedHtml: '',
+                autoSaveStatus: 'idle',
+                autoSaveTimeout: null,
                 tableColStorageKey: 'hpr.solicitudes.colwidths.v2',
                 form: {
                     id: null,
@@ -1141,6 +1197,73 @@
                             window.hprEnhanceMarkdown(this.$refs.mdPreview);
                         }
                     });
+                },
+                scheduleAutoSave(field = 'descripcion') {
+                    // Only autosave if we're editing an existing record
+                    if (!this.isEditing || !this.form.id) return;
+
+                    // Clear any pending save for this field
+                    if (this.autoSaveTimeout) {
+                        clearTimeout(this.autoSaveTimeout);
+                    }
+
+                    // Schedule new save after 1 second of inactivity
+                    this.autoSaveTimeout = setTimeout(() => {
+                        this.autoSaveField(field, this.form[field]);
+                    }, 1000);
+                },
+                async autoSaveField(field, value) {
+                    if (!this.form.id) return;
+                    if (!this.isEditing) return;
+
+                    this.autoSaveStatus = 'saving';
+
+                    try {
+                        const response = await fetch(`/funciones/${this.form.id}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                _method: 'PUT',
+                                [field]: value
+                            })
+                        });
+
+                        if (!response.ok) throw new Error('Save failed');
+
+                        this.autoSaveStatus = 'saved';
+                        console.log(`✅ Autoguardado: ${field} = ${value}`);
+
+                        // Dispatch event to update table row if needed
+                        window.dispatchEvent(new CustomEvent('solicitud:updated', {
+                            detail: {
+                                id: this.form.id,
+                                field,
+                                value
+                            }
+                        }));
+
+                        // Hide the indicator after 2 seconds
+                        setTimeout(() => {
+                            if (this.autoSaveStatus === 'saved') {
+                                this.autoSaveStatus = 'idle';
+                            }
+                        }, 2000);
+                    } catch (error) {
+                        console.error('Error en autoguardado:', error);
+                        this.autoSaveStatus = 'error';
+
+                        // Hide error after 3 seconds
+                        setTimeout(() => {
+                            if (this.autoSaveStatus === 'error') {
+                                this.autoSaveStatus = 'idle';
+                            }
+                        }, 3000);
+                    }
                 },
                 updateField(id, field, value) {
                     window.updateField(id, field, value);
