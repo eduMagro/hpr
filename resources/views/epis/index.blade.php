@@ -1562,6 +1562,149 @@
                     </div>
                 </div>
 
+                <!-- Filtros de Prenda -->
+                <div class="bg-white/95 rounded-[2rem] border border-gray-100 p-6 mb-6 shadow-sm">
+                    <div class="flex flex-col gap-4">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-xs font-black text-gray-700 uppercase tracking-widest">Filtrar por Tallas
+                            </h4>
+                            <button type="button" @click="resetTallasFilters()"
+                                :disabled="!filterGuante && !filterZapato && !filterPantalon && !filterChaqueta"
+                                class="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium transition-all flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Limpiar filtros
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <!-- Guante -->
+                            <div class="relative">
+                                <label
+                                    class="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                                    <span class="text-base">🧤</span> Guante
+                                </label>
+                                <select x-model="filterGuante"
+                                    class="w-full rounded-xl border-gray-200 focus:border-blue-500 focus:ring-transparent text-sm font-medium bg-blue-50/30">
+                                    <option value="">Todos</option>
+                                    <template x-for="talla in tallasGuanteDisponibles" :key="talla">
+                                        <option :value="talla" x-text="talla"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <!-- Calzado -->
+                            <div class="relative">
+                                <label
+                                    class="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                                    <span class="text-base">👟</span> Calzado
+                                </label>
+                                <select x-model="filterZapato"
+                                    class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-transparent text-sm font-medium bg-emerald-50/30">
+                                    <option value="">Todos</option>
+                                    <template x-for="talla in tallasZapatoDisponibles" :key="talla">
+                                        <option :value="talla" x-text="talla"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <!-- Pantalón -->
+                            <div class="relative">
+                                <label
+                                    class="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                                    <span class="text-base">👖</span> Pantalón
+                                </label>
+                                <select x-model="filterPantalon"
+                                    class="w-full rounded-xl border-gray-200 focus:border-amber-500 focus:ring-transparent text-sm font-medium bg-amber-50/30">
+                                    <option value="">Todos</option>
+                                    <template x-for="talla in tallasPantalonDisponibles" :key="talla">
+                                        <option :value="talla" x-text="talla"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <!-- Chaqueta -->
+                            <div class="relative">
+                                <label
+                                    class="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                                    <span class="text-base">🧥</span> Chaqueta
+                                </label>
+                                <select x-model="filterChaqueta"
+                                    class="w-full rounded-xl border-gray-200 focus:border-rose-500 focus:ring-transparent text-sm font-medium bg-rose-50/30">
+                                    <option value="">Todos</option>
+                                    <template x-for="talla in tallasChaquetaDisponibles" :key="talla">
+                                        <option :value="talla" x-text="talla"></option>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+                        <template x-if="filterGuante || filterZapato || filterPantalon || filterChaqueta">
+                            <div class="pt-4 border-t border-gray-100">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="text-xs font-medium text-gray-500">Filtrando:</span>
+                                    <template x-if="filterGuante">
+                                        <span
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs font-bold">
+                                            🧤 <span x-text="filterGuante"></span>
+                                            <button type="button" @click="filterGuante = '';"
+                                                class="hover:text-blue-900 ml-1">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </span>
+                                    </template>
+                                    <template x-if="filterZapato">
+                                        <span
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold">
+                                            👟 <span x-text="filterZapato"></span>
+                                            <button type="button" @click="filterZapato = '';"
+                                                class="hover:text-emerald-900 ml-1">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </span>
+                                    </template>
+                                    <template x-if="filterPantalon">
+                                        <span
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-full text-xs font-bold">
+                                            👖 <span x-text="filterPantalon"></span>
+                                            <button type="button" @click="filterPantalon = '';"
+                                                class="hover:text-amber-900 ml-1">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </span>
+                                    </template>
+                                    <template x-if="filterChaqueta">
+                                        <span
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-700 rounded-full text-xs font-bold">
+                                            🧥 <span x-text="filterChaqueta"></span>
+                                            <button type="button" @click="filterChaqueta = '';"
+                                                class="hover:text-rose-900 ml-1">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </span>
+                                    </template>
+                                    <span
+                                        class="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-xs font-bold ml-auto"
+                                        x-text="usersWithTallas.length + ' candidatos'"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
                 <!-- Detailed Table -->
                 <div
                     class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden relative group/table">
@@ -1755,6 +1898,12 @@
                     agendaEmpresaId: '',
                     agendaCategoriaId: '',
 
+                    // Filtros para Resumen Tallas (4 filtros independientes)
+                    filterGuante: '',
+                    filterZapato: '',
+                    filterPantalon: '',
+                    filterChaqueta: '',
+
                     userEpiFilterQuery: '',
 
                     stats: {
@@ -1791,8 +1940,74 @@
                             if (q && !u.nombre_completo.toLowerCase().includes(q) && !(u.dni && u.dni.toLowerCase()
                                     .includes(q))) return false;
 
+                            // Filtros por cada tipo de prenda
+                            if (this.filterGuante && u.tallas.talla_guante !== this.filterGuante) return false;
+                            if (this.filterZapato && u.tallas.talla_zapato !== this.filterZapato) return false;
+                            if (this.filterPantalon && u.tallas.talla_pantalon !== this.filterPantalon)
+                                return false;
+                            if (this.filterChaqueta && u.tallas.talla_chaqueta !== this.filterChaqueta)
+                                return false;
+
                             return true;
                         });
+                    },
+
+                    // Función auxiliar para ordenar tallas
+                    sortTallas(tallasArray) {
+                        return tallasArray.sort((a, b) => {
+                            const numA = parseFloat(a);
+                            const numB = parseFloat(b);
+                            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                            return String(a).localeCompare(String(b));
+                        });
+                    },
+
+                    // Obtener tallas disponibles para cada tipo de prenda
+                    get tallasGuanteDisponibles() {
+                        const tallasSet = new Set();
+                        this.allUsers.forEach(u => {
+                            if (u.tallas && u.tallas.talla_guante) {
+                                tallasSet.add(u.tallas.talla_guante);
+                            }
+                        });
+                        return this.sortTallas(Array.from(tallasSet));
+                    },
+
+                    get tallasZapatoDisponibles() {
+                        const tallasSet = new Set();
+                        this.allUsers.forEach(u => {
+                            if (u.tallas && u.tallas.talla_zapato) {
+                                tallasSet.add(u.tallas.talla_zapato);
+                            }
+                        });
+                        return this.sortTallas(Array.from(tallasSet));
+                    },
+
+                    get tallasPantalonDisponibles() {
+                        const tallasSet = new Set();
+                        this.allUsers.forEach(u => {
+                            if (u.tallas && u.tallas.talla_pantalon) {
+                                tallasSet.add(u.tallas.talla_pantalon);
+                            }
+                        });
+                        return this.sortTallas(Array.from(tallasSet));
+                    },
+
+                    get tallasChaquetaDisponibles() {
+                        const tallasSet = new Set();
+                        this.allUsers.forEach(u => {
+                            if (u.tallas && u.tallas.talla_chaqueta) {
+                                tallasSet.add(u.tallas.talla_chaqueta);
+                            }
+                        });
+                        return this.sortTallas(Array.from(tallasSet));
+                    },
+
+                    resetTallasFilters() {
+                        this.filterGuante = '';
+                        this.filterZapato = '';
+                        this.filterPantalon = '';
+                        this.filterChaqueta = '';
                     },
 
                     get tallasStats() {
