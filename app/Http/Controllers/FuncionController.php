@@ -8,16 +8,7 @@ class FuncionController extends Controller
 {
     public function __construct()
     {
-        // Restringir acceso a usuarios del departamento_id = 7
-        $this->middleware(function ($request, $next) {
-            $user = auth()->user();
-
-            if (!$user || !$user->departamentos()->where('departamentos.id', 7)->exists()) {
-                return redirect('/');
-            }
-
-            return $next($request);
-        });
+        //
     }
 
     public function index()
