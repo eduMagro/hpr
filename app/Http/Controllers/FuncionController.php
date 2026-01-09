@@ -8,23 +8,14 @@ class FuncionController extends Controller
 {
     public function __construct()
     {
-        // Restringir acceso a usuarios del departamento_id = 7
-        $this->middleware(function ($request, $next) {
-            $user = auth()->user();
-
-            if (!$user || !$user->departamentos()->where('departamentos.id', 7)->exists()) {
-                return redirect('/');
-            }
-
-            return $next($request);
-        });
+        //
     }
 
     public function index()
     {
         $solicitudes = \App\Models\Solicitud::with(['creador', 'asignado'])
             ->orderBy('created_at', 'desc')
-            ->paginate(15);
+            ->get();
 
         // Usuarios del departamento "Programador" (id = 7)
         $users = \App\Models\User::whereHas('departamentos', function ($q) {
@@ -42,16 +33,22 @@ class FuncionController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'titulo' => 'required|string|max:255',
+            'titulo' => 'nullable|string|max:255',
             'descripcion' => 'nullable|string',
             'prioridad' => 'required|string',
             'asignado_a' => 'nullable|exists:users,id',
+            'comentario' => 'nullable|string',
         ]);
 
         $validated['user_id'] = auth()->id();
         $validated['estado'] = 'Nueva';
 
-        \App\Models\Solicitud::create($validated);
+        $solicitud = \App\Models\Solicitud::create($validated);
+        $solicitud->load(['creador', 'asignado']);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json($solicitud);
+        }
 
         return redirect()->route('funciones.index')->with('success', 'Función creada correctamente.');
     }

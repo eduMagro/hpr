@@ -67,15 +67,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // AJAX List
     Route::get('/incidencias/ajax/list', [IncidenciaController::class, 'listAjax'])->name('incidencias.list.ajax');
 
-    // Funciones (antes: solicitudes)
-    Route::resource('funciones', \App\Http\Controllers\FuncionController::class)
-        ->only(['index', 'store', 'update', 'destroy'])
-        ->names('funciones');
-    Route::redirect('/solicitudes', '/funciones');
-    Route::redirect('/solicitudes/create', '/funciones');
-    Route::get('/solicitudes/{any}', function ($any) {
-        return redirect("/funciones/{$any}");
-    })->where('any', '.*');
 
     Route::get('/incidencias/create', [IncidenciaController::class, 'create'])->name('incidencias.create');
     Route::post('/incidencias', [IncidenciaController::class, 'store'])->name('incidencias.store');
@@ -198,6 +189,16 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === ENTRADAS Y PEDIDOS ===
     Route::resource('entradas', EntradaController::class)->names('entradas');
     Route::get('/entradas/{id}/verificar-discrepancias', [EntradaController::class, 'verificarDiscrepancias'])->name('entradas.verificarDiscrepancias');
+
+    // === FUNCIONES ===
+    Route::resource('funciones', \App\Http\Controllers\FuncionController::class)
+        ->only(['index', 'store', 'update', 'destroy'])
+        ->names('funciones');
+    Route::redirect('/solicitudes', '/funciones');
+    Route::redirect('/solicitudes/create', '/funciones');
+    Route::get('/solicitudes/{any}', function ($any) {
+        return redirect("/funciones/{$any}");
+    })->where('any', '.*');
     Route::patch('/entradas/{id}/cerrar', [EntradaController::class, 'cerrar'])->name('entradas.cerrar');
     Route::post('/entradas/importar-albaran', [EntradaController::class, 'subirPdf'])
         ->name('entradas.crearImportarAlbaranPdf');

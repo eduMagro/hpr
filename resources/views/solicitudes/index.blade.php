@@ -1,11 +1,39 @@
 <x-app-layout>
     <x-slot name="title">Funciones - {{ config('app.name') }}</x-slot>
 
-    <div class="px-4 py-6 max-w-[1920px] mx-auto" x-data="solicitudesApp()" x-init="initPage()">
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f8fafc;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+            border: 2px solid #f8fafc;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Para Firefox */
+        .custom-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f8fafc;
+        }
+    </style>
+
+    <div class="px-4 py-6 max-w-[1920px] mx-auto" x-data="solicitudesApp(@js($solicitudes), @js($users), @js($estados), @js($prioridades))" x-init="initPage()">
 
         <!-- Header con gradiente -->
         <div
-            class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 p-6 rounded-2xl bg-gradient-to-tr from-gray-800 to-gray-900 shadow-lg">
+            class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 p-6 rounded-2xl bg-gradient-to-tr lg:h-[75px] from-gray-800 to-gray-900 shadow-lg">
             <div class="flex items-center gap-4">
                 <div
                     class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white shadow-inner">
@@ -32,7 +60,7 @@
         </div>
 
         <!-- Notion-like Tabs -->
-        <div class="flex items-center gap-6 mb-4 text-sm border-b border-gray-200 pb-1 overflow-x-auto">
+        <div class="flex items-center gap-6 mb-4 text-sm pb-1 overflow-x-auto ml-4 custom-scrollbar">
             <button @click="boardView = 'table'"
                 :class="boardView === 'table' ? 'text-gray-900 border-b-2 border-gray-900 font-medium' :
                     'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'"
@@ -58,9 +86,9 @@
 
         <!-- Excel-like Table Container -->
         <div x-show="boardView === 'table'"
-            class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden select-none transition-shadow hover:shadow-2xl">
-            <div class="overflow-x-auto pb-24" style="min-height: 400px;">
-                <table class="w-full border-collapse text-sm table-fixed hpr-solicitudes-table">
+            class="h-[calc(100vh-35vh-20px)] overflow-y-auto select-none custom-scrollbar">
+            <div class="overflow-x-auto min-h-[400px] h-full p-1">
+                <table class="w-full text-sm hpr-solicitudes-table bg-white rounded-2xl overflow-hidden shadow">
                     <colgroup>
                         <col data-column-key="id">
                         <col data-column-key="titulo">
@@ -76,7 +104,7 @@
                             <th data-column-key="id"
                                 class="relative px-2 py-2 text-left font-medium text-gray-500 w-16 border-r border-gray-200 group">
                                 <div class="resizable-column-wrapper">
-                                    <div class="resizable-column-content flex items-center gap-1">
+                                    <div class="resizable-column-content flex items-center justify-center gap-1">
                                         <span class="resizable-column-label uppercase text-[10px]">#</span>
                                     </div>
                                     <div class="resizable-column-handle" aria-hidden="true"></div>
@@ -181,25 +209,24 @@
                             </th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-200">
-                        @forelse($solicitudes as $solicitud)
+                    <tbody class="divide-y divide-gray-100">
+                        <template x-for="solicitud in solicitudes" :key="solicitud.id">
                             <tr
                                 class="group hover:bg-gradient-to-r hover:from-indigo-50/50 hover:to-purple-50/50 transition-all duration-200 relative">
                                 <!-- ID -->
-                                <td
-                                    class="px-2 py-1 border-r border-gray-200 text-gray-400 text-xs font-mono w-16 text-center">
-                                    {{ $solicitud->id }}
+                                <td class="px-2 py-1 border-r border-gray-200 text-gray-400 text-xs font-mono w-16 text-center"
+                                    x-text="solicitud.id">
                                 </td>
 
                                 <!-- Titulo & Open Button -->
                                 <td class="px-2 py-1 border-r border-gray-200 relative group/cell">
                                     <div class="relative flex items-center h-8">
-                                        <input type="text" value="{{ $solicitud->titulo }}"
-                                            @change="updateField({{ $solicitud->id }}, 'titulo', $event.target.value)"
+                                        <input type="text" :value="solicitud.titulo"
+                                            @change="updateField(solicitud.id, 'titulo', $event.target.value); solicitud.titulo = $event.target.value"
                                             class="w-full h-full bg-transparent border-none focus:ring-1 focus:ring-blue-500 rounded text-sm text-gray-900 font-medium placeholder-gray-400 px-1"
                                             placeholder="Sin título">
 
-                                        <button @click='openViewModal(@json($solicitud, JSON_HEX_APOS))'
+                                        <button @click="openViewModal(solicitud)"
                                             class="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold text-gray-500 bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-700 rounded shadow-sm transition-all absolute right-2 top-1/2 -translate-y-1/2 z-10 tracking-wide uppercase">
                                             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
@@ -213,39 +240,22 @@
 
                                 <!-- Comentario -->
                                 <td class="px-2 py-1 border-r border-gray-200">
-                                    <input type="text" value="{{ $solicitud->comentario }}"
-                                        @change="updateField({{ $solicitud->id }}, 'comentario', $event.target.value)"
+                                    <input type="text" :value="solicitud.comentario"
+                                        @change="updateField(solicitud.id, 'comentario', $event.target.value); solicitud.comentario = $event.target.value"
                                         class="w-full h-8 px-2 bg-transparent border-none focus:ring-1 focus:ring-blue-500 rounded text-sm text-gray-600 placeholder-gray-300 truncate"
                                         placeholder="Vacío">
                                 </td>
 
                                 <!-- Estado -->
                                 <td class="px-2 py-1 border-r border-gray-200 has-dropdown">
-                                    <div x-data="{
-                                        open: false,
-                                        selected: @js($solicitud->estado),
-                                        getColor(val) {
-                                            const v = (val || '').toLowerCase();
-                                            if (v === 'nueva') return { dot: 'bg-gray-400', bg: 'bg-gray-100', text: 'text-gray-700' };
-                                            if (v === 'lanzada') return { dot: 'bg-blue-500', bg: 'bg-blue-100', text: 'text-blue-700' };
-                                            if (v === 'en progreso') return { dot: 'bg-purple-500', bg: 'bg-purple-100', text: 'text-purple-700' };
-                                            if (v === 'en revisión') return { dot: 'bg-amber-500', bg: 'bg-amber-100', text: 'text-amber-700' };
-                                            if (v === 'merged') return { dot: 'bg-emerald-500', bg: 'bg-emerald-100', text: 'text-emerald-700' };
-                                            if (v === 'completada') return { dot: 'bg-green-600', bg: 'bg-green-100', text: 'text-green-700' };
-                                            return { dot: 'bg-gray-300', bg: 'bg-gray-50', text: 'text-gray-600' };
-                                        },
-                                        update(val) {
-                                            this.selected = val;
-                                            this.open = false;
-                                            updateField({{ $solicitud->id }}, 'estado', val);
-                                        }
-                                    }" class="relative">
+                                    <div x-data="{ open: false }" class="relative">
                                         <button @click="open = !open" type="button"
                                             class="flex items-center gap-2 h-7 w-full px-2 rounded text-[11px] font-bold transition-all border border-transparent hover:border-gray-200 shadow-sm"
-                                            :class="getColor(selected).bg + ' ' + getColor(selected).text">
+                                            :class="getColorEstado(solicitud.estado).bg + ' ' + getColorEstado(solicitud.estado)
+                                                .text">
                                             <span class="w-2 h-2 rounded-full shrink-0"
-                                                :class="getColor(selected).dot"></span>
-                                            <span class="flex-1 text-left" x-text="selected"></span>
+                                                :class="getColorEstado(solicitud.estado).dot"></span>
+                                            <span class="flex-1 text-left" x-text="solicitud.estado"></span>
                                             <svg class="w-3 h-3 opacity-40 shrink-0" fill="none"
                                                 stroke="currentColor" viewBox="0 0 24 24">
                                                 <path d="M19 9l-7 7-7-7" stroke-width="2" stroke-linecap="round"
@@ -253,45 +263,33 @@
                                             </svg>
                                         </button>
                                         <div x-show="open" @click.away="open = false"
-                                            class="absolute z-[9999] mt-1 w-40 bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden left-0"
+                                            class="absolute z-10 mt-1 w-40 bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden left-0"
                                             x-cloak style="display: none;">
-                                            @foreach ($estados as $est)
-                                                <button @click="update('{{ $est }}')" type="button"
+                                            <template x-for="est in estados">
+                                                <button
+                                                    @click="solicitud.estado = est; open = false; updateField(solicitud.id, 'estado', est)"
+                                                    type="button"
                                                     class="flex items-center gap-2 w-full px-3 py-1.5 text-[11px] font-bold hover:bg-gray-50 transition-colors"
-                                                    :class="getColor('{{ $est }}').text">
+                                                    :class="getColorEstado(est).text">
                                                     <span class="w-2 h-2 rounded-full shrink-0"
-                                                        :class="getColor('{{ $est }}').dot"></span>
-                                                    {{ $est }}
+                                                        :class="getColorEstado(est).dot"></span>
+                                                    <span x-text="est"></span>
                                                 </button>
-                                            @endforeach
+                                            </template>
                                         </div>
                                     </div>
                                 </td>
 
                                 <!-- Prioridad -->
                                 <td class="px-2 py-1 border-r border-gray-200 has-dropdown">
-                                    <div x-data="{
-                                        open: false,
-                                        selected: @js($solicitud->prioridad),
-                                        getColor(val) {
-                                            const v = (val || '').toLowerCase();
-                                            if (v === 'alta') return { dot: 'bg-red-500', bg: 'bg-red-100', text: 'text-red-700' };
-                                            if (v === 'media') return { dot: 'bg-yellow-500', bg: 'bg-yellow-100', text: 'text-yellow-700' };
-                                            if (v === 'baja') return { dot: 'bg-sky-400', bg: 'bg-sky-100', text: 'text-sky-700' };
-                                            return { dot: 'bg-gray-300', bg: 'bg-gray-50', text: 'text-gray-600' };
-                                        },
-                                        update(val) {
-                                            this.selected = val;
-                                            this.open = false;
-                                            updateField({{ $solicitud->id }}, 'prioridad', val);
-                                        }
-                                    }" class="relative">
+                                    <div x-data="{ open: false }" class="relative">
                                         <button @click="open = !open" type="button"
                                             class="flex items-center gap-2 h-7 w-full px-2 rounded text-[11px] font-bold transition-all border border-transparent hover:border-gray-200 shadow-sm"
-                                            :class="getColor(selected).bg + ' ' + getColor(selected).text">
+                                            :class="getColorPrioridad(solicitud.prioridad).bg + ' ' + getColorPrioridad(
+                                                solicitud.prioridad).text">
                                             <span class="w-2 h-2 rounded-full shrink-0"
-                                                :class="getColor(selected).dot"></span>
-                                            <span class="flex-1 text-left" x-text="selected"></span>
+                                                :class="getColorPrioridad(solicitud.prioridad).dot"></span>
+                                            <span class="flex-1 text-left" x-text="solicitud.prioridad"></span>
                                             <svg class="w-3 h-3 opacity-40 shrink-0" fill="none"
                                                 stroke="currentColor" viewBox="0 0 24 24">
                                                 <path d="M19 9l-7 7-7-7" stroke-width="2" stroke-linecap="round"
@@ -299,17 +297,19 @@
                                             </svg>
                                         </button>
                                         <div x-show="open" @click.away="open = false"
-                                            class="absolute z-[9999] mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden left-0"
+                                            class="absolute z-10 mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden left-0"
                                             x-cloak style="display: none;">
-                                            @foreach ($prioridades as $pri)
-                                                <button @click="update('{{ $pri }}')" type="button"
+                                            <template x-for="pri in prioridades">
+                                                <button
+                                                    @click="solicitud.prioridad = pri; open = false; updateField(solicitud.id, 'prioridad', pri)"
+                                                    type="button"
                                                     class="flex items-center gap-2 w-full px-3 py-1.5 text-[11px] font-bold hover:bg-gray-50 transition-colors"
-                                                    :class="getColor('{{ $pri }}').text">
+                                                    :class="getColorPrioridad(pri).text">
                                                     <span class="w-2 h-2 rounded-full shrink-0"
-                                                        :class="getColor('{{ $pri }}').dot"></span>
-                                                    {{ $pri }}
+                                                        :class="getColorPrioridad(pri).dot"></span>
+                                                    <span x-text="pri"></span>
                                                 </button>
-                                            @endforeach
+                                            </template>
                                         </div>
                                     </div>
                                 </td>
@@ -317,104 +317,103 @@
                                 <!-- Asignado -->
                                 <td class="px-2 py-1 border-r border-gray-200">
                                     <div class="flex items-center gap-2 h-full">
-                                        @if ($solicitud->asignado)
-                                            <div
-                                                class="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-[9px] font-bold text-indigo-600 shrink-0 shadow-sm border border-indigo-200">
-                                                {{ substr($solicitud->asignado->name, 0, 1) }}
-                                            </div>
-                                        @endif
-                                        <select
-                                            @change="updateField({{ $solicitud->id }}, 'asignado_a', $event.target.value)"
+                                        <div x-show="solicitud.asignado_a" x-cloak
+                                            class="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-[9px] font-bold text-indigo-600 shrink-0 shadow-sm border border-indigo-200"
+                                            x-text="() => {
+                                                if (!solicitud.asignado_a) return '';
+                                                const u = users.find(u => u.id == solicitud.asignado_a);
+                                                return u ? u.name.charAt(0).toUpperCase() : '';
+                                            }">
+                                        </div>
+                                        <select :value="solicitud.asignado_a || ''"
+                                            @change="updateField(solicitud.id, 'asignado_a', $event.target.value); solicitud.asignado_a = $event.target.value"
                                             class="w-full h-7 pl-0 pr-6 py-0 bg-transparent border-none focus:ring-0 rounded text-[11px] font-bold text-gray-600 cursor-pointer text-ellipsis overflow-hidden">
                                             <option value="">Sin asignar</option>
-                                            @foreach ($users as $user)
-                                                <option value="{{ $user->id }}"
-                                                    {{ $solicitud->asignado_a == $user->id ? 'selected' : '' }}>
-                                                    {{ $user->name }}
-                                                </option>
-                                            @endforeach
+                                            <template x-for="user in users">
+                                                <option :value="user.id" x-text="user.name"
+                                                    :selected="solicitud.asignado_a == user.id"></option>
+                                            </template>
                                         </select>
                                     </div>
                                 </td>
 
                                 <!-- Fecha -->
-                                <td class="px-2 py-1 border-r border-gray-200 text-xs text-gray-500">
-                                    {{ $solicitud->created_at->format('M j') }}
+                                <td class="px-2 py-1 border-r border-gray-200 text-xs text-gray-500"
+                                    x-text="formatDate(solicitud.created_at)">
                                 </td>
                             </tr>
-                        @empty
+                        </template>
+                        <template x-if="solicitudes.length === 0">
                             <tr>
                                 <td colspan="7" class="px-6 py-10 text-center text-gray-500">
                                     No hay solicitudes registradas
                                 </td>
                             </tr>
-                        @endforelse
+                        </template>
                     </tbody>
                 </table>
             </div>
 
-            <!-- Pagination inside container (footer like) -->
-            <div class="px-4 py-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-500">
-                {{ $solicitudes->links() }}
-            </div>
+
         </div>
 
-        <!-- Kanban by Estado -->
-        <div x-show="boardView === 'estado'" x-cloak class="pb-24">
+        <!-- Kanban Board View -->
+        <div x-show="boardView === 'estado'" class="pb-24" x-cloak>
             <div class="flex gap-4 overflow-x-auto items-start">
-                @foreach ($estados as $est)
-                    @php($count = $solicitudes->getCollection()->where('estado', $est)->count())
-                    <div class="w-80 shrink-0 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <template x-for="est in estados" :key="est">
+                    <div
+                        class="w-80 shrink-0 rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col group/col">
+                        <!-- Column Header -->
                         <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3"
-                            :class="statusMeta(@js($est)).bg">
+                            :class="getColorEstado(est).bg">
                             <div class="flex items-center gap-2 min-w-0">
                                 <span class="w-2.5 h-2.5 rounded-full shrink-0"
-                                    :class="statusMeta(@js($est)).dot"></span>
+                                    :class="getColorEstado(est).dot"></span>
                                 <div class="min-w-0">
-                                    <div class="text-sm font-bold truncate"
-                                        :class="statusMeta(@js($est)).text">
-                                        {{ $est }}
+                                    <div class="text-sm font-bold truncate" :class="getColorEstado(est).text"
+                                        x-text="est">
                                     </div>
                                 </div>
                             </div>
                             <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-white/70 border border-gray-200"
-                                data-kanban-count-for="{{ $est }}">{{ $count }}</span>
+                                x-text="solicitudes.filter(s => s.estado === est).length"></span>
                         </div>
 
-                        <div class="p-3 space-y-2" data-kanban-estado="{{ $est }}">
-                            @foreach ($solicitudes as $solicitud)
-                                @if ($solicitud->estado === $est)
-                                    <div data-kanban-card data-solicitud-id="{{ $solicitud->id }}"
-                                        data-estado="{{ $solicitud->estado }}"
-                                        class="group rounded-xl border border-gray-200 bg-white hover:shadow-md transition-shadow">
-                                        <button type="button" @click='openViewModal(@json($solicitud, JSON_HEX_APOS))'
-                                            class="w-full text-left p-3">
-                                            <div class="flex items-start gap-2">
-                                                <div class="w-2 h-2 rounded-full mt-1.5 shrink-0"
-                                                    :class="statusMeta(@js($est)).dot"></div>
-                                                <div class="min-w-0 flex-1">
-                                                    <div class="text-sm font-semibold text-gray-900 line-clamp-2">
-                                                        {{ $solicitud->titulo }}
-                                                    </div>
-                                                    @if (!empty($solicitud->comentario))
-                                                        <div class="text-xs text-gray-500 mt-1 line-clamp-2">
-                                                            {{ $solicitud->comentario }}
-                                                        </div>
-                                                    @endif
+                        <div class="p-3 space-y-2" :data-kanban-estado="est">
+                            <template x-for="solicitud in solicitudes.filter(s => s.estado === est)"
+                                :key="solicitud.id">
+                                <div :data-solicitud-id="solicitud.id" :data-estado="solicitud.estado"
+                                    class="group rounded-xl border border-gray-200 bg-white hover:shadow-md transition-shadow">
+                                    <button type="button" @click="openViewModal(solicitud)"
+                                        class="w-full text-left p-3">
+                                        <div class="flex items-start gap-2">
+                                            <div class="w-2 h-2 rounded-full mt-1.5 shrink-0"
+                                                :class="getColorEstado(est).dot"></div>
+                                            <div class="min-w-0 flex-1">
+                                                <div class="text-sm font-semibold text-gray-900 line-clamp-2"
+                                                    x-text="solicitud.titulo">
+                                                </div>
+                                                <div x-show="solicitud.comentario"
+                                                    class="text-xs text-gray-500 mt-1 line-clamp-2"
+                                                    x-text="solicitud.comentario">
                                                 </div>
                                             </div>
-                                        </button>
-                                    </div>
-                                @endif
-                            @endforeach
+                                        </div>
+                                    </button>
+                                </div>
+                            </template>
 
-                            <button type="button" @click="openCreateModal()"
-                                class="w-full rounded-xl border border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-600 transition-colors">
-                                + Nueva solicitud
+                            <button type="button" @click="openCreateModal(); form.estado = est"
+                                class="w-full rounded-xl border border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-600 transition-colors flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4v16m8-8H4" />
+                                </svg>
+                                Nueva solicitud
                             </button>
                         </div>
                     </div>
-                @endforeach
+                </template>
             </div>
         </div>
 
@@ -447,17 +446,20 @@
                             </div>
                             <div class="flex items-center gap-4">
                                 <button @click="closeModal()"
-                                    class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md p-1 transition-colors">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M6 18L18 6M6 6l12 12" />
+                                    class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md p-1.5 transition-colors"
+                                    title="Cerrar">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                        <path d="M17 12H3" />
+                                        <path d="m11 18 6-6-6-6" />
+                                        <path d="M21 5v14" />
                                     </svg>
                                 </button>
                             </div>
                         </div>
 
                         <!-- Content -->
-                        <div class="flex-1 overflow-y-auto bg-white">
+                        <div class="flex-1 overflow-y-auto bg-white custom-scrollbar">
                             <form :action="isEditing ? '/funciones/' + form.id : '{{ route('funciones.store') }}'"
                                 method="POST" id="solicitudForm" class="h-full flex flex-col">
                                 @csrf
@@ -468,9 +470,26 @@
                                 <!-- Notion-like Top Section -->
                                 <div class="px-10 pt-10 pb-4">
                                     <!-- Title -->
-                                    <textarea name="titulo" x-model="form.titulo" placeholder="Nombre de la función"
-                                        class="w-full text-4xl font-bold border-none focus:ring-0 placeholder-gray-300 px-0 mb-6 text-gray-900 leading-tight resize-none overflow-hidden"
-                                        rows="1" @input="$el.style.height = ''; $el.style.height = $el.scrollHeight + 'px'"></textarea>
+                                    <div class="relative">
+                                        <textarea x-ref="tituloTextarea" name="titulo" x-model="form.titulo" placeholder="Nombre de la función"
+                                            :disabled="isCreating" @input.debounce.1000ms="autoSaveField('titulo', form.titulo)"
+                                            @keydown.enter.prevent="$el.blur()"
+                                            class="w-full text-4xl font-bold border-none focus:ring-0 placeholder-gray-300 px-0 mb-6 text-gray-900 leading-tight resize-none overflow-hidden"
+                                            rows="1" @input="$el.style.height = ''; $el.style.height = $el.scrollHeight + 'px'"></textarea>
+
+                                        <!-- Creating indicator overlay -->
+                                        <div x-show="isCreating"
+                                            class="absolute inset-0 bg-white/50 backdrop-blur-[1px] flex items-center justify-start gap-3 text-gray-400 font-medium">
+                                            <svg class="animate-spin h-6 w-6" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10"
+                                                    stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor"
+                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                                </path>
+                                            </svg>
+                                            <span class="text-xl">Preparando registro...</span>
+                                        </div>
+                                    </div>
 
                                     <!-- Properties -->
                                     <div class="space-y-1 mb-8">
@@ -487,7 +506,8 @@
                                             </div>
                                             <div class="flex-1">
                                                 <select name="estado" x-model="form.estado"
-                                                    class="border-none bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded px-2 py-1 cursor-pointer focus:ring-0 w-auto transition-colors">
+                                                    @change="autoSaveField('estado', form.estado)"
+                                                    class="border-none text-gray-700 text-sm rounded px-2 py-1 pr-8 cursor-pointer focus:ring-0 w-auto transition-colors">
                                                     @foreach ($estados as $estado)
                                                         <option value="{{ $estado }}">{{ $estado }}
                                                         </option>
@@ -508,7 +528,8 @@
                                             </div>
                                             <div class="flex-1">
                                                 <select name="prioridad" x-model="form.prioridad"
-                                                    class="border-none bg-transparent hover:bg-gray-100 text-gray-700 text-sm rounded px-2 py-1 cursor-pointer focus:ring-0 w-auto transition-colors">
+                                                    @change="autoSaveField('prioridad', form.prioridad)"
+                                                    class="border-none bg-transparent hover:bg-gray-100 text-gray-700 text-sm rounded px-2 py-1 pr-8 cursor-pointer focus:ring-0 w-auto transition-colors">
                                                     @foreach ($prioridades as $prioridad)
                                                         <option value="{{ $prioridad }}">{{ $prioridad }}
                                                         </option>
@@ -530,7 +551,8 @@
                                             </div>
                                             <div class="flex-1">
                                                 <select name="asignado_a" x-model="form.asignado_a"
-                                                    class="border-none bg-transparent hover:bg-gray-100 text-gray-700 text-sm rounded px-2 py-1 cursor-pointer focus:ring-0 w-auto transition-colors">
+                                                    @change="autoSaveField('asignado_a', form.asignado_a)"
+                                                    class="border-none bg-transparent hover:bg-gray-100 text-gray-700 text-sm rounded px-2 py-1 pr-8 cursor-pointer focus:ring-0 w-auto transition-colors">
                                                     <option value="">Sin asignar</option>
                                                     @foreach ($users as $user)
                                                         <option value="{{ $user->id }}">{{ $user->name }}
@@ -553,6 +575,7 @@
                                             </div>
                                             <div class="flex-1">
                                                 <input type="text" name="comentario" x-model="form.comentario"
+                                                    @input="scheduleAutoSave('comentario')"
                                                     class="w-full border-none bg-transparent hover:bg-gray-50 focus:bg-white text-gray-700 text-sm rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
                                                     placeholder="Añadir un comentario...">
                                             </div>
@@ -571,11 +594,54 @@
                                         <button type="button" @click="renderMarkdown()"
                                             :class="{ 'text-gray-900 font-semibold': viewMode === 'preview', 'text-gray-500 hover:text-gray-700': viewMode !== 'preview' }"
                                             class="pb-2 text-sm transition-colors">Vista Previa</button>
+
+                                        <!-- Autosave indicator (icons only) -->
+                                        <div class="flex-1 flex justify-end">
+                                            <div x-show="autoSaveStatus !== 'idle'"
+                                                x-transition:enter="transition ease-out duration-200"
+                                                x-transition:enter-start="opacity-0 scale-50"
+                                                x-transition:enter-end="opacity-100 scale-100"
+                                                x-transition:leave="transition ease-in duration-150"
+                                                x-transition:leave-start="opacity-100 scale-100"
+                                                x-transition:leave-end="opacity-0 scale-50"
+                                                class="flex items-center justify-center w-6 h-6">
+                                                <!-- Saving spinner -->
+                                                <svg x-show="autoSaveStatus === 'saving'"
+                                                    class="w-4 h-4 text-gray-400 animate-spin" fill="none"
+                                                    viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10"
+                                                        stroke="currentColor" stroke-width="3"></circle>
+                                                    <path class="opacity-75" fill="currentColor"
+                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                                    </path>
+                                                </svg>
+                                                <!-- Saved check with pop animation -->
+                                                <svg x-show="autoSaveStatus === 'saved'"
+                                                    x-transition:enter="transition ease-out duration-300"
+                                                    x-transition:enter-start="scale-0"
+                                                    x-transition:enter-end="scale-100"
+                                                    class="w-4 h-4 text-emerald-500" fill="none"
+                                                    stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M5 13l4 4L19 7" />
+                                                </svg>
+                                                <!-- Error icon -->
+                                                <svg x-show="autoSaveStatus === 'error'"
+                                                    x-transition:enter="transition ease-out duration-200"
+                                                    x-transition:enter-start="scale-0"
+                                                    x-transition:enter-end="scale-100" class="w-4 h-4 text-red-500"
+                                                    fill="none" stroke="currentColor" stroke-width="2.5"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <!-- Edit Mode -->
                                     <div x-show="viewMode === 'edit'" class="flex-1 flex flex-col min-h-0">
-                                        <textarea name="descripcion" x-model="form.descripcion"
+                                        <textarea name="descripcion" x-model="form.descripcion" @input="scheduleAutoSave()"
                                             class="w-full flex-1 min-h-[200px] border-0 focus:ring-0 text-gray-800 text-base resize-none p-0 leading-relaxed"
                                             placeholder="Escribe aquí los detalles de la función..."></textarea>
                                     </div>
@@ -585,19 +651,7 @@
                                         class="flex-1 min-h-0 overflow-y-auto markdown-preview text-gray-800"
                                         x-html="renderedHtml">
                                     </div>
-                                </div>
 
-                                <!-- Footer Actions -->
-                                <div class="p-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
-                                    <button type="button" @click="closeModal()"
-                                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-                                        Cerrar
-                                    </button>
-                                    <button type="submit"
-                                        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm">
-                                        Guardar
-                                    </button>
-                                </div>
                             </form>
                         </div>
 
@@ -764,6 +818,42 @@
             border: 1px solid rgb(30 41 59);
         }
 
+        /* Custom scrollbar for code blocks - matching Firefox thin style */
+        .markdown-preview pre::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+
+        .markdown-preview pre::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .markdown-preview pre::-webkit-scrollbar-thumb {
+            background: rgb(71 85 105);
+            border-radius: 3px;
+        }
+
+        .markdown-preview pre::-webkit-scrollbar-thumb:hover {
+            background: rgb(100 116 139);
+        }
+
+        .markdown-preview pre::-webkit-scrollbar-corner {
+            background: transparent;
+        }
+
+        /* Hide scrollbar buttons/arrows */
+        .markdown-preview pre::-webkit-scrollbar-button {
+            display: none;
+            height: 0;
+            width: 0;
+        }
+
+        /* Firefox scrollbar */
+        .markdown-preview pre {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(71 85 105) transparent;
+        }
+
         .markdown-preview pre code {
             background: transparent;
             padding: 0;
@@ -822,9 +912,6 @@
             border-collapse: collapse;
             border-spacing: 0;
             margin: 1rem 0;
-            border: 1px solid rgb(229 231 235);
-            border-radius: 0.75rem;
-            overflow: hidden;
             display: block;
             overflow-x: auto;
         }
@@ -921,13 +1008,21 @@
                 .catch(error => console.error('Error:', error));
         }
 
-        window.solicitudesApp = function() {
+        window.solicitudesApp = function(initialSolicitudes, allUsers, allEstados, allPrioridades) {
             return {
+                solicitudes: initialSolicitudes,
+                users: allUsers,
+                estados: allEstados,
+                prioridades: allPrioridades,
                 boardView: 'table',
                 isModalOpen: false,
                 isEditing: false,
+                isCreating: false,
+                hasCreatedNew: false,
                 viewMode: 'edit',
                 renderedHtml: '',
+                autoSaveStatus: 'idle',
+                autoSaveTimeout: null,
                 tableColStorageKey: 'hpr.solicitudes.colwidths.v2',
                 form: {
                     id: null,
@@ -937,6 +1032,82 @@
                     asignado_a: '',
                     descripcion: '',
                     comentario: ''
+                },
+
+                // Helper para colores de estado
+                getColorEstado(val) {
+                    const v = (val || '').toLowerCase();
+                    if (v === 'nueva') return {
+                        dot: 'bg-gray-400',
+                        bg: 'bg-gray-100',
+                        text: 'text-gray-700'
+                    };
+                    if (v === 'lanzada') return {
+                        dot: 'bg-blue-500',
+                        bg: 'bg-blue-100',
+                        text: 'text-blue-700'
+                    };
+                    if (v === 'en progreso') return {
+                        dot: 'bg-purple-500',
+                        bg: 'bg-purple-100',
+                        text: 'text-purple-700'
+                    };
+                    if (v === 'en revisión' || v === 'en revision') return {
+                        dot: 'bg-amber-500',
+                        bg: 'bg-amber-100',
+                        text: 'text-amber-700'
+                    };
+                    if (v === 'merged') return {
+                        dot: 'bg-emerald-500',
+                        bg: 'bg-emerald-100',
+                        text: 'text-emerald-700'
+                    };
+                    if (v === 'completada') return {
+                        dot: 'bg-green-600',
+                        bg: 'bg-green-100',
+                        text: 'text-green-700'
+                    };
+                    return {
+                        dot: 'bg-gray-300',
+                        bg: 'bg-gray-50',
+                        text: 'text-gray-600'
+                    };
+                },
+
+                // Helper para colores de prioridad
+                getColorPrioridad(val) {
+                    const v = (val || '').toLowerCase();
+                    if (v === 'alta') return {
+                        dot: 'bg-red-500',
+                        bg: 'bg-red-100',
+                        text: 'text-red-700'
+                    };
+                    if (v === 'media') return {
+                        dot: 'bg-yellow-500',
+                        bg: 'bg-yellow-100',
+                        text: 'text-yellow-700'
+                    };
+                    if (v === 'baja') return {
+                        dot: 'bg-sky-400',
+                        bg: 'bg-sky-100',
+                        text: 'text-sky-700'
+                    };
+                    return {
+                        dot: 'bg-gray-300',
+                        bg: 'bg-gray-50',
+                        text: 'text-gray-600'
+                    };
+                },
+
+                // Helper para formatear fecha
+                formatDate(dateStr) {
+                    if (!dateStr) return '';
+                    const date = new Date(dateStr);
+                    return date.toLocaleDateString('es-ES', {
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric'
+                    });
                 },
                 initPage() {
                     this.initResizableColumns();
@@ -1094,11 +1265,61 @@
                         });
                     }
                 },
-                openCreateModal() {
+                async openCreateModal() {
                     this.resetForm();
-                    this.isEditing = false;
+                    this.isCreating = true;
+                    this.hasCreatedNew = false;
                     this.isModalOpen = true;
                     this.viewMode = 'edit';
+
+                    try {
+                        const response = await fetch('{{ route('funciones.store') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                titulo: '', // Vacío por defecto
+                                estado: 'Nueva',
+                                prioridad: 'Baja', // Baja por defecto
+                                asignado_a: null,
+                                descripcion: '',
+                                comentario: ''
+                            })
+                        });
+
+                        if (!response.ok) throw new Error('Error creating solicitud');
+
+                        const data = await response.json();
+
+                        // Añadir a la lista reactiva
+                        this.solicitudes.unshift(data);
+
+                        this.form.id = data.id;
+                        this.form.titulo = '';
+                        this.form.prioridad = 'Baja';
+                        this.isEditing = true;
+                        this.isCreating = false;
+                        this.hasCreatedNew = true;
+
+                        // Focus en el textarea del título usando refs
+                        this.$nextTick(() => {
+                            if (this.$refs.tituloTextarea) {
+                                this.$refs.tituloTextarea.focus();
+                            }
+                        });
+
+                        console.log('✅ Nueva función creada con ID:', data.id);
+
+                    } catch (error) {
+                        console.error('Error creando función:', error);
+                        this.isCreating = false;
+                        this.isModalOpen = false;
+                        alert('Error al crear la función. Por favor intenta de nuevo.');
+                    }
                 },
                 openViewModal(solicitud) {
                     this.form = {
@@ -1117,10 +1338,21 @@
                         this.renderMarkdown();
                     } else {
                         this.viewMode = 'edit';
+                        this.$nextTick(() => {
+                            if (this.$refs.tituloTextarea) {
+                                this.$refs.tituloTextarea.focus();
+                            }
+                        });
                     }
                 },
                 closeModal() {
                     this.isModalOpen = false;
+                    this.isCreating = false;
+
+                    // Si se creó una nueva función, recargamos para que aparezca en la tabla
+                    if (this.hasCreatedNew) {
+                        window.location.reload();
+                    }
                 },
                 resetForm() {
                     this.form = {
@@ -1141,6 +1373,73 @@
                             window.hprEnhanceMarkdown(this.$refs.mdPreview);
                         }
                     });
+                },
+                scheduleAutoSave(field = 'descripcion') {
+                    // Only autosave if we're editing an existing record
+                    if (!this.isEditing || !this.form.id) return;
+
+                    // Clear any pending save for this field
+                    if (this.autoSaveTimeout) {
+                        clearTimeout(this.autoSaveTimeout);
+                    }
+
+                    // Schedule new save after 1 second of inactivity
+                    this.autoSaveTimeout = setTimeout(() => {
+                        this.autoSaveField(field, this.form[field]);
+                    }, 1000);
+                },
+                async autoSaveField(field, value) {
+                    if (!this.form.id) return;
+                    if (!this.isEditing) return;
+
+                    this.autoSaveStatus = 'saving';
+
+                    try {
+                        const response = await fetch(`/funciones/${this.form.id}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                _method: 'PUT',
+                                [field]: value
+                            })
+                        });
+
+                        if (!response.ok) throw new Error('Save failed');
+
+                        this.autoSaveStatus = 'saved';
+                        console.log(`✅ Autoguardado: ${field} = ${value}`);
+
+                        // Dispatch event to update table row if needed
+                        window.dispatchEvent(new CustomEvent('solicitud:updated', {
+                            detail: {
+                                id: this.form.id,
+                                field,
+                                value
+                            }
+                        }));
+
+                        // Hide the indicator after 2 seconds
+                        setTimeout(() => {
+                            if (this.autoSaveStatus === 'saved') {
+                                this.autoSaveStatus = 'idle';
+                            }
+                        }, 2000);
+                    } catch (error) {
+                        console.error('Error en autoguardado:', error);
+                        this.autoSaveStatus = 'error';
+
+                        // Hide error after 3 seconds
+                        setTimeout(() => {
+                            if (this.autoSaveStatus === 'error') {
+                                this.autoSaveStatus = 'idle';
+                            }
+                        }, 3000);
+                    }
                 },
                 updateField(id, field, value) {
                     window.updateField(id, field, value);
