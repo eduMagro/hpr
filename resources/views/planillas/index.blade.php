@@ -15,6 +15,8 @@
                 Completar planillas
             </button>
 
+            {{-- Monitor de sincronización FerraWin --}}
+            @livewire('sync-monitor')
         </div>
 
         <div id="modal-import" class="fixed inset-0 z-[60] hidden">

@@ -168,8 +168,10 @@ class FerrawinBulkImportService
             'seccion' => $data['seccion'] ?? $primerElemento['seccion'] ?? '-',
             'ensamblado' => $data['ensamblado'] ?? $primerElemento['ensamblado'] ?? '-',
             'peso_total' => $pesoTotal,
-            'fecha_estimada_entrega' => now()->addDays(7)->setTime(10, 0, 0),
+            'fecha_creacion_ferrawin' => $data['fecha_creacion_ferrawin'] ?? null,
+            'fecha_estimada_entrega' => null, // Se establecerá cuando el técnico apruebe
             'revisada' => false,
+            'aprobada' => false,
         ]);
 
         $this->stats['planillas_creadas']++;

@@ -156,9 +156,9 @@ class AsignarMaquinaService
         // Obtener máquinas disponibles (solo activas)
 
         $maquinas = Maquina::naveA()
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->where('estado', 'activa')
-                      ->orWhereNull('estado');
+                    ->orWhereNull('estado');
             })
             ->get()
             ->keyBy('id');
@@ -194,7 +194,7 @@ class AsignarMaquinaService
         }
 
         // ⚙️ Cortadoras automáticas (EXCLUIR EXPLÍCITAMENTE LA CM)
-        $cortadoras = $maquinas->filter(function($m) use ($cortadoraManual) {
+        $cortadoras = $maquinas->filter(function ($m) use ($cortadoraManual) {
             // Solo tipo cortadora_dobladora Y que NO sea la cortadora manual CM
             return $m->tipo === 'cortadora_dobladora' && (!$cortadoraManual || $m->id !== $cortadoraManual->id);
         });
@@ -816,9 +816,9 @@ class AsignarMaquinaService
         // Obtener máquinas de Nave B tipo cortadora_dobladora (activas)
         $maquinasNaveB = Maquina::naveB()
             ->where('tipo', 'cortadora_dobladora')
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->where('estado', 'activa')
-                      ->orWhereNull('estado');
+                    ->orWhereNull('estado');
             })
             ->get()
             ->keyBy('id');

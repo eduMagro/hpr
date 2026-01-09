@@ -25,6 +25,9 @@ class Planilla extends Model
         'fecha_inicio' => 'datetime',
         'revisada' => 'boolean',
         'revisada_at' => 'datetime',
+        'fecha_creacion_ferrawin' => 'datetime',
+        'aprobada' => 'boolean',
+        'aprobada_at' => 'datetime',
     ];
 
 
@@ -51,6 +54,10 @@ class Planilla extends Model
         'revisada',
         'revisada_por_id',
         'revisada_at',
+        'fecha_creacion_ferrawin',
+        'aprobada',
+        'aprobada_por_id',
+        'aprobada_at',
     ];
 
     /**
@@ -261,5 +268,34 @@ class Planilla extends Model
     public function revisor()
     {
         return $this->belongsTo(User::class, 'revisada_por_id');
+    }
+
+    public function aprobador()
+    {
+        return $this->belongsTo(User::class, 'aprobada_por_id');
+    }
+
+    /**
+     * Calcula la fecha estimada de entrega basándose en la fecha de aprobación.
+     * Si está aprobada, es aprobada_at + 7 días.
+     * Si no está aprobada, devuelve null.
+     */
+    public function getFechaEstimadaEntregaCalculadaAttribute()
+    {
+        if ($this->aprobada && $this->aprobada_at) {
+            return Carbon::parse($this->aprobada_at)->addDays(7);
+        }
+        return null;
+    }
+
+    /**
+     * Formatea la fecha de creación en Ferrawin.
+     */
+    public function getFechaCreacionFerrawinFormateadaAttribute()
+    {
+        if (!$this->fecha_creacion_ferrawin) {
+            return null;
+        }
+        return Carbon::parse($this->fecha_creacion_ferrawin)->format('d/m/Y');
     }
 }

@@ -1,6 +1,31 @@
 <div>
     <div class="w-full">
 
+        <!-- Badge de planillas sin aprobar -->
+        @if ($planillasSinAprobar > 0)
+            <div class="my-4 bg-orange-100 border-l-4 border-orange-500 p-4 rounded-r-lg shadow">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">📋</span>
+                        <div>
+                            <h3 class="text-lg font-bold text-orange-800">
+                                {{ $planillasSinAprobar }}
+                                {{ $planillasSinAprobar === 1 ? 'planilla pendiente' : 'planillas pendientes' }} de
+                                aprobación
+                            </h3>
+                            <p class="text-sm text-orange-700">
+                                Las planillas deben ser aprobadas para establecer la fecha de entrega
+                            </p>
+                        </div>
+                    </div>
+                    <button wire:click="verSinAprobar"
+                        class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition-colors">
+                        Ver planillas sin aprobar
+                    </button>
+                </div>
+            </div>
+        @endif
+
         <!-- Badge de planillas sin revisar -->
         @if ($planillasSinRevisar > 0)
             <div class="my-4 bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-r-lg shadow">
@@ -74,6 +99,10 @@
                             texto="Revisada por" />
                         <x-tabla.encabezado-ordenable campo="revisada_at" :sortActual="$sort" :orderActual="$order"
                             texto="Fecha revisión" />
+                        <x-tabla.encabezado-ordenable campo="aprobada" :sortActual="$sort" :orderActual="$order"
+                            texto="Aprobada" />
+                        <x-tabla.encabezado-ordenable campo="aprobada_at" :sortActual="$sort" :orderActual="$order"
+                            texto="Fecha aprobación" />
                         <th class="p-2 border">Acciones</th>
 
                     </x-tabla.header-row>
@@ -167,6 +196,15 @@
                         </th>
                         <th class="p-1 border"></th>
                         <th class="p-1 border"></th>
+                        <th class="p-1 border">
+                            <select wire:model.live="aprobada"
+                                class="w-full text-xs px-1 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                <option value="">Todas</option>
+                                <option value="1">Sí</option>
+                                <option value="0">No</option>
+                            </select>
+                        </th>
+                        <th class="p-1 border"></th>
                         <th class="p-1 border text-center align-middle">
                             <button wire:click="limpiarFiltros"
                                 class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center mx-auto"
@@ -254,6 +292,22 @@
                             <td class="p-2 text-center border">
                                 {{ $planilla->revisada_at ? $planilla->revisada_at->format('d/m/Y H:i') : '-' }}
                             </td>
+                            <td class="p-2 text-center border">
+                                <span
+                                    class="px-2 py-2 rounded text-xs font-semibold {{ $planilla->aprobada ? 'bg-green-200 text-green-800' : 'bg-orange-200 text-orange-800' }}">
+                                    {{ $planilla->aprobada ? 'Sí' : 'No' }}
+                                </span>
+                            </td>
+                            <td class="p-2 text-center border">
+                                @if($planilla->aprobada && $planilla->aprobada_at)
+                                    {{ $planilla->aprobada_at->format('d/m/Y H:i') }}
+                                    @if($planilla->aprobador)
+                                        <br><span class="text-xs text-gray-500">{{ $planilla->aprobador->name }}</span>
+                                    @endif
+                                @else
+                                    -
+                                @endif
+                            </td>
                             <td class="px-2 py-2 border text-xs font-bold">
                                 <div class="flex items-center space-x-2 justify-center">
                                     <!-- Botón Reimportar -->
@@ -266,6 +320,24 @@
                                                 d="M4 4v6h6M20 20v-6h-6M4 20l4.586-4.586M20 4l-4.586 4.586" />
                                         </svg>
                                     </button>
+
+                                    <!-- Botón Aprobar planilla -->
+                                    @if(!$planilla->aprobada)
+                                        <button wire:click="aprobarPlanilla({{ $planilla->id }})"
+                                            wire:confirm="¿Aprobar esta planilla? La fecha de entrega será {{ now()->addDays(7)->format('d/m/Y') }}"
+                                            class="w-6 h-6 bg-orange-100 text-orange-600 rounded hover:bg-orange-200 flex items-center justify-center"
+                                            title="Aprobar planilla (establecer fecha entrega)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </button>
+                                    @else
+                                        <span class="w-6 h-6 bg-green-100 text-green-600 rounded flex items-center justify-center" title="Ya aprobada">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                                            </svg>
+                                        </span>
+                                    @endif
 
                                     <!-- Botón Marcar como revisada -->
                                     <button wire:click="toggleRevisada({{ $planilla->id }})"
@@ -326,7 +398,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="22" class="text-center py-4 text-gray-500">No hay planillas registradas
+                            <td colspan="24" class="text-center py-4 text-gray-500">No hay planillas registradas
                             </td>
                         </tr>
                     @endforelse

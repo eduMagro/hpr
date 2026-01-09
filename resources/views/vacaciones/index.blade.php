@@ -172,6 +172,152 @@
         // Cache global de usuarios por grupo
         const usuariosCache = {};
 
+        // Funciones para aprobar/denegar solicitudes via AJAX
+        async function aprobarSolicitud(solicitudId, btn) {
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const row = btn.closest('tr');
+
+            // Deshabilitar botones mientras se procesa
+            const botones = row.querySelectorAll('button');
+            botones.forEach(b => b.disabled = true);
+            btn.textContent = 'Procesando...';
+
+            try {
+                const response = await fetch(`/vacaciones/${solicitudId}/aprobar`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'Accept': 'application/json',
+                    },
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Eliminar la fila de la tabla con animacion
+                    row.style.transition = 'opacity 0.3s, transform 0.3s';
+                    row.style.opacity = '0';
+                    row.style.transform = 'translateX(20px)';
+                    setTimeout(() => {
+                        row.remove();
+                        verificarTablasVacias();
+                    }, 300);
+
+                    // Refrescar todos los calendarios
+                    refrescarCalendarios();
+
+                    // Mostrar notificacion
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Aprobada',
+                        text: data.message,
+                        timer: 3000,
+                        showConfirmButton: false,
+                        toast: true,
+                        position: 'top-end'
+                    });
+                } else {
+                    throw new Error(data.error || 'Error al aprobar');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire('Error', error.message || 'No se pudo aprobar la solicitud', 'error');
+                // Restaurar botones
+                botones.forEach(b => b.disabled = false);
+                btn.textContent = 'Aprobar';
+            }
+        }
+
+        async function denegarSolicitud(solicitudId, btn) {
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const row = btn.closest('tr');
+
+            // Confirmar antes de denegar
+            const confirmacion = await Swal.fire({
+                title: 'Denegar solicitud',
+                text: 'Esta accion enviara una alerta al empleado.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Si, denegar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#ef4444',
+            });
+
+            if (!confirmacion.isConfirmed) return;
+
+            // Deshabilitar botones mientras se procesa
+            const botones = row.querySelectorAll('button');
+            botones.forEach(b => b.disabled = true);
+            btn.textContent = 'Procesando...';
+
+            try {
+                const response = await fetch(`/vacaciones/${solicitudId}/denegar`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'Accept': 'application/json',
+                    },
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Eliminar la fila de la tabla con animacion
+                    row.style.transition = 'opacity 0.3s, transform 0.3s';
+                    row.style.opacity = '0';
+                    row.style.transform = 'translateX(20px)';
+                    setTimeout(() => {
+                        row.remove();
+                        verificarTablasVacias();
+                    }, 300);
+
+                    // Mostrar notificacion
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Denegada',
+                        text: data.message,
+                        timer: 3000,
+                        showConfirmButton: false,
+                        toast: true,
+                        position: 'top-end'
+                    });
+                } else {
+                    throw new Error(data.error || 'Error al denegar');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire('Error', error.message || 'No se pudo denegar la solicitud', 'error');
+                // Restaurar botones
+                botones.forEach(b => b.disabled = false);
+                btn.textContent = 'Denegar';
+            }
+        }
+
+        function refrescarCalendarios() {
+            ['calendario-maquinistas', 'calendario-ferrallas', 'calendario-oficina'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el._calendar) {
+                    el._calendar.refetchEvents();
+                }
+            });
+            // Invalidar cache de usuarios
+            Object.keys(usuariosCache).forEach(k => delete usuariosCache[k]);
+        }
+
+        function verificarTablasVacias() {
+            // Verificar cada tabla y mostrar mensaje si esta vacia
+            document.querySelectorAll('table tbody').forEach(tbody => {
+                if (tbody.querySelectorAll('tr').length === 0) {
+                    const container = tbody.closest('.overflow-x-auto');
+                    if (container) {
+                        container.innerHTML = '<p class="text-gray-600">No hay solicitudes pendientes.</p>';
+                    }
+                }
+            });
+        }
+
         function inicializarCalendarios() {
             const contenedores = ['calendario-maquinistas', 'calendario-ferrallas', 'calendario-oficina'];
             contenedores.forEach(id => {

@@ -770,10 +770,17 @@
                     success([]);
                     return;
                 }
-                fetch(routes.eventosUrl)
-                    .then((r) => r.json())
-                    .then((events) => {
+
+                // Cargar eventos normales Y solicitudes pendientes en paralelo
+                const eventosPromise = fetch(routes.eventosUrl).then(r => r.json());
+                const solicitudesPromise = routes.misSolicitudesPendientesUrl
+                    ? fetch(routes.misSolicitudesPendientesUrl).then(r => r.json()).catch(() => [])
+                    : Promise.resolve([]);
+
+                Promise.all([eventosPromise, solicitudesPromise])
+                    .then(([events, solicitudes]) => {
                         console.log('📅 Eventos recibidos del servidor:', events.length);
+                        console.log('📋 Solicitudes pendientes:', solicitudes.length);
 
                         // Separar eventos allDay de eventos con hora (fichajes)
                         const allDayEvents = events.filter(ev => ev.allDay !== false);
@@ -791,8 +798,52 @@
                             }
                         });
 
-                        // Combinar ambos tipos
-                        const final = [...normalized, ...timedEvents];
+                        // Obtener fechas de festivos de los eventos cargados
+                        const fechasFestivos = new Set();
+                        events.forEach(ev => {
+                            if (ev.id?.startsWith('festivo-') || (ev.title && ev.backgroundColor === '#ff2800')) {
+                                const fechaFestivo = ev.start?.split?.('T')?.[0] || ev.start;
+                                if (fechaFestivo) fechasFestivos.add(fechaFestivo);
+                            }
+                        });
+
+                        // Convertir solicitudes pendientes en eventos del calendario
+                        // Excluir fines de semana y festivos
+                        const eventosSolicitudes = [];
+                        solicitudes.forEach(sol => {
+                            // Crear un evento para cada día LABORABLE del rango de la solicitud
+                            const inicio = new Date(sol.fecha_inicio);
+                            const fin = new Date(sol.fecha_fin);
+                            for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
+                                const diaSemana = d.getDay(); // 0=domingo, 6=sábado
+                                // Saltar fines de semana
+                                if (diaSemana === 0 || diaSemana === 6) continue;
+
+                                const fechaStr = d.toISOString().split('T')[0];
+                                // Saltar festivos
+                                if (fechasFestivos.has(fechaStr)) continue;
+
+                                eventosSolicitudes.push({
+                                    id: `solicitud-${sol.id}-${fechaStr}`,
+                                    title: 'V. pendiente',
+                                    start: fechaStr,
+                                    allDay: true,
+                                    backgroundColor: '#fcdde8', // rosa
+                                    borderColor: '#fcdde8',
+                                    textColor: 'black',
+                                    extendedProps: {
+                                        tipo: 'solicitud_pendiente',
+                                        solicitud_id: sol.id,
+                                        fecha_inicio: sol.fecha_inicio,
+                                        fecha_fin: sol.fecha_fin,
+                                        fecha: fechaStr,
+                                    },
+                                });
+                            }
+                        });
+
+                        // Combinar todos los tipos de eventos
+                        const final = [...normalized, ...timedEvents, ...eventosSolicitudes];
                         console.log('📅 Total eventos a renderizar:', final.length);
                         success(final);
                     })
@@ -1050,8 +1101,200 @@
                 // Ignorar eventos de fondo (selección de rango)
                 if (event.display === 'background' || props.__tempHover) return;
 
-                // Ignorar festivos y vacaciones pendientes
-                if (event.id?.startsWith('festivo-') || event.id?.startsWith('vac-')) return;
+                // Ignorar festivos
+                if (event.id?.startsWith('festivo-')) return;
+
+                // --- SOLICITUDES PENDIENTES: mostrar modal de gestión ---
+                if (props.tipo === 'solicitud_pendiente') {
+                    const solicitudId = props.solicitud_id;
+                    const fechaInicio = props.fecha_inicio;
+                    const fechaFin = props.fecha_fin;
+                    const fechaActual = props.fecha;
+
+                    // Obtener festivos del calendario
+                    const eventosCal = calendar.getEvents();
+                    const festivosCal = new Set();
+                    eventosCal.forEach(ev => {
+                        if (ev.id?.startsWith('festivo-')) {
+                            const fechaFestivo = ev.startStr?.split('T')[0] || ev.start?.toISOString().split('T')[0];
+                            if (fechaFestivo) festivosCal.add(fechaFestivo);
+                        }
+                    });
+
+                    // Calcular solo los días LABORABLES del rango (sin fines de semana ni festivos)
+                    const dias = [];
+                    const inicio = new Date(fechaInicio);
+                    const fin = new Date(fechaFin);
+                    for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
+                        const diaSemana = d.getDay(); // 0=domingo, 6=sábado
+                        // Saltar fines de semana
+                        if (diaSemana === 0 || diaSemana === 6) continue;
+
+                        const fechaStr = d.toISOString().split('T')[0];
+                        // Saltar festivos
+                        if (festivosCal.has(fechaStr)) continue;
+
+                        dias.push(fechaStr);
+                    }
+
+                    const esMismoDia = dias.length === 1;
+
+                    // Generar checkboxes para cada día laborable
+                    const checkboxesHtml = dias.map(dia => {
+                        const esActual = dia === fechaActual;
+                        return `
+                            <label class="flex items-center gap-2 p-2 rounded hover:bg-gray-100 cursor-pointer ${esActual ? 'bg-amber-50 border border-amber-200' : ''}">
+                                <input type="checkbox" name="dias_eliminar" value="${dia}" class="w-4 h-4 text-red-600 rounded">
+                                <span class="text-sm ${esActual ? 'font-semibold' : ''}">${dia}</span>
+                                ${esActual ? '<span class="text-xs text-amber-600">(seleccionado)</span>' : ''}
+                            </label>
+                        `;
+                    }).join('');
+
+                    Swal.fire({
+                        title: 'Solicitud de Vacaciones Pendiente',
+                        html: `
+                            <div style="text-align: left;">
+                                <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+                                    <p style="margin: 0; font-size: 14px; color: #92400e;">
+                                        <strong>Estado:</strong> Pendiente de aprobacion
+                                    </p>
+                                    <p style="margin: 4px 0 0 0; font-size: 13px; color: #92400e;">
+                                        ${esMismoDia ? `Fecha: ${fechaInicio}` : `Del ${fechaInicio} al ${fechaFin}`}
+                                    </p>
+                                </div>
+
+                                ${!esMismoDia ? `
+                                <div style="margin-bottom: 16px;">
+                                    <p style="font-size: 13px; color: #4b5563; margin-bottom: 8px;">
+                                        Selecciona los dias que quieres eliminar de la solicitud:
+                                    </p>
+                                    <div style="max-height: 200px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px;">
+                                        ${checkboxesHtml}
+                                    </div>
+                                </div>
+                                ` : ''}
+
+                                <p style="font-size: 12px; color: #6b7280; margin-top: 12px;">
+                                    ${esMismoDia
+                                        ? 'Pulsa "Eliminar solicitud" para cancelar esta peticion.'
+                                        : 'Pulsa "Eliminar seleccionados" para quitar los dias marcados, o "Eliminar toda" para cancelar la solicitud completa.'
+                                    }
+                                </p>
+                            </div>
+                        `,
+                        showCancelButton: true,
+                        showDenyButton: !esMismoDia,
+                        confirmButtonText: esMismoDia ? 'Eliminar solicitud' : 'Eliminar seleccionados',
+                        denyButtonText: 'Eliminar toda',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#ef4444',
+                        denyButtonColor: '#dc2626',
+                        width: 450,
+                        preConfirm: () => {
+                            if (esMismoDia) {
+                                return { action: 'eliminar_todo' };
+                            }
+                            const checkboxes = document.querySelectorAll('input[name="dias_eliminar"]:checked');
+                            const diasSeleccionados = Array.from(checkboxes).map(cb => cb.value);
+                            if (diasSeleccionados.length === 0) {
+                                Swal.showValidationMessage('Selecciona al menos un dia para eliminar');
+                                return false;
+                            }
+                            return { action: 'eliminar_dias', dias: diasSeleccionados };
+                        },
+                    }).then(async (result) => {
+                        if (result.isDenied) {
+                            // Eliminar toda la solicitud
+                            const confirmacion = await Swal.fire({
+                                title: 'Confirmar eliminacion',
+                                text: 'Se eliminara toda la solicitud de vacaciones. Esta accion no se puede deshacer.',
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonText: 'Si, eliminar',
+                                cancelButtonText: 'Cancelar',
+                                confirmButtonColor: '#ef4444',
+                            });
+
+                            if (confirmacion.isConfirmed) {
+                                fetch(`${routes.eliminarSolicitudUrl}/${solicitudId}`, {
+                                    method: 'DELETE',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': csrfToken,
+                                    },
+                                })
+                                .then(r => r.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        Swal.fire('Eliminada', data.message, 'success');
+                                        smartRefetch(calendar);
+                                    } else {
+                                        Swal.fire('Error', data.error || 'No se pudo eliminar la solicitud.', 'error');
+                                    }
+                                })
+                                .catch(err => {
+                                    console.error('Error:', err);
+                                    Swal.fire('Error', 'Ocurrio un problema al eliminar la solicitud.', 'error');
+                                });
+                            }
+                        } else if (result.isConfirmed) {
+                            const { action, dias: diasEliminar } = result.value;
+
+                            if (action === 'eliminar_todo' || (diasEliminar && diasEliminar.length === dias.length)) {
+                                // Eliminar toda la solicitud
+                                fetch(`${routes.eliminarSolicitudUrl}/${solicitudId}`, {
+                                    method: 'DELETE',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': csrfToken,
+                                    },
+                                })
+                                .then(r => r.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        Swal.fire('Eliminada', data.message, 'success');
+                                        smartRefetch(calendar);
+                                    } else {
+                                        Swal.fire('Error', data.error || 'No se pudo eliminar la solicitud.', 'error');
+                                    }
+                                })
+                                .catch(err => {
+                                    console.error('Error:', err);
+                                    Swal.fire('Error', 'Ocurrio un problema al eliminar la solicitud.', 'error');
+                                });
+                            } else if (diasEliminar && diasEliminar.length > 0) {
+                                // Eliminar días específicos
+                                fetch(routes.eliminarDiasSolicitudUrl, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': csrfToken,
+                                    },
+                                    body: JSON.stringify({
+                                        solicitud_id: solicitudId,
+                                        fechas_eliminar: diasEliminar,
+                                    }),
+                                })
+                                .then(r => r.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        Swal.fire('Modificada', data.message, 'success');
+                                        smartRefetch(calendar);
+                                    } else {
+                                        Swal.fire('Error', data.error || 'No se pudo modificar la solicitud.', 'error');
+                                    }
+                                })
+                                .catch(err => {
+                                    console.error('Error:', err);
+                                    Swal.fire('Error', 'Ocurrio un problema al modificar la solicitud.', 'error');
+                                });
+                            }
+                        }
+                    });
+
+                    return; // Salir, no mostrar tooltip normal
+                }
 
                 // Eliminar tooltip existente
                 const existente = document.getElementById('evento-tooltip');

@@ -66,6 +66,9 @@ class PlanillasTable extends Component
     public $revisada = '';
 
     #[Url(keep: true)]
+    public $aprobada = '';
+
+    #[Url(keep: true)]
     public $sort = 'created_at';
 
     #[Url(keep: true)]
@@ -190,6 +193,11 @@ class PlanillasTable extends Component
             $query->where('revisada', (bool) $this->revisada);
         }
 
+        // Aprobada (filtro especial)
+        if ($this->aprobada !== '') {
+            $query->where('aprobada', (bool) $this->aprobada);
+        }
+
         return $query;
     }
 
@@ -209,6 +217,9 @@ class PlanillasTable extends Component
             'fecha_estimada_entrega',
             'revisada',
             'revisada_at',
+            'aprobada',
+            'aprobada_at',
+            'fecha_creacion_ferrawin',
             'created_at',
         ];
 
@@ -284,6 +295,7 @@ class PlanillasTable extends Component
             'fecha_estimada_entrega',
             'usuario',
             'revisada',
+            'aprobada',
             'sort',
             'order'
         ]);
@@ -342,6 +354,9 @@ class PlanillasTable extends Component
         if ($this->revisada !== '') {
             $filtros[] = "<strong>Revisada:</strong> " . ($this->revisada ? 'Sí' : 'No');
         }
+        if ($this->aprobada !== '') {
+            $filtros[] = "<strong>Aprobada:</strong> " . ($this->aprobada ? 'Sí' : 'No');
+        }
 
         // Añadir ordenamiento
         if (!empty($this->sort)) {
@@ -366,6 +381,9 @@ class PlanillasTable extends Component
                 'revisada' => 'Revisada',
                 'revisor_id' => 'Revisada Por',
                 'revisada_at' => 'Fecha Revisión',
+                'aprobada' => 'Aprobada',
+                'aprobada_at' => 'Fecha Aprobación',
+                'fecha_creacion_ferrawin' => 'Fecha Ferrawin',
             ];
 
             $nombreCampo = $nombresCampos[$this->sort] ?? ucfirst($this->sort);
@@ -399,6 +417,38 @@ class PlanillasTable extends Component
         $this->dispatch('planilla-actualizada', [
             'message' => $planilla->revisada ? 'Planilla marcada como revisada' : 'Planilla marcada como no revisada'
         ]);
+    }
+
+    public function aprobarPlanilla($planillaId)
+    {
+        $planilla = Planilla::findOrFail($planillaId);
+
+        // Solo se puede aprobar si no está aprobada ya
+        if ($planilla->aprobada) {
+            $this->dispatch('planilla-actualizada', [
+                'message' => 'Esta planilla ya está aprobada',
+                'type' => 'warning'
+            ]);
+            return;
+        }
+
+        $planilla->aprobada = true;
+        $planilla->aprobada_por_id = auth()->id();
+        $planilla->aprobada_at = now();
+        // Fecha de entrega = 7 días después de la aprobación
+        $planilla->fecha_estimada_entrega = now()->addDays(7)->setTime(10, 0, 0);
+        $planilla->save();
+
+        $this->dispatch('planilla-actualizada', [
+            'message' => 'Planilla aprobada. Fecha de entrega: ' . $planilla->fecha_estimada_entrega,
+            'type' => 'success'
+        ]);
+    }
+
+    public function verSinAprobar()
+    {
+        $this->aprobada = '0';
+        $this->resetPage();
     }
 
     public function verElementosFiltrados($planillaId)
@@ -439,7 +489,8 @@ class PlanillasTable extends Component
             'user',
             'cliente',
             'obra',
-            'revisor'
+            'revisor',
+            'aprobador'
         ])->withSum([
             'elementos as suma_peso_completados' => function ($query) {
                 $query->where('estado', 'fabricado');
@@ -463,6 +514,11 @@ class PlanillasTable extends Component
             ->whereIn('estado', ['pendiente', 'fabricando'])
             ->count();
 
+        // Contador de planillas sin aprobar
+        $planillasSinAprobar = Planilla::where('aprobada', false)
+            ->whereIn('estado', ['pendiente', 'fabricando'])
+            ->count();
+
         $clientes = Cliente::select('id', 'codigo', 'empresa')->get();
         $obras = Obra::select('id', 'cod_obra', 'obra')->get();
 
@@ -472,6 +528,7 @@ class PlanillasTable extends Component
             'obras' => $obras,
             'totalPesoFiltrado' => $totalPesoFiltrado,
             'planillasSinRevisar' => $planillasSinRevisar,
+            'planillasSinAprobar' => $planillasSinAprobar,
             'filtrosActivos' => $this->getFiltrosActivos(),
         ]);
     }

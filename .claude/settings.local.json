@@ -59,7 +59,9 @@
       "Bash(timeout:*)",
       "Bash(tasklist /FI \"IMAGENAME eq php.exe\")",
       "Bash(wmic process where \"name like ''%php%''\" get processid,commandline)",
-      "Bash(start /B cmd /c \"sync-all.bat > sync-all.log 2>&1\")"
+      "Bash(start /B cmd /c \"sync-all.bat > sync-all.log 2>&1\")",
+      "Bash(git -C \"C:/xampp/htdocs/manager\" diff resources/views/components/sidebar-menu-enhanced.blade.php)",
+      "Bash(git -C \"C:/xampp/htdocs/manager\" status resources/views/components/sidebar-menu-enhanced.blade.php)"
     ],
     "deny": [],
     "ask": []

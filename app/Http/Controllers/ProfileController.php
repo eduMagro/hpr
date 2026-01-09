@@ -1142,26 +1142,22 @@ class ProfileController extends Controller
         // 4. Festivos
         $eventos = $eventos->merge(Festivo::eventosCalendario());
 
-        // 5. Vacaciones pendientes/denegadas
+        // 5. Vacaciones denegadas (las pendientes se cargan desde el frontend para permitir gestión interactiva)
         $vacaciones = VacacionesSolicitud::where('user_id', $user->id)
-            ->whereIn('estado', ['pendiente', 'denegada'])
+            ->where('estado', 'denegada')
             ->get()
             ->flatMap(function ($solicitud) {
-                $title = $solicitud->estado === 'pendiente' ? 'V. pendiente' : 'V. denegadas';
-                $color = $solicitud->estado === 'pendiente' ? '#fcdde8' : '#000000';
-                $textColor = $solicitud->estado === 'pendiente' ? 'black' : 'white';
-
                 return collect(CarbonPeriod::create($solicitud->fecha_inicio, $solicitud->fecha_fin)->toArray())
-                    ->map(function ($fecha) use ($title, $color, $textColor, $solicitud) {
+                    ->map(function ($fecha) use ($solicitud) {
                         $fechaStr = $fecha->format('Y-m-d');
                         return [
                             'id' => 'vac-' . $solicitud->id . '-' . $fechaStr,
-                            'title' => $title,
+                            'title' => 'V. denegadas',
                             'start' => $fechaStr,
                             'allDay' => true,
-                            'backgroundColor' => $color,
-                            'borderColor' => $color,
-                            'textColor' => $textColor,
+                            'backgroundColor' => '#000000',
+                            'borderColor' => '#000000',
+                            'textColor' => 'white',
                         ];
                     });
             })->values();

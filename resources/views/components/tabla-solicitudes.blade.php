@@ -15,26 +15,21 @@
             </thead>
             <tbody>
                 @foreach ($solicitudes as $solicitud)
-                    <tr class="border-t">
+                    <tr class="border-t solicitud-row" data-solicitud-id="{{ $solicitud->id }}">
                         <td class="px-4 py-2">{{ $solicitud->user->nombre_completo }}</td>
                         <td class="px-4 py-2">{{ $solicitud->fecha_inicio }}</td>
                         <td class="px-4 py-2">{{ $solicitud->fecha_fin }}</td>
                         <td class="px-4 py-2">
-                            <form action="{{ route('vacaciones.editarAprobar', $solicitud->id) }}" method="POST"
-                                class="inline">
-                                @csrf
-                                <button type="submit"
-                                    class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">
-                                    ✅ Aprobar
-                                </button>
-                            </form>
-                            <form action="{{ route('vacaciones.editarDenegar', $solicitud->id) }}" method="POST"
-                                class="inline ml-2">
-                                @csrf
-                                <button type="submit" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700">
-                                    ❌ Denegar
-                                </button>
-                            </form>
+                            <button type="button"
+                                onclick="aprobarSolicitud({{ $solicitud->id }}, this)"
+                                class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 btn-aprobar">
+                                Aprobar
+                            </button>
+                            <button type="button"
+                                onclick="denegarSolicitud({{ $solicitud->id }}, this)"
+                                class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 ml-2 btn-denegar">
+                                Denegar
+                            </button>
                         </td>
                     </tr>
                 @endforeach
