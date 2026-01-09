@@ -71,4 +71,20 @@ class Maquina extends Model
     {
         return $this->hasMany(Incidencia::class);
     }
+
+    /**
+     * Scope para filtrar máquinas de la Nave A
+     */
+    public static function naveA()
+    {
+        return self::where('obra_id', 1);
+    }
+
+    /**
+     * Scope para filtrar máquinas de la Nave B
+     */
+    public static function naveB()
+    {
+        return self::where('obra_id', 2);
+    }
 }
