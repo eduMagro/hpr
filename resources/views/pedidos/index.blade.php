@@ -457,10 +457,10 @@
                     class="bg-white rounded-[1.5rem] w-full max-w-5xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[95vh] m-4">
                     {{-- Header --}}
                     <div
-                        class="bg-gradient-to-r from-blue-600 to-indigo-700 px-8 py-6 text-white flex justify-between items-center shrink-0">
+                        class="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-4 text-white flex justify-between items-center shrink-0">
                         <div>
-                            <h3 class="text-2xl font-black tracking-tight uppercase">CONFIRMAR PEDIDO</h3>
-                            <p class="text-blue-100 text-sm font-medium opacity-80">Revisa los detalles antes de
+                            <h3 class="text-xl font-black tracking-tight uppercase">CONFIRMAR PEDIDO</h3>
+                            <p class="text-blue-100 text-[11px] font-medium opacity-80">Revisa los detalles antes de
                                 generar la orden de compra</p>
                         </div>
                         <button type="button" onclick="cerrarModalConfirmacion()"
@@ -476,15 +476,15 @@
                         class="flex flex-col flex-1 overflow-hidden">
                         @csrf
 
-                        <div class="flex-1 overflow-y-auto p-8 space-y-8">
+                        <div class="flex-1 overflow-y-auto p-5 space-y-4">
                             {{-- Proveedor --}}
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="space-y-2">
                                     <label for="fabricante"
                                         class="block text-[10px] font-black uppercase tracking-widest text-gray-400">Fabricante</label>
                                     <select name="fabricante_id" id="fabricante"
                                         onchange="if(this.value) document.getElementById('distribuidor').value = ''"
-                                        class="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm font-bold text-gray-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none">
+                                        class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-xs font-bold text-gray-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none">
                                         <option value="">-- Seleccionar fabricante --</option>
                                         @foreach ($fabricantes as $fabricante)
                                             <option value="{{ $fabricante->id }}">{{ $fabricante->nombre }}</option>
@@ -496,7 +496,7 @@
                                         class="block text-[10px] font-black uppercase tracking-widest text-gray-400">Distribuidor</label>
                                     <select name="distribuidor_id" id="distribuidor"
                                         onchange="if(this.value) document.getElementById('fabricante').value = ''"
-                                        class="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm font-bold text-gray-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none">
+                                        class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-xs font-bold text-gray-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none">
                                         <option value="">-- Seleccionar distribuidor --</option>
                                         @foreach ($distribuidores as $distribuidor)
                                             <option value="{{ $distribuidor->id }}">{{ $distribuidor->nombre }}
@@ -511,15 +511,15 @@
                                 <label
                                     class="block text-[10px] font-black uppercase tracking-widest text-gray-400">Lugar
                                     de Entrega</label>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div class="group">
                                         <div
-                                            class="bg-gray-50 p-4 rounded-3xl border border-gray-100 group-focus-within:border-blue-500 transition-all">
+                                            class="bg-gray-50 p-2.5 rounded-2xl border border-gray-100 group-focus-within:border-blue-500 transition-all">
                                             <label
-                                                class="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-tight">Nave
+                                                class="block text-[9px] font-black text-gray-400 mb-1 uppercase tracking-tight">Nave
                                                 HPR</label>
                                             <select name="obra_id_hpr" id="obra_id_hpr_modal"
-                                                class="w-full bg-transparent border-none p-0 text-sm font-black text-gray-800 focus:ring-0 cursor-pointer"
+                                                class="w-full bg-transparent border-none p-0 text-xs font-black text-gray-800 focus:ring-0 cursor-pointer"
                                                 onchange="if(this.value) { document.getElementById('obra_id_externa_modal').value = ''; document.getElementById('obra_manual_modal').value = ''; }">
                                                 <option value="">Seleccionar nave</option>
                                                 @foreach ($navesHpr as $nave)
@@ -531,12 +531,12 @@
 
                                     <div class="group">
                                         <div
-                                            class="bg-gray-50 p-4 rounded-3xl border border-gray-100 group-focus-within:border-blue-500 transition-all">
+                                            class="bg-gray-50 p-2.5 rounded-2xl border border-gray-100 group-focus-within:border-blue-500 transition-all">
                                             <label
-                                                class="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-tight">Obra
+                                                class="block text-[9px] font-black text-gray-400 mb-1 uppercase tracking-tight">Obra
                                                 Externa</label>
                                             <select name="obra_id_externa" id="obra_id_externa_modal"
-                                                class="w-full bg-transparent border-none p-0 text-sm font-black text-gray-800 focus:ring-0 cursor-pointer"
+                                                class="w-full bg-transparent border-none p-0 text-xs font-black text-gray-800 focus:ring-0 cursor-pointer"
                                                 onchange="if(this.value) { document.getElementById('obra_id_hpr_modal').value = ''; document.getElementById('obra_manual_modal').value = ''; }">
                                                 <option value="">Seleccionar obra</option>
                                                 @foreach ($obrasExternas as $obra)
@@ -548,12 +548,12 @@
 
                                     <div class="group">
                                         <div
-                                            class="bg-gray-50 p-4 rounded-3xl border border-gray-100 group-focus-within:border-blue-500 transition-all">
+                                            class="bg-gray-50 p-2.5 rounded-2xl border border-gray-100 group-focus-within:border-blue-500 transition-all">
                                             <label
-                                                class="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-tight">Manual
+                                                class="block text-[9px] font-black text-gray-400 mb-1 uppercase tracking-tight">Manual
                                                 / Libre</label>
                                             <input type="text" name="obra_manual" id="obra_manual_modal"
-                                                class="w-full bg-transparent border-none p-0 text-sm font-black text-gray-800 focus:ring-0 placeholder-gray-300"
+                                                class="w-full bg-transparent border-none p-0 text-xs font-black text-gray-800 focus:ring-0 placeholder-gray-300"
                                                 placeholder="Dirección manual"
                                                 oninput="if(this.value) { document.getElementById('obra_id_hpr_modal').value = ''; document.getElementById('obra_id_externa_modal').value = ''; }"
                                                 value="{{ old('obra_manual') }}">
@@ -563,21 +563,21 @@
                             </div>
 
                             {{-- Tabla de líneas --}}
-                            <div class="rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+                            <div class="rounded-3xl border border-gray-100 overflow-x-auto shadow-sm">
                                 <table class="w-full text-sm">
                                     <thead class="bg-gray-50 border-b border-gray-100">
                                         <tr>
                                             <th
-                                                class="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                class="px-4 py-3 text-left text-[9px] font-black text-gray-400 uppercase tracking-widest">
                                                 Producto</th>
                                             <th
-                                                class="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                class="px-4 py-3 text-left text-[9px] font-black text-gray-400 uppercase tracking-widest">
                                                 Dimensiones</th>
                                             <th
-                                                class="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                class="px-4 py-3 text-left text-[9px] font-black text-gray-400 uppercase tracking-widest">
                                                 Peso Total</th>
                                             <th
-                                                class="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                class="px-4 py-3 text-left text-[9px] font-black text-gray-400 uppercase tracking-widest">
                                                 Fechas de Entrega</th>
                                         </tr>
                                     </thead>
@@ -589,13 +589,13 @@
                         </div>
 
                         {{-- Footer --}}
-                        <div class="shrink-0 bg-gray-50 px-8 py-6 flex justify-end gap-4 border-t border-gray-100">
+                        <div class="shrink-0 bg-gray-50 px-8 py-4 flex justify-end gap-3 border-t border-gray-100">
                             <button type="button" onclick="cerrarModalConfirmacion()"
-                                class="px-8 py-3 rounded-2xl text-sm font-bold text-gray-500 hover:bg-gray-200 transition-all">
+                                class="px-6 py-2.5 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-200 transition-all">
                                 Cancelar
                             </button>
                             <button type="submit"
-                                class="bg-emerald-500 hover:bg-emerald-600 px-10 py-3 rounded-2xl text-sm font-black text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all">
+                                class="bg-emerald-500 hover:bg-emerald-600 px-8 py-2.5 rounded-xl text-xs font-black text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all">
                                 CREAR PEDIDO DE COMPRA
                             </button>
                         </div>
@@ -1141,23 +1141,23 @@
                 fila.className = "hover:bg-gray-50/50 transition-colors duration-200";
 
                 fila.innerHTML = `
-                <td class="px-6 py-5 whitespace-nowrap">
-                    <span class="inline-flex items-center px-3 py-1 rounded-lg text-[10px] font-black bg-slate-100 text-slate-700 uppercase tracking-widest border border-slate-200/50">
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black bg-slate-100 text-slate-700 uppercase tracking-widest border border-slate-200/50">
                         ${tipo}
                     </span>
                 </td>
-                <td class="px-6 py-5 whitespace-nowrap text-sm font-bold text-gray-900">
+                <td class="px-4 py-3 whitespace-nowrap text-xs font-bold text-gray-900">
                     Ø${diametro} mm ${longitud ? `<span class="text-gray-400 font-medium ml-1">x ${longitud} m</span>` : ''}
                 </td>
-                <td class="px-6 py-5 whitespace-nowrap w-40">
-                    <div class="flex items-center gap-2 group">
-                        <input type="number" class="peso-total w-24 bg-gray-100 border border-gray-300 rounded-xl px-3 py-2 text-sm font-black text-gray-900 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all outline-none"
+                <td class="px-4 py-3 whitespace-nowrap w-32">
+                    <div class="flex items-center gap-1.5 group">
+                        <input type="number" class="peso-total w-20 bg-gray-100 border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-black text-gray-900 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all outline-none"
                                name="detalles[${clave}][cantidad]" value="${cantidad}" step="500" min="0">
-                        <span class="text-xs font-black text-gray-500">kg</span>
+                        <span class="text-[10px] font-black text-gray-500">kg</span>
                     </div>
                 </td>
-                <td class="px-6 py-5 min-w-[300px]">
-                    <div class="fechas-camion flex flex-col gap-3 w-full" id="fechas-camion-${clave}"></div>
+                <td class="px-4 py-3 min-w-[280px]">
+                    <div class="fechas-camion flex flex-col gap-2 w-full" id="fechas-camion-${clave}"></div>
                 </td>
                 <input type="hidden" name="seleccionados[]" value="${clave}">
                 <input type="hidden" name="detalles[${clave}][tipo]" value="${tipo}">
@@ -1189,30 +1189,30 @@
 
                 const lineaCamion = document.createElement('div');
                 lineaCamion.className =
-                    'flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 bg-gray-50/50 rounded-2xl border border-gray-100 group transition-all hover:bg-white hover:shadow-sm';
+                    'flex items-center gap-3 p-2 bg-gray-50/50 rounded-xl border border-gray-100 group transition-all hover:bg-white hover:shadow-sm';
                 lineaCamion.id = `linea-camion-${clave}-${i}`;
 
                 lineaCamion.innerHTML = `
-                <div class="flex-1 flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-black">
+                <div class="flex-1 flex items-center gap-2.5">
+                    <div class="w-7 h-7 shrink-0 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[9px] font-black">
                         ${i + 1}
                     </div>
-                    <div>
-                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Camión ${i + 1}</p>
-                        <p class="text-xs font-bold text-gray-700">${pesoBloque.toLocaleString('es-ES')} <span class="text-[10px] opacity-50 font-medium">kg</span></p>
+                    <div class="min-w-0">
+                        <p class="text-[9px] font-black text-gray-400 uppercase tracking-tighter truncate">Camión ${i + 1}</p>
+                        <p class="text-[11px] font-bold text-gray-700 whitespace-nowrap">${pesoBloque.toLocaleString('es-ES')} <span class="text-[9px] opacity-50 font-medium">kg</span></p>
                     </div>
                 </div>
-                <div class="w-full sm:w-auto">
+                <div class="shrink-0">
                     <input type="date" 
                            name="productos[${clave}][${i + 1}][fecha]" 
                            required 
-                           class="w-full sm:w-40 bg-white border border-gray-200 rounded-xl px-4 py-2 text-xs font-bold text-gray-700 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none">
+                           class="w-32 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-gray-700 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none">
                     <input type="hidden" 
                            name="productos[${clave}][${i + 1}][peso]" 
                            value="${pesoBloque}">
                 </div>
-                <div class="flex-1 min-w-[150px]">
-                    <div class="pg-asignacion-${clave}-${i} text-[10px] font-bold text-gray-400 uppercase tracking-tight flex items-center justify-center p-2 bg-white/50 rounded-xl border border-gray-100 min-h-[50px] text-center">
+                <div class="flex-1 min-w-[120px]">
+                    <div class="pg-asignacion-${clave}-${i} text-[9px] font-bold text-gray-400 uppercase tracking-tight flex items-center justify-center p-1.5 bg-white/50 rounded-lg border border-gray-100 min-h-[40px] text-center leading-tight">
                         Sin asignar
                     </div>
                 </div>
