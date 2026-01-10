@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS `pedidos_almacen_venta` (
   `cliente_id` bigint(20) UNSIGNED NOT NULL,
   `codigo` varchar(30) NOT NULL,
   `estado` enum('borrador','pendiente','parcial','completado','facturado') DEFAULT 'borrador',
-  `fecha` date DEFAULT curdate(),
+  `fecha` date DEFAULT NULL,
   `observaciones` text DEFAULT NULL,
   `created_by` bigint(20) UNSIGNED DEFAULT NULL,
   `updated_by` bigint(20) UNSIGNED DEFAULT NULL,

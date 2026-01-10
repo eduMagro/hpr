@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS `nominas` (
   `cuota_irpf_anual_sin_minimo` decimal(12,2) DEFAULT NULL,
   `cuota_minimo_personal` decimal(12,2) DEFAULT NULL,
   `cuota_irpf_anual` decimal(12,2) DEFAULT NULL,
-  `fecha` date DEFAULT curdate(),
+  `fecha` date DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

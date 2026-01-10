@@ -10,7 +10,7 @@ return new class extends IdempotentSqlMigration
 CREATE TABLE IF NOT EXISTS `salidas_almacen` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `codigo` varchar(20) NOT NULL,
-  `fecha` date NOT NULL DEFAULT curdate(),
+  `fecha` date NOT NULL,
   `estado` enum('pendiente','en_ruta','completada','activa','cancelada') DEFAULT 'pendiente',
   `camionero_id` bigint(20) UNSIGNED DEFAULT NULL,
   `created_by` bigint(20) UNSIGNED DEFAULT NULL,

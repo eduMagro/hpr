@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS `albaranes_venta` (
   `salida_id` bigint(20) UNSIGNED NOT NULL,
   `cliente_id` bigint(20) UNSIGNED NOT NULL,
   `codigo` varchar(20) NOT NULL,
-  `fecha` date NOT NULL DEFAULT curdate(),
+  `fecha` date NOT NULL,
   `estado` enum('pendiente','servido','cancelado') DEFAULT 'pendiente',
   `created_by` bigint(20) UNSIGNED DEFAULT NULL,
   `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
