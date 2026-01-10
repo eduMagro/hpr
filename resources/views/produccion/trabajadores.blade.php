@@ -31,7 +31,7 @@
                 'festivo' => [
                     'store' => route('festivos.store'),
                     'update' => route('festivos.actualizarFecha', ['festivo' => '__ID__']),
-                    'delete' => route('festivos.eliminar', ['festivo' => '__ID__']),
+                    'delete' => route('festivos.destroy', ['festivo' => '__ID__']),
                 ],
                 'asignacion' => [
                     'delete' => route('asignaciones-turnos.destroy', ['asignacion' => '__ID__']),
