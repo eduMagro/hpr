@@ -25,6 +25,7 @@ return [
         'inventario-backups.', // ✅ acceso para ver backups de inventario
         'incorporaciones.descargarMiContrato', // ✅ acceso para descargar su contrato
         'usuarios.getVacationData', // ✅ acceso para ver datos de vacaciones propios
+        'vacaciones.verMisSolicitudesPendientes', // ✅ acceso para ver solicitudes pendientes en calendario
     ],
 
     // 📌 Prefijos que deben salir en el dashboard para operarios

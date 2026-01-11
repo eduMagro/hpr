@@ -66,7 +66,7 @@ class PerfilController extends Controller
                 'storeUrl' => route('asignaciones-turnos.store'),
                 'destroyUrl' => route('asignaciones-turnos.destroy'),
                 'vacationDataUrl' => route('usuarios.getVacationData', ['user' => $user->id]),
-                'misSolicitudesPendientesUrl' => route('vacaciones.misSolicitudesPendientes'),
+                'misSolicitudesPendientesUrl' => route('vacaciones.verMisSolicitudesPendientes'),
                 'eliminarSolicitudUrl' => url('/vacaciones/solicitud'),
                 'eliminarDiasSolicitudUrl' => route('vacaciones.eliminarDiasSolicitud'),
             ],
