@@ -108,7 +108,7 @@ class User extends Authenticatable
 
     public function getFechaIncorporacionEfectivaAttribute()
     {
-        return $this->incorporacion?->fecha_incorporacion ?? $this->fecha_incorporacion;
+        return $this->incorporacion?->fecha_incorporacion;
     }
 
     /**
