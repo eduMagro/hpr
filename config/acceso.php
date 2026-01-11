@@ -26,6 +26,8 @@ return [
         'incorporaciones.descargarMiContrato', // ✅ acceso para descargar su contrato
         'usuarios.getVacationData', // ✅ acceso para ver datos de vacaciones propios
         'vacaciones.verMisSolicitudesPendientes', // ✅ acceso para ver solicitudes pendientes en calendario
+        'vacaciones.eliminarSolicitud', // ✅ acceso para eliminar solicitudes propias de vacaciones
+        'vacaciones.eliminarDiasSolicitud', // ✅ acceso para eliminar días específicos de solicitud
     ],
 
     // 📌 Prefijos que deben salir en el dashboard para operarios
