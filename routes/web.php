@@ -349,6 +349,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/vacaciones/reprogramar', [VacacionesController::class, 'reprogramar'])->name('vacaciones.reprogramar');
     Route::post('/vacaciones/eliminar-evento', [VacacionesController::class, 'eliminarEvento'])->name('vacaciones.eliminarEvento');
     Route::get('/vacaciones/mis-solicitudes-pendientes', [VacacionesController::class, 'misSolicitudesPendientes'])->name('vacaciones.verMisSolicitudesPendientes');
+    Route::get('/vacaciones/solicitudes-pendientes/{user}', [VacacionesController::class, 'verSolicitudesPendientesUsuario'])->name('vacaciones.verSolicitudesPendientesUsuario');
     Route::delete('/vacaciones/solicitud/{id}', [VacacionesController::class, 'eliminarSolicitud'])->name('vacaciones.eliminarSolicitud');
     Route::post('/vacaciones/solicitud/eliminar-dias', [VacacionesController::class, 'eliminarDiasSolicitud'])->name('vacaciones.eliminarDiasSolicitud');
     Route::post('/vacaciones/{id}/aprobar', [VacacionesController::class, 'aprobar'])->name('vacaciones.editarAprobar');

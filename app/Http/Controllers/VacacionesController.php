@@ -923,6 +923,33 @@ class VacacionesController extends Controller
     }
 
     /**
+     * Obtener solicitudes pendientes de un usuario específico (solo lectura, para oficina)
+     */
+    public function verSolicitudesPendientesUsuario(User $user)
+    {
+        // Solo oficina puede ver solicitudes de otros usuarios
+        if (auth()->user()->rol !== 'oficina' && auth()->id() !== $user->id) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        $solicitudes = VacacionesSolicitud::where('user_id', $user->id)
+            ->where('estado', 'pendiente')
+            ->orderBy('fecha_inicio')
+            ->get()
+            ->map(function ($s) {
+                return [
+                    'id' => $s->id,
+                    'fecha_inicio' => $s->fecha_inicio,
+                    'fecha_fin' => $s->fecha_fin,
+                    'estado' => $s->estado,
+                    'created_at' => $s->created_at->format('Y-m-d H:i'),
+                ];
+            });
+
+        return response()->json($solicitudes);
+    }
+
+    /**
      * Asignar vacaciones directamente a un usuario (sin solicitud previa)
      */
     public function asignarDirecto(Request $request)

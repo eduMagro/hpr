@@ -773,8 +773,10 @@
 
                 // Cargar eventos normales Y solicitudes pendientes en paralelo
                 const eventosPromise = fetch(routes.eventosUrl).then(r => r.json());
-                const solicitudesPromise = routes.misSolicitudesPendientesUrl
-                    ? fetch(routes.misSolicitudesPendientesUrl).then(r => r.json()).catch(() => [])
+                // Usar solicitudesPendientesUrl (users.show) o misSolicitudesPendientesUrl (mi-perfil)
+                const solicitudesUrl = routes.solicitudesPendientesUrl || routes.misSolicitudesPendientesUrl;
+                const solicitudesPromise = solicitudesUrl
+                    ? fetch(solicitudesUrl).then(r => r.json()).catch(() => [])
                     : Promise.resolve([]);
 
                 Promise.all([eventosPromise, solicitudesPromise])
@@ -1110,6 +1112,33 @@
                     const fechaInicio = props.fecha_inicio;
                     const fechaFin = props.fecha_fin;
                     const fechaActual = props.fecha;
+
+                    // Verificar si se puede eliminar (solo en mi-perfil, no en users.show de otros)
+                    const puedeEliminar = !!routes.eliminarSolicitudUrl;
+
+                    // Si no puede eliminar, mostrar solo modal informativo
+                    if (!puedeEliminar) {
+                        const esMismoDiaInfo = fechaInicio === fechaFin;
+                        Swal.fire({
+                            title: 'Solicitud de Vacaciones Pendiente',
+                            html: `
+                                <div style="text-align: left;">
+                                    <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px;">
+                                        <p style="margin: 0; font-size: 14px; color: #92400e;">
+                                            <strong>Estado:</strong> Pendiente de aprobacion
+                                        </p>
+                                        <p style="margin: 4px 0 0 0; font-size: 13px; color: #92400e;">
+                                            ${esMismoDiaInfo ? `Fecha: ${fechaInicio}` : `Del ${fechaInicio} al ${fechaFin}`}
+                                        </p>
+                                    </div>
+                                </div>
+                            `,
+                            confirmButtonText: 'Cerrar',
+                            confirmButtonColor: '#3b82f6',
+                            width: 400,
+                        });
+                        return;
+                    }
 
                     // Obtener festivos del calendario
                     const eventosCal = calendar.getEvents();

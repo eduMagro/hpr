@@ -400,6 +400,7 @@ class ProfileController extends Controller
                 'storeUrl' => route('asignaciones-turnos.store'),
                 'destroyUrl' => route('asignaciones-turnos.destroy'),
                 'vacationDataUrl' => route('usuarios.getVacationData', ['user' => $user->id]),
+                'solicitudesPendientesUrl' => route('vacaciones.verSolicitudesPendientesUsuario', ['user' => $user->id]),
             ],
             'enableListMonth' => true,
             'mobileBreakpoint' => 768,
