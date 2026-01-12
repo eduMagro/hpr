@@ -38,9 +38,6 @@ class PlanillasTable extends Component
     #[Url(keep: true)]
     public $seccionTextoLibre = '';
 
-    // Dropdown de secciones abierto/cerrado
-    public $seccionesDropdownAbierto = false;
-
     #[Url(keep: true)]
     public $descripcion = '';
 
@@ -318,7 +315,6 @@ class PlanillasTable extends Component
             'nom_obra',
             'secciones',
             'seccionTextoLibre',
-            'seccionesDropdownAbierto',
             'descripcion',
             'ensamblado',
             'comentario',
@@ -334,14 +330,6 @@ class PlanillasTable extends Component
             'order'
         ]);
         $this->resetPage();
-    }
-
-    /**
-     * Toggle para abrir/cerrar el dropdown de secciones
-     */
-    public function toggleSeccionesDropdown()
-    {
-        $this->seccionesDropdownAbierto = !$this->seccionesDropdownAbierto;
     }
 
     /**

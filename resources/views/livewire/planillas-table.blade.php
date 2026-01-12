@@ -158,7 +158,7 @@
                                 class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Obra...">
                         </th>
-                        <th class="p-1 border relative" x-data="{ open: @entangle('seccionesDropdownAbierto') }" @click.outside="open = false">
+                        <th class="p-1 border relative" x-data="{ open: false }" @click.outside="open = false">
                             <div class="relative">
                                 <button type="button" @click="open = !open"
                                     class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none flex items-center justify-between gap-1 {{ count($secciones) > 0 || !empty($seccionTextoLibre) ? 'bg-blue-50 border-blue-400' : '' }}">
