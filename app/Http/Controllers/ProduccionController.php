@@ -1615,47 +1615,9 @@ class ProduccionController extends Controller
             $primeraOrden = $planillasOrdenadas[0] ?? null;
             $primeraId = is_array($primeraOrden) ? ($primeraOrden['planilla_id'] ?? null) : $primeraOrden;
 
-            // CORRECCIÓN: Ordenar para que las planillas FABRICANDO se procesen PRIMERO
-            // Esto asegura que la cola se ajuste correctamente antes de procesar las pendientes
-            // IMPORTANTE: Si hay múltiples fabricando, ordenar por fecha_inicio más antigua primero
-            usort($planillasOrdenadas, function($a, $b) use ($agrupadasIndex, $maquinaId) {
-                $planillaIdA = is_array($a) ? ($a['planilla_id'] ?? null) : $a;
-                $planillaIdB = is_array($b) ? ($b['planilla_id'] ?? null) : $b;
-
-                $claveA = "{$planillaIdA}-{$maquinaId}";
-                $claveB = "{$planillaIdB}-{$maquinaId}";
-
-                $dataA = $agrupadasIndex->get($claveA);
-                $dataB = $agrupadasIndex->get($claveB);
-
-                $planillaA = $dataA ? Arr::get($dataA, 'planilla') : null;
-                $planillaB = $dataB ? Arr::get($dataB, 'planilla') : null;
-
-                $estadoA = $planillaA->estado ?? 'pendiente';
-                $estadoB = $planillaB->estado ?? 'pendiente';
-
-                // Fabricando primero, luego pendiente
-                if ($estadoA === 'fabricando' && $estadoB !== 'fabricando') return -1;
-                if ($estadoB === 'fabricando' && $estadoA !== 'fabricando') return 1;
-
-                // Si ambas están fabricando, ordenar por fecha_inicio (la más antigua primero)
-                if ($estadoA === 'fabricando' && $estadoB === 'fabricando') {
-                    $fechaA = $planillaA->fecha_inicio ? strtotime($planillaA->fecha_inicio) : PHP_INT_MAX;
-                    $fechaB = $planillaB->fecha_inicio ? strtotime($planillaB->fecha_inicio) : PHP_INT_MAX;
-                    if ($fechaA !== $fechaB) {
-                        return $fechaA <=> $fechaB;
-                    }
-                }
-
-                // Mantener orden original para planillas con mismo estado
-                $posA = is_array($a) ? ($a['posicion'] ?? 999) : 999;
-                $posB = is_array($b) ? ($b['posicion'] ?? 999) : 999;
-                return $posA <=> $posB;
-            });
-
-            // Flag para trackear si ya procesamos la primera planilla fabricando
-            // Solo la primera puede usar su propia fecha_inicio, las demás usan la cola
-            $primeraFabricandoProcesada = false;
+            // NO reordenar: procesar en el orden real de posición (orden_planillas)
+            // Cada evento empieza donde termina el anterior
+            $esPrimeraEnCola = true;
 
             foreach ($planillasOrdenadas as $ordenData) {
                 // Soporte para ambos formatos: array con datos o solo ID
@@ -1740,15 +1702,14 @@ class ProduccionController extends Controller
                             $fechaInicioMasAntigua = $fechasInicio->min();
                         }
 
-                        // Determinar fecha de inicio y duración
-                        // CORRECCIÓN: Solo la PRIMERA planilla fabricando puede usar su propia fecha_inicio
-                        // Las demás (aunque estén fabricando) deben continuar en la cola
-                        $usarFechaInicioPropia = $fechaInicioMasAntigua && !$primeraFabricandoProcesada;
+                        // Determinar fecha de inicio:
+                        // - Primera planilla en cola Y fabricando: usa su fecha_inicio real
+                        // - Todas las demás: empiezan donde termina la anterior
+                        $usarFechaInicioPropia = $esPrimeraEnCola && $fechaInicioMasAntigua && $planilla->estado === 'fabricando';
 
                         if ($usarFechaInicioPropia) {
                             // Primera planilla fabricando: usar su fecha de inicio real
                             $fechaInicio = $fechaInicioMasAntigua;
-                            $primeraFabricandoProcesada = true;
 
                             // Duración de elementos pendientes (aún no fabricados)
                             $duracionPendientes = $elementosPendientes->sum(function($elemento) {
@@ -1758,15 +1719,17 @@ class ProduccionController extends Controller
                             });
 
                             // El evento se alarga hasta now() + tiempo pendiente
-                            // Esto permite ver cuánto se está alargando realmente
                             $tiempoTranscurrido = $fechaInicio->diffInSeconds(Carbon::now());
                             $duracionSegundos = $tiempoTranscurrido + $duracionPendientes;
                             $duracionSegundos = max($duracionSegundos, 3600);
 
                         } else {
-                            // Demás planillas (pendientes O fabricando pero no la primera): usar cola
+                            // Demás planillas: empiezan donde termina la anterior
                             $fechaInicio = $inicioCola->copy();
                         }
+
+                        // Ya no es la primera en cola después del primer evento
+                        $esPrimeraEnCola = false;
 
                         $tramos = $this->finProgramadoService->generarTramosLaborales($fechaInicio, $duracionSegundos);
 
