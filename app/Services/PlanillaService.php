@@ -95,6 +95,9 @@ class PlanillaService
 
     public function completarTodasPlanillas(?array $planillaIds = null): array
     {
+        // Sin límite de tiempo para procesar muchas planillas
+        set_time_limit(0);
+
         $ok = 0;
         $fail = 0;
         $errores = [];
