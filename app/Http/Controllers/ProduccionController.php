@@ -1397,6 +1397,23 @@ class ProduccionController extends Controller
                         $cursor = $inicioSeg->copy();
                     }
 
+                    // CORTE VIERNES A LAS 22:00 - No trabajar después de las 22:00 los viernes
+                    if ($cursor->dayOfWeek === Carbon::FRIDAY) {
+                        $finViernesTarde = $cursor->copy()->setTime(22, 0, 0);
+                        if ($cursor->gte($finViernesTarde)) {
+                            // Ya pasaron las 22:00 del viernes, saltar al siguiente día laborable
+                            break;
+                        }
+                        if ($finSeg->gt($finViernesTarde)) {
+                            $finSeg = $finViernesTarde;
+                        }
+                    }
+
+                    // NO TRABAJAR SÁBADOS - saltar directamente
+                    if ($cursor->isSaturday()) {
+                        break;
+                    }
+
                     // Calcular cuánto podemos consumir de este segmento
                     $capacidadSeg = max(0, $cursor->diffInSeconds($finSeg, false));
                     $consume = min($restante, $capacidadSeg);
@@ -2115,54 +2132,65 @@ class ProduccionController extends Controller
                             $backgroundColor = ($fechaEntrega && $fechaFinReal->gt($fechaEntrega)) ? '#ef4444' : '#22c55e';
                         }
 
-                        // COMPACTAR: Crear UN SOLO evento que abarque todos los tramos
-                        $primerTramo = reset($tramos);
-                        $ultimoTramo = end($tramos);
-
-                        $eventoInicio = $primerTramo['start'] instanceof Carbon ? $primerTramo['start'] : Carbon::parse($primerTramo['start']);
-                        $eventoFin = $ultimoTramo['end'] instanceof Carbon ? $ultimoTramo['end'] : Carbon::parse($ultimoTramo['end']);
-
+                        // CREAR UN EVENTO POR CADA TRAMO para respetar cortes de turno
                         // Título del evento con advertencia si no está revisada
                         $tituloEvento = $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id);
                         if (!$planilla->revisada) {
                             $tituloEvento = '⚠️ ' . $tituloEvento . ' (SIN REVISAR)';
                         }
 
-                        // ID único compacto (sin segmento)
-                        $eventoId = 'planilla-' . $planilla->id . '-maq' . $maquinaId . '-orden' . $ordenKey;
-                        if (isset($ordenId) && $ordenId !== null) {
-                            $eventoId .= '-ord' . $ordenId;
-                        }
+                        // Propiedades comunes para todos los tramos de este evento
+                        $propsComunes = [
+                            'planilla_id'    => $planilla->id,
+                            'obra'           => optional($planilla->obra)->obra ?? '—',
+                            'cod_obra'       => optional($planilla->obra)->cod_obra ?? '—',
+                            'cliente'        => optional($planilla->obra->cliente)->empresa ?? '—',
+                            'cod_cliente'    => optional($planilla->obra->cliente)->codigo ?? '—',
+                            'codigo_planilla' => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
+                            'estado'         => $planilla->estado,
+                            'duracion_horas' => round($duracionSegundos / 3600, 2),
+                            'progreso'       => $progreso,
+                            'fecha_entrega'  => $fechaEntrega?->format('d/m/Y H:i') ?? '—',
+                            'fin_programado' => $fechaFinReal->format('d/m/Y H:i'),
+                            'codigos_elementos' => $subGrupo->pluck('codigo')->values(),
+                            'elementos_id'      => $subGrupo->pluck('id')->values(),
+                            'revisada'          => $planilla->revisada,
+                            'revisada_por'      => optional($planilla->revisor)->name,
+                            'revisada_at'       => $planilla->revisada_at?->format('d/m/Y H:i'),
+                            'total_tramos'      => count($tramos),
+                        ];
 
-                        $planillasEventos->push([
-                            'id'              => $eventoId,
-                            'title'           => $tituloEvento,
-                            'codigo'          => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
-                            'start'           => $eventoInicio->toIso8601String(),
-                            'end'             => $eventoFin->toIso8601String(),
-                            'resourceId'      => $maquinaId,
-                            'backgroundColor' => $backgroundColor,
-                            'borderColor'     => !$planilla->revisada ? '#757575' : null,
-                            'classNames'      => !$planilla->revisada ? ['evento-sin-revisar'] : ['evento-revisado'],
-                            'extendedProps' => [
-                                'planilla_id'    => $planilla->id,
-                                'obra'           => optional($planilla->obra)->obra ?? '—',
-                                'cod_obra'       => optional($planilla->obra)->cod_obra ?? '—',
-                                'cliente'        => optional($planilla->obra->cliente)->empresa ?? '—',
-                                'cod_cliente'    => optional($planilla->obra->cliente)->codigo ?? '—',
-                                'codigo_planilla' => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
-                                'estado'         => $planilla->estado,
-                                'duracion_horas' => round($duracionSegundos / 3600, 2),
-                                'progreso'       => $progreso,
-                                    'fecha_entrega'  => $fechaEntrega?->format('d/m/Y H:i') ?? '—',
-                                    'fin_programado' => $fechaFinReal->format('d/m/Y H:i'),
-                                    'codigos_elementos' => $subGrupo->pluck('codigo')->values(),
-                                    'elementos_id'      => $subGrupo->pluck('id')->values(),
-                                    'revisada'          => $planilla->revisada,
-                                    'revisada_por'      => optional($planilla->revisor)->name,
-                                    'revisada_at'       => $planilla->revisada_at?->format('d/m/Y H:i'),
-                                ],
-                        ]);
+                        // Crear un evento por cada tramo
+                        foreach ($tramos as $tramoIdx => $tramo) {
+                            $tramoStart = $tramo['start'] instanceof Carbon ? $tramo['start'] : Carbon::parse($tramo['start']);
+                            $tramoEnd = $tramo['end'] instanceof Carbon ? $tramo['end'] : Carbon::parse($tramo['end']);
+
+                            // ID único incluyendo índice de tramo
+                            $eventoId = 'planilla-' . $planilla->id . '-maq' . $maquinaId . '-orden' . $ordenKey . '-tramo' . $tramoIdx;
+                            if (isset($ordenId) && $ordenId !== null) {
+                                $eventoId .= '-ord' . $ordenId;
+                            }
+
+                            // Añadir info del tramo a las propiedades
+                            $propsTramo = array_merge($propsComunes, [
+                                'tramo_idx' => $tramoIdx + 1,
+                                'tramo_inicio' => $tramoStart->format('d/m/Y H:i'),
+                                'tramo_fin' => $tramoEnd->format('d/m/Y H:i'),
+                            ]);
+
+                            $planillasEventos->push([
+                                'id'              => $eventoId,
+                                'title'           => $tituloEvento,
+                                'codigo'          => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
+                                'start'           => $tramoStart->toIso8601String(),
+                                'end'             => $tramoEnd->toIso8601String(),
+                                'resourceId'      => $maquinaId,
+                                'backgroundColor' => $backgroundColor,
+                                'borderColor'     => !$planilla->revisada ? '#757575' : null,
+                                'classNames'      => !$planilla->revisada ? ['evento-sin-revisar'] : ['evento-revisado'],
+                                'extendedProps'   => $propsTramo,
+                            ]);
+                        }
 
                         // Actualizar inicioCola para el siguiente sub-grupo
                         $inicioCola = $fechaFinReal->copy();

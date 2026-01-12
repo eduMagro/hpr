@@ -375,6 +375,10 @@ class FinProgramadoService
                 // Corte viernes a las 22:00
                 if ($cursor->dayOfWeek === Carbon::FRIDAY) {
                     $finViernesTarde = $cursor->copy()->setTime(22, 0, 0);
+                    if ($cursor->gte($finViernesTarde)) {
+                        // Ya pasaron las 22:00 del viernes, saltar al siguiente día laborable
+                        break;
+                    }
                     if ($finSeg->gt($finViernesTarde)) {
                         $finSeg = $finViernesTarde;
                     }
