@@ -1,14 +1,13 @@
-<style>
-    /* Evitar zoom en iOS al enfocar inputs en la vista móvil */
-    .users-mobile input,
-    .users-mobile textarea,
-    .users-mobile select,
-    .users-mobile button {
-        font-size: 16px;
-    }
-</style>
-
 <div x-data="agendaUsuarios(@js($contactosAgenda ?? collect()))" class="users-mobile md:hidden mt-4 space-y-3">
+    <style>
+        /* Evitar zoom en iOS al enfocar inputs en la vista móvil */
+        .users-mobile input,
+        .users-mobile textarea,
+        .users-mobile select,
+        .users-mobile button {
+            font-size: 16px;
+        }
+    </style>
     <div class="sticky top-0 z-20 bg-white border border-gray-200 shadow-sm rounded-lg">
         <div class="flex items-center gap-2 px-4 py-3">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
@@ -210,12 +209,6 @@
                             class="w-full border rounded px-2 py-1 text-sm text-gray-800" placeholder="Máquina">
                     </div>
                     <div>
-                        <p class="text-gray-500">Turno</p>
-                        <p class="text-gray-900 font-semibold" x-show="!editando" x-text="seleccionado?.turno || 'No definido'"></p>
-                        <input x-show="editando" type="text" x-model="seleccionado.turno"
-                            class="w-full border rounded px-2 py-1 text-sm text-gray-800" placeholder="Turno">
-                    </div>
-                    <div>
                         <p class="text-gray-500">DNI</p>
                         <p class="text-gray-900 font-semibold" x-show="!editando" x-text="seleccionado?.dni || 'N/D'"></p>
                         <input x-show="editando" type="text" x-model="seleccionado.dni"
@@ -255,10 +248,9 @@
             </div>
         </div>
     </div>
-</div>
 
-<script>
-    function agendaUsuarios(contactos) {
+    <script>
+        function agendaUsuarios(contactos) {
         return {
             filtro: '',
             contactos,
@@ -344,7 +336,6 @@
                             empresa: this.seleccionado.empresa,
                             categoria: this.seleccionado.categoria,
                             maquina: this.seleccionado.maquina,
-                            turno: this.seleccionado.turno,
                         })
                     });
                     const data = await resp.json();
@@ -384,4 +375,5 @@
             },
         };
     }
-</script>
+    </script>
+</div>
