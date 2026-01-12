@@ -420,11 +420,24 @@ class FerrawinBulkImportService
             ->whereDoesntHave('elementos')
             ->delete();
 
-        // Reimportar elementos
-        $this->crearElementosBulk($planilla, $data['elementos'] ?? []);
+        // Reimportar elementos con el mapa de entidades actualizado
+        $mapaEntidades = [];
+        $entidadesCreadas = PlanillaEntidad::where('planilla_id', $planilla->id)->get();
+        foreach ($entidadesCreadas as $entidad) {
+            $lineaNormalizada = ltrim($entidad->linea, '0');
+            if (empty($lineaNormalizada)) {
+                $lineaNormalizada = '0';
+            }
+            $mapaEntidades[$lineaNormalizada] = $entidad->id;
+        }
+
+        $this->crearElementosBulk($planilla, $data['elementos'] ?? [], $mapaEntidades);
 
         // Reasignar máquinas
         $this->asignador->repartirPlanilla($planilla->id);
+
+        // Aplicar política de subetiquetas (FALTABA!)
+        $this->processor->aplicarPoliticaSubetiquetasPostAsignacion($planilla);
 
         // Actualizar totales
         $this->actualizarTiempoTotal($planilla);

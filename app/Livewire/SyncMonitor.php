@@ -20,10 +20,22 @@ class SyncMonitor extends Component
     public string $currentYear = '-';
     public string $lastUpdate = '-';
     public bool $isRunning = false;
+    public bool $isPausing = false; // Indica que se solicitó pausa y está esperando
     public string $activeTab = 'logs'; // 'logs' o 'errors'
 
     // Directorio de logs de ferrawin-sync
     protected string $logsDir = 'C:\\xampp\\htdocs\\ferrawin-sync\\logs';
+    protected string $syncDir = 'C:\\xampp\\htdocs\\ferrawin-sync';
+
+    // Para continuar sincronización
+    public ?string $ultimaPlanilla = null;
+    public ?string $ultimoAño = null;
+
+    // Para el modal de confirmación de año
+    public bool $showYearConfirm = false;
+    public ?string $selectedYear = null;
+    public int $yearPlanillasCount = 0;
+    public ?string $yearLastPlanilla = null;
 
     public function mount()
     {
@@ -52,8 +64,16 @@ class SyncMonitor extends Component
         $this->totalPlanillas = Planilla::count();
         $this->totalElementos = Elemento::count();
 
-        // Leer logs
+        // Leer logs (actualiza $this->isRunning)
         $this->readLogs();
+
+        // Si estaba pausando y ya no está corriendo, resetear el flag
+        if ($this->isPausing && !$this->isRunning) {
+            $this->isPausing = false;
+        }
+
+        // Detectar última planilla para poder continuar
+        $this->detectarUltimaPlanilla();
 
         $this->lastUpdate = now()->format('H:i:s');
     }
@@ -175,12 +195,224 @@ class SyncMonitor extends Component
             }
         }
 
-        // Verificar si el proceso está corriendo (última línea reciente)
-        $lastLine = end($lines);
-        if (preg_match('/\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]/', $lastLine, $timeMatch)) {
-            $lastTime = strtotime($timeMatch[1]);
-            $this->isRunning = (time() - $lastTime) < 300; // Activo si última entrada < 5 min
+        // Verificar si el proceso está corriendo
+        // Método 1: Verificar si existe el archivo PID (más confiable)
+        $pidFile = $this->syncDir . '\\sync.pid';
+        if (file_exists($pidFile)) {
+            $this->isRunning = true;
+        } else {
+            // Método 2: Fallback - verificar si última entrada es reciente Y no es "completada"
+            $lastLine = end($lines);
+            if (preg_match('/\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]/', $lastLine, $timeMatch)) {
+                $lastTime = strtotime($timeMatch[1]);
+                $isRecent = (time() - $lastTime) < 120; // 2 minutos
+                $isCompleted = str_contains($lastLine, 'completada') || str_contains($lastLine, 'completado');
+                $this->isRunning = $isRecent && !$isCompleted;
+            } else {
+                $this->isRunning = false;
+            }
         }
+    }
+
+    /**
+     * Detecta la última planilla que se estaba procesando.
+     * Busca en los logs la última línea con "Preparando XXXX-YYYYYY"
+     */
+    protected function detectarUltimaPlanilla(): void
+    {
+        if (!File::isDirectory($this->logsDir)) {
+            return;
+        }
+
+        // Obtener el archivo de log más reciente
+        $logFiles = collect(File::files($this->logsDir))
+            ->filter(fn($f) => str_starts_with($f->getFilename(), 'sync-'))
+            ->sortByDesc(fn($f) => $f->getMTime())
+            ->values();
+
+        if ($logFiles->isEmpty()) {
+            return;
+        }
+
+        // Leer el archivo más reciente
+        $content = File::get($logFiles->first()->getPathname());
+        $lines = array_reverse(explode("\n", $content));
+
+        // Buscar la última planilla que se estaba preparando
+        foreach ($lines as $line) {
+            if (preg_match('/Preparando (\d{4})-(\d+)/', $line, $matches)) {
+                $this->ultimoAño = $matches[1];
+                $this->ultimaPlanilla = "{$matches[1]}-{$matches[2]}";
+                return;
+            }
+        }
+    }
+
+    /**
+     * Abre el modal de confirmación mostrando info del año seleccionado.
+     */
+    public function seleccionarAño(string $año)
+    {
+        if ($this->isRunning) {
+            session()->flash('error', 'Ya hay una sincronización en ejecución');
+            return;
+        }
+
+        $this->selectedYear = $año;
+
+        // Obtener estadísticas del año desde la BD
+        $stats = Planilla::selectRaw("
+                COUNT(*) as total,
+                MAX(codigo) as ultima
+            ")
+            ->whereRaw("codigo LIKE ?", ["{$año}-%"])
+            ->first();
+
+        $this->yearPlanillasCount = $stats->total ?? 0;
+        $this->yearLastPlanilla = $stats->ultima;
+
+        $this->showYearConfirm = true;
+    }
+
+    /**
+     * Cierra el modal de confirmación de año.
+     */
+    public function cerrarYearConfirm()
+    {
+        $this->showYearConfirm = false;
+        $this->selectedYear = null;
+    }
+
+    /**
+     * Inicia sincronización desde cero para el año seleccionado.
+     */
+    public function confirmarSyncCompleta()
+    {
+        if (!$this->selectedYear) return;
+
+        $this->ejecutarSync($this->selectedYear, null);
+        $this->showYearConfirm = false;
+    }
+
+    /**
+     * Continúa sincronización desde la última planilla del año.
+     */
+    public function confirmarSyncContinuar()
+    {
+        if (!$this->selectedYear || !$this->yearLastPlanilla) return;
+
+        $this->ejecutarSync($this->selectedYear, $this->yearLastPlanilla);
+        $this->showYearConfirm = false;
+    }
+
+    /**
+     * Ejecuta la sincronización con los parámetros especificados.
+     */
+    protected function ejecutarSync(string $año, ?string $desdeCodigo = null)
+    {
+        // Limpiar archivo de pausa si existe
+        $pauseFile = $this->syncDir . '\\sync.pause';
+        if (file_exists($pauseFile)) {
+            unlink($pauseFile);
+        }
+
+        $phpPath = 'C:\\xampp\\php\\php.exe';
+        $scriptPath = $this->syncDir . '\\sync-optimizado.php';
+
+        // Construir argumentos
+        $args = "--año={$año}";
+        $mensaje = "Sincronización {$año} iniciada desde cero";
+
+        if ($desdeCodigo) {
+            $args .= " --desde-codigo={$desdeCodigo}";
+            $mensaje = "Sincronización {$año} continuando desde {$desdeCodigo}";
+        }
+
+        // Crear archivo batch para ejecutar
+        $batchFile = $this->syncDir . '\\run-sync.bat';
+        $batchContent = "@echo off\r\n";
+        $batchContent .= "cd /d \"{$this->syncDir}\"\r\n";
+        $batchContent .= "\"{$phpPath}\" \"{$scriptPath}\" {$args}\r\n";
+
+        // Log para debug
+        \Log::info("SyncMonitor: Creando batch file", ['path' => $batchFile, 'args' => $args]);
+
+        if (file_put_contents($batchFile, $batchContent) === false) {
+            \Log::error("SyncMonitor: No se pudo crear el archivo batch");
+            session()->flash('error', 'Error: No se pudo crear el archivo de ejecución');
+            return;
+        }
+
+        // Ejecutar en background SIN ventana visible
+        // Usar WScript.Shell con vbHide (0) para ocultar completamente
+        $vbsFile = $this->syncDir . '\\run-sync.vbs';
+        $vbsContent = 'Set WshShell = CreateObject("WScript.Shell")' . "\r\n";
+        // Ejecutar PHP directamente sin cmd para evitar ventana de consola
+        $vbsContent .= 'WshShell.Run """' . $phpPath . '"" ""' . $scriptPath . '"" ' . $args . '", 0, False' . "\r\n";
+        file_put_contents($vbsFile, $vbsContent);
+
+        // Ejecutar el VBS en modo oculto
+        $cmd = "wscript //nologo \"{$vbsFile}\"";
+        exec($cmd, $output, $returnCode);
+
+        \Log::info("SyncMonitor: Proceso iniciado (oculto)", [
+            'returnCode' => $returnCode
+        ]);
+
+        session()->flash('message', $mensaje);
+        $this->isRunning = true;
+    }
+
+    /**
+     * @deprecated Usar seleccionarAño() en su lugar
+     */
+    public function iniciarSyncCompleta(string $año = '2025')
+    {
+        $this->seleccionarAño($año);
+    }
+
+    /**
+     * Pausa la sincronización en ejecución.
+     * Crea un archivo de señal que el script sync.php detectará.
+     */
+    public function pausarSync()
+    {
+        if (!$this->isRunning) {
+            session()->flash('error', 'No hay sincronización en ejecución');
+            return;
+        }
+
+        $pauseFile = $this->syncDir . '\\sync.pause';
+
+        // Crear archivo de pausa
+        file_put_contents($pauseFile, date('Y-m-d H:i:s'));
+
+        // Activar indicador de pausando
+        $this->isPausing = true;
+
+        session()->flash('message', 'Señal de pausa enviada. Esperando que la sincronización se detenga...');
+
+        // Forzar refresh para actualizar estado
+        $this->refresh();
+    }
+
+    /**
+     * Continúa la sincronización desde la última planilla procesada.
+     */
+    public function continuarSync()
+    {
+        if ($this->isRunning) {
+            session()->flash('error', 'Ya hay una sincronización en ejecución');
+            return;
+        }
+
+        if (!$this->ultimaPlanilla || !$this->ultimoAño) {
+            session()->flash('error', 'No se pudo detectar la última planilla. Inicia una nueva sincronización.');
+            return;
+        }
+
+        // Usar el método centralizado de ejecución
+        $this->ejecutarSync($this->ultimoAño, $this->ultimaPlanilla);
     }
 
     public function render()
