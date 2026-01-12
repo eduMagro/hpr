@@ -25,4 +25,6 @@ vite.config.js
 print-service/print_service.log
 print-service/venv/
 print-service/__pycache__/
-readme
+readme*.tmp
+tmpclaude-*
+compose.yaml
