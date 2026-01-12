@@ -12,7 +12,15 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('secciones')) {
+            return;
+        }
+
         Schema::table('secciones', function (Blueprint $table) {
+            if (Schema::hasColumn('secciones', 'orden')) {
+                return;
+            }
+
             $table->unsignedInteger('orden')->default(0)->after('mostrar_en_dashboard');
         });
 
@@ -25,7 +33,15 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('secciones')) {
+            return;
+        }
+
         Schema::table('secciones', function (Blueprint $table) {
+            if (!Schema::hasColumn('secciones', 'orden')) {
+                return;
+            }
+
             $table->dropColumn('orden');
         });
     }

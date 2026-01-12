@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (!Schema::hasTable('movimientos')) {
+            return;
+        }
+
         Schema::table('movimientos', function (Blueprint $table) {
             if (Schema::hasColumn('movimientos', 'ocr_log_id')) {
                 return;
@@ -20,6 +24,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (!Schema::hasTable('movimientos')) {
+            return;
+        }
+
         Schema::table('movimientos', function (Blueprint $table) {
             if (!Schema::hasColumn('movimientos', 'ocr_log_id')) {
                 return;
@@ -30,4 +38,3 @@ return new class extends Migration
         });
     }
 };
-

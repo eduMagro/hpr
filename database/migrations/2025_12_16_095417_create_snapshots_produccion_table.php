@@ -1,6 +1,7 @@
 <?php
 
 use App\Database\IdempotentSqlMigration;
+use Illuminate\Support\Facades\DB;
 
 return new class extends IdempotentSqlMigration
 {
@@ -19,6 +20,14 @@ CREATE TABLE IF NOT EXISTS `snapshots_produccion` (
 SQL
         );
 
+        if ($this->tableExists('snapshots_produccion') && !$this->columnExists('snapshots_produccion', 'user_id')) {
+            $this->runSql(<<<'SQL'
+ALTER TABLE `snapshots_produccion`
+  ADD COLUMN `user_id` bigint(20) UNSIGNED DEFAULT NULL;
+SQL
+            );
+        }
+
         $this->runSql(<<<'SQL'
 ALTER TABLE `snapshots_produccion`
   ADD PRIMARY KEY (`id`),
@@ -36,5 +45,25 @@ SQL
 
     public function down(): void
     {
+    }
+
+    private function tableExists(string $table): bool
+    {
+        $row = DB::selectOne(
+            'SELECT COUNT(*) AS c FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
+            [$table]
+        );
+
+        return (int) ($row->c ?? 0) > 0;
+    }
+
+    private function columnExists(string $table, string $column): bool
+    {
+        $row = DB::selectOne(
+            'SELECT COUNT(*) AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+            [$table, $column]
+        );
+
+        return (int) ($row->c ?? 0) > 0;
     }
 };
