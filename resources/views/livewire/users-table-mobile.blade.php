@@ -248,132 +248,134 @@
             </div>
         </div>
     </div>
+</div>
 
-    <script>
-        function agendaUsuarios(contactos) {
-        return {
-            filtro: '',
-            contactos,
-            modalAbierto: false,
-            seleccionado: {},
-            editando: false,
-            touchStartY: null,
-            offsetY: 0,
-            cerrandoPorDrag: false,
-            get filtrados() {
-                if (!this.filtro) return this.contactos;
-                const termino = this.filtro.toLowerCase();
-                return this.contactos.filter((c) => (c.nombre_completo || '').toLowerCase().includes(termino));
-            },
-            abrirModal(contacto) {
-                this.seleccionado = JSON.parse(JSON.stringify(contacto || {}));
-                this.editando = false;
-                this.modalAbierto = true;
-                document.body.classList.add('overflow-hidden');
-            },
-            cerrarModal() {
+@push('scripts')
+<script>
+    function agendaUsuarios(contactos) {
+    return {
+        filtro: '',
+        contactos,
+        modalAbierto: false,
+        seleccionado: {},
+        editando: false,
+        touchStartY: null,
+        offsetY: 0,
+        cerrandoPorDrag: false,
+        get filtrados() {
+            if (!this.filtro) return this.contactos;
+            const termino = this.filtro.toLowerCase();
+            return this.contactos.filter((c) => (c.nombre_completo || '').toLowerCase().includes(termino));
+        },
+        abrirModal(contacto) {
+            this.seleccionado = JSON.parse(JSON.stringify(contacto || {}));
+            this.editando = false;
+            this.modalAbierto = true;
+            document.body.classList.add('overflow-hidden');
+        },
+        cerrarModal() {
+            this.modalAbierto = false;
+            this.seleccionado = {};
+            this.editando = false;
+            this.cerrandoPorDrag = false;
+            this.offsetY = 0;
+            this.touchStartY = null;
+            document.body.classList.remove('overflow-hidden');
+        },
+        limpiarTelefono(numero) {
+            return (numero || '').toString().replace(/\s+/g, '');
+        },
+        onTouchStart(e) {
+            this.touchStartY = e.touches?.[0]?.clientY ?? null;
+            this.offsetY = 0;
+        },
+        onTouchMove(e) {
+            if (this.touchStartY === null) return;
+            const currentY = e.touches?.[0]?.clientY ?? 0;
+            const delta = currentY - this.touchStartY;
+            this.offsetY = delta > 0 ? delta : 0;
+        },
+        onTouchEnd() {
+            if (this.offsetY > 80) {
+                // Cerrar el modal sin animación de Alpine.js
                 this.modalAbierto = false;
-                this.seleccionado = {};
-                this.editando = false;
-                this.cerrandoPorDrag = false;
-                this.offsetY = 0;
-                this.touchStartY = null;
-                document.body.classList.remove('overflow-hidden');
-            },
-            limpiarTelefono(numero) {
-                return (numero || '').toString().replace(/\s+/g, '');
-            },
-            onTouchStart(e) {
-                this.touchStartY = e.touches?.[0]?.clientY ?? null;
-                this.offsetY = 0;
-            },
-            onTouchMove(e) {
-                if (this.touchStartY === null) return;
-                const currentY = e.touches?.[0]?.clientY ?? 0;
-                const delta = currentY - this.touchStartY;
-                this.offsetY = delta > 0 ? delta : 0;
-            },
-            onTouchEnd() {
-                if (this.offsetY > 80) {
-                    // Cerrar el modal sin animación de Alpine.js
-                    this.modalAbierto = false;
-                    // Activar animación CSS desde la posición actual
-                    this.cerrandoPorDrag = true;
-                    // Después de la animación, limpiar el estado
-                    setTimeout(() => {
-                        this.cerrandoPorDrag = false;
-                        this.offsetY = 0;
-                        this.touchStartY = null;
-                        this.seleccionado = {};
-                        this.editando = false;
-                        document.body.classList.remove('overflow-hidden');
-                    }, 150);
-                } else {
-                    // Volver a la posición original
+                // Activar animación CSS desde la posición actual
+                this.cerrandoPorDrag = true;
+                // Después de la animación, limpiar el estado
+                setTimeout(() => {
+                    this.cerrandoPorDrag = false;
                     this.offsetY = 0;
                     this.touchStartY = null;
-                }
-            },
-            async guardarSeleccionado() {
-                if (!this.seleccionado?.id) return;
-                try {
-                    const resp = await fetch(`/users/${this.seleccionado.id}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            name: this.seleccionado.nombre,
-                            primer_apellido: this.seleccionado.primer_apellido,
-                            segundo_apellido: this.seleccionado.segundo_apellido,
-                            email: this.seleccionado.email,
-                            movil_personal: this.seleccionado.movil_personal,
-                            movil_empresa: this.seleccionado.movil_empresa,
-                            numero_corto: this.seleccionado.numero_corto,
-                            dni: this.seleccionado.dni,
-                            empresa: this.seleccionado.empresa,
-                            categoria: this.seleccionado.categoria,
-                            maquina: this.seleccionado.maquina,
-                        })
+                    this.seleccionado = {};
+                    this.editando = false;
+                    document.body.classList.remove('overflow-hidden');
+                }, 150);
+            } else {
+                // Volver a la posición original
+                this.offsetY = 0;
+                this.touchStartY = null;
+            }
+        },
+        async guardarSeleccionado() {
+            if (!this.seleccionado?.id) return;
+            try {
+                const resp = await fetch('/users/' + this.seleccionado.id, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: this.seleccionado.nombre,
+                        primer_apellido: this.seleccionado.primer_apellido,
+                        segundo_apellido: this.seleccionado.segundo_apellido,
+                        email: this.seleccionado.email,
+                        movil_personal: this.seleccionado.movil_personal,
+                        movil_empresa: this.seleccionado.movil_empresa,
+                        numero_corto: this.seleccionado.numero_corto,
+                        dni: this.seleccionado.dni,
+                        empresa: this.seleccionado.empresa,
+                        categoria: this.seleccionado.categoria,
+                        maquina: this.seleccionado.maquina,
+                    })
+                });
+                const data = await resp.json();
+                if (resp.ok && data.success) {
+                    Swal.fire({
+                        icon: "success",
+                        title: "Usuario actualizado",
+                        toast: true,
+                        position: "top-end",
+                        timer: 1800,
+                        showConfirmButton: false
                     });
-                    const data = await resp.json();
-                    if (resp.ok && data.success) {
-                        Swal.fire({
-                            icon: "success",
-                            title: "Usuario actualizado",
-                            toast: true,
-                            position: "top-end",
-                            timer: 1800,
-                            showConfirmButton: false
-                        });
-                        this.editando = false;
-                    } else {
-                        const errMsg = data.message || 'No se pudo guardar el usuario.';
-                        Swal.fire({
-                            icon: "error",
-                            title: "Error",
-                            text: errMsg,
-                            toast: true,
-                            position: "top-end",
-                            timer: 2500,
-                            showConfirmButton: false
-                        });
-                    }
-                } catch (e) {
+                    this.editando = false;
+                } else {
+                    const errMsg = data.message || 'No se pudo guardar el usuario.';
                     Swal.fire({
                         icon: "error",
-                        title: "Error de conexión",
-                        text: e.message || "No se pudo guardar el usuario.",
+                        title: "Error",
+                        text: errMsg,
                         toast: true,
                         position: "top-end",
                         timer: 2500,
                         showConfirmButton: false
                     });
                 }
-            },
-        };
-    }
-    </script>
-</div>
+            } catch (e) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error de conexión",
+                    text: e.message || "No se pudo guardar el usuario.",
+                    toast: true,
+                    position: "top-end",
+                    timer: 2500,
+                    showConfirmButton: false
+                });
+            }
+        },
+    };
+}
+</script>
+@endpush

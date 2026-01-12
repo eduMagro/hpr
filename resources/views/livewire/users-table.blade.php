@@ -361,147 +361,203 @@
     </div>
 
     <x-tabla.paginacion-livewire :paginador="$registrosUsuarios" />
+</div>
 
-    <script>
-        function confirmarGenerarTurnos(userId, obras) {
-            // Generar HTML del select con las obras
-            let opcionesObra = obras.map(
-                (obra) => `<option value="${obra.id}">${obra.obra}</option>`
-            ).join("");
+@push('scripts')
+<script>
+    function confirmarGenerarTurnos(userId, obras) {
+        // Generar HTML del select con las obras
+        let opcionesObra = obras.map(
+            (obra) => '<option value="' + obra.id + '">' + obra.obra + '</option>'
+        ).join("");
 
-            let selectHtml = `
-                <div style="text-align: left; margin-bottom: 1em;">
-                    <label for="select-tipo-turno" style="font-weight: bold;">Tipo de turno:</label>
-                    <select id="select-tipo-turno" class="swal2-select" style="margin-top: 0.5em; width: 100%;">
-                        <option value="diurno">Diurno (rota mañana/tarde)</option>
-                        <option value="nocturno">Nocturno</option>
-                        <option value="mañana">Solo mañana</option>
-                    </select>
-                </div>
-                <div style="text-align: left;">
-                    <label for="select-obra" style="font-weight: bold;">Obra asignada:</label>
-                    <select id="select-obra" class="swal2-select" style="margin-top: 0.5em; width: 100%;">
-                        ${opcionesObra}
-                    </select>
-                </div>
-            `;
+        let selectStyle = 'width: 100%; padding: 0.625rem 0.75rem; font-size: 0.875rem; line-height: 1.25rem; ' +
+            'border: 1px solid #d1d5db; border-radius: 0.5rem; background-color: #fff; color: #374151; ' +
+            'box-sizing: border-box; margin: 0; outline: none; cursor: pointer; ' +
+            'transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;';
 
-            Swal.fire({
-                title: "Generar turnos",
-                html: `
-                    <p class="mb-2">Esta accion generara turnos hasta final de año y reemplazara los actuales (excepto vacaciones y festivos).</p>
-                    ${selectHtml}
-                `,
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonText: "Si, continuar",
-                cancelButtonText: "Cancelar",
-                confirmButtonColor: "#3085d6",
-                cancelButtonColor: "#d33",
-                preConfirm: () => {
-                    const tipoTurno = document.getElementById("select-tipo-turno").value;
-                    const obraId = document.getElementById("select-obra").value;
-                    if (!obraId) {
-                        Swal.showValidationMessage("Debes seleccionar una obra");
-                        return false;
-                    }
-                    return { tipoTurno, obraId };
+        let labelStyle = 'font-weight: 600; display: block; margin-bottom: 0.375rem; color: #374151; font-size: 0.875rem;';
+
+        let selectHtml = '<div style="text-align: left; margin-bottom: 1rem;">' +
+            '<label for="select-tipo-turno" style="' + labelStyle + '">Tipo de turno</label>' +
+            '<select id="select-tipo-turno" style="' + selectStyle + '" onfocus="this.style.borderColor=\'#3b82f6\'; this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\';" onblur="this.style.borderColor=\'#d1d5db\'; this.style.boxShadow=\'none\';">' +
+            '<option value="diurno">Diurno (rota mañana/tarde)</option>' +
+            '<option value="nocturno">Nocturno</option>' +
+            '<option value="mañana">Solo mañana</option>' +
+            '</select>' +
+            '</div>' +
+            '<div style="text-align: left;">' +
+            '<label for="select-obra" style="' + labelStyle + '">Obra asignada</label>' +
+            '<select id="select-obra" style="' + selectStyle + '" onfocus="this.style.borderColor=\'#3b82f6\'; this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\';" onblur="this.style.borderColor=\'#d1d5db\'; this.style.boxShadow=\'none\';">' +
+            opcionesObra +
+            '</select>' +
+            '</div>';
+
+        Swal.fire({
+            title: "Generar turnos",
+            html: '<p style="margin-bottom: 1em;">Esta accion generara turnos hasta final de año y reemplazara los actuales (excepto vacaciones y festivos).</p>' + selectHtml,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Si, continuar",
+            cancelButtonText: "Cancelar",
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            width: '400px',
+            preConfirm: () => {
+                const tipoTurno = document.getElementById("select-tipo-turno").value;
+                const obraId = document.getElementById("select-obra").value;
+                if (!obraId) {
+                    Swal.showValidationMessage("Debes seleccionar una obra");
+                    return false;
                 }
-            }).then((respuestaConfirmacion) => {
-                if (!respuestaConfirmacion.isConfirmed) return;
+                return { tipoTurno, obraId };
+            }
+        }).then((respuestaConfirmacion) => {
+            if (!respuestaConfirmacion.isConfirmed) return;
 
-                const { tipoTurno, obraId } = respuestaConfirmacion.value;
-                document.getElementById("tipo_turno_" + userId).value = tipoTurno;
-                document.getElementById("obra_id_input_" + userId).value = obraId;
+            const { tipoTurno, obraId } = respuestaConfirmacion.value;
 
-                if (tipoTurno === "diurno") {
+            if (tipoTurno === "diurno") {
+                Swal.fire({
+                    title: "Selecciona el turno inicial",
+                    text: "¿Con que turno quieres comenzar para el turno diurno?",
+                    icon: "question",
+                    showCancelButton: true,
+                    confirmButtonText: "Mañana",
+                    cancelButtonText: "Tarde",
+                    confirmButtonColor: "#3085d6",
+                    cancelButtonColor: "#d33"
+                }).then((result) => {
+                    const turnoInicio = result.isConfirmed ? "mañana" : "tarde";
+                    enviarGenerarTurnos(userId, tipoTurno, obraId, turnoInicio);
+                });
+            } else {
+                enviarGenerarTurnos(userId, tipoTurno, obraId, null);
+            }
+        });
+    }
+
+    function enviarGenerarTurnos(userId, tipoTurno, obraId, turnoInicio) {
+        Swal.fire({
+            title: 'Generando turnos...',
+            text: 'Por favor espera',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        const formData = new FormData();
+        formData.append('tipo_turno', tipoTurno);
+        formData.append('obra_id', obraId);
+        if (turnoInicio) {
+            formData.append('turno_inicio', turnoInicio);
+        }
+
+        fetch('/profile/generar-turnos/' + userId, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            },
+            body: formData
+        })
+        .then(async (response) => {
+            const data = await response.json();
+            if (response.ok && data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Turnos generados',
+                    text: data.message,
+                    timer: 2500,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message || 'No se pudieron generar los turnos.'
+                });
+            }
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de conexion',
+                text: 'No se pudo conectar con el servidor.'
+            });
+        });
+    }
+
+    function guardarCambios(usuario) {
+        fetch('/users/' + usuario.id, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: usuario.name,
+                    primer_apellido: usuario.primer_apellido,
+                    segundo_apellido: usuario.segundo_apellido,
+                    email: usuario.email,
+                    movil_personal: usuario.movil_personal,
+                    movil_empresa: usuario.movil_empresa,
+                    numero_corto: usuario.numero_corto,
+                    dni: usuario.dni,
+                    empresa_id: usuario.empresa_id,
+                    rol: usuario.rol,
+                    categoria_id: usuario.categoria_id,
+                    maquina_id: usuario.maquina_id
+                })
+            })
+            .then(async (response) => {
+                const contentType = response.headers.get('content-type');
+                let data = {};
+
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    throw new Error("Respuesta inesperada del servidor: " + text.slice(0, 200));
+                }
+
+                if (response.ok && data.success) {
                     Swal.fire({
-                        title: "Selecciona el turno inicial",
-                        text: "¿Con que turno quieres comenzar para el turno diurno?",
-                        icon: "question",
-                        showCancelButton: true,
-                        confirmButtonText: "Mañana",
-                        cancelButtonText: "Tarde",
-                        confirmButtonColor: "#3085d6",
-                        cancelButtonColor: "#d33"
-                    }).then((result) => {
-                        document.getElementById("turno_inicio_" + userId).value =
-                            result.isConfirmed ? "mañana" : "tarde";
-
-                        document.getElementById("form-generar-turnos-" + userId).submit();
+                        icon: "success",
+                        title: "Usuario actualizado",
+                        text: "Los cambios se han guardado exitosamente.",
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
                     });
                 } else {
-                    document.getElementById("form-generar-turnos-" + userId).submit();
-                }
-            });
-        }
-
-        function guardarCambios(usuario) {
-            fetch(`/users/${usuario.id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        name: usuario.name,
-                        primer_apellido: usuario.primer_apellido,
-                        segundo_apellido: usuario.segundo_apellido,
-                        email: usuario.email,
-                        movil_personal: usuario.movil_personal,
-                        movil_empresa: usuario.movil_empresa,
-                        numero_corto: usuario.numero_corto,
-                        dni: usuario.dni,
-                        empresa_id: usuario.empresa_id,
-                        rol: usuario.rol,
-                        categoria_id: usuario.categoria_id,
-                        maquina_id: usuario.maquina_id
-                    })
-                })
-                .then(async (response) => {
-                    const contentType = response.headers.get('content-type');
-                    let data = {};
-
-                    if (contentType && contentType.includes('application/json')) {
-                        data = await response.json();
-                    } else {
-                        const text = await response.text();
-                        throw new Error("Respuesta inesperada del servidor: " + text.slice(0, 200));
+                    let errorMsg = data.message || "Error al actualizar el usuario.";
+                    if (data.errors) {
+                        errorMsg = Object.values(data.errors).flat().join("<br>");
                     }
-
-                    if (response.ok && data.success) {
-                        Swal.fire({
-                            icon: "success",
-                            title: "Usuario actualizado",
-                            text: "Los cambios se han guardado exitosamente.",
-                            timer: 2000,
-                            showConfirmButton: false
-                        }).then(() => {
-                            window.location.reload();
-                        });
-                    } else {
-                        let errorMsg = data.message || "Error al actualizar el usuario.";
-                        if (data.errors) {
-                            errorMsg = Object.values(data.errors).flat().join("<br>");
-                        }
-                        Swal.fire({
-                            icon: "error",
-                            title: "Error al actualizar",
-                            html: errorMsg,
-                            confirmButtonText: "OK"
-                        });
-                    }
-                })
-                .catch((err) => {
-                    console.error("❌ Error en la solicitud fetch:", err);
                     Swal.fire({
                         icon: "error",
-                        title: "Error de conexión",
-                        text: err.message || "No se pudo actualizar el usuario. Inténtalo nuevamente.",
+                        title: "Error al actualizar",
+                        html: errorMsg,
                         confirmButtonText: "OK"
                     });
+                }
+            })
+            .catch((err) => {
+                console.error("Error en la solicitud fetch:", err);
+                Swal.fire({
+                    icon: "error",
+                    title: "Error de conexión",
+                    text: err.message || "No se pudo actualizar el usuario. Inténtalo nuevamente.",
+                    confirmButtonText: "OK"
                 });
-        }
-    </script>
-</div>
+            });
+    }
+</script>
+@endpush

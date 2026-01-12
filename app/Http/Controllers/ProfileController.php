@@ -996,6 +996,9 @@ class ProfileController extends Controller
         if ($tipoTurno == 'diurno') {
             $turnoInicial = request()->input('turno_inicio');
             if (!in_array($turnoInicial, ['mañana', 'tarde'])) {
+                if (request()->ajax() || request()->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => 'Debe seleccionar un turno válido para comenzar (mañana o tarde).'], 400);
+                }
                 return redirect()->back()->with('error', 'Debe seleccionar un turno válido para comenzar (mañana o tarde).');
             }
             $turnoAsignado = $turnoInicial === 'mañana' ? $turnoMañanaId : $turnoTardeId;
@@ -1004,6 +1007,9 @@ class ProfileController extends Controller
         } elseif ($tipoTurno == 'mañana') {
             $turnoAsignado = $turnoMañanaId;
         } else {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Debe seleccionar un tipo de turno válido.'], 400);
+            }
             return redirect()->back()->with('error', 'Debe seleccionar un tipo de turno válido.');
         }
 
@@ -1058,6 +1064,14 @@ class ProfileController extends Controller
             if ($tipoTurno === 'diurno' && $esViernes) {
                 $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
             }
+        }
+
+        // Si es petición AJAX, devolver JSON
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Turnos generados correctamente para {$user->name}, excluyendo los festivos."
+            ]);
         }
 
         return redirect()->back()->with('success', "Turnos generados correctamente para {$user->name}, excluyendo los festivos.");
