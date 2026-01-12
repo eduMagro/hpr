@@ -63,9 +63,16 @@ class SyncMonitor extends Component
     // Entorno actual
     public string $currentTarget = 'local';
 
-    public function mount()
+    /**
+     * Se ejecuta en CADA request de Livewire (no solo mount).
+     */
+    public function boot()
     {
         $this->configurarRutas();
+    }
+
+    public function mount()
+    {
         $this->currentTarget = $this->detectarTarget();
         $this->refresh();
     }
