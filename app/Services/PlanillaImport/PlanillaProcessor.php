@@ -234,10 +234,9 @@ class PlanillaProcessor
             'ensamblado' => $primeraFila[4] ?? null,
             'codigo' => $codigoPlanilla,
             'peso_total' => $pesoTotal,
-            'fecha_estimada_entrega' => now()
-                ->addDays(config('planillas.importacion.dias_entrega_default', 7))
-                ->setTime(10, 0, 0),
-            'revisada' => false, // ⚠️ Por defecto NO revisada (requiere aprobación)
+            'fecha_estimada_entrega' => null, // Se establecerá cuando el técnico apruebe
+            'revisada' => false,
+            'aprobada' => false,
         ]);
     }
 
