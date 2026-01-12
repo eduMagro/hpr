@@ -24,8 +24,8 @@ class SyncMonitor extends Component
     public string $activeTab = 'logs'; // 'logs' o 'errors'
 
     // Directorio de logs de ferrawin-sync (se configura en mount)
-    protected string $logsDir;
-    protected string $syncDir;
+    protected ?string $logsDir = null;
+    protected ?string $syncDir = null;
 
     /**
      * Detecta si estamos en Windows o Linux.
@@ -36,7 +36,18 @@ class SyncMonitor extends Component
     }
 
     /**
+     * Verifica si estamos en un entorno donde el sync puede ejecutarse.
+     * El sync solo puede ejecutarse en local (Windows) donde ferrawin-sync está instalado.
+     */
+    protected function isLocalSyncEnvironment(): bool
+    {
+        // Solo Windows (local) tiene ferrawin-sync instalado
+        return $this->isWindows();
+    }
+
+    /**
      * Obtiene las rutas según el sistema operativo.
+     * En producción (Linux), no configuramos rutas porque ferrawin-sync no existe ahí.
      */
     protected function configurarRutas(): void
     {
@@ -44,9 +55,10 @@ class SyncMonitor extends Component
             $this->syncDir = 'C:\\xampp\\htdocs\\ferrawin-sync';
             $this->logsDir = $this->syncDir . '\\logs';
         } else {
-            // Linux - producción
-            $this->syncDir = '/var/www/ferrawin-sync';
-            $this->logsDir = $this->syncDir . '/logs';
+            // Linux/Producción - ferrawin-sync no existe aquí
+            // Dejamos las rutas como null para evitar errores de open_basedir
+            $this->syncDir = null;
+            $this->logsDir = null;
         }
     }
 
@@ -118,8 +130,11 @@ class SyncMonitor extends Component
 
     protected function readLogs()
     {
-        if (!File::isDirectory($this->logsDir)) {
-            $this->logs = ['No se encontró el directorio de logs'];
+        // En producción, no hay logs locales que leer
+        if (!$this->logsDir || !File::isDirectory($this->logsDir)) {
+            $this->logs = $this->isLocalSyncEnvironment()
+                ? ['No se encontró el directorio de logs']
+                : ['La sincronización se ejecuta desde el entorno local'];
             $this->errors = [];
             $this->isRunning = false;
             return;
@@ -259,7 +274,8 @@ class SyncMonitor extends Component
      */
     protected function detectarUltimaPlanilla(): void
     {
-        if (!File::isDirectory($this->logsDir)) {
+        // En producción no tenemos acceso a los logs
+        if (!$this->logsDir || !File::isDirectory($this->logsDir)) {
             return;
         }
 
@@ -349,6 +365,12 @@ class SyncMonitor extends Component
      */
     protected function ejecutarSync(string $año, ?string $desdeCodigo = null)
     {
+        // Verificar que estamos en un entorno donde se puede ejecutar sync
+        if (!$this->syncDir || !$this->isLocalSyncEnvironment()) {
+            session()->flash('error', 'La sincronización solo puede ejecutarse desde el entorno local');
+            return;
+        }
+
         // Limpiar archivo de pausa si existe
         $sep = $this->isWindows() ? '\\' : '/';
         $pauseFile = $this->syncDir . $sep . 'sync.pause';
@@ -483,6 +505,12 @@ class SyncMonitor extends Component
     {
         if (!$this->isRunning) {
             session()->flash('error', 'No hay sincronización en ejecución');
+            return;
+        }
+
+        // Verificar que estamos en un entorno donde se puede ejecutar sync
+        if (!$this->syncDir || !$this->isLocalSyncEnvironment()) {
+            session()->flash('error', 'La sincronización solo puede controlarse desde el entorno local');
             return;
         }
 
