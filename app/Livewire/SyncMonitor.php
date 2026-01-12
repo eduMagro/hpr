@@ -23,9 +23,32 @@ class SyncMonitor extends Component
     public bool $isPausing = false; // Indica que se solicitó pausa y está esperando
     public string $activeTab = 'logs'; // 'logs' o 'errors'
 
-    // Directorio de logs de ferrawin-sync
-    protected string $logsDir = 'C:\\xampp\\htdocs\\ferrawin-sync\\logs';
-    protected string $syncDir = 'C:\\xampp\\htdocs\\ferrawin-sync';
+    // Directorio de logs de ferrawin-sync (se configura en mount)
+    protected string $logsDir;
+    protected string $syncDir;
+
+    /**
+     * Detecta si estamos en Windows o Linux.
+     */
+    protected function isWindows(): bool
+    {
+        return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+    }
+
+    /**
+     * Obtiene las rutas según el sistema operativo.
+     */
+    protected function configurarRutas(): void
+    {
+        if ($this->isWindows()) {
+            $this->syncDir = 'C:\\xampp\\htdocs\\ferrawin-sync';
+            $this->logsDir = $this->syncDir . '\\logs';
+        } else {
+            // Linux - producción
+            $this->syncDir = '/var/www/ferrawin-sync';
+            $this->logsDir = $this->syncDir . '/logs';
+        }
+    }
 
     // Para continuar sincronización
     public ?string $ultimaPlanilla = null;
@@ -42,6 +65,7 @@ class SyncMonitor extends Component
 
     public function mount()
     {
+        $this->configurarRutas();
         $this->currentTarget = $this->detectarTarget();
         $this->refresh();
     }
@@ -201,7 +225,8 @@ class SyncMonitor extends Component
 
         // Verificar si el proceso está corriendo
         // Método 1: Verificar si existe el archivo PID (más confiable)
-        $pidFile = $this->syncDir . '\\sync.pid';
+        $sep = DIRECTORY_SEPARATOR;
+        $pidFile = $this->syncDir . $sep . 'sync.pid';
         if (file_exists($pidFile)) {
             $this->isRunning = true;
         } else {
@@ -315,13 +340,11 @@ class SyncMonitor extends Component
     protected function ejecutarSync(string $año, ?string $desdeCodigo = null)
     {
         // Limpiar archivo de pausa si existe
-        $pauseFile = $this->syncDir . '\\sync.pause';
+        $sep = $this->isWindows() ? '\\' : '/';
+        $pauseFile = $this->syncDir . $sep . 'sync.pause';
         if (file_exists($pauseFile)) {
             unlink($pauseFile);
         }
-
-        $phpPath = 'C:\\xampp\\php\\php.exe';
-        $scriptPath = $this->syncDir . '\\sync-optimizado.php';
 
         // Detectar entorno: local o production
         $target = $this->detectarTarget();
@@ -336,14 +359,32 @@ class SyncMonitor extends Component
             $mensaje = "Sincronización {$año} continuando desde {$desdeCodigo} [{$targetLabel}]";
         }
 
+        // Log para debug
+        \Log::info("SyncMonitor: Iniciando sync", ['args' => $args, 'target' => $target, 'os' => PHP_OS]);
+
+        if ($this->isWindows()) {
+            $this->ejecutarSyncWindows($args);
+        } else {
+            $this->ejecutarSyncLinux($args);
+        }
+
+        session()->flash('message', $mensaje);
+        $this->isRunning = true;
+    }
+
+    /**
+     * Ejecuta la sincronización en Windows usando VBScript.
+     */
+    protected function ejecutarSyncWindows(string $args): void
+    {
+        $phpPath = 'C:\\xampp\\php\\php.exe';
+        $scriptPath = $this->syncDir . '\\sync-optimizado.php';
+
         // Crear archivo batch para ejecutar
         $batchFile = $this->syncDir . '\\run-sync.bat';
         $batchContent = "@echo off\r\n";
         $batchContent .= "cd /d \"{$this->syncDir}\"\r\n";
         $batchContent .= "\"{$phpPath}\" \"{$scriptPath}\" {$args}\r\n";
-
-        // Log para debug
-        \Log::info("SyncMonitor: Creando batch file", ['path' => $batchFile, 'args' => $args, 'target' => $target]);
 
         if (file_put_contents($batchFile, $batchContent) === false) {
             \Log::error("SyncMonitor: No se pudo crear el archivo batch");
@@ -351,25 +392,47 @@ class SyncMonitor extends Component
             return;
         }
 
-        // Ejecutar en background SIN ventana visible
-        // Usar WScript.Shell con vbHide (0) para ocultar completamente
+        // Ejecutar en background SIN ventana visible usando VBScript
         $vbsFile = $this->syncDir . '\\run-sync.vbs';
         $vbsContent = 'Set WshShell = CreateObject("WScript.Shell")' . "\r\n";
-        // Ejecutar PHP directamente sin cmd para evitar ventana de consola
         $vbsContent .= 'WshShell.Run """' . $phpPath . '"" ""' . $scriptPath . '"" ' . $args . '", 0, False' . "\r\n";
         file_put_contents($vbsFile, $vbsContent);
 
-        // Ejecutar el VBS en modo oculto
         $cmd = "wscript //nologo \"{$vbsFile}\"";
         exec($cmd, $output, $returnCode);
 
-        \Log::info("SyncMonitor: Proceso iniciado (oculto)", [
-            'returnCode' => $returnCode,
-            'target' => $target
-        ]);
+        \Log::info("SyncMonitor: Windows - Proceso iniciado", ['returnCode' => $returnCode]);
+    }
 
-        session()->flash('message', $mensaje);
-        $this->isRunning = true;
+    /**
+     * Ejecuta la sincronización en Linux usando nohup.
+     */
+    protected function ejecutarSyncLinux(string $args): void
+    {
+        $scriptPath = $this->syncDir . '/sync-optimizado.php';
+        $logFile = $this->logsDir . '/sync-' . date('Y-m-d') . '.log';
+
+        // Asegurar que el directorio de logs existe
+        if (!is_dir($this->logsDir)) {
+            mkdir($this->logsDir, 0755, true);
+        }
+
+        // Ejecutar en background con nohup
+        // El output va al archivo de log del script
+        $cmd = sprintf(
+            'cd %s && nohup php %s %s >> %s 2>&1 &',
+            escapeshellarg($this->syncDir),
+            escapeshellarg($scriptPath),
+            $args,
+            escapeshellarg($logFile)
+        );
+
+        exec($cmd, $output, $returnCode);
+
+        \Log::info("SyncMonitor: Linux - Proceso iniciado", [
+            'cmd' => $cmd,
+            'returnCode' => $returnCode
+        ]);
     }
 
     /**
@@ -413,7 +476,8 @@ class SyncMonitor extends Component
             return;
         }
 
-        $pauseFile = $this->syncDir . '\\sync.pause';
+        $sep = $this->isWindows() ? '\\' : '/';
+        $pauseFile = $this->syncDir . $sep . 'sync.pause';
 
         // Crear archivo de pausa
         file_put_contents($pauseFile, date('Y-m-d H:i:s'));
