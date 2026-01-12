@@ -31,6 +31,7 @@ class Producto extends Model
         'consumido_by',
         'otros',
         'updated_by',
+        'planilla_id',
     ];
 
     public $timestamps = true;

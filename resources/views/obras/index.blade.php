@@ -99,6 +99,7 @@
                         <th class="p-2 border">{!! ordenarColumna('longitud', 'Longitud') !!}</th>
                         <th class="p-2 border">{!! ordenarColumna('distancia', 'Radio') !!}</th>
                         <th class="p-2 border">{!! ordenarColumna('presupuesto_estimado', 'Presupuesto Estimado') !!}</th>
+                        <th class="p-2 border">Estado</th>
                         <th class="p-2 border">Acciones</th>
                     </tr>
                     <tr>
@@ -136,6 +137,7 @@
                                     value="{{ request('presupuesto_estimado') }}"
                                     class="form-control form-control-sm" />
                             </th>
+                            <th class="p-1 border"></th>
                             <th class="p-1 border text-center">
                                 <button type="submit" class="btn btn-sm btn-info px-2"><i
                                         class="fas fa-search"></i></button>
@@ -207,6 +209,14 @@
                                 </template>
                                 <input x-show="editando" type="number" step="0.01"
                                     x-model="obra.presupuesto_estimado" class="form-control form-control-sm">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <button @click="toggleStatus(obra)"
+                                    :class="obra.estado === 'completada' ? 'bg-green-100 text-green-700' :
+                                        'bg-yellow-100 text-yellow-700'"
+                                    class="px-2 py-1 rounded-full text-xs font-bold transition-colors uppercase"
+                                    x-text="obra.estado === 'completada' ? 'Completada' : 'Activa'">
+                                </button>
                             </td>
                             <td class="px-2 py-2 border text-xs font-bold">
                                 <div class="flex items-center space-x-2 justify-center">
@@ -292,6 +302,36 @@
                         title: "Error de conexión",
                         text: "No se pudo actualizar la obra. Inténtalo nuevamente.",
                         confirmButtonText: "OK"
+                    });
+                });
+        }
+
+        function toggleStatus(obra) {
+            fetch(`/obras/${obra.id}/toggle-status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        obra.estado = data.nuevo_estado;
+                        Swal.fire({
+                            icon: "success",
+                            title: "Estado actualizado",
+                            text: "El estado de la obra ha cambiado a " + data.nuevo_estado,
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: "No se pudo cambiar el estado."
                     });
                 });
         }

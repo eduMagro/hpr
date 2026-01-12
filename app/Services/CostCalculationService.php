@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Models\Obra;
 use App\Models\Nomina;
 use App\Models\AsignacionTurno;
+use App\Models\User;
 use App\Models\Salida;
 use App\Models\AlbaranVentaLinea;
 use App\Models\Configuracion;
+use Carbon\Carbon;
 
 class CostCalculationService
 {
@@ -18,31 +20,69 @@ class CostCalculationService
     public function getLaborCost($obraId)
     {
         // Obtener turnos asignados a esta obra
-        $turnos = AsignacionTurno::where('obra_id', $obraId)->get();
+        $turnos = AsignacionTurno::where('obra_id', $obraId)->with('user')->get();
         $totalCost = 0;
+        $missingUsers = [];
 
         foreach ($turnos as $turno) {
-            // Obtener la nómina del trabajador para el mes del turno
-            $fechaTurno = $turno->fecha;
-            $mes = date('m', strtotime($fechaTurno));
-            $anio = date('Y', strtotime($fechaTurno));
+            $user = $turno->user;
+            if (!$user) continue;
 
-            $nomina = Nomina::where('empleado_id', $turno->user_id)
+            $fechaTurno = Carbon::parse($turno->fecha);
+            $mes = $fechaTurno->month;
+            $anio = $fechaTurno->year;
+
+            // Strategy 1: Specific User, Current Month
+            $nomina = Nomina::where('empleado_id', $user->id)
                 ->whereMonth('fecha', $mes)
                 ->whereYear('fecha', $anio)
                 ->first();
 
+            // Strategy 2: Category Proxy, Current Month
+            if (!$nomina && $user->categoria_id) {
+                $nomina = Nomina::where('categoria_id', $user->categoria_id)
+                    ->whereMonth('fecha', $mes)
+                    ->whereYear('fecha', $anio)
+                    ->first();
+            }
+
+            // Strategy 3: Historical Search (up to 12 months back)
+            if (!$nomina) {
+                for ($i = 1; $i <= 12; $i++) {
+                    $pastDate = $fechaTurno->copy()->subMonths($i);
+
+                    // 3a. Specific User, Past Month
+                    $nomina = Nomina::where('empleado_id', $user->id)
+                        ->whereMonth('fecha', $pastDate->month)
+                        ->whereYear('fecha', $pastDate->year)
+                        ->first();
+
+                    if ($nomina) break;
+
+                    // 3b. Category Proxy, Past Month
+                    if ($user->categoria_id) {
+                        $nomina = Nomina::where('categoria_id', $user->categoria_id)
+                            ->whereMonth('fecha', $pastDate->month)
+                            ->whereYear('fecha', $pastDate->year)
+                            ->first();
+                    }
+
+                    if ($nomina) break;
+                }
+            }
+
             if ($nomina && $nomina->coste_empresa > 0) {
                 // Cálculo simplificado: Prorrateo básico
-                // En un sistema real, dividiríamos el coste mensual por horas totales 
-                // y multiplicaríamos por las horas del turno.
-                // Aquí asumiremos un valor representativo por turno si no tenemos horas exactas.
-                $costePorTurno = $nomina->coste_empresa / 22; // Estimación simple (22 días laborables)
+                // Estimación simple (22 días laborables)
+                $costePorTurno = $nomina->coste_empresa / 22;
                 $totalCost += $costePorTurno;
+            } else {
+                // Mark user as missing payroll info
+                $missingUsers[$user->id] = $user;
             }
         }
 
-        return $totalCost;
+        return ['cost' => $totalCost, 'missing_users' => collect($missingUsers)->values()];
     }
 
     /**
@@ -57,10 +97,29 @@ class CostCalculationService
         // Precio base de compra (puedes ajustarlo o traerlo de configuración)
         $precioCompraKg = Configuracion::where('clave', 'coste_hierro_kg')->value('valor') ?? 0.85;
 
-        // Sumar peso total de productos asignados a la obra que han sido consumidos
-        $pesoTotal = $obra->productos()->where('estado', 'consumido')->sum('peso_inicial');
+        // Sumar coste real de los productos ("consumido" o servido en "salidas")
+        $productosConsumidos = $obra->productos()
+            ->with(['entrada.pedidoProducto']) // Cargar relación para precio compra
+            ->where('estado', 'consumido')
+            ->get();
 
-        return $pesoTotal * $precioCompraKg;
+        $costeTotalMaterial = 0;
+        $precioBaseConfig = Configuracion::where('clave', 'coste_hierro_kg')->value('valor') ?? 0.85;
+
+        foreach ($productosConsumidos as $prod) {
+            // Intentar obtener precio real de compra desde la línea de pedido
+            $precioCompra = $prod->entrada->pedidoProducto->precio_unitario ?? $precioBaseConfig;
+
+            $costeSemielaborado = 0;
+            // TODO: Si se quiere sumar mano de obra específica al producto aquí, 
+            // habría que calcular cuántas horas se invirtieron en ESTE producto.
+            // Actualmente la mano de obra va a la columna "M. Obra".
+
+            $costeproducto = ($prod->peso_inicial * $precioCompra) + $costeSemielaborado;
+            $costeTotalMaterial += $costeproducto;
+        }
+
+        return $costeTotalMaterial;
     }
 
     /**
@@ -103,7 +162,10 @@ class CostCalculationService
         $obra = Obra::find($obraId);
         if (!$obra) return null;
 
-        $labor = $this->getLaborCost($obraId);
+        $laborData = $this->getLaborCost($obraId);
+        $labor = $laborData['cost'];
+        $missingUsers = $laborData['missing_users'];
+
         $material = $this->getMaterialCost($obraId);
         $logistics = $this->getLogisticsCost($obraId);
         $revenue = $this->getRevenue($obraId);
@@ -123,7 +185,8 @@ class CostCalculationService
             'revenue' => $revenue,
             'deviation' => $deviation,
             'margin' => $margin,
-            'margin_percentage' => $revenue > 0 ? ($margin / $revenue) * 100 : 0
+            'margin_percentage' => $revenue > 0 ? ($margin / $revenue) * 100 : 0,
+            'missing_nominas_users' => $missingUsers // Add this for the UI
         ];
     }
 }

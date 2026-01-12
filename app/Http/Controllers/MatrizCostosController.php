@@ -15,14 +15,25 @@ class MatrizCostosController extends Controller
         $this->costService = $costService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $obras = Obra::where('estado', '!=', 'cancelada')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $showCompleted = $request->boolean('show_completed', false);
+
+        $query = Obra::where('estado', '!=', 'cancelada');
+
+        if (!$showCompleted) {
+            $query->where('estado', '!=', 'completada');
+        }
+
+        $obras = $query->orderBy('created_at', 'desc')->get();
 
         $summaries = $obras->map(function ($obra) {
             return $this->costService->getObraFinancialSummary($obra->id);
+        });
+
+        // Group by Month and Year
+        $groupedSummaries = $summaries->groupBy(function ($item) {
+            return $item['obra']->created_at->format('F Y');
         });
 
         $totals = [
@@ -33,6 +44,6 @@ class MatrizCostosController extends Controller
             'count' => $obras->count()
         ];
 
-        return view('matriz_costos.index', compact('summaries', 'totals'));
+        return view('matriz_costos.index', compact('groupedSummaries', 'totals', 'showCompleted'));
     }
 }

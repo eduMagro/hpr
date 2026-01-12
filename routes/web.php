@@ -65,6 +65,7 @@ use App\Http\Controllers\MatrizCostosController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/matriz-costos', [MatrizCostosController::class, 'index'])->name('matriz_costos.index');
+    Route::post('obras/{id}/toggle-status', [ObraController::class, 'toggleStatus'])->name('obras.toggle-status');
     Route::get('/incidencias', [IncidenciaController::class, 'index'])->name('incidencias.index');
     // AJAX List
     Route::get('/incidencias/ajax/list', [IncidenciaController::class, 'listAjax'])->name('incidencias.list.ajax');

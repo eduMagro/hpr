@@ -10,44 +10,57 @@ use Illuminate\Support\Str;
 
 class ObraController extends Controller
 {
-    // public function index(Request $request)
-    // {
-    //     $query = Obra::query();
+    public function index(Request $request)
+    {
+        $query = Obra::query();
 
-    //     if ($request->filled('buscar')) {
-    //         $query->where(function ($q) use ($request) {
-    //             $q->where('obra', 'like', '%' . $request->buscar . '%')
-    //                 ->orWhere('cod_obra', 'like', '%' . $request->buscar . '%')
-    //                 ->orWhere('cliente', 'like', '%' . $request->buscar . '%')
-    //                 ->orWhere('cod_cliente', 'like', '%' . $request->buscar . '%');
-    //         });
-    //     }
+        if ($request->filled('obra')) {
+            $query->where('obra', 'like', '%' . $request->obra . '%');
+        }
 
-    //     if ($request->filled('cod_obra')) {
-    //         $query->where('cod_obra', 'like', '%' . $request->cod_obra . '%');
-    //     }
+        if ($request->filled('cod_obra')) {
+            $query->where('cod_obra', 'like', '%' . $request->cod_obra . '%');
+        }
 
-    //     if ($request->filled('cliente')) {
-    //         $query->where('cliente', 'like', '%' . $request->cliente . '%');
-    //     }
+        if ($request->filled('cliente')) {
+            $query->whereHas('cliente', function ($q) use ($request) {
+                $q->where('nombre', 'like', '%' . $request->cliente . '%');
+            });
+        }
 
-    //     if ($request->filled('cod_cliente')) {
-    //         $query->where('cod_cliente', 'like', '%' . $request->cod_cliente . '%');
-    //     }
+        if ($request->filled('cod_cliente')) {
+            $query->whereHas('cliente', function ($q) use ($request) {
+                $q->where('cod_cliente', 'like', '%' . $request->cod_cliente . '%');
+            });
+        }
 
-    //     if ($request->filled('completada')) {
-    //         $query->where('completada', $request->completada);
-    //     }
+        if ($request->filled('latitud')) {
+            $query->where('latitud', 'like', '%' . $request->latitud . '%');
+        }
 
-    //     if ($request->filled('sort_by') && in_array($request->sort_by, ['created_at', 'cod_obra', 'cliente', 'cod_cliente'])) {
-    //         $order = $request->order === 'desc' ? 'desc' : 'asc';
-    //         $query->orderBy($request->sort_by, $order);
-    //     }
+        if ($request->filled('longitud')) {
+            $query->where('longitud', 'like', '%' . $request->longitud . '%');
+        }
 
-    //     $obras = $query->paginate($request->get('per_page', 10));
+        if ($request->filled('distancia')) {
+            $query->where('distancia', 'like', '%' . $request->distancia . '%');
+        }
 
-    //     return view('obras.index', compact('obras'));
-    // }
+        if ($request->filled('presupuesto_estimado')) {
+            $query->where('presupuesto_estimado', 'like', '%' . $request->presupuesto_estimado . '%');
+        }
+
+        if ($request->filled('sort_by')) {
+            $order = $request->order === 'desc' ? 'desc' : 'asc';
+            $query->orderBy($request->sort_by, $order);
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $obras = $query->paginate($request->get('per_page', 10));
+
+        return view('obras.index', compact('obras'));
+    }
 
     public function show(Obra $obra)
     {
@@ -59,7 +72,8 @@ class ObraController extends Controller
 
     public function create()
     {
-        return view('obras.create');
+        $clientes = Cliente::orderBy('empresa')->get();
+        return view('obras.create', compact('clientes'));
     }
 
     public function store(Request $request)
@@ -136,6 +150,7 @@ class ObraController extends Controller
             'distancia'  => $input['distancia'] ?? null,
             'estado'     => 'activa',
             'tipo'       => $input['tipo'],
+            'presupuesto_estimado' => $input['presupuesto_estimado'] ?? 0,
         ];
 
         if ($esPacoReyes) {
@@ -266,6 +281,18 @@ class ObraController extends Controller
     public function destroy(Obra $obra)
     {
         $obra->delete();
-        return redirect()->back()->with('success', 'Obra eliminada correctamente.');
+        return redirect()->route('obras.index')->with('status', 'Obra eliminada con éxito');
+    }
+
+    public function toggleStatus($id)
+    {
+        $obra = Obra::findOrFail($id);
+        $obra->estado = ($obra->estado === 'completada') ? 'activa' : 'completada';
+        $obra->save();
+
+        return response()->json([
+            'success' => true,
+            'nuevo_estado' => $obra->estado
+        ]);
     }
 }

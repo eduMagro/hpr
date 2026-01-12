@@ -28,25 +28,27 @@
                             </div>
                             <!-- Código de Obra -->
                             <div class="form-group mb-4">
-                                <label for="cod_obra" class="form-label fw-bold text-uppercase">Código de Obra *</label>
+                                <label for="cod_obra" class="form-label fw-bold text-uppercase">Código de Obra *
+                                </label>
                                 <input type="text" id="cod_obra" name="cod_obra"
-                                    class="form-control form-control-lg" placeholder="Introduce el código de la obra"
+                                    class="form-control form-control-lg" placeholder="Ej: 12345 (ID externo)"
                                     value="{{ old('cod_obra') }}" required>
+                                <small class="form-text text-muted mt-1">Identificador único (ID Ferrawin) referente a
+                                    la obra.</small>
                             </div>
 
-                            <!-- Cliente -->
+                            <!-- Cliente (Select) -->
                             <div class="form-group mb-4">
-                                <label for="cliente" class="form-label fw-bold text-uppercase">Cliente *</label>
-                                <input type="text" id="cliente" name="cliente" class="form-control form-control-lg"
-                                    placeholder="Introduce el nombre del cliente" value="{{ old('cliente') }}" required>
-                            </div>
-                            <!-- Código Cliente -->
-                            <div class="form-group mb-4">
-                                <label for="cod_cliente" class="form-label fw-bold text-uppercase">Código
-                                    Cliente</label>
-                                <input type="text" id="cod_cliente" name="cod_cliente"
-                                    class="form-control form-control-lg" placeholder="Introduce el código del cliente"
-                                    value="{{ old('cod_cliente') }}">
+                                <label for="cliente_id" class="form-label fw-bold text-uppercase">Cliente *</label>
+                                <select id="cliente_id" name="cliente_id" class="form-control form-control-lg" required>
+                                    <option value="">-- Selecciona un Cliente --</option>
+                                    @foreach ($clientes as $cliente)
+                                        <option value="{{ $cliente->id }}"
+                                            {{ old('cliente_id') == $cliente->id ? 'selected' : '' }}>
+                                            {{ $cliente->empresa }} ({{ $cliente->codigo }})
+                                        </option>
+                                    @endforeach
+                                </select>
                             </div>
 
                             <!-- Latitud -->
@@ -71,6 +73,20 @@
                                 <input type="number" id="distancia" name="distancia"
                                     class="form-control form-control-lg" placeholder="Introduce la distancia permitida"
                                     value="{{ old('distancia') }}">
+                            </div>
+
+                            <!-- Tipo de Obra -->
+                            <div class="form-group mb-4">
+                                <label for="tipo" class="form-label fw-bold text-uppercase">Tipo de Obra *</label>
+                                <select id="tipo" name="tipo" class="form-control form-control-lg" required>
+                                    <option value="">-- Selecciona el Tipo --</option>
+                                    <option value="montaje" {{ old('tipo') == 'montaje' ? 'selected' : '' }}>Montaje
+                                    </option>
+                                    <option value="suministro" {{ old('tipo') == 'suministro' ? 'selected' : '' }}>
+                                        Suministro</option>
+                                </select>
+                                <small class="form-text text-muted mt-1">Seleccione <strong>Montaje</strong> para que
+                                    aparezca en la planificación de trabajadores.</small>
                             </div>
 
                             <!-- Presupuesto Estimado -->
