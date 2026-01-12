@@ -9,6 +9,7 @@ use App\Models\Obra;
 use App\Models\Etiqueta;
 use App\Models\Elemento;
 use App\Models\FerrawinSyncLog;
+use App\Models\ProductoBase;
 use App\Services\AsignarMaquinaService;
 use App\Services\OrdenPlanillaService;
 use App\Services\PlanillaImport\CodigoEtiqueta;
@@ -27,13 +28,25 @@ class FerrawinBulkImportService
     protected array $advertencias = [];
     protected array $cacheClientes = [];
     protected array $cacheObras = [];
+    protected array $productosBase = [];
 
     public function __construct(
         protected CodigoEtiqueta $codigoService,
         protected AsignarMaquinaService $asignador,
         protected OrdenPlanillaService $ordenService,
         protected \App\Services\PlanillaImport\PlanillaProcessor $processor
-    ) {}
+    ) {
+        // Cargar productos base (barras) igual que PlanillaProcessor
+        $this->productosBase = ProductoBase::where('tipo', 'barra')
+            ->whereNotNull('longitud')
+            ->whereNotNull('diametro')
+            ->get(['diametro', 'longitud'])
+            ->map(fn($p) => [
+                'diametro' => (int)$p->diametro,
+                'longitud' => (float)$p->longitud * 1000, // Convertir a mm
+            ])
+            ->toArray();
+    }
 
     /**
      * Importa múltiples planillas de forma optimizada.
@@ -344,10 +357,9 @@ class FerrawinBulkImportService
             $planillaEntidadId = $mapaEntidades[$filaNormalizada] ?? null;
         }
 
-        // Determinar si requiere elaboración:
-        // - elaborado = 0: barra recta (dobles=0) con longitud igual a producto base (excluye 6m)
-        // - elaborado = 1: requiere corte o doblado
-        $elaborado = $this->requiereElaboracion($doblesBarra, $longitud) ? 1 : 0;
+        // Determinar si requiere elaboración (igual que PlanillaProcessor)
+        $diametro = (int)($elem['diametro'] ?? 0);
+        $elaborado = $this->determinarElaborado($doblesBarra, $diametro, $longitud);
 
         Elemento::create([
             'codigo' => Elemento::generarCodigo(),
@@ -376,33 +388,29 @@ class FerrawinBulkImportService
     }
 
     /**
-     * Determina si un elemento requiere elaboración (corte/doblado).
+     * Determina si un elemento necesita elaboración (igual que PlanillaProcessor).
      *
-     * NO requiere elaboración (va a grúa) si:
-     * - dobles_barra = 0 (barra recta)
-     * - longitud coincide con longitud de producto base (excluyendo 6m)
+     * Un elemento NO necesita elaboración (elaborado=0) si:
+     * 1. No tiene dobleces (dobles_barra = 0)
+     * 2. Existe un producto base con mismo diámetro y longitud
      *
-     * Longitudes base válidas para grúa: 12, 14, 15, 16 metros (en mm: 12000, 14000, 15000, 16000)
+     * @return int 0 = no necesita elaboración, 1 = necesita elaboración
      */
-    protected function requiereElaboracion(int $doblesBarra, float $longitudMm): bool
+    protected function determinarElaborado(int $doblesBarra, int $diametro, float $longitudMm): int
     {
-        // Si tiene dobleces, siempre requiere elaboración
+        // Si tiene dobleces, siempre necesita elaboración
         if ($doblesBarra > 0) {
-            return true;
+            return 1;
         }
 
-        // Longitudes de productos base en mm (excluyendo 6m = 6000mm)
-        $longitudesBaseGrua = [12000, 14000, 15000, 16000];
-
-        // Tolerancia de 10mm para comparación
-        foreach ($longitudesBaseGrua as $longitudBase) {
-            if (abs($longitudMm - $longitudBase) <= 10) {
-                return false; // No requiere elaboración, va a grúa
+        // Buscar si existe un producto base exacto (diámetro + longitud)
+        foreach ($this->productosBase as $producto) {
+            if ($producto['diametro'] === $diametro && abs($producto['longitud'] - $longitudMm) < 10) {
+                return 0; // Existe producto base, no necesita elaboración
             }
         }
 
-        // Cualquier otra longitud requiere corte
-        return true;
+        return 1; // No existe producto base, necesita elaboración
     }
 
     /**
