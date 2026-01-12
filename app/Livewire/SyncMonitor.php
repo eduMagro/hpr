@@ -37,8 +37,12 @@ class SyncMonitor extends Component
     public int $yearPlanillasCount = 0;
     public ?string $yearLastPlanilla = null;
 
+    // Entorno actual
+    public string $currentTarget = 'local';
+
     public function mount()
     {
+        $this->currentTarget = $this->detectarTarget();
         $this->refresh();
     }
 
@@ -319,13 +323,17 @@ class SyncMonitor extends Component
         $phpPath = 'C:\\xampp\\php\\php.exe';
         $scriptPath = $this->syncDir . '\\sync-optimizado.php';
 
+        // Detectar entorno: local o production
+        $target = $this->detectarTarget();
+
         // Construir argumentos
-        $args = "--año={$año}";
-        $mensaje = "Sincronización {$año} iniciada desde cero";
+        $args = "--año={$año} --target={$target}";
+        $targetLabel = $target === 'production' ? 'PRODUCCIÓN' : 'LOCAL';
+        $mensaje = "Sincronización {$año} iniciada [{$targetLabel}]";
 
         if ($desdeCodigo) {
             $args .= " --desde-codigo={$desdeCodigo}";
-            $mensaje = "Sincronización {$año} continuando desde {$desdeCodigo}";
+            $mensaje = "Sincronización {$año} continuando desde {$desdeCodigo} [{$targetLabel}]";
         }
 
         // Crear archivo batch para ejecutar
@@ -335,7 +343,7 @@ class SyncMonitor extends Component
         $batchContent .= "\"{$phpPath}\" \"{$scriptPath}\" {$args}\r\n";
 
         // Log para debug
-        \Log::info("SyncMonitor: Creando batch file", ['path' => $batchFile, 'args' => $args]);
+        \Log::info("SyncMonitor: Creando batch file", ['path' => $batchFile, 'args' => $args, 'target' => $target]);
 
         if (file_put_contents($batchFile, $batchContent) === false) {
             \Log::error("SyncMonitor: No se pudo crear el archivo batch");
@@ -356,11 +364,34 @@ class SyncMonitor extends Component
         exec($cmd, $output, $returnCode);
 
         \Log::info("SyncMonitor: Proceso iniciado (oculto)", [
-            'returnCode' => $returnCode
+            'returnCode' => $returnCode,
+            'target' => $target
         ]);
 
         session()->flash('message', $mensaje);
         $this->isRunning = true;
+    }
+
+    /**
+     * Detecta si estamos en local o producción.
+     */
+    protected function detectarTarget(): string
+    {
+        // Método 1: Usar APP_ENV de Laravel
+        $env = config('app.env', 'local');
+
+        if ($env === 'production') {
+            return 'production';
+        }
+
+        // Método 2: Verificar por URL/dominio
+        $host = request()->getHost();
+        if (str_contains($host, 'hierrospacoreyes.es') || str_contains($host, 'app.')) {
+            return 'production';
+        }
+
+        // Por defecto: local
+        return 'local';
     }
 
     /**
