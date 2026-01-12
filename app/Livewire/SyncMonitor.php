@@ -60,8 +60,11 @@ class SyncMonitor extends Component
     public int $yearPlanillasCount = 0;
     public ?string $yearLastPlanilla = null;
 
-    // Entorno actual
+    // Entorno actual (detectado automáticamente)
     public string $currentTarget = 'local';
+
+    // Destino de sincronización seleccionado por el usuario
+    public string $syncTarget = 'local';
 
     /**
      * Se ejecuta en CADA request de Livewire (no solo mount).
@@ -353,13 +356,13 @@ class SyncMonitor extends Component
             unlink($pauseFile);
         }
 
-        // Detectar entorno: local o production
-        $target = $this->detectarTarget();
+        // Usar el target seleccionado por el usuario
+        $target = $this->syncTarget;
 
         // Construir argumentos
         $args = "--año={$año} --target={$target}";
         $targetLabel = $target === 'production' ? 'PRODUCCIÓN' : 'LOCAL';
-        $mensaje = "Sincronización {$año} iniciada [{$targetLabel}]";
+        $mensaje = "Sincronización {$año} iniciada → {$targetLabel}";
 
         if ($desdeCodigo) {
             $args .= " --desde-codigo={$desdeCodigo}";
