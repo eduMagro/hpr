@@ -754,15 +754,20 @@ class ProfileController extends Controller
         // Buscar el usuario que se quiere actualizar
         $user = User::findOrFail($id);
 
-        // 🔒 Si NO es programador y está intentando editar DNI o email, denegar
-        if (!$esProgramador && ($request->has('dni') || $request->has('email'))) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No tienes permiso para editar DNI y email. Solo el departamento de Programador puede editar estos campos.'
-                ], 403);
+        // 🔒 Si NO es programador y está intentando CAMBIAR DNI o email, denegar
+        if (!$esProgramador) {
+            $emailCambiado = $request->has('email') && $request->email !== $user->email;
+            $dniCambiado = $request->has('dni') && $request->dni !== $user->dni;
+
+            if ($emailCambiado || $dniCambiado) {
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No tienes permiso para editar DNI y email. Solo el departamento de Programador puede editar estos campos.'
+                    ], 403);
+                }
+                return redirect()->route('dashboard')->with('error', 'No tienes permiso para editar DNI y email. Solo el departamento de Programador puede editar estos campos.');
             }
-            return redirect()->route('dashboard')->with('error', 'No tienes permiso para editar DNI y email. Solo el departamento de Programador puede editar estos campos.');
         }
 
         // Validación inline para peticiones JSON
