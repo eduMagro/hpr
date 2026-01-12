@@ -303,24 +303,28 @@ class FinProgramadoService
 
     /**
      * Genera tramos laborales respetando turnos y festivos
-     * (Simplificado pero respeta la lógica principal)
+     * SINCRONIZADO con ProduccionController::generarTramosLaborales
      */
     private function generarTramosLaborales(Carbon $inicio, int $durSeg): array
     {
         $tramos = [];
-        $restante = max(0, $durSeg);
+        $restante = max(0, (int) $durSeg);
 
-        // Verificar si el inicio está en horario laborable
+        // Verificar si el inicio está dentro de horario laborable
+        // IMPORTANTE: también verificar segmentos del día anterior que se extiendan al día actual
         $segmentosInicio = $this->obtenerSegmentosLaborablesDia($inicio);
+        $segmentosDiaAnterior = $this->obtenerSegmentosLaborablesDia($inicio->copy()->subDay());
+        $todosSegmentos = array_merge($segmentosDiaAnterior, $segmentosInicio);
         $dentroDeSegmento = false;
 
-        foreach ($segmentosInicio as $seg) {
+        foreach ($todosSegmentos as $seg) {
             if ($inicio->gte($seg['inicio']) && $inicio->lt($seg['fin'])) {
                 $dentroDeSegmento = true;
                 break;
             }
         }
 
+        // Si el inicio NO está dentro de un segmento laborable, mover al siguiente
         if (!$dentroDeSegmento) {
             $inicio = $this->siguienteLaborableInicio($inicio);
         }
@@ -338,74 +342,139 @@ class FinProgramadoService
                 break;
             }
 
-            // Obtener segmentos del día actual y del anterior (para turnos nocturnos)
+            // Obtener segmentos laborables del día basados en turnos activos
+            $diaActual = $cursor->copy()->startOfDay();
             $segmentosHoy = $this->obtenerSegmentosLaborablesDia($cursor);
             $segmentosAyer = $this->obtenerSegmentosLaborablesDia($cursor->copy()->subDay());
 
+            // Combinar segmentos y filtrar solo los que sean relevantes para el cursor actual
             $segmentos = collect($segmentosAyer)
                 ->merge($segmentosHoy)
                 ->filter(fn($seg) => $cursor->lt($seg['fin']))
-                ->sortBy(fn($seg) => $seg['inicio']->timestamp)
                 ->values()
                 ->all();
 
-            // Saltar días no laborables sin segmentos
+            // Saltar no laborables completos SOLO si no tienen segmentos
             if ($this->esNoLaborable($cursor) && empty($segmentosHoy)) {
                 $cursor = $this->siguienteLaborableInicio($cursor);
                 continue;
             }
 
             if (empty($segmentos)) {
-                // Sin turnos definidos, avanzar al siguiente día
-                $cursor = $this->siguienteLaborableInicio($cursor->addDay()->startOfDay());
-                continue;
-            }
-
-            foreach ($segmentos as $segmento) {
-                if ($restante <= 0) break;
-
-                $inicioSeg = $segmento['inicio'];
-                $finSeg = $segmento['fin'];
-
-                if ($cursor->gte($finSeg)) continue;
-                if ($cursor->lt($inicioSeg)) {
-                    $cursor = $inicioSeg->copy();
-                }
-
-                // Corte viernes a las 22:00
-                if ($cursor->dayOfWeek === Carbon::FRIDAY) {
-                    $finViernesTarde = $cursor->copy()->setTime(22, 0, 0);
-                    if ($cursor->gte($finViernesTarde)) {
-                        // Ya pasaron las 22:00 del viernes, saltar al siguiente día laborable
-                        break;
-                    }
-                    if ($finSeg->gt($finViernesTarde)) {
-                        $finSeg = $finViernesTarde;
-                    }
-                }
-
-                // No trabajar sábados
-                if ($cursor->isSaturday()) {
-                    $cursor = $this->siguienteLaborableInicio($cursor);
-                    continue 2; // Salir del foreach de segmentos
-                }
-
-                $capacidad = max(0, $finSeg->timestamp - $cursor->timestamp);
+                // Si no hay segmentos (no hay turnos con horarios definidos), usar 24h
+                $limiteDia = $cursor->copy()->startOfDay()->addDay();
+                $tsLimite = (int) $limiteDia->getTimestamp();
+                $tsCursor = (int) $cursor->getTimestamp();
+                $capacidad = max(0, $tsLimite - $tsCursor);
                 $consume = min($restante, $capacidad);
 
                 if ($consume > 0) {
-                    $tramos[] = [
-                        'start' => $cursor->copy(),
-                        'end' => $cursor->copy()->addSeconds($consume),
-                    ];
-                    $restante -= $consume;
-                    $cursor->addSeconds($consume);
-                }
-            }
+                    $start = $cursor->copy();
+                    $end = $cursor->copy()->addSeconds($consume);
+                    $tramos[] = ['start' => $start, 'end' => $end];
 
-            // Si queda trabajo, ir al siguiente día laborable
-            if ($restante > 0) {
-                $cursor = $this->siguienteLaborableInicio($cursor->addDay()->startOfDay());
+                    $restante -= $consume;
+                    $cursor = $end->copy();
+                }
+
+                // Si queda trabajo y llegamos al final del día → siguiente laborable
+                if ($restante > 0 && (int)$cursor->getTimestamp() >= $tsLimite) {
+                    $cursor = $this->siguienteLaborableInicio($cursor);
+                }
+
+                // Protección adicional: si el cursor no avanzó, forzar avance
+                if ($consume == 0) {
+                    $cursor->addDay()->startOfDay();
+                }
+            } else {
+                // Hay turnos activos - consumir solo durante los segmentos laborables
+                foreach ($segmentos as $segmento) {
+                    $inicioSeg = $segmento['inicio'];
+                    $finSeg = $segmento['fin'];
+
+                    // Si el cursor está después de este segmento, continuar con el siguiente
+                    if ($cursor->gte($finSeg)) {
+                        continue;
+                    }
+
+                    // Si el cursor está antes del segmento, moverlo al inicio
+                    if ($cursor->lt($inicioSeg)) {
+                        $cursor = $inicioSeg->copy();
+                    }
+
+                    // CORTE VIERNES A LAS 22:00 - No trabajar después de las 22:00 los viernes
+                    if ($cursor->dayOfWeek === Carbon::FRIDAY) {
+                        $finViernesTarde = $cursor->copy()->setTime(22, 0, 0);
+                        if ($cursor->gte($finViernesTarde)) {
+                            break;
+                        }
+                        if ($finSeg->gt($finViernesTarde)) {
+                            $finSeg = $finViernesTarde;
+                        }
+                    }
+
+                    // NO TRABAJAR SÁBADOS - saltar directamente
+                    if ($cursor->isSaturday()) {
+                        break;
+                    }
+
+                    // Calcular cuánto podemos consumir de este segmento
+                    $capacidadSeg = max(0, $cursor->diffInSeconds($finSeg, false));
+                    $consume = min($restante, $capacidadSeg);
+
+                    if ($consume > 0) {
+                        $start = $cursor->copy();
+                        $end = $cursor->copy()->addSeconds($consume);
+                        $tramos[] = ['start' => $start, 'end' => $end];
+
+                        $restante -= $consume;
+                        $cursor = $end->copy();
+                    }
+
+                    // Si no queda más tiempo, salir
+                    if ($restante <= 0) {
+                        break;
+                    }
+                }
+
+                // Si aún queda tiempo después de procesar todos los segmentos del día
+                if ($restante > 0) {
+                    $ultimoSegmentoHoy = end($segmentos);
+                    $siguienteDia = $diaActual->copy()->addDay();
+                    $segmentosSiguienteDia = $this->obtenerSegmentosLaborablesDia($siguienteDia);
+
+                    // Si hay segmentos mañana y son continuos con el último de hoy
+                    if (!empty($segmentosSiguienteDia)) {
+                        $primerSegmentoManana = $segmentosSiguienteDia[0];
+
+                        if ($ultimoSegmentoHoy &&
+                            $ultimoSegmentoHoy['fin']->equalTo($primerSegmentoManana['inicio'])) {
+                            $cursor = $siguienteDia->copy()->startOfDay();
+                            continue;
+                        }
+                    }
+
+                    // No hay continuidad, avanzar al día siguiente normalmente
+                    $cursor = $siguienteDia->copy()->startOfDay();
+
+                    // Saltar días no laborables
+                    $diasSaltados = 0;
+                    while ($diasSaltados < 365) {
+                        $segmentosDelDia = $this->obtenerSegmentosLaborablesDia($cursor);
+
+                        if ($this->esNoLaborable($cursor) && empty($segmentosDelDia)) {
+                            $cursor->addDay();
+                            $diasSaltados++;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    if ($diasSaltados >= 365) {
+                        Log::error('FinProgramadoService: bucle infinito detectado buscando día laborable');
+                        break;
+                    }
+                }
             }
         }
 
@@ -414,6 +483,7 @@ class FinProgramadoService
 
     /**
      * Obtiene los segmentos laborables de un día según turnos activos
+     * SINCRONIZADO con ProduccionController::obtenerSegmentosLaborablesDia
      */
     private function obtenerSegmentosLaborablesDia(Carbon $dia): array
     {
@@ -422,17 +492,37 @@ class FinProgramadoService
         }
 
         $segmentos = [];
-        $diaStr = $dia->copy()->startOfDay();
+        $esDomingo = $dia->dayOfWeek === Carbon::SUNDAY;
+        $esSabado = $dia->dayOfWeek === Carbon::SATURDAY;
 
         foreach ($this->turnosActivos as $turno) {
             if (empty($turno->hora_inicio) || empty($turno->hora_fin)) {
                 continue;
             }
 
-            $inicio = $diaStr->copy()->setTimeFromTimeString($turno->hora_inicio);
-            $fin = $diaStr->copy()->setTimeFromTimeString($turno->hora_fin);
+            // Para domingo: solo turnos que empiezan el domingo (offset_inicio < 0)
+            // esto significa turnos nocturnos que técnicamente son del lunes
+            if ($esDomingo && ($turno->offset_dias_inicio ?? 0) >= 0) {
+                continue; // Saltar turnos normales (mañana, tarde) del domingo
+            }
 
-            // Si el fin es menor que el inicio, el turno cruza medianoche
+            // Para sábado: no generar ningún segmento
+            if ($esSabado) {
+                continue;
+            }
+
+            $horaInicio = Carbon::parse($turno->hora_inicio);
+            $horaFin = Carbon::parse($turno->hora_fin);
+
+            $inicio = $dia->copy()->setTime($horaInicio->hour, $horaInicio->minute, 0);
+            $fin = $dia->copy()->setTime($horaFin->hour, $horaFin->minute, 0);
+
+            // Si el turno termina al día siguiente (offset_dias_fin = 1)
+            if (($turno->offset_dias_fin ?? 0) == 1) {
+                $fin->addDay();
+            }
+
+            // Si fin es antes que inicio, significa que cruza medianoche
             if ($fin->lte($inicio)) {
                 $fin->addDay();
             }
@@ -451,30 +541,16 @@ class FinProgramadoService
 
     /**
      * Verifica si un día es no laborable
+     * SINCRONIZADO con ProduccionController::esNoLaborable
      */
     private function esNoLaborable(Carbon $dia): bool
     {
-        // Sábado siempre es no laborable
-        if ($dia->isSaturday()) {
-            return true;
-        }
-
-        // Festivos
-        if (isset($this->festivosSet[$dia->toDateString()])) {
-            return true;
-        }
-
-        // Domingo puede tener turno noche
-        if ($dia->isSunday()) {
-            $segmentos = $this->obtenerSegmentosLaborablesDia($dia);
-            return empty($segmentos);
-        }
-
-        return false;
+        return isset($this->festivosSet[$dia->toDateString()]) || $dia->isWeekend();
     }
 
     /**
      * Obtiene el siguiente momento laborable
+     * SINCRONIZADO con ProduccionController::siguienteLaborableInicio
      */
     private function siguienteLaborableInicio(Carbon $dt): Carbon
     {
@@ -482,32 +558,53 @@ class FinProgramadoService
         $maxIter = 365;
         $iter = 0;
 
-        while ($iter++ < $maxIter) {
-            // Saltar sábados siempre
-            if ($x->isSaturday()) {
-                $x->addDay()->startOfDay();
-                continue;
-            }
+        while ($iter < $maxIter) {
+            // Caso especial: domingo - puede tener turnos nocturnos que empiezan ese día
+            if ($x->dayOfWeek === Carbon::SUNDAY) {
+                $segmentosDomingo = $this->obtenerSegmentosLaborablesDia($x);
 
-            // Verificar festivos
-            if (isset($this->festivosSet[$x->toDateString()])) {
-                $x->addDay()->startOfDay();
-                continue;
-            }
-
-            $segmentos = $this->obtenerSegmentosLaborablesDia($x);
-
-            if (!empty($segmentos)) {
-                foreach ($segmentos as $seg) {
-                    if ($x->lt($seg['fin'])) {
+                // Buscar si hay algún segmento que empiece el domingo (ej: turno noche 22:00)
+                foreach ($segmentosDomingo as $seg) {
+                    // Si el segmento empieza el domingo y el cursor está antes
+                    if ($seg['inicio']->dayOfWeek === Carbon::SUNDAY && $x->lt($seg['fin'])) {
                         return $x->lt($seg['inicio']) ? $seg['inicio']->copy() : $x->copy();
                     }
                 }
             }
 
+            // Si es día laborable (no festivo, no fin de semana)
+            if (!$this->esNoLaborable($x)) {
+                // Obtener segmentos del día
+                $segmentos = $this->obtenerSegmentosLaborablesDia($x);
+
+                if (!empty($segmentos)) {
+                    // Si el cursor está antes del primer segmento, ir al primer segmento
+                    $primerSegmento = $segmentos[0];
+                    if ($x->lt($primerSegmento['inicio'])) {
+                        return $primerSegmento['inicio']->copy();
+                    }
+
+                    // Buscar un segmento donde el cursor esté antes o dentro
+                    foreach ($segmentos as $seg) {
+                        if ($x->lt($seg['fin'])) {
+                            return $x->lt($seg['inicio']) ? $seg['inicio']->copy() : $x->copy();
+                        }
+                    }
+
+                    // Si llegamos aquí, el cursor está después de todos los segmentos del día
+                    // Avanzar al siguiente día
+                } else {
+                    // No hay segmentos (no hay turnos activos), retornar el día a las 00:00
+                    return $x->copy()->startOfDay();
+                }
+            }
+
+            // Avanzar al siguiente día a las 00:00
             $x->addDay()->startOfDay();
+            $iter++;
         }
 
+        // Fallback
         return $x;
     }
 
