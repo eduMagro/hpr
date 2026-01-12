@@ -241,12 +241,24 @@ class FerrawinBulkImportService
 
         Log::channel('ferrawin_sync')->debug("📥 [BULK] Procesando planilla {$codigo} (sin elementos - solo cabecera)");
 
-        // Crear planilla sin elementos
-        // Cliente y obra serán null o se resolverán después cuando se añadan elementos
+        // Resolver cliente y obra usando los datos de la cabecera
+        [$cliente, $obra] = $this->resolverClienteYObra([
+            'codigo_cliente' => $data['codigo_cliente'] ?? '',
+            'nombre_cliente' => $data['nombre_cliente'] ?? '',
+            'codigo_obra' => $data['codigo_obra'] ?? '',
+            'nombre_obra' => $data['nombre_obra'] ?? '',
+        ]);
+
+        if (!$cliente || !$obra) {
+            $this->advertencias[] = "Planilla {$codigo}: sin elementos y no se pudo resolver cliente/obra";
+            return;
+        }
+
+        // Crear planilla sin elementos pero con cliente/obra
         $planilla = Planilla::create([
             'users_id' => 1, // Sistema
-            'cliente_id' => null,
-            'obra_id' => null,
+            'cliente_id' => $cliente->id,
+            'obra_id' => $obra->id,
             'codigo' => $codigo,
             'descripcion' => $data['descripcion'] ?? null,
             'seccion' => $data['seccion'] ?? '-',

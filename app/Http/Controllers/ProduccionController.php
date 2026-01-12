@@ -3317,8 +3317,8 @@ class ProduccionController extends Controller
             $planillasConRetraso = [];
             $elementosAMover = [];
 
-            // Obtener festivos para cálculo de tramos
-            $festivosSet = $this->obtenerFestivosSet();
+            // Inicializar servicio de fin programado (carga festivos y turnos)
+            $this->finProgramadoService->init();
 
             // Agrupar órdenes por máquina para procesar en orden
             $ordenesPorMaquina = $ordenesConPlanillas->groupBy('maquina_id');
@@ -3359,8 +3359,8 @@ class ProduccionController extends Controller
                         'tiempo_horas' => round($tiempoSegundos / 3600, 2),
                     ]);
 
-                    // ✅ USAR TRAMOS LABORALES como el calendario
-                    $tramos = $this->generarTramosLaborales($cargaMaquinas[$maquinaId], $tiempoSegundos, $festivosSet);
+                    // ✅ USAR TRAMOS LABORALES como el calendario (servicio unificado)
+                    $tramos = $this->finProgramadoService->generarTramosLaborales($cargaMaquinas[$maquinaId], $tiempoSegundos);
 
                     if (!empty($tramos)) {
                         $ultimoTramo = end($tramos);
