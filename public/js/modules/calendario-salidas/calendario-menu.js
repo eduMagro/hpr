@@ -918,9 +918,9 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
         const { isConfirmed } = await Swal.fire({
             title: "",
             html,
-            width: Math.min(window.innerWidth * 0.98, 1200), // ⬅️ Más ancho (hasta 1200px)
+            width: Math.min(window.innerWidth * 0.98, 1200),
             customClass: {
-                popup: "w-full max-w-screen-xl", // ⬅️ Fuerza a pantalla completa en pantallas grandes
+                popup: "w-full max-w-screen-xl",
             },
             showCancelButton: true,
             confirmButtonText: "💾 Guardar",
@@ -929,11 +929,8 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
             showClass: { popup: "swal-fade-in-zoom" },
             hideClass: { popup: "swal-fade-out" },
             didOpen: (popup) => {
-                // 1) Centrar SIEMPRE al abrir (coincide con la animación que usa translate)
                 centerSwal(popup);
-                // 2) Habilitar drag SOLO sobre #swal-drag (sin memoria para que no “herede” posiciones)
                 hacerDraggableSwal("#swal-drag", false);
-                // 3) Foco suave
                 setTimeout(() => {
                     const first =
                         Swal.getHtmlContainer().querySelector(
@@ -942,7 +939,6 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
                     first?.focus({ preventScroll: true });
                 }, 120);
 
-                // 4) Agregar event listeners para actualizar estilo de fin de semana y sumatorio
                 const dateInputs =
                     Swal.getHtmlContainer().querySelectorAll(
                         'input[type="date"]'
@@ -955,12 +951,10 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
                         } else {
                             this.classList.remove("weekend-date");
                         }
-                        // Actualizar sumatorio dinámico
                         actualizarSumatorio(planillas);
                     });
                 });
 
-                // 5) Actualizar sumatorio inicial
                 setTimeout(() => {
                     actualizarSumatorio(planillas);
                 }, 100);
@@ -974,22 +968,41 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
 
         const payload = Array.from(inputs).map((inp) => ({
             id: Number(inp.getAttribute("data-planilla-id")),
-            fecha_estimada_entrega: inp.value, // input type="date" ya devuelve formato YYYY-MM-DD
+            fecha_estimada_entrega: inp.value,
         }));
 
-        const resp = await guardarFechasPlanillas(payload);
-        await Swal.fire(
-            resp.success ? "✅" : "⚠️",
-            resp.message ||
-                (resp.success
-                    ? "Fechas actualizadas"
-                    : "No se pudieron actualizar"),
-            resp.success ? "success" : "warning"
-        );
+        // PASO 1: Simular reordenamiento
+        const simulacion = await simularReordenamiento(payload);
 
-        if (resp.success && calendar) {
-            calendar.refetchEvents?.();
-            calendar.refetchResources?.();
+        if (!simulacion.success) {
+            Swal.fire("Error", simulacion.message || "Error al simular reordenamiento", "error");
+            return;
+        }
+
+        // PASO 2: Mostrar confirmación si hay cambios o retrasos
+        if (simulacion.total_cambios > 0 || simulacion.total_retrasos > 0) {
+            const confirmar = await mostrarConfirmacionReordenamiento(simulacion);
+            if (!confirmar) return; // Usuario canceló
+        }
+
+        // PASO 3: Aplicar cambios
+        const resultado = await aplicarReordenamiento(payload);
+
+        if (resultado.success) {
+            await Swal.fire({
+                icon: "success",
+                title: "Cambios aplicados",
+                html: resultado.message || "Fechas actualizadas y planillas reordenadas",
+                timer: 3000,
+                showConfirmButton: true,
+            });
+
+            if (calendar) {
+                calendar.refetchEvents?.();
+                calendar.refetchResources?.();
+            }
+        } else {
+            Swal.fire("⚠️", resultado.message || "No se pudieron aplicar los cambios", "warning");
         }
     } catch (err) {
         console.error("[CambiarFechasEntrega] error:", err);
@@ -999,6 +1012,118 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
             "error"
         );
     }
+}
+
+/**
+ * Simula el reordenamiento sin aplicar cambios
+ */
+async function simularReordenamiento(payload) {
+    const res = await fetch("/planillas/simular-reordenamiento", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": window.AppSalidas?.csrf,
+            Accept: "application/json",
+        },
+        body: JSON.stringify({ planillas: payload }),
+    });
+    return res.json().catch(() => ({ success: false, message: "Error de conexión" }));
+}
+
+/**
+ * Aplica el reordenamiento tras confirmación
+ */
+async function aplicarReordenamiento(payload) {
+    const res = await fetch("/planillas/aplicar-reordenamiento", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": window.AppSalidas?.csrf,
+            Accept: "application/json",
+        },
+        body: JSON.stringify({ planillas: payload }),
+    });
+    return res.json().catch(() => ({ success: false, message: "Error de conexión" }));
+}
+
+/**
+ * Muestra modal de confirmación con los cambios propuestos
+ */
+async function mostrarConfirmacionReordenamiento(simulacion) {
+    const cambiosHtml = simulacion.cambios_propuestos?.length > 0
+        ? simulacion.cambios_propuestos.map(c => `
+            <tr class="border-b border-gray-200">
+                <td class="px-2 py-1 text-sm">${c.planilla_codigo || '-'}</td>
+                <td class="px-2 py-1 text-sm">${c.maquina_nombre || '-'}</td>
+                <td class="px-2 py-1 text-sm text-center font-medium">
+                    <span class="text-gray-500">${c.posicion_actual}</span>
+                    <span class="mx-1">→</span>
+                    <span class="text-blue-600">${c.posicion_nueva}</span>
+                </td>
+                <td class="px-2 py-1 text-sm text-gray-600">${c.fecha_entrega || '-'}</td>
+            </tr>
+        `).join("")
+        : "";
+
+    const retrasosHtml = simulacion.alertas_retraso?.length > 0
+        ? simulacion.alertas_retraso.map(r => `
+            <div class="bg-red-50 border border-red-200 rounded p-2 mb-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-red-700 font-medium">⚠️ ${r.planilla_codigo || 'Planilla'}</span>
+                    <span class="text-red-600 text-sm">(${r.maquina_nombre || 'máquina'})</span>
+                </div>
+                <div class="text-red-600 text-sm mt-1">
+                    Entrega: <strong>${r.fecha_entrega || '-'}</strong> |
+                    Fin programado: <strong>${r.fin_programado || '-'}</strong>
+                    ${r.dias_retraso ? `<span class="ml-2 bg-red-100 px-2 py-0.5 rounded">${r.dias_retraso} días de retraso</span>` : ''}
+                </div>
+            </div>
+        `).join("")
+        : "";
+
+    const html = `
+        <div class="text-left">
+            ${simulacion.total_cambios > 0 ? `
+                <h4 class="font-bold mb-2 text-gray-700">📋 Cambios de posición en cola (${simulacion.total_cambios})</h4>
+                <p class="text-sm text-gray-500 mb-2">Las planillas se reordenarán por fecha de entrega (más urgentes primero)</p>
+                <div class="max-h-48 overflow-auto mb-4 border border-gray-200 rounded">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-100 sticky top-0">
+                            <tr>
+                                <th class="px-2 py-1 text-left font-medium">Planilla</th>
+                                <th class="px-2 py-1 text-left font-medium">Máquina</th>
+                                <th class="px-2 py-1 text-center font-medium">Posición</th>
+                                <th class="px-2 py-1 text-left font-medium">Entrega</th>
+                            </tr>
+                        </thead>
+                        <tbody>${cambiosHtml}</tbody>
+                    </table>
+                </div>
+            ` : '<p class="text-gray-600 mb-4">No hay cambios de posición necesarios.</p>'}
+
+            ${simulacion.total_retrasos > 0 ? `
+                <h4 class="font-bold mb-2 text-red-700">⚠️ Alertas de retraso (${simulacion.total_retrasos})</h4>
+                <div class="max-h-40 overflow-auto mb-2">${retrasosHtml}</div>
+                <p class="text-sm text-gray-600 bg-yellow-50 p-2 rounded border border-yellow-200">
+                    <strong>Nota:</strong> Estas planillas no llegarán a tiempo con la configuración actual.
+                    Considera redistribuir elementos desde produccion/maquinas.
+                </p>
+            ` : ''}
+        </div>
+    `;
+
+    const result = await Swal.fire({
+        title: "Confirmar cambios",
+        html: html,
+        icon: simulacion.total_retrasos > 0 ? "warning" : "question",
+        showCancelButton: true,
+        confirmButtonText: "✅ Aplicar cambios",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: simulacion.total_retrasos > 0 ? "#f59e0b" : "#3085d6",
+        width: 650,
+    });
+
+    return result.isConfirmed;
 }
 
 /* ===================== Menú contextual calendario ===================== */

@@ -121,4 +121,9 @@ Route::prefix('ferrawin')->group(function () {
     Route::post('/sync', [FerrawinSyncController::class, 'sync'])
         ->middleware('ferrawin.api')
         ->name('api.ferrawin.sync');
+
+    // Backfill descripcion_fila para elementos existentes
+    Route::post('/backfill-descripcion-fila', [FerrawinSyncController::class, 'backfillDescripcionFila'])
+        ->middleware('ferrawin.api')
+        ->name('api.ferrawin.backfill-descripcion-fila');
 });

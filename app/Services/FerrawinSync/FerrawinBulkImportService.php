@@ -357,6 +357,7 @@ class FerrawinBulkImportService
             'etiqueta_sub_id' => null,
             'maquina_id' => null,
             'figura' => $elem['figura'] ?? null,
+            'descripcion_fila' => $elem['descripcion_fila'] ?? null,
             'fila' => $fila,
             'marca' => $elem['marca'] ?? null,
             'etiqueta' => $elem['etiqueta'] ?? null,

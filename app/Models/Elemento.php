@@ -42,6 +42,7 @@ class Elemento extends Model
         'producto_id_3',
         'paquete_id',
         'figura',
+        'descripcion_fila',
         'fila',
         'marca',
         'etiqueta',

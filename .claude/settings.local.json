@@ -70,7 +70,12 @@
       "Bash(echo:*)",
       "Bash(git rm:*)",
       "WebFetch(domain:docs.google.com)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(gh:*)",
+      "Bash(find:*)",
+      "Bash(git remote add:*)",
+      "Bash(more:*)"
     ],
     "deny": [],
     "ask": []

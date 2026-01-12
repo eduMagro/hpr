@@ -123,12 +123,19 @@ class ReorganizarEtiquetasFerrawin extends Command
             return $resultado;
         }
 
+        // Verificar si hay elementos con descripcion_fila
+        $conDescripcion = $elementos->whereNotNull('descripcion_fila')->count();
+        if ($conDescripcion === 0) {
+            Log::warning("[SKIP] Planilla {$planilla->codigo}: elementos sin descripcion_fila - ejecuta backfill primero");
+            return $resultado;
+        }
+
         // Agrupar elementos por DESCRIPCIÓN + MARCA
         $grupos = [];
         foreach ($elementos as $elemento) {
-            // Obtener descripción de la etiqueta actual o del elemento
-            $etiquetaActual = $elemento->etiqueta;
-            $descripcion = $normalizar($etiquetaActual->nombre ?? $elemento->marca ?? '');
+            // Usar descripcion_fila del elemento (rellenado por backfill)
+            // Fallback a etiqueta.nombre si no hay descripcion_fila
+            $descripcion = $normalizar($elemento->descripcion_fila ?? $elemento->etiqueta->nombre ?? '');
             $marca = $normalizar($elemento->marca ?? '');
 
             $claveGrupo = $descripcion . '|' . $marca;

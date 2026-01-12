@@ -32,6 +32,7 @@ use App\Services\OrdenPlanillaService;
 use Illuminate\Support\Facades\Schema;
 use App\Services\PlanillaColaService;
 use App\Services\ImportProgress;
+use App\Services\AutoReordenadorService;
 
 class PlanillaController extends Controller
 {
@@ -1204,6 +1205,76 @@ class PlanillaController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error interno',
+            ], 500);
+        }
+    }
+
+    /**
+     * Simula el reordenamiento sin aplicar cambios
+     * POST /planillas/simular-reordenamiento
+     */
+    public function simularReordenamiento(Request $request)
+    {
+        try {
+            $data = $request->validate([
+                'planillas' => ['required', 'array', 'min:1'],
+                'planillas.*.id' => ['required', 'integer', 'exists:planillas,id'],
+                'planillas.*.fecha_estimada_entrega' => ['nullable', 'date_format:Y-m-d'],
+            ]);
+
+            $service = app(AutoReordenadorService::class);
+            $resultado = $service->simularReordenamiento($data['planillas']);
+
+            return response()->json($resultado);
+        } catch (ValidationException $ve) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validación fallida',
+                'errors' => $ve->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('[Planillas simularReordenamiento] error: ' . $e->getMessage(), [
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al simular reordenamiento: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Aplica el reordenamiento tras confirmación
+     * POST /planillas/aplicar-reordenamiento
+     */
+    public function aplicarReordenamiento(Request $request)
+    {
+        try {
+            $data = $request->validate([
+                'planillas' => ['required', 'array', 'min:1'],
+                'planillas.*.id' => ['required', 'integer', 'exists:planillas,id'],
+                'planillas.*.fecha_estimada_entrega' => ['nullable', 'date_format:Y-m-d'],
+            ]);
+
+            $service = app(AutoReordenadorService::class);
+            $resultado = $service->aplicarReordenamiento($data['planillas']);
+
+            return response()->json($resultado);
+        } catch (ValidationException $ve) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validación fallida',
+                'errors' => $ve->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('[Planillas aplicarReordenamiento] error: ' . $e->getMessage(), [
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al aplicar reordenamiento: ' . $e->getMessage(),
             ], 500);
         }
     }

@@ -520,6 +520,11 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/planillas/informacion', [PlanillaController::class, 'informacionMasiva'])->name('planillas.editarInformacionMasiva');
 
     Route::put('/planillas/fechas', [PlanillaController::class, 'actualizarFechasMasiva'])->name('planillas.editarActualizarFechasMasiva');
+
+    // Rutas para reordenamiento automático de planillas
+    Route::post('/planillas/simular-reordenamiento', [PlanillaController::class, 'simularReordenamiento'])->name('planillas.simularReordenamiento');
+    Route::post('/planillas/aplicar-reordenamiento', [PlanillaController::class, 'aplicarReordenamiento'])->name('planillas.aplicarReordenamiento');
+
     Route::post('/paquetes/tamaño', [PaqueteController::class, 'tamaño'])
         ->name('paquetes.tamaño');
 

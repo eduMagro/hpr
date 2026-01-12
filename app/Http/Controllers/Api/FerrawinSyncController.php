@@ -121,4 +121,85 @@ class FerrawinSyncController extends Controller
             'version' => '1.0',
         ]);
     }
+
+    /**
+     * Backfill descripcion_fila para elementos existentes.
+     *
+     * POST /api/ferrawin/backfill-descripcion-fila
+     */
+    public function backfillDescripcionFila(Request $request)
+    {
+        try {
+            $request->validate([
+                'codigo_planilla' => 'required|string',
+                'elementos' => 'required|array',
+                'elementos.*.fila' => 'required|string',
+                'elementos.*.descripcion_fila' => 'nullable|string',
+            ]);
+
+            $codigoPlanilla = $request->input('codigo_planilla');
+            $elementosData = $request->input('elementos');
+
+            // Buscar la planilla
+            $planilla = \App\Models\Planilla::where('codigo', $codigoPlanilla)->first();
+
+            if (!$planilla) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Planilla {$codigoPlanilla} no encontrada",
+                    'actualizados' => 0,
+                ]);
+            }
+
+            // Crear mapa fila -> descripcion_fila
+            $mapaDescripciones = [];
+            foreach ($elementosData as $elem) {
+                $fila = trim($elem['fila']);
+                $mapaDescripciones[$fila] = $elem['descripcion_fila'] ?? null;
+            }
+
+            // Actualizar elementos de la planilla
+            $actualizados = 0;
+            $elementos = \App\Models\Elemento::where('planilla_id', $planilla->id)->get();
+
+            foreach ($elementos as $elemento) {
+                $fila = trim($elemento->fila ?? '');
+
+                if (isset($mapaDescripciones[$fila]) && $mapaDescripciones[$fila]) {
+                    $elemento->descripcion_fila = $mapaDescripciones[$fila];
+                    $elemento->save();
+                    $actualizados++;
+                }
+            }
+
+            Log::channel('ferrawin_sync')->info("📝 [API] Backfill descripcion_fila", [
+                'planilla' => $codigoPlanilla,
+                'elementos_recibidos' => count($elementosData),
+                'actualizados' => $actualizados,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Backfill completado',
+                'actualizados' => $actualizados,
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos inválidos',
+                'errors' => $e->errors(),
+            ], 422);
+
+        } catch (\Throwable $e) {
+            Log::channel('ferrawin_sync')->error('❌ [API] Error en backfill', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => config('app.debug') ? $e->getMessage() : 'Error interno',
+            ], 500);
+        }
+    }
 }

@@ -927,18 +927,31 @@ class PlanificacionController extends Controller
      */
     public function simularAdelanto(Request $request, FinProgramadoService $finProgramadoService)
     {
-        $request->validate([
-            'elementos_ids' => 'required|array',
-            'elementos_ids.*' => 'integer',
-            'fecha_entrega' => 'required|date',
-        ]);
+        try {
+            $request->validate([
+                'elementos_ids' => 'required|array',
+                'elementos_ids.*' => 'integer',
+                'fecha_entrega' => 'required|date',
+            ]);
 
-        $elementosIds = $request->elementos_ids;
-        $fechaEntrega = Carbon::parse($request->fecha_entrega);
+            $elementosIds = $request->elementos_ids;
+            $fechaEntrega = Carbon::parse($request->fecha_entrega);
 
-        $resultado = $finProgramadoService->simularAdelanto($elementosIds, $fechaEntrega);
+            $resultado = $finProgramadoService->simularAdelanto($elementosIds, $fechaEntrega);
 
-        return response()->json($resultado);
+            return response()->json($resultado);
+        } catch (\Throwable $e) {
+            \Log::error('[simularAdelanto] Error: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'necesita_adelanto' => false,
+                'mensaje' => 'Error al simular: ' . $e->getMessage(),
+                'error' => true,
+            ], 500);
+        }
     }
 
     /**

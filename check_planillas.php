@@ -1,14 +1,15 @@
 <?php
-require __DIR__ . '/vendor/autoload.php';
-$app = require_once __DIR__ . '/bootstrap/app.php';
-$app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+require 'vendor/autoload.php';
+$app = require_once 'bootstrap/app.php';
+$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
-$planillas = App\Models\Planilla::whereIn('codigo', ['2025-008634', '2025-008600', '2025-008586', '2025-008442', '2025-008437'])
-    ->with('cliente', 'obra')
-    ->withCount(['entidades', 'elementos'])
-    ->get();
+$codigos = file('codigos_planillas_normalizados.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+$total = count($codigos);
+$existentes = App\Models\Planilla::whereIn('codigo', $codigos)->count();
+$yaAprobadas = App\Models\Planilla::whereIn('codigo', $codigos)->where('aprobada', true)->count();
+$pendientes = $existentes - $yaAprobadas;
 
-foreach ($planillas as $p) {
-    echo $p->codigo . ' | ' . ($p->cliente->empresa ?? 'N/A') . ' | ' . ($p->obra->obra ?? 'N/A') . PHP_EOL;
-    echo '  Entidades: ' . $p->entidades_count . ', Elementos: ' . $p->elementos_count . PHP_EOL;
-}
+echo "Codigos en Excel: $total\n";
+echo "Existen en DB: $existentes\n";
+echo "Ya aprobadas: $yaAprobadas\n";
+echo "Pendientes de aprobar: $pendientes\n";
