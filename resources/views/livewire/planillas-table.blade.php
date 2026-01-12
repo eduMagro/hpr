@@ -580,6 +580,57 @@
             });
         });
 
+        // Confirmación de eliminación con SweetAlert2
+        function confirmarEliminacion(url) {
+            Swal.fire({
+                title: '¿Eliminar planilla?',
+                text: 'Esta acción no se puede deshacer',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(url, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Eliminada',
+                                text: 'La planilla ha sido eliminada correctamente',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                            // Refrescar el componente Livewire
+                            @this.$refresh();
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'No se pudo eliminar la planilla'
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Error de conexión'
+                        });
+                    });
+                }
+            });
+        }
+
         // Confirmación de aprobación masiva con SweetAlert2
         function confirmarAprobacionMasiva(cantidad, fechaEntrega) {
             Swal.fire({

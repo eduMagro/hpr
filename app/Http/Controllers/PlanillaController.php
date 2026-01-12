@@ -908,6 +908,9 @@ class PlanillaController extends Controller
     public function destroy($id)
     {
         if (auth()->user()->rol !== 'oficina') {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'No tienes los permisos necesarios.'], 403);
+            }
             return redirect()->route('planillas.index')
                 ->with('abort', 'No tienes los permisos necesarios.');
         }
@@ -937,10 +940,17 @@ class PlanillaController extends Controller
             $this->ordenService->recalcularOrdenDeMaquinas($maquinasAfectadas);
 
             DB::commit();
+
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'Planilla eliminada correctamente.']);
+            }
             return redirect()->route('planillas.index')
                 ->with('success', 'Planilla eliminada correctamente.');
         } catch (\Throwable $e) {
             DB::rollBack();
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Error al eliminar: ' . $e->getMessage()], 500);
+            }
             return redirect()->back()
                 ->with('error', 'Ocurrió un error al eliminar la planilla: ' . $e->getMessage());
         }
