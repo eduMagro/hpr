@@ -24,6 +24,7 @@ class Obra extends Model
         'distancia',
         'ancho_m',
         'largo_m',
+        'presupuesto_estimado',
         'estado',
         'tipo'
     ];

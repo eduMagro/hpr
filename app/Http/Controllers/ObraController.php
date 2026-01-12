@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Obra;
+use App\Models\Cliente;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -73,6 +74,7 @@ class ObraController extends Controller
             'latitud'    => 'nullable|numeric',
             'longitud'   => 'nullable|numeric',
             'distancia'  => 'nullable|integer',
+            'presupuesto_estimado' => 'nullable|numeric|min:0',
             'tipo'       => 'required|in:montaje,suministro',
         ], [
             'obra.required' => 'El nombre de la obra es obligatorio.',
@@ -169,6 +171,7 @@ class ObraController extends Controller
                 'tipo'      => 'required|in:montaje,suministro',
                 'ciudad'    => 'nullable|string|max:255',
                 'direccion' => 'nullable|string|max:255',
+                'presupuesto_estimado' => 'nullable|numeric|min:0',
             ];
 
             $messages = [

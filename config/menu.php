@@ -304,6 +304,14 @@ return [
                         ['label' => 'Ver todas', 'route' => 'empresas.index', 'permission' => 'ver'],
                     ]
                 ],
+                [
+                    'label' => 'Matriz de Costos',
+                    'route' => 'matriz_costos.index',
+                    'icon' => '📊',
+                    'actions' => [
+                        ['label' => 'Ver matriz', 'route' => 'matriz_costos.index', 'permission' => 'ver'],
+                    ]
+                ],
             ]
         ],
         [

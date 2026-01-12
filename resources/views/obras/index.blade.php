@@ -98,6 +98,7 @@
                         <th class="p-2 border">{!! ordenarColumna('latitud', 'Latitud') !!}</th>
                         <th class="p-2 border">{!! ordenarColumna('longitud', 'Longitud') !!}</th>
                         <th class="p-2 border">{!! ordenarColumna('distancia', 'Radio') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumna('presupuesto_estimado', 'Presupuesto Estimado') !!}</th>
                         <th class="p-2 border">Acciones</th>
                     </tr>
                     <tr>
@@ -128,6 +129,11 @@
                             </th>
                             <th class="p-1 border">
                                 <input type="text" name="distancia" value="{{ request('distancia') }}"
+                                    class="form-control form-control-sm" />
+                            </th>
+                            <th class="p-1 border">
+                                <input type="text" name="presupuesto_estimado"
+                                    value="{{ request('presupuesto_estimado') }}"
                                     class="form-control form-control-sm" />
                             </th>
                             <th class="p-1 border text-center">
@@ -194,6 +200,14 @@
                                 <input x-show="editando" type="text" x-model="obra.distancia"
                                     class="form-control form-control-sm">
                             </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span
+                                        x-text="obra.presupuesto_estimado ? Number(obra.presupuesto_estimado).toLocaleString('es-ES') + ' €' : '-'"></span>
+                                </template>
+                                <input x-show="editando" type="number" step="0.01"
+                                    x-model="obra.presupuesto_estimado" class="form-control form-control-sm">
+                            </td>
                             <td class="px-2 py-2 border text-xs font-bold">
                                 <div class="flex items-center space-x-2 justify-center">
                                     {{-- Botones en modo edición --}}
@@ -230,7 +244,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center py-4 text-gray-500">No hay obras disponibles.</td>
+                            <td colspan="9" class="text-center py-4 text-gray-500">No hay obras disponibles.</td>
                         </tr>
                     @endforelse
                 </tbody>

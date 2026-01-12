@@ -18,6 +18,8 @@
                 <div><span class="font-semibold">Código:</span> {{ $obra->cod_obra }}</div>
                 <div><span class="font-semibold">Ciudad:</span> {{ $obra->ciudad }}</div>
                 <div><span class="font-semibold">Dirección:</span> {{ $obra->direccion }}</div>
+                <div><span class="font-semibold">Presupuesto Estimado:</span>
+                    {{ number_format($obra->presupuesto_estimado, 2, ',', '.') }} €</div>
                 <div><span class="font-semibold">Estado:</span>
                     @php
                         switch ($obra->estado) {

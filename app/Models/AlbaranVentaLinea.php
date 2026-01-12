@@ -31,4 +31,9 @@ class AlbaranVentaLinea extends Model
     {
         return $this->belongsTo(ProductoBase::class, 'producto_base_id');
     }
+
+    public function albaranesVentaProductos()
+    {
+        return $this->hasMany(AlbaranVentaProducto::class, 'albaran_linea_id');
+    }
 }

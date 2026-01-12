@@ -61,8 +61,10 @@ use App\Http\Controllers\AlbaranesScanController;
 use App\Http\Controllers\EtiquetaEnsamblajeController;
 use App\Http\Controllers\InventarioBackupController;
 use App\Http\Controllers\IncidenciaController;
+use App\Http\Controllers\MatrizCostosController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/matriz-costos', [MatrizCostosController::class, 'index'])->name('matriz_costos.index');
     Route::get('/incidencias', [IncidenciaController::class, 'index'])->name('incidencias.index');
     // AJAX List
     Route::get('/incidencias/ajax/list', [IncidenciaController::class, 'listAjax'])->name('incidencias.list.ajax');
