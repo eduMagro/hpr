@@ -33,7 +33,10 @@ class PlanillasTable extends Component
     public $nom_obra = '';
 
     #[Url(keep: true)]
-    public $seccion = '';
+    public $secciones = [];
+
+    // Dropdown de secciones abierto/cerrado
+    public $seccionesDropdownAbierto = false;
 
     #[Url(keep: true)]
     public $descripcion = '';
@@ -91,24 +94,39 @@ class PlanillasTable extends Component
 
     public function aplicarFiltros($query)
     {
-        // Código
+        // Código (permite múltiples valores separados por coma o punto)
         if (!empty($this->codigo)) {
             $input = trim($this->codigo);
 
-            // Formato completo tipo 2025-004512
-            if (preg_match('/^(\d{4})-(\d{1,6})$/', $input, $m)) {
-                $anio = $m[1];
-                $num  = str_pad($m[2], 6, '0', STR_PAD_LEFT);
-                $codigoFormateado = "{$anio}-{$num}";
-                $query->where('codigo', 'like', "%{$codigoFormateado}%");
-            }
-            // Solo número final (ej. "4512")
-            elseif (preg_match('/^\d{1,6}$/', $input)) {
-                $query->where('codigo', 'like', "%{$input}%");
-            }
-            // Búsqueda genérica
-            else {
-                $query->where('codigo', 'like', "%{$input}%");
+            // Separar por coma o punto
+            $codigos = preg_split('/[,.]/', $input);
+            $codigos = array_map('trim', $codigos);
+            $codigos = array_filter($codigos, fn($c) => $c !== '');
+
+            if (count($codigos) > 1) {
+                // Múltiples códigos: OR entre ellos
+                $query->where(function ($q) use ($codigos) {
+                    foreach ($codigos as $codigo) {
+                        $q->orWhere('codigo', 'like', "%{$codigo}%");
+                    }
+                });
+            } elseif (count($codigos) === 1) {
+                $codigo = $codigos[0];
+                // Formato completo tipo 2025-004512
+                if (preg_match('/^(\d{4})-(\d{1,6})$/', $codigo, $m)) {
+                    $anio = $m[1];
+                    $num  = str_pad($m[2], 6, '0', STR_PAD_LEFT);
+                    $codigoFormateado = "{$anio}-{$num}";
+                    $query->where('codigo', 'like', "%{$codigoFormateado}%");
+                }
+                // Solo número final (ej. "4512")
+                elseif (preg_match('/^\d{1,6}$/', $codigo)) {
+                    $query->where('codigo', 'like', "%{$codigo}%");
+                }
+                // Búsqueda genérica
+                else {
+                    $query->where('codigo', 'like', "%{$codigo}%");
+                }
             }
         }
 
@@ -140,9 +158,9 @@ class PlanillasTable extends Component
             });
         }
 
-        // Sección
-        if (!empty($this->seccion)) {
-            $query->where('seccion', 'like', '%' . trim($this->seccion) . '%');
+        // Sección (múltiples)
+        if (!empty($this->secciones) && is_array($this->secciones)) {
+            $query->whereIn('seccion', $this->secciones);
         }
 
         // Descripción
@@ -288,7 +306,8 @@ class PlanillasTable extends Component
             'cliente',
             'cod_obra',
             'nom_obra',
-            'seccion',
+            'secciones',
+            'seccionesDropdownAbierto',
             'descripcion',
             'ensamblado',
             'comentario',
@@ -303,6 +322,36 @@ class PlanillasTable extends Component
             'sort',
             'order'
         ]);
+        $this->resetPage();
+    }
+
+    /**
+     * Toggle para abrir/cerrar el dropdown de secciones
+     */
+    public function toggleSeccionesDropdown()
+    {
+        $this->seccionesDropdownAbierto = !$this->seccionesDropdownAbierto;
+    }
+
+    /**
+     * Toggle para seleccionar/deseleccionar una sección
+     */
+    public function toggleSeccion($seccion)
+    {
+        if (in_array($seccion, $this->secciones)) {
+            $this->secciones = array_values(array_diff($this->secciones, [$seccion]));
+        } else {
+            $this->secciones[] = $seccion;
+        }
+        $this->resetPage();
+    }
+
+    /**
+     * Limpiar todas las secciones seleccionadas
+     */
+    public function limpiarSecciones()
+    {
+        $this->secciones = [];
         $this->resetPage();
     }
 
@@ -325,8 +374,8 @@ class PlanillasTable extends Component
         if (!empty($this->nom_obra)) {
             $filtros[] = "<strong>Obra:</strong> {$this->nom_obra}";
         }
-        if (!empty($this->seccion)) {
-            $filtros[] = "<strong>Sección:</strong> {$this->seccion}";
+        if (!empty($this->secciones)) {
+            $filtros[] = "<strong>Secciones:</strong> " . implode(', ', $this->secciones);
         }
         if (!empty($this->descripcion)) {
             $filtros[] = "<strong>Descripción:</strong> {$this->descripcion}";
@@ -607,6 +656,25 @@ class PlanillasTable extends Component
         $clientes = Cliente::select('id', 'codigo', 'empresa')->get();
         $obras = Obra::select('id', 'cod_obra', 'obra')->get();
 
+        // Obtener secciones únicas disponibles (de los registros ya filtrados, excepto el filtro de secciones)
+        $queryParaSecciones = Planilla::query();
+        if (!$esAdmin) {
+            $queryParaSecciones->where('users_id', $user->id);
+        }
+        // Aplicar todos los filtros EXCEPTO el de secciones
+        $seccionesOriginales = $this->secciones;
+        $this->secciones = [];
+        $queryParaSecciones = $this->aplicarFiltros($queryParaSecciones);
+        $this->secciones = $seccionesOriginales;
+
+        $seccionesDisponibles = $queryParaSecciones
+            ->whereNotNull('seccion')
+            ->where('seccion', '!=', '')
+            ->distinct()
+            ->orderBy('seccion')
+            ->pluck('seccion')
+            ->toArray();
+
         return view('livewire.planillas-table', [
             'planillas' => $planillas,
             'clientes' => $clientes,
@@ -615,6 +683,7 @@ class PlanillasTable extends Component
             'planillasSinRevisar' => $planillasSinRevisar,
             'planillasSinAprobar' => $planillasSinAprobar,
             'filtrosActivos' => $this->getFiltrosActivos(),
+            'seccionesDisponibles' => $seccionesDisponibles,
         ]);
     }
 }
