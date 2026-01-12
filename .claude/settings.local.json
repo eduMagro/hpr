@@ -68,7 +68,9 @@
       "Bash(gh repo create:*)",
       "Bash(git branch:*)",
       "Bash(echo:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "WebFetch(domain:docs.google.com)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

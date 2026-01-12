@@ -1043,7 +1043,10 @@ class PlanillaController extends Controller
 
     public function completarTodas(Request $request, PlanillaService $svc)
     {
-        $resultado = $svc->completarTodasPlanillas();
+        // Fecha de corte opcional (si no se proporciona, el servicio usa hoy)
+        $fechaCorte = $request->input('fecha_corte');
+
+        $resultado = $svc->completarTodasPlanillas(null, $fechaCorte);
         $mensaje = "Procesadas OK: {$resultado['procesadas_ok']} | Omitidas por fecha: {$resultado['omitidas_fecha']} | Fallidas: {$resultado['fallidas']}";
 
         if ($request->expectsJson() || $request->wantsJson()) {

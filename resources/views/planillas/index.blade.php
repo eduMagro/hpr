@@ -584,20 +584,39 @@
 
             async function solicitarConfirmacion() {
                 if (typeof Swal === 'undefined') {
-                    const confirmado = confirm(
-                        'Se completarán las planillas pendientes/fabricando con fecha vencida. ¿Continuar?');
-                    return {
-                        isConfirmed: confirmado
-                    };
+                    const fecha = prompt('Fecha de corte (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+                    if (!fecha) return { isConfirmed: false };
+                    return { isConfirmed: true, value: { fecha_corte: fecha } };
                 }
 
+                // Fecha por defecto: hoy
+                const hoy = new Date().toISOString().split('T')[0];
+
                 return await Swal.fire({
-                    title: 'Completar todas las planillas',
-                    text: 'Se completarán las planillas pendientes/fabricando con fecha estimada de entrega vencida.',
+                    title: 'Completar planillas',
+                    html: `
+                        <p class="text-sm text-gray-600 mb-4">
+                            Se completarán las planillas con <b>fecha estimada de entrega</b>
+                            anterior o igual a la fecha de corte seleccionada.
+                        </p>
+                        <div class="text-left">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de corte:</label>
+                            <input type="date" id="swal-fecha-corte" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" value="${hoy}">
+                        </div>
+                    `,
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonText: 'Sí, completar',
+                    confirmButtonText: 'Completar',
                     cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#3085d6',
+                    preConfirm: () => {
+                        const fechaCorte = document.getElementById('swal-fecha-corte').value;
+                        if (!fechaCorte) {
+                            Swal.showValidationMessage('Debes seleccionar una fecha de corte');
+                            return false;
+                        }
+                        return { fecha_corte: fechaCorte };
+                    }
                 });
             }
 
@@ -609,6 +628,9 @@
                 if (!confirmacion?.isConfirmed) {
                     return;
                 }
+
+                // Obtener la fecha de corte del modal
+                const fechaCorte = confirmacion.value?.fecha_corte;
 
                 try {
                     if (typeof Swal !== 'undefined') {
@@ -629,7 +651,7 @@
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': csrf ?? '',
                         },
-                        body: JSON.stringify({}),
+                        body: JSON.stringify({ fecha_corte: fechaCorte }),
                     });
 
                     let data = null;

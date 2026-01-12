@@ -93,7 +93,7 @@ class PlanillaService
         }
     }
 
-    public function completarTodasPlanillas(?array $planillaIds = null): array
+    public function completarTodasPlanillas(?array $planillaIds = null, ?string $fechaCorteStr = null): array
     {
         // Sin límite de tiempo para procesar muchas planillas
         set_time_limit(0);
@@ -102,7 +102,10 @@ class PlanillaService
         $fail = 0;
         $errores = [];
 
-        $fechaCorte = Carbon::today()->subDays(3); // 👈 fecha de corte hace 7 días
+        // Fecha de corte: usar la proporcionada o por defecto hoy
+        $fechaCorte = $fechaCorteStr
+            ? Carbon::parse($fechaCorteStr)->endOfDay()
+            : Carbon::today()->endOfDay();
 
         // Base: planillas en estado pendiente o fabricando
         $base = Planilla::query()->whereIn('estado', ['pendiente', 'fabricando']);
