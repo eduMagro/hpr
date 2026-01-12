@@ -273,9 +273,20 @@ class FinProgramadoService
     }
 
     /**
+     * Inicializa el servicio cargando festivos y turnos
+     * Útil para ProduccionController que necesita usar los métodos públicos
+     */
+    public function init(): self
+    {
+        $this->cargarFestivos();
+        $this->cargarTurnos();
+        return $this;
+    }
+
+    /**
      * Carga los festivos en memoria
      */
-    private function cargarFestivos(): void
+    public function cargarFestivos(): void
     {
         if (!empty($this->festivosSet)) {
             return;
@@ -292,7 +303,7 @@ class FinProgramadoService
     /**
      * Carga los turnos activos en memoria
      */
-    private function cargarTurnos(): void
+    public function cargarTurnos(): void
     {
         if ($this->turnosActivos !== null) {
             return;
@@ -303,9 +314,9 @@ class FinProgramadoService
 
     /**
      * Genera tramos laborales respetando turnos y festivos
-     * SINCRONIZADO con ProduccionController::generarTramosLaborales
+     * FUENTE ÚNICA DE VERDAD - usado por ProduccionController
      */
-    private function generarTramosLaborales(Carbon $inicio, int $durSeg): array
+    public function generarTramosLaborales(Carbon $inicio, int $durSeg): array
     {
         $tramos = [];
         $restante = max(0, (int) $durSeg);
@@ -483,9 +494,9 @@ class FinProgramadoService
 
     /**
      * Obtiene los segmentos laborables de un día según turnos activos
-     * SINCRONIZADO con ProduccionController::obtenerSegmentosLaborablesDia
+     * FUENTE ÚNICA DE VERDAD - usado por ProduccionController
      */
-    private function obtenerSegmentosLaborablesDia(Carbon $dia): array
+    public function obtenerSegmentosLaborablesDia(Carbon $dia): array
     {
         if ($this->turnosActivos === null || $this->turnosActivos->isEmpty()) {
             return [];
@@ -541,18 +552,18 @@ class FinProgramadoService
 
     /**
      * Verifica si un día es no laborable
-     * SINCRONIZADO con ProduccionController::esNoLaborable
+     * FUENTE ÚNICA DE VERDAD - usado por ProduccionController
      */
-    private function esNoLaborable(Carbon $dia): bool
+    public function esNoLaborable(Carbon $dia): bool
     {
         return isset($this->festivosSet[$dia->toDateString()]) || $dia->isWeekend();
     }
 
     /**
      * Obtiene el siguiente momento laborable
-     * SINCRONIZADO con ProduccionController::siguienteLaborableInicio
+     * FUENTE ÚNICA DE VERDAD - usado por ProduccionController
      */
-    private function siguienteLaborableInicio(Carbon $dt): Carbon
+    public function siguienteLaborableInicio(Carbon $dt): Carbon
     {
         $x = $dt->copy();
         $maxIter = 365;

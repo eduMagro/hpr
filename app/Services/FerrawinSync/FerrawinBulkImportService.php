@@ -151,11 +151,31 @@ class FerrawinBulkImportService
     {
         $codigo = $data['codigo'];
         $elementos = $data['elementos'] ?? [];
+        $sinElementos = $data['sin_elementos'] ?? false;
 
-        if (empty($elementos)) {
-            $this->advertencias[] = "Planilla {$codigo}: sin elementos";
+        // Si tiene elementos, procesarla normalmente
+        if (!empty($elementos)) {
+            $this->importarPlanillaConElementos($data);
             return;
         }
+
+        // Si no tiene elementos pero es una planilla válida, importar solo la cabecera
+        if ($sinElementos) {
+            $this->importarPlanillaSinElementos($data);
+            return;
+        }
+
+        // Si no tiene elementos y no viene marcada como sin_elementos, advertir
+        $this->advertencias[] = "Planilla {$codigo}: sin elementos";
+    }
+
+    /**
+     * Importa una planilla que tiene elementos.
+     */
+    protected function importarPlanillaConElementos(array $data): void
+    {
+        $codigo = $data['codigo'];
+        $elementos = $data['elementos'];
 
         Log::channel('ferrawin_sync')->debug("📥 [BULK] Procesando planilla {$codigo} con " . count($elementos) . " elementos");
 
@@ -199,17 +219,47 @@ class FerrawinBulkImportService
         // 5. Agrupar elementos por etiqueta y crear bulk (con mapa de entidades)
         $this->crearElementosBulk($planilla, $elementos, $mapaEntidades);
 
-        // 5. Asignar máquinas
+        // 6. Asignar máquinas
         $this->asignador->repartirPlanilla($planilla->id);
 
-        // 6. Aplicar política de subetiquetas (igual que importación manual)
+        // 7. Aplicar política de subetiquetas (igual que importación manual)
         $this->processor->aplicarPoliticaSubetiquetasPostAsignacion($planilla);
 
-        // 7. Crear órdenes
+        // 8. Crear órdenes
         $this->ordenService->crearOrdenParaPlanilla($planilla->id);
 
-        // 8. Actualizar tiempo total
+        // 9. Actualizar tiempo total
         $this->actualizarTiempoTotal($planilla);
+    }
+
+    /**
+     * Importa una planilla sin elementos (solo cabecera).
+     */
+    protected function importarPlanillaSinElementos(array $data): void
+    {
+        $codigo = $data['codigo'];
+
+        Log::channel('ferrawin_sync')->debug("📥 [BULK] Procesando planilla {$codigo} (sin elementos - solo cabecera)");
+
+        // Crear planilla sin elementos
+        // Cliente y obra serán null o se resolverán después cuando se añadan elementos
+        $planilla = Planilla::create([
+            'users_id' => 1, // Sistema
+            'cliente_id' => null,
+            'obra_id' => null,
+            'codigo' => $codigo,
+            'descripcion' => $data['descripcion'] ?? null,
+            'seccion' => $data['seccion'] ?? '-',
+            'ensamblado' => $data['ensamblado'] ?? '-',
+            'peso_total' => 0,
+            'fecha_creacion_ferrawin' => $data['fecha_creacion_ferrawin'] ?? null,
+            'fecha_estimada_entrega' => null,
+            'revisada' => false,
+            'aprobada' => false,
+        ]);
+
+        $this->stats['planillas_creadas']++;
+        $this->advertencias[] = "Planilla {$codigo}: importada sin elementos (solo cabecera)";
     }
 
     /**

@@ -31,6 +31,7 @@ use Throwable;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\File;
 use App\Services\SubEtiquetaService;
+use App\Services\FinProgramadoService;
 use App\Servicios\Turnos\TurnoMapper;
 
 function toCarbon($valor, $format = 'd/m/Y H:i')
@@ -46,6 +47,13 @@ function toCarbon($valor, $format = 'd/m/Y H:i')
 }
 class ProduccionController extends Controller
 {
+    private FinProgramadoService $finProgramadoService;
+
+    public function __construct(FinProgramadoService $finProgramadoService)
+    {
+        $this->finProgramadoService = $finProgramadoService;
+    }
+
     private function obtenerColores(): array
     {
         $coloresMaquinas = [
@@ -1106,9 +1114,13 @@ class ProduccionController extends Controller
     /**
      * Calcular fin programado de una planilla en una máquina específica
      * Considera la cola de trabajo y usa tramos laborales
+     * NOTA: Usa FinProgramadoService como fuente única de verdad
      */
-    private function calcularFinProgramado($planillaId, $maquinaId, $ordenesEnCola, $festivosSet)
+    private function calcularFinProgramado($planillaId, $maquinaId, $ordenesEnCola, $festivosSet = null)
     {
+        // Inicializar servicio si no está inicializado
+        $this->finProgramadoService->init();
+
         // Obtener órdenes de esta máquina
         $ordenesMaquina = $ordenesEnCola->get($maquinaId, collect());
 
@@ -1135,8 +1147,8 @@ class ProduccionController extends Controller
             // Sumar tiempo de fabricación
             $tiempoSegundos = $elementos->sum('tiempo_fabricacion');
 
-            // Calcular tramos laborales
-            $tramos = $this->generarTramosLaborales($cursor, $tiempoSegundos, $festivosSet);
+            // Calcular tramos laborales usando el servicio
+            $tramos = $this->finProgramadoService->generarTramosLaborales($cursor, $tiempoSegundos);
 
             if (empty($tramos)) {
                 continue;
@@ -1867,21 +1879,10 @@ class ProduccionController extends Controller
 
     private function generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas)
     {
-
-
         $planillasEventos = collect();
 
-        // 1) Festivos
-        try {
-            $festivoFechas = collect(Festivo::eventosCalendario())
-                ->map(fn($e) => Carbon::parse($e['start'])->toDateString())
-                ->unique()
-                ->values();
-        } catch (\Throwable $e) {
-            Log::error('EVT B: Festivos no disponibles', ['err' => $e->getMessage()]);
-            $festivoFechas = collect();
-        }
-        $festivosSet = array_flip($festivoFechas->all());
+        // Inicializar servicio de fin programado (carga festivos y turnos)
+        $this->finProgramadoService->init();
 
 
         // 2) Normaliza
@@ -2095,7 +2096,7 @@ class ProduccionController extends Controller
                             $fechaInicio = $inicioCola->copy();
                         }
 
-                        $tramos = $this->generarTramosLaborales($fechaInicio, $duracionSegundos, $festivosSet);
+                        $tramos = $this->finProgramadoService->generarTramosLaborales($fechaInicio, $duracionSegundos);
 
                         if (empty($tramos)) {
                             Log::warning('EVT H1: sin tramos', ['planillaId' => $planillaId, 'maquinaId' => $maquinaId, 'ordenKey' => $ordenKey]);

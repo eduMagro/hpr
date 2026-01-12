@@ -306,12 +306,12 @@
         </div>
     @endif
 
-    {{-- Modal de confirmación de año --}}
+    {{-- Modal de confirmación de año - z-index muy alto para aparecer sobre todo --}}
     @if ($showYearConfirm)
-        <div class="fixed inset-0 z-[50000] overflow-y-auto">
-            <div class="fixed inset-0 z-[50000] bg-black/70" wire:click="cerrarYearConfirm"></div>
-            <div class="relative min-h-screen flex items-center justify-center p-4 z-[50001]">
-                <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md isolate">
+        <div class="fixed inset-0 z-[99999] overflow-y-auto" style="z-index: 99999 !important;">
+            <div class="fixed inset-0 bg-black/70" style="z-index: 99999 !important;" wire:click="cerrarYearConfirm"></div>
+            <div class="relative min-h-screen flex items-center justify-center p-4" style="z-index: 100000 !important;">
+                <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md" style="z-index: 100001 !important;">
                     {{-- Header --}}
                     <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-t-xl">
                         <h3 class="text-lg font-bold">Sincronizar {{ $selectedYear }}</h3>
