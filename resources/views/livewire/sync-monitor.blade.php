@@ -212,69 +212,78 @@
                             </div>
 
                             <div class="flex gap-2">
-                                {{-- Botón Pausar / Estado pausando --}}
-                                @if ($isRunning)
-                                    @if ($isPausing)
-                                        {{-- Estado: Pausando (esperando que el proceso se detenga) --}}
-                                        <div class="px-3 py-1.5 text-sm font-medium text-white bg-amber-600 rounded-lg flex items-center gap-2 cursor-wait">
-                                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            <span>Pausando...</span>
-                                        </div>
-                                    @else
-                                        {{-- Estado: Normal (puede pausar) --}}
-                                        <button wire:click="pausarSync"
+                                @if ($currentTarget === 'local')
+                                    {{-- CONTROLES SOLO EN LOCAL --}}
+
+                                    {{-- Botón Pausar / Estado pausando --}}
+                                    @if ($isRunning)
+                                        @if ($isPausing)
+                                            {{-- Estado: Pausando (esperando que el proceso se detenga) --}}
+                                            <div class="px-3 py-1.5 text-sm font-medium text-white bg-amber-600 rounded-lg flex items-center gap-2 cursor-wait">
+                                                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                <span>Pausando...</span>
+                                            </div>
+                                        @else
+                                            {{-- Estado: Normal (puede pausar) --}}
+                                            <button wire:click="pausarSync"
+                                                wire:loading.attr="disabled"
+                                                wire:loading.class="opacity-50 cursor-wait"
+                                                class="px-3 py-1.5 text-sm font-medium text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition flex items-center gap-1.5">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <span>Pausar</span>
+                                            </button>
+                                        @endif
+                                    @endif
+
+                                    {{-- Botón Continuar Sincronización --}}
+                                    @if ($ultimaPlanilla && !$isRunning)
+                                        <button wire:click="continuarSync"
                                             wire:loading.attr="disabled"
                                             wire:loading.class="opacity-50 cursor-wait"
-                                            class="px-3 py-1.5 text-sm font-medium text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition flex items-center gap-1.5">
+                                            class="px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition flex items-center gap-1.5">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                            <span>Pausar</span>
+                                            <span wire:loading.remove wire:target="continuarSync">Continuar desde {{ $ultimaPlanilla }}</span>
+                                            <span wire:loading wire:target="continuarSync">Iniciando...</span>
                                         </button>
                                     @endif
-                                @endif
 
-                                {{-- Botón Continuar Sincronización --}}
-                                @if ($ultimaPlanilla && !$isRunning)
-                                    <button wire:click="continuarSync"
-                                        wire:loading.attr="disabled"
-                                        wire:loading.class="opacity-50 cursor-wait"
-                                        class="px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition flex items-center gap-1.5">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        <span wire:loading.remove wire:target="continuarSync">Continuar desde {{ $ultimaPlanilla }}</span>
-                                        <span wire:loading wire:target="continuarSync">Iniciando...</span>
-                                    </button>
-                                @endif
-
-                                {{-- Botón Iniciar Nueva Sync (Dropdown) --}}
-                                @if (!$isRunning)
-                                    <div x-data="{ open: false }" class="relative">
-                                        <button @click="open = !open"
-                                            class="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center gap-1.5">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                            </svg>
-                                            Nueva Sync
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                            </svg>
-                                        </button>
-                                        <div x-show="open" @click.away="open = false" x-cloak
-                                            class="absolute right-0 bottom-full mb-1 w-40 bg-white rounded-lg shadow-lg border py-1 z-10">
-                                            @foreach (['2026', '2025', '2024', '2023', '2022'] as $año)
-                                                <button wire:click="seleccionarAño('{{ $año }}')" @click="open = false"
-                                                    class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition">
-                                                    Sincronizar {{ $año }}
-                                                </button>
-                                            @endforeach
+                                    {{-- Botón Iniciar Nueva Sync (Dropdown) --}}
+                                    @if (!$isRunning)
+                                        <div x-data="{ open: false }" class="relative">
+                                            <button @click="open = !open"
+                                                class="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center gap-1.5">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                </svg>
+                                                Nueva Sync
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </button>
+                                            <div x-show="open" @click.away="open = false" x-cloak
+                                                class="absolute right-0 bottom-full mb-1 w-40 bg-white rounded-lg shadow-lg border py-1 z-10">
+                                                @foreach (['2026', '2025', '2024', '2023', '2022'] as $año)
+                                                    <button wire:click="seleccionarAño('{{ $año }}')" @click="open = false"
+                                                        class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition">
+                                                        Sincronizar {{ $año }}
+                                                    </button>
+                                                @endforeach
+                                            </div>
                                         </div>
-                                    </div>
+                                    @endif
+                                @else
+                                    {{-- EN PRODUCCIÓN: Mensaje informativo --}}
+                                    <span class="px-3 py-1.5 text-xs text-gray-500 bg-gray-100 rounded-lg">
+                                        La sincronización se ejecuta desde el servidor local
+                                    </span>
                                 @endif
 
                                 <button wire:click="refresh"

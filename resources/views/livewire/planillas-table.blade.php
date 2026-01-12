@@ -18,10 +18,27 @@
                             </p>
                         </div>
                     </div>
-                    <button wire:click="verSinAprobar"
-                        class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition-colors">
-                        Ver planillas sin aprobar
-                    </button>
+                    <div class="flex gap-2">
+                        <button wire:click="verSinAprobar"
+                            class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition-colors">
+                            Ver sin aprobar
+                        </button>
+                        <button wire:click="toggleModoSeleccion"
+                            class="{{ $modoSeleccion ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700' }} text-white font-bold py-2 px-4 rounded transition-colors flex items-center gap-2">
+                            @if ($modoSeleccion)
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                                Cancelar selección
+                            @else
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                    <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                                Aprobar en masa
+                            @endif
+                        </button>
+                    </div>
                 </div>
             </div>
         @endif
@@ -58,6 +75,11 @@
             <table class="w-full min-w-[2000px] border border-gray-300 rounded-lg">
                 <x-tabla.header>
                     <x-tabla.header-row>
+                        @if ($modoSeleccion)
+                            <th class="p-2 border w-10">
+                                <span class="text-xs">Sel.</span>
+                            </th>
+                        @endif
                         <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order"
                             texto="ID" />
                         <x-tabla.encabezado-ordenable campo="codigo" :sortActual="$sort" :orderActual="$order"
@@ -107,6 +129,9 @@
 
                     </x-tabla.header-row>
                     <x-tabla.filtro-row>
+                        @if ($modoSeleccion)
+                            <th class="p-1 border"></th>
+                        @endif
                         <th class="p-1 border"></th>
                         <th class="p-1 border">
                             <input type="text" wire:model.live.debounce.300ms="codigo"
@@ -222,7 +247,19 @@
                 <tbody class="text-gray-700">
                     @forelse ($planillas as $planilla)
                         <tr
-                            class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-gray-200 cursor-pointer text-xs leading-none uppercase transition-colors">
+                            class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-gray-200 cursor-pointer text-xs leading-none uppercase transition-colors {{ in_array($planilla->id, $planillasSeleccionadas) ? '!bg-green-100' : '' }}">
+                            @if ($modoSeleccion)
+                                <td class="p-2 text-center border">
+                                    @if (!$planilla->aprobada)
+                                        <input type="checkbox"
+                                            wire:click="toggleSeleccion({{ $planilla->id }})"
+                                            {{ in_array($planilla->id, $planillasSeleccionadas) ? 'checked' : '' }}
+                                            class="w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500 cursor-pointer">
+                                    @else
+                                        <span class="text-green-600" title="Ya aprobada">✓</span>
+                                    @endif
+                                </td>
+                            @endif
                             <td class="p-2 text-center border">{{ $planilla->id }}</td>
                             <td class="p-2 text-center border">
                                 <a href="{{ route('planillas.show', $planilla->id) }}"
@@ -398,7 +435,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="24" class="text-center py-4 text-gray-500">No hay planillas registradas
+                            <td colspan="{{ $modoSeleccion ? 25 : 24 }}" class="text-center py-4 text-gray-500">No hay planillas registradas
                             </td>
                         </tr>
                     @endforelse
@@ -420,6 +457,44 @@
 
         <x-tabla.paginacion-livewire :paginador="$planillas" />
     </div>
+
+    {{-- Barra flotante de selección --}}
+    @if ($modoSeleccion)
+        <div class="fixed bottom-0 left-0 right-0 bg-gray-800 text-white p-4 shadow-lg z-50 transform transition-transform duration-300 {{ count($planillasSeleccionadas) > 0 ? 'translate-y-0' : 'translate-y-full' }}">
+            <div class="max-w-7xl mx-auto flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <span class="text-lg font-semibold">
+                        {{ count($planillasSeleccionadas) }} planilla{{ count($planillasSeleccionadas) !== 1 ? 's' : '' }} seleccionada{{ count($planillasSeleccionadas) !== 1 ? 's' : '' }}
+                    </span>
+                    @php
+                        $idsSinAprobarPagina = $planillas->filter(fn($p) => !$p->aprobada)->pluck('id')->toArray();
+                    @endphp
+                    <button wire:click="seleccionarTodasPagina({{ json_encode($idsSinAprobarPagina) }})"
+                        class="bg-gray-600 hover:bg-gray-500 text-white px-3 py-1 rounded text-sm transition-colors">
+                        Seleccionar página ({{ count($idsSinAprobarPagina) }})
+                    </button>
+                    <button wire:click="deseleccionarTodas"
+                        class="bg-gray-600 hover:bg-gray-500 text-white px-3 py-1 rounded text-sm transition-colors">
+                        Deseleccionar todas
+                    </button>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button wire:click="toggleModoSeleccion"
+                        class="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded transition-colors">
+                        Cancelar
+                    </button>
+                    <button onclick="confirmarAprobacionMasiva({{ count($planillasSeleccionadas) }}, '{{ now()->addDays(7)->format('d/m/Y') }}')"
+                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-bold transition-colors flex items-center gap-2"
+                        {{ count($planillasSeleccionadas) === 0 ? 'disabled' : '' }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                        Aprobar seleccionadas
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 
     {{-- Modal Reimportar Planilla --}}
     <div id="modal-reimportar"
@@ -495,14 +570,38 @@
             Livewire.on('planilla-actualizada', (event) => {
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
-                        icon: 'success',
-                        title: event[0].message,
-                        timer: 2000,
+                        icon: event[0].type === 'warning' ? 'warning' : 'success',
+                        title: event[0].type === 'warning' ? 'Aviso' : 'Completado',
+                        text: event[0].message,
+                        timer: 2500,
                         showConfirmButton: false
                     });
                 }
             });
         });
+
+        // Confirmación de aprobación masiva con SweetAlert2
+        function confirmarAprobacionMasiva(cantidad, fechaEntrega) {
+            Swal.fire({
+                title: 'Aprobar planillas',
+                html: '<div style="text-align: center;">' +
+                    '<p style="font-size: 1.1rem; margin-bottom: 1rem;">¿Aprobar las <strong>' + cantidad + '</strong> planilla' + (cantidad !== 1 ? 's' : '') + ' seleccionada' + (cantidad !== 1 ? 's' : '') + '?</p>' +
+                    '<p style="background-color: #fef3c7; padding: 0.75rem; border-radius: 0.5rem; color: #92400e;">' +
+                    '<strong>Fecha de entrega:</strong> ' + fechaEntrega + ' para todas</p>' +
+                    '</div>',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, aprobar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#16a34a',
+                cancelButtonColor: '#6b7280',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    @this.aprobarSeleccionadas();
+                }
+            });
+        }
     </script>
 
     {{-- Script del sistema de resumen de etiquetas --}}

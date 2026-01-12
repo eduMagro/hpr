@@ -77,6 +77,10 @@ class PlanillasTable extends Component
     #[Url(keep: true)]
     public $perPage = 10;
 
+    // Sistema de selección múltiple para aprobación en masa
+    public $modoSeleccion = false;
+    public $planillasSeleccionadas = [];
+
     // Cuando cambia cualquier filtro, resetear a la página 1
     public function updated($property)
     {
@@ -449,6 +453,87 @@ class PlanillasTable extends Component
     {
         $this->aprobada = '0';
         $this->resetPage();
+    }
+
+    /**
+     * Activa/desactiva el modo de selección múltiple
+     */
+    public function toggleModoSeleccion()
+    {
+        $this->modoSeleccion = !$this->modoSeleccion;
+        if (!$this->modoSeleccion) {
+            $this->planillasSeleccionadas = [];
+        }
+    }
+
+    /**
+     * Añade o quita una planilla de la selección
+     */
+    public function toggleSeleccion($planillaId)
+    {
+        if (in_array($planillaId, $this->planillasSeleccionadas)) {
+            $this->planillasSeleccionadas = array_values(array_diff($this->planillasSeleccionadas, [$planillaId]));
+        } else {
+            $this->planillasSeleccionadas[] = $planillaId;
+        }
+    }
+
+    /**
+     * Selecciona todas las planillas sin aprobar de la página actual
+     */
+    public function seleccionarTodasPagina($ids)
+    {
+        $idsArray = is_array($ids) ? $ids : json_decode($ids, true);
+        foreach ($idsArray as $id) {
+            if (!in_array($id, $this->planillasSeleccionadas)) {
+                $this->planillasSeleccionadas[] = (int) $id;
+            }
+        }
+    }
+
+    /**
+     * Deselecciona todas las planillas
+     */
+    public function deseleccionarTodas()
+    {
+        $this->planillasSeleccionadas = [];
+    }
+
+    /**
+     * Aprueba todas las planillas seleccionadas
+     */
+    public function aprobarSeleccionadas()
+    {
+        if (empty($this->planillasSeleccionadas)) {
+            $this->dispatch('planilla-actualizada', [
+                'message' => 'No hay planillas seleccionadas',
+                'type' => 'warning'
+            ]);
+            return;
+        }
+
+        $planillas = Planilla::whereIn('id', $this->planillasSeleccionadas)
+            ->where('aprobada', false)
+            ->get();
+
+        $count = 0;
+        foreach ($planillas as $planilla) {
+            $planilla->aprobada = true;
+            $planilla->aprobada_por_id = auth()->id();
+            $planilla->aprobada_at = now();
+            $planilla->fecha_estimada_entrega = now()->addDays(7)->setTime(10, 0, 0);
+            $planilla->save();
+            $count++;
+        }
+
+        // Resetear selección y modo
+        $this->planillasSeleccionadas = [];
+        $this->modoSeleccion = false;
+
+        $this->dispatch('planilla-actualizada', [
+            'message' => "Se han aprobado {$count} planillas correctamente",
+            'type' => 'success'
+        ]);
     }
 
     public function verElementosFiltrados($planillaId)
