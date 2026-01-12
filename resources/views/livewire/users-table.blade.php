@@ -28,7 +28,6 @@
                     <x-tabla.encabezado-ordenable campo="rol" :sortActual="$sort" :orderActual="$order" texto="Rol" />
                     <x-tabla.encabezado-ordenable campo="categoria" :sortActual="$sort" :orderActual="$order" texto="Categoría" />
                     <x-tabla.encabezado-ordenable campo="maquina_id" :sortActual="$sort" :orderActual="$order" texto="Máquina" />
-                    <x-tabla.encabezado-ordenable campo="turno" :sortActual="$sort" :orderActual="$order" texto="Turno" />
                     <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order" texto="Estado" />
                     <th class="p-2 border"></th>
                     <th class="p-2 border">Acciones</th>
@@ -105,15 +104,6 @@
                             <option value="">Todas</option>
                             @foreach($maquinas as $maquina)
                             <option value="{{ $maquina->id }}">{{ $maquina->nombre }}</option>
-                            @endforeach
-                        </select>
-                    </th>
-                    <th class="p-1 border">
-                        <select wire:model.live="turno"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
-                            <option value="">Todos</option>
-                            @foreach($turnos as $t)
-                            <option value="{{ $t }}">{{ ucfirst($t) }}</option>
                             @endforeach
                         </select>
                     </th>
@@ -282,16 +272,6 @@
                             @foreach ($maquinas as $maquina)
                             <option value="{{ $maquina->id }}">{{ $maquina->nombre ?? 'N/A' }}</option>
                             @endforeach
-                        </x-tabla.select-edicion>
-                    </td>
-
-                    <td class="px-2 py-3 text-center border">
-                        <span x-show="!editando">{{ $user->turno ? ucfirst($user->turno) : 'N/A' }}</span>
-                        <x-tabla.select-edicion x-cloak x-show="editando" x-model="usuario.turno">
-                            <option value="">Selecciona turno</option>
-                            <option value="nocturno">Nocturno</option>
-                            <option value="diurno">Diurno</option>
-                            <option value="mañana">Mañana</option>
                         </x-tabla.select-edicion>
                     </td>
 
