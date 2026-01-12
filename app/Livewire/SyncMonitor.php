@@ -384,9 +384,9 @@ class SyncMonitor extends Component
             return 'production';
         }
 
-        // Método 2: Verificar por URL/dominio
+        // Método 2: Verificar por dominio de producción específico
         $host = request()->getHost();
-        if (str_contains($host, 'hierrospacoreyes.es') || str_contains($host, 'app.')) {
+        if (str_contains($host, 'hierrospacoreyes.es')) {
             return 'production';
         }
 
