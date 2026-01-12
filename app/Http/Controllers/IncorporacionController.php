@@ -675,13 +675,36 @@ class IncorporacionController extends Controller
      */
     public function actualizarCampo(Request $request, Incorporacion $incorporacion)
     {
+        $camposPermitidos = [
+            'numero_afiliacion_ss',
+            'user_id',
+            'dni',
+            'name',
+            'primer_apellido',
+            'segundo_apellido',
+            'email',
+            'telefono',
+        ];
+
         $validated = $request->validate([
-            'campo' => 'required|in:numero_afiliacion_ss,user_id',
+            'campo' => 'required|in:' . implode(',', $camposPermitidos),
             'valor' => 'nullable',
         ]);
 
         $campo = $validated['campo'];
         $valor = $validated['valor'];
+
+        // Nombres legibles para logs
+        $nombres = [
+            'numero_afiliacion_ss' => 'Número de Afiliación SS',
+            'user_id' => 'Usuario',
+            'dni' => 'DNI/NIE',
+            'name' => 'Nombre',
+            'primer_apellido' => 'Primer Apellido',
+            'segundo_apellido' => 'Segundo Apellido',
+            'email' => 'Email',
+            'telefono' => 'Teléfono',
+        ];
 
         if ($campo === 'user_id') {
             if ($valor) {
@@ -698,7 +721,7 @@ class IncorporacionController extends Controller
             }
         } else {
             // Validaciones específicas por campo
-            if ($campo === 'numero_afiliacion_ss') {
+            if ($campo === 'numero_afiliacion_ss' && $valor) {
                 if (!preg_match('/^[0-9]{12}$/', $valor)) {
                     return response()->json([
                         'success' => false,
@@ -707,11 +730,41 @@ class IncorporacionController extends Controller
                 }
             }
 
-            $incorporacion->update([$campo => $valor]);
+            if ($campo === 'dni' && $valor) {
+                $valor = strtoupper($valor);
+                if (!preg_match('/^([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/', $valor)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El DNI/NIE no tiene un formato válido',
+                    ], 422);
+                }
+            }
 
-            $nombres = [
-                'numero_afiliacion_ss' => 'Número de Afiliación SS',
-            ];
+            if ($campo === 'email' && $valor) {
+                $valor = strtolower($valor);
+                if (!filter_var($valor, FILTER_VALIDATE_EMAIL)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El email no tiene un formato válido',
+                    ], 422);
+                }
+            }
+
+            if ($campo === 'telefono' && $valor) {
+                $valor = preg_replace('/\s+/', '', $valor);
+                if (!preg_match('/^[0-9]{9}$/', $valor)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El teléfono debe tener 9 dígitos',
+                    ], 422);
+                }
+            }
+
+            if (in_array($campo, ['name', 'primer_apellido', 'segundo_apellido']) && $valor) {
+                $valor = ucwords(strtolower(trim($valor)));
+            }
+
+            $incorporacion->update([$campo => $valor]);
 
             $incorporacion->registrarLog(
                 'actualizacion_campo',
@@ -723,6 +776,98 @@ class IncorporacionController extends Controller
             'success' => true,
             'message' => 'Campo actualizado correctamente',
         ]);
+    }
+
+    /**
+     * Crear o encontrar usuario a partir de los datos de la incorporación
+     * Este método es público y se puede llamar desde la vista para crear manualmente un usuario
+     */
+    public function crearOEncontrarUsuario(Incorporacion $incorporacion)
+    {
+        // Verificar que la incorporación tenga los datos mínimos necesarios
+        if (!$incorporacion->dni) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La incorporación no tiene DNI. El candidato debe completar el formulario o debe añadirse manualmente.',
+            ], 422);
+        }
+
+        // Ya tiene usuario asignado?
+        if ($incorporacion->user_id) {
+            $usuario = User::withoutGlobalScopes()->find($incorporacion->user_id);
+            return response()->json([
+                'success' => true,
+                'message' => "Ya existe un usuario vinculado: {$usuario->nombre_completo}",
+                'usuario' => [
+                    'id' => $usuario->id,
+                    'nombre_completo' => $usuario->nombre_completo,
+                    'email' => $usuario->email,
+                    'dni' => $usuario->dni,
+                    'imagen_url' => $usuario->ruta_imagen,
+                ],
+                'accion' => 'ya_vinculado',
+            ]);
+        }
+
+        $dni = strtoupper($incorporacion->dni);
+
+        // Buscar usuario existente por DNI
+        $usuarioExistente = User::withoutGlobalScopes()->where('dni', $dni)->first();
+
+        if ($usuarioExistente) {
+            // Vincular usuario existente a la incorporación
+            $incorporacion->update(['user_id' => $usuarioExistente->id]);
+
+            // Si estaba inactivo, reactivarlo
+            if ($usuarioExistente->estado !== 'activo') {
+                $usuarioExistente->update(['estado' => 'activo']);
+            }
+
+            $incorporacion->registrarLog('usuario_vinculado', "Usuario existente vinculado: {$usuarioExistente->nombre_completo} (ID: {$usuarioExistente->id})");
+
+            return response()->json([
+                'success' => true,
+                'message' => "Usuario existente encontrado y vinculado: {$usuarioExistente->nombre_completo}",
+                'usuario' => [
+                    'id' => $usuarioExistente->id,
+                    'nombre_completo' => $usuarioExistente->nombre_completo,
+                    'email' => $usuarioExistente->email,
+                    'dni' => $usuarioExistente->dni,
+                    'imagen_url' => $usuarioExistente->ruta_imagen,
+                ],
+                'accion' => 'vinculado',
+            ]);
+        }
+
+        // Crear nuevo usuario
+        try {
+            $usuario = $this->crearUsuarioDesdeIncorporacion($incorporacion);
+            $incorporacion->update(['user_id' => $usuario->id]);
+            $incorporacion->registrarLog('usuario_creado', "Usuario creado manualmente: {$usuario->nombre_completo} (ID: {$usuario->id})");
+
+            return response()->json([
+                'success' => true,
+                'message' => "Usuario creado correctamente: {$usuario->nombre_completo}. Contraseña: los 8 dígitos del DNI.",
+                'usuario' => [
+                    'id' => $usuario->id,
+                    'nombre_completo' => $usuario->nombre_completo,
+                    'email' => $usuario->email,
+                    'dni' => $usuario->dni,
+                    'imagen_url' => $usuario->ruta_imagen,
+                ],
+                'accion' => 'creado',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error creando usuario desde incorporación: ' . $e->getMessage(), [
+                'incorporacion_id' => $incorporacion->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al crear el usuario: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -903,6 +1048,7 @@ class IncorporacionController extends Controller
         $excelPath = $this->generarFichaExcel($incorporacion);
         if ($excelPath && file_exists($excelPath)) {
             $zip->addFile($excelPath, "00_FICHA_TRABAJADOR.xlsx");
+            $archivosAgregados++; // Contar la ficha como archivo
         }
 
         $zip->close();
@@ -912,9 +1058,12 @@ class IncorporacionController extends Controller
             unlink($excelPath);
         }
 
-        if ($archivosAgregados === 0) {
+        // Si no hay archivos pero hay datos basicos, el ZIP aun es valido por la ficha Excel
+        $tieneDatosBasicos = $incorporacion->dni || $incorporacion->name || $incorporacion->email;
+
+        if ($archivosAgregados === 0 && !$tieneDatosBasicos) {
             unlink($zipPath);
-            return back()->with('error', 'No hay documentos disponibles para descargar');
+            return back()->with('error', 'No hay datos disponibles para descargar');
         }
 
         // Descargar y luego eliminar el archivo temporal
@@ -1002,11 +1151,12 @@ class IncorporacionController extends Controller
             $sheet->getStyle("A{$row}:B{$row}")->applyFromArray($sectionStyle);
             $row++;
 
+            $nombreCompleto = trim(($incorporacion->name ?? '') . ' ' . ($incorporacion->primer_apellido ?? '') . ' ' . ($incorporacion->segundo_apellido ?? ''));
             $datosPersonales = [
-                'Nombre completo' => ['valor' => trim($incorporacion->name . ' ' . $incorporacion->primer_apellido . ' ' . ($incorporacion->segundo_apellido ?? '')), 'texto' => false],
+                'Nombre completo' => ['valor' => $nombreCompleto ?: 'No disponible', 'texto' => false],
                 'DNI/NIE' => ['valor' => $incorporacion->dni ?? 'No disponible', 'texto' => true],
                 'N. Afiliación SS' => ['valor' => $incorporacion->numero_afiliacion_ss ?? 'No disponible', 'texto' => true],
-                'Email' => ['valor' => $incorporacion->email ?? 'No disponible', 'texto' => false],
+                'Email' => ['valor' => $incorporacion->email ?? $incorporacion->email_provisional ?? 'No disponible', 'texto' => false],
                 'Teléfono' => ['valor' => $incorporacion->telefono ?? $incorporacion->telefono_provisional ?? 'No disponible', 'texto' => true],
             ];
 

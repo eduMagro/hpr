@@ -37,16 +37,14 @@
 
             <!-- Acciones -->
             <div class="flex gap-2">
-                @if ($incorporacion->datos_completados_at)
-                    <a href="{{ route('incorporaciones.verDescargarZip', $incorporacion) }}"
-                        class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Descargar ZIP
-                    </a>
-                @endif
+                <a href="{{ route('incorporaciones.verDescargarZip', $incorporacion) }}"
+                    class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Descargar ZIP
+                </a>
                 <button onclick="cambiarEstado()"
                     class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition">
                     Cambiar estado
@@ -169,184 +167,269 @@
                 <!-- Datos del candidato -->
                 <div class="bg-white rounded-lg shadow-sm border p-6">
                     <h2 class="text-lg font-semibold text-gray-800 mb-4">Datos Personales</h2>
-                    @if ($incorporacion->datos_completados_at)
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-sm text-gray-500">DNI</label>
-                                <p class="font-medium">{{ $incorporacion->dni }}</p>
-                                {{-- Enlaces para ver/descargar imágenes del DNI --}}
-                                <div class="flex gap-3 mt-2 flex-wrap">
-                                    @if ($incorporacion->dni_frontal)
-                                        <div class="flex items-center gap-1">
-                                            <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $incorporacion->dni_frontal]) }}"
-                                                target="_blank"
-                                                class="text-blue-600 hover:underline text-sm flex items-center">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                                Frontal
-                                            </a>
-                                            <button onclick="abrirModalResubir('dni_frontal', 'DNI Frontal')"
-                                                class="text-amber-500 hover:text-amber-700 p-1" title="Resubir">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                                </svg>
-                                            </button>
-                                            <button
-                                                onclick="eliminarArchivoIncorporacion('dni_frontal', 'DNI Frontal')"
-                                                class="text-red-500 hover:text-red-700 p-1" title="Eliminar">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    @else
-                                        <button onclick="abrirModalResubir('dni_frontal', 'DNI Frontal')"
-                                            class="text-blue-600 hover:text-blue-800 text-sm flex items-center">
+
+                    {{-- Siempre mostrar los campos, editables --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {{-- DNI (texto) --}}
+                        <div>
+                            <label class="text-sm text-gray-500">DNI/NIE</label>
+                            <div class="flex items-center gap-2">
+                                <p class="font-medium" id="texto-dni">{{ $incorporacion->dni ?? 'No especificado' }}</p>
+                                <button onclick="editarCampoTexto('dni', 'DNI/NIE', {{ json_encode($incorporacion->dni ?? '') }})"
+                                    class="text-amber-500 hover:text-amber-700 p-1" title="Editar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                            </div>
+                            {{-- Enlaces para ver/descargar imágenes del DNI --}}
+                            <div class="flex gap-3 mt-2 flex-wrap">
+                                @if ($incorporacion->dni_frontal)
+                                    <div class="flex items-center gap-1">
+                                        <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $incorporacion->dni_frontal]) }}"
+                                            target="_blank"
+                                            class="text-blue-600 hover:underline text-sm flex items-center">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
-                                            Subir frontal
-                                        </button>
-                                    @endif
-                                    @if ($incorporacion->dni_trasero)
-                                        <div class="flex items-center gap-1">
-                                            <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $incorporacion->dni_trasero]) }}"
-                                                target="_blank"
-                                                class="text-blue-600 hover:underline text-sm flex items-center">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                                Trasero
-                                            </a>
-                                            <button onclick="abrirModalResubir('dni_trasero', 'DNI Trasero')"
-                                                class="text-amber-500 hover:text-amber-700 p-1" title="Resubir">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                                </svg>
-                                            </button>
-                                            <button
-                                                onclick="eliminarArchivoIncorporacion('dni_trasero', 'DNI Trasero')"
-                                                class="text-red-500 hover:text-red-700 p-1" title="Eliminar">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    @else
-                                        <button onclick="abrirModalResubir('dni_trasero', 'DNI Trasero')"
-                                            class="text-blue-600 hover:text-blue-800 text-sm flex items-center">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                            </svg>
-                                            Subir trasero
-                                        </button>
-                                    @endif
-                                </div>
-                            </div>
-                            <div>
-                                <label class="text-sm text-gray-500">N. Afiliación SS</label>
-                                <div class="flex items-center gap-2">
-                                    <p class="font-medium" id="texto-afiliacion-ss">
-                                        {{ $incorporacion->numero_afiliacion_ss ?? 'No especificado' }}</p>
-                                    <button onclick="editarAfiliacionSS()"
-                                        class="text-amber-500 hover:text-amber-700 p-1" title="Editar">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="text-sm text-gray-500">Email</label>
-                                <p class="font-medium">{{ $incorporacion->email }}</p>
-                            </div>
-                            <div>
-                                <label class="text-sm text-gray-500">Teléfono</label>
-                                <p class="font-medium">{{ $incorporacion->telefono }}</p>
-                            </div>
-                            <div class="sm:col-span-2">
-                                <label class="text-sm text-gray-500">Certificado bancario</label>
-                                @if ($incorporacion->certificado_bancario)
-                                    <div class="flex items-center gap-2">
-                                        <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $incorporacion->certificado_bancario]) }}"
-                                            target="_blank" class="text-blue-600 hover:underline flex items-center">
-                                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                            Ver certificado
+                                            Frontal
                                         </a>
-                                        <button
-                                            onclick="abrirModalResubir('certificado_bancario', 'Certificado Bancario')"
+                                        <button onclick="abrirModalResubir('dni_frontal', 'DNI Frontal')"
                                             class="text-amber-500 hover:text-amber-700 p-1" title="Resubir">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="2"
                                                     d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                             </svg>
                                         </button>
                                         <button
-                                            onclick="eliminarArchivoIncorporacion('certificado_bancario', 'Certificado Bancario')"
+                                            onclick="eliminarArchivoIncorporacion('dni_frontal', 'DNI Frontal')"
                                             class="text-red-500 hover:text-red-700 p-1" title="Eliminar">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                             </svg>
                                         </button>
                                     </div>
                                 @else
-                                    <button onclick="abrirModalResubir('certificado_bancario', 'Certificado Bancario')"
-                                        class="text-blue-600 hover:text-blue-800 flex items-center mt-1">
-                                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor"
+                                    <button onclick="abrirModalResubir('dni_frontal', 'DNI Frontal')"
+                                        class="text-blue-600 hover:text-blue-800 text-sm flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                         </svg>
-                                        Subir certificado
+                                        Subir frontal
+                                    </button>
+                                @endif
+                                @if ($incorporacion->dni_trasero)
+                                    <div class="flex items-center gap-1">
+                                        <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $incorporacion->dni_trasero]) }}"
+                                            target="_blank"
+                                            class="text-blue-600 hover:underline text-sm flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            Trasero
+                                        </a>
+                                        <button onclick="abrirModalResubir('dni_trasero', 'DNI Trasero')"
+                                            class="text-amber-500 hover:text-amber-700 p-1" title="Resubir">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                            </svg>
+                                        </button>
+                                        <button
+                                            onclick="eliminarArchivoIncorporacion('dni_trasero', 'DNI Trasero')"
+                                            class="text-red-500 hover:text-red-700 p-1" title="Eliminar">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                @else
+                                    <button onclick="abrirModalResubir('dni_trasero', 'DNI Trasero')"
+                                        class="text-blue-600 hover:text-blue-800 text-sm flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                        </svg>
+                                        Subir trasero
                                     </button>
                                 @endif
                             </div>
                         </div>
+
+                        {{-- N. Afiliación SS --}}
+                        <div>
+                            <label class="text-sm text-gray-500">N. Afiliacion SS</label>
+                            <div class="flex items-center gap-2">
+                                <p class="font-medium" id="texto-afiliacion-ss">
+                                    {{ $incorporacion->numero_afiliacion_ss ?? 'No especificado' }}</p>
+                                <button onclick="editarAfiliacionSS()"
+                                    class="text-amber-500 hover:text-amber-700 p-1" title="Editar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Email --}}
+                        <div>
+                            <label class="text-sm text-gray-500">Email</label>
+                            <div class="flex items-center gap-2">
+                                <p class="font-medium" id="texto-email">{{ $incorporacion->email ?? 'No especificado' }}</p>
+                                <button onclick="editarCampoTexto('email', 'Email', {{ json_encode($incorporacion->email ?? '') }})"
+                                    class="text-amber-500 hover:text-amber-700 p-1" title="Editar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Teléfono --}}
+                        <div>
+                            <label class="text-sm text-gray-500">Telefono</label>
+                            <div class="flex items-center gap-2">
+                                <p class="font-medium" id="texto-telefono">{{ $incorporacion->telefono ?? 'No especificado' }}</p>
+                                <button onclick="editarCampoTexto('telefono', 'Telefono', {{ json_encode($incorporacion->telefono ?? '') }})"
+                                    class="text-amber-500 hover:text-amber-700 p-1" title="Editar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Nombre --}}
+                        <div>
+                            <label class="text-sm text-gray-500">Nombre</label>
+                            <div class="flex items-center gap-2">
+                                <p class="font-medium" id="texto-name">{{ $incorporacion->name ?? 'No especificado' }}</p>
+                                <button onclick="editarCampoTexto('name', 'Nombre', {{ json_encode($incorporacion->name ?? '') }})"
+                                    class="text-amber-500 hover:text-amber-700 p-1" title="Editar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Primer Apellido --}}
+                        <div>
+                            <label class="text-sm text-gray-500">Primer Apellido</label>
+                            <div class="flex items-center gap-2">
+                                <p class="font-medium" id="texto-primer_apellido">{{ $incorporacion->primer_apellido ?? 'No especificado' }}</p>
+                                <button onclick="editarCampoTexto('primer_apellido', 'Primer Apellido', {{ json_encode($incorporacion->primer_apellido ?? '') }})"
+                                    class="text-amber-500 hover:text-amber-700 p-1" title="Editar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Segundo Apellido --}}
+                        <div>
+                            <label class="text-sm text-gray-500">Segundo Apellido</label>
+                            <div class="flex items-center gap-2">
+                                <p class="font-medium" id="texto-segundo_apellido">{{ $incorporacion->segundo_apellido ?? 'No especificado' }}</p>
+                                <button onclick="editarCampoTexto('segundo_apellido', 'Segundo Apellido', {{ json_encode($incorporacion->segundo_apellido ?? '') }})"
+                                    class="text-amber-500 hover:text-amber-700 p-1" title="Editar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Certificado bancario --}}
+                        <div class="sm:col-span-2">
+                            <label class="text-sm text-gray-500">Certificado bancario</label>
+                            @if ($incorporacion->certificado_bancario)
+                                <div class="flex items-center gap-2">
+                                    <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $incorporacion->certificado_bancario]) }}"
+                                        target="_blank" class="text-blue-600 hover:underline flex items-center">
+                                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        Ver certificado
+                                    </a>
+                                    <button
+                                        onclick="abrirModalResubir('certificado_bancario', 'Certificado Bancario')"
+                                        class="text-amber-500 hover:text-amber-700 p-1" title="Resubir">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                        </svg>
+                                    </button>
+                                    <button
+                                        onclick="eliminarArchivoIncorporacion('certificado_bancario', 'Certificado Bancario')"
+                                        class="text-red-500 hover:text-red-700 p-1" title="Eliminar">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            @else
+                                <button onclick="abrirModalResubir('certificado_bancario', 'Certificado Bancario')"
+                                    class="text-blue-600 hover:text-blue-800 flex items-center mt-1">
+                                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                    </svg>
+                                    Subir certificado
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+
+                    @if ($incorporacion->datos_completados_at)
                         <p class="mt-4 text-sm text-gray-500">
                             Datos completados el {{ $incorporacion->datos_completados_at->format('d/m/Y H:i') }}
                         </p>
                     @else
-                        <div class="text-center py-8 text-gray-500">
-                            <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <p>Esperando que el candidato complete el formulario</p>
+                        <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p class="text-sm text-amber-700">
+                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                El candidato aun no ha completado el formulario. Puedes introducir los datos manualmente usando los botones de edicion.
+                            </p>
                         </div>
                     @endif
                 </div>
@@ -661,42 +744,60 @@
                     </template>
 
                     <template x-if="!selectedUser">
-                        <div class="relative">
-                            <label class="block text-sm text-gray-500 mb-1">Buscar usuario existente</label>
-                            <input type="text" x-model="query" @input.debounce.300ms="search"
-                                placeholder="Nombre, DNI o email..."
-                                class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                        <div class="space-y-3">
+                            <div class="relative">
+                                <label class="block text-sm text-gray-500 mb-1">Buscar usuario existente</label>
+                                <input type="text" x-model="query" @input.debounce.300ms="search"
+                                    placeholder="Nombre, DNI o email..."
+                                    class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 text-sm">
 
-                            <div x-show="suggestions.length > 0" @click.away="suggestions = []"
-                                class="absolute z-10 w-full bg-white shadow-lg rounded-lg mt-1 border border-gray-200 max-h-60 overflow-y-auto">
-                                <template x-for="user in suggestions" :key="user.id">
-                                    <div @click="selectUser(user)"
-                                        class="p-2 hover:bg-gray-50 cursor-pointer flex items-center gap-2">
-                                        <template x-if="user.imagen_url">
-                                            <img :src="user.imagen_url"
-                                                class="w-8 h-8 rounded-full object-cover flex-shrink-0">
-                                        </template>
-                                        <template x-if="!user.imagen_url">
-                                            <div
-                                                class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 text-gray-500">
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-                                                    fill="currentColor" class="w-5 h-5">
-                                                    <path fill-rule="evenodd"
-                                                        d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z"
-                                                        clip-rule="evenodd" />
-                                                </svg>
+                                <div x-show="suggestions.length > 0" @click.away="suggestions = []"
+                                    class="absolute z-10 w-full bg-white shadow-lg rounded-lg mt-1 border border-gray-200 max-h-60 overflow-y-auto">
+                                    <template x-for="user in suggestions" :key="user.id">
+                                        <div @click="selectUser(user)"
+                                            class="p-2 hover:bg-gray-50 cursor-pointer flex items-center gap-2">
+                                            <template x-if="user.imagen_url">
+                                                <img :src="user.imagen_url"
+                                                    class="w-8 h-8 rounded-full object-cover flex-shrink-0">
+                                            </template>
+                                            <template x-if="!user.imagen_url">
+                                                <div
+                                                    class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 text-gray-500">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                                        fill="currentColor" class="w-5 h-5">
+                                                        <path fill-rule="evenodd"
+                                                            d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z"
+                                                            clip-rule="evenodd" />
+                                                    </svg>
+                                                </div>
+                                            </template>
+                                            <div class="min-w-0">
+                                                <p class="text-sm font-medium text-gray-900 truncate"
+                                                    x-text="user.nombre_completo"></p>
+                                                <p class="text-xs text-gray-500" x-text="user.dni"></p>
                                             </div>
-                                        </template>
-                                        <div class="min-w-0">
-                                            <p class="text-sm font-medium text-gray-900 truncate"
-                                                x-text="user.nombre_completo"></p>
-                                            <p class="text-xs text-gray-500" x-text="user.dni"></p>
                                         </div>
-                                    </div>
-                                </template>
+                                    </template>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-1">Vincula esta incorporación a un usuario del sistema.</p>
                             </div>
-                            <p class="text-xs text-gray-400 mt-1">Vincula esta incorporación a un usuario del sistema.
-                            </p>
+
+                            <!-- Separador -->
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 border-t border-gray-200"></div>
+                                <span class="text-xs text-gray-400">o</span>
+                                <div class="flex-1 border-t border-gray-200"></div>
+                            </div>
+
+                            <!-- Botón crear usuario -->
+                            <button @click="crearUsuario()"
+                                class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
+                                </svg>
+                                Crear Usuario
+                            </button>
+                            <p class="text-xs text-gray-400 text-center">Crea un usuario con los datos de la incorporación o vincula uno existente por DNI.</p>
                         </div>
                     </template>
                 </div>
@@ -896,6 +997,65 @@
                             this.updateUser(null, null);
                         }
                     })
+                },
+
+                async crearUsuario() {
+                    const result = await Swal.fire({
+                        title: 'Crear/Vincular Usuario',
+                        text: 'Se buscará un usuario existente con el mismo DNI o se creará uno nuevo con los datos de la incorporación.',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#10B981',
+                        cancelButtonColor: '#6B7280',
+                        confirmButtonText: 'Continuar',
+                        cancelButtonText: 'Cancelar'
+                    });
+
+                    if (!result.isConfirmed) return;
+
+                    try {
+                        Swal.fire({
+                            title: 'Procesando...',
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+
+                        const res = await fetch('{{ route('incorporaciones.crearUsuario', $incorporacion) }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json'
+                            }
+                        });
+
+                        const data = await res.json();
+
+                        if (data.success) {
+                            this.selectedUser = data.usuario;
+                            this.suggestions = [];
+                            this.query = '';
+
+                            let iconType = 'success';
+                            if (data.accion === 'vinculado') {
+                                iconType = 'info';
+                            } else if (data.accion === 'ya_vinculado') {
+                                iconType = 'info';
+                            }
+
+                            Swal.fire({
+                                icon: iconType,
+                                title: data.accion === 'creado' ? 'Usuario Creado' : 'Usuario Vinculado',
+                                text: data.message,
+                                confirmButtonText: 'Entendido'
+                            });
+                        } else {
+                            Swal.fire('Error', data.message || 'Error al procesar', 'error');
+                        }
+                    } catch (e) {
+                        console.error('Error:', e);
+                        Swal.fire('Error', 'Error de conexión', 'error');
+                    }
                 },
 
                 async updateUser(id, userObj) {
@@ -1253,7 +1413,7 @@
             const valorActual = '{{ $incorporacion->numero_afiliacion_ss ?? '' }}';
 
             Swal.fire({
-                title: 'Editar N. Afiliación SS',
+                title: 'Editar N. Afiliacion SS',
                 input: 'text',
                 inputValue: valorActual,
                 inputPlaceholder: '123456789012',
@@ -1267,10 +1427,10 @@
                 confirmButtonColor: '#2563eb',
                 inputValidator: (value) => {
                     if (!value) {
-                        return 'Debes introducir el número de afiliación';
+                        return 'Debes introducir el numero de afiliacion';
                     }
                     if (!/^[0-9]{12}$/.test(value)) {
-                        return 'El número debe tener exactamente 12 dígitos';
+                        return 'El numero debe tener exactamente 12 digitos';
                     }
                 }
             }).then((result) => {
@@ -1295,7 +1455,7 @@
                                 Swal.fire({
                                     icon: 'success',
                                     title: 'Actualizado',
-                                    text: 'Número de afiliación actualizado correctamente.',
+                                    text: 'Numero de afiliacion actualizado correctamente.',
                                     timer: 1500,
                                     showConfirmButton: false
                                 });
@@ -1307,6 +1467,126 @@
                                 });
                             }
                         });
+                }
+            });
+        }
+
+        // Funcion generica para editar cualquier campo de texto
+        function editarCampoTexto(campo, nombreMostrar, valorActual) {
+            // Configuraciones especificas por campo
+            const configs = {
+                dni: {
+                    placeholder: '12345678A',
+                    maxlength: 9,
+                    validator: (value) => {
+                        if (!value) return 'Debes introducir el DNI/NIE';
+                        if (!/^([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/i.test(value)) {
+                            return 'Formato invalido (DNI: 8 numeros + letra, NIE: X/Y/Z + 7 numeros + letra)';
+                        }
+                    }
+                },
+                email: {
+                    placeholder: 'correo@ejemplo.com',
+                    maxlength: 255,
+                    inputType: 'email',
+                    validator: (value) => {
+                        if (!value) return 'Debes introducir el email';
+                        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                            return 'El email no tiene un formato valido';
+                        }
+                    }
+                },
+                telefono: {
+                    placeholder: '612345678',
+                    maxlength: 9,
+                    validator: (value) => {
+                        if (!value) return 'Debes introducir el telefono';
+                        const clean = value.replace(/\s/g, '');
+                        if (!/^[0-9]{9}$/.test(clean)) {
+                            return 'El telefono debe tener 9 digitos';
+                        }
+                    }
+                },
+                name: {
+                    placeholder: 'Juan',
+                    maxlength: 100,
+                    validator: (value) => {
+                        if (!value || !value.trim()) return 'Debes introducir el nombre';
+                    }
+                },
+                primer_apellido: {
+                    placeholder: 'Garcia',
+                    maxlength: 100,
+                    validator: (value) => {
+                        if (!value || !value.trim()) return 'Debes introducir el primer apellido';
+                    }
+                },
+                segundo_apellido: {
+                    placeholder: 'Lopez (opcional)',
+                    maxlength: 100,
+                    validator: null // Opcional
+                }
+            };
+
+            const config = configs[campo] || { placeholder: '', maxlength: 255 };
+
+            Swal.fire({
+                title: `Editar ${nombreMostrar}`,
+                input: config.inputType || 'text',
+                inputValue: valorActual || '',
+                inputPlaceholder: config.placeholder,
+                inputAttributes: {
+                    maxlength: config.maxlength
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Guardar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#2563eb',
+                inputValidator: config.validator
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('{{ route('incorporaciones.editarActualizarCampo', $incorporacion) }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            campo: campo,
+                            valor: result.value
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            const elemento = document.getElementById(`texto-${campo}`);
+                            if (elemento) {
+                                elemento.textContent = result.value || 'No especificado';
+                            }
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Actualizado',
+                                text: `${nombreMostrar} actualizado correctamente.`,
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'Error al actualizar'
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Error de conexion'
+                        });
+                    });
                 }
             });
         }

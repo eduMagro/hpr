@@ -35,6 +35,9 @@ class PlanillasTable extends Component
     #[Url(keep: true)]
     public $secciones = [];
 
+    #[Url(keep: true)]
+    public $seccionTextoLibre = '';
+
     // Dropdown de secciones abierto/cerrado
     public $seccionesDropdownAbierto = false;
 
@@ -89,6 +92,11 @@ class PlanillasTable extends Component
     {
         if ($property !== 'perPage') {
             $this->resetPage();
+        }
+
+        // Si se escribe en texto libre, limpiar checkboxes
+        if ($property === 'seccionTextoLibre' && !empty($this->seccionTextoLibre)) {
+            $this->secciones = [];
         }
     }
 
@@ -158,9 +166,11 @@ class PlanillasTable extends Component
             });
         }
 
-        // Sección (múltiples)
+        // Sección (múltiples checkboxes O texto libre)
         if (!empty($this->secciones) && is_array($this->secciones)) {
             $query->whereIn('seccion', $this->secciones);
+        } elseif (!empty($this->seccionTextoLibre)) {
+            $query->where('seccion', 'like', '%' . trim($this->seccionTextoLibre) . '%');
         }
 
         // Descripción
@@ -307,6 +317,7 @@ class PlanillasTable extends Component
             'cod_obra',
             'nom_obra',
             'secciones',
+            'seccionTextoLibre',
             'seccionesDropdownAbierto',
             'descripcion',
             'ensamblado',
@@ -338,6 +349,9 @@ class PlanillasTable extends Component
      */
     public function toggleSeccion($seccion)
     {
+        // Limpiar texto libre al usar checkboxes
+        $this->seccionTextoLibre = '';
+
         if (in_array($seccion, $this->secciones)) {
             $this->secciones = array_values(array_diff($this->secciones, [$seccion]));
         } else {
@@ -347,11 +361,12 @@ class PlanillasTable extends Component
     }
 
     /**
-     * Limpiar todas las secciones seleccionadas
+     * Limpiar todas las secciones seleccionadas y texto libre
      */
     public function limpiarSecciones()
     {
         $this->secciones = [];
+        $this->seccionTextoLibre = '';
         $this->resetPage();
     }
 
@@ -376,6 +391,8 @@ class PlanillasTable extends Component
         }
         if (!empty($this->secciones)) {
             $filtros[] = "<strong>Secciones:</strong> " . implode(', ', $this->secciones);
+        } elseif (!empty($this->seccionTextoLibre)) {
+            $filtros[] = "<strong>Sección:</strong> {$this->seccionTextoLibre}";
         }
         if (!empty($this->descripcion)) {
             $filtros[] = "<strong>Descripción:</strong> {$this->descripcion}";

@@ -895,6 +895,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->name('incorporaciones.editarActualizarCampo');
     Route::get('/api/users/buscar-para-incorporacion', [\App\Http\Controllers\IncorporacionController::class, 'buscarUsuarios'])
         ->name('incorporaciones.buscarUsuarios');
+    Route::post('/incorporaciones/{incorporacion}/crear-usuario', [\App\Http\Controllers\IncorporacionController::class, 'crearOEncontrarUsuario'])
+        ->name('incorporaciones.crearUsuario');
     Route::get('/mi-contrato/descargar', [\App\Http\Controllers\IncorporacionController::class, 'descargarMiContrato'])
         ->name('incorporaciones.descargarMiContrato');
 });
