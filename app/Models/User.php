@@ -47,7 +47,6 @@ class User extends Authenticatable
         'rol',
         'categoria_id',
         'maquina_id',
-        'turno',
         'turno_actual',
         'dias_vacaciones',
         'estado',

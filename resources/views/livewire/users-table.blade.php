@@ -307,10 +307,9 @@
                         <form action="{{ route('profile.generar.turnos', $user->id) }}" method="POST"
                             id="form-generar-turnos-{{ $user->id }}">
                             @csrf
+                            <input type="hidden" name="tipo_turno" id="tipo_turno_{{ $user->id }}">
                             <input type="hidden" name="turno_inicio" id="turno_inicio_{{ $user->id }}">
-                            <input type="hidden" id="usuario_turno_{{ $user->id }}"
-                                value="{{ $user->turno }}">
-                            <input type="hidden" id="obra_id_input_{{ $user->id }}" name="obra_id">
+                            <input type="hidden" name="obra_id" id="obra_id_input_{{ $user->id }}">
 
                             <button type="button"
                                 class="w-full bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded"
@@ -385,22 +384,30 @@
 
     <script>
         function confirmarGenerarTurnos(userId, obras) {
-            let usuarioTurno = document.getElementById("usuario_turno_" + userId).value;
-
             // Generar HTML del select con las obras
             let opcionesObra = obras.map(
                 (obra) => `<option value="${obra.id}">${obra.obra}</option>`
             ).join("");
 
             let selectHtml = `
-                <label for="select-obra">Selecciona la obra asignada:</label>
-                <select id="select-obra" class="swal2-select" style="margin-top: 1em;">
-                    ${opcionesObra}
-                </select>
+                <div style="text-align: left; margin-bottom: 1em;">
+                    <label for="select-tipo-turno" style="font-weight: bold;">Tipo de turno:</label>
+                    <select id="select-tipo-turno" class="swal2-select" style="margin-top: 0.5em; width: 100%;">
+                        <option value="diurno">Diurno (rota mañana/tarde)</option>
+                        <option value="nocturno">Nocturno</option>
+                        <option value="mañana">Solo mañana</option>
+                    </select>
+                </div>
+                <div style="text-align: left;">
+                    <label for="select-obra" style="font-weight: bold;">Obra asignada:</label>
+                    <select id="select-obra" class="swal2-select" style="margin-top: 0.5em; width: 100%;">
+                        ${opcionesObra}
+                    </select>
+                </div>
             `;
 
             Swal.fire({
-                title: "¿Estás seguro?",
+                title: "Generar turnos",
                 html: `
                     <p class="mb-2">Esta accion generara turnos hasta final de año y reemplazara los actuales (excepto vacaciones y festivos).</p>
                     ${selectHtml}
@@ -412,19 +419,22 @@
                 confirmButtonColor: "#3085d6",
                 cancelButtonColor: "#d33",
                 preConfirm: () => {
+                    const tipoTurno = document.getElementById("select-tipo-turno").value;
                     const obraId = document.getElementById("select-obra").value;
                     if (!obraId) {
                         Swal.showValidationMessage("Debes seleccionar una obra");
+                        return false;
                     }
-                    return obraId;
+                    return { tipoTurno, obraId };
                 }
             }).then((respuestaConfirmacion) => {
                 if (!respuestaConfirmacion.isConfirmed) return;
 
-                const obraId = respuestaConfirmacion.value;
+                const { tipoTurno, obraId } = respuestaConfirmacion.value;
+                document.getElementById("tipo_turno_" + userId).value = tipoTurno;
                 document.getElementById("obra_id_input_" + userId).value = obraId;
 
-                if (usuarioTurno === "diurno") {
+                if (tipoTurno === "diurno") {
                     Swal.fire({
                         title: "Selecciona el turno inicial",
                         text: "¿Con que turno quieres comenzar para el turno diurno?",
@@ -466,8 +476,7 @@
                         empresa_id: usuario.empresa_id,
                         rol: usuario.rol,
                         categoria_id: usuario.categoria_id,
-                        maquina_id: usuario.maquina_id,
-                        turno: usuario.turno
+                        maquina_id: usuario.maquina_id
                     })
                 })
                 .then(async (response) => {

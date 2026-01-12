@@ -96,8 +96,6 @@ class ProfileController extends Controller
             $filtros[] = 'Máquina: <strong>' . e($request->maquina) . '</strong>';
         }
 
-        if ($request->filled('turno'))
-            $filtros[] = 'Turno: <strong>' . e($request->turno) . '</strong>';
         if ($request->filled('rol'))
             $filtros[] = 'Rol: <strong>' . e($request->rol) . '</strong>';
 
@@ -114,7 +112,6 @@ class ProfileController extends Controller
                 'rol' => 'Rol',
                 'categoria' => 'Categoría',
                 'maquina_id' => 'Máquina',
-                'turno' => 'Turno',
                 'estado' => 'Estado',
                 'numero_corto' => 'Nº Corporativo',
                 'id' => 'ID',
@@ -165,7 +162,6 @@ class ProfileController extends Controller
             'rol' => 'users.rol',
             'categoria' => 'categorias.nombre',
             'maquina_id' => 'users.maquina_id',
-            'turno' => 'users.turno',
             'estado' => 'users.estado', // si existiera columna; tu "estado" de conexión va en colección
         ];
 
@@ -242,10 +238,7 @@ class ProfileController extends Controller
             });
         }
 
-        // Turno y rol con contains (cámbialo a '=' si deben ser exactos)
-        if ($request->filled('turno')) {
-            $query->where('users.turno', 'like', $this->escapeLike($request->input('turno')));
-        }
+        // Rol con contains (cámbialo a '=' si debe ser exacto)
         if ($request->filled('rol')) {
             $query->where('users.rol', 'like', $this->escapeLike($request->input('rol')));
         }
@@ -309,7 +302,6 @@ class ProfileController extends Controller
         $empresas = Empresa::orderBy('nombre')->get();
         $maquinas = Maquina::orderBy('nombre')->get();
         $roles = User::distinct()->pluck('rol')->filter()->sort();
-        $turnos = User::distinct()->pluck('turno')->filter()->sort();
         $totalSolicitudesPendientes = VacacionesSolicitud::where('estado', 'pendiente')->count();
 
         $ordenables = [
@@ -322,7 +314,6 @@ class ProfileController extends Controller
             'rol' => $this->getOrdenamiento('rol', 'Rol'),
             'categoria' => $this->getOrdenamiento('categoria', 'Categoría'),
             'maquina_id' => $this->getOrdenamiento('maquina_id', 'Máquina'),
-            'turno' => $this->getOrdenamiento('turno', 'Turno'),
             'estado' => $this->getOrdenamiento('estado', 'Estado'),
         ];
 
@@ -362,7 +353,6 @@ class ProfileController extends Controller
             'categorias',
             'maquinas',
             'roles',
-            'turnos',
             'filtrosActivos',
             'ordenables',
             'totalSolicitudesPendientes',
@@ -785,7 +775,6 @@ class ProfileController extends Controller
                 'rol' => 'nullable|string|in:operario,oficina,transportista,visitante',
                 'categoria_id' => 'nullable|exists:categorias,id',
                 'maquina_id' => 'nullable|exists:maquinas,id',
-                'turno' => 'nullable|string|in:diurno,nocturno,mañana,flexible',
             ]);
 
             $user->fill($validated);
@@ -889,7 +878,6 @@ class ProfileController extends Controller
                 'rol' => 'required|string|max:50',
                 'categoria_id' => 'nullable|exists:categorias,id',
                 'maquina_id' => 'nullable|exists:maquinas,id',
-                'turno' => 'nullable|string|in:nocturno,diurno,mañana,flexible',
             ];
 
             // Solo programador puede editar email y dni
@@ -935,7 +923,6 @@ class ProfileController extends Controller
                 'rol' => $request->rol,
                 'categoria_id' => $request->categoria_id,
                 'maquina_id' => $request->maquina_id,
-                'turno' => $request->turno,
                 'updated_by' => auth()->id(),
             ];
 
@@ -985,6 +972,7 @@ class ProfileController extends Controller
         $turnoNocheId = Turno::where('nombre', 'noche')->value('id');
 
         $obraId = request()->input('obra_id');
+        $tipoTurno = request()->input('tipo_turno'); // diurno, nocturno, mañana
 
         // Rango: desde mañana hasta fin de año
         $inicio = Carbon::now()->addDay()->startOfDay();
@@ -1004,19 +992,19 @@ class ProfileController extends Controller
             ->map(fn($f) => Carbon::parse($f)->toDateString())
             ->all();
 
-        // Turno inicial según configuración del usuario
-        if ($user->turno == 'diurno') {
+        // Turno inicial según selección del usuario
+        if ($tipoTurno == 'diurno') {
             $turnoInicial = request()->input('turno_inicio');
             if (!in_array($turnoInicial, ['mañana', 'tarde'])) {
                 return redirect()->back()->with('error', 'Debe seleccionar un turno válido para comenzar (mañana o tarde).');
             }
             $turnoAsignado = $turnoInicial === 'mañana' ? $turnoMañanaId : $turnoTardeId;
-        } elseif ($user->turno == 'nocturno') {
+        } elseif ($tipoTurno == 'nocturno') {
             $turnoAsignado = $turnoNocheId;
-        } elseif ($user->turno == 'mañana') {
+        } elseif ($tipoTurno == 'mañana') {
             $turnoAsignado = $turnoMañanaId;
         } else {
-            return redirect()->back()->with('error', 'El usuario no tiene un turno asignado.');
+            return redirect()->back()->with('error', 'Debe seleccionar un tipo de turno válido.');
         }
 
         for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
@@ -1031,7 +1019,7 @@ class ProfileController extends Controller
 
             if ($esNoLaborable) {
                 // Mantén la rotación de viernes aunque se salte el día
-                if ($user->turno === 'diurno' && $esViernes) {
+                if ($tipoTurno === 'diurno' && $esViernes) {
                     $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
                 }
                 continue;
@@ -1043,7 +1031,7 @@ class ProfileController extends Controller
 
             // ⛔ No sobrescribir si ese día se marcó con turno 'festivo'
             if ($asignacion && optional($asignacion->turno)->nombre === 'festivo') {
-                if ($user->turno === 'diurno' && $esViernes) {
+                if ($tipoTurno === 'diurno' && $esViernes) {
                     $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
                 }
                 continue;
@@ -1067,7 +1055,7 @@ class ProfileController extends Controller
             }
 
             // Rotación de viernes (para diurno)
-            if ($user->turno === 'diurno' && $esViernes) {
+            if ($tipoTurno === 'diurno' && $esViernes) {
                 $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
             }
         }
@@ -1287,7 +1275,7 @@ class ProfileController extends Controller
             'fecha_inicio' => 'required|date',
             'alcance' => 'required|in:un_dia,dos_semanas,resto_año',
             'turno_inicio' => 'nullable|in:mañana,tarde',
-            'turno_detectado' => 'nullable|in:mañana,tarde,noche',
+            'turno_detectado' => 'required|in:mañana,tarde,noche,diurno',
         ]);
 
         $user = User::with(['categoria'])->findOrFail($validated['user_id']);
@@ -1335,34 +1323,20 @@ class ProfileController extends Controller
             ->map(fn($f) => Carbon::parse($f)->toDateString())
             ->all();
 
-        // Determinar turno inicial
-        // Si viene turno_detectado (desde el clic en el calendario), usarlo directamente
-        if (!empty($validated['turno_detectado'])) {
-            $turnoDetectado = $validated['turno_detectado'];
+        // Determinar turno inicial según turno_detectado
+        $turnoDetectado = $validated['turno_detectado'];
+
+        if ($turnoDetectado === 'diurno') {
+            // Para diurno, usar turno_inicio si viene, sino mañana por defecto
+            $turnoInicial = $validated['turno_inicio'] ?? 'mañana';
+            $turnoAsignado = $turnoInicial === 'mañana' ? $turnoMañanaId : $turnoTardeId;
+        } else {
             $turnoAsignado = match ($turnoDetectado) {
                 'mañana' => $turnoMañanaId,
                 'tarde' => $turnoTardeId,
                 'noche' => $turnoNocheId,
                 default => $turnoMañanaId,
             };
-        } elseif ($user->turno == 'diurno') {
-            $turnoInicial = $validated['turno_inicio'] ?? 'mañana';
-            if (!in_array($turnoInicial, ['mañana', 'tarde'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Debe seleccionar un turno válido para comenzar (mañana o tarde).'
-                ], 400);
-            }
-            $turnoAsignado = $turnoInicial === 'mañana' ? $turnoMañanaId : $turnoTardeId;
-        } elseif ($user->turno == 'nocturno') {
-            $turnoAsignado = $turnoNocheId;
-        } elseif ($user->turno == 'mañana') {
-            $turnoAsignado = $turnoMañanaId;
-        } else {
-            return response()->json([
-                'success' => false,
-                'message' => 'El usuario no tiene un turno asignado.'
-            ], 400);
         }
 
         $turnosCreados = 0;
@@ -1380,7 +1354,7 @@ class ProfileController extends Controller
 
             if ($esNoLaborable) {
                 // Mantener la rotación de viernes aunque se salte el día
-                if ($user->turno === 'diurno' && $esViernes) {
+                if ($turnoDetectado === 'diurno' && $esViernes) {
                     $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
                 }
                 continue;
@@ -1392,7 +1366,7 @@ class ProfileController extends Controller
 
             // No sobrescribir si ese día se marcó con turno 'festivo'
             if ($asignacion && optional($asignacion->turno)->nombre === 'festivo') {
-                if ($user->turno === 'diurno' && $esViernes) {
+                if ($turnoDetectado === 'diurno' && $esViernes) {
                     $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
                 }
                 continue;
@@ -1445,7 +1419,7 @@ class ProfileController extends Controller
             $turnosCreados++;
 
             // Rotación de viernes (para diurno)
-            if ($user->turno === 'diurno' && $esViernes) {
+            if ($turnoDetectado === 'diurno' && $esViernes) {
                 $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
             }
         }

@@ -17,36 +17,12 @@ class GenerarTurnosAnuales extends Command
 
     public function handle()
     {
-        $usuarios = User::all();
+        $this->error('Este comando ya no está disponible.');
+        $this->info('La columna "turno" fue eliminada de la tabla users.');
+        $this->info('Ahora los turnos se generan manualmente mediante el botón "Turnos" en la tabla de usuarios.');
+        $this->info('Al hacer clic en ese botón, se pregunta qué tipo de turno generar (diurno, nocturno, mañana).');
 
-        // Rango: desde mañana hasta fin de año
-        $inicio = Carbon::now()->addDay()->startOfDay();
-        $fin    = Carbon::now()->endOfYear();
-
-        // ID del turno de vacaciones (para excluirlo de la limpieza)
-        $turnoVacacionesId = Turno::where('nombre', 'vacaciones')->value('id');
-
-        // Eliminar asignaciones existentes en el rango que NO sean vacaciones
-        // Incluye soft-deleted para evitar conflictos de constraint único
-        $eliminadas = AsignacionTurno::withTrashed()
-            ->whereDate('fecha', '>=', $inicio->toDateString())
-            ->whereDate('fecha', '<=', $fin->toDateString())
-            ->where(function ($query) use ($turnoVacacionesId) {
-                $query->where('turno_id', '!=', $turnoVacacionesId)
-                      ->orWhereNull('turno_id');
-            })
-            ->forceDelete();
-
-        $this->info("🗑️  Asignaciones previas eliminadas (excepto vacaciones): {$eliminadas}");
-
-        // ✅ Festivos desde BD por rango (no API)
-        $festivosArray = $this->getFestivosEntre($inicio, $fin);
-
-        foreach ($usuarios as $user) {
-            $this->generarTurnos($user, $inicio, $fin, $festivosArray);
-        }
-
-        $this->info("✅ Turnos generados correctamente respetando la rotación individual de cada trabajador.");
+        return 1;
     }
 
     /**

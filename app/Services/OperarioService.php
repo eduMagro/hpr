@@ -21,7 +21,7 @@ class OperarioService
      */
     private const CAMPOS_BASE = [
         'id', 'name', 'primer_apellido', 'segundo_apellido',
-        'turno', 'maquina_id', 'empresa_id'
+        'maquina_id', 'empresa_id'
     ];
 
     /**
@@ -249,7 +249,6 @@ class OperarioService
             'primer_apellido' => $operario->primer_apellido,
             'segundo_apellido' => $operario->segundo_apellido,
             'nombre_completo' => $operario->nombre_completo,
-            'turno' => $operario->turno,
             'maquina_id' => $operario->maquina_id,
             'empresa_id' => $operario->empresa_id,
             'empresa_nombre' => $operario->empresa?->nombre ?? null,

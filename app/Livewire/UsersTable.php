@@ -59,9 +59,6 @@ class UsersTable extends Component
     public $maquina_id = '';
 
     #[Url]
-    public $turno = '';
-
-    #[Url]
     public $estado = '';
 
     #[Url]
@@ -95,7 +92,7 @@ class UsersTable extends Component
         $this->reset([
             'user_id', 'filtro_name', 'filtro_primer_apellido', 'filtro_segundo_apellido', 'email', 'movil_personal', 'movil_empresa',
             'numero_corto', 'dni', 'empresa_id', 'rol', 'categoria_id',
-            'maquina_id', 'turno', 'estado'
+            'maquina_id', 'estado'
         ]);
         $this->resetPage();
     }
@@ -149,9 +146,6 @@ class UsersTable extends Component
             $maquina = Maquina::find($this->maquina_id);
             $filtros[] = "<strong>Máquina:</strong> " . ($maquina->nombre ?? "ID {$this->maquina_id}");
         }
-        if (!empty($this->turno)) {
-            $filtros[] = "<strong>Turno:</strong> {$this->turno}";
-        }
         if (!empty($this->rol)) {
             $filtros[] = "<strong>Rol:</strong> {$this->rol}";
         }
@@ -171,7 +165,6 @@ class UsersTable extends Component
                 'rol' => 'Rol',
                 'categoria' => 'Categoría',
                 'maquina_id' => 'Máquina',
-                'turno' => 'Turno',
                 'estado' => 'Estado',
             ];
 
@@ -241,11 +234,6 @@ class UsersTable extends Component
             $query->where('users.maquina_id', $this->maquina_id);
         }
 
-        if (!empty($this->turno)) {
-            $like = $this->escapeLike($this->turno);
-            $query->whereRaw("users.turno LIKE ? ESCAPE '\\\\'", [$like]);
-        }
-
         if (!empty($this->rol)) {
             $like = $this->escapeLike($this->rol);
             $query->whereRaw("users.rol LIKE ? ESCAPE '\\\\'", [$like]);
@@ -304,9 +292,6 @@ class UsersTable extends Component
             case 'maquina_id':
                 $query->orderBy('users.maquina_id', $orderDir);
                 break;
-            case 'turno':
-                $query->orderBy('users.turno', $orderDir);
-                break;
             case 'estado':
                 $query->orderBy('users.estado', $orderDir);
                 break;
@@ -326,7 +311,6 @@ class UsersTable extends Component
         $categorias = Categoria::orderBy('nombre')->get();
         $maquinas = Maquina::orderBy('nombre')->get();
         $roles = ['operario', 'oficina', 'transportista', 'visitante'];
-        $turnos = ['diurno', 'nocturno', 'mañana', 'flexible'];
         $obrasHierrosPacoReyes = Obra::whereHas('cliente', function ($q) {
             $q->where('empresa', 'like', '%Paco Reyes%');
         })->get();
@@ -351,7 +335,6 @@ class UsersTable extends Component
                     'categoria' => $user->categoria->nombre ?? null,
                     'maquina' => $user->maquina->nombre ?? null,
                     'rol' => $user->rol,
-                    'turno' => $user->turno,
                     'imagen' => $user->rutaImagen,
                 ];
             })
@@ -363,7 +346,6 @@ class UsersTable extends Component
             'categorias' => $categorias,
             'maquinas' => $maquinas,
             'roles' => $roles,
-            'turnos' => $turnos,
             'obrasHierrosPacoReyes' => $obrasHierrosPacoReyes,
             'filtrosActivos' => $this->getFiltrosActivos(),
             'contactosAgenda' => $contactosAgenda,

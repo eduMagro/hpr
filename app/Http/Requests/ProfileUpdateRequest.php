@@ -21,9 +21,7 @@ class ProfileUpdateRequest extends FormRequest
 
             'rol' => ['sometimes', 'string', 'max:255', 'in:operario,oficina,visitante'], // Nuevo campo rol
 
-            'categoria' => ['sometimes', 'string', 'max:255', 'in:administracion,gruista,operario,mecanico,visitante'], 
-
-            'turno' => ['sometimes', 'string', 'max:255', 'in:diurno,nocturno,flexible'], // Nuevo campo turno
+            'categoria' => ['sometimes', 'string', 'max:255', 'in:administracion,gruista,operario,mecanico,visitante'],
         ];
     }
 }

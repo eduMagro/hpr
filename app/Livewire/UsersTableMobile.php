@@ -30,7 +30,6 @@ class UsersTableMobile extends Component
                     'categoria' => $user->categoria->nombre ?? null,
                     'maquina' => $user->maquina->nombre ?? null,
                     'rol' => $user->rol,
-                    'turno' => $user->turno,
                     'imagen' => $user->rutaImagen,
                 ];
             })

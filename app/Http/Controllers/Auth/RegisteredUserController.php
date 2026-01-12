@@ -83,7 +83,6 @@ class RegisteredUserController extends Controller
             'empresa_id' => ['required', 'exists:empresas,id'],
             'rol' => ['required', 'string', 'max:255', 'in:operario,oficina,visitante'],
             'categoria_id' => ['required', 'exists:categorias,id'],
-            'turno' => ['string', 'max:255', 'in:diurno,nocturno,mañana,flexible'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ], [
             'name.required' => 'El nombre es obligatorio.',
@@ -131,10 +130,6 @@ class RegisteredUserController extends Controller
             'categoria_id.required' => 'La categoría es obligatoria.',
             'categoria_id.exists' => 'La categoría seleccionada no es válida.',
 
-            'turno.string' => 'El turno debe ser un texto válido.',
-            'turno.max' => 'El turno no puede superar los 255 caracteres.',
-            'turno.in' => 'El turno debe ser uno de los siguientes: diurno, nocturno, mañana o flexible.',
-
             'password.required' => 'La contraseña es obligatoria.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
@@ -150,7 +145,6 @@ class RegisteredUserController extends Controller
                 'empresa_id' => $request->empresa_id,
                 'rol' => $request->rol,
                 'categoria_id' => $request->categoria_id,
-                'turno' => $request->turno,
                 'password' => Hash::make($request->password),
             ]);
 
