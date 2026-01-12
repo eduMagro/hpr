@@ -208,11 +208,31 @@ class FerrawinBulkImportService
      */
     protected function crearElementosBulk(Planilla $planilla, array $elementos, array $mapaEntidades = []): void
     {
-        // Agrupar por número de etiqueta (igual que importación manual)
+        // Normalizar texto igual que ExcelReader
+        $normalizar = fn($t) => mb_strtoupper(
+            preg_replace('/\s+/u', ' ', trim((string)$t)),
+            'UTF-8'
+        ) ?: '—SIN VALOR—';
+
+        // Agrupar por DESCRIPCIÓN + MARCA (igual que ExcelReader.autocompletarEtiquetas)
         $porEtiqueta = [];
-        foreach ($elementos as $index => $elem) {
-            // Usar etiqueta del elemento o índice como fallback
-            $numEtiqueta = $elem['etiqueta'] ?? $elem['descripcion_fila'] ?? ('grupo_' . $index);
+        $grupoNum = [];
+        $siguiente = 1;
+
+        foreach ($elementos as $elem) {
+            $descripcion = $normalizar($elem['descripcion_fila'] ?? '');
+            $marca = $normalizar($elem['marca'] ?? '');
+
+            // Clave compuesta: descripción + marca (igual que importación manual)
+            $claveGrupo = $descripcion . '|' . $marca;
+
+            // Asignar número de grupo si es nueva combinación
+            if (!isset($grupoNum[$claveGrupo])) {
+                $grupoNum[$claveGrupo] = $siguiente++;
+                Log::channel('ferrawin_sync')->debug("   📌 Grupo {$grupoNum[$claveGrupo]} = '{$descripcion}' + '{$marca}'");
+            }
+
+            $numEtiqueta = $grupoNum[$claveGrupo];
 
             if (!isset($porEtiqueta[$numEtiqueta])) {
                 $porEtiqueta[$numEtiqueta] = [];
@@ -220,7 +240,7 @@ class FerrawinBulkImportService
             $porEtiqueta[$numEtiqueta][] = $elem;
         }
 
-        Log::channel('ferrawin_sync')->info("📦 [BULK] Planilla {$planilla->codigo}: " . count($porEtiqueta) . " grupos de etiquetas");
+        Log::channel('ferrawin_sync')->info("📦 [BULK] Planilla {$planilla->codigo}: " . count($porEtiqueta) . " grupos de etiquetas (por descripción+marca)");
 
         // Crear etiquetas y elementos (igual que PlanillaProcessor)
         foreach ($porEtiqueta as $numEtiqueta => $filasEtiqueta) {
