@@ -308,9 +308,9 @@
 
     {{-- Modal de confirmación de año --}}
     @if ($showYearConfirm)
-        <div class="fixed inset-0 z-[10001] overflow-y-auto">
-            <div class="fixed inset-0 z-[10001] bg-black/70" wire:click="cerrarYearConfirm"></div>
-            <div class="relative min-h-screen flex items-center justify-center p-4 z-[10002]">
+        <div class="fixed inset-0 z-[50000] overflow-y-auto">
+            <div class="fixed inset-0 z-[50000] bg-black/70" wire:click="cerrarYearConfirm"></div>
+            <div class="relative min-h-screen flex items-center justify-center p-4 z-[50001]">
                 <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md isolate">
                     {{-- Header --}}
                     <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-t-xl">
