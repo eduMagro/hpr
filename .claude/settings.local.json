@@ -75,7 +75,8 @@
       "Bash(gh:*)",
       "Bash(find:*)",
       "Bash(git remote add:*)",
-      "Bash(more:*)"
+      "Bash(more:*)",
+      "Bash(git status:*)"
     ],
     "deny": [],
     "ask": []
