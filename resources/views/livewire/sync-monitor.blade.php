@@ -269,7 +269,15 @@
                                                 </svg>
                                             </button>
                                             <div x-show="open" @click.away="open = false" x-cloak
-                                                class="absolute right-0 bottom-full mb-1 w-40 bg-white rounded-lg shadow-lg border py-1 z-10">
+                                                class="absolute right-0 bottom-full mb-1 w-48 bg-white rounded-lg shadow-lg border py-1 z-10">
+                                                <button wire:click="seleccionarAño('nuevas')" @click="open = false"
+                                                    class="w-full px-4 py-2 text-left text-sm text-emerald-700 font-medium hover:bg-emerald-50 transition border-b border-gray-200">
+                                                    Solo NUEVAS
+                                                </button>
+                                                <button wire:click="seleccionarAño('todos')" @click="open = false"
+                                                    class="w-full px-4 py-2 text-left text-sm text-blue-700 font-medium hover:bg-blue-50 transition border-b border-gray-200">
+                                                    Sincronizar TODO
+                                                </button>
                                                 @foreach (['2026', '2025', '2024', '2023', '2022'] as $año)
                                                     <button wire:click="seleccionarAño('{{ $año }}')" @click="open = false"
                                                         class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition">
@@ -313,8 +321,16 @@
             <div class="relative min-h-screen flex items-center justify-center p-4" style="z-index: 100000 !important;">
                 <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md" style="z-index: 100001 !important;">
                     {{-- Header --}}
-                    <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-t-xl">
-                        <h3 class="text-lg font-bold">Sincronizar {{ $selectedYear }}</h3>
+                    <div class="bg-gradient-to-r {{ $selectedYear === 'nuevas' ? 'from-emerald-600 to-emerald-700' : 'from-blue-600 to-blue-700' }} text-white px-6 py-4 rounded-t-xl">
+                        <h3 class="text-lg font-bold">
+                            @if ($selectedYear === 'todos')
+                                Sincronización COMPLETA
+                            @elseif ($selectedYear === 'nuevas')
+                                Solo Planillas NUEVAS
+                            @else
+                                Sincronizar {{ $selectedYear }}
+                            @endif
+                        </h3>
                     </div>
 
                     {{-- Content --}}
@@ -346,10 +362,16 @@
                             </div>
                         </div>
 
-                        {{-- Estadísticas del año --}}
+                        {{-- Estadísticas --}}
                         <div class="bg-gray-50 rounded-lg p-4 mb-4">
                             <div class="flex items-center justify-between mb-2">
-                                <span class="text-sm text-gray-600">Planillas importadas ({{ $syncTarget === 'production' ? 'prod' : 'local' }}):</span>
+                                <span class="text-sm text-gray-600">
+                                    @if ($selectedYear === 'todos' || $selectedYear === 'nuevas')
+                                        Total planillas importadas ({{ $syncTarget === 'production' ? 'prod' : 'local' }}):
+                                    @else
+                                        Planillas importadas ({{ $syncTarget === 'production' ? 'prod' : 'local' }}):
+                                    @endif
+                                </span>
                                 <span class="font-bold text-lg {{ $yearPlanillasCount > 0 ? 'text-blue-600' : 'text-gray-400' }}">
                                     {{ number_format($yearPlanillasCount) }}
                                 </span>
@@ -360,12 +382,25 @@
                                     <span class="font-mono text-sm font-medium text-gray-800">{{ $yearLastPlanilla }}</span>
                                 </div>
                             @endif
+                            @if ($selectedYear === 'todos')
+                                <div class="mt-2 pt-2 border-t border-gray-200">
+                                    <p class="text-xs text-amber-600 font-medium">
+                                        Se sincronizarán TODAS las planillas de FerraWin
+                                    </p>
+                                </div>
+                            @elseif ($selectedYear === 'nuevas')
+                                <div class="mt-2 pt-2 border-t border-gray-200">
+                                    <p class="text-xs text-emerald-600 font-medium">
+                                        Solo se sincronizarán planillas que NO existan en destino
+                                    </p>
+                                </div>
+                            @endif
                         </div>
 
                         {{-- Opciones --}}
                         <div class="space-y-3">
-                            @if ($yearPlanillasCount > 0 && $yearLastPlanilla)
-                                {{-- Opción: Continuar --}}
+                            @if ($selectedYear !== 'todos' && $selectedYear !== 'nuevas' && $yearPlanillasCount > 0 && $yearLastPlanilla)
+                                {{-- Opción: Continuar (solo para años específicos) --}}
                                 <button wire:click="confirmarSyncContinuar"
                                     class="w-full px-4 py-3 bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-200 rounded-lg text-left transition group">
                                     <div class="flex items-center gap-3">
@@ -383,7 +418,7 @@
                                 </button>
                             @endif
 
-                            {{-- Opción: Desde cero --}}
+                            {{-- Opción: Desde cero / Iniciar --}}
                             <button wire:click="confirmarSyncCompleta"
                                 class="w-full px-4 py-3 bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 rounded-lg text-left transition group">
                                 <div class="flex items-center gap-3">
@@ -393,14 +428,26 @@
                                         </svg>
                                     </div>
                                     <div>
-                                        <p class="font-semibold text-blue-800">Empezar desde cero</p>
-                                        <p class="text-xs text-blue-600">
-                                            @if ($yearPlanillasCount > 0)
-                                                Re-procesa todo (actualiza existentes)
-                                            @else
-                                                Importar todas las planillas del año
-                                            @endif
-                                        </p>
+                                        @if ($selectedYear === 'todos')
+                                            <p class="font-semibold text-blue-800">Iniciar sincronización completa</p>
+                                            <p class="text-xs text-blue-600">
+                                                Sincroniza todas las planillas de FerraWin
+                                            </p>
+                                        @elseif ($selectedYear === 'nuevas')
+                                            <p class="font-semibold text-blue-800">Sincronizar solo nuevas</p>
+                                            <p class="text-xs text-blue-600">
+                                                Importa planillas que no existan en destino
+                                            </p>
+                                        @else
+                                            <p class="font-semibold text-blue-800">Empezar desde cero</p>
+                                            <p class="text-xs text-blue-600">
+                                                @if ($yearPlanillasCount > 0)
+                                                    Re-procesa todo (actualiza existentes)
+                                                @else
+                                                    Importar todas las planillas del año
+                                                @endif
+                                            </p>
+                                        @endif
                                     </div>
                                 </div>
                             </button>

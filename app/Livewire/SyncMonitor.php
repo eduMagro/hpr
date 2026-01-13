@@ -315,13 +315,22 @@ class SyncMonitor extends Component
 
         $this->selectedYear = $año;
 
-        // Obtener estadísticas del año desde la BD
-        $stats = Planilla::selectRaw("
-                COUNT(*) as total,
-                MAX(codigo) as ultima
-            ")
-            ->whereRaw("codigo LIKE ?", ["{$año}-%"])
-            ->first();
+        if ($año === 'todos' || $año === 'nuevas') {
+            // Estadísticas de TODA la base de datos
+            $stats = Planilla::selectRaw("
+                    COUNT(*) as total,
+                    MAX(codigo) as ultima
+                ")
+                ->first();
+        } else {
+            // Obtener estadísticas del año desde la BD
+            $stats = Planilla::selectRaw("
+                    COUNT(*) as total,
+                    MAX(codigo) as ultima
+                ")
+                ->whereRaw("codigo LIKE ?", ["{$año}-%"])
+                ->first();
+        }
 
         $this->yearPlanillasCount = $stats->total ?? 0;
         $this->yearLastPlanilla = $stats->ultima;
@@ -380,15 +389,23 @@ class SyncMonitor extends Component
 
         // Usar el target seleccionado por el usuario
         $target = $this->syncTarget;
+        $targetLabel = $target === 'production' ? 'PRODUCCIÓN' : 'LOCAL';
 
         // Construir argumentos
-        $args = "--año={$año} --target={$target}";
-        $targetLabel = $target === 'production' ? 'PRODUCCIÓN' : 'LOCAL';
-        $mensaje = "Sincronización {$año} iniciada → {$targetLabel}";
+        if ($año === 'todos') {
+            $args = "--todos --target={$target}";
+            $mensaje = "Sincronización COMPLETA iniciada → {$targetLabel}";
+        } elseif ($año === 'nuevas') {
+            $args = "--nuevas --target={$target}";
+            $mensaje = "Sincronización de NUEVAS planillas iniciada → {$targetLabel}";
+        } else {
+            $args = "--anio={$año} --target={$target}";
+            $mensaje = "Sincronización {$año} iniciada → {$targetLabel}";
 
-        if ($desdeCodigo) {
-            $args .= " --desde-codigo={$desdeCodigo}";
-            $mensaje = "Sincronización {$año} continuando desde {$desdeCodigo} [{$targetLabel}]";
+            if ($desdeCodigo) {
+                $args .= " --desde-codigo={$desdeCodigo}";
+                $mensaje = "Sincronización {$año} continuando desde {$desdeCodigo} [{$targetLabel}]";
+            }
         }
 
         // Log para debug

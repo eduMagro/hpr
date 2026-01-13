@@ -202,4 +202,33 @@ class FerrawinSyncController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Devuelve los códigos de planillas existentes en la base de datos.
+     * Se usa para sincronización incremental (solo planillas nuevas).
+     *
+     * GET /api/ferrawin/codigos-existentes
+     */
+    public function codigosExistentes(Request $request)
+    {
+        try {
+            $codigos = \App\Models\Planilla::pluck('codigo')->toArray();
+
+            return response()->json([
+                'success' => true,
+                'total' => count($codigos),
+                'codigos' => $codigos,
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::channel('ferrawin_sync')->error('❌ [API] Error obteniendo códigos existentes', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => config('app.debug') ? $e->getMessage() : 'Error interno',
+            ], 500);
+        }
+    }
 }

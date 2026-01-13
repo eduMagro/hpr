@@ -126,4 +126,9 @@ Route::prefix('ferrawin')->group(function () {
     Route::post('/backfill-descripcion-fila', [FerrawinSyncController::class, 'backfillDescripcionFila'])
         ->middleware('ferrawin.api')
         ->name('api.ferrawin.backfill-descripcion-fila');
+
+    // Obtener códigos de planillas existentes (para sync incremental)
+    Route::get('/codigos-existentes', [FerrawinSyncController::class, 'codigosExistentes'])
+        ->middleware('ferrawin.api')
+        ->name('api.ferrawin.codigos-existentes');
 });
