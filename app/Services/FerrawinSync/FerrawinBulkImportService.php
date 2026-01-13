@@ -423,9 +423,13 @@ class FerrawinBulkImportService
         $diametro = (int)($elem['diametro'] ?? 0);
         $elaborado = $this->determinarElaborado($doblesBarra, $diametro, $longitud);
 
+        // Obtener ferrawin_id si viene en los datos
+        $ferrawinId = $elem['ferrawin_id'] ?? null;
+
         Elemento::create([
             'codigo' => Elemento::generarCodigo(),
             'planilla_id' => $planilla->id,
+            'ferrawin_id' => $ferrawinId,
             'planilla_entidad_id' => $planillaEntidadId,
             'etiqueta_id' => $etiquetaPadre->id,
             'etiqueta_sub_id' => null,
@@ -476,7 +480,13 @@ class FerrawinBulkImportService
     }
 
     /**
-     * Actualiza una planilla existente (reimportación).
+     * Actualiza una planilla existente (reimportación con upsert por ferrawin_id).
+     *
+     * Lógica:
+     * - Elementos pendientes con ferrawin_id que existe en FerraWin → actualizar datos
+     * - Elementos pendientes con ferrawin_id que NO existe en FerraWin → eliminar (técnico los borró)
+     * - Elementos nuevos en FerraWin que no existen en BD → crear
+     * - Elementos fabricando/fabricado/completado → NUNCA tocar
      */
     protected function actualizarPlanilla(array $data): void
     {
@@ -494,24 +504,7 @@ class FerrawinBulkImportService
             $this->crearEntidades($planilla, $entidades);
         }
 
-        // Solo actualizar elementos si hay pendientes
-        $pendientes = $planilla->elementos()->where('estado', 'pendiente')->count();
-
-        if ($pendientes === 0) {
-            Log::channel('ferrawin_sync')->debug("⏭️ [BULK] Planilla {$codigo}: entidades actualizadas, elementos sin cambios");
-            $this->stats['planillas_actualizadas']++;
-            return;
-        }
-
-        // Eliminar elementos pendientes y reimportar
-        $planilla->elementos()->where('estado', 'pendiente')->forceDelete();
-
-        // Eliminar etiquetas huérfanas
-        Etiqueta::where('planilla_id', $planilla->id)
-            ->whereDoesntHave('elementos')
-            ->delete();
-
-        // Reimportar elementos con el mapa de entidades actualizado
+        // Construir mapa de entidades
         $mapaEntidades = [];
         $entidadesCreadas = PlanillaEntidad::where('planilla_id', $planilla->id)->get();
         foreach ($entidadesCreadas as $entidad) {
@@ -522,20 +515,171 @@ class FerrawinBulkImportService
             $mapaEntidades[$lineaNormalizada] = $entidad->id;
         }
 
-        $this->crearElementosBulk($planilla, $data['elementos'] ?? [], $mapaEntidades);
+        // Obtener elementos de FerraWin
+        $elementosFerrawin = $data['elementos'] ?? [];
 
-        // Reasignar máquinas
-        $this->asignador->repartirPlanilla($planilla->id);
+        if (empty($elementosFerrawin)) {
+            Log::channel('ferrawin_sync')->debug("⏭️ [BULK] Planilla {$codigo}: sin elementos en FerraWin");
+            $this->stats['planillas_actualizadas']++;
+            return;
+        }
 
-        // Aplicar política de subetiquetas (FALTABA!)
-        $this->processor->aplicarPoliticaSubetiquetasPostAsignacion($planilla);
+        // Crear mapa de ferrawin_id → datos de FerraWin
+        $ferrawinIds = [];
+        foreach ($elementosFerrawin as $elem) {
+            $ferrawinId = $elem['ferrawin_id'] ?? null;
+            if ($ferrawinId) {
+                $ferrawinIds[$ferrawinId] = $elem;
+            }
+        }
+
+        // Obtener elementos PENDIENTES actuales con ferrawin_id
+        $elementosPendientes = $planilla->elementos()
+            ->where('estado', 'pendiente')
+            ->whereNotNull('ferrawin_id')
+            ->get()
+            ->keyBy('ferrawin_id');
+
+        // Obtener elementos PENDIENTES sin ferrawin_id (de sync anterior sin esta feature)
+        $elementosSinFerrawinId = $planilla->elementos()
+            ->where('estado', 'pendiente')
+            ->whereNull('ferrawin_id')
+            ->count();
+
+        $actualizados = 0;
+        $creados = 0;
+        $eliminados = 0;
+
+        // 1. Actualizar o crear elementos
+        foreach ($ferrawinIds as $ferrawinId => $elemData) {
+            if ($elementosPendientes->has($ferrawinId)) {
+                // Actualizar elemento existente (solo datos que pueden cambiar)
+                $elemento = $elementosPendientes->get($ferrawinId);
+                $this->actualizarElementoExistente($elemento, $elemData, $mapaEntidades);
+                $actualizados++;
+            } else {
+                // Crear nuevo elemento (no existe en BD o no estaba pendiente)
+                $existeFabricado = $planilla->elementos()
+                    ->where('ferrawin_id', $ferrawinId)
+                    ->whereIn('estado', ['fabricando', 'fabricado', 'completado'])
+                    ->exists();
+
+                if (!$existeFabricado) {
+                    // Crear usando el flujo existente (respetando agrupación por etiqueta)
+                    $this->crearElementoIndividual($planilla, $elemData, $mapaEntidades);
+                    $creados++;
+                }
+            }
+        }
+
+        // 2. Eliminar elementos pendientes que ya no existen en FerraWin
+        foreach ($elementosPendientes as $ferrawinId => $elemento) {
+            if (!isset($ferrawinIds[$ferrawinId])) {
+                // El técnico eliminó este elemento en FerraWin
+                $elemento->forceDelete();
+                $eliminados++;
+            }
+        }
+
+        // 3. Si hay elementos sin ferrawin_id (de sync anterior), eliminarlos y reimportar
+        if ($elementosSinFerrawinId > 0) {
+            Log::channel('ferrawin_sync')->info("🔄 [BULK] Planilla {$codigo}: {$elementosSinFerrawinId} elementos sin ferrawin_id, reimportando");
+            $planilla->elementos()
+                ->where('estado', 'pendiente')
+                ->whereNull('ferrawin_id')
+                ->forceDelete();
+            $eliminados += $elementosSinFerrawinId;
+        }
+
+        // Eliminar etiquetas huérfanas
+        Etiqueta::where('planilla_id', $planilla->id)
+            ->whereDoesntHave('elementos')
+            ->delete();
+
+        // Reasignar máquinas solo si hubo cambios
+        if ($creados > 0 || $eliminados > 0) {
+            $this->asignador->repartirPlanilla($planilla->id);
+            $this->processor->aplicarPoliticaSubetiquetasPostAsignacion($planilla);
+        }
 
         // Actualizar totales
         $this->actualizarTiempoTotal($planilla);
 
         $this->stats['planillas_actualizadas']++;
+        $this->stats['elementos_creados'] += $creados;
 
-        Log::channel('ferrawin_sync')->debug("🔄 [BULK] Planilla {$codigo} actualizada");
+        Log::channel('ferrawin_sync')->debug("🔄 [BULK] Planilla {$codigo} actualizada", [
+            'actualizados' => $actualizados,
+            'creados' => $creados,
+            'eliminados' => $eliminados,
+        ]);
+    }
+
+    /**
+     * Actualiza un elemento existente con nuevos datos de FerraWin.
+     * Solo actualiza campos que pueden cambiar, NO toca estado/maquina/etiqueta.
+     */
+    protected function actualizarElementoExistente(Elemento $elemento, array $data, array $mapaEntidades): void
+    {
+        $fila = isset($data['fila']) ? trim($data['fila']) : null;
+        $planillaEntidadId = null;
+
+        if ($fila !== null && !empty($mapaEntidades)) {
+            $filaNormalizada = (string)$fila;
+            $planillaEntidadId = $mapaEntidades[$filaNormalizada] ?? null;
+        }
+
+        $doblesBarra = (int)($data['dobles_barra'] ?? 0);
+        $barras = (int)($data['barras'] ?? 0);
+        $longitud = (float)($data['longitud'] ?? 0);
+        $diametro = (int)($data['diametro'] ?? 0);
+
+        $elemento->update([
+            'planilla_entidad_id' => $planillaEntidadId,
+            'figura' => $data['figura'] ?? $elemento->figura,
+            'descripcion_fila' => $data['descripcion_fila'] ?? $elemento->descripcion_fila,
+            'fila' => $fila,
+            'marca' => $data['marca'] ?? $elemento->marca,
+            'diametro' => $diametro,
+            'longitud' => $longitud,
+            'barras' => $barras,
+            'dobles_barra' => $doblesBarra,
+            'peso' => (float)($data['peso'] ?? $elemento->peso),
+            'dimensiones' => $data['dimensiones'] ?? $elemento->dimensiones,
+            'tiempo_fabricacion' => $this->calcularTiempo($barras, $doblesBarra),
+            'elaborado' => $this->determinarElaborado($doblesBarra, $diametro, $longitud),
+        ]);
+    }
+
+    /**
+     * Crea un elemento individual (sin agrupar por etiqueta).
+     * Se usa para elementos nuevos durante la actualización.
+     */
+    protected function crearElementoIndividual(Planilla $planilla, array $elem, array $mapaEntidades): void
+    {
+        // Buscar o crear etiqueta basada en descripcion_fila + marca
+        $descripcionFila = trim($elem['descripcion_fila'] ?? '');
+        $marca = trim($elem['marca'] ?? '');
+        $nombreEtiqueta = $descripcionFila ?: $marca ?: 'Sin nombre';
+
+        // Buscar etiqueta existente con mismo nombre y marca
+        $etiqueta = Etiqueta::where('planilla_id', $planilla->id)
+            ->where('nombre', $nombreEtiqueta)
+            ->where('marca', $marca ?: null)
+            ->first();
+
+        if (!$etiqueta) {
+            // Crear nueva etiqueta
+            $etiqueta = $this->crearEtiquetaPadreConRetry($planilla, [$elem], 0);
+            if (!$etiqueta) {
+                Log::channel('ferrawin_sync')->error("❌ [BULK] No se pudo crear etiqueta para elemento nuevo");
+                return;
+            }
+            $this->stats['etiquetas_creadas']++;
+        }
+
+        // Crear el elemento
+        $this->crearElemento($planilla, $etiqueta, $elem, $mapaEntidades);
     }
 
     /**

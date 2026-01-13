@@ -28,6 +28,7 @@ class Elemento extends Model
         'id',
         'codigo',
         'planilla_id',
+        'ferrawin_id',
         'planilla_entidad_id',
         'etiqueta_ensamblaje_id',
         'elaborado',
