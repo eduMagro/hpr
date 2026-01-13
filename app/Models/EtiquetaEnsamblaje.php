@@ -84,9 +84,14 @@ class EtiquetaEnsamblaje extends Model
      */
     public static function generarCodigo(PlanillaEntidad $entidad, int $numeroUnidad, int $totalUnidades): string
     {
+        // Sanitizar marca: quitar espacios, truncar a 20 chars
+        $marca = strtoupper($entidad->marca ?? 'SM');
+        $marca = preg_replace('/\s+/', '', $marca); // Quitar espacios
+        $marca = substr($marca, 0, 20); // Truncar a 20 caracteres
+
         return sprintf(
             'ENS-%s-%d-%d/%d',
-            strtoupper($entidad->marca),
+            $marca,
             $entidad->id,
             $numeroUnidad,
             $totalUnidades
