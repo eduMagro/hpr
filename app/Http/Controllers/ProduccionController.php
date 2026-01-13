@@ -1202,8 +1202,12 @@ class ProduccionController extends Controller
                 continue;
             }
 
-            // Sumar tiempo de fabricación
-            $tiempoSegundos = $elementos->sum('tiempo_fabricacion');
+            // Sumar tiempo de fabricación + 20 minutos de amarrado por elemento
+            $tiempoSegundos = $elementos->sum(function($elemento) {
+                $tiempoFabricacion = (float)($elemento->tiempo_fabricacion ?? 1200);
+                $tiempoAmarrado = 1200; // 20 minutos por elemento
+                return $tiempoFabricacion + $tiempoAmarrado;
+            });
 
             // Calcular tramos laborales usando el servicio
             $tramos = $this->finProgramadoService->generarTramosLaborales($cursor, $tiempoSegundos);
@@ -3103,7 +3107,12 @@ class ProduccionController extends Controller
                     }
 
                     // Calcular tiempo total de TODOS los elementos de esta planilla en esta máquina
-                    $tiempoSegundos = $elementos->sum('tiempo_fabricacion');
+                    // Incluye tiempo de fabricación + 20 minutos de amarrado por elemento
+                    $tiempoSegundos = $elementos->sum(function($elemento) {
+                        $tiempoFabricacion = (float)($elemento->tiempo_fabricacion ?? 1200);
+                        $tiempoAmarrado = 1200; // 20 minutos por elemento
+                        return $tiempoFabricacion + $tiempoAmarrado;
+                    });
 
                     Log::info('🔍 OPTIMIZAR: Calculando tramos', [
                         'planilla_id' => $planillaId,
