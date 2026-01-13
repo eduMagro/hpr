@@ -4376,10 +4376,11 @@ class ProduccionController extends Controller
     public function obtenerResumen()
     {
         try {
-            // Estadísticas generales de planillas en producción
+            // Estadísticas generales de planillas en producción (sin cargar todos los elementos)
             $planillasEnProduccion = Planilla::whereIn('estado', ['pendiente', 'fabricando'])
                 ->whereHas('ordenProduccion')
-                ->with(['obra.cliente', 'ordenProduccion.maquina', 'elementos'])
+                ->with(['obra.cliente', 'ordenProduccion.maquina'])
+                ->withSum('elementos', 'tiempo_fabricacion')
                 ->get();
 
             $planillasRevisadas = $planillasEnProduccion->where('revisada', 1)->count();
@@ -4405,10 +4406,8 @@ class ProduccionController extends Controller
                 // Simplificación: usar fecha_entrega como referencia
                 $fechaFinProgramada = null;
 
-                // Si tenemos elementos con tiempos, calcular
-                $tiempoTotalSegundos = $planilla->elementos
-                    ->whereNotNull('tiempo_fabricacion')
-                    ->sum('tiempo_fabricacion');
+                // Si tenemos elementos con tiempos, calcular (usando el sum agregado)
+                $tiempoTotalSegundos = $planilla->elementos_sum_tiempo_fabricacion ?? 0;
 
                 if ($tiempoTotalSegundos > 0 && $ordenPlanilla->maquina_id) {
                     // Calcular basado en posición en cola usando la relación cargada
@@ -4519,21 +4518,31 @@ class ProduccionController extends Controller
                 ];
             }
 
-            // Obtener resumen de máquinas
-            $maquinas = Maquina::with(['ordenPlanillas.planilla.elementos'])->get();
+            // Obtener resumen de máquinas usando agregación en BD (evita cargar todos los elementos)
+            $maquinas = Maquina::withCount('ordenPlanillas as planillas_en_cola')->get();
+
+            // Obtener totales agregados por máquina usando una consulta eficiente
+            $totalesPorMaquina = DB::table('orden_planillas')
+                ->join('elementos', 'orden_planillas.planilla_id', '=', 'elementos.planilla_id')
+                ->select(
+                    'orden_planillas.maquina_id',
+                    DB::raw('SUM(COALESCE(elementos.peso, 0)) as peso_total'),
+                    DB::raw('SUM(COALESCE(elementos.tiempo_fabricacion, 0)) as tiempo_total')
+                )
+                ->groupBy('orden_planillas.maquina_id')
+                ->pluck(null, 'maquina_id')
+                ->mapWithKeys(function ($item, $key) {
+                    return [$key => [
+                        'peso_total' => $item->peso_total ?? 0,
+                        'tiempo_total' => $item->tiempo_total ?? 0,
+                    ]];
+                });
+
             $maquinasResumen = [];
-
             foreach ($maquinas as $maquina) {
-                $planillasEnCola = $maquina->ordenPlanillas->count();
-                $kilosTotales = 0;
-                $tiempoTotalSegundos = 0;
-
-                foreach ($maquina->ordenPlanillas as $op) {
-                    if ($op->planilla) {
-                        $kilosTotales += $op->planilla->elementos->sum('peso') / 1000; // convertir a kg
-                        $tiempoTotalSegundos += $op->planilla->elementos->sum('tiempo_fabricacion');
-                    }
-                }
+                $totales = $totalesPorMaquina[$maquina->id] ?? ['peso_total' => 0, 'tiempo_total' => 0];
+                $kilosTotales = $totales['peso_total'] / 1000; // convertir a kg
+                $tiempoTotalSegundos = $totales['tiempo_total'];
 
                 $horas = floor($tiempoTotalSegundos / 3600);
                 $minutos = floor(($tiempoTotalSegundos % 3600) / 60);
@@ -4542,7 +4551,7 @@ class ProduccionController extends Controller
                     'id' => $maquina->id,
                     'codigo' => $maquina->codigo,
                     'tipo' => $maquina->tipo ?? '',
-                    'planillas_en_cola' => $planillasEnCola,
+                    'planillas_en_cola' => $maquina->planillas_en_cola ?? 0,
                     'kilos_totales' => round($kilosTotales, 2),
                     'kilos_formateado' => number_format($kilosTotales, 0, ',', '.') . ' kg',
                     'tiempo_total_segundos' => $tiempoTotalSegundos,
