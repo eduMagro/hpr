@@ -131,4 +131,14 @@ Route::prefix('ferrawin')->group(function () {
     Route::get('/codigos-existentes', [FerrawinSyncController::class, 'codigosExistentes'])
         ->middleware('ferrawin.api')
         ->name('api.ferrawin.codigos-existentes');
+
+    // Obtener elementos de una planilla para matching con FerraWin
+    Route::get('/elementos-para-matching/{codigo}', [FerrawinSyncController::class, 'elementosParaMatching'])
+        ->middleware('ferrawin.api')
+        ->name('api.ferrawin.elementos-para-matching');
+
+    // Actualizar ferrawin_id de elementos existentes
+    Route::post('/actualizar-ferrawin-ids', [FerrawinSyncController::class, 'actualizarFerrawinIds'])
+        ->middleware('ferrawin.api')
+        ->name('api.ferrawin.actualizar-ferrawin-ids');
 });

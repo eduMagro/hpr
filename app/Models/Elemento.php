@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
+use App\Services\PrecioMaterialService;
 
 class Elemento extends Model
 {
@@ -208,5 +209,26 @@ class Elemento extends Model
         $segundos = $this->tiempo_fabricacion % 60;
 
         return sprintf('%02d:%02d:%02d', $horas, $minutos, $segundos);
+    }
+
+    /**
+     * Calcula el coste de material del elemento.
+     * Fórmula: (precio_referencia + incremento_diametro + incremento_formato) × toneladas
+     */
+    public function getCosteMaterialAttribute(): ?float
+    {
+        $service = app(PrecioMaterialService::class);
+        $resultado = $service->calcularCosteElemento($this);
+
+        return $resultado['coste'] ?? null;
+    }
+
+    /**
+     * Obtiene el desglose completo del cálculo de coste de material.
+     */
+    public function getCosteMaterialDesgloseAttribute(): array
+    {
+        $service = app(PrecioMaterialService::class);
+        return $service->calcularCosteElemento($this);
     }
 }

@@ -35,6 +35,7 @@ use App\Http\Controllers\AsignacionTurnoController;
 use App\Http\Controllers\CamionController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\DistribuidorController;
+use App\Http\Controllers\PrecioMaterialController;
 use App\Http\Controllers\PoliticaController;
 use App\Http\Controllers\AyudaController;
 use App\Http\Controllers\EmpresaController;
@@ -185,6 +186,17 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::resource('clientes', ClienteController::class)->names('clientes');
     Route::resource('fabricantes', FabricanteController::class)->names('fabricantes');
     Route::resource('distribuidores', DistribuidorController::class)->names('distribuidores');
+
+    // === PRECIOS MATERIAL ===
+    Route::prefix('precios-material')->name('precios-material.')->group(function () {
+        Route::get('/', [PrecioMaterialController::class, 'index'])->name('index');
+        Route::put('/config', [PrecioMaterialController::class, 'updateConfig'])->name('config.update');
+        Route::put('/diametros', [PrecioMaterialController::class, 'updateDiametros'])->name('diametros.update');
+        Route::put('/formatos', [PrecioMaterialController::class, 'updateFormatos'])->name('formatos.update');
+        Route::post('/excepciones', [PrecioMaterialController::class, 'storeExcepcion'])->name('excepciones.store');
+        Route::put('/excepciones/{excepcion}', [PrecioMaterialController::class, 'updateExcepcion'])->name('excepciones.update');
+        Route::delete('/excepciones/{excepcion}', [PrecioMaterialController::class, 'destroyExcepcion'])->name('excepciones.destroy');
+    });
 
     // === ENTRADAS Y PEDIDOS ===
     Route::resource('entradas', EntradaController::class)->names('entradas');

@@ -12,6 +12,7 @@ use App\Models\FerrawinSyncLog;
 use App\Models\ProductoBase;
 use App\Services\AsignarMaquinaService;
 use App\Services\OrdenPlanillaService;
+use App\Services\EtiquetaEnsamblajeService;
 use App\Services\PlanillaImport\CodigoEtiqueta;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -34,7 +35,8 @@ class FerrawinBulkImportService
         protected CodigoEtiqueta $codigoService,
         protected AsignarMaquinaService $asignador,
         protected OrdenPlanillaService $ordenService,
-        protected \App\Services\PlanillaImport\PlanillaProcessor $processor
+        protected \App\Services\PlanillaImport\PlanillaProcessor $processor,
+        protected EtiquetaEnsamblajeService $etiquetaEnsamblajeService
     ) {
         // Cargar productos base (barras) igual que PlanillaProcessor
         $this->productosBase = ProductoBase::where('tipo', 'barra')
@@ -120,6 +122,7 @@ class FerrawinBulkImportService
                 'elementos_creados' => $this->stats['elementos_creados'],
                 'etiquetas_creadas' => $this->stats['etiquetas_creadas'],
                 'entidades_creadas' => $this->stats['entidades_creadas'],
+                'etiquetas_ensamblaje_creadas' => $this->stats['etiquetas_ensamblaje_creadas'],
                 'advertencias' => $this->advertencias,
                 'duracion' => $duracion,
             ];
@@ -214,6 +217,12 @@ class FerrawinBulkImportService
         $mapaEntidades = [];
         if (!empty($entidades)) {
             $mapaEntidades = $this->crearEntidades($planilla, $entidades);
+
+            // 4b. Generar etiquetas de ensamblaje para cada entidad
+            $etiquetasGeneradas = $this->etiquetaEnsamblajeService->generarParaPlanilla($planilla);
+            $this->stats['etiquetas_ensamblaje_creadas'] = ($this->stats['etiquetas_ensamblaje_creadas'] ?? 0) + $etiquetasGeneradas->count();
+
+            Log::channel('ferrawin_sync')->debug("   🏷️ [BULK] {$etiquetasGeneradas->count()} etiquetas de ensamblaje generadas");
         }
 
         // 5. Agrupar elementos por etiqueta y crear bulk (con mapa de entidades)
@@ -415,7 +424,11 @@ class FerrawinBulkImportService
         }
 
         if ($fila !== null && !empty($mapaEntidades)) {
-            $filaNormalizada = (string)$fila;
+            // Normalizar igual que en crearEntidades(): quitar ceros a la izquierda
+            $filaNormalizada = ltrim((string)$fila, '0');
+            if (empty($filaNormalizada)) {
+                $filaNormalizada = '0';
+            }
             $planillaEntidadId = $mapaEntidades[$filaNormalizada] ?? null;
         }
 
@@ -502,6 +515,10 @@ class FerrawinBulkImportService
         if (!empty($entidades)) {
             PlanillaEntidad::where('planilla_id', $planilla->id)->delete();
             $this->crearEntidades($planilla, $entidades);
+
+            // Regenerar etiquetas de ensamblaje (solo las pendientes se eliminan)
+            $etiquetasGeneradas = $this->etiquetaEnsamblajeService->regenerarParaPlanilla($planilla);
+            $this->stats['etiquetas_ensamblaje_creadas'] = ($this->stats['etiquetas_ensamblaje_creadas'] ?? 0) + $etiquetasGeneradas->count();
         }
 
         // Construir mapa de entidades
@@ -625,7 +642,11 @@ class FerrawinBulkImportService
         $planillaEntidadId = null;
 
         if ($fila !== null && !empty($mapaEntidades)) {
-            $filaNormalizada = (string)$fila;
+            // Normalizar igual que en crearEntidades(): quitar ceros a la izquierda
+            $filaNormalizada = ltrim((string)$fila, '0');
+            if (empty($filaNormalizada)) {
+                $filaNormalizada = '0';
+            }
             $planillaEntidadId = $mapaEntidades[$filaNormalizada] ?? null;
         }
 
@@ -816,6 +837,7 @@ class FerrawinBulkImportService
             'elementos_creados' => 0,
             'etiquetas_creadas' => 0,
             'entidades_creadas' => 0,
+            'etiquetas_ensamblaje_creadas' => 0,
         ];
         $this->advertencias = [];
         $this->cacheClientes = [];

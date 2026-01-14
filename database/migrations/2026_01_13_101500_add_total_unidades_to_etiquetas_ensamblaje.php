@@ -46,22 +46,23 @@ return new class extends Migration
         });
 
         // Añadir foreign key de operario si no existe
-        Schema::table('etiquetas_ensamblaje', function (Blueprint $table) {
-            if (Schema::hasColumn('etiquetas_ensamblaje', 'operario_id')) {
-                // Verificar si la FK ya existe antes de añadirla
-                $foreignKeys = Schema::getConnection()
-                    ->getDoctrineSchemaManager()
-                    ->listTableForeignKeys('etiquetas_ensamblaje');
+        if (Schema::hasColumn('etiquetas_ensamblaje', 'operario_id')) {
+            // Verificar si la FK ya existe usando query directa
+            $fkExists = \DB::select("
+                SELECT COUNT(*) as count
+                FROM information_schema.TABLE_CONSTRAINTS
+                WHERE CONSTRAINT_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'etiquetas_ensamblaje'
+                AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+                AND CONSTRAINT_NAME LIKE '%operario_id%'
+            ")[0]->count > 0;
 
-                $fkExists = collect($foreignKeys)->contains(function ($fk) {
-                    return in_array('operario_id', $fk->getLocalColumns());
-                });
-
-                if (!$fkExists) {
+            if (!$fkExists) {
+                Schema::table('etiquetas_ensamblaje', function (Blueprint $table) {
                     $table->foreign('operario_id')->references('id')->on('users')->nullOnDelete();
-                }
+                });
             }
-        });
+        }
     }
 
     /**

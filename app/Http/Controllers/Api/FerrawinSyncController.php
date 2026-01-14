@@ -231,4 +231,112 @@ class FerrawinSyncController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Devuelve elementos de una planilla para hacer matching con FerraWin.
+     * Incluye los campos necesarios para identificar cada elemento.
+     *
+     * GET /api/ferrawin/elementos-para-matching/{codigo}
+     */
+    public function elementosParaMatching(Request $request, string $codigo)
+    {
+        try {
+            $planilla = \App\Models\Planilla::where('codigo', $codigo)->first();
+
+            if (!$planilla) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Planilla {$codigo} no encontrada",
+                ], 404);
+            }
+
+            $elementos = \App\Models\Elemento::where('planilla_id', $planilla->id)
+                ->select('id', 'fila', 'ferrawin_id', 'diametro', 'longitud', 'barras', 'dobles_barra', 'peso', 'marca', 'figura', 'estado')
+                ->orderBy('fila')
+                ->orderBy('id')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'planilla_id' => $planilla->id,
+                'codigo' => $codigo,
+                'total' => $elementos->count(),
+                'elementos' => $elementos,
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::channel('ferrawin_sync')->error('❌ [API] Error obteniendo elementos para matching', [
+                'codigo' => $codigo,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => config('app.debug') ? $e->getMessage() : 'Error interno',
+            ], 500);
+        }
+    }
+
+    /**
+     * Actualiza ferrawin_id de elementos existentes.
+     * Recibe un array de {elemento_id, ferrawin_id} para actualizar.
+     *
+     * POST /api/ferrawin/actualizar-ferrawin-ids
+     */
+    public function actualizarFerrawinIds(Request $request)
+    {
+        try {
+            $request->validate([
+                'actualizaciones' => 'required|array|min:1',
+                'actualizaciones.*.elemento_id' => 'required|integer',
+                'actualizaciones.*.ferrawin_id' => 'required|string',
+            ]);
+
+            $actualizaciones = $request->input('actualizaciones');
+            $actualizados = 0;
+            $errores = [];
+
+            foreach ($actualizaciones as $act) {
+                $elemento = \App\Models\Elemento::find($act['elemento_id']);
+
+                if (!$elemento) {
+                    $errores[] = "Elemento {$act['elemento_id']} no encontrado";
+                    continue;
+                }
+
+                $elemento->ferrawin_id = $act['ferrawin_id'];
+                $elemento->save();
+                $actualizados++;
+            }
+
+            Log::channel('ferrawin_sync')->info('✅ [API] ferrawin_id actualizados', [
+                'recibidos' => count($actualizaciones),
+                'actualizados' => $actualizados,
+                'errores' => count($errores),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'actualizados' => $actualizados,
+                'errores' => $errores,
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos inválidos',
+                'errors' => $e->errors(),
+            ], 422);
+
+        } catch (\Throwable $e) {
+            Log::channel('ferrawin_sync')->error('❌ [API] Error actualizando ferrawin_ids', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => config('app.debug') ? $e->getMessage() : 'Error interno',
+            ], 500);
+        }
+    }
 }

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Services\PrecioMaterialService;
 
 class Obra extends Model
 {
@@ -110,5 +111,25 @@ class Obra extends Model
     public function getEsNaveBAttribute(): bool
     {
         return stripos($this->obra ?? '', 'nave b') !== false;
+    }
+
+    /**
+     * Calcula el coste total de material de la obra (dinámico).
+     * Suma el coste de todos los elementos de las planillas de la obra.
+     *
+     * @return array{coste_total: float, elementos_count: int, errores_count: int}
+     */
+    public function getCosteMaterialTotal(): array
+    {
+        $service = app(PrecioMaterialService::class);
+        return $service->calcularCosteObra($this);
+    }
+
+    /**
+     * Accessor para obtener solo el valor del coste total de material.
+     */
+    public function getCosteMaterialTotalAttribute(): float
+    {
+        return $this->getCosteMaterialTotal()['coste_total'];
     }
 }

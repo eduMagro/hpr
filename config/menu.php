@@ -218,6 +218,14 @@ return [
                         ['label' => 'Nueva empresa', 'route' => 'empresas-transporte.create', 'permission' => 'crear'],
                     ]
                 ],
+                [
+                    'label' => 'Precios Material',
+                    'route' => 'precios-material.index',
+                    'icon' => '💰',
+                    'actions' => [
+                        ['label' => 'Configurar precios', 'route' => 'precios-material.index', 'permission' => 'ver'],
+                    ]
+                ],
             ]
         ],
         [

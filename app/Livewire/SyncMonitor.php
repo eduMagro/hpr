@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use Livewire\Component;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Cache;
 use App\Models\Planilla;
 use App\Models\Elemento;
 
@@ -110,9 +111,9 @@ class SyncMonitor extends Component
 
     public function refresh()
     {
-        // Contar planillas y elementos en DB
-        $this->totalPlanillas = Planilla::count();
-        $this->totalElementos = Elemento::count();
+        // Contar planillas y elementos en DB (cacheado 30 segundos)
+        $this->totalPlanillas = Cache::remember('sync_monitor_planillas_count', 30, fn() => Planilla::count());
+        $this->totalElementos = Cache::remember('sync_monitor_elementos_count', 30, fn() => Elemento::count());
 
         // Leer logs (actualiza $this->isRunning)
         $this->readLogs();
@@ -140,7 +141,7 @@ class SyncMonitor extends Component
             return;
         }
 
-        // Obtener todos los archivos de log ordenados por fecha (más reciente primero)
+        // Obtener el archivo de log más reciente (solo 1, no 3)
         $logFiles = collect(File::files($this->logsDir))
             ->filter(fn($f) => str_starts_with($f->getFilename(), 'sync-'))
             ->sortByDesc(fn($f) => $f->getMTime())
@@ -152,40 +153,36 @@ class SyncMonitor extends Component
             return;
         }
 
-        // Leer contenido de los últimos archivos (máximo 3 para rendimiento)
-        $content = '';
-        foreach ($logFiles->take(3) as $file) {
-            $content .= File::get($file->getPathname()) . "\n";
+        // Leer solo las últimas 200 líneas del archivo más reciente (eficiente)
+        $logFile = $logFiles->first()->getPathname();
+        $lines = $this->readLastLines($logFile, 200);
+
+        if (empty($lines)) {
+            $this->logs = ['Archivo de log vacío'];
+            $this->errors = [];
+            return;
         }
 
-        $lines = explode("\n", $content);
-        $lines = array_filter($lines, fn($l) => trim($l) !== '');
-        $lines = array_values($lines);
-
-        // Ordenar líneas por timestamp
-        usort($lines, function($a, $b) {
-            $timeA = '';
-            $timeB = '';
-            if (preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]/', $a, $m)) {
-                $timeA = $m[1];
-            }
-            if (preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]/', $b, $m)) {
-                $timeB = $m[1];
-            }
-            return $timeA <=> $timeB;
-        });
-
+        // Las líneas ya vienen en orden cronológico (no necesitan usort)
         // Obtener últimas 50 líneas para mostrar
         $this->logs = array_slice($lines, -50);
 
-        // Contar batches OK y Error
+        // Contar batches OK y Error (solo en las líneas leídas)
+        $content = implode("\n", $lines);
         $this->batchesOk = substr_count($content, 'Batch OK');
         $this->batchesError = substr_count($content, 'Error en batch');
 
-        // Extraer errores con contexto
+        // Extraer errores (solo de las líneas leídas, máximo 20 errores)
         $this->errors = [];
+        $errorCount = 0;
+        $maxErrors = 20;
+
         foreach ($lines as $i => $line) {
+            if ($errorCount >= $maxErrors) break;
+
             if (str_contains($line, 'ERROR')) {
+                $errorCount++;
+
                 // Extraer timestamp
                 $timestamp = '';
                 if (preg_match('/\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]/', $line, $timeMatch)) {
@@ -204,7 +201,6 @@ class SyncMonitor extends Component
                     $descripcion = 'Token inválido o expirado';
                 } elseif (str_contains($line, '500')) {
                     $tipo = 'Error servidor';
-                    // Extraer mensaje de error
                     if (preg_match('/"error":"([^"]+)"/', $line, $errorMatch)) {
                         $descripcion = $errorMatch[1];
                     } elseif (preg_match('/"message":\s*"([^"]+)"/', $line, $msgMatch)) {
@@ -212,7 +208,7 @@ class SyncMonitor extends Component
                     }
                 }
 
-                // Buscar qué planilla se estaba procesando (línea anterior o siguiente)
+                // Buscar qué planilla se estaba procesando (contexto cercano)
                 $planilla = '-';
                 for ($j = max(0, $i - 3); $j <= min(count($lines) - 1, $i + 3); $j++) {
                     if (preg_match('/Preparando (\d{4}-\d+)/', $lines[$j], $planillaMatch)) {
@@ -234,38 +230,65 @@ class SyncMonitor extends Component
         // Invertir para mostrar los más recientes primero
         $this->errors = array_reverse($this->errors);
 
-        // Buscar progreso actual (última línea con [X/Y])
-        $allLines = array_reverse($lines);
-        foreach ($allLines as $line) {
-            if (preg_match('/\[(\d+)\/(\d+)\]/', $line, $matches)) {
+        // Buscar progreso actual (desde el final)
+        for ($i = count($lines) - 1; $i >= 0; $i--) {
+            if (preg_match('/\[(\d+)\/(\d+)\]/', $lines[$i], $matches)) {
                 $this->currentProgress = "{$matches[1]}/{$matches[2]}";
-
-                // Extraer año de la planilla
-                if (preg_match('/(\d{4})-\d+/', $line, $yearMatch)) {
+                if (preg_match('/(\d{4})-\d+/', $lines[$i], $yearMatch)) {
                     $this->currentYear = $yearMatch[1];
                 }
                 break;
             }
         }
 
-        // Verificar si el proceso está corriendo
-        // Método 1: Verificar si existe el archivo PID (más confiable)
-        $sep = DIRECTORY_SEPARATOR;
-        $pidFile = $this->syncDir . $sep . 'sync.pid';
+        // Verificar si el proceso está corriendo (archivo PID)
+        $pidFile = $this->syncDir . DIRECTORY_SEPARATOR . 'sync.pid';
         if (file_exists($pidFile)) {
             $this->isRunning = true;
         } else {
-            // Método 2: Fallback - verificar si última entrada es reciente Y no es "completada"
+            // Fallback: verificar si última entrada es reciente
             $lastLine = end($lines);
             if (preg_match('/\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]/', $lastLine, $timeMatch)) {
                 $lastTime = strtotime($timeMatch[1]);
-                $isRecent = (time() - $lastTime) < 120; // 2 minutos
+                $isRecent = (time() - $lastTime) < 120;
                 $isCompleted = str_contains($lastLine, 'completada') || str_contains($lastLine, 'completado');
                 $this->isRunning = $isRecent && !$isCompleted;
             } else {
                 $this->isRunning = false;
             }
         }
+    }
+
+    /**
+     * Lee las últimas N líneas de un archivo de forma eficiente.
+     * No carga todo el archivo en memoria.
+     */
+    protected function readLastLines(string $filepath, int $numLines): array
+    {
+        if (!file_exists($filepath)) {
+            return [];
+        }
+
+        $file = new \SplFileObject($filepath, 'r');
+        $file->seek(PHP_INT_MAX); // Ir al final
+        $totalLines = $file->key();
+
+        if ($totalLines === 0) {
+            return [];
+        }
+
+        $startLine = max(0, $totalLines - $numLines);
+        $lines = [];
+
+        $file->seek($startLine);
+        while (!$file->eof()) {
+            $line = $file->fgets();
+            if (trim($line) !== '') {
+                $lines[] = trim($line);
+            }
+        }
+
+        return $lines;
     }
 
     /**
@@ -289,13 +312,12 @@ class SyncMonitor extends Component
             return;
         }
 
-        // Leer el archivo más reciente
-        $content = File::get($logFiles->first()->getPathname());
-        $lines = array_reverse(explode("\n", $content));
+        // Leer solo las últimas 100 líneas (eficiente)
+        $lines = $this->readLastLines($logFiles->first()->getPathname(), 100);
 
-        // Buscar la última planilla que se estaba preparando
-        foreach ($lines as $line) {
-            if (preg_match('/Preparando (\d{4})-(\d+)/', $line, $matches)) {
+        // Buscar la última planilla que se estaba preparando (desde el final)
+        for ($i = count($lines) - 1; $i >= 0; $i--) {
+            if (preg_match('/Preparando (\d{4})-(\d+)/', $lines[$i], $matches)) {
                 $this->ultimoAño = $matches[1];
                 $this->ultimaPlanilla = "{$matches[1]}-{$matches[2]}";
                 return;
@@ -563,6 +585,41 @@ class SyncMonitor extends Component
 
         // Usar el método centralizado de ejecución
         $this->ejecutarSync($this->ultimoAño, $this->ultimaPlanilla);
+    }
+
+    /**
+     * Elimina todos los archivos de log.
+     */
+    public function limpiarLogs()
+    {
+        if (!$this->logsDir || !File::isDirectory($this->logsDir)) {
+            session()->flash('error', 'No se puede acceder al directorio de logs');
+            return;
+        }
+
+        if ($this->isRunning) {
+            session()->flash('error', 'No se pueden eliminar logs mientras hay una sincronización en ejecución');
+            return;
+        }
+
+        $logFiles = File::files($this->logsDir);
+        $eliminados = 0;
+
+        foreach ($logFiles as $file) {
+            if (str_starts_with($file->getFilename(), 'sync-')) {
+                File::delete($file->getPathname());
+                $eliminados++;
+            }
+        }
+
+        // Limpiar estado
+        $this->logs = ['Logs eliminados'];
+        $this->errors = [];
+        $this->batchesOk = 0;
+        $this->batchesError = 0;
+        $this->currentProgress = '0/0';
+
+        session()->flash('message', "Se eliminaron {$eliminados} archivos de log");
     }
 
     public function render()

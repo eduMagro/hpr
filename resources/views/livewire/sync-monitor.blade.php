@@ -8,16 +8,16 @@
         </svg>
         Sync FerraWin
         @if ($isRunning)
-            <span class="relative flex h-2 w-2">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            <span class="relative flex shrink-0 h-2 w-2">
+                <span class="animate-ping absolute inset-0 rounded-full bg-green-400 opacity-75"></span>
+                <span class="relative rounded-full h-2 w-2 bg-green-500"></span>
             </span>
         @endif
     </button>
 
     {{-- Modal --}}
     @if ($isOpen)
-        <div class="fixed inset-0 z-[9999] overflow-y-auto" wire:poll.3s="refresh">
+        <div class="fixed inset-0 z-[9999] overflow-y-auto" @if($isRunning) wire:poll.5s="refresh" @endif>
             {{-- Overlay - con z-index explícito para cubrir contenido inferior --}}
             <div class="fixed inset-0 z-[9999] bg-black/60 transition-opacity" wire:click="close"></div>
 
@@ -56,9 +56,9 @@
                             @elseif ($isRunning)
                                 {{-- Estado: En ejecución --}}
                                 <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-300 border border-green-500/30">
-                                    <span class="relative flex h-2 w-2">
-                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                        <span class="relative inline-flex rounded-full h-2 w-2 bg-green-400"></span>
+                                    <span class="relative flex shrink-0 h-2 w-2">
+                                        <span class="animate-ping absolute inset-0 rounded-full bg-green-400 opacity-75"></span>
+                                        <span class="relative rounded-full h-2 w-2 bg-green-400"></span>
                                     </span>
                                     En ejecución
                                 </span>
@@ -120,7 +120,12 @@
                                     @endif
                                 </button>
                             </div>
-                            <span class="text-xs text-gray-500">Última actualización: {{ $lastUpdate }}</span>
+                            <span class="text-xs text-gray-500">
+                                @if($isRunning)
+                                    Auto-refresh activo
+                                @endif
+                                {{ $lastUpdate }}
+                            </span>
                         </div>
 
                         {{-- Tab: Logs --}}
@@ -202,7 +207,11 @@
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
                                 <p class="text-xs text-gray-500">
-                                    Auto-actualización cada 3 segundos
+                                    @if($isRunning)
+                                        Auto-refresh cada 5s
+                                    @else
+                                        Usa "Actualizar" para refrescar
+                                    @endif
                                 </p>
                                 @if ($ultimaPlanilla && !$isRunning)
                                     <span class="text-xs text-gray-400">
@@ -292,6 +301,18 @@
                                     <span class="px-3 py-1.5 text-xs text-gray-500 bg-gray-100 rounded-lg">
                                         La sincronización se ejecuta desde el servidor local
                                     </span>
+                                @endif
+
+                                {{-- Botón Limpiar Logs (solo en local y cuando no está corriendo) --}}
+                                @if ($currentTarget === 'local' && !$isRunning)
+                                    <button wire:click="limpiarLogs"
+                                        wire:confirm="¿Eliminar TODOS los archivos de log?"
+                                        class="px-3 py-1.5 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition flex items-center gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                        Limpiar Logs
+                                    </button>
                                 @endif
 
                                 <button wire:click="refresh"

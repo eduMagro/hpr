@@ -113,6 +113,11 @@ class Producto extends Model
         return $this->belongsTo(Fabricante::class);
     }
 
+    public function distribuidor()
+    {
+        return $this->belongsTo(Distribuidor::class);
+    }
+
     public function colada()
     {
         return $this->belongsTo(Colada::class);

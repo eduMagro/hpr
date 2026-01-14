@@ -15,6 +15,11 @@ class Fabricante extends Model
         'telefono',
         'email',
         'direccion',
+        'es_siderurgica_sevillana',
+    ];
+
+    protected $casts = [
+        'es_siderurgica_sevillana' => 'boolean',
     ];
 
     public function pedidos()
