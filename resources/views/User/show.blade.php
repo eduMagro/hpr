@@ -700,13 +700,45 @@
     <script src="{{ asset('js/calendario/calendario.js') }}?v={{ time() }}"></script>
 
     <script>
+        // Sistema de fichaje con protección contra duplicados
+        window._fichajePendiente = false;
+
+        function bloquearBotonesFichaje(bloquear, botonActivo = null, textoOriginal = '') {
+            const botones = document.querySelectorAll('[onclick^="registrarFichaje"]');
+            botones.forEach(btn => {
+                btn.disabled = bloquear;
+                if (bloquear) {
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                    if (btn === botonActivo) {
+                        btn.querySelector('.texto').textContent = 'Procesando...';
+                    }
+                } else {
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    if (btn === botonActivo && textoOriginal) {
+                        btn.querySelector('.texto').textContent = textoOriginal;
+                    }
+                }
+            });
+        }
+
         function registrarFichaje(tipo) {
+            // Prevenir múltiples fichajes simultáneos
+            if (window._fichajePendiente) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Fichaje en proceso',
+                    text: 'Espera a que termine el fichaje actual.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                return;
+            }
+
+            window._fichajePendiente = true;
             const boton = event.currentTarget;
             const textoOriginal = boton.querySelector('.texto').textContent;
 
-            boton.disabled = true;
-            boton.querySelector('.texto').textContent = 'Procesando...';
-            boton.classList.add('opacity-50', 'cursor-not-allowed');
+            bloquearBotonesFichaje(true, boton);
 
             navigator.geolocation.getCurrentPosition(
                 function(position) {
@@ -715,14 +747,13 @@
                     procesarFichaje(tipo, latitud, longitud, boton, textoOriginal);
                 },
                 function(error) {
+                    window._fichajePendiente = false;
+                    bloquearBotonesFichaje(false, boton, textoOriginal);
                     Swal.fire({
                         icon: 'error',
                         title: 'Error de ubicacion',
                         text: `${error.message}`
                     });
-                    boton.disabled = false;
-                    boton.querySelector('.texto').textContent = textoOriginal;
-                    boton.classList.remove('opacity-50', 'cursor-not-allowed');
                 }, {
                     enableHighAccuracy: false,
                     timeout: 8000,
@@ -760,6 +791,9 @@
                         })
                         .then(r => r.json())
                         .then(data => {
+                            window._fichajePendiente = false;
+                            bloquearBotonesFichaje(false, boton, textoOriginal);
+
                             if (data.success) {
                                 Swal.fire({
                                     icon: 'success',
@@ -781,17 +815,19 @@
                             }
                         })
                         .catch(err => {
+                            window._fichajePendiente = false;
+                            bloquearBotonesFichaje(false, boton, textoOriginal);
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
                                 text: 'No se pudo comunicar con el servidor'
                             });
                         });
+                } else {
+                    // Usuario canceló
+                    window._fichajePendiente = false;
+                    bloquearBotonesFichaje(false, boton, textoOriginal);
                 }
-
-                boton.disabled = false;
-                boton.querySelector('.texto').textContent = textoOriginal;
-                boton.classList.remove('opacity-50', 'cursor-not-allowed');
             });
         }
     </script>

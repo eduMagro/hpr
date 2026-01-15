@@ -14,6 +14,7 @@ use App\Models\VacacionesSolicitud;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\Eloquent\Builder; // ✅ Correcto
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\AsignacionesTurnosExport;
@@ -364,10 +365,20 @@ class AsignacionTurnoController extends Controller
                 'latitud'  => 'required|numeric',
                 'longitud' => 'required|numeric',
             ]);
-            Log::info('Coordenadas recibidas', [
-                'latitud'  => $request->latitud,
-                'longitud' => $request->longitud,
-            ]);
+
+            /* 1.1) Protección contra fichajes duplicados ------------------------------ */
+            $cacheKey = "fichaje_pendiente_{$request->user_id}_{$request->tipo}";
+            if (Cache::has($cacheKey)) {
+                Log::warning('🚫 Fichaje duplicado rechazado', [
+                    'user_id' => $request->user_id,
+                    'tipo' => $request->tipo,
+                ]);
+                return response()->json([
+                    'error' => 'Ya tienes un fichaje en proceso. Espera unos segundos.'
+                ], 429);
+            }
+            // Bloquear durante 10 segundos
+            Cache::put($cacheKey, true, 10);
 
             $user = User::findOrFail($request->user_id);
             // Permitir fichaje a todos los roles (operario y oficina)
