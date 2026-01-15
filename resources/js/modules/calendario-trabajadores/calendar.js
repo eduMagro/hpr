@@ -511,6 +511,18 @@ export function initCalendar(domEl) {
                         turno_id: turnoId,
                     }),
                 });
+
+                // Verificar si la sesión expiró (error 419)
+                if (resp.status === 419) {
+                    throw new Error('Tu sesión ha expirado. Por favor recarga la página (F5).');
+                }
+
+                // Verificar que la respuesta sea JSON antes de parsear
+                const contentType = resp.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Error de servidor. Recarga la página e intenta de nuevo.');
+                }
+
                 const data = await resp.json();
                 if (!resp.ok)
                     throw new Error(data?.message || `HTTP ${resp.status}`);
