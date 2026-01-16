@@ -1362,6 +1362,29 @@
                 const esPropio = mensaje.es_propio;
                 const bubbleClass = esPropio ? 'chat-bubble-out' : 'chat-bubble-in';
 
+                // Detectar si es una solicitud de revisión de fichajes
+                const revisionMatch = mensaje.mensaje.match(/\[REVISION_ID:(\d+)\]\[USER_ID:(\d+)\]/);
+                let mensajeTexto = mensaje.mensaje;
+                let botonesRevision = '';
+
+                if (revisionMatch && !esPropio) {
+                    const solicitudId = revisionMatch[1];
+                    const userId = revisionMatch[2];
+                    // Limpiar los marcadores del mensaje visible
+                    mensajeTexto = mensaje.mensaje.replace(/\[REVISION_ID:\d+\]\[USER_ID:\d+\]\n?/, '');
+
+                    botonesRevision = `
+                        <div class="flex gap-2 mt-3 pt-3 border-t border-gray-200">
+                            <button onclick="corregirFichajes(${solicitudId})" class="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors">
+                                Corregir Fichajes
+                            </button>
+                            <a href="/mi-perfil/${userId}" class="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors text-center">
+                                Ver Perfil
+                            </a>
+                        </div>
+                    `;
+                }
+
                 const mensajeDiv = document.createElement('div');
                 mensajeDiv.className = `flex ${esPropio ? 'justify-end' : 'justify-start'}`;
                 mensajeDiv.innerHTML = `
@@ -1375,7 +1398,9 @@
                                     </div>
                                   ` : ''}
 
-                          <p class="mensaje-mensaje text-[15px] leading-relaxed whitespace-pre-wrap">${mensaje.mensaje}</p>
+                          <p class="mensaje-mensaje text-[15px] leading-relaxed whitespace-pre-wrap">${mensajeTexto}</p>
+
+                          ${botonesRevision}
 
                           <div class="flex items-center justify-end gap-1.5 mt-1.5 -mb-0.5">
                             <span class="text-[11px] text-slate-500">${mensaje.created_at}</span>
@@ -1559,6 +1584,8 @@
         @media (min-width: 768px) {
             #modalVerMensaje .modal-content {
                 transform: translateY(30px) scale(0.95);
+                width: 360px !important;
+                max-width: 360px !important;
             }
         }
 
