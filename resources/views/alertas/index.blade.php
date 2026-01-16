@@ -41,7 +41,7 @@
                         <span>Enviar Mensaje</span>
                     </h2>
                     <form method="POST" action="{{ route('alertas.store') }}" enctype="multipart/form-data"
-                        x-data="{ cargando: false }" @submit="cargando = true">
+                        x-data="formAudioRecorder()" @submit="cargando = true">
                         @csrf
                         <div class="mb-4">
                             <label for="mensaje" class="block text-sm font-semibold">Mensaje:</label>
@@ -50,7 +50,7 @@
                         </div>
 
                         <!-- Audio -->
-                        <div class="mb-4" x-data="audioRecorder()">
+                        <div class="mb-4">
                             <label class="block text-sm font-semibold mb-2">Audio (opcional):</label>
 
                             <!-- Botones de grabación -->
@@ -79,16 +79,13 @@
                                 </button>
                             </div>
 
-                            <!-- O subir archivo -->
+                            <!-- Subir archivo de audio -->
                             <div class="mt-2">
                                 <label class="text-xs text-gray-500">O sube un archivo de audio:</label>
-                                <input type="file" name="audio" accept="audio/*"
+                                <input type="file" name="audio" accept="audio/*" x-ref="audioFileInput"
                                     class="w-full text-sm border rounded-lg p-1 focus:ring-2 focus:ring-blue-500"
                                     @change="handleFileSelect($event)">
                             </div>
-
-                            <!-- Input oculto para el audio grabado -->
-                            <input type="file" name="audio" x-ref="audioInput" class="hidden">
                         </div>
 
                         @if (auth()->user()->rol === 'oficina')
@@ -1662,7 +1659,8 @@
 
         // Componente Alpine para grabación de audio en el formulario principal
         document.addEventListener('alpine:init', () => {
-            Alpine.data('audioRecorder', () => ({
+            Alpine.data('formAudioRecorder', () => ({
+                cargando: false,
                 recording: false,
                 hasAudio: false,
                 mediaRecorder: null,
@@ -1695,11 +1693,11 @@
                             this.$refs.audioPreview.src = audioUrl;
                             this.hasAudio = true;
 
-                            // Crear archivo para el input
+                            // Crear archivo para el input file
                             const file = new File([this.audioBlob], 'audio_grabado.webm', { type: 'audio/webm' });
                             const dt = new DataTransfer();
                             dt.items.add(file);
-                            this.$refs.audioInput.files = dt.files;
+                            this.$refs.audioFileInput.files = dt.files;
 
                             stream.getTracks().forEach(track => track.stop());
                         };
@@ -1734,8 +1732,12 @@
                 deleteAudio() {
                     this.hasAudio = false;
                     this.audioBlob = null;
-                    this.$refs.audioPreview.src = '';
-                    this.$refs.audioInput.value = '';
+                    if (this.$refs.audioPreview) {
+                        this.$refs.audioPreview.src = '';
+                    }
+                    if (this.$refs.audioFileInput) {
+                        this.$refs.audioFileInput.value = '';
+                    }
                 },
 
                 handleFileSelect(event) {
