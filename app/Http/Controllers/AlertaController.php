@@ -512,8 +512,14 @@ $ordenablesAlertas = [];
                 }
 
                 $request->validate([
-                    'mensaje' => 'required|string',
+                    'mensaje' => 'nullable|string',
+                    'audio' => 'nullable|file|mimes:mp3,wav,ogg,webm,m4a|max:10240',
                 ]);
+
+                // Validar que haya mensaje o audio
+                if (empty($request->mensaje) && !$request->hasFile('audio')) {
+                    throw new Exception('Debes enviar un mensaje o un audio.');
+                }
 
                 $departamentosPermitidos = Departamento::pluck('nombre')->toArray();
                 $departamentos = array_filter(
@@ -529,8 +535,18 @@ $ordenablesAlertas = [];
                     throw new Exception('No hay usuarios en los departamentos seleccionados.');
                 }
 
+                // Procesar audio si existe
+                $audioRuta = null;
+                if ($request->hasFile('audio')) {
+                    $audio = $request->file('audio');
+                    $nombreArchivo = 'audio_' . time() . '_' . $user->id . '.' . $audio->getClientOriginalExtension();
+                    $audio->move(public_path('audios/alertas'), $nombreArchivo);
+                    $audioRuta = 'audios/alertas/' . $nombreArchivo;
+                }
+
                 $alerta = Alerta::create([
-                    'mensaje'   => $request->mensaje,
+                    'mensaje'   => $request->mensaje ?? '',
+                    'audio_ruta' => $audioRuta,
                     'user_id_1' => $user->id,
                     'user_id_2' => session()->get('companero_id', null),
                     'leida'     => false,
