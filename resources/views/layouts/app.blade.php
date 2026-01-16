@@ -152,19 +152,20 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%);
             width: 40px;
             height: 40px;
             border: 3px solid #e5e7eb;
             border-top-color: #3b82f6;
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            animation: navigation-spin 0.8s linear infinite;
+            /* Centrado con margin en vez de transform para no interferir con la rotación */
+            margin-left: -20px;
+            margin-top: -20px;
         }
 
-        @keyframes spin {
-            to {
-                transform: translate(-50%, -50%) rotate(360deg);
-            }
+        @keyframes navigation-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
