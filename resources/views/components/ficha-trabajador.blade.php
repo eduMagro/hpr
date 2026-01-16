@@ -14,7 +14,19 @@
     seccionNomina: false,
     seccionContrato: false,
     seccionJustificante: false
-}">
+}"
+@justificante-guardado-success.window="
+    seccionJustificante = false;
+    Swal.fire({
+        icon: 'success',
+        title: '¡Guardado!',
+        text: $event.detail[0].mensaje + ' para el ' + $event.detail[0].fecha,
+        timer: 3000,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end'
+    });
+">
     <div class="max-w-7xl mx-auto">
 
         {{-- Header con banner degradado --}}

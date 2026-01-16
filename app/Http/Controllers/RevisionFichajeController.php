@@ -193,7 +193,9 @@ class RevisionFichajeController extends Controller
             ? $fechaInicioStr
             : "{$fechaInicioStr} - {$fechaFinStr}";
 
-        $mensaje = "SOLICITUD DE REVISION DE FICHAJES\n\n";
+        // Marcador especial para identificar la solicitud (se usará para el botón)
+        $mensaje = "[REVISION_ID:{$solicitud->id}][USER_ID:{$solicitud->user_id}]\n";
+        $mensaje .= "SOLICITUD DE REVISION DE FICHAJES\n\n";
         $mensaje .= "Usuario: {$user->nombre_completo} (ID: {$user->id})\n";
         $mensaje .= "Fechas: {$rangoFechas}\n\n";
         $mensaje .= "Estado de fichajes:\n";
@@ -224,14 +226,6 @@ class RevisionFichajeController extends Controller
         if ($solicitud->observaciones) {
             $mensaje .= "\nObservaciones: {$solicitud->observaciones}\n";
         }
-
-        // Añadir enlaces de acción
-        $urlAutoRellenar = route('revision-fichaje.autoRellenar', $solicitud->id);
-        $urlPerfil = route('usuarios.show', $solicitud->user_id);
-
-        $mensaje .= "\n---\n";
-        $mensaje .= "Auto-rellenar: {$urlAutoRellenar}\n";
-        $mensaje .= "Ver perfil: {$urlPerfil}";
 
         return $mensaje;
     }

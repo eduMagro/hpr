@@ -47,18 +47,6 @@
 
         {{-- Solo mostrar formulario si NO es solo lectura --}}
         @if (!$soloLectura)
-            {{-- Mensaje de éxito --}}
-            @if (session()->has('justificante_success'))
-                <div class="mb-4 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
-                    <div class="flex items-center">
-                        <svg class="h-5 w-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                        </svg>
-                        <p class="text-sm font-medium text-green-800">{{ session('justificante_success') }}</p>
-                    </div>
-                </div>
-            @endif
-
             {{-- Mensaje de error --}}
             @if ($error)
                 <div class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
@@ -98,50 +86,18 @@
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            <span class="ml-2 text-sm text-gray-600">Procesando OCR...</span>
+                            <span class="ml-2 text-sm text-gray-600">Procesando...</span>
                         </div>
                     </div>
                     <p class="mt-1 text-xs text-gray-500">Formatos aceptados: PDF, JPG, PNG. Máximo 10MB.</p>
                     @error('archivo') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
 
-                {{-- Resultados del OCR --}}
-                @if ($mostrarResultados)
-                    <div class="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                        <h4 class="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
-                            </svg>
-                            Fecha detectada
-                        </h4>
-
-                        @if ($fechaDetectada)
-                            <p class="text-sm text-blue-700 mb-2">
-                                <span class="font-medium">Fecha detectada:</span>
-                                {{ \Carbon\Carbon::parse($fechaDetectada)->format('d/m/Y') }}
-                                @if ($asignacionSeleccionada)
-                                    <span class="text-green-600 ml-2">✓ Asignación seleccionada</span>
-                                @endif
-                            </p>
-                        @endif
-
-                        @if ($textoExtraido)
-                            <details class="mt-2">
-                                <summary class="text-xs text-blue-600 cursor-pointer hover:text-blue-800">Ver texto extraído</summary>
-                                <pre class="mt-2 p-2 bg-white rounded text-xs text-gray-600 overflow-auto max-h-32 border">{{ $textoExtraido }}</pre>
-                            </details>
-                        @endif
-                    </div>
-                @endif
-
                 {{-- Selector de asignación o fecha manual --}}
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         @if (count($asignacionesDisponibles) > 0)
                             Asignación a justificar <span class="text-red-500">*</span>
-                            @if ($fechaDetectada && $asignacionSeleccionada)
-                                <span class="ml-2 text-xs text-green-600 font-normal">(detectada automáticamente)</span>
-                            @endif
                         @else
                             Fecha a justificar <span class="text-red-500">*</span>
                         @endif
@@ -149,11 +105,10 @@
 
                     @if (count($asignacionesDisponibles) > 0)
                         <select wire:model.live="asignacionSeleccionada"
-                            class="w-full rounded-lg shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-300 transition text-sm
-                                {{ $fechaDetectada && $asignacionSeleccionada ? 'border-green-400 bg-green-50' : 'border-gray-300' }}">
+                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-300 transition text-sm">
                             <option value="">Selecciona una asignación...</option>
                             @foreach ($asignacionesDisponibles as $asignacion)
-                                <option value="{{ $asignacion['id'] }}">
+                                <option value="{{ $asignacion['id'] }}" @if($asignacionSeleccionada == $asignacion['id']) selected @endif>
                                     {{ $asignacion['fecha_formateada'] }} - {{ $asignacion['turno'] }} - {{ $asignacion['obra'] }}
                                     @if ($asignacion['estado']) ({{ ucfirst($asignacion['estado']) }}) @endif
                                 </option>
@@ -217,7 +172,7 @@
                         <span wire:loading wire:target="guardarJustificante">Guardando...</span>
                     </button>
 
-                    @if ($mostrarResultados)
+                    @if ($archivo)
                         <button type="button"
                             wire:click="cancelar"
                             class="inline-flex justify-center items-center gap-2 rounded-lg px-4 py-2.5 font-semibold text-gray-700
@@ -238,16 +193,9 @@
             <svg class="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
             </svg>
-            @if ($ocrDisponible)
-                <p>
-                    El sistema detectará automáticamente la fecha del justificante.
-                    Las horas justificadas debes introducirlas manualmente.
-                </p>
-            @else
-                <p>
-                    Sube el documento, selecciona la fecha correspondiente e introduce las horas justificadas.
-                </p>
-            @endif
+            <p>
+                Sube el documento, selecciona la fecha correspondiente e introduce las horas justificadas.
+            </p>
         </div>
         @endif {{-- fin !$soloLectura --}}
 </div>

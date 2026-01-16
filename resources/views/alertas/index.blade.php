@@ -1131,14 +1131,92 @@
                 modal.classList.add('flex');
             }
 
-            window.verMensajeCompleto = function(mensaje) {
+            window.verMensajeCompleto = function(mensaje, tipo = null) {
+                // Detectar si es una solicitud de revisión de fichajes
+                const revisionMatch = mensaje.match(/\[REVISION_ID:(\d+)\]\[USER_ID:(\d+)\]/);
+
+                if (revisionMatch) {
+                    const solicitudId = revisionMatch[1];
+                    const userId = revisionMatch[2];
+                    // Limpiar los marcadores del mensaje visible
+                    const mensajeLimpio = mensaje.replace(/\[REVISION_ID:\d+\]\[USER_ID:\d+\]\n?/, '');
+
+                    Swal.fire({
+                        title: 'Solicitud de Revision de Fichajes',
+                        html: `
+                            <div class="text-left whitespace-pre-wrap text-gray-700 p-4 mb-4 bg-gray-50 rounded-lg max-h-64 overflow-y-auto">${mensajeLimpio}</div>
+                            <div class="flex gap-2 justify-center">
+                                <button onclick="corregirFichajes(${solicitudId})" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors">
+                                    Corregir Fichajes
+                                </button>
+                                <a href="/mi-perfil/${userId}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors inline-block">
+                                    Ver Perfil
+                                </a>
+                            </div>
+                        `,
+                        showConfirmButton: false,
+                        showCloseButton: true,
+                        width: '600px'
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Mensaje Completo',
+                        html: `<div class="text-left whitespace-pre-wrap text-gray-700 p-4">${mensaje}</div>`,
+                        icon: 'info',
+                        confirmButtonColor: '#3B82F6',
+                        confirmButtonText: 'Cerrar',
+                        width: '600px'
+                    });
+                }
+            }
+
+            window.corregirFichajes = function(solicitudId) {
                 Swal.fire({
-                    title: 'Mensaje Completo',
-                    html: `<div class="text-left whitespace-pre-wrap text-gray-700 p-4">${mensaje}</div>`,
-                    icon: 'info',
-                    confirmButtonColor: '#3B82F6',
-                    confirmButtonText: 'Cerrar',
-                    width: '600px'
+                    title: 'Corregir Fichajes',
+                    text: 'Esto rellenara automaticamente los fichajes faltantes segun el turno asignado. Continuar?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#10B981',
+                    cancelButtonColor: '#6B7280',
+                    confirmButtonText: 'Si, corregir',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(`/revision-fichaje/${solicitudId}/auto-rellenar`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Fichajes Corregidos',
+                                    text: data.success,
+                                    confirmButtonColor: '#10B981'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: data.error || 'No se pudieron corregir los fichajes'
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Error de conexion. Intenta de nuevo.'
+                            });
+                        });
+                    }
                 });
             }
 
