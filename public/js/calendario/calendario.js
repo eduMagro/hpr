@@ -1456,9 +1456,11 @@
                 const obraNombre = props.obra_nombre || null;
                 const entrada = props.entrada ? props.entrada.substring(0, 5) : null;
                 const salida = props.salida ? props.salida.substring(0, 5) : null;
+                const entrada2 = props.entrada2 ? props.entrada2.substring(0, 5) : null;
+                const salida2 = props.salida2 ? props.salida2.substring(0, 5) : null;
 
                 // Si no hay datos que mostrar, no hacer nada
-                if (!obraNombre && !entrada && !salida) return;
+                if (!obraNombre && !entrada && !salida && !entrada2 && !salida2) return;
 
                 // Crear tooltip
                 const tooltip = document.createElement('div');
@@ -1472,7 +1474,7 @@
                     border-radius: 6px;
                     font-size: 12px;
                     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                    max-width: 250px;
+                    max-width: 280px;
                     pointer-events: none;
                 `;
 
@@ -1480,11 +1482,23 @@
                 if (obraNombre) {
                     html += `<div style="margin-bottom: 4px;"><strong>📍 Obra:</strong> ${obraNombre}</div>`;
                 }
+
+                // Primera jornada
                 if (entrada || salida) {
-                    html += `<div><strong>🕐 Horario:</strong> `;
+                    const esTurnoPartido = entrada2 || salida2;
+                    html += `<div><strong>🕐 ${esTurnoPartido ? '1ª Jornada:' : 'Horario:'}</strong> `;
                     if (entrada) html += entrada;
                     if (entrada && salida) html += ' - ';
                     if (salida) html += salida;
+                    html += `</div>`;
+                }
+
+                // Segunda jornada (turno partido)
+                if (entrada2 || salida2) {
+                    html += `<div><strong>🕐 2ª Jornada:</strong> `;
+                    if (entrada2) html += entrada2;
+                    if (entrada2 && salida2) html += ' - ';
+                    if (salida2) html += salida2;
                     html += `</div>`;
                 }
                 tooltip.innerHTML = html;
