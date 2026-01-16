@@ -1285,6 +1285,104 @@ GUIDE;
     }
 
     /**
+     * Procesa el mensaje a través del AgentService
+     * Detecta si es una acción ejecutable o una confirmación
+     */
+    private function procesarConAgente(ChatConversacion $conversacion, string $contenido): ?ChatMensaje
+    {
+        // Inicializar AgentService si no existe
+        if (!$this->agentService) {
+            $modeloUsuario = Asistente\IAService::obtenerPreferenciaUsuario($conversacion->user);
+            $this->agentService = new AgentService($conversacion->user, $modeloUsuario);
+        } else {
+            $this->agentService->setUser($conversacion->user);
+        }
+
+        // Detectar si es una confirmación de acción pendiente
+        $contenidoLower = strtolower(trim($contenido));
+        if (preg_match('/^(si|sí|confirmo|confirmar|yes|ok|adelante|procede|hazlo)$/i', $contenidoLower)) {
+            // Buscar confirmación pendiente en caché
+            $tokenPendiente = cache()->get("agente_ultimo_token_{$conversacion->user_id}");
+            if ($tokenPendiente) {
+                $resultado = $this->agentService->confirmarAccion($tokenPendiente);
+                cache()->forget("agente_ultimo_token_{$conversacion->user_id}");
+
+                return $this->crearMensajeAgente($conversacion, $resultado);
+            }
+        }
+
+        // Detectar si quiere cancelar
+        if (preg_match('/^(no|cancelar|cancela|cancel|abortar|nope)$/i', $contenidoLower)) {
+            $tokenPendiente = cache()->get("agente_ultimo_token_{$conversacion->user_id}");
+            if ($tokenPendiente) {
+                $resultado = $this->agentService->cancelarAccion($tokenPendiente);
+                cache()->forget("agente_ultimo_token_{$conversacion->user_id}");
+
+                return $this->crearMensajeAgente($conversacion, $resultado);
+            }
+        }
+
+        // Procesar mensaje con el agente
+        try {
+            $resultado = $this->agentService->procesar($contenido);
+
+            // Si el agente no detectó ninguna herramienta, dejar que el flujo normal continúe
+            if ($resultado['tipo'] === 'respuesta' && empty($resultado['herramienta'])) {
+                return null; // Continuar con el flujo normal (OpenAI, informes, etc.)
+            }
+
+            // Si requiere confirmación, guardar el token
+            if ($resultado['tipo'] === 'confirmacion' && !empty($resultado['token'])) {
+                cache()->put(
+                    "agente_ultimo_token_{$conversacion->user_id}",
+                    $resultado['token'],
+                    now()->addMinutes(5)
+                );
+            }
+
+            return $this->crearMensajeAgente($conversacion, $resultado);
+
+        } catch (\Exception $e) {
+            Log::error('Error en AgentService: ' . $e->getMessage());
+            return null; // Continuar con el flujo normal si hay error
+        }
+    }
+
+    /**
+     * Crea un mensaje del asistente con el resultado del agente
+     */
+    private function crearMensajeAgente(ChatConversacion $conversacion, array $resultado): ChatMensaje
+    {
+        $metadata = [
+            'tipo' => 'agente',
+            'tipo_respuesta' => $resultado['tipo'] ?? 'respuesta',
+            'herramienta' => $resultado['herramienta'] ?? null,
+        ];
+
+        // Agregar navegación si está presente
+        if (!empty($resultado['navegacion'])) {
+            $metadata['navegacion'] = $resultado['navegacion'];
+        }
+
+        // Agregar token de confirmación si está presente
+        if (!empty($resultado['token'])) {
+            $metadata['confirmacion_token'] = $resultado['token'];
+            $metadata['confirmacion_expira'] = $resultado['expira'] ?? null;
+        }
+
+        // Agregar datos adicionales
+        if (!empty($resultado['datos'])) {
+            $metadata['datos'] = $resultado['datos'];
+        }
+
+        return $conversacion->mensajes()->create([
+            'role' => 'assistant',
+            'contenido' => $resultado['contenido'] ?? 'Acción completada.',
+            'metadata' => $metadata,
+        ]);
+    }
+
+    /**
      * Procesa comandos rápidos que empiezan con /
      */
     private function procesarComando(string $comando, $user): ?array
@@ -1370,34 +1468,54 @@ GUIDE;
 
     private function comandoAcciones(): string
     {
-        $acciones = AccionService::ACCIONES;
+        $mensaje = "🎯 **HERRAMIENTAS DEL AGENTE FERRALLIN**\n\n";
 
-        $mensaje = "🎯 **ACCIONES DISPONIBLES**\n\n";
+        // Usar las herramientas del AgentService
+        $herramientas = AgentService::getHerramientasDefinidas();
 
-        // Agrupar por nivel
-        $nivel1 = array_filter($acciones, fn($a) => $a['nivel'] === 1);
-        $nivel2 = array_filter($acciones, fn($a) => $a['nivel'] === 2);
+        // Agrupar por categoría
+        $categorias = [];
+        foreach ($herramientas as $id => $h) {
+            $cat = $h['categoria'] ?? 'otros';
+            if (!isset($categorias[$cat])) {
+                $categorias[$cat] = [];
+            }
+            $categorias[$cat][$id] = $h;
+        }
 
-        if (!empty($nivel1)) {
-            $mensaje .= "**📤 Acciones Rápidas** (sin confirmación)\n";
-            foreach ($nivel1 as $key => $accion) {
-                $mensaje .= "• **{$accion['nombre']}** - {$accion['descripcion']}\n";
+        $iconos = [
+            'planillas' => '📋',
+            'elementos' => '🔧',
+            'pedidos' => '📦',
+            'stock' => '📊',
+            'produccion' => '🏭',
+            'clientes' => '👥',
+            'alertas' => '⚠️',
+            'navegacion' => '🧭',
+            'reportes' => '📄',
+            'correcciones' => '↩️',
+        ];
+
+        foreach ($categorias as $cat => $items) {
+            $icono = $iconos[$cat] ?? '•';
+            $mensaje .= "**{$icono} " . ucfirst($cat) . "**\n";
+
+            foreach ($items as $id => $h) {
+                $confirmacion = ($h['requiere_confirmacion'] ?? false) ? ' ⚠️' : '';
+                $mensaje .= "• **{$h['nombre']}**{$confirmacion} - {$h['descripcion']}\n";
             }
             $mensaje .= "\n";
         }
 
-        if (!empty($nivel2)) {
-            $mensaje .= "**⚠️ Acciones con Confirmación** (modifican datos)\n";
-            foreach ($nivel2 as $key => $accion) {
-                $mensaje .= "• **{$accion['nombre']}** - {$accion['descripcion']}\n";
-            }
-        }
-
-        $mensaje .= "\n💡 **Ejemplos de uso:**\n";
-        $mensaje .= "- _\"Envía alerta a María diciendo: Revisar planilla urgente\"_\n";
-        $mensaje .= "- _\"Adelanta la planilla 12345\"_\n";
-        $mensaje .= "- _\"Cambia estado de planilla 6789 a fabricando\"_\n";
-        $mensaje .= "- _\"Asigna planilla 1111 a máquina EST-1\"_";
+        $mensaje .= "---\n";
+        $mensaje .= "⚠️ = Requiere confirmación\n\n";
+        $mensaje .= "💡 **Ejemplos de uso:**\n";
+        $mensaje .= "- _\"Muéstrame las planillas pendientes\"_\n";
+        $mensaje .= "- _\"¿Cuánto stock de Ø12 hay?\"_\n";
+        $mensaje .= "- _\"Producción de hoy\"_\n";
+        $mensaje .= "- _\"Estado de las máquinas\"_\n";
+        $mensaje .= "- _\"Llévame a producción\"_\n";
+        $mensaje .= "- _\"Cambia planilla X a fabricando\"_";
 
         return $mensaje;
     }

@@ -77,7 +77,8 @@
       "Bash(git remote add:*)",
       "Bash(more:*)",
       "Bash(git status:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []

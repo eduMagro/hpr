@@ -362,8 +362,9 @@
                                     <!-- Dropdown de modelos -->
                                     <div v-if="mostrarSelectorModelo"
                                          @click.away="mostrarSelectorModelo = false"
-                                         :class="['absolute right-0 mt-2 w-72 rounded-xl shadow-xl z-50 border overflow-hidden',
-                                                 tema === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200']">
+                                         :class="['absolute right-0 mt-2 w-72 rounded-xl shadow-2xl border overflow-hidden',
+                                                 tema === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200']"
+                                         style="z-index: 9999;">
                                         <div :class="['px-4 py-3 border-b', tema === 'dark' ? 'border-gray-700' : 'border-gray-200']">
                                             <h4 :class="['font-semibold text-sm', tema === 'dark' ? 'text-white' : 'text-gray-900']">Modelo de IA</h4>
                                             <p :class="['text-xs mt-1', tema === 'dark' ? 'text-gray-400' : 'text-gray-500']">Selecciona el modelo para el análisis</p>
@@ -623,6 +624,60 @@
                                                         <span v-if="mensaje.metadata.resultado && mensaje.metadata.resultado.success">✅</span>
                                                         <span v-else>❌</span>
                                                         Acción: @{{ mensaje.metadata.accion }}
+                                                    </span>
+                                                </div>
+
+                                                <!-- AGENTE: Botones de confirmación -->
+                                                <div v-if="mensaje.metadata && mensaje.metadata.tipo === 'agente' && mensaje.metadata.tipo_respuesta === 'confirmacion'"
+                                                     :class="['mt-3 md:mt-4 flex flex-wrap gap-2']">
+                                                    <button @click="confirmarAccionAgente(mensaje.metadata.confirmacion_token)"
+                                                            :disabled="enviando"
+                                                            :class="['inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 transform hover:scale-105 shadow-lg',
+                                                                    tema === 'dark' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-500 hover:bg-green-600 text-white',
+                                                                    enviando ? 'opacity-50 cursor-not-allowed' : '']">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                                        </svg>
+                                                        <span>Confirmar</span>
+                                                    </button>
+                                                    <button @click="cancelarAccionAgente(mensaje.metadata.confirmacion_token)"
+                                                            :disabled="enviando"
+                                                            :class="['inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 transform hover:scale-105 shadow-lg',
+                                                                    tema === 'dark' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white',
+                                                                    enviando ? 'opacity-50 cursor-not-allowed' : '']">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                        </svg>
+                                                        <span>Cancelar</span>
+                                                    </button>
+                                                </div>
+
+                                                <!-- AGENTE: Botón de navegación -->
+                                                <div v-if="mensaje.metadata && mensaje.metadata.navegacion"
+                                                     :class="['mt-3 md:mt-4']">
+                                                    <button @click="navegarA(mensaje.metadata.navegacion)"
+                                                            :class="['inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 transform hover:scale-105 shadow-lg',
+                                                                    tema === 'dark' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white']">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                                                        </svg>
+                                                        <span>Ir a la sección</span>
+                                                    </button>
+                                                </div>
+
+                                                <!-- AGENTE: Badge de herramienta usada -->
+                                                <div v-if="mensaje.metadata && mensaje.metadata.tipo === 'agente' && mensaje.metadata.herramienta"
+                                                     :class="['mt-2']">
+                                                    <span :class="['px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center gap-1',
+                                                                  mensaje.metadata.tipo_respuesta === 'exito'
+                                                                    ? (tema === 'dark' ? 'bg-green-900/50 text-green-300 border border-green-700' : 'bg-green-100 text-green-700')
+                                                                    : mensaje.metadata.tipo_respuesta === 'error'
+                                                                        ? (tema === 'dark' ? 'bg-red-900/50 text-red-300 border border-red-700' : 'bg-red-100 text-red-700')
+                                                                        : (tema === 'dark' ? 'bg-blue-900/50 text-blue-300 border border-blue-700' : 'bg-blue-100 text-blue-700')]">
+                                                        <span v-if="mensaje.metadata.tipo_respuesta === 'exito'">✅</span>
+                                                        <span v-else-if="mensaje.metadata.tipo_respuesta === 'error'">❌</span>
+                                                        <span v-else>🔧</span>
+                                                        @{{ mensaje.metadata.herramienta.replace('_', ' ') }}
                                                     </span>
                                                 </div>
 
@@ -977,6 +1032,22 @@
                         // Enviar mensaje de cancelación
                         this.mensajeNuevo = 'cancelar'
                         await this.enviarMensaje()
+                    },
+                    async confirmarAccionAgente(token) {
+                        // Enviar confirmación para el AgentService
+                        this.mensajeNuevo = 'sí'
+                        await this.enviarMensaje()
+                    },
+                    async cancelarAccionAgente(token) {
+                        // Enviar cancelación para el AgentService
+                        this.mensajeNuevo = 'cancelar'
+                        await this.enviarMensaje()
+                    },
+                    navegarA(ruta) {
+                        // Navegar a una sección de la aplicación
+                        if (ruta) {
+                            window.location.href = ruta
+                        }
                     },
                     async eliminarConversacionActual() {
                         if (!confirm('¿Estás seguro de que quieres eliminar esta conversación?')) return

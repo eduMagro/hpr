@@ -1047,7 +1047,7 @@ class ProduccionController extends Controller
                 $fechaBase->setTime(6, 0, 0);
             }
 
-            return $fechaBase->toDateTimeString();
+            return $fechaBase->toIso8601String();
 
         } catch (\Exception $e) {
             Log::error('❌ Error en calcularInitialDate', [
@@ -1056,7 +1056,7 @@ class ProduccionController extends Controller
         }
 
         // Fallback: fecha actual en formato ISO
-        return now()->format('Y-m-d H:i:s');
+        return now()->toIso8601String();
     }
     /**
      * 🔧 Obtiene la fecha real de finalización según el tipo de máquina

@@ -159,7 +159,7 @@ class IAService
     /**
      * Llama a la API según el proveedor configurado
      */
-    protected function llamarAPI(string $prompt): array
+    public function llamarAPI(string $prompt): array
     {
         $proveedor = $this->configModelo['proveedor'];
 

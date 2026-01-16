@@ -379,13 +379,7 @@ PROMPT;
      */
     protected function llamarIA(string $prompt): string
     {
-        // Usar reflexión para acceder al método protegido de IAService
-        // o crear un método público wrapper
-        $reflection = new \ReflectionClass($this->iaService);
-        $method = $reflection->getMethod('llamarAPI');
-        $method->setAccessible(true);
-
-        $resultado = $method->invoke($this->iaService, $prompt);
+        $resultado = $this->iaService->llamarAPI($prompt);
 
         if ($resultado['success']) {
             return $resultado['content'];
@@ -697,6 +691,14 @@ PROMPT;
     public static function getRutasNavegacion(): array
     {
         return self::RUTAS_NAVEGACION;
+    }
+
+    /**
+     * Obtiene la definición de todas las herramientas (para mostrar ayuda)
+     */
+    public static function getHerramientasDefinidas(): array
+    {
+        return self::HERRAMIENTAS_DISPONIBLES;
     }
 
     // ========================================================================
