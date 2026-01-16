@@ -851,10 +851,21 @@ class ProfileController extends Controller
                 'maquina_id' => 'nullable|exists:maquinas,id',
             ]);
 
+            // Si NO es programador, excluir email y dni del update para no sobrescribirlos con null
+            if (!$esProgramador) {
+                unset($validated['email'], $validated['dni']);
+            }
+
             $user->fill($validated);
         } else {
             // Usar ProfileUpdateRequest para formularios normales
             $validated = $request->validate((new ProfileUpdateRequest())->rules());
+
+            // Si NO es programador, excluir email y dni del update para no sobrescribirlos con null
+            if (!$esProgramador) {
+                unset($validated['email'], $validated['dni']);
+            }
+
             $user->fill($validated);
         }
 

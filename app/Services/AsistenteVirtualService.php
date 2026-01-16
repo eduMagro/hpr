@@ -12,6 +12,7 @@ use App\Services\Asistente\ReportePdfService;
 use App\Services\Asistente\InteligenciaService;
 use App\Services\Asistente\AccionService;
 use App\Services\Asistente\DiagnosticoService;
+use App\Services\Asistente\AgentService;
 use App\Services\Asistente as Asistente;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -26,19 +27,22 @@ class AsistenteVirtualService
     protected ?InteligenciaService $inteligenciaService = null;
     protected ?AccionService $accionService = null;
     protected ?DiagnosticoService $diagnosticoService = null;
+    protected ?AgentService $agentService = null;
 
     public function __construct(
         ?InformeService $informeService = null,
         ?ReportePdfService $pdfService = null,
         ?InteligenciaService $inteligenciaService = null,
         ?AccionService $accionService = null,
-        ?DiagnosticoService $diagnosticoService = null
+        ?DiagnosticoService $diagnosticoService = null,
+        ?AgentService $agentService = null
     ) {
         $this->informeService = $informeService;
         $this->pdfService = $pdfService;
         $this->inteligenciaService = $inteligenciaService;
         $this->accionService = $accionService;
         $this->diagnosticoService = $diagnosticoService;
+        $this->agentService = $agentService;
     }
 
     /**
@@ -114,6 +118,12 @@ class AsistenteVirtualService
                     'metadata' => $respuestaComando['metadata'] ?? null,
                 ]);
             }
+        }
+
+        // AGENTE INTELIGENTE: Procesar a través del AgentService
+        $respuestaAgente = $this->procesarConAgente($conversacion, $contenido);
+        if ($respuestaAgente) {
+            return $respuestaAgente;
         }
 
         // SISTEMA EXPERTO: Verificar si hay una confirmación pendiente
