@@ -193,13 +193,13 @@ class RevisionFichajeController extends Controller
             ? $fechaInicioStr
             : "{$fechaInicioStr} - {$fechaFinStr}";
 
-        $mensaje = "📋 **Solicitud de revisión de fichajes**\n\n";
-        $mensaje .= "👤 **Usuario:** {$user->nombre_completo} (ID: {$user->id})\n";
-        $mensaje .= "📅 **Fechas:** {$rangoFechas}\n\n";
-        $mensaje .= "**Estado de fichajes:**\n";
+        $mensaje = "SOLICITUD DE REVISION DE FICHAJES\n\n";
+        $mensaje .= "Usuario: {$user->nombre_completo} (ID: {$user->id})\n";
+        $mensaje .= "Fechas: {$rangoFechas}\n\n";
+        $mensaje .= "Estado de fichajes:\n";
 
         foreach ($detalles as $d) {
-            $icono = $d['completo'] ? '✅' : '❌';
+            $icono = $d['completo'] ? '[OK]' : '[X]';
             $fechaFormateada = Carbon::parse($d['fecha'])->format('d/m');
             $turno = $d['turno'];
 
@@ -222,7 +222,7 @@ class RevisionFichajeController extends Controller
         }
 
         if ($solicitud->observaciones) {
-            $mensaje .= "\n📝 **Observaciones:** {$solicitud->observaciones}\n";
+            $mensaje .= "\nObservaciones: {$solicitud->observaciones}\n";
         }
 
         // Añadir enlaces de acción
@@ -230,8 +230,8 @@ class RevisionFichajeController extends Controller
         $urlPerfil = route('usuarios.show', $solicitud->user_id);
 
         $mensaje .= "\n---\n";
-        $mensaje .= "🔧 [Auto-rellenar según turno]({$urlAutoRellenar})\n";
-        $mensaje .= "👤 [Ver perfil del usuario]({$urlPerfil})";
+        $mensaje .= "Auto-rellenar: {$urlAutoRellenar}\n";
+        $mensaje .= "Ver perfil: {$urlPerfil}";
 
         return $mensaje;
     }
@@ -280,10 +280,10 @@ class RevisionFichajeController extends Controller
     {
         $alertaService = app(AlertaService::class);
 
-        $mensaje = "✅ Tu solicitud de revisión de fichajes ha sido procesada.\n\n";
-        $mensaje .= "📅 Fechas: {$solicitud->fecha_inicio->format('d/m/Y')} - {$solicitud->fecha_fin->format('d/m/Y')}\n";
-        $mensaje .= "🔧 Días corregidos: {$diasCorregidos}\n";
-        $mensaje .= "👤 Procesado por: " . Auth::user()->nombre_completo;
+        $mensaje = "Tu solicitud de revision de fichajes ha sido procesada.\n\n";
+        $mensaje .= "Fechas: {$solicitud->fecha_inicio->format('d/m/Y')} - {$solicitud->fecha_fin->format('d/m/Y')}\n";
+        $mensaje .= "Dias corregidos: {$diasCorregidos}\n";
+        $mensaje .= "Procesado por: " . Auth::user()->nombre_completo;
 
         $alertaService->crearAlerta(
             emisorId: Auth::id(),
