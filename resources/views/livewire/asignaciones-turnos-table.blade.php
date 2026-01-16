@@ -28,6 +28,12 @@
                     <th class="p-2 border cursor-pointer" wire:click="sortBy('salida')">
                         Salida @if($sort === 'salida'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
+                    <th class="p-2 border cursor-pointer" wire:click="sortBy('entrada2')">
+                        Entrada 2 @if($sort === 'entrada2'){{ $order === 'asc' ? '↑' : '↓' }}@endif
+                    </th>
+                    <th class="p-2 border cursor-pointer" wire:click="sortBy('salida2')">
+                        Salida 2 @if($sort === 'salida2'){{ $order === 'asc' ? '↑' : '↓' }}@endif
+                    </th>
                     <th class="p-2 border">Resumen</th>
                     <th class="p-2 border">Acciones</th>
                 </tr>
@@ -69,6 +75,14 @@
                             class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
                     </th>
                     <th class="p-1 border">
+                        <input type="text" wire:model.live.debounce.300ms="entrada2" placeholder="Entrada 2"
+                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                    </th>
+                    <th class="p-1 border">
+                        <input type="text" wire:model.live.debounce.300ms="salida2" placeholder="Salida 2"
+                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                    </th>
+                    <th class="p-1 border">
 
                     </th>
                     <th class="p-1 border text-center align-middle">
@@ -85,7 +99,7 @@
                             </button>
 
                             {{-- 📤 Botón exportar Excel --}}
-                            <a href="{{ route('asignaciones-turnos.verExportar', request()->query()) }}" wire:navigate title="Descarga los registros en Excel"
+                            <a href="{{ route('asignaciones-turnos.verExportar', request()->query()) }}" title="Descarga los registros en Excel"
                                 class="bg-green-600 hover:bg-green-700 text-white rounded text-xs flex items-center justify-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="h-6 w-8">
                                     <path fill="#21A366"
@@ -201,6 +215,40 @@
                             </template>
                         </td>
 
+                        <!-- Entrada 2 (Turno Partido) -->
+                        <td class="px-2 py-2 border">
+                            <template x-if="editando">
+                                <div class="flex items-center gap-1 justify-center">
+                                    <input type="time" x-model="asignacion.entrada2"
+                                        class="w-20 px-1 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-green-500" />
+                                    <button type="button" @click="asignacion.entrada2 = null"
+                                        class="text-red-600 text-xs font-bold hover:text-red-800" title="Borrar">
+                                        ❌
+                                    </button>
+                                </div>
+                            </template>
+                            <template x-if="!editando">
+                                <span x-text="asignacion.entrada2 || '—'"></span>
+                            </template>
+                        </td>
+
+                        <!-- Salida 2 (Turno Partido) -->
+                        <td class="px-2 py-2 border">
+                            <template x-if="editando">
+                                <div class="flex items-center gap-1 justify-center">
+                                    <input type="time" x-model="asignacion.salida2"
+                                        class="w-20 px-1 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-green-500" />
+                                    <button type="button" @click="asignacion.salida2 = null"
+                                        class="text-red-600 text-xs font-bold hover:text-red-800" title="Borrar">
+                                        ❌
+                                    </button>
+                                </div>
+                            </template>
+                            <template x-if="!editando">
+                                <span x-text="asignacion.salida2 || '—'"></span>
+                            </template>
+                        </td>
+
                         <td class="px-2 py-2 border text-xs font-bold">
                             {!! $puntual !!}
                         </td>
@@ -220,7 +268,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="text-center py-4 text-gray-500">No hay asignaciones
+                        <td colspan="12" class="text-center py-4 text-gray-500">No hay asignaciones
                             disponibles.
                         </td>
                     </tr>
@@ -238,9 +286,14 @@
         function guardarCambios(asignacionData, originalData) {
             let entrada = asignacionData.entrada;
             let salida = asignacionData.salida;
+            let entrada2 = asignacionData.entrada2;
+            let salida2 = asignacionData.salida2;
 
+            // Normalizar formato de horas (HH:MM:SS -> HH:MM)
             if (entrada && entrada.length === 8) entrada = entrada.slice(0, 5);
             if (salida && salida.length === 8) salida = salida.slice(0, 5);
+            if (entrada2 && entrada2.length === 8) entrada2 = entrada2.slice(0, 5);
+            if (salida2 && salida2.length === 8) salida2 = salida2.slice(0, 5);
 
             fetch(`{{ url('/asignaciones-turno') }}/${asignacionData.id}/actualizar-horas`, {
                     method: 'POST',
@@ -250,7 +303,9 @@
                     },
                     body: JSON.stringify({
                         entrada,
-                        salida
+                        salida,
+                        entrada2,
+                        salida2
                     })
                 })
                 .then(async response => {

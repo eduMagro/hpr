@@ -44,6 +44,12 @@ class AsignacionesTurnosTable extends Component
     public $salida = '';
 
     #[Url]
+    public $entrada2 = '';
+
+    #[Url]
+    public $salida2 = '';
+
+    #[Url]
     public $sort = 'fecha';
 
     #[Url]
@@ -73,7 +79,7 @@ class AsignacionesTurnosTable extends Component
     {
         $this->reset([
             'user_id', 'empleado', 'fecha_inicio', 'fecha_fin', 'obra',
-            'turno', 'maquina', 'entrada', 'salida'
+            'turno', 'maquina', 'entrada', 'salida', 'entrada2', 'salida2'
         ]);
         $this->resetPage();
     }
@@ -112,6 +118,12 @@ class AsignacionesTurnosTable extends Component
         }
         if (!empty($this->salida)) {
             $filtros[] = "<strong>Salida:</strong> {$this->salida}";
+        }
+        if (!empty($this->entrada2)) {
+            $filtros[] = "<strong>Entrada 2:</strong> {$this->entrada2}";
+        }
+        if (!empty($this->salida2)) {
+            $filtros[] = "<strong>Salida 2:</strong> {$this->salida2}";
         }
 
         if ($this->sort) {
@@ -186,6 +198,16 @@ class AsignacionesTurnosTable extends Component
             $query->whereRaw("CAST(salida AS CHAR) LIKE ? ESCAPE '\\\\'", [$like]);
         }
 
+        // Entrada2 / Salida2 (segunda jornada - turno partido)
+        if (!empty($this->entrada2)) {
+            $like = $this->escapeLike($this->entrada2);
+            $query->whereRaw("CAST(entrada2 AS CHAR) LIKE ? ESCAPE '\\\\'", [$like]);
+        }
+        if (!empty($this->salida2)) {
+            $like = $this->escapeLike($this->salida2);
+            $query->whereRaw("CAST(salida2 AS CHAR) LIKE ? ESCAPE '\\\\'", [$like]);
+        }
+
         return $query;
     }
 
@@ -209,6 +231,8 @@ class AsignacionesTurnosTable extends Component
             'maquina_id' => 'asignaciones_turnos.maquina_id',
             'entrada'    => 'asignaciones_turnos.entrada',
             'salida'     => 'asignaciones_turnos.salida',
+            'entrada2'   => 'asignaciones_turnos.entrada2',
+            'salida2'    => 'asignaciones_turnos.salida2',
         ];
 
         $sortBy = array_key_exists($this->sort, $map) ? $map[$this->sort] : $map['fecha'];

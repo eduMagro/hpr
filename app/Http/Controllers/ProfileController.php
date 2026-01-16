@@ -443,16 +443,39 @@ class ProfileController extends Controller
             $horaEntrada = $asignacion->entrada ? Carbon::parse($asignacion->entrada) : null;
             $horaSalida = $asignacion->salida ? Carbon::parse($asignacion->salida) : null;
 
+            // Primera jornada
             if ($horaEntrada && $horaSalida) {
                 $horasDia = $horaSalida->diffInMinutes($horaEntrada) / 60;
-                if ($horasDia < 8) {
-                    $horasDia = 8;
-                }
                 $horasTrabajadas += $horasDia;
             } else {
-                // 👉 Sólo contar error si la fecha ya pasó o es hoy
+                // Solo contar error si la fecha ya pasó
                 if ($asignacion->fecha < $hoy) {
                     $diasConErrores++;
+                }
+            }
+
+            // Segunda jornada (turno partido)
+            $horaEntrada2 = $asignacion->entrada2 ? Carbon::parse($asignacion->entrada2) : null;
+            $horaSalida2 = $asignacion->salida2 ? Carbon::parse($asignacion->salida2) : null;
+
+            if ($horaEntrada2 && $horaSalida2) {
+                $horasJornada2 = $horaSalida2->diffInMinutes($horaEntrada2) / 60;
+                $horasTrabajadas += $horasJornada2;
+            }
+
+            // Mínimo 8 horas si hay al menos una jornada completa
+            if (($horaEntrada && $horaSalida) || ($horaEntrada2 && $horaSalida2)) {
+                // Si el total del día es menor a 8, ajustar a 8
+                $horasTotalDia = 0;
+                if ($horaEntrada && $horaSalida) {
+                    $horasTotalDia += $horaSalida->diffInMinutes($horaEntrada) / 60;
+                }
+                if ($horaEntrada2 && $horaSalida2) {
+                    $horasTotalDia += $horaSalida2->diffInMinutes($horaEntrada2) / 60;
+                }
+                // Si el total es menor a 8, restar lo calculado y sumar 8
+                if ($horasTotalDia > 0 && $horasTotalDia < 8) {
+                    $horasTrabajadas = $horasTrabajadas - $horasTotalDia + 8;
                 }
             }
         }
@@ -614,9 +637,19 @@ class ProfileController extends Controller
             // Extraer solo la fecha (YYYY-MM-DD) para evitar "double time specification"
             $soloFecha = Carbon::parse($asignacion->fecha)->format('Y-m-d');
 
+            // Props comunes para todos los fichajes de esta asignación
+            $propsComunes = [
+                'asignacion_id' => $asignacion->id,
+                'fecha' => $soloFecha,
+                'entrada' => $asignacion->entrada,
+                'salida' => $asignacion->salida,
+                'entrada2' => $asignacion->entrada2,
+                'salida2' => $asignacion->salida2,
+            ];
+
+            // === PRIMERA JORNADA ===
             if ($asignacion->entrada && strlen($asignacion->entrada) >= 5) {
                 try {
-                    // Usar solo los primeros 8 caracteres (HH:MM:SS) o 5 (HH:MM)
                     $horaEntrada = substr(trim($asignacion->entrada), 0, 8);
                     $startEntrada = Carbon::createFromFormat('Y-m-d H:i:s', "{$soloFecha} {$horaEntrada}", 'Europe/Madrid')
                         ?? Carbon::createFromFormat('Y-m-d H:i', "{$soloFecha} " . substr($horaEntrada, 0, 5), 'Europe/Madrid');
@@ -631,13 +664,7 @@ class ProfileController extends Controller
                             'textColor' => '#ffffff',
                             'allDay' => false,
                             'display' => 'auto',
-                            'extendedProps' => [
-                                'tipo' => 'entrada',
-                                'asignacion_id' => $asignacion->id,
-                                'fecha' => $soloFecha,
-                                'entrada' => $asignacion->entrada,
-                                'salida' => $asignacion->salida,
-                            ],
+                            'extendedProps' => array_merge($propsComunes, ['tipo' => 'entrada', 'jornada' => 1]),
                         ];
                     }
                 } catch (\Exception $e) {
@@ -647,7 +674,6 @@ class ProfileController extends Controller
 
             if ($asignacion->salida && strlen($asignacion->salida) >= 5) {
                 try {
-                    // Usar solo los primeros 8 caracteres (HH:MM:SS) o 5 (HH:MM)
                     $horaSalida = substr(trim($asignacion->salida), 0, 8);
                     $startSalida = Carbon::createFromFormat('Y-m-d H:i:s', "{$soloFecha} {$horaSalida}", 'Europe/Madrid')
                         ?? Carbon::createFromFormat('Y-m-d H:i', "{$soloFecha} " . substr($horaSalida, 0, 5), 'Europe/Madrid');
@@ -662,13 +688,56 @@ class ProfileController extends Controller
                             'textColor' => '#ffffff',
                             'allDay' => false,
                             'display' => 'auto',
-                            'extendedProps' => [
-                                'tipo' => 'salida',
-                                'asignacion_id' => $asignacion->id,
-                                'fecha' => $soloFecha,
-                                'entrada' => $asignacion->entrada,
-                                'salida' => $asignacion->salida,
-                            ],
+                            'extendedProps' => array_merge($propsComunes, ['tipo' => 'salida', 'jornada' => 1]),
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    // Ignorar registros con formato inválido
+                }
+            }
+
+            // === SEGUNDA JORNADA (TURNO PARTIDO) ===
+            if ($asignacion->entrada2 && strlen($asignacion->entrada2) >= 5) {
+                try {
+                    $horaEntrada2 = substr(trim($asignacion->entrada2), 0, 8);
+                    $startEntrada2 = Carbon::createFromFormat('Y-m-d H:i:s', "{$soloFecha} {$horaEntrada2}", 'Europe/Madrid')
+                        ?? Carbon::createFromFormat('Y-m-d H:i', "{$soloFecha} " . substr($horaEntrada2, 0, 5), 'Europe/Madrid');
+
+                    if ($startEntrada2) {
+                        $eventos[] = [
+                            'id' => 'entrada2-' . $asignacion->id,
+                            'title' => '🟢 ' . substr($horaEntrada2, 0, 5) . ' (2ª)',
+                            'start' => $startEntrada2->toIso8601String(),
+                            'end' => $startEntrada2->copy()->addMinutes(1)->toIso8601String(),
+                            'color' => '#22c55e', // Verde más claro para segunda jornada
+                            'textColor' => '#ffffff',
+                            'allDay' => false,
+                            'display' => 'auto',
+                            'extendedProps' => array_merge($propsComunes, ['tipo' => 'entrada2', 'jornada' => 2]),
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    // Ignorar registros con formato inválido
+                }
+            }
+
+            if ($asignacion->salida2 && strlen($asignacion->salida2) >= 5) {
+                try {
+                    $horaSalida2 = substr(trim($asignacion->salida2), 0, 8);
+                    $startSalida2 = Carbon::createFromFormat('Y-m-d H:i:s', "{$soloFecha} {$horaSalida2}", 'Europe/Madrid')
+                        ?? Carbon::createFromFormat('Y-m-d H:i', "{$soloFecha} " . substr($horaSalida2, 0, 5), 'Europe/Madrid');
+
+                    if ($startSalida2) {
+                        $eventos[] = [
+                            'id' => 'salida2-' . $asignacion->id,
+                            'title' => '🔴 ' . substr($horaSalida2, 0, 5) . ' (2ª)',
+                            'start' => $startSalida2->toIso8601String(),
+                            'end' => $startSalida2->copy()->addMinutes(1)->toIso8601String(),
+                            'color' => '#ef4444', // Rojo más claro para segunda jornada
+                            'textColor' => '#ffffff',
+                            'allDay' => false,
+                            'display' => 'auto',
+                            'extendedProps' => array_merge($propsComunes, ['tipo' => 'salida2', 'jornada' => 2]),
                         ];
                     }
                 } catch (\Exception $e) {
@@ -1106,6 +1175,8 @@ class ProfileController extends Controller
                         'fecha' => $fechaStr,
                         'entrada' => $asig->entrada,
                         'salida' => $asig->salida,
+                        'entrada2' => $asig->entrada2,
+                        'salida2' => $asig->salida2,
                         'es_turno' => false,
                         'obra_id' => $asig->obra_id,
                         'obra_nombre' => $asig->obra?->obra,
@@ -1136,6 +1207,8 @@ class ProfileController extends Controller
                         'fecha' => $fechaStr,
                         'entrada' => $asig->entrada,
                         'salida' => $asig->salida,
+                        'entrada2' => $asig->entrada2,
+                        'salida2' => $asig->salida2,
                         'es_turno' => true,
                         'obra_id' => $asig->obra_id,
                         'obra_nombre' => $asig->obra?->obra,

@@ -12,7 +12,8 @@ class AsignacionTurno extends Model
 
     protected $table = 'asignaciones_turnos'; // Asegúrate de que coincide con la tabla en la BD
     protected $fillable = [
-        'user_id', 'obra_id', 'turno_id', 'estado', 'maquina_id', 'entrada', 'salida', 'fecha',
+        'user_id', 'obra_id', 'turno_id', 'estado', 'maquina_id',
+        'entrada', 'salida', 'entrada2', 'salida2', 'fecha',
         'justificante_ruta', 'horas_justificadas', 'justificante_observaciones', 'justificante_subido_at'
     ];
 
