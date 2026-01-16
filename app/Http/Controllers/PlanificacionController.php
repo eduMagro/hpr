@@ -22,6 +22,52 @@ use App\Models\Departamento;
 
 class PlanificacionController extends Controller
 {
+    /**
+     * Parsea una fecha flexible aceptando múltiples formatos
+     */
+    private function parseFlexibleDate($date): ?Carbon
+    {
+        if (!$date) {
+            return null;
+        }
+
+        if ($date instanceof Carbon) {
+            return $date;
+        }
+
+        // Intentar formatos comunes
+        $formats = [
+            'd/m/Y H:i:s',
+            'd/m/Y H:i',
+            'd/m/Y',
+            'Y-m-d H:i:s',
+            'Y-m-d H:i',
+            'Y-m-d',
+            'd-m-Y H:i:s',
+            'd-m-Y H:i',
+            'd-m-Y',
+        ];
+
+        foreach ($formats as $format) {
+            try {
+                $parsed = Carbon::createFromFormat($format, $date);
+                if ($parsed && $parsed->format($format) === $date) {
+                    return $parsed;
+                }
+            } catch (\Exception $e) {
+                continue;
+            }
+        }
+
+        // Fallback a parse normal
+        try {
+            return Carbon::parse($date);
+        } catch (\Exception $e) {
+            Log::warning('No se pudo parsear la fecha', ['fecha' => $date, 'error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
     public function index(Request $request)
     {
         [$startDate, $endDate] = $this->getDateRange($request);
@@ -97,30 +143,30 @@ class PlanificacionController extends Controller
 
         // Vista día
         if (in_array($viewType, ['resourceTimeGridDay', 'timeGridDay', 'resourceTimelineDay']) && $start) {
-            $fecha = Carbon::parse($start)->startOfDay();
+            $fecha = $this->parseFlexibleDate($start)?->startOfDay() ?? now()->startOfDay();
             return [$fecha, $fecha->copy()->endOfDay()];
         }
 
         // Vista semana
         if (in_array($viewType, ['resourceTimeGridWeek', 'resourceTimelineWeek']) && $start && $end) {
             return [
-                Carbon::parse($start)->startOfDay(),
-                Carbon::parse($end)->subSecond()
+                $this->parseFlexibleDate($start)?->startOfDay() ?? now()->startOfWeek(),
+                $this->parseFlexibleDate($end)?->subSecond() ?? now()->endOfWeek()
             ];
         }
 
         // Vista mes
         if ($viewType === 'dayGridMonth' && $start && $end) {
             return [
-                Carbon::parse($start)->startOfDay(),
-                Carbon::parse($end)->subSecond()
+                $this->parseFlexibleDate($start)?->startOfDay() ?? now()->startOfMonth(),
+                $this->parseFlexibleDate($end)?->subSecond() ?? now()->endOfMonth()
             ];
         }
 
         // Por defecto
         return [
-            $start ? Carbon::parse($start)->startOfDay() : now()->startOfMonth(),
-            $end ? Carbon::parse($end)->subSecond() : now()->endOfMonth()
+            $start ? ($this->parseFlexibleDate($start)?->startOfDay() ?? now()->startOfMonth()) : now()->startOfMonth(),
+            $end ? ($this->parseFlexibleDate($end)?->subSecond() ?? now()->endOfMonth()) : now()->endOfMonth()
         ];
     }
     /**
@@ -128,7 +174,7 @@ class PlanificacionController extends Controller
      */
     public function getTotalesAjax(Request $request)
     {
-        $fechaReferencia = Carbon::parse($request->input('fecha')); // 👈 usa la fecha de la vista
+        $fechaReferencia = $this->parseFlexibleDate($request->input('fecha')) ?? now(); // 👈 usa la fecha de la vista
         $startOfWeek = $fechaReferencia->copy()->startOfWeek(Carbon::MONDAY);
         $endOfWeek = $fechaReferencia->copy()->endOfWeek(Carbon::SUNDAY);
 
