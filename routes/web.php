@@ -7,6 +7,7 @@ use App\Http\Controllers\DocumentoEmpleadoController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PapeleraController;
 use App\Http\Controllers\VacacionesController;
+use App\Http\Controllers\RevisionFichajeController;
 use App\Http\Controllers\EntradaController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\FabricanteController;
@@ -347,6 +348,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     // === DOCUMENTOS EMPLEADO ===
     Route::get('/api/usuarios/{user}/vacation-data', [ProfileController::class, 'getVacationData'])->name('usuarios.getVacationData');
+    Route::get('/api/usuarios/{user}/fichajes-rango', [ProfileController::class, 'getFichajesRango'])->name('usuarios.fichajes-rango');
     Route::post('/documentos-empleado/{user}', [DocumentoEmpleadoController::class, 'store'])->name('documentos-empleado.store');
     Route::delete('/documentos-empleado/{documento}', [DocumentoEmpleadoController::class, 'destroy'])->name('documentos-empleado.destroy');
     Route::get('/documentos-empleado/{documento}/descargar', [DocumentoEmpleadoController::class, 'download'])->name('documentos-empleado.download');
@@ -369,6 +371,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     // Resource de vacaciones (al final para que no capture las rutas específicas)
     Route::resource('vacaciones', VacacionesController::class);
+
+    // === REVISIÓN DE FICHAJES ===
+    Route::post('/revision-fichaje/solicitar', [RevisionFichajeController::class, 'store'])->name('revision-fichaje.store');
+    Route::post('/revision-fichaje/{id}/auto-rellenar', [RevisionFichajeController::class, 'autoRellenar'])->name('revision-fichaje.autoRellenar');
 
     // === TURNOS ===
     Route::resource('turnos', TurnoController::class);

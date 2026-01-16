@@ -477,6 +477,174 @@
                 );
         }
 
+        // Mostrar opciones: Vacaciones o Revisión de fichajes
+        async function mostrarOpcionesAccion(fechaInicio, fechaFin, calendar) {
+            const esMismoDia = fechaInicio === fechaFin;
+            const rangoTexto = esMismoDia
+                ? fechaInicio
+                : `${fechaInicio} - ${fechaFin}`;
+
+            const { value: opcion } = await Swal.fire({
+                title: '¿Qué deseas hacer?',
+                html: `
+                    <p class="text-gray-600 mb-4">${rangoTexto}</p>
+                    <div class="flex flex-col gap-3">
+                        <label class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                            <input type="radio" name="opcion_accion" value="vacaciones" class="w-5 h-5 text-blue-600">
+                            <div class="text-left">
+                                <span class="font-semibold text-gray-800">🏖️ Solicitar vacaciones</span>
+                                <p class="text-xs text-gray-500">Pedir días libres para estas fechas</p>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                            <input type="radio" name="opcion_accion" value="revision" class="w-5 h-5 text-blue-600">
+                            <div class="text-left">
+                                <span class="font-semibold text-gray-800">🔧 Pedir revisión de fichajes</span>
+                                <p class="text-xs text-gray-500">Solicitar corrección de entradas/salidas</p>
+                            </div>
+                        </label>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Continuar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#1e3a5f',
+                width: 400,
+                preConfirm: () => {
+                    const selected = document.querySelector('input[name="opcion_accion"]:checked');
+                    if (!selected) {
+                        Swal.showValidationMessage('Selecciona una opción');
+                        return false;
+                    }
+                    return selected.value;
+                }
+            });
+
+            if (!opcion) return;
+
+            if (opcion === 'vacaciones') {
+                pedirVacaciones(fechaInicio, fechaFin, calendar);
+            } else if (opcion === 'revision') {
+                solicitarRevisionFichaje(fechaInicio, fechaFin, calendar);
+            }
+        }
+
+        // Solicitar revisión de fichajes
+        async function solicitarRevisionFichaje(fechaInicio, fechaFin, calendar) {
+            const esMismoDia = fechaInicio === fechaFin;
+            const rangoTexto = esMismoDia
+                ? fechaInicio
+                : `Del ${fechaInicio} al ${fechaFin}`;
+
+            // Obtener datos de fichajes para mostrar resumen
+            const fichajesUrl = `/api/usuarios/${userId}/fichajes-rango?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`;
+
+            let fichajesData = null;
+            try {
+                const response = await fetch(fichajesUrl);
+                if (!response.ok) throw new Error('Error al obtener fichajes');
+                fichajesData = await response.json();
+            } catch (error) {
+                console.error('Error obteniendo fichajes:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudieron obtener los datos de fichajes.',
+                    confirmButtonColor: '#1e3a5f',
+                });
+                return;
+            }
+
+            // Construir tabla resumen de fichajes
+            let tablaFichajes = '';
+            if (fichajesData.fichajes && fichajesData.fichajes.length > 0) {
+                tablaFichajes = '<div class="text-left mt-3 max-h-48 overflow-y-auto">';
+                tablaFichajes += '<table class="w-full text-xs border-collapse">';
+                tablaFichajes += '<thead><tr class="bg-gray-100"><th class="p-1 border">Fecha</th><th class="p-1 border">Turno</th><th class="p-1 border">E</th><th class="p-1 border">S</th><th class="p-1 border">E2</th><th class="p-1 border">S2</th></tr></thead>';
+                tablaFichajes += '<tbody>';
+
+                fichajesData.fichajes.forEach(f => {
+                    const icono = f.completo ? '✅' : '❌';
+                    const fechaCorta = f.fecha.substring(5); // MM-DD
+                    tablaFichajes += `<tr class="${f.completo ? '' : 'bg-red-50'}">`;
+                    tablaFichajes += `<td class="p-1 border text-center">${icono} ${fechaCorta}</td>`;
+                    tablaFichajes += `<td class="p-1 border text-center">${f.turno || '-'}</td>`;
+                    tablaFichajes += `<td class="p-1 border text-center">${f.entrada || '-'}</td>`;
+                    tablaFichajes += `<td class="p-1 border text-center">${f.salida || '-'}</td>`;
+                    tablaFichajes += `<td class="p-1 border text-center">${f.entrada2 || '-'}</td>`;
+                    tablaFichajes += `<td class="p-1 border text-center">${f.salida2 || '-'}</td>`;
+                    tablaFichajes += '</tr>';
+                });
+
+                tablaFichajes += '</tbody></table></div>';
+            } else {
+                tablaFichajes = '<p class="text-gray-500 mt-3">No hay fichajes registrados para estas fechas.</p>';
+            }
+
+            // Mostrar modal de confirmación con resumen
+            const { isConfirmed, value: observaciones } = await Swal.fire({
+                title: '📋 Solicitar revisión de fichajes',
+                html: `
+                    <p class="text-gray-600 mb-2">${rangoTexto}</p>
+                    <p class="text-sm text-gray-500 mb-2">Estado actual de tus fichajes:</p>
+                    ${tablaFichajes}
+                    <div class="mt-4">
+                        <label class="block text-left text-sm font-medium text-gray-700 mb-1">Observaciones (opcional):</label>
+                        <textarea id="revision-observaciones" class="w-full p-2 border rounded text-sm" rows="2" placeholder="Indica qué fichajes necesitan corrección..."></textarea>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-3">Se enviará una solicitud al equipo de programación para revisar estos fichajes.</p>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Enviar solicitud',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#1e3a5f',
+                width: 500,
+                preConfirm: () => {
+                    return document.getElementById('revision-observaciones')?.value || '';
+                }
+            });
+
+            if (!isConfirmed) return;
+
+            // Enviar solicitud
+            try {
+                const response = await fetch('/revision-fichaje/solicitar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        fecha_inicio: fechaInicio,
+                        fecha_fin: fechaFin,
+                        observaciones: observaciones,
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || 'Error al enviar la solicitud');
+                }
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Solicitud enviada',
+                    text: data.success || 'Tu solicitud de revisión ha sido enviada.',
+                    confirmButtonColor: '#1e3a5f',
+                });
+
+            } catch (error) {
+                console.error('Error enviando solicitud:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.message || 'No se pudo enviar la solicitud.',
+                    confirmButtonColor: '#1e3a5f',
+                });
+            }
+        }
+
         async function registrarEventoOficina(fechaInicio, fechaFin, calendar) {
             const opcionesTurnos = (turnos || [])
                 .map((t) => `<option value="${t.nombre}">${t.nombre}</option>`)
@@ -1193,14 +1361,14 @@
                     if (permissions.canAssignStates || permissions.canAssignShifts) {
                         registrarEventoOficina(clicked, clicked, calendar);
                     } else if (permissions.canRequestVacations) {
-                        pedirVacaciones(clicked, clicked, calendar);
+                        mostrarOpcionesAccion(clicked, clicked, calendar);
                     }
                 } else {
                     // Rango
                     if (permissions.canAssignStates || permissions.canAssignShifts) {
                         registrarEventoOficina(startStr, endStr, calendar);
                     } else if (permissions.canRequestVacations) {
-                        pedirVacaciones(startStr, endStr, calendar);
+                        mostrarOpcionesAccion(startStr, endStr, calendar);
                     }
                 }
             },
