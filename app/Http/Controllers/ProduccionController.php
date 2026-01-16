@@ -626,6 +626,33 @@ class ProduccionController extends Controller
         $fechaInicioCalendario = Carbon::parse($initialDate)->toDateString();
         $turnosLista = Turno::orderBy('orden')->orderBy('hora_inicio')->get();
 
+        // 🆕 Obtener el turno que determina el inicio real de la semana laboral
+        // Buscar el turno activo con el offset más bajo (más negativo) = el que empieza antes
+        // Si hay empate, usar el de hora_inicio más temprana
+        $turnoInicioSemana = $turnosLista
+            ->where('activo', true)
+            ->filter(fn($t) => $t->hora_inicio) // Solo turnos con hora definida
+            ->sortBy([
+                fn($t) => $t->offset_dias_inicio ?? 0, // Offset más bajo primero
+                fn($t) => $t->hora_inicio, // Hora más temprana como desempate
+            ])
+            ->first();
+
+        $horaInicioTurno = $turnoInicioSemana && $turnoInicioSemana->hora_inicio
+            ? substr($turnoInicioSemana->hora_inicio, 0, 5)
+            : '06:00';
+        $configTurnos = [
+            'turnoInicioSemana' => $turnoInicioSemana ? [
+                'nombre' => $turnoInicioSemana->nombre,
+                'hora_inicio' => $turnoInicioSemana->hora_inicio ?? '06:00:00',
+                'offset_dias_inicio' => $turnoInicioSemana->offset_dias_inicio ?? 0,
+            ] : null,
+            'horaInicioSemana' => $horaInicioTurno,
+            'offsetDiasSemana' => $turnoInicioSemana
+                ? ($turnoInicioSemana->offset_dias_inicio ?? 0)
+                : 0,
+        ];
+
         // 🆕 Configuración del calendario - FIJO a 7 días para mejor rendimiento
         // Con miles de planillas pendientes, calcular dinámicamente causaba problemas de rendimiento
         $diasCalendario = 7;
@@ -659,6 +686,7 @@ class ProduccionController extends Controller
             'fechaInicioCalendario'            => $fechaInicioCalendario,
             'fechaMaximaCalendario'            => $fechaMaximaCalendario,
             'turnosLista'         => $turnosLista,
+            'configTurnos'        => $configTurnos,
             // Devolvemos también los filtros para reflejarlos en la vista/JS
             'filtro_fecha_inicio'              => $fechaInicio,
             'filtro_fecha_fin'                 => $fechaFin,
@@ -966,6 +994,18 @@ class ProduccionController extends Controller
     private function calcularInitialDate(): string
     {
         try {
+            // Obtener el turno que determina el inicio real de la semana laboral
+            // Buscar el turno activo con el offset más bajo (más negativo) = el que empieza antes
+            $primerTurno = Turno::where('activo', true)
+                ->whereNotNull('hora_inicio')
+                ->orderBy('offset_dias_inicio') // Offset más bajo primero (ej: -1 antes que 0)
+                ->orderBy('hora_inicio') // Hora más temprana como desempate
+                ->first();
+
+            // Determinar la fecha base (inicio de semana actual = lunes)
+            $fechaBase = now()->startOfWeek(Carbon::MONDAY);
+
+            // Si hay planillas fabricando, usar su fecha como referencia
             $planillasPrimeraPos = OrdenPlanilla::with(['planilla:id,estado,fecha_inicio'])
                 ->where('posicion', 1)
                 ->get()
@@ -984,15 +1024,31 @@ class ProduccionController extends Controller
 
                 if ($minFecha) {
                     try {
-                        // ⚡ Forzar formato europeo: "d/m/Y H:i"
-                        return Carbon::createFromFormat('d/m/Y H:i', $minFecha)
-                            ->toDateTimeString(); // "YYYY-MM-DD HH:MM:SS"
+                        $fechaBase = Carbon::createFromFormat('d/m/Y H:i', $minFecha)->startOfWeek(Carbon::MONDAY);
                     } catch (\Exception $e) {
-                        // Si falla, como fallback intentamos parsear normal (YYYY-MM-DD HH:MM:SS)
-                        return Carbon::parse($minFecha)->toDateTimeString();
+                        $fechaBase = Carbon::parse($minFecha)->startOfWeek(Carbon::MONDAY);
                     }
                 }
             }
+
+            // Aplicar offset y hora del primer turno
+            if ($primerTurno) {
+                $offsetDias = $primerTurno->offset_dias_inicio ?? 0;
+                $horaInicio = $primerTurno->hora_inicio ?? '06:00:00';
+
+                // Parsear hora de inicio
+                $hora = Carbon::parse($horaInicio);
+
+                // Aplicar offset (negativo = día anterior, ej: domingo 22:00 para turno de lunes)
+                $fechaBase->addDays($offsetDias);
+                $fechaBase->setTime($hora->hour, $hora->minute, 0);
+            } else {
+                // Sin turnos configurados, empezar a las 06:00
+                $fechaBase->setTime(6, 0, 0);
+            }
+
+            return $fechaBase->toDateTimeString();
+
         } catch (\Exception $e) {
             Log::error('❌ Error en calcularInitialDate', [
                 'error' => $e->getMessage()
@@ -1790,20 +1846,6 @@ class ProduccionController extends Controller
                             $fechaInicio = $inicioCola->copy();
                         }
 
-                        // DEBUG: Log para diagnosticar superposiciones
-                        Log::debug('🔍 EVENTO DEBUG', [
-                            'maquina_id' => $maquinaId,
-                            'planilla_id' => $planillaId,
-                            'planilla_codigo' => $planilla->codigo_limpio ?? $planilla->id,
-                            'posicion' => $posicion,
-                            'estado' => $planilla->estado,
-                            'esPrimeraEnCola' => $esPrimeraEnCola,
-                            'usarFechaInicioPropia' => $usarFechaInicioPropia,
-                            'fechaInicio' => $fechaInicio->format('d/m/Y H:i'),
-                            'inicioCola_antes' => $inicioCola->format('d/m/Y H:i'),
-                            'duracionHoras' => round($duracionSegundos / 3600, 2),
-                        ]);
-
                         // Ya no es la primera en cola después del primer evento
                         $esPrimeraEnCola = false;
 
@@ -1930,13 +1972,6 @@ class ProduccionController extends Controller
 
                         // Actualizar inicioCola para el siguiente evento
                         $inicioCola = $fechaFinReal->copy();
-
-                        Log::debug('🔍 COLA ACTUALIZADA', [
-                            'maquina_id' => $maquinaId,
-                            'planilla_id' => $planillaId,
-                            'fechaFinReal' => $fechaFinReal->format('d/m/Y H:i'),
-                            'inicioCola_nuevo' => $inicioCola->format('d/m/Y H:i'),
-                        ]);
                     } // fin foreach subGrupos
                 } catch (\Throwable $e) {
                     Log::error('EVT X: excepción en bucle planilla', [

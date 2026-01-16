@@ -79,6 +79,7 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
+            'tap' => [App\Logging\WeeklyRotation::class],
         ],
 
         'slack' => [
