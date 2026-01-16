@@ -1363,7 +1363,10 @@
                 const bubbleClass = esPropio ? 'chat-bubble-out' : 'chat-bubble-in';
 
                 // Detectar si es una solicitud de revisión de fichajes
+                console.log('Mensaje recibido:', mensaje.mensaje);
+                console.log('Es propio:', esPropio);
                 const revisionMatch = mensaje.mensaje.match(/\[REVISION_ID:(\d+)\]\[USER_ID:(\d+)\]/);
+                console.log('Match encontrado:', revisionMatch);
                 let mensajeTexto = mensaje.mensaje;
                 let botonesRevision = '';
 
