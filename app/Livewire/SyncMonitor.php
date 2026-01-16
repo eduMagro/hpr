@@ -79,6 +79,9 @@ class SyncMonitor extends Component
     // Destino de sincronización seleccionado por el usuario
     public string $syncTarget = 'local';
 
+    // Target de la sincronización en ejecución (detectado del log)
+    public ?string $runningTarget = null;
+
     /**
      * Se ejecuta en CADA request de Livewire (no solo mount).
      */
@@ -255,6 +258,15 @@ class SyncMonitor extends Component
                 $this->isRunning = $isRecent && !$isCompleted;
             } else {
                 $this->isRunning = false;
+            }
+        }
+
+        // Detectar el target de la sincronización en ejecución desde los logs
+        // Busca línea como: "Target: local (http://...)" o "Target: production (http://...)"
+        $this->runningTarget = null;
+        foreach ($lines as $line) {
+            if (preg_match('/Target:\s*(local|production)\s*\(/i', $line, $targetMatch)) {
+                $this->runningTarget = strtolower($targetMatch[1]);
             }
         }
     }
