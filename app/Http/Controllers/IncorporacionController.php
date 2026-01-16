@@ -13,7 +13,6 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\IncorporacionPendienteCeoMail;
 use App\Mail\IncorporacionAprobadaCeoMail;
 use App\Models\Empresa;
-use App\Models\Categoria;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -516,9 +515,6 @@ class IncorporacionController extends Controller
         // empresa_destino ya almacena el ID de la empresa
         $empresaId = $incorporacion->empresa_destino;
 
-        // Obtener categoría por defecto
-        $categoriaId = Categoria::first()?->id ?? 1;
-
         // Contraseña: DNI sin la letra (los 8 primeros caracteres numéricos)
         $password = preg_replace('/[^0-9]/', '', $dni);
 
@@ -537,7 +533,7 @@ class IncorporacionController extends Controller
             'movil_personal' => $incorporacion->telefono,
             'password' => Hash::make($password),
             'empresa_id' => $empresaId,
-            'categoria_id' => $categoriaId,
+            'categoria_id' => null,
             'estado' => 'activo',
         ]);
     }
