@@ -248,6 +248,9 @@ class UsersTable extends Component
 
     public function render()
     {
+        // Verificar si el usuario autenticado es programador
+        $esProgramador = auth()->user()->departamentos()->where('nombre', 'Programador')->exists();
+
         // Forzar nueva query sin cache
         \DB::connection()->disableQueryLog();
 
@@ -349,6 +352,7 @@ class UsersTable extends Component
             'obrasHierrosPacoReyes' => $obrasHierrosPacoReyes,
             'filtrosActivos' => $this->getFiltrosActivos(),
             'contactosAgenda' => $contactosAgenda,
+            'esProgramador' => $esProgramador,
         ]);
     }
 }

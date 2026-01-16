@@ -867,8 +867,8 @@ class ProduccionController extends Controller
 
         // 2. Obtener planillas a mostrar (optimización):
         // - Todas las fabricando (siempre se muestran)
-        // - Las pendientes solo si están en las primeras 20 posiciones de la cola
-        $maxPosicion = 20;
+        // - Las pendientes solo si están en las primeras 50 posiciones de la cola
+        $maxPosicion = 50;
 
         // Planillas fabricando (siempre incluir)
         $planillasFabricando = Planilla::where('estado', 'fabricando')

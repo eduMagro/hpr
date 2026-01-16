@@ -6,11 +6,18 @@ use App\Models\Departamento;
 use App\Models\Seccion;
 use App\Models\User;
 use App\Models\PermisoAcceso;
+use App\Services\SeccionAutoDetectService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class DepartamentoController extends Controller
 {
+    protected SeccionAutoDetectService $autoDetectService;
+
+    public function __construct(SeccionAutoDetectService $autoDetectService)
+    {
+        $this->autoDetectService = $autoDetectService;
+    }
 
     public function index()
     {
@@ -34,6 +41,10 @@ class DepartamentoController extends Controller
             'usuarios' => []
         ]);
 
+        // Auto-detección de secciones
+        $seccionesComparacion = $this->autoDetectService->compararConSecciones();
+        $seccionesEstadisticas = $this->autoDetectService->obtenerEstadisticas();
+
         return view('departamentos.index', compact(
             'departamentos',
             'usuariosOficina',
@@ -42,7 +53,9 @@ class DepartamentoController extends Controller
             'seccionesDashboard',
             'roles',
             'todosUsuarios',
-            'alertasConfig'
+            'alertasConfig',
+            'seccionesComparacion',
+            'seccionesEstadisticas'
         ));
     }
 

@@ -1,4 +1,4 @@
-<div x-data="agendaUsuarios(@js($contactosAgenda ?? collect()))" class="users-mobile md:hidden mt-4 space-y-3">
+<div x-data="agendaUsuarios(@js($contactosAgenda ?? collect()), @json($esProgramador))" class="users-mobile md:hidden mt-4 space-y-3">
     <style>
         /* Evitar zoom en iOS al enfocar inputs en la vista móvil */
         .users-mobile input,
@@ -182,13 +182,13 @@
                     </div>
                     <div>
                         <p class="text-gray-500">Email</p>
-                        <a x-show="seleccionado && seleccionado.email && !editando"
+                        <a x-show="seleccionado && seleccionado.email && (!editando || !esProgramador)"
                             :href="seleccionado && seleccionado.email ? ('mailto:' + seleccionado.email) : null"
                             class="text-blue-700 font-semibold break-words"
                             x-text="seleccionado && seleccionado.email ? seleccionado.email : ''"></a>
-                        <input x-show="editando" type="email" x-model="seleccionado.email"
+                        <input x-show="editando && esProgramador" type="email" x-model="seleccionado.email"
                             class="w-full border rounded px-2 py-1 text-sm text-gray-800" placeholder="correo@ejemplo.com">
-                        <p x-show="!seleccionado || !seleccionado.email" class="text-gray-400">Sin email</p>
+                        <p x-show="(!seleccionado || !seleccionado.email) && !editando" class="text-gray-400">Sin email</p>
                     </div>
                     <div>
                         <p class="text-gray-500">Empresa</p>
@@ -210,8 +210,8 @@
                     </div>
                     <div>
                         <p class="text-gray-500">DNI</p>
-                        <p class="text-gray-900 font-semibold" x-show="!editando" x-text="seleccionado?.dni || 'N/D'"></p>
-                        <input x-show="editando" type="text" x-model="seleccionado.dni"
+                        <p class="text-gray-900 font-semibold" x-show="!editando || !esProgramador" x-text="seleccionado?.dni || 'N/D'"></p>
+                        <input x-show="editando && esProgramador" type="text" x-model="seleccionado.dni"
                             class="w-full border rounded px-2 py-1 text-sm text-gray-800" placeholder="DNI">
                     </div>
                     <div>
@@ -252,10 +252,11 @@
 
 @push('scripts')
 <script>
-    function agendaUsuarios(contactos) {
+    function agendaUsuarios(contactos, esProgramador) {
     return {
         filtro: '',
         contactos,
+        esProgramador,
         modalAbierto: false,
         seleccionado: {},
         editando: false,

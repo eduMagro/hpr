@@ -4,6 +4,7 @@ return [
 
     // 📌 Prefijos que los operarios pueden usar en rutas (middleware)
     'prefijos_operario' => [
+        'albaranes.',
         'produccion.trabajadores',
         'users.',
         'users.verEventos-turnos',
@@ -41,6 +42,7 @@ return [
         'ayuda.',
         'maquinas.',
         'ubicaciones.',
+        'albaranes.',
         // 👀 aquí NO ponemos movimientos ni entradas
     ],
 
@@ -81,11 +83,16 @@ return [
         'users.verResumen-asistencia',
         'usuarios.getVacationData', // ✅ datos de vacaciones propios
         'api.mapaNave', // ✅ mapa de nave (usado en grúa y otras vistas)
+        'api.produccion.eventos', // ✅ eventos del calendario de máquinas
+        'api.produccion.recursos', // ✅ recursos del calendario de máquinas
+        'api.produccion.resumen', // ✅ resumen del calendario de máquinas
+        'api.produccion.ultimo-snapshot', // ✅ snapshot para deshacer
+        'api.produccion.obras-activas', // ✅ obras activas para priorización
+        'produccion.actualizaciones', // ✅ actualizaciones en tiempo real
     ],
 
     // 📌 Correos con acceso total
     'correos_acceso_total' => [
-        'eduardo.magro@pacoreyes.com',
         'sebastian.duran@pacoreyes.com',
         'juanjose.dorado@pacoreyes.com',
         'josemanuel.amuedo@pacoreyes.com',

@@ -49,6 +49,10 @@
                             </th>
                             <th scope="col"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Fin de Semana
+                            </th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Estado
                             </th>
                             <th scope="col"
@@ -99,6 +103,24 @@
                                         </div>
                                     </div>
                                 </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    @if($turno->trabajaFinDeSemana())
+                                        <div class="flex gap-1">
+                                            @if($turno->trabajaSabado())
+                                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-700">
+                                                    Sáb
+                                                </span>
+                                            @endif
+                                            @if($turno->trabajaDomingo())
+                                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-700">
+                                                    Dom
+                                                </span>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <span class="text-gray-400">-</span>
+                                    @endif
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <form action="{{ route('turnos.toggle', $turno) }}" method="POST"
                                         class="inline">
@@ -128,7 +150,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                                <td colspan="7" class="px-6 py-12 text-center text-gray-500">
                                     No hay turnos configurados. <a href="{{ route('turnos.create') }}" wire:navigate
                                         class="text-blue-600 hover:text-blue-800">Crear el primero</a>
                                 </td>

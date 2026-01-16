@@ -53,7 +53,16 @@ class VerificarAccesoSeccion
             return $next($request);
         }
 
-        // === 2) Cachear IDs de empresas clave ===
+        // === 2) Acceso total para usuarios del departamento Administrador ===
+        $esAdministrador = $usuarioAutenticado->departamentos()
+            ->whereRaw('LOWER(nombre) = ?', ['administrador'])
+            ->exists();
+
+        if ($esAdministrador) {
+            return $next($request);
+        }
+
+        // === 3) Cachear IDs de empresas clave ===
         $empresaReyesTejeroId = Cache::remember('empresa_id_reyes_tejero', 86400, function () {
             return Empresa::whereRaw("LOWER(nombre) LIKE ?", ['%reyes tejero%'])->value('id');
         });
@@ -66,7 +75,7 @@ class VerificarAccesoSeccion
 
         $empresasConAccesoCompleto = [$empresaHPRId, $empresaServiciosId];
 
-        // === 3) Rutas libres (desde config/acceso.php) ===
+        // === 4) Rutas libres (desde config/acceso.php) ===
         $rutasLibres = config('acceso.rutas_libres', []);
         if (
             (in_array($empresaUsuarioId, $empresasConAccesoCompleto, true) && in_array($nombreRutaActual, $rutasLibres, true)) ||
@@ -75,7 +84,7 @@ class VerificarAccesoSeccion
             return $next($request);
         }
 
-        // === 4) Roles y permisos ===
+        // === 5) Roles y permisos ===
         if ($rolUsuario === 'operario') {
             $prefijosOperario = config('acceso.prefijos_operario', []);
             $permitido = collect($prefijosOperario)->contains(
@@ -173,7 +182,7 @@ class VerificarAccesoSeccion
             return $next($request);
         }
 
-        // === 5) Denegación por defecto ===
+        // === 6) Denegación por defecto ===
         Log::warning('🚫 Ruta denegada por configuración (sin coincidencias)', [
             'usuario' => $usuarioAutenticado->email,
             'empresa_id' => $empresaUsuarioId,

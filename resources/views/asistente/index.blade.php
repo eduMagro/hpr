@@ -344,7 +344,70 @@
                                     </p>
                                 </div>
                             </div>
-                            <div class="flex gap-1 md:gap-2 flex-shrink-0">
+                            <div class="flex gap-1 md:gap-2 flex-shrink-0 items-center">
+                                <!-- Selector de modelo de IA -->
+                                <div class="relative">
+                                    <button @click="mostrarSelectorModelo = !mostrarSelectorModelo"
+                                            :class="['flex items-center gap-1 px-2 py-1.5 md:px-3 md:py-2 rounded-lg text-xs md:text-sm font-medium transition-all',
+                                                    tema === 'dark' ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700']"
+                                            title="Cambiar modelo de IA">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                        </svg>
+                                        <span class="hidden sm:inline">@{{ getModeloInfo(modeloActual).nombre || 'IA' }}</span>
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                    </button>
+                                    <!-- Dropdown de modelos -->
+                                    <div v-if="mostrarSelectorModelo"
+                                         @click.away="mostrarSelectorModelo = false"
+                                         :class="['absolute right-0 mt-2 w-72 rounded-xl shadow-xl z-50 border overflow-hidden',
+                                                 tema === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200']">
+                                        <div :class="['px-4 py-3 border-b', tema === 'dark' ? 'border-gray-700' : 'border-gray-200']">
+                                            <h4 :class="['font-semibold text-sm', tema === 'dark' ? 'text-white' : 'text-gray-900']">Modelo de IA</h4>
+                                            <p :class="['text-xs mt-1', tema === 'dark' ? 'text-gray-400' : 'text-gray-500']">Selecciona el modelo para el análisis</p>
+                                        </div>
+                                        <div class="max-h-80 overflow-y-auto">
+                                            <button v-for="(info, id) in modelosDisponibles"
+                                                    :key="id"
+                                                    @click="cambiarModelo(id)"
+                                                    :disabled="cambiandoModelo"
+                                                    :class="['w-full px-4 py-3 text-left transition-all flex items-start gap-3',
+                                                            modeloActual === id
+                                                                ? (tema === 'dark' ? 'bg-blue-900/30 border-l-4 border-blue-500' : 'bg-blue-50 border-l-4 border-blue-500')
+                                                                : (tema === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'),
+                                                            cambiandoModelo ? 'opacity-50 cursor-wait' : '']">
+                                                <div class="flex-shrink-0 mt-0.5">
+                                                    <span v-if="info.proveedor === 'anthropic'" class="text-lg">🟣</span>
+                                                    <span v-else-if="info.proveedor === 'openai'" class="text-lg">🟢</span>
+                                                    <span v-else class="text-lg">⚪</span>
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex items-center gap-2">
+                                                        <span :class="['font-medium text-sm', tema === 'dark' ? 'text-white' : 'text-gray-900']">
+                                                            @{{ info.nombre }}
+                                                        </span>
+                                                        <span v-if="modeloActual === id"
+                                                              class="px-1.5 py-0.5 text-xs rounded bg-blue-500 text-white">Activo</span>
+                                                    </div>
+                                                    <p :class="['text-xs mt-0.5', tema === 'dark' ? 'text-gray-400' : 'text-gray-500']">
+                                                        @{{ info.descripcion }}
+                                                    </p>
+                                                    <div class="flex gap-3 mt-1.5 text-xs">
+                                                        <span :class="tema === 'dark' ? 'text-green-400' : 'text-green-600'">
+                                                            💰 @{{ info.coste }}
+                                                        </span>
+                                                        <span :class="tema === 'dark' ? 'text-blue-400' : 'text-blue-600'">
+                                                            ⚡ @{{ info.velocidad }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Botón eliminar conversación -->
                                 <button v-if="conversacionActual"
                                         @click="eliminarConversacionActual"
                                         :class="['p-2 md:p-3 rounded-xl transition-all duration-200 transform hover:scale-110 mobile-touch-target',
@@ -382,7 +445,7 @@
                                 <div v-if="cargandoMensajes" class="text-center text-gray-500">
                                     <p class="text-sm">Cargando mensajes...</p>
                                 </div>
-                                <div v-else-if="mensajes.length === 0" class="h-full flex flex-col items-center justify-center -mt-4 px-4">
+                                <div v-else-if="mensajes.length === 0" class="h-full flex flex-col items-center justify-center -mt-4 px-4 overflow-y-auto">
                                     <div class="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gray-800 flex items-center justify-center shadow-2xl mb-4 md:mb-6 overflow-hidden">
                                         <img src="{{ asset('imagenes/iconos/asistente-sin-fondo.png') }}" alt="Ferrallin" class="w-16 h-16 md:w-20 md:h-20 object-contain">
                                     </div>
@@ -390,15 +453,58 @@
                                         ¡Hola! Soy <span>FERRALLIN</span>
                                     </h3>
                                     <p :class="['text-sm md:text-lg mb-4 md:mb-6 text-center max-w-md', tema === 'dark' ? 'text-gray-400' : 'text-gray-600']">
-                                        Puedo ayudarte a consultar y gestionar información del sistema. Aquí tienes algunas ideas:
+                                        Tu sistema experto de gestión. Puedo generar informes, analizar datos y responder tus consultas.
                                     </p>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3 w-full max-w-2xl">
-                                        <button v-for="sugerencia in sugerenciasMostradas"
-                                             :key="sugerencia"
-                                             @click="usarSugerencia(sugerencia)"
-                                             class="text-xs md:text-sm text-left text-gray-700 bg-white p-2 md:p-3 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition cursor-pointer mobile-touch-target">
-                                            <span class="text-blue-600 mr-1 md:mr-2">💡</span>@{{ sugerencia }}
-                                        </button>
+
+                                    <!-- Sugerencias proactivas (alertas del sistema) -->
+                                    <div v-if="sugerenciasProactivas.length > 0" class="w-full max-w-2xl mb-4 md:mb-6">
+                                        <h4 :class="['text-sm font-semibold mb-2 flex items-center gap-2', tema === 'dark' ? 'text-gray-300' : 'text-gray-700']">
+                                            <span class="text-lg">🔔</span> Alertas del Sistema
+                                        </h4>
+                                        <div class="space-y-2">
+                                            <button v-for="alerta in sugerenciasProactivas.slice(0, 3)"
+                                                 :key="alerta.tipo"
+                                                 @click="usarSugerencia(alerta.comando)"
+                                                 :class="['w-full text-left p-3 rounded-xl border transition-all duration-200 hover:scale-[1.02] cursor-pointer',
+                                                         alerta.prioridad === 'alta' ? 'bg-red-50 border-red-200 hover:border-red-400' :
+                                                         alerta.prioridad === 'media' ? 'bg-yellow-50 border-yellow-200 hover:border-yellow-400' :
+                                                         'bg-blue-50 border-blue-200 hover:border-blue-400',
+                                                         tema === 'dark' ? 'bg-opacity-10' : '']">
+                                                <div class="flex items-start gap-2">
+                                                    <span class="text-lg">@{{ alerta.icono }}</span>
+                                                    <div class="flex-1 min-w-0">
+                                                        <div :class="['font-semibold text-sm',
+                                                                     alerta.prioridad === 'alta' ? 'text-red-700' :
+                                                                     alerta.prioridad === 'media' ? 'text-yellow-700' : 'text-blue-700']">
+                                                            @{{ alerta.titulo }}
+                                                        </div>
+                                                        <div :class="['text-xs mt-0.5', tema === 'dark' ? 'text-gray-400' : 'text-gray-600']">
+                                                            @{{ alerta.mensaje }}
+                                                        </div>
+                                                        <div class="text-xs text-blue-600 mt-1 font-medium">
+                                                            👆 @{{ alerta.accion }}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Sugerencias normales -->
+                                    <div class="w-full max-w-2xl">
+                                        <h4 :class="['text-sm font-semibold mb-2 flex items-center gap-2', tema === 'dark' ? 'text-gray-300' : 'text-gray-700']">
+                                            <span class="text-lg">💡</span> Sugerencias
+                                        </h4>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
+                                            <button v-for="sugerencia in sugerenciasMostradas"
+                                                 :key="sugerencia"
+                                                 @click="usarSugerencia(sugerencia)"
+                                                 :class="['text-xs md:text-sm text-left p-2 md:p-3 rounded-lg border transition cursor-pointer mobile-touch-target',
+                                                         tema === 'dark' ? 'text-gray-300 bg-gray-800 border-gray-700 hover:border-blue-500' :
+                                                         'text-gray-700 bg-white border-gray-200 hover:border-blue-400 hover:bg-blue-50']">
+                                                <span class="text-blue-600 mr-1 md:mr-2">💬</span>@{{ sugerencia }}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div v-else class="flex flex-col h-full gap-4">
@@ -462,6 +568,62 @@
                                                                  tema === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-400' : 'bg-gray-100 border-gray-300 text-gray-600']">
                                                         <span>📊 <span class="hidden sm:inline">Filas:</span> <strong>@{{ mensaje.metadata.filas_afectadas || 0 }}</strong></span>
                                                     </div>
+                                                </div>
+
+                                                <!-- Botón descargar PDF para informes -->
+                                                <div v-if="mensaje.metadata && mensaje.metadata.informe_id"
+                                                     :class="['mt-3 md:mt-4 flex flex-wrap gap-2']">
+                                                    <a :href="mensaje.metadata.url_pdf || ('/api/asistente/informes/' + mensaje.metadata.informe_id + '/pdf')"
+                                                       target="_blank"
+                                                       :class="['inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 transform hover:scale-105 shadow-lg',
+                                                               tema === 'dark' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-emerald-500 hover:bg-emerald-600 text-white']">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                        </svg>
+                                                        <span>Descargar PDF</span>
+                                                    </a>
+                                                    <span :class="['px-3 py-2 rounded-lg text-xs font-medium',
+                                                                  tema === 'dark' ? 'bg-blue-900/50 text-blue-300 border border-blue-700' : 'bg-blue-100 text-blue-700']">
+                                                        📊 Informe: @{{ mensaje.metadata.informe_tipo || 'general' }}
+                                                    </span>
+                                                </div>
+
+                                                <!-- Botones de confirmación para acciones -->
+                                                <div v-if="mensaje.metadata && mensaje.metadata.tipo === 'accion_pendiente' && mensaje.metadata.requiere_confirmacion"
+                                                     :class="['mt-3 md:mt-4 flex flex-wrap gap-2']">
+                                                    <button @click="confirmarAccion()"
+                                                            :disabled="enviando"
+                                                            :class="['inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 transform hover:scale-105 shadow-lg',
+                                                                    tema === 'dark' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-500 hover:bg-green-600 text-white',
+                                                                    enviando ? 'opacity-50 cursor-not-allowed' : '']">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                                        </svg>
+                                                        <span>SI CONFIRMO</span>
+                                                    </button>
+                                                    <button @click="cancelarAccion()"
+                                                            :disabled="enviando"
+                                                            :class="['inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 transform hover:scale-105 shadow-lg',
+                                                                    tema === 'dark' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white',
+                                                                    enviando ? 'opacity-50 cursor-not-allowed' : '']">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                        </svg>
+                                                        <span>Cancelar</span>
+                                                    </button>
+                                                </div>
+
+                                                <!-- Badge para acción ejecutada -->
+                                                <div v-if="mensaje.metadata && mensaje.metadata.tipo === 'accion_ejecutada'"
+                                                     :class="['mt-2']">
+                                                    <span :class="['px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center gap-1',
+                                                                  mensaje.metadata.resultado && mensaje.metadata.resultado.success
+                                                                    ? (tema === 'dark' ? 'bg-green-900/50 text-green-300 border border-green-700' : 'bg-green-100 text-green-700')
+                                                                    : (tema === 'dark' ? 'bg-red-900/50 text-red-300 border border-red-700' : 'bg-red-100 text-red-700')]">
+                                                        <span v-if="mensaje.metadata.resultado && mensaje.metadata.resultado.success">✅</span>
+                                                        <span v-else>❌</span>
+                                                        Acción: @{{ mensaje.metadata.accion }}
+                                                    </span>
                                                 </div>
 
                                                 <!-- Timestamp -->
@@ -563,10 +725,16 @@
                         escribiendo: false,
                         sugerencias: [],
                         sugerenciasMostradas: [],
+                        sugerenciasProactivas: [],
                         tema: localStorage.getItem('tema-asistente') || 'light',
                         busquedaConversacion: '',
                         sidebarAbierto: false,
-                        isMobile: window.innerWidth < 768
+                        isMobile: window.innerWidth < 768,
+                        // Configuración de modelos de IA
+                        modelosDisponibles: {},
+                        modeloActual: 'claude-haiku',
+                        mostrarSelectorModelo: false,
+                        cambiandoModelo: false
                     }
                 },
                 computed: {
@@ -583,6 +751,8 @@
                 async mounted() {
                     await this.cargarConversaciones()
                     await this.cargarSugerencias()
+                    await this.cargarSugerenciasProactivas()
+                    await this.cargarModelos()
 
                     // Si ya hay conversaciones, seleccionar la más reciente
                     // Si no hay, crear una nueva
@@ -621,6 +791,57 @@
                         this.tema = this.tema === 'light' ? 'dark' : 'light'
                         localStorage.setItem('tema-asistente', this.tema)
                         document.body.setAttribute('data-theme', this.tema)
+                    },
+                    // === GESTIÓN DE MODELOS DE IA ===
+                    async cargarModelos() {
+                        try {
+                            const response = await axios.get('/api/asistente/modelos')
+                            if (response.data.success) {
+                                this.modelosDisponibles = response.data.modelos
+                                this.modeloActual = response.data.modelo_actual
+                            }
+                        } catch (error) {
+                            console.error('Error cargando modelos:', error)
+                        }
+                    },
+                    async cambiarModelo(modeloId) {
+                        if (this.cambiandoModelo || modeloId === this.modeloActual) return
+
+                        this.cambiandoModelo = true
+                        try {
+                            const response = await axios.post('/api/asistente/modelos', {
+                                modelo: modeloId
+                            })
+                            if (response.data.success) {
+                                this.modeloActual = modeloId
+                                this.mostrarSelectorModelo = false
+                                // Notificar al usuario
+                                this.mostrarNotificacion(`Modelo cambiado a ${response.data.info.nombre}`, 'success')
+                            }
+                        } catch (error) {
+                            console.error('Error cambiando modelo:', error)
+                            this.mostrarNotificacion('Error al cambiar el modelo', 'error')
+                        } finally {
+                            this.cambiandoModelo = false
+                        }
+                    },
+                    getModeloInfo(modeloId) {
+                        return this.modelosDisponibles[modeloId] || {}
+                    },
+                    mostrarNotificacion(mensaje, tipo = 'info') {
+                        // Crear notificación temporal
+                        const notif = document.createElement('div')
+                        notif.className = `fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg transition-all duration-300 ${
+                            tipo === 'success' ? 'bg-green-500 text-white' :
+                            tipo === 'error' ? 'bg-red-500 text-white' :
+                            'bg-blue-500 text-white'
+                        }`
+                        notif.textContent = mensaje
+                        document.body.appendChild(notif)
+                        setTimeout(() => {
+                            notif.style.opacity = '0'
+                            setTimeout(() => notif.remove(), 300)
+                        }, 3000)
                     },
                     highlightSQL(sql) {
                         if (!sql) return ''
@@ -666,6 +887,16 @@
                             this.sugerenciasMostradas = this.sugerencias.slice(0, 6)
                         } catch (error) {
                             console.error('Error cargando sugerencias:', error)
+                        }
+                    },
+                    async cargarSugerenciasProactivas() {
+                        try {
+                            const response = await axios.get('/api/asistente/sugerencias-proactivas')
+                            if (response.data.success) {
+                                this.sugerenciasProactivas = response.data.sugerencias || []
+                            }
+                        } catch (error) {
+                            console.error('Error cargando sugerencias proactivas:', error)
                         }
                     },
                     async crearNuevaConversacion() {
@@ -737,6 +968,16 @@
                             this.escribiendo = false
                         }
                     },
+                    async confirmarAccion() {
+                        // Enviar mensaje de confirmación
+                        this.mensajeNuevo = 'SI CONFIRMO'
+                        await this.enviarMensaje()
+                    },
+                    async cancelarAccion() {
+                        // Enviar mensaje de cancelación
+                        this.mensajeNuevo = 'cancelar'
+                        await this.enviarMensaje()
+                    },
                     async eliminarConversacionActual() {
                         if (!confirm('¿Estás seguro de que quieres eliminar esta conversación?')) return
 
@@ -752,6 +993,38 @@
                     },
                     formatearMensaje(contenido) {
                         if (!contenido) return ''
+
+                        // Si el contenido es HTML de informe o acción (generado por el sistema), renderizarlo directamente
+                        if (contenido.trim().startsWith('<div class="informe-container">') ||
+                            contenido.trim().startsWith('<div class="accion-confirmacion">') ||
+                            contenido.trim().startsWith('<div style="background:#')) {
+                            // Aplicar estilos según el tema oscuro/claro
+                            let html = contenido
+                            if (this.tema === 'dark') {
+                                // Ajustar colores para tema oscuro
+                                html = html.replace(/color:#1f2937/g, 'color:#f3f4f6')
+                                html = html.replace(/color:#374151/g, 'color:#e5e7eb')
+                                html = html.replace(/color:#4b5563/g, 'color:#d1d5db')
+                                html = html.replace(/color:#6b7280/g, 'color:#9ca3af')
+                                html = html.replace(/color:#78350f/g, 'color:#fef3c7')
+                                html = html.replace(/color:#92400e/g, 'color:#fcd34d')
+                                html = html.replace(/color:#065f46/g, 'color:#6ee7b7')
+                                html = html.replace(/color:#047857/g, 'color:#34d399')
+                                html = html.replace(/background:#f3f4f6/g, 'background:#374151')
+                                html = html.replace(/background:#f9fafb/g, 'background:#1f2937')
+                                html = html.replace(/background:#ffffff/g, 'background:#111827')
+                                html = html.replace(/background:#fef3c7/g, 'background:#78350f')
+                                html = html.replace(/background:#d1fae5/g, 'background:#064e3b')
+                                html = html.replace(/background:#fee2e2/g, 'background:#7f1d1d')
+                                html = html.replace(/border-bottom:2px solid #e5e7eb/g, 'border-bottom:2px solid #4b5563')
+                                html = html.replace(/border-bottom:1px solid #e5e7eb/g, 'border-bottom:1px solid #374151')
+                                html = html.replace(/border:1px solid #e5e7eb/g, 'border:1px solid #4b5563')
+                                html = html.replace(/border:1px solid #f59e0b/g, 'border:1px solid #d97706')
+                                html = html.replace(/border:1px solid #10b981/g, 'border:1px solid #059669')
+                                html = html.replace(/border:1px solid #ef4444/g, 'border:1px solid #dc2626')
+                            }
+                            return html
+                        }
 
                         let html = contenido
 

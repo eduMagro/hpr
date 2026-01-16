@@ -1,4 +1,4 @@
-<div class="max-md:hidden" x-data="{ editandoUserId: null }">
+<div class="max-md:hidden" x-data="{ editandoUserId: null, esProgramador: @json($esProgramador) }">
     <style>
         [x-cloak] {
             display: none !important;
@@ -204,8 +204,8 @@
                     </td>
 
                     <td class="px-2 py-3 text-center border">
-                        <span x-show="!editando">{{ $user->email }}</span>
-                        <x-tabla.input x-cloak x-show="editando" x-model="usuario.email"
+                        <span x-show="!editando || !esProgramador">{{ $user->email }}</span>
+                        <x-tabla.input x-cloak x-show="editando && esProgramador" x-model="usuario.email"
                             @keydown.enter.stop="guardarCambios(usuario)" />
                     </td>
 
@@ -228,8 +228,8 @@
                     </td>
 
                     <td class="px-2 py-3 text-center border">
-                        <span x-show="!editando">{{ $user->dni }}</span>
-                        <x-tabla.input x-cloak x-show="editando" x-model="usuario.dni"
+                        <span x-show="!editando || !esProgramador">{{ $user->dni }}</span>
+                        <x-tabla.input x-cloak x-show="editando && esProgramador" x-model="usuario.dni"
                             @keydown.enter.stop="guardarCambios(usuario)" />
                     </td>
 

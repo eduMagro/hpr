@@ -9,6 +9,9 @@ class UsersTableMobile extends Component
 {
     public function render()
     {
+        // Verificar si el usuario autenticado es programador
+        $esProgramador = auth()->user()->departamentos()->where('nombre', 'Programador')->exists();
+
         $contactosAgenda = User::with(['empresa', 'categoria', 'maquina'])
             ->orderBy('name')
             ->orderBy('primer_apellido')
@@ -37,6 +40,7 @@ class UsersTableMobile extends Component
 
         return view('livewire.users-table-mobile', [
             'contactosAgenda' => $contactosAgenda,
+            'esProgramador' => $esProgramador,
         ]);
     }
 }

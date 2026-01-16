@@ -413,19 +413,16 @@ class FinProgramadoService
                         $cursor = $inicioSeg->copy();
                     }
 
-                    // CORTE VIERNES A LAS 22:00 - No trabajar después de las 22:00 los viernes
-                    if ($cursor->dayOfWeek === Carbon::FRIDAY) {
-                        $finViernesTarde = $cursor->copy()->setTime(22, 0, 0);
-                        if ($cursor->gte($finViernesTarde)) {
-                            break;
-                        }
-                        if ($finSeg->gt($finViernesTarde)) {
-                            $finSeg = $finViernesTarde;
-                        }
+                    // Obtener turno del segmento para verificar configuración
+                    $turnoSegmento = $segmento['turno'] ?? null;
+
+                    // Si es sábado y el turno no trabaja sábados, saltar al siguiente día laborable
+                    if ($cursor->isSaturday() && $turnoSegmento && !$turnoSegmento->trabajaSabado()) {
+                        break;
                     }
 
-                    // NO TRABAJAR SÁBADOS - saltar directamente
-                    if ($cursor->isSaturday()) {
+                    // Si es domingo y el turno no trabaja domingos, saltar al siguiente día laborable
+                    if ($cursor->isSunday() && $turnoSegmento && !$turnoSegmento->trabajaDomingo()) {
                         break;
                     }
 
@@ -450,23 +447,18 @@ class FinProgramadoService
 
                 // Si aún queda tiempo después de procesar todos los segmentos del día
                 if ($restante > 0) {
-                    $ultimoSegmentoHoy = end($segmentos);
-                    $siguienteDia = $diaActual->copy()->addDay();
-                    $segmentosSiguienteDia = $this->obtenerSegmentosLaborablesDia($siguienteDia);
+                    // Verificar si el cursor ya avanzó a un día diferente al que empezamos
+                    $diaDelCursor = $cursor->copy()->startOfDay();
 
-                    // Si hay segmentos mañana y son continuos con el último de hoy
-                    if (!empty($segmentosSiguienteDia)) {
-                        $primerSegmentoManana = $segmentosSiguienteDia[0];
-
-                        if ($ultimoSegmentoHoy &&
-                            $ultimoSegmentoHoy['fin']->equalTo($primerSegmentoManana['inicio'])) {
-                            $cursor = $siguienteDia->copy()->startOfDay();
-                            continue;
-                        }
+                    if ($diaDelCursor->gt($diaActual)) {
+                        // El cursor ya está en otro día (por turno nocturno)
+                        // Quedarnos en este día para procesar sus segmentos
+                        continue;
                     }
 
-                    // No hay continuidad, avanzar al día siguiente normalmente
-                    $cursor = $siguienteDia->copy()->startOfDay();
+                    // El cursor sigue en el mismo día, avanzar al siguiente
+                    $siguienteDia = $diaActual->copy()->addDay();
+                    $cursor = $siguienteDia->copy();
 
                     // Saltar días no laborables
                     $diasSaltados = 0;
@@ -474,7 +466,7 @@ class FinProgramadoService
                         $segmentosDelDia = $this->obtenerSegmentosLaborablesDia($cursor);
 
                         if ($this->esNoLaborable($cursor) && empty($segmentosDelDia)) {
-                            $cursor->addDay();
+                            $cursor->addDay()->startOfDay();
                             $diasSaltados++;
                         } else {
                             break;
@@ -503,22 +495,15 @@ class FinProgramadoService
         }
 
         $segmentos = [];
-        $esDomingo = $dia->dayOfWeek === Carbon::SUNDAY;
-        $esSabado = $dia->dayOfWeek === Carbon::SATURDAY;
+        $dayOfWeek = $dia->dayOfWeek;
 
         foreach ($this->turnosActivos as $turno) {
             if (empty($turno->hora_inicio) || empty($turno->hora_fin)) {
                 continue;
             }
 
-            // Para domingo: solo turnos que empiezan el domingo (offset_inicio < 0)
-            // esto significa turnos nocturnos que técnicamente son del lunes
-            if ($esDomingo && ($turno->offset_dias_inicio ?? 0) >= 0) {
-                continue; // Saltar turnos normales (mañana, tarde) del domingo
-            }
-
-            // Para sábado: no generar ningún segmento
-            if ($esSabado) {
+            // Verificar si el turno trabaja en este día usando la configuración
+            if (!$turno->trabajaEnDia($dayOfWeek)) {
                 continue;
             }
 
@@ -529,18 +514,36 @@ class FinProgramadoService
             $fin = $dia->copy()->setTime($horaFin->hour, $horaFin->minute, 0);
 
             // Si el turno termina al día siguiente (offset_dias_fin = 1)
-            if (($turno->offset_dias_fin ?? 0) == 1) {
+            $esNocturno = ($turno->offset_dias_fin ?? 0) == 1;
+            if ($esNocturno) {
                 $fin->addDay();
             }
 
             // Si fin es antes que inicio, significa que cruza medianoche
             if ($fin->lte($inicio)) {
                 $fin->addDay();
+                $esNocturno = true;
+            }
+
+            // Si es turno nocturno que termina al día siguiente, verificar si ese día es laborable
+            if ($esNocturno) {
+                $diaSiguiente = $fin->dayOfWeek;
+
+                // Si el día siguiente es sábado y el turno no trabaja sábados, NO incluir este turno
+                if ($diaSiguiente == Carbon::SATURDAY && !$turno->trabajaSabado()) {
+                    continue;
+                }
+
+                // Si el día siguiente es domingo y el turno no trabaja domingos, NO incluir este turno
+                if ($diaSiguiente == Carbon::SUNDAY && !$turno->trabajaDomingo()) {
+                    continue;
+                }
             }
 
             $segmentos[] = [
                 'inicio' => $inicio,
                 'fin' => $fin,
+                'turno' => $turno,
             ];
         }
 
@@ -553,10 +556,34 @@ class FinProgramadoService
     /**
      * Verifica si un día es no laborable
      * FUENTE ÚNICA DE VERDAD - usado por ProduccionController
+     *
+     * Un día es no laborable si:
+     * - Es festivo, O
+     * - Es fin de semana Y ningún turno trabaja ese día
      */
     public function esNoLaborable(Carbon $dia): bool
     {
-        return isset($this->festivosSet[$dia->toDateString()]) || $dia->isWeekend();
+        // Siempre es no laborable si es festivo
+        if (isset($this->festivosSet[$dia->toDateString()])) {
+            return true;
+        }
+
+        // Si no es fin de semana, es laborable (no festivo)
+        if (!$dia->isWeekend()) {
+            return false;
+        }
+
+        // Es fin de semana: verificar si algún turno trabaja este día
+        if ($this->turnosActivos !== null && $this->turnosActivos->isNotEmpty()) {
+            foreach ($this->turnosActivos as $turno) {
+                if ($turno->trabajaEnDia($dia->dayOfWeek)) {
+                    return false; // Al menos un turno trabaja este día
+                }
+            }
+        }
+
+        // Ningún turno trabaja en este día de fin de semana
+        return true;
     }
 
     /**

@@ -2,7 +2,7 @@
     <x-slot name="title">Planificación por Máquina</x-slot>
 
 
-    <div id="produccion-maquinas-container">
+    <div id="produccion-maquinas-container" data-page="produccion-maquinas">
         @if (!empty($erroresPlanillas))
             <div class="mb-4 bg-yellow-100 text-yellow-800 p-4 rounded shadow">
                 <h3 class="font-semibold">Advertencias de planificación:</h3>
@@ -1732,7 +1732,8 @@
                 "cargaTurnoResumen": @json($cargaTurnoResumen),
                 "planDetallado": @json($planDetallado),
                 "realDetallado": @json($realDetallado),
-                "turnosActivos": @json($turnosLista)
+                "turnosActivos": @json($turnosLista),
+                "configTurnos": @json($configTurnos ?? ['horaInicioSemana' => '06:00', 'offsetDiasSemana' => 0])
             }
         </script>
         <script>
@@ -1746,6 +1747,19 @@
 
             // Hacer la función global para que el layout pueda llamarla
             window.inicializarCalendarioMaquinas = function() {
+                // Verificar que el elemento del calendario existe
+                const calendarioEl = document.getElementById('calendario');
+                if (!calendarioEl) {
+                    console.error('❌ Elemento #calendario no encontrado');
+                    return;
+                }
+
+                // Verificar que FullCalendar está disponible
+                if (typeof FullCalendar === 'undefined' || !FullCalendar.Calendar) {
+                    console.error('❌ FullCalendar no está disponible');
+                    return;
+                }
+
                 // 🧹 LIMPIEZA: Remover listeners anteriores antes de registrar nuevos
                 if (window._maquinasCalendarState.moverIndicadorHandler) {
                     document.removeEventListener('mousemove', window._maquinasCalendarState.moverIndicadorHandler);
@@ -1753,19 +1767,21 @@
                 }
 
                 // Limpiar listeners del calendario anterior
-                const oldCalendarioEl = document.getElementById('calendario');
-                if (oldCalendarioEl) {
-                    if (window._maquinasCalendarState.dragoverHandler) {
-                        oldCalendarioEl.removeEventListener('dragover', window._maquinasCalendarState.dragoverHandler);
-                    }
-                    if (window._maquinasCalendarState.dragleaveHandler) {
-                        oldCalendarioEl.removeEventListener('dragleave', window._maquinasCalendarState.dragleaveHandler);
-                    }
+                if (window._maquinasCalendarState.dragoverHandler) {
+                    calendarioEl.removeEventListener('dragover', window._maquinasCalendarState.dragoverHandler);
+                }
+                if (window._maquinasCalendarState.dragleaveHandler) {
+                    calendarioEl.removeEventListener('dragleave', window._maquinasCalendarState.dragleaveHandler);
                 }
 
                 // Destruir calendario anterior si existe
                 if (window.calendar && typeof window.calendar.destroy === 'function') {
-                    window.calendar.destroy();
+                    try {
+                        window.calendar.destroy();
+                    } catch (e) {
+                        console.warn('Error destruyendo calendario anterior:', e);
+                    }
+                    window.calendar = null;
                 }
 
                 // Limpiar tooltips residuales
@@ -1774,7 +1790,7 @@
                 // Leer datos actualizados del DOM (se actualizan en cada navegación)
                 const dataEl = document.getElementById('calendario-maquinas-data');
                 if (!dataEl) {
-                    console.error('No se encontraron datos del calendario');
+                    console.error('❌ No se encontraron datos del calendario');
                     return;
                 }
                 const calendarData = JSON.parse(dataEl.textContent);
@@ -1784,6 +1800,7 @@
                 const planDetallado = calendarData.planDetallado;
                 const realDetallado = calendarData.realDetallado;
                 const turnosActivos = calendarData.turnosActivos;
+                const configTurnos = calendarData.configTurnos || { horaInicioSemana: '06:00', offsetDiasSemana: 0 };
 
                 // Variable global para el calendario
                 let calendar;
@@ -1864,20 +1881,17 @@
                             buttonText: '{{ $fechaMaximaCalendario['dias'] ?? 7 }} días',
                             // Extender el rango visible hasta el último fin programado
                             visibleRange: function(currentDate) {
-                                // Si currentDate es null, usar initialDate del calendario
+                                // Usar initialDate del backend (ya tiene offset y hora del turno aplicados)
                                 const initialDateStr = "{{ $initialDate ?: now()->format('Y-m-d H:i:s') }}";
-                                let baseDate = currentDate;
+                                const start = new Date(initialDateStr);
 
-                                if (!baseDate || (baseDate instanceof Date && isNaN(baseDate.getTime()))) {
-                                    baseDate = new Date(initialDateStr);
+                                if (isNaN(start.getTime())) {
+                                    // Fallback si la fecha no es válida
+                                    const now = new Date();
+                                    now.setHours(6, 0, 0, 0);
+                                    return { start: now, end: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) };
                                 }
 
-                                if (isNaN(baseDate.getTime())) {
-                                    baseDate = new Date();
-                                }
-
-                                const start = new Date(baseDate);
-                                start.setHours(0, 0, 0, 0);
                                 const end = new Date(start);
                                 const dias = {{ $fechaMaximaCalendario['dias'] ?? 7 }};
                                 end.setDate(end.getDate() + dias);
@@ -1908,13 +1922,12 @@
 
                     // Transformar fechas de eventos para vista de horas extendidas
                     eventDataTransform: function(eventData) {
+                        // Usar initialDate del backend (ya tiene offset y hora del turno aplicados)
                         const initialDateStr = "{{ $initialDate ?: now()->format('Y-m-d H:i:s') }}";
                         if (!initialDateStr) return eventData;
 
                         const initialDate = new Date(initialDateStr);
                         if (isNaN(initialDate.getTime())) return eventData;
-
-                        initialDate.setHours(0, 0, 0, 0);
 
                         // Parsear fechas del evento
                         const startDate = new Date(eventData.start);
@@ -1945,7 +1958,7 @@
                     },
 
                     height: 900, // Altura fija para permitir scroll en la página
-                    scrollTime: '06:00:00',
+                    scrollTime: configTurnos.horaInicioSemana + ':00',
                     editable: true,
                     eventResizableFromStart: false,
                     eventDurationEditable: false,
@@ -3107,7 +3120,7 @@
                 });
 
                 // 🎯 Listener para calcular posición al hacer drop de elementos externos
-                const calendarioEl = document.getElementById('calendario');
+                // calendarioEl ya está definido al inicio de la función
                 let ultimoRecursoDetectado = null;
                 let ultimaTiempoDetectado = null;
 
@@ -6601,8 +6614,8 @@
             // Función para cargar scripts de FullCalendar dinámicamente
             window.cargarFullCalendarScripts = function() {
                 return new Promise((resolve, reject) => {
-                    // Si ya está cargado, resolver inmediatamente
-                    if (typeof FullCalendar !== 'undefined') {
+                    // Si ya está cargado y disponible, resolver inmediatamente
+                    if (typeof FullCalendar !== 'undefined' && FullCalendar.Calendar) {
                         resolve();
                         return;
                     }
@@ -6628,14 +6641,25 @@
                     let loadIndex = 0;
                     const loadNext = () => {
                         if (loadIndex >= scripts.length) {
-                            console.log('✅ FullCalendar cargado correctamente');
-                            resolve();
+                            // Esperar un momento para que FullCalendar se inicialice
+                            const checkReady = (attempts = 0) => {
+                                if (typeof FullCalendar !== 'undefined' && FullCalendar.Calendar) {
+                                    console.log('✅ FullCalendar cargado correctamente');
+                                    resolve();
+                                } else if (attempts < 20) {
+                                    setTimeout(() => checkReady(attempts + 1), 50);
+                                } else {
+                                    reject(new Error('FullCalendar no se inicializó después de cargar scripts'));
+                                }
+                            };
+                            checkReady();
                             return;
                         }
 
                         const src = scripts[loadIndex];
-                        // Verificar si ya existe
-                        if (document.querySelector(`script[src="${src}"]`)) {
+                        // Verificar si ya existe el script tag
+                        const existingScript = document.querySelector(`script[src="${src}"]`);
+                        if (existingScript) {
                             loadIndex++;
                             loadNext();
                             return;
@@ -6655,20 +6679,23 @@
                 });
             };
 
-            window.initProduccionMaquinasPage = async function() {
-                // Verificar si estamos estrictamente en la página de máquinas
-                // Buscamos el elemento de datos específico o el atributo de tipo
-                const isMaquinasPage = document.getElementById('calendario-maquinas-data') &&
-                    document.querySelector('#calendario[data-calendar-type="maquinas"]');
+            window.initProduccionMaquinasPage = async function(retryCount = 0) {
+                const MAX_RETRIES = 5;
+                const RETRY_DELAY = 100;
 
-                if (!isMaquinasPage) {
-                    // Si no estamos en la página de máquinas, detener cualquier polling activo
-                    if (typeof window.stopPolling === 'function') {
-                        // Solo loguear si realmente había algo que detener
-                        if (window._maquinasPollingInterval) {
-                            console.log('⏸️ Deteniendo polling de máquinas por navegación');
-                        }
+                // Verificar si estamos en la página de máquinas
+                const dataEl = document.getElementById('calendario-maquinas-data');
+                const calendarioEl = document.querySelector('#calendario[data-calendar-type="maquinas"]');
+
+                if (!dataEl || !calendarioEl) {
+                    // Si no estamos en la página de máquinas, detener polling
+                    if (typeof window.stopPolling === 'function' && window._maquinasPollingInterval) {
                         window.stopPolling();
+                    }
+
+                    // Si los elementos no existen pero deberían (navegación SPA), reintentar
+                    if (retryCount < MAX_RETRIES && document.querySelector('[data-page="produccion-maquinas"]')) {
+                        setTimeout(() => window.initProduccionMaquinasPage(retryCount + 1), RETRY_DELAY);
                     }
                     return;
                 }
@@ -6676,13 +6703,29 @@
                 // Asegurar que FullCalendar esté cargado
                 try {
                     await window.cargarFullCalendarScripts();
+
+                    // Verificar que FullCalendar realmente existe después de cargar
+                    if (typeof FullCalendar === 'undefined') {
+                        throw new Error('FullCalendar no disponible después de cargar scripts');
+                    }
                 } catch (error) {
                     console.error('❌ Error cargando FullCalendar:', error);
+                    if (retryCount < MAX_RETRIES) {
+                        setTimeout(() => window.initProduccionMaquinasPage(retryCount + 1), RETRY_DELAY * 2);
+                    }
                     return;
                 }
 
+                // Inicializar calendario
                 if (typeof window.inicializarCalendarioMaquinas === 'function') {
-                    window.inicializarCalendarioMaquinas();
+                    try {
+                        window.inicializarCalendarioMaquinas();
+                    } catch (error) {
+                        console.error('❌ Error inicializando calendario:', error);
+                        if (retryCount < MAX_RETRIES) {
+                            setTimeout(() => window.initProduccionMaquinasPage(retryCount + 1), RETRY_DELAY * 2);
+                        }
+                    }
                 } else {
                     console.error('❌ window.inicializarCalendarioMaquinas no encontrada');
                 }
@@ -6695,11 +6738,13 @@
                 window.initProduccionMaquinasPage();
             }
 
-            // Ejecutar en navegación SPA - Asegurar Listener Único Global
+            // Ejecutar en navegación SPA con pequeño delay para asegurar DOM listo
             if (!window._maquinasListenerAdded) {
-                document.addEventListener('livewire:navigated', window.initProduccionMaquinasPage);
+                document.addEventListener('livewire:navigated', function() {
+                    // Pequeño delay para asegurar que el DOM esté completamente actualizado
+                    setTimeout(() => window.initProduccionMaquinasPage(), 50);
+                });
                 window._maquinasListenerAdded = true;
-                // console.log('✅ Listener SPA de [Máquinas] registrado por primera vez');
             }
         </script>
 </x-app-layout>

@@ -53,6 +53,7 @@ class User extends Authenticatable
         'updated_by',
         'puede_usar_asistente',
         'puede_modificar_bd',
+        'asistente_modelo',
     ];
 
     /**

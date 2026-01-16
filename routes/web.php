@@ -165,6 +165,63 @@ Route::middleware(['auth', 'puede.asistente', 'throttle:60,1'])
         // Ruta de envío de mensajes con rate limiting más estricto
         Route::post('/mensaje', [AsistenteVirtualController::class, 'enviarMensaje'])
             ->middleware('throttle:15,1'); // Solo 15 mensajes por minuto
+
+        // === SISTEMA EXPERTO: INFORMES ===
+        Route::get('/informes', [\App\Http\Controllers\Api\AsistenteReportController::class, 'index'])
+            ->name('asistente.informes.index');
+        Route::post('/informes', [\App\Http\Controllers\Api\AsistenteReportController::class, 'store'])
+            ->name('asistente.informes.store');
+        Route::get('/informes/tipos', [\App\Http\Controllers\Api\AsistenteReportController::class, 'tipos'])
+            ->name('asistente.informes.tipos');
+        Route::get('/informes/{id}', [\App\Http\Controllers\Api\AsistenteReportController::class, 'show'])
+            ->name('asistente.informes.show');
+        Route::get('/informes/{id}/pdf', [\App\Http\Controllers\Api\AsistenteReportController::class, 'descargarPdf'])
+            ->name('asistente.informes.pdf');
+        Route::post('/informes/{id}/pdf', [\App\Http\Controllers\Api\AsistenteReportController::class, 'generarPdf'])
+            ->name('asistente.informes.generar-pdf');
+        Route::delete('/informes/{id}', [\App\Http\Controllers\Api\AsistenteReportController::class, 'destroy'])
+            ->name('asistente.informes.destroy');
+
+        // === SISTEMA EXPERTO: INTELIGENCIA ===
+        Route::get('/sugerencias-proactivas', function () {
+            $service = app(\App\Services\AsistenteVirtualService::class);
+            return response()->json([
+                'success' => true,
+                'sugerencias' => $service->obtenerSugerenciasProactivas(auth()->id()),
+            ]);
+        })->name('asistente.sugerencias-proactivas');
+
+        // === CONFIGURACIÓN DE IA ===
+        Route::get('/modelos', function () {
+            $modelos = \App\Services\Asistente\IAService::getModelosDisponibles();
+            $modeloActual = \App\Services\Asistente\IAService::obtenerPreferenciaUsuario(auth()->user());
+
+            return response()->json([
+                'success' => true,
+                'modelos' => $modelos,
+                'modelo_actual' => $modeloActual,
+            ]);
+        })->name('asistente.modelos');
+
+        Route::post('/modelos', function () {
+            $modelo = request('modelo');
+            $resultado = \App\Services\Asistente\IAService::guardarPreferenciaUsuario(auth()->user(), $modelo);
+
+            if ($resultado) {
+                $info = config("asistente.modelos.{$modelo}", []);
+                return response()->json([
+                    'success' => true,
+                    'mensaje' => "Modelo cambiado a {$info['nombre']}",
+                    'modelo' => $modelo,
+                    'info' => $info,
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'mensaje' => 'Modelo no válido o no disponible',
+            ], 400);
+        })->name('asistente.modelos.cambiar');
     });
 
 // === FCM (Firebase Cloud Messaging) ===
@@ -746,8 +803,12 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/departamentos/{departamento}/asignar-usuarios', [DepartamentoController::class, 'asignarUsuarios'])->name('departamentos.asignar.usuarios');
     Route::post('/departamentos/{departamento}/asignar-secciones', [DepartamentoController::class, 'asignarSecciones'])->name('departamentos.asignarSecciones');
     Route::post('/departamentos/{departamento}/permisos', [DepartamentoController::class, 'actualizarPermiso']);
-    Route::resource('secciones', SeccionController::class)->names('secciones');
+    // Rutas específicas de secciones ANTES del resource (evitar conflicto con {seccione})
     Route::post('/secciones/actualizar-orden', [SeccionController::class, 'actualizarOrden'])->name('secciones.actualizarOrden');
+    Route::post('/secciones/sincronizar-todas', [SeccionController::class, 'sincronizarTodas'])->name('secciones.sincronizarTodas');
+    Route::post('/secciones/crear-para-prefijo', [SeccionController::class, 'crearParaPrefijo'])->name('secciones.crearParaPrefijo');
+    Route::get('/secciones/estado-sincronizacion', [SeccionController::class, 'estadoSincronizacion'])->name('secciones.estadoSincronizacion');
+    Route::resource('secciones', SeccionController::class)->names('secciones');
 
     // === PAPELERA ===
     Route::get('/papelera', [PapeleraController::class, 'index'])->name('papelera.index');
