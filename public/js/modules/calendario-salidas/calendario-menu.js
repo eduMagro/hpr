@@ -962,11 +962,11 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
         });
         if (!isConfirmed) return;
 
-        const inputs = Swal.getHtmlContainer().querySelectorAll(
+        const dateInputs = Swal.getHtmlContainer().querySelectorAll(
             "input[data-planilla-id]"
         );
 
-        const payload = Array.from(inputs).map((inp) => ({
+        const payload = Array.from(dateInputs).map((inp) => ({
             id: Number(inp.getAttribute("data-planilla-id")),
             fecha_estimada_entrega: inp.value,
         }));

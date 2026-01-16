@@ -1164,10 +1164,20 @@ class PlanillaController extends Controller
 
             DB::transaction(function () use ($data) {
                 foreach ($data['planillas'] as $fila) {
-                    // Actualizar fecha de la planilla si se proporciona
+                    // Actualizar fecha de la planilla (preservando la hora existente)
                     if (!empty($fila['fecha_estimada_entrega'])) {
                         $planilla = Planilla::find($fila['id']);
-                        $planilla->fecha_estimada_entrega = Carbon::createFromFormat('Y-m-d', $fila['fecha_estimada_entrega'])->startOfDay();
+                        $fechaNueva = Carbon::createFromFormat('Y-m-d', $fila['fecha_estimada_entrega']);
+
+                        // Preservar la hora existente de la planilla
+                        if ($planilla->fecha_estimada_entrega) {
+                            $horaExistente = Carbon::parse($planilla->fecha_estimada_entrega);
+                            $fechaNueva->setTime($horaExistente->hour, $horaExistente->minute, 0);
+                        } else {
+                            $fechaNueva->setTime(7, 0, 0); // Hora por defecto si no tenía
+                        }
+
+                        $planilla->fecha_estimada_entrega = $fechaNueva;
                         $planilla->save();
                     }
 
@@ -1220,6 +1230,7 @@ class PlanillaController extends Controller
                 'planillas' => ['required', 'array', 'min:1'],
                 'planillas.*.id' => ['required', 'integer', 'exists:planillas,id'],
                 'planillas.*.fecha_estimada_entrega' => ['nullable', 'date_format:Y-m-d'],
+                'planillas.*.hora_entrega' => ['nullable', 'date_format:H:i'],
             ]);
 
             $service = app(AutoReordenadorService::class);
@@ -1255,6 +1266,7 @@ class PlanillaController extends Controller
                 'planillas' => ['required', 'array', 'min:1'],
                 'planillas.*.id' => ['required', 'integer', 'exists:planillas,id'],
                 'planillas.*.fecha_estimada_entrega' => ['nullable', 'date_format:Y-m-d'],
+                'planillas.*.hora_entrega' => ['nullable', 'date_format:H:i'],
             ]);
 
             $service = app(AutoReordenadorService::class);

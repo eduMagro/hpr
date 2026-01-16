@@ -477,10 +477,56 @@ export function crearCalendario() {
                 }
                 return true;
             },
-            eventDrop: (info) => {
+            eventDrop: async (info) => {
                 const p = info.event.extendedProps || {};
                 const id = info.event.id;
-                const nuevaFechaISO = info.event.start?.toISOString();
+                const viewType = calendar.view.type;
+
+                // Obtener la nueva fecha del drop
+                let nuevaFecha = info.event.start;
+
+                // En vista diaria, mostrar confirmación con la nueva hora
+                if (viewType === "resourceTimeGridDay" && p.tipo === "planilla") {
+                    const horaAnterior = p.hora_entrega || "07:00";
+                    const horaNueva = nuevaFecha.toLocaleTimeString("es-ES", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                    });
+
+                    const result = await Swal.fire({
+                        title: "🕐 Cambiar hora de entrega",
+                        html: `
+                            <div class="text-left">
+                                <p class="mb-2">¿Cambiar la hora de entrega de <strong>${p.cod_obra}</strong>?</p>
+                                <div class="flex items-center justify-center gap-4 my-4">
+                                    <span class="px-3 py-2 bg-gray-100 rounded text-lg">${horaAnterior}</span>
+                                    <span class="text-xl">→</span>
+                                    <span class="px-3 py-2 bg-blue-100 text-blue-800 rounded text-lg font-semibold">${horaNueva}</span>
+                                </div>
+                                <p class="text-sm text-gray-500">Esto afectará el orden de fabricación de las planillas de este día.</p>
+                            </div>
+                        `,
+                        icon: "question",
+                        showCancelButton: true,
+                        confirmButtonText: "Sí, cambiar",
+                        cancelButtonText: "Cancelar",
+                        confirmButtonColor: "#3085d6",
+                    });
+
+                    if (!result.isConfirmed) {
+                        info.revert();
+                        return;
+                    }
+                }
+                // En otras vistas (allDay), preservar la hora original
+                else if (info.event.allDay && p.hora_entrega) {
+                    const [horas, minutos] = p.hora_entrega.split(":").map(Number);
+                    nuevaFecha = new Date(nuevaFecha);
+                    nuevaFecha.setHours(horas, minutos, 0, 0);
+                }
+
+                const nuevaFechaISO = nuevaFecha?.toISOString();
                 const body = {
                     fecha: nuevaFechaISO,
                     tipo: p.tipo,
@@ -490,34 +536,42 @@ export function crearCalendario() {
                     window.AppSalidas?.routes?.updateItem || ""
                 ).replace("__ID__", id);
 
-                fetch(url, {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRF-TOKEN": window.AppSalidas?.csrf,
-                    },
-                    body: JSON.stringify(body),
-                })
-                    .then((r) => {
-                        if (!r.ok)
-                            throw new Error("No se pudo actualizar la fecha.");
-                        return r.json();
-                    })
-                    .then(() => {
-                        calendar.refetchEvents();
-                        calendar.refetchResources();
-                        // ✅ actualiza totales sin recargar nada
-                        const nuevaFecha = info.event.start;
-                        const fechaISO = nuevaFecha.toISOString().split("T")[0];
-                        actualizarTotales(fechaISO);
-
-                        /* ▼ asegurar que se vea al terminar */
-                        safeUpdateSize();
-                    })
-                    .catch((err) => {
-                        console.error("Error:", err);
-                        info.revert();
+                try {
+                    const res = await fetch(url, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-TOKEN": window.AppSalidas?.csrf,
+                        },
+                        body: JSON.stringify(body),
                     });
+
+                    if (!res.ok) throw new Error("No se pudo actualizar.");
+
+                    calendar.refetchEvents();
+                    calendar.refetchResources();
+
+                    // Actualiza totales
+                    const fechaISO = info.event.start.toISOString().split("T")[0];
+                    actualizarTotales(fechaISO);
+                    safeUpdateSize();
+
+                    // Notificación de éxito en vista diaria
+                    if (viewType === "resourceTimeGridDay") {
+                        Swal.fire({
+                            icon: "success",
+                            title: "Hora actualizada",
+                            toast: true,
+                            position: "top-end",
+                            showConfirmButton: false,
+                            timer: 2000,
+                        });
+                    }
+                } catch (err) {
+                    console.error("Error:", err);
+                    info.revert();
+                    Swal.fire("Error", "No se pudo actualizar la hora", "error");
+                }
             },
             dateClick: (info) => {
                 const vt = calendar.view.type;

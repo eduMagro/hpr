@@ -614,7 +614,15 @@ class PlanificacionController extends Controller
         float $pesoPaquetesSalida = 0,
         array $elementosIds = []
     ): array {
-        $fechaInicio = $fechaBase->copy()->setTime(6, 0, 0);
+        // Usar la hora más temprana de las planillas del grupo (o 07:00 por defecto)
+        $horaMinima = $planillas
+            ->map(fn($p) => $p->fecha_estimada_entrega ? Carbon::parse($p->fecha_estimada_entrega)->format('H:i') : '07:00')
+            ->filter(fn($h) => $h !== '00:00')
+            ->sort()
+            ->first() ?? '07:00';
+
+        [$hora, $minuto] = explode(':', $horaMinima);
+        $fechaInicio = $fechaBase->copy()->setTime((int)$hora, (int)$minuto, 0);
         $planillasIds = $planillas->pluck('id')->toArray();
 
         // 👉 Diámetro medio
@@ -679,6 +687,7 @@ class PlanificacionController extends Controller
                 'salida_id' => $salida?->id,
                 'salida_codigo' => $salidaCodigo,
                 'salidas_codigos' => $salidaCodigo ? [$salidaCodigo] : [],
+                'hora_entrega' => $horaMinima,
             ],
         ];
     }

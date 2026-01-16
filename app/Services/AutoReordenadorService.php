@@ -88,9 +88,19 @@ class AutoReordenadorService
             $nuevaFecha = collect($nuevasFechas)
                 ->firstWhere('id', $orden->planilla_id);
 
-            $fechaEntrega = $nuevaFecha && !empty($nuevaFecha['fecha_estimada_entrega'])
-                ? Carbon::parse($nuevaFecha['fecha_estimada_entrega'])
-                : $orden->planilla->fecha_estimada_entrega;
+            // Usar fecha actual de la planilla como base
+            $fechaEntrega = $orden->planilla->fecha_estimada_entrega;
+
+            // Si viene nueva fecha, aplicarla
+            if ($nuevaFecha && !empty($nuevaFecha['fecha_estimada_entrega'])) {
+                $fechaEntrega = Carbon::parse($nuevaFecha['fecha_estimada_entrega']);
+
+                // Si viene hora separada, combinarla
+                if (!empty($nuevaFecha['hora_entrega'])) {
+                    $hora = Carbon::parse($nuevaFecha['hora_entrega']);
+                    $fechaEntrega->setTime($hora->hour, $hora->minute, 0);
+                }
+            }
 
             return [
                 'orden' => $orden,
@@ -98,26 +108,15 @@ class AutoReordenadorService
                 'estado' => $orden->planilla->estado ?? 'pendiente',
                 'peso' => $orden->planilla->peso_total ?? 0,
                 'posicion_actual' => $orden->posicion,
-                'es_revisada' => (bool) $orden->planilla->revisada,
             ];
         });
 
-        // Separar planillas revisadas de las no revisadas
-        $revisadas = $ordenesConFechas->filter(fn($o) => $o['es_revisada']);
-        $noRevisadas = $ordenesConFechas->filter(fn($o) => !$o['es_revisada']);
-
-        // Solo ordenar las REVISADAS por: fecha ASC, peso DESC, ID
-        $revisadasOrdenadas = $revisadas->sortBy([
+        // Ordenar TODAS las planillas por: fecha+hora ASC, peso DESC, ID
+        $ordenesOrdenadas = $ordenesConFechas->sortBy([
             fn($o) => $o['fecha_entrega'] ?? Carbon::maxValue(),
             fn($o) => -$o['peso'],
             fn($o) => $o['orden']->planilla_id,
         ])->values();
-
-        // Las no revisadas mantienen su orden original (por posición actual)
-        $noRevisadasOrdenadas = $noRevisadas->sortBy(fn($o) => $o['posicion_actual'])->values();
-
-        // Combinar: primero las revisadas ordenadas, luego las no revisadas
-        $ordenesOrdenadas = $revisadasOrdenadas->concat($noRevisadasOrdenadas)->values();
 
         // Detectar cambios de posición
         foreach ($ordenesOrdenadas as $index => $item) {
@@ -184,14 +183,35 @@ class AutoReordenadorService
             $cambiosAplicados = 0;
             $planillasActualizadas = 0;
 
-            // 1. Actualizar fechas en planillas
+            // 1. Actualizar fechas en planillas (preservando hora existente si no viene nueva)
             foreach ($planillasConFechas as $datos) {
                 if (!empty($datos['fecha_estimada_entrega'])) {
-                    $affected = Planilla::where('id', $datos['id'])
-                        ->update([
-                            'fecha_estimada_entrega' => Carbon::parse($datos['fecha_estimada_entrega'])->startOfDay()
-                        ]);
-                    $planillasActualizadas += $affected;
+                    $planilla = Planilla::find($datos['id']);
+                    if (!$planilla) continue;
+
+                    $fechaNueva = Carbon::parse($datos['fecha_estimada_entrega']);
+
+                    // Si viene hora separada, usarla
+                    if (!empty($datos['hora_entrega'])) {
+                        $hora = Carbon::parse($datos['hora_entrega']);
+                        $fechaNueva->setTime($hora->hour, $hora->minute, 0);
+                    }
+                    // Si no viene hora, preservar la hora existente de la planilla
+                    elseif ($planilla->fecha_estimada_entrega) {
+                        $horaExistente = Carbon::parse($planilla->fecha_estimada_entrega);
+                        // Solo preservar si no es medianoche (hora por defecto)
+                        if ($horaExistente->hour !== 0 || $horaExistente->minute !== 0) {
+                            $fechaNueva->setTime($horaExistente->hour, $horaExistente->minute, 0);
+                        } else {
+                            $fechaNueva->setTime(7, 0, 0); // Hora por defecto
+                        }
+                    } else {
+                        $fechaNueva->setTime(7, 0, 0); // Hora por defecto
+                    }
+
+                    $planilla->fecha_estimada_entrega = $fechaNueva;
+                    $planilla->save();
+                    $planillasActualizadas++;
                 }
             }
 
@@ -223,8 +243,8 @@ class AutoReordenadorService
     }
 
     /**
-     * Reordena la cola de una máquina por fecha de entrega
-     * Solo mueve planillas con revisada = 1
+     * Reordena la cola de una máquina por fecha y hora de entrega
+     * Ordena todas las planillas (revisadas y no revisadas)
      */
     private function reordenarColaMaquina(int $maquinaId): int
     {
@@ -238,25 +258,15 @@ class AutoReordenadorService
             return 0;
         }
 
-        // Separar planillas revisadas de las no revisadas
-        $revisadas = $ordenes->filter(fn($o) => (bool) $o->planilla->revisada);
-        $noRevisadas = $ordenes->filter(fn($o) => !$o->planilla->revisada);
-
-        // Solo ordenar las REVISADAS por criterios de prioridad
-        $revisadasOrdenadas = $revisadas->sortBy([
-            // 1. Fecha de entrega (más urgentes primero)
+        // Ordenar TODAS las planillas por criterios de prioridad
+        $ordenesOrdenadas = $ordenes->sortBy([
+            // 1. Fecha y hora de entrega (más urgentes primero)
             fn($o) => $o->planilla->fecha_estimada_entrega ?? Carbon::maxValue(),
             // 2. Peso (mayor peso primero para optimizar setup)
             fn($o) => -($o->planilla->peso_total ?? 0),
             // 3. FIFO (ID más bajo primero)
             fn($o) => $o->planilla_id,
         ])->values();
-
-        // Las no revisadas mantienen su orden original (por posición actual)
-        $noRevisadasOrdenadas = $noRevisadas->sortBy(fn($o) => $o->posicion)->values();
-
-        // Combinar: primero las revisadas ordenadas, luego las no revisadas
-        $ordenesOrdenadas = $revisadasOrdenadas->concat($noRevisadasOrdenadas)->values();
 
         // Reasignar posiciones
         $cambios = 0;

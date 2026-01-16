@@ -115,6 +115,9 @@ class RevisionFichajeController extends Controller
             }
 
             if ($horasActualizadas) {
+                // Marcar como revisado
+                $asignacion->revisado_at = now();
+                $asignacion->revisado_por = Auth::id();
                 $asignacion->save();
                 $corregidos++;
             }

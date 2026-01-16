@@ -637,6 +637,10 @@ class ProfileController extends Controller
             // Extraer solo la fecha (YYYY-MM-DD) para evitar "double time specification"
             $soloFecha = Carbon::parse($asignacion->fecha)->format('Y-m-d');
 
+            // Indicador de revisión
+            $esRevisado = !empty($asignacion->revisado_at);
+            $sufijo = $esRevisado ? ' R' : '';
+
             // Props comunes para todos los fichajes de esta asignación
             $propsComunes = [
                 'asignacion_id' => $asignacion->id,
@@ -645,6 +649,7 @@ class ProfileController extends Controller
                 'salida' => $asignacion->salida,
                 'entrada2' => $asignacion->entrada2,
                 'salida2' => $asignacion->salida2,
+                'revisado' => $esRevisado,
             ];
 
             // === PRIMERA JORNADA ===
@@ -657,7 +662,7 @@ class ProfileController extends Controller
                     if ($startEntrada) {
                         $eventos[] = [
                             'id' => 'entrada-' . $asignacion->id,
-                            'title' => '🟢 ' . substr($horaEntrada, 0, 5),
+                            'title' => '🟢 ' . substr($horaEntrada, 0, 5) . $sufijo,
                             'start' => $startEntrada->toIso8601String(),
                             'end' => $startEntrada->copy()->addMinutes(1)->toIso8601String(),
                             'color' => '#28a745',
@@ -681,7 +686,7 @@ class ProfileController extends Controller
                     if ($startSalida) {
                         $eventos[] = [
                             'id' => 'salida-' . $asignacion->id,
-                            'title' => '🔴 ' . substr($horaSalida, 0, 5),
+                            'title' => '🔴 ' . substr($horaSalida, 0, 5) . $sufijo,
                             'start' => $startSalida->toIso8601String(),
                             'end' => $startSalida->copy()->addMinutes(1)->toIso8601String(),
                             'color' => '#dc3545',
@@ -706,7 +711,7 @@ class ProfileController extends Controller
                     if ($startEntrada2) {
                         $eventos[] = [
                             'id' => 'entrada2-' . $asignacion->id,
-                            'title' => '🟢 ' . substr($horaEntrada2, 0, 5) . ' (2ª)',
+                            'title' => '🟢 ' . substr($horaEntrada2, 0, 5) . $sufijo . ' (2ª)',
                             'start' => $startEntrada2->toIso8601String(),
                             'end' => $startEntrada2->copy()->addMinutes(1)->toIso8601String(),
                             'color' => '#22c55e', // Verde más claro para segunda jornada
@@ -730,7 +735,7 @@ class ProfileController extends Controller
                     if ($startSalida2) {
                         $eventos[] = [
                             'id' => 'salida2-' . $asignacion->id,
-                            'title' => '🔴 ' . substr($horaSalida2, 0, 5) . ' (2ª)',
+                            'title' => '🔴 ' . substr($horaSalida2, 0, 5) . $sufijo . ' (2ª)',
                             'start' => $startSalida2->toIso8601String(),
                             'end' => $startSalida2->copy()->addMinutes(1)->toIso8601String(),
                             'color' => '#ef4444', // Rojo más claro para segunda jornada

@@ -268,27 +268,6 @@
                 </div>
             @endif
 
-            {{-- Contratos y Documentos --}}
-            @if (auth()->check() && (auth()->user()->rol === 'oficina' || auth()->id() === $user->id))
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <button @click="$dispatch('open-docs-modal')"
-                        class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
-                        <div class="flex items-center gap-2">
-                            <div class="bg-blue-100 rounded-lg p-1.5">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                            </div>
-                            <span class="text-sm font-semibold text-gray-900">Contratos y Documentos</span>
-                        </div>
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
-                    </button>
-                </div>
-            @endif
 
             {{-- Solicitar nómina --}}
             @if (auth()->check() && auth()->id() === $user->id)
@@ -342,7 +321,10 @@
                     </div>
                 </div>
 
-                {{-- Descargar Contrato --}}
+            @endif
+
+            {{-- Contrato --}}
+            @if (auth()->check() && (auth()->user()->rol === 'oficina' || auth()->id() === $user->id))
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     <button @click="seccionContrato = !seccionContrato"
                         class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
@@ -354,7 +336,7 @@
                                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                             </div>
-                            <span class="text-sm font-semibold text-gray-900">Descargar Contrato</span>
+                            <span class="text-sm font-semibold text-gray-900">Contrato</span>
                         </div>
                         <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
                             :class="{ 'rotate-180': seccionContrato }" fill="none" stroke="currentColor"
@@ -364,17 +346,23 @@
                         </svg>
                     </button>
                     <div x-cloak x-show="seccionContrato" x-collapse>
-                        <div class="px-3 pb-3">
-                            <p class="text-xs text-gray-600 mb-3">
-                                Descarga una copia de tu contrato de trabajo.
-                            </p>
+                        <div class="px-3 pb-3 space-y-3">
+                            @if ($user->fecha_incorporacion_efectiva)
+                                <div class="flex items-center gap-2 text-xs text-gray-600">
+                                    <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span>Fecha de incorporación: <strong class="text-gray-900">{{ $user->fecha_incorporacion_efectiva->format('d/m/Y') }}</strong></span>
+                                </div>
+                            @endif
                             <a href="{{ route('incorporaciones.descargarMiContrato') }}"
                                 class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
-                                Descargar PDF
+                                Descargar Contrato
                             </a>
                         </div>
                     </div>
