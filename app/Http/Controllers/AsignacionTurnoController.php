@@ -1052,28 +1052,9 @@ class AsignacionTurnoController extends Controller
 
                 $diasSolicitados = 0;
 
-                // Determinar si dividir entre años
-                $usarAnteriorPrimero = $request->boolean('usar_anterior_primero', false);
-                $diasDisponiblesAnterior = (int) $request->input('dias_disponibles_anterior', 0);
-                $anioAnterior = (int) $request->input('anio_anterior', $fechaInicio->year - 1);
-                $anioActual = $fechaInicio->year;
-                $anioCargo = $request->input('anio_cargo', $anioActual);
-
                 if ($tipo === 'vacaciones') {
-                    // Contar días ya asignados para cada año
-                    $yaDisfrutadosAnterior = $user->asignacionesTurnos()
-                        ->where('estado', 'vacaciones')
-                        ->where('anio_cargo', $anioAnterior)
-                        ->count();
-
-                    $yaDisfrutadosActual = $user->asignacionesTurnos()
-                        ->where('estado', 'vacaciones')
-                        ->where('anio_cargo', $anioActual)
-                        ->count();
-
-                    $yaDisfrutados = $usarAnteriorPrimero ? $yaDisfrutadosAnterior :
-                        ($anioCargo == $anioAnterior ? $yaDisfrutadosAnterior : $yaDisfrutadosActual);
-
+                    // Agrupar días solicitados por año (basado en la fecha)
+                    $diasPorAnio = [];
                     $tempDate = $fechaInicio->copy();
                     while ($tempDate->lte($fechaFin)) {
                         $tempStr = $tempDate->toDateString();
@@ -1086,6 +1067,8 @@ class AsignacionTurnoController extends Controller
                                 ->first();
 
                             if (!$asignacion || $asignacion->estado !== 'vacaciones') {
+                                $anio = $tempDate->year;
+                                $diasPorAnio[$anio] = ($diasPorAnio[$anio] ?? 0) + 1;
                                 $diasSolicitados++;
                             }
                         }
@@ -1094,21 +1077,15 @@ class AsignacionTurnoController extends Controller
 
                     $totalPermitido = $user->vacaciones_totales ?? 22;
 
-                    // Validar según si se divide entre años o no
-                    if ($usarAnteriorPrimero) {
-                        // Calcular cuántos días irán a cada año
-                        $disponiblesAnteriorReal = max(0, $totalPermitido - $yaDisfrutadosAnterior);
-                        $diasParaAnterior = min($diasSolicitados, min($diasDisponiblesAnterior, $disponiblesAnteriorReal));
-                        $diasParaActual = $diasSolicitados - $diasParaAnterior;
+                    // Validar cada año por separado
+                    foreach ($diasPorAnio as $anio => $diasEnAnio) {
+                        $yaDisfrutados = $user->asignacionesTurnos()
+                            ->where('estado', 'vacaciones')
+                            ->whereYear('fecha', $anio)
+                            ->count();
 
-                        // Validar año actual si hay días para él
-                        if ($diasParaActual > 0 && ($yaDisfrutadosActual + $diasParaActual) > $totalPermitido) {
-                            $msg = "El usuario {$user->name} ya tiene {$yaDisfrutadosActual} días en {$anioActual} y quiere añadir {$diasParaActual}. Máximo: {$totalPermitido}.";
-                            return response()->json(['error' => $msg], 400);
-                        }
-                    } else {
-                        if (($yaDisfrutados + $diasSolicitados) > $totalPermitido) {
-                            $msg = "El usuario {$user->name} ya tiene {$yaDisfrutados} días y quiere añadir {$diasSolicitados}. Máximo: {$totalPermitido}.";
+                        if (($yaDisfrutados + $diasEnAnio) > $totalPermitido) {
+                            $msg = "El usuario {$user->name} ya tiene {$yaDisfrutados} días de vacaciones en {$anio} y quiere añadir {$diasEnAnio}. Máximo: {$totalPermitido}.";
                             return response()->json(['error' => $msg], 400);
                         }
                     }
@@ -1131,10 +1108,6 @@ class AsignacionTurnoController extends Controller
 
                 // Usar CarbonPeriod para iterar de forma confiable sobre el rango de fechas
                 $periodo = CarbonPeriod::create($fechaInicio, $fechaFin);
-
-                // Contador para dividir días entre años
-                $diasAsignadosAnterior = 0;
-                $diasParaAnterior = $usarAnteriorPrimero ? min($diasSolicitados, $diasDisponiblesAnterior) : 0;
 
                 foreach ($periodo as $currentDate) {
                     $dateStr = $currentDate->toDateString();
@@ -1171,16 +1144,6 @@ class AsignacionTurnoController extends Controller
                     }
                     if ($request->has('obra_id')) {
                         $datos['obra_id'] = $request->obra_id;
-                    }
-
-                    // Añadir año de cargo si es vacaciones (con división automática si aplica)
-                    if ($tipo === 'vacaciones') {
-                        if ($usarAnteriorPrimero && $diasAsignadosAnterior < $diasParaAnterior) {
-                            $datos['anio_cargo'] = $anioAnterior;
-                            $diasAsignadosAnterior++;
-                        } else {
-                            $datos['anio_cargo'] = $usarAnteriorPrimero ? $anioActual : $anioCargo;
-                        }
                     }
 
                     // Buscar asignación existente (incluyendo soft-deleted) con whereDate
