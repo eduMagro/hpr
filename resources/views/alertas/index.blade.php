@@ -46,13 +46,50 @@
                         <div class="mb-4">
                             <label for="mensaje" class="block text-sm font-semibold">Mensaje:</label>
                             <textarea id="mensaje" name="mensaje" rows="3"
-                                class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" required>{{ old('mensaje') }}</textarea>
+                                class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500">{{ old('mensaje') }}</textarea>
                         </div>
-                        {{-- <div class="mb-4">
-                            <label for="imagen" class="block text-sm font-semibold">Imagen (opcional):</label>
-                            <input type="file" id="imagen" name="imagen"
-                                class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" accept="image/*">
-                        </div> --}}
+
+                        <!-- Audio -->
+                        <div class="mb-4" x-data="audioRecorder()">
+                            <label class="block text-sm font-semibold mb-2">Audio (opcional):</label>
+
+                            <!-- Botones de grabación -->
+                            <div class="flex items-center gap-2 mb-2">
+                                <button type="button" @click="toggleRecording()"
+                                    :class="recording ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-gray-500 hover:bg-gray-600'"
+                                    class="text-white p-2 rounded-full transition-all">
+                                    <svg x-show="!recording" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <svg x-show="recording" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd"/>
+                                    </svg>
+                                </button>
+                                <span x-show="recording" class="text-red-500 text-sm font-medium" x-text="recordingTime"></span>
+                                <span x-show="!recording && !hasAudio" class="text-gray-500 text-sm">Pulsa para grabar</span>
+                            </div>
+
+                            <!-- Preview del audio grabado -->
+                            <div x-show="hasAudio" class="flex items-center gap-2 p-2 bg-gray-100 rounded-lg">
+                                <audio x-ref="audioPreview" controls class="flex-1 h-10"></audio>
+                                <button type="button" @click="deleteAudio()" class="text-red-500 hover:text-red-700 p-1">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <!-- O subir archivo -->
+                            <div class="mt-2">
+                                <label class="text-xs text-gray-500">O sube un archivo de audio:</label>
+                                <input type="file" name="audio" accept="audio/*"
+                                    class="w-full text-sm border rounded-lg p-1 focus:ring-2 focus:ring-blue-500"
+                                    @change="handleFileSelect($event)">
+                            </div>
+
+                            <!-- Input oculto para el audio grabado -->
+                            <input type="file" name="audio" x-ref="audioInput" class="hidden">
+                        </div>
 
                         @if (auth()->user()->rol === 'oficina')
                             <div class="mb-4">
@@ -805,21 +842,53 @@
                 </div>
 
                 <!-- Input -->
-                <div class="bg-white border-t border-slate-200 px-3 py-2 flex items-center gap-3 shrink-0">
-                    <div
-                        class="flex-1 bg-slate-100 rounded-2xl overflow-hidden transition-all duration-200 focus-within:bg-slate-50 focus-within:ring-2 focus-within:ring-emerald-500/30">
-                        <textarea id="textoRespuesta"
-                            class="w-full resize-none border-0 bg-transparent focus:ring-0 focus:outline-none text-[15px] text-slate-800 leading-6 placeholder-slate-400 py-2.5 px-4 block"
-                            rows="1" placeholder="Escribe un mensaje..." oninput="ajustarAlturaTextarea(this)"
-                            onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); enviarRespuesta(); }"
-                            style="height: 44px; max-height: 120px; overflow-y: auto;"></textarea>
+                <div class="bg-white border-t border-slate-200 px-3 py-2 shrink-0" x-data="chatAudioRecorder()">
+                    <!-- Preview de audio grabado -->
+                    <div x-show="hasAudio" class="flex items-center gap-2 mb-2 p-2 bg-emerald-50 rounded-lg">
+                        <audio x-ref="chatAudioPreview" controls class="flex-1 h-8"></audio>
+                        <button type="button" @click="deleteAudio()" class="text-red-500 hover:text-red-700 p-1">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
                     </div>
-                    <button onclick="enviarRespuesta()" id="btnEnviarMensaje"
-                        class="w-11 h-11 bg-emerald-600 hover:bg-emerald-700 active:scale-95 rounded-full flex items-center justify-center text-white shrink-0 transition-all duration-150">
-                        <svg class="w-5 h-5 ml-0.5" fill="white" viewBox="0 0 24 24">
-                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                        </svg>
-                    </button>
+
+                    <div class="flex items-center gap-2">
+                        <!-- Botón grabar audio -->
+                        <button type="button" @click="toggleRecording()"
+                            :class="recording ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-slate-200 hover:bg-slate-300 text-slate-600'"
+                            class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all"
+                            :title="recording ? 'Detener grabación' : 'Grabar audio'">
+                            <svg x-show="!recording" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"/>
+                            </svg>
+                            <svg x-show="recording" class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                        <span x-show="recording" class="text-red-500 text-xs font-medium" x-text="recordingTime"></span>
+
+                        <!-- Textarea -->
+                        <div x-show="!recording"
+                            class="flex-1 bg-slate-100 rounded-2xl overflow-hidden transition-all duration-200 focus-within:bg-slate-50 focus-within:ring-2 focus-within:ring-emerald-500/30">
+                            <textarea id="textoRespuesta"
+                                class="w-full resize-none border-0 bg-transparent focus:ring-0 focus:outline-none text-[15px] text-slate-800 leading-6 placeholder-slate-400 py-2.5 px-4 block"
+                                rows="1" placeholder="Escribe un mensaje..." oninput="ajustarAlturaTextarea(this)"
+                                onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); enviarRespuestaConAudio(); }"
+                                style="height: 44px; max-height: 120px; overflow-y: auto;"></textarea>
+                        </div>
+
+                        <!-- Botón enviar -->
+                        <button @click="enviarConAudio()" id="btnEnviarMensaje"
+                            class="w-11 h-11 bg-emerald-600 hover:bg-emerald-700 active:scale-95 rounded-full flex items-center justify-center text-white shrink-0 transition-all duration-150">
+                            <svg class="w-5 h-5 ml-0.5" fill="white" viewBox="0 0 24 24">
+                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Input oculto para archivo de audio -->
+                    <input type="file" x-ref="chatAudioInput" class="hidden">
                 </div>
 
                 <!-- Elementos ocultos -->
@@ -1386,6 +1455,16 @@
                     `;
                 }
 
+                // HTML para audio si existe
+                const audioHtml = mensaje.audio_ruta ? `
+                    <div class="mt-2 mb-1">
+                        <audio controls class="w-full h-10 rounded-lg" style="max-width: 250px;">
+                            <source src="/${mensaje.audio_ruta}" type="audio/mpeg">
+                            Tu navegador no soporta audio.
+                        </audio>
+                    </div>
+                ` : '';
+
                 const mensajeDiv = document.createElement('div');
                 mensajeDiv.className = `flex ${esPropio ? 'justify-end' : 'justify-start'}`;
                 mensajeDiv.innerHTML = `
@@ -1399,7 +1478,9 @@
                                     </div>
                                   ` : ''}
 
-                          <p class="mensaje-mensaje text-[15px] leading-relaxed whitespace-pre-wrap">${mensajeTexto}</p>
+                          ${mensajeTexto ? `<p class="mensaje-mensaje text-[15px] leading-relaxed whitespace-pre-wrap">${mensajeTexto}</p>` : ''}
+
+                          ${audioHtml}
 
                           ${botonesRevision}
 
@@ -1443,10 +1524,20 @@
 
                     const bubbleClass = esPropio ? 'chat-bubble-out' : 'chat-bubble-in';
 
+                    // HTML para audio si existe
+                    const audioHtml = respuesta.audio_ruta ? `
+                        <div class="mt-1 mb-1">
+                            <audio controls class="w-full h-8 rounded" style="max-width: 220px;">
+                                <source src="/${respuesta.audio_ruta}" type="audio/mpeg">
+                            </audio>
+                        </div>
+                    ` : '';
+
                     respuestaDiv.innerHTML = `
                     <div class="chat-bubble ${bubbleClass} max-w-[85%] px-4 py-2.5">
                         ${!esPropio ? `<p class="text-xs font-semibold text-emerald-600 mb-1">${respuesta.emisor}</p>` : ''}
-                        <p class="text-[15px] text-slate-800 leading-relaxed whitespace-pre-wrap">${respuesta.mensaje}</p>
+                        ${respuesta.mensaje ? `<p class="text-[15px] text-slate-800 leading-relaxed whitespace-pre-wrap">${respuesta.mensaje}</p>` : ''}
+                        ${audioHtml}
                         <div class="flex items-center justify-end gap-1.5 mt-1.5 -mb-0.5">
                             <span class="text-[11px] text-slate-500">${respuesta.created_at}</span>
                             ${esPropio ? '<svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>' : ''}
@@ -1568,6 +1659,242 @@
         // Registrar y ejecutar
         window.initAlertasIndexPage();
         document.addEventListener('livewire:navigated', window.initAlertasIndexPage);
+
+        // Componente Alpine para grabación de audio en el formulario principal
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('audioRecorder', () => ({
+                recording: false,
+                hasAudio: false,
+                mediaRecorder: null,
+                audioChunks: [],
+                recordingTime: '0:00',
+                recordingInterval: null,
+                audioBlob: null,
+
+                async toggleRecording() {
+                    if (this.recording) {
+                        this.stopRecording();
+                    } else {
+                        await this.startRecording();
+                    }
+                },
+
+                async startRecording() {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        this.mediaRecorder = new MediaRecorder(stream);
+                        this.audioChunks = [];
+
+                        this.mediaRecorder.ondataavailable = (e) => {
+                            this.audioChunks.push(e.data);
+                        };
+
+                        this.mediaRecorder.onstop = () => {
+                            this.audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                            const audioUrl = URL.createObjectURL(this.audioBlob);
+                            this.$refs.audioPreview.src = audioUrl;
+                            this.hasAudio = true;
+
+                            // Crear archivo para el input
+                            const file = new File([this.audioBlob], 'audio_grabado.webm', { type: 'audio/webm' });
+                            const dt = new DataTransfer();
+                            dt.items.add(file);
+                            this.$refs.audioInput.files = dt.files;
+
+                            stream.getTracks().forEach(track => track.stop());
+                        };
+
+                        this.mediaRecorder.start();
+                        this.recording = true;
+
+                        // Timer
+                        let seconds = 0;
+                        this.recordingInterval = setInterval(() => {
+                            seconds++;
+                            const mins = Math.floor(seconds / 60);
+                            const secs = seconds % 60;
+                            this.recordingTime = `${mins}:${secs.toString().padStart(2, '0')}`;
+                        }, 1000);
+
+                    } catch (err) {
+                        console.error('Error al acceder al micrófono:', err);
+                        Swal.fire('Error', 'No se pudo acceder al micrófono. Verifica los permisos.', 'error');
+                    }
+                },
+
+                stopRecording() {
+                    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+                        this.mediaRecorder.stop();
+                    }
+                    this.recording = false;
+                    clearInterval(this.recordingInterval);
+                    this.recordingTime = '0:00';
+                },
+
+                deleteAudio() {
+                    this.hasAudio = false;
+                    this.audioBlob = null;
+                    this.$refs.audioPreview.src = '';
+                    this.$refs.audioInput.value = '';
+                },
+
+                handleFileSelect(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        this.hasAudio = true;
+                        this.$refs.audioPreview.src = URL.createObjectURL(file);
+                    }
+                }
+            }));
+
+            // Componente Alpine para grabación en el chat
+            Alpine.data('chatAudioRecorder', () => ({
+                recording: false,
+                hasAudio: false,
+                mediaRecorder: null,
+                audioChunks: [],
+                recordingTime: '0:00',
+                recordingInterval: null,
+                audioBlob: null,
+
+                async toggleRecording() {
+                    if (this.recording) {
+                        this.stopRecording();
+                    } else {
+                        await this.startRecording();
+                    }
+                },
+
+                async startRecording() {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        this.mediaRecorder = new MediaRecorder(stream);
+                        this.audioChunks = [];
+
+                        this.mediaRecorder.ondataavailable = (e) => {
+                            this.audioChunks.push(e.data);
+                        };
+
+                        this.mediaRecorder.onstop = () => {
+                            this.audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                            const audioUrl = URL.createObjectURL(this.audioBlob);
+                            this.$refs.chatAudioPreview.src = audioUrl;
+                            this.hasAudio = true;
+
+                            stream.getTracks().forEach(track => track.stop());
+                        };
+
+                        this.mediaRecorder.start();
+                        this.recording = true;
+
+                        let seconds = 0;
+                        this.recordingInterval = setInterval(() => {
+                            seconds++;
+                            const mins = Math.floor(seconds / 60);
+                            const secs = seconds % 60;
+                            this.recordingTime = `${mins}:${secs.toString().padStart(2, '0')}`;
+                        }, 1000);
+
+                    } catch (err) {
+                        console.error('Error al acceder al micrófono:', err);
+                        Swal.fire('Error', 'No se pudo acceder al micrófono.', 'error');
+                    }
+                },
+
+                stopRecording() {
+                    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+                        this.mediaRecorder.stop();
+                    }
+                    this.recording = false;
+                    clearInterval(this.recordingInterval);
+                    this.recordingTime = '0:00';
+                },
+
+                deleteAudio() {
+                    this.hasAudio = false;
+                    this.audioBlob = null;
+                    if (this.$refs.chatAudioPreview) {
+                        this.$refs.chatAudioPreview.src = '';
+                    }
+                },
+
+                async enviarConAudio() {
+                    const mensajeRespuesta = document.getElementById('textoRespuesta').value.trim();
+
+                    if (!mensajeRespuesta && !this.hasAudio) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Mensaje vacío',
+                            text: 'Debes escribir un mensaje o grabar un audio.'
+                        });
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('parent_id', window.alertaActualId);
+
+                    if (mensajeRespuesta) {
+                        formData.append('mensaje', mensajeRespuesta);
+                    }
+
+                    if (this.audioBlob) {
+                        formData.append('audio', this.audioBlob, 'audio_respuesta.webm');
+                    }
+
+                    try {
+                        const response = await fetch("{{ route('alertas.store') }}", {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: formData
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Respuesta enviada',
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => {
+                                this.deleteAudio();
+                                document.getElementById('textoRespuesta').value = '';
+                                cerrarModalMensaje();
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'No se pudo enviar la respuesta'
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error de conexión',
+                            text: 'No se pudo enviar la respuesta.'
+                        });
+                    }
+                }
+            }));
+        });
+
+        // Función global para enviar respuesta con audio (llamada desde textarea onkeydown)
+        window.enviarRespuestaConAudio = function() {
+            // Buscar el componente Alpine del chat y llamar su método
+            const chatInput = document.querySelector('[x-data="chatAudioRecorder()"]');
+            if (chatInput && chatInput.__x) {
+                chatInput.__x.$data.enviarConAudio();
+            } else {
+                // Fallback a envío sin audio
+                window.enviarRespuesta();
+            }
+        };
     </script>
     <style>
         /* ===== ANIMACIONES DEL MODAL ===== */

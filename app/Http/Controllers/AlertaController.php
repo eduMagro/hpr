@@ -420,9 +420,18 @@ $ordenablesAlertas = [];
             if ($request->has('parent_id')) {
                 try {
                     $request->validate([
-                        'mensaje' => 'required|string|max:1000',
+                        'mensaje' => 'nullable|string|max:1000',
                         'parent_id' => 'required|exists:alertas,id',
+                        'audio' => 'nullable|file|mimes:mp3,wav,ogg,webm,m4a|max:10240',
                     ]);
+
+                    // Validar que haya mensaje o audio
+                    if (empty($request->mensaje) && !$request->hasFile('audio')) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Debes enviar un mensaje o un audio'
+                        ], 422);
+                    }
 
                     $mensajePadre = Alerta::findOrFail($request->parent_id);
                     $mensajeRaiz = $mensajePadre->mensajeRaiz();
@@ -436,9 +445,19 @@ $ordenablesAlertas = [];
                         ? $receptorOriginal
                         : $emisorOriginal;
 
+                    // Procesar audio si existe
+                    $audioRuta = null;
+                    if ($request->hasFile('audio')) {
+                        $audio = $request->file('audio');
+                        $nombreArchivo = 'audio_' . time() . '_' . $user->id . '.' . $audio->getClientOriginalExtension();
+                        $audio->move(public_path('audios/alertas'), $nombreArchivo);
+                        $audioRuta = 'audios/alertas/' . $nombreArchivo;
+                    }
+
                     // Crear la respuesta (sin registro en alertas_users)
                     Alerta::create([
-                        'mensaje'        => $request->mensaje,
+                        'mensaje'        => $request->mensaje ?? '',
+                        'audio_ruta'     => $audioRuta,
                         'user_id_1'      => $user->id,
                         'destinatario_id'=> $destinatarioRespuesta,
                         'parent_id'      => $mensajeRaiz->id,
@@ -534,7 +553,8 @@ $ordenablesAlertas = [];
             // 🔹 CASO 2: USUARIO OFICINA CON FORMULARIO MANUAL
             if ($esOficina) {
                 $request->validate([
-                    'mensaje' => 'required|string',
+                    'mensaje' => 'nullable|string',
+                    'audio' => 'nullable|file|mimes:mp3,wav,ogg,webm,m4a|max:10240',
                     'rol' => [
                         'nullable',
                         'string',
@@ -569,8 +589,23 @@ $ordenablesAlertas = [];
                     throw new \Exception('Debes elegir un destino: rol, categoría o destinatario específico.');
                 }
 
+                // Validar que haya mensaje o audio
+                if (empty($request->mensaje) && !$request->hasFile('audio')) {
+                    throw new \Exception('Debes enviar un mensaje o un audio.');
+                }
+
+                // Procesar audio si existe
+                $audioRuta = null;
+                if ($request->hasFile('audio')) {
+                    $audio = $request->file('audio');
+                    $nombreArchivo = 'audio_' . time() . '_' . $user->id . '.' . $audio->getClientOriginalExtension();
+                    $audio->move(public_path('audios/alertas'), $nombreArchivo);
+                    $audioRuta = 'audios/alertas/' . $nombreArchivo;
+                }
+
                 $data = [
-                    'mensaje'   => $request->mensaje,
+                    'mensaje'   => $request->mensaje ?? '',
+                    'audio_ruta' => $audioRuta,
                     'user_id_1' => $user->id,
                     'user_id_2' => session()->get('companero_id', null),
                     'leida'     => false,
@@ -605,6 +640,16 @@ $ordenablesAlertas = [];
 
             // 🔹 CASO 3: USUARIO OPERARIO ENVÍA MENSAJE Y LLEGA A DEPARTAMENTO PROGRAMADOR
             if (!$esOficina && !$request->has('enviar_a_departamentos')) {
+                // Validar audio si existe
+                $request->validate([
+                    'audio' => 'nullable|file|mimes:mp3,wav,ogg,webm,m4a|max:10240',
+                ]);
+
+                // Validar que haya mensaje o audio
+                if (empty($request->mensaje) && !$request->hasFile('audio')) {
+                    throw new \Exception('Debes enviar un mensaje o un audio.');
+                }
+
                 $usuariosDestino = User::whereHas('departamentos', function ($q) {
                     $q->where('nombre', 'Programador');
                 })->get();
@@ -613,8 +658,18 @@ $ordenablesAlertas = [];
                     throw new \Exception('No hay usuarios en el departamento Programador para recibir el mensaje.');
                 }
 
+                // Procesar audio si existe
+                $audioRuta = null;
+                if ($request->hasFile('audio')) {
+                    $audio = $request->file('audio');
+                    $nombreArchivo = 'audio_' . time() . '_' . $user->id . '.' . $audio->getClientOriginalExtension();
+                    $audio->move(public_path('audios/alertas'), $nombreArchivo);
+                    $audioRuta = 'audios/alertas/' . $nombreArchivo;
+                }
+
                 $alerta = Alerta::create([
-                    'mensaje'   => $request->mensaje,
+                    'mensaje'   => $request->mensaje ?? '',
+                    'audio_ruta' => $audioRuta,
                     'user_id_1' => $user->id,
                     'leida'     => false,
                 ]);
@@ -696,6 +751,7 @@ $ordenablesAlertas = [];
         $data = [
             'id' => $mensaje->id,
             'mensaje' => $mensaje->mensaje,
+            'audio_ruta' => $mensaje->audio_ruta,
             'created_at' => $mensaje->created_at->format('d/m/Y H:i'),
             'user_id_1' => $mensaje->user_id_1,
             'emisor' => $mensaje->nombre_emisor,

@@ -19,6 +19,7 @@ class Alerta extends Model
         'destinatario',
         'destinatario_id',
         'mensaje',
+        'audio_ruta',
         'tipo',
         'parent_id',
         'created_at',
