@@ -775,7 +775,7 @@
 
         <!-- Contenedor del modal -->
         <div class="absolute inset-0 flex items-end md:items-center justify-center p-0 md:p-6">
-            <div class="modal-content bg-white w-full md:max-w-[440px] md:rounded-2xl shadow-2xl flex flex-col max-h-[100dvh] md:max-h-[80vh] overflow-hidden"
+            <div class="modal-content bg-white w-full md:w-[360px] md:rounded-2xl shadow-2xl flex flex-col max-h-[100dvh] md:max-h-[80vh] overflow-hidden"
                 onclick="event.stopPropagation()">
 
                 <!-- Header -->

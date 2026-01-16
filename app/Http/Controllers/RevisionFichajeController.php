@@ -96,17 +96,21 @@ class RevisionFichajeController extends Controller
                 continue;
             }
 
+            // Usar hora_inicio/hora_fin o hora_entrada/hora_salida según lo que esté disponible
+            $horaEntradaTurno = $turno->hora_entrada ?? $turno->hora_inicio;
+            $horaSalidaTurno = $turno->hora_salida ?? $turno->hora_fin;
+
             $horasActualizadas = false;
 
             // Rellenar entrada si falta
-            if (empty($asignacion->entrada) && $turno->hora_entrada) {
-                $asignacion->entrada = $turno->hora_entrada;
+            if (empty($asignacion->entrada) && $horaEntradaTurno) {
+                $asignacion->entrada = $horaEntradaTurno;
                 $horasActualizadas = true;
             }
 
             // Rellenar salida si falta
-            if (empty($asignacion->salida) && $turno->hora_salida) {
-                $asignacion->salida = $turno->hora_salida;
+            if (empty($asignacion->salida) && $horaSalidaTurno) {
+                $asignacion->salida = $horaSalidaTurno;
                 $horasActualizadas = true;
             }
 
