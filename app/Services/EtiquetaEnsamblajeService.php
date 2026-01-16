@@ -61,6 +61,12 @@ class EtiquetaEnsamblajeService
     {
         $codigo = EtiquetaEnsamblaje::generarCodigo($entidad, $numeroUnidad, $totalUnidades);
 
+        // Truncar campos para evitar "Data too long" error
+        // etiquetas_ensamblaje.marca: varchar(50), planilla_entidades.marca: varchar(100)
+        // etiquetas_ensamblaje.situacion: varchar(100), planilla_entidades.situacion: varchar(255)
+        $marca = $entidad->marca ? mb_substr($entidad->marca, 0, 50) : null;
+        $situacion = $entidad->situacion ? mb_substr($entidad->situacion, 0, 100) : null;
+
         return EtiquetaEnsamblaje::create([
             'codigo' => $codigo,
             'planilla_id' => $entidad->planilla_id,
@@ -68,8 +74,8 @@ class EtiquetaEnsamblajeService
             'numero_unidad' => $numeroUnidad,
             'total_unidades' => $totalUnidades,
             'estado' => EtiquetaEnsamblaje::ESTADO_PENDIENTE,
-            'marca' => $entidad->marca,
-            'situacion' => $entidad->situacion,
+            'marca' => $marca,
+            'situacion' => $situacion,
             'longitud' => $entidad->longitud_ensamblaje,
             'peso' => $entidad->peso_total ? ($entidad->peso_total / $totalUnidades) : null,
         ]);

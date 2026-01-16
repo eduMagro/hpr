@@ -66,85 +66,143 @@ class FerrawinBulkImportService
             'planillas' => count($planillasData),
         ]);
 
-        try {
-            // 1. Pre-cargar datos en cache
-            $this->precargarCaches($planillasData);
+        // Configuración de reintentos para deadlocks
+        $maxIntentos = 3;
+        $intento = 0;
+        $ultimoError = null;
 
-            // 2. Filtrar planillas que ya existen
-            $codigos = array_column($planillasData, 'codigo');
-            $existentes = Planilla::whereIn('codigo', $codigos)->pluck('codigo')->toArray();
+        while ($intento < $maxIntentos) {
+            $intento++;
 
-            $planillasNuevas = array_filter($planillasData, fn($p) => !in_array($p['codigo'], $existentes));
-            $planillasActualizar = array_filter($planillasData, fn($p) => in_array($p['codigo'], $existentes));
+            try {
+                // 1. Pre-cargar datos en cache
+                $this->precargarCaches($planillasData);
 
-            $this->stats['planillas_omitidas'] = count($existentes);
+                // 2. Filtrar planillas que ya existen
+                $codigos = array_column($planillasData, 'codigo');
+                $existentes = Planilla::whereIn('codigo', $codigos)->pluck('codigo')->toArray();
 
-            Log::channel('ferrawin_sync')->info("📊 [BULK] Análisis de planillas", [
-                'nuevas' => count($planillasNuevas),
-                'existentes' => count($existentes),
-            ]);
+                $planillasNuevas = array_filter($planillasData, fn($p) => !in_array($p['codigo'], $existentes));
+                $planillasActualizar = array_filter($planillasData, fn($p) => in_array($p['codigo'], $existentes));
 
-            // 3. Inicializar contador de etiquetas
-            $this->codigoService->inicializarContadorBatch();
+                $this->stats['planillas_omitidas'] = count($existentes);
 
-            // 4. Procesar en transacción
-            DB::beginTransaction();
+                Log::channel('ferrawin_sync')->info("📊 [BULK] Análisis de planillas", [
+                    'nuevas' => count($planillasNuevas),
+                    'existentes' => count($existentes),
+                ]);
 
-            // 4a. Importar planillas nuevas
-            foreach ($planillasNuevas as $planillaData) {
-                $this->importarPlanilla($planillaData);
+                // 3. Inicializar contador de etiquetas
+                $this->codigoService->inicializarContadorBatch();
+
+                // 4. Procesar en transacción
+                DB::beginTransaction();
+
+                // 4a. Importar planillas nuevas
+                foreach ($planillasNuevas as $planillaData) {
+                    $this->importarPlanilla($planillaData);
+                }
+
+                // 4b. Actualizar planillas existentes (solo si tienen cambios)
+                foreach ($planillasActualizar as $planillaData) {
+                    $this->actualizarPlanilla($planillaData);
+                }
+
+                DB::commit();
+
+                // 5. Resetear contador
+                $this->codigoService->resetearContadorBatch();
+
+                // 6. Registrar log
+                $duracion = round(microtime(true) - $inicio, 2);
+                $this->registrarLog($duracion, 'completado');
+
+                Log::channel('ferrawin_sync')->info("✅ [BULK] Importación completada", [
+                    'duracion' => $duracion,
+                    'planillas_creadas' => $this->stats['planillas_creadas'],
+                    'elementos_creados' => $this->stats['elementos_creados'],
+                    'intento' => $intento,
+                ]);
+
+                return [
+                    'planillas_creadas' => $this->stats['planillas_creadas'],
+                    'planillas_actualizadas' => $this->stats['planillas_actualizadas'],
+                    'planillas_omitidas' => $this->stats['planillas_omitidas'],
+                    'elementos_creados' => $this->stats['elementos_creados'],
+                    'etiquetas_creadas' => $this->stats['etiquetas_creadas'],
+                    'entidades_creadas' => $this->stats['entidades_creadas'],
+                    'etiquetas_ensamblaje_creadas' => $this->stats['etiquetas_ensamblaje_creadas'],
+                    'advertencias' => $this->advertencias,
+                    'duracion' => $duracion,
+                ];
+
+            } catch (\Throwable $e) {
+                DB::rollBack();
+                $this->codigoService->resetearContadorBatch();
+                $ultimoError = $e;
+
+                // Verificar si es un deadlock (código 40001 o mensaje contiene "Deadlock")
+                $esDeadlock = $this->esErrorDeadlock($e);
+
+                if ($esDeadlock && $intento < $maxIntentos) {
+                    // Reset stats para el siguiente intento
+                    $this->resetStats();
+
+                    // Espera exponencial antes de reintentar
+                    $esperaMs = 100 * pow(2, $intento - 1); // 100ms, 200ms, 400ms
+                    Log::channel('ferrawin_sync')->warning("⚠️ [BULK] Deadlock detectado, reintentando en {$esperaMs}ms (intento {$intento}/{$maxIntentos})", [
+                        'error' => $e->getMessage(),
+                    ]);
+                    usleep($esperaMs * 1000);
+                    continue;
+                }
+
+                // No es deadlock o se agotaron los reintentos
+                Log::channel('ferrawin_sync')->error("❌ [BULK] Error en importación", [
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'intento' => $intento,
+                    'es_deadlock' => $esDeadlock,
+                ]);
+
+                $this->registrarLog(
+                    round(microtime(true) - $inicio, 2),
+                    'error',
+                    $e->getMessage()
+                );
+
+                throw $e;
             }
-
-            // 4b. Actualizar planillas existentes (solo si tienen cambios)
-            foreach ($planillasActualizar as $planillaData) {
-                $this->actualizarPlanilla($planillaData);
-            }
-
-            DB::commit();
-
-            // 5. Resetear contador
-            $this->codigoService->resetearContadorBatch();
-
-            // 6. Registrar log
-            $duracion = round(microtime(true) - $inicio, 2);
-            $this->registrarLog($duracion, 'completado');
-
-            Log::channel('ferrawin_sync')->info("✅ [BULK] Importación completada", [
-                'duracion' => $duracion,
-                'planillas_creadas' => $this->stats['planillas_creadas'],
-                'elementos_creados' => $this->stats['elementos_creados'],
-            ]);
-
-            return [
-                'planillas_creadas' => $this->stats['planillas_creadas'],
-                'planillas_actualizadas' => $this->stats['planillas_actualizadas'],
-                'planillas_omitidas' => $this->stats['planillas_omitidas'],
-                'elementos_creados' => $this->stats['elementos_creados'],
-                'etiquetas_creadas' => $this->stats['etiquetas_creadas'],
-                'entidades_creadas' => $this->stats['entidades_creadas'],
-                'etiquetas_ensamblaje_creadas' => $this->stats['etiquetas_ensamblaje_creadas'],
-                'advertencias' => $this->advertencias,
-                'duracion' => $duracion,
-            ];
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            $this->codigoService->resetearContadorBatch();
-
-            Log::channel('ferrawin_sync')->error("❌ [BULK] Error en importación", [
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
-            $this->registrarLog(
-                round(microtime(true) - $inicio, 2),
-                'error',
-                $e->getMessage()
-            );
-
-            throw $e;
         }
+
+        // Si llegamos aquí, se agotaron los reintentos
+        throw $ultimoError;
+    }
+
+    /**
+     * Determina si un error es un deadlock de MySQL.
+     */
+    protected function esErrorDeadlock(\Throwable $e): bool
+    {
+        $mensaje = $e->getMessage();
+
+        // Código SQLSTATE para deadlock
+        if (str_contains($mensaje, '40001')) {
+            return true;
+        }
+
+        // Código de error MySQL para deadlock
+        if (str_contains($mensaje, '1213')) {
+            return true;
+        }
+
+        // Mensaje explícito
+        if (stripos($mensaje, 'deadlock') !== false) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -439,19 +497,26 @@ class FerrawinBulkImportService
         // Obtener ferrawin_id si viene en los datos
         $ferrawinId = $elem['ferrawin_id'] ?? null;
 
+        // Truncar campos de texto para evitar "Data too long" error
+        $figura = isset($elem['figura']) ? mb_substr($elem['figura'], 0, 50) : null;
+        $descripcionFila = isset($elem['descripcion_fila']) ? mb_substr($elem['descripcion_fila'], 0, 500) : null;
+        $marca = isset($elem['marca']) ? mb_substr($elem['marca'], 0, 255) : null;
+        $etiquetaVal = isset($elem['etiqueta']) ? mb_substr($elem['etiqueta'], 0, 50) : null;
+        $ferrawinIdTrunc = $ferrawinId ? mb_substr($ferrawinId, 0, 50) : null;
+
         Elemento::create([
             'codigo' => Elemento::generarCodigo(),
             'planilla_id' => $planilla->id,
-            'ferrawin_id' => $ferrawinId,
+            'ferrawin_id' => $ferrawinIdTrunc,
             'planilla_entidad_id' => $planillaEntidadId,
             'etiqueta_id' => $etiquetaPadre->id,
             'etiqueta_sub_id' => null,
             'maquina_id' => null,
-            'figura' => $elem['figura'] ?? null,
-            'descripcion_fila' => $elem['descripcion_fila'] ?? null,
+            'figura' => $figura,
+            'descripcion_fila' => $descripcionFila,
             'fila' => $fila,
-            'marca' => $elem['marca'] ?? null,
-            'etiqueta' => $elem['etiqueta'] ?? null,
+            'marca' => $marca,
+            'etiqueta' => $etiquetaVal,
             'diametro' => (int)($elem['diametro'] ?? 0),
             'longitud' => $longitud,
             'barras' => $barras,
@@ -655,12 +720,17 @@ class FerrawinBulkImportService
         $longitud = (float)($data['longitud'] ?? 0);
         $diametro = (int)($data['diametro'] ?? 0);
 
+        // Truncar campos de texto para evitar "Data too long" error
+        $figura = isset($data['figura']) ? mb_substr($data['figura'], 0, 50) : $elemento->figura;
+        $descripcionFila = isset($data['descripcion_fila']) ? mb_substr($data['descripcion_fila'], 0, 500) : $elemento->descripcion_fila;
+        $marca = isset($data['marca']) ? mb_substr($data['marca'], 0, 255) : $elemento->marca;
+
         $elemento->update([
             'planilla_entidad_id' => $planillaEntidadId,
-            'figura' => $data['figura'] ?? $elemento->figura,
-            'descripcion_fila' => $data['descripcion_fila'] ?? $elemento->descripcion_fila,
+            'figura' => $figura,
+            'descripcion_fila' => $descripcionFila,
             'fila' => $fila,
-            'marca' => $data['marca'] ?? $elemento->marca,
+            'marca' => $marca,
             'diametro' => $diametro,
             'longitud' => $longitud,
             'barras' => $barras,
@@ -862,15 +932,22 @@ class FerrawinBulkImportService
             // Construir datos de dibujo a partir de los elementos de composición
             $dibujoData = $this->construirDibujoData($entidad);
 
+            // Truncar campos de texto para evitar "Data too long" error
+            $linea = isset($entidad["linea"]) ? mb_substr($entidad["linea"], 0, 20) : null;
+            $marca = isset($entidad["marca"]) ? mb_substr($entidad["marca"], 0, 100) : "SIN MARCA";
+            $situacion = isset($entidad["situacion"]) ? mb_substr($entidad["situacion"], 0, 255) : "SIN SITUACION";
+            $modelo = isset($entidad["modelo"]) ? mb_substr($entidad["modelo"], 0, 50) : null;
+            $cotas = isset($entidad["cotas"]) ? mb_substr($entidad["cotas"], 0, 255) : null;
+
             $entidadesInsert[] = [
                 "planilla_id" => $planilla->id,
-                "linea" => $entidad["linea"] ?? null,
-                "marca" => $entidad["marca"] ?? "SIN MARCA",
-                "situacion" => $entidad["situacion"] ?? "SIN SITUACION",
+                "linea" => $linea,
+                "marca" => $marca,
+                "situacion" => $situacion,
                 "cantidad" => (int)($entidad["cantidad"] ?? 1),
                 "miembros" => (int)($entidad["miembros"] ?? 1),
-                "modelo" => $entidad["modelo"] ?? null,
-                "cotas" => $entidad["cotas"] ?? null,
+                "modelo" => $modelo,
+                "cotas" => $cotas,
                 "longitud_ensamblaje" => $entidad["resumen"]["longitud_ensamblaje"] ?? null,
                 "peso_total" => $entidad["resumen"]["peso_total"] ?? null,
                 "total_barras" => $entidad["resumen"]["total_barras"] ?? 0,

@@ -35,20 +35,22 @@ class CodigoEtiqueta
         //   ETQ2511001 → 1
         //   ETQ2511001.01 → 1 (ignora lo que hay después del punto)
         //   ETQ2511010.05 → 10
+        // NOTA: No usamos lockForUpdate() aquí porque el contador en memoria
+        // maneja los duplicados dentro del mismo proceso batch, y el lock
+        // causa deadlocks cuando hay múltiples requests concurrentes.
         $ultimo = DB::table('etiquetas')
             ->where('codigo', 'like', "{$prefijo}%")
             ->selectRaw("
                 codigo,
                 CAST(
-                    CASE 
-                        WHEN INSTR(codigo, '.') > 0 
+                    CASE
+                        WHEN INSTR(codigo, '.') > 0
                         THEN SUBSTRING(codigo, 8, INSTR(codigo, '.') - 8)
                         ELSE SUBSTRING(codigo, 8)
-                    END 
+                    END
                 AS UNSIGNED) as numero_base
             ")
             ->orderByDesc('numero_base')
-            ->lockForUpdate()
             ->first();
 
         if ($ultimo && $ultimo->numero_base > 0) {
@@ -102,36 +104,34 @@ class CodigoEtiqueta
         }
 
         // ✅ Sin contador, consultar BD (modo legacy)
-        return DB::transaction(function () use ($prefijo) {
-            // ✅ SOLUCIÓN DEFINITIVA: Buscar en TODOS los registros
-            $ultimo = DB::table('etiquetas')
-                ->where('codigo', 'like', "{$prefijo}%")
-                ->selectRaw("
-                    codigo,
-                    CAST(
-                        CASE 
-                            WHEN INSTR(codigo, '.') > 0 
-                            THEN SUBSTRING(codigo, 8, INSTR(codigo, '.') - 8)
-                            ELSE SUBSTRING(codigo, 8)
-                        END 
-                    AS UNSIGNED) as numero_base
-                ")
-                ->orderByDesc('numero_base')
-                ->lockForUpdate()
-                ->first();
+        // NOTA: No usamos lockForUpdate() para evitar deadlocks con requests concurrentes.
+        // Los duplicados se manejan con retry en crearEtiquetaPadreConRetry().
+        $ultimo = DB::table('etiquetas')
+            ->where('codigo', 'like', "{$prefijo}%")
+            ->selectRaw("
+                codigo,
+                CAST(
+                    CASE
+                        WHEN INSTR(codigo, '.') > 0
+                        THEN SUBSTRING(codigo, 8, INSTR(codigo, '.') - 8)
+                        ELSE SUBSTRING(codigo, 8)
+                    END
+                AS UNSIGNED) as numero_base
+            ")
+            ->orderByDesc('numero_base')
+            ->first();
 
-            $numero = ($ultimo && $ultimo->numero_base > 0)
-                ? (int)$ultimo->numero_base + 1
-                : 1;
+        $numero = ($ultimo && $ultimo->numero_base > 0)
+            ? (int)$ultimo->numero_base + 1
+            : 1;
 
-            $codigo = sprintf('%s%03d', $prefijo, $numero);
+        $codigo = sprintf('%s%03d', $prefijo, $numero);
 
-            Log::channel('planilla_import')->debug(
-                "🔢 [EtiquetaCodigo] Código generado desde BD: {$codigo} (último: " . ($ultimo ? $ultimo->codigo : 'ninguno') . ")"
-            );
+        Log::channel('planilla_import')->debug(
+            "🔢 [EtiquetaCodigo] Código generado desde BD: {$codigo} (último: " . ($ultimo ? $ultimo->codigo : 'ninguno') . ")"
+        );
 
-            return $codigo;
-        });
+        return $codigo;
     }
 
     /**
@@ -139,24 +139,23 @@ class CodigoEtiqueta
      */
     public function generarCodigoSubetiqueta(string $codigoPadre): string
     {
-        return DB::transaction(function () use ($codigoPadre) {
-            $prefijo = $codigoPadre . '.';
+        $prefijo = $codigoPadre . '.';
 
-            // Buscar el máximo índice de subetiqueta
-            $maxIndice = Etiqueta::where('etiqueta_sub_id', 'like', $prefijo . '%')
-                ->lockForUpdate()
-                ->selectRaw("MAX(CAST(SUBSTRING_INDEX(etiqueta_sub_id, '.', -1) AS UNSIGNED)) as maxnum")
-                ->value('maxnum');
+        // Buscar el máximo índice de subetiqueta
+        // NOTA: No usamos lockForUpdate() para evitar deadlocks.
+        // Los duplicados se manejan con constraints de BD y retry.
+        $maxIndice = Etiqueta::where('etiqueta_sub_id', 'like', $prefijo . '%')
+            ->selectRaw("MAX(CAST(SUBSTRING_INDEX(etiqueta_sub_id, '.', -1) AS UNSIGNED)) as maxnum")
+            ->value('maxnum');
 
-            $siguiente = ($maxIndice ? ((int)$maxIndice) : 0) + 1;
-            $subId = $codigoPadre . '.' . str_pad($siguiente, 2, '0', STR_PAD_LEFT);
+        $siguiente = ($maxIndice ? ((int)$maxIndice) : 0) + 1;
+        $subId = $codigoPadre . '.' . str_pad($siguiente, 2, '0', STR_PAD_LEFT);
 
-            Log::channel('planilla_import')->debug(
-                "🔢 [EtiquetaCodigo] Subetiqueta generada: {$subId} (padre: {$codigoPadre}, índice: {$siguiente})"
-            );
+        Log::channel('planilla_import')->debug(
+            "🔢 [EtiquetaCodigo] Subetiqueta generada: {$subId} (padre: {$codigoPadre}, índice: {$siguiente})"
+        );
 
-            return $subId;
-        });
+        return $subId;
     }
 
     /**
