@@ -570,6 +570,7 @@ class SyncMonitor extends Component
 
     /**
      * Continúa la sincronización desde la última planilla procesada.
+     * Abre el modal de confirmación para elegir destino.
      */
     public function continuarSync()
     {
@@ -583,8 +584,8 @@ class SyncMonitor extends Component
             return;
         }
 
-        // Usar el método centralizado de ejecución
-        $this->ejecutarSync($this->ultimoAño, $this->ultimaPlanilla);
+        // Abrir modal de confirmación con el año detectado
+        $this->seleccionarAño($this->ultimoAño);
     }
 
     /**
