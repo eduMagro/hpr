@@ -758,6 +758,78 @@
                         })
                         .then(r => r.json())
                         .then(data => {
+                            // Caso especial: Turno partido requiere confirmación
+                            if (data.requiere_confirmacion_turno_partido) {
+                                Swal.fire({
+                                    title: 'Turno Partido',
+                                    text: data.mensaje,
+                                    icon: 'question',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#3085d6',
+                                    cancelButtonColor: '#d33',
+                                    confirmButtonText: 'Sí, hacer turno partido',
+                                    cancelButtonText: 'No, cancelar'
+                                }).then((confirmResult) => {
+                                    if (confirmResult.isConfirmed) {
+                                        // Reenviar con confirmación
+                                        const payloadConfirmado = {
+                                            user_id: "{{ auth()->id() }}",
+                                            tipo: tipo,
+                                            latitud: latitud,
+                                            longitud: longitud,
+                                            confirmar_turno_partido: true
+                                        };
+
+                                        fetch("{{ url('/fichar') }}", {
+                                            method: "POST",
+                                            headers: {
+                                                "Content-Type": "application/json",
+                                                "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                                            },
+                                            body: JSON.stringify(payloadConfirmado)
+                                        })
+                                        .then(r => r.json())
+                                        .then(dataConfirmado => {
+                                            window._fichajePendiente = false;
+                                            bloquearBotonesFichaje(false, boton, textoOriginal);
+
+                                            if (dataConfirmado.success) {
+                                                Swal.fire({
+                                                    icon: 'success',
+                                                    title: dataConfirmado.success,
+                                                    text: `📍 Lugar: ${dataConfirmado.obra_nombre}`,
+                                                    showConfirmButton: false,
+                                                    timer: 3000
+                                                });
+                                                if (window.calendar) {
+                                                    window.calendar.refetchEvents();
+                                                }
+                                            } else {
+                                                Swal.fire({
+                                                    icon: 'error',
+                                                    title: 'Error',
+                                                    text: dataConfirmado.error
+                                                });
+                                            }
+                                        })
+                                        .catch(err => {
+                                            window._fichajePendiente = false;
+                                            bloquearBotonesFichaje(false, boton, textoOriginal);
+                                            Swal.fire({
+                                                icon: 'error',
+                                                title: 'Error',
+                                                text: 'No se pudo comunicar con el servidor'
+                                            });
+                                        });
+                                    } else {
+                                        // Usuario canceló turno partido
+                                        window._fichajePendiente = false;
+                                        bloquearBotonesFichaje(false, boton, textoOriginal);
+                                    }
+                                });
+                                return;
+                            }
+
                             window._fichajePendiente = false;
                             bloquearBotonesFichaje(false, boton, textoOriginal);
 

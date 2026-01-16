@@ -412,7 +412,8 @@ class AsignacionTurnoController extends Controller
 
             /* 4) Rama por tipo de fichaje -------------------------------------------- */
             if ($request->tipo === 'entrada') {
-                return $this->procesarEntrada($user, $fechaTurnoDetectado, $turnoModelo, $turnoDetectado, $horaActual, $obraEncontrada);
+                $confirmarTurnoPartido = $request->boolean('confirmar_turno_partido', false);
+                return $this->procesarEntrada($user, $fechaTurnoDetectado, $turnoModelo, $turnoDetectado, $horaActual, $obraEncontrada, $confirmarTurnoPartido);
             } else {
                 return $this->procesarSalida($user, $ahora, $horaActual, $obraEncontrada);
             }
@@ -425,7 +426,7 @@ class AsignacionTurnoController extends Controller
     /**
      * Procesa fichaje de ENTRADA (soporta turno partido con entrada2)
      */
-    private function procesarEntrada($user, $fechaTurnoDetectado, $turnoModelo, $turnoDetectado, $horaActual, $obraEncontrada)
+    private function procesarEntrada($user, $fechaTurnoDetectado, $turnoModelo, $turnoDetectado, $horaActual, $obraEncontrada, $confirmarTurnoPartido = false)
     {
         $warning = null;
 
@@ -499,7 +500,17 @@ class AsignacionTurnoController extends Controller
         }
 
         if ($tieneEntrada && $tieneSalida && !$tieneEntrada2) {
-            // CASO 3: Tiene entrada+salida, sin entrada2 - TURNO PARTIDO, registrar entrada2
+            // CASO 3: Tiene entrada+salida, sin entrada2 - TURNO PARTIDO
+            // Requiere confirmación del usuario antes de proceder
+            if (!$confirmarTurnoPartido) {
+                return response()->json([
+                    'requiere_confirmacion_turno_partido' => true,
+                    'mensaje' => 'Ya tienes un fichaje de entrada y salida hoy. ¿Quieres hacer turno partido?',
+                    'obra_nombre' => $obraEncontrada->obra,
+                ]);
+            }
+
+            // Usuario confirmó - registrar entrada2
             $asignacion->update([
                 'entrada2' => $horaActual,
                 'obra_id'  => $obraEncontrada->id,
