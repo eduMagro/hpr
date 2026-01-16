@@ -312,8 +312,9 @@
                     <!-- Área de chat RESPONSIVE -->
                     <div class="flex-1 flex flex-col min-w-0">
                         <!-- Header móvil compacto tipo ChatGPT -->
-                        <div :class="['p-3 md:p-5 border-b flex justify-between items-center backdrop-blur-sm',
-                                     tema === 'dark' ? 'bg-gray-800/50 border-gray-700' : 'bg-white/50 border-gray-200']">
+                        <div :class="['p-3 md:p-5 border-b flex justify-between items-center backdrop-blur-sm relative',
+                                     tema === 'dark' ? 'bg-gray-800/50 border-gray-700' : 'bg-white/50 border-gray-200']"
+                             style="z-index: 100;">
                             <div class="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
                                 <!-- Botón menú hamburguesa - SOLO MÓVIL -->
                                 <button @click="abrirSidebar"
@@ -346,8 +347,8 @@
                             </div>
                             <div class="flex gap-1 md:gap-2 flex-shrink-0 items-center">
                                 <!-- Selector de modelo de IA -->
-                                <div class="relative">
-                                    <button @click="mostrarSelectorModelo = !mostrarSelectorModelo"
+                                <div class="relative" style="position: static;">
+                                    <button @click="toggleSelectorModelo" ref="botonModelo"
                                             :class="['flex items-center gap-1 px-2 py-1.5 md:px-3 md:py-2 rounded-lg text-xs md:text-sm font-medium transition-all',
                                                     tema === 'dark' ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700']"
                                             title="Cambiar modelo de IA">
@@ -359,12 +360,12 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                         </svg>
                                     </button>
-                                    <!-- Dropdown de modelos -->
+                                    <!-- Dropdown de modelos (posición fija para evitar overflow) -->
                                     <div v-if="mostrarSelectorModelo"
                                          @click.away="mostrarSelectorModelo = false"
-                                         :class="['absolute right-0 mt-2 w-72 rounded-xl shadow-2xl border overflow-hidden',
+                                         :class="['fixed w-72 rounded-xl shadow-2xl border overflow-hidden',
                                                  tema === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200']"
-                                         style="z-index: 9999;">
+                                         :style="dropdownModeloStyle">
                                         <div :class="['px-4 py-3 border-b', tema === 'dark' ? 'border-gray-700' : 'border-gray-200']">
                                             <h4 :class="['font-semibold text-sm', tema === 'dark' ? 'text-white' : 'text-gray-900']">Modelo de IA</h4>
                                             <p :class="['text-xs mt-1', tema === 'dark' ? 'text-gray-400' : 'text-gray-500']">Selecciona el modelo para el análisis</p>
@@ -789,10 +790,18 @@
                         modelosDisponibles: {},
                         modeloActual: 'claude-haiku',
                         mostrarSelectorModelo: false,
-                        cambiandoModelo: false
+                        cambiandoModelo: false,
+                        dropdownModeloPos: { top: 0, right: 0 }
                     }
                 },
                 computed: {
+                    dropdownModeloStyle() {
+                        return {
+                            top: this.dropdownModeloPos.top + 'px',
+                            right: this.dropdownModeloPos.right + 'px',
+                            zIndex: 99999
+                        }
+                    },
                     conversacionesFiltradas() {
                         if (!this.busquedaConversacion.trim()) {
                             return this.conversaciones
@@ -848,6 +857,20 @@
                         document.body.setAttribute('data-theme', this.tema)
                     },
                     // === GESTIÓN DE MODELOS DE IA ===
+                    toggleSelectorModelo() {
+                        if (!this.mostrarSelectorModelo) {
+                            // Calcular posición del dropdown basado en el botón
+                            const btn = this.$refs.botonModelo
+                            if (btn) {
+                                const rect = btn.getBoundingClientRect()
+                                this.dropdownModeloPos = {
+                                    top: rect.bottom + 8,
+                                    right: window.innerWidth - rect.right
+                                }
+                            }
+                        }
+                        this.mostrarSelectorModelo = !this.mostrarSelectorModelo
+                    },
                     async cargarModelos() {
                         try {
                             const response = await axios.get('/api/asistente/modelos')
@@ -938,10 +961,12 @@
                     async cargarSugerencias() {
                         try {
                             const response = await axios.get('/api/asistente/sugerencias')
-                            this.sugerencias = response.data.sugerencias
+                            this.sugerencias = response.data.sugerencias || []
                             this.sugerenciasMostradas = this.sugerencias.slice(0, 6)
                         } catch (error) {
                             console.error('Error cargando sugerencias:', error)
+                            this.sugerencias = []
+                            this.sugerenciasMostradas = []
                         }
                     },
                     async cargarSugerenciasProactivas() {
