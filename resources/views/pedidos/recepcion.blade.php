@@ -60,8 +60,11 @@
 
                             <span>
                                 {{ ucfirst($prod->productoBase->tipo ?? '-') }} /
-                                Ø{{ $prod->productoBase->diametro ?? '-' }} mm —
-                                {{ number_format($prod->peso_inicial, 2, ',', '.') }} kg
+                                Ø{{ $prod->productoBase->diametro ?? '-' }} mm
+                                @if(strtolower($prod->productoBase->tipo ?? '') === 'barra' && $prod->productoBase->longitud)
+                                    / {{ number_format($prod->productoBase->longitud / 1000, 0) }}m
+                                @endif
+                                — {{ number_format($prod->peso_inicial, 2, ',', '.') }} kg
                             </span>
                         </li>
                     @endforeach
