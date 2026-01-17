@@ -20,6 +20,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Confiar en todos los proxies para obtener IP real del cliente
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'acceso.seccion' => VerificarAccesoSeccion::class,
             'puede.asistente' => VerificarPermisoAsistente::class,

@@ -402,6 +402,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         return response()->file($path); // envía con Content-Type correcto
     })->name('usuarios.imagen');
     Route::get('/mi-perfil/{user}', [PerfilController::class, 'show'])->name('usuarios.show');
+    Route::post('/mi-perfil/cerrar-sesiones', [PerfilController::class, 'cerrarMisSesiones'])->name('perfil.cerrarMisSesiones');
 
     // === DOCUMENTOS EMPLEADO ===
     Route::get('/api/usuarios/{user}/vacation-data', [ProfileController::class, 'getVacationData'])->name('usuarios.getVacationData');

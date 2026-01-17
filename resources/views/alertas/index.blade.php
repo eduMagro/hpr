@@ -1658,8 +1658,13 @@
         document.addEventListener('livewire:navigated', window.initAlertasIndexPage);
 
         // Componente Alpine para grabación de audio en el formulario principal
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('formAudioRecorder', () => ({
+        // Función para registrar los componentes Alpine
+        function registerAudioRecorderComponents() {
+            if (typeof Alpine === 'undefined') return;
+
+            // Solo registrar si no existen ya
+            if (!Alpine.Components || !Alpine.Components.formAudioRecorder) {
+                Alpine.data('formAudioRecorder', () => ({
                 cargando: false,
                 recording: false,
                 hasAudio: false,
@@ -1884,6 +1889,20 @@
                     }
                 }
             }));
+            }
+        }
+
+        // Registrar componentes: si Alpine ya existe, registrar ahora; si no, esperar al evento
+        if (typeof Alpine !== 'undefined') {
+            registerAudioRecorderComponents();
+        }
+        document.addEventListener('alpine:init', registerAudioRecorderComponents);
+
+        // También registrar en navegación SPA de Livewire
+        document.addEventListener('livewire:navigated', () => {
+            if (typeof Alpine !== 'undefined') {
+                registerAudioRecorderComponents();
+            }
         });
 
         // Función global para enviar respuesta con audio (llamada desde textarea onkeydown)

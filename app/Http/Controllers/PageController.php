@@ -123,7 +123,7 @@ class PageController extends Controller
         return $secciones->map(fn($s) => [
             'route' => $s->ruta,
             'label' => $s->nombre,
-            'icon' => asset($s->icono ?? 'imagenes/iconos/default.png'),
+            'icon' => asset($s->icono ?? 'imagenes/iconos/noimagen.png'),
             'departamentos' => $s->departamentos->pluck('id')->toArray(),
         ]);
     }

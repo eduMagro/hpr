@@ -11,6 +11,8 @@ use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Session as FacadeSession;
+use App\Models\Session;
 
 class PerfilController extends Controller
 {
@@ -86,12 +88,30 @@ class PerfilController extends Controller
                 ->count(),
         ];
 
+        // Sesiones activas del usuario
+        $sesiones = Session::where('user_id', $user->id)
+            ->orderByDesc('last_activity')
+            ->get()
+            ->map(function ($sesion) {
+                $lastActivity = Carbon::createFromTimestamp($sesion->last_activity);
+                return [
+                    'id' => $sesion->id,
+                    'ip_address' => $sesion->ip_address,
+                    'user_agent' => $sesion->user_agent,
+                    'dispositivo' => $this->parseUserAgent($sesion->user_agent),
+                    'ultima_actividad' => $lastActivity->format('d/m/Y H:i'),
+                    'tiempo_relativo' => $lastActivity->diffForHumans(),
+                    'actual' => $sesion->id === FacadeSession::getId(),
+                ];
+            });
+
         return view('perfil.show', compact(
             'user',
             'turnos',
             'resumen',
             'horasMensuales',
-            'config'
+            'config',
+            'sesiones'
         ));
     }
     private function getResumenAsistencia(User $user): array
@@ -163,5 +183,86 @@ class PerfilController extends Controller
             'dias_con_errores' => $diasConErrores,
             'horas_planificadas_mes' => $horasPlanificadasMes,
         ];
+    }
+
+    /**
+     * Parsea el User-Agent usando jenssegers/agent para mejor detección
+     */
+    private function parseUserAgent(?string $userAgent): array
+    {
+        if (!$userAgent) {
+            return [
+                'navegador' => 'Desconocido',
+                'sistema' => 'Desconocido',
+                'dispositivo' => 'Desconocido',
+                'icono' => 'desktop',
+                'es_bot' => false,
+            ];
+        }
+
+        $agent = new \Jenssegers\Agent\Agent();
+        $agent->setUserAgent($userAgent);
+
+        // Detectar si es bot/crawler
+        if ($agent->isRobot()) {
+            return [
+                'navegador' => $agent->robot() ?: 'Bot',
+                'sistema' => 'Robot/Crawler',
+                'dispositivo' => 'Bot',
+                'icono' => 'bot',
+                'es_bot' => true,
+            ];
+        }
+
+        // Navegador y versión
+        $browser = $agent->browser();
+        $browserVersion = $agent->version($browser);
+        $navegador = $browser ?: 'Desconocido';
+        if ($browserVersion) {
+            $navegador .= ' ' . explode('.', $browserVersion)[0]; // Solo versión mayor
+        }
+
+        // Sistema operativo y versión
+        $platform = $agent->platform();
+        $platformVersion = $agent->version($platform);
+        $sistema = $platform ?: 'Desconocido';
+        if ($platformVersion && $platform !== 'Windows') {
+            $sistema .= ' ' . explode('.', $platformVersion)[0];
+        }
+
+        // Dispositivo específico
+        $dispositivo = $agent->device() ?: null;
+
+        // Tipo de icono
+        $icono = 'desktop';
+        if ($agent->isPhone()) {
+            $icono = 'mobile';
+        } elseif ($agent->isTablet()) {
+            $icono = 'tablet';
+        }
+
+        return [
+            'navegador' => $navegador,
+            'sistema' => $sistema,
+            'dispositivo' => $dispositivo,
+            'icono' => $icono,
+            'es_bot' => false,
+        ];
+    }
+
+    /**
+     * Cerrar todas las sesiones del usuario autenticado (excepto la actual)
+     */
+    public function cerrarMisSesiones()
+    {
+        $user = Auth::user();
+        $sesionActualId = FacadeSession::getId();
+
+        // Eliminar todas las sesiones excepto la actual
+        $cerradas = Session::where('user_id', $user->id)
+            ->where('id', '!=', $sesionActualId)
+            ->delete();
+
+        return back()->with('success', "🛑 Se han cerrado $cerradas sesión(es) en otros dispositivos.");
     }
 }

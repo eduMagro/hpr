@@ -1,4 +1,4 @@
-@props(['user', 'resumen'])
+@props(['user', 'resumen', 'sesiones' => collect([])])
 
 <style>
     [x-cloak] {
@@ -13,7 +13,8 @@
     seccionDepartamentos: false,
     seccionNomina: false,
     seccionContrato: false,
-    seccionJustificante: false
+    seccionJustificante: false,
+    seccionSesiones: false
 }"
 @justificante-guardado-success.window="
     seccionJustificante = false;
@@ -399,6 +400,100 @@
                     <div x-cloak x-show="seccionJustificante" x-collapse>
                         <div class="p-3 pt-0">
                             @livewire('subir-justificante', ['userId' => $user->id])
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            {{-- Sesiones activas - solo visible en mi propio perfil --}}
+            @if (auth()->check() && auth()->id() === $user->id && $sesiones->isNotEmpty())
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <button @click="seccionSesiones = !seccionSesiones"
+                        class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
+                        <div class="flex items-center gap-2">
+                            <div class="bg-red-100 rounded-lg p-1.5">
+                                <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">Sesiones activas</span>
+                            <span class="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full">{{ $sesiones->count() }}</span>
+                        </div>
+                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
+                            :class="{ 'rotate-180': seccionSesiones }" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div x-cloak x-show="seccionSesiones" x-collapse>
+                        <div class="px-3 pb-3 space-y-2">
+                            @foreach ($sesiones as $sesion)
+                                <div class="p-3 rounded-lg {{ $sesion['actual'] ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-100' }}">
+                                    <div class="flex items-center gap-3">
+                                        {{-- Icono del dispositivo --}}
+                                        <div class="flex-shrink-0 w-10 h-10 rounded-full {{ $sesion['actual'] ? 'bg-green-100' : 'bg-gray-200' }} flex items-center justify-center">
+                                            @if (($sesion['dispositivo']['icono'] ?? 'desktop') === 'mobile')
+                                                <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-green-600' : 'text-gray-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                </svg>
+                                            @elseif (($sesion['dispositivo']['icono'] ?? 'desktop') === 'tablet')
+                                                <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-green-600' : 'text-gray-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                </svg>
+                                            @elseif (($sesion['dispositivo']['icono'] ?? 'desktop') === 'bot')
+                                                <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-green-600' : 'text-gray-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                </svg>
+                                            @else
+                                                <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-green-600' : 'text-gray-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                </svg>
+                                            @endif
+                                        </div>
+                                        {{-- Info del dispositivo --}}
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex items-center gap-2">
+                                                <p class="text-sm font-semibold text-gray-800">
+                                                    {{ $sesion['dispositivo']['navegador'] ?? 'Navegador' }}
+                                                </p>
+                                                @if ($sesion['actual'])
+                                                    <span class="text-[9px] bg-green-500 text-white px-1.5 py-0.5 rounded-full font-medium">ACTUAL</span>
+                                                @endif
+                                            </div>
+                                            <p class="text-xs text-gray-600">
+                                                {{ $sesion['dispositivo']['sistema'] ?? 'Sistema' }}
+                                                @if (!empty($sesion['dispositivo']['dispositivo']))
+                                                    <span class="text-gray-400">·</span> {{ $sesion['dispositivo']['dispositivo'] }}
+                                                @endif
+                                            </p>
+                                            <div class="flex items-center gap-2 mt-1">
+                                                <span class="text-[10px] text-gray-400">{{ $sesion['ip_address'] ?? 'IP desconocida' }}</span>
+                                                <span class="text-gray-300">·</span>
+                                                <span class="text-[10px] {{ $sesion['actual'] ? 'text-green-600 font-medium' : 'text-gray-400' }}">
+                                                    {{ $sesion['actual'] ? 'Activa ahora' : ($sesion['tiempo_relativo'] ?? $sesion['ultima_actividad']) }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+
+                            @if ($sesiones->where('actual', false)->count() > 0)
+                                <form method="POST" action="{{ route('perfil.cerrarMisSesiones') }}"
+                                      onsubmit="return confirm('¿Cerrar todas las sesiones en otros dispositivos?')"
+                                      class="pt-2">
+                                    @csrf
+                                    <button type="submit"
+                                        class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg text-xs transition-colors">
+                                        Cerrar sesiones en otros dispositivos
+                                    </button>
+                                </form>
+                            @else
+                                <p class="text-xs text-gray-500 text-center py-2">Solo tienes esta sesión activa.</p>
+                            @endif
                         </div>
                     </div>
                 </div>

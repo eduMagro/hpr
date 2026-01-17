@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 
 class Seccion extends Model
 {
@@ -47,7 +48,7 @@ class Seccion extends Model
                 ->map(fn($s) => [
                     'route' => $s->ruta,
                     'label' => $s->nombre,
-                    'icon' => asset($s->icono ?? 'imagenes/iconos/default.png'),
+                    'icon' => asset($s->icono ?? 'imagenes/iconos/noimagen.png'),
                     'departamentos' => $s->departamentos->pluck('id')->toArray(),
                 ]);
         });

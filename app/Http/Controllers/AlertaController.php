@@ -441,9 +441,31 @@ $ordenablesAlertas = [];
                     $receptorOriginal = $mensajeRaiz->destinatario_id;
 
                     // La respuesta va al "otro" participante
-                    $destinatarioRespuesta = ($user->id === $emisorOriginal)
-                        ? $receptorOriginal
-                        : $emisorOriginal;
+                    // Si destinatario_id es null (mensaje enviado a departamento/rol), determinar el destinatario
+                    if ($receptorOriginal === null) {
+                        // Si yo soy el emisor original, respondo al primer usuario que tenga registro en alertas_users
+                        // Si no soy el emisor original, respondo al emisor original
+                        if ($user->id === $emisorOriginal) {
+                            // Buscar algún destinatario de alertas_users que no sea yo
+                            $destinatarioRespuesta = AlertaLeida::where('alerta_id', $mensajeRaiz->id)
+                                ->where('user_id', '!=', $user->id)
+                                ->value('user_id');
+                        } else {
+                            $destinatarioRespuesta = $emisorOriginal;
+                        }
+                    } else {
+                        $destinatarioRespuesta = ($user->id === $emisorOriginal)
+                            ? $receptorOriginal
+                            : $emisorOriginal;
+                    }
+
+                    // Validar que tengamos un destinatario
+                    if (!$destinatarioRespuesta) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'No se pudo determinar el destinatario de la respuesta'
+                        ], 422);
+                    }
 
                     // Procesar audio si existe
                     $audioRuta = null;
