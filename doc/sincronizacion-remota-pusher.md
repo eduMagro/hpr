@@ -166,9 +166,9 @@ Anteriormente, la sincronizacion solo podia ejecutarse desde un PC de la oficina
 #### Produccion (Laravel)
 ```env
 BROADCAST_CONNECTION=pusher
-PUSHER_APP_ID=2103345
-PUSHER_APP_KEY=559415ed4e8f282633a3
-PUSHER_APP_SECRET=a2bcee65b1edcad47999
+PUSHER_APP_ID=tu_app_id
+PUSHER_APP_KEY=tu_app_key
+PUSHER_APP_SECRET=tu_app_secret
 PUSHER_APP_CLUSTER=eu
 ```
 
@@ -186,9 +186,9 @@ PRODUCTION_URL=https://app.hierrospacoreyes.es/
 PRODUCTION_TOKEN=********
 
 # Pusher
-PUSHER_APP_ID=2103345
-PUSHER_APP_KEY=559415ed4e8f282633a3
-PUSHER_APP_SECRET=a2bcee65b1edcad47999
+PUSHER_APP_ID=tu_app_id
+PUSHER_APP_KEY=tu_app_key
+PUSHER_APP_SECRET=tu_app_secret
 PUSHER_APP_CLUSTER=eu
 ```
 
