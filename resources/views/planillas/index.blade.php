@@ -200,7 +200,7 @@
                                 <div>
                                     <p class="text-[9px] uppercase tracking-wide text-gray-500">Importación</p>
                                     <p class="font-semibold text-gray-900">
-                                        {{ $planilla->created_at->format('d/m/Y') }}</p>
+                                        {{ $planilla->created_at->format('d/m/Y H:i') }}</p>
                                 </div>
                                 <div>
                                     <p class="text-[9px] uppercase tracking-wide text-gray-500">Entrega</p>
