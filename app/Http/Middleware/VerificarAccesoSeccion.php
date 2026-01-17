@@ -94,18 +94,18 @@ class VerificarAccesoSeccion
         // === 5) Roles y permisos ===
         if ($rolUsuario === 'operario') {
             try {
-                // Los operarios usan las rutas del departamento "Operario" (sin necesidad de asignación)
+                // Los operarios usan las rutas y secciones del departamento "Operario" (sin necesidad de asignación)
                 $departamentoOperarioId = Cache::remember('departamento_id_operario', 86400, function () {
                     return \App\Models\Departamento::whereRaw('LOWER(nombre) = ?', ['operario'])->value('id');
                 });
 
                 if ($departamentoOperarioId) {
-                    // Verificar si la tabla existe antes de consultar
-                    $tablaExiste = Cache::remember('tabla_departamento_ruta_existe', 3600, function () {
+                    // === 5.1) Verificar RUTAS específicas (departamento_ruta) ===
+                    $tablaRutasExiste = Cache::remember('tabla_departamento_ruta_existe', 3600, function () {
                         return \Schema::hasTable('departamento_ruta');
                     });
 
-                    if ($tablaExiste) {
+                    if ($tablaRutasExiste) {
                         // Obtener las rutas permitidas del departamento "Operario"
                         $rutasPermitidas = Cache::remember("rutas_departamento_{$departamentoOperarioId}", 300, function () use ($departamentoOperarioId) {
                             return \DB::table('departamento_ruta')
@@ -115,7 +115,7 @@ class VerificarAccesoSeccion
                         });
 
                         // Verificar si la ruta actual está permitida
-                        $permitido = collect($rutasPermitidas)->contains(function ($rutaPermitida) use ($nombreRutaActual) {
+                        $permitidoPorRuta = collect($rutasPermitidas)->contains(function ($rutaPermitida) use ($nombreRutaActual) {
                             // Si termina en .* es un prefijo (ej: "usuarios.*" permite "usuarios.index", "usuarios.show", etc.)
                             if (Str::endsWith($rutaPermitida, '.*')) {
                                 $prefijo = Str::beforeLast($rutaPermitida, '.*');
@@ -125,9 +125,29 @@ class VerificarAccesoSeccion
                             return $nombreRutaActual === $rutaPermitida;
                         });
 
-                        if ($permitido) {
+                        if ($permitidoPorRuta) {
                             return $next($request);
                         }
+                    }
+
+                    // === 5.2) Verificar SECCIONES asignadas al departamento Operario ===
+                    $seccionesOperario = Cache::remember("secciones_departamento_{$departamentoOperarioId}", 300, function () use ($departamentoOperarioId) {
+                        return \DB::table('departamento_seccion')
+                            ->join('secciones', 'departamento_seccion.seccion_id', '=', 'secciones.id')
+                            ->where('departamento_seccion.departamento_id', $departamentoOperarioId)
+                            ->pluck('secciones.ruta')
+                            ->toArray();
+                    });
+
+                    // Verificar si la ruta actual pertenece a alguna sección asignada
+                    $seccionBase = Str::before($nombreRutaActual, '.');
+                    $permitidoPorSeccion = collect($seccionesOperario)->contains(function ($rutaSeccion) use ($seccionBase, $nombreRutaActual) {
+                        $seccionRutaBase = Str::before($rutaSeccion, '.');
+                        return $seccionBase === $seccionRutaBase;
+                    });
+
+                    if ($permitidoPorSeccion) {
+                        return $next($request);
                     }
                 }
             } catch (\Exception $e) {

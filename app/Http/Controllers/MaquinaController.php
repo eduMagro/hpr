@@ -220,8 +220,9 @@ class MaquinaController extends Controller
         }
 
         // 2) MÁQUINAS NORMALES: Cargar relaciones pesadas y contexto base
-        $maquina->load('elementos'); die('DEBUG-R1: elementos');
-        $maquina->load('elementos.planilla'); die('DEBUG-R2: elementos.planilla');
+        $maquina->load('elementos');
+        $count = $maquina->elementos->count();
+        die('DEBUG-R1: elementos=' . $count . ', memoria=' . round(memory_get_usage()/1024/1024, 2) . 'MB');
         $maquina->load('elementos.etiquetaRelacion'); die('DEBUG-R3: elementos.etiquetaRelacion');
         $maquina->load('elementos.subetiquetas'); die('DEBUG-R4: elementos.subetiquetas');
         $maquina->load('elementos.maquina'); die('DEBUG-R5: elementos.maquina');
