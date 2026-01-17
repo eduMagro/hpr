@@ -245,7 +245,6 @@ class MaquinaController extends Controller
             })
             ->whereIn('planilla_id', $planillasRevisadasIds)
             ->get();
-        die('DEBUG: elementos=' . $elementosMaquina->count() . ', memoria=' . round(memory_get_usage()/1024/1024,2) . 'MB');
 
         // Obtener posiciones del request o calcular automáticamente
         $posicion1 = request('posicion_1');
@@ -429,6 +428,7 @@ class MaquinaController extends Controller
             $resumenService = app(\App\Services\ResumenEtiquetaService::class);
             $resumenService->resumirMultiplanilla($maquina->id, auth()->id());
         }
+        die('DEBUG: despues de auto-resumen, memoria=' . round(memory_get_usage()/1024/1024,2) . 'MB');
 
         // 12) Grupos de resumen activos para esta máquina
         // Incluye tanto grupos de planilla individual como grupos multi-planilla (planilla_id = null)
