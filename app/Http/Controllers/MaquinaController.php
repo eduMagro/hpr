@@ -236,9 +236,13 @@ class MaquinaController extends Controller
             ->toArray();
 
         // 4) Cargar SOLO elementos de planillas revisadas en cola (no todos los 30k+)
-        $campoMaquina = $this->esSegundaMaquina($maquina) ? 'maquina_id_2' : 'maquina_id';
+        // Buscar en cualquiera de los campos de máquina (maquina_id, maquina_id_2, maquina_id_3)
         $elementosMaquina = Elemento::with(['planilla', 'etiquetaRelacion', 'subetiquetas', 'maquina', 'maquina_2', 'producto', 'producto2', 'producto3'])
-            ->where($campoMaquina, $maquina->id)
+            ->where(function ($query) use ($maquina) {
+                $query->where('maquina_id', $maquina->id)
+                    ->orWhere('maquina_id_2', $maquina->id)
+                    ->orWhere('maquina_id_3', $maquina->id);
+            })
             ->whereIn('planilla_id', $planillasRevisadasIds)
             ->get();
 
@@ -418,11 +422,12 @@ class MaquinaController extends Controller
             })
             ->toArray();
 
-        // 11) AUTO-RESUMEN: Desactivado temporalmente - causa error de memoria
-        // if (strtoupper($maquina->nombre) !== 'MSR20') {
-        //     $resumenService = app(\App\Services\ResumenEtiquetaService::class);
-        //     $resumenService->resumirMultiplanilla($maquina->id, auth()->id());
-        // }
+        // 11) AUTO-RESUMEN: Ejecutar automáticamente resumen multi-planilla si hay etiquetas agrupables
+        // Excluir MSR20 del auto-resumen (usa sistema de BVBs diferente)
+        if (strtoupper($maquina->nombre) !== 'MSR20') {
+            $resumenService = app(\App\Services\ResumenEtiquetaService::class);
+            $resumenService->resumirMultiplanilla($maquina->id, auth()->id());
+        }
 
         // 12) Grupos de resumen activos para esta máquina
         // Incluye tanto grupos de planilla individual como grupos multi-planilla (planilla_id = null)
