@@ -435,7 +435,6 @@ class MaquinaController extends Controller
             })
             ->with(['etiquetas.planilla', 'planilla'])
             ->get();
-        die('DEBUG: grupos resumen=' . $gruposResumen->count());
 
         // Preparar datos de grupos para la vista (con elementos de cada etiqueta)
         $gruposResumenData = $gruposResumen->map(function ($grupo) use ($maquina) {
@@ -538,6 +537,7 @@ class MaquinaController extends Controller
         })->values();
 
         // 12) Devolver vista
+        die('DEBUG: antes de return view, memoria=' . round(memory_get_usage()/1024/1024, 2) . 'MB');
         return view('maquinas.show', array_merge($base, [
             // base
             'maquina' => $maquina,
