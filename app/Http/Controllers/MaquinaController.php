@@ -241,7 +241,6 @@ class MaquinaController extends Controller
             ->where($campoMaquina, $maquina->id)
             ->whereIn('planilla_id', $planillasRevisadasIds)
             ->get();
-        die('DEBUG: elementos cargados=' . $elementosMaquina->count() . ', memoria=' . round(memory_get_usage()/1024/1024, 2) . 'MB');
 
         // Obtener posiciones del request o calcular automáticamente
         $posicion1 = request('posicion_1');
@@ -421,6 +420,7 @@ class MaquinaController extends Controller
 
         // 11) AUTO-RESUMEN: Ejecutar automáticamente resumen multi-planilla si hay etiquetas agrupables
         // Excluir MSR20 del auto-resumen (usa sistema de BVBs diferente)
+        die('DEBUG: antes de auto-resumen, memoria=' . round(memory_get_usage()/1024/1024, 2) . 'MB');
         if (strtoupper($maquina->nombre) !== 'MSR20') {
             $resumenService = app(\App\Services\ResumenEtiquetaService::class);
             $resumenService->resumirMultiplanilla($maquina->id, auth()->id());
