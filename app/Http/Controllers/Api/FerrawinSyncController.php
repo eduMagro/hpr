@@ -42,12 +42,21 @@ class FerrawinSyncController extends Controller
             $request->validate([
                 'planillas' => 'required|array|min:1',
                 'planillas.*.codigo' => 'required|string',
-                'planillas.*.elementos' => 'nullable|array',
+                // elementos puede ser null, array vacío, o incluso string vacío (se normaliza abajo)
                 'metadata' => 'nullable|array',
             ]);
 
             $planillas = $request->input('planillas');
             $metadata = $request->input('metadata', []);
+
+            // Normalizar elementos: asegurar que siempre sea un array
+            foreach ($planillas as $index => &$planilla) {
+                if (!isset($planilla['elementos']) || !is_array($planilla['elementos'])) {
+                    $planilla['elementos'] = [];
+                    Log::channel('ferrawin_sync')->debug("📋 [API] Planilla {$planilla['codigo']}: elementos normalizado a array vacío");
+                }
+            }
+            unset($planilla); // Romper referencia
 
             // Contar elementos totales
             $totalElementos = collect($planillas)->sum(fn($p) => count($p['elementos'] ?? []));
