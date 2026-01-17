@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use App\Models\Seccion;
 use App\Models\PermisoAcceso;
@@ -86,34 +87,49 @@ class VerificarAccesoSeccion
 
         // === 5) Roles y permisos ===
         if ($rolUsuario === 'operario') {
-            // Los operarios usan las rutas del departamento "Operario" (sin necesidad de asignación)
-            $departamentoOperarioId = Cache::remember('departamento_id_operario', 86400, function () {
-                return \App\Models\Departamento::whereRaw('LOWER(nombre) = ?', ['operario'])->value('id');
-            });
-
-            if ($departamentoOperarioId) {
-                // Obtener las rutas permitidas del departamento "Operario"
-                $rutasPermitidas = Cache::remember("rutas_departamento_{$departamentoOperarioId}", 300, function () use ($departamentoOperarioId) {
-                    return \DB::table('departamento_ruta')
-                        ->where('departamento_id', $departamentoOperarioId)
-                        ->pluck('ruta')
-                        ->toArray();
+            try {
+                // Los operarios usan las rutas del departamento "Operario" (sin necesidad de asignación)
+                $departamentoOperarioId = Cache::remember('departamento_id_operario', 86400, function () {
+                    return \App\Models\Departamento::whereRaw('LOWER(nombre) = ?', ['operario'])->value('id');
                 });
 
-                // Verificar si la ruta actual está permitida
-                $permitido = collect($rutasPermitidas)->contains(function ($rutaPermitida) use ($nombreRutaActual) {
-                    // Si termina en .* es un prefijo (ej: "usuarios.*" permite "usuarios.index", "usuarios.show", etc.)
-                    if (Str::endsWith($rutaPermitida, '.*')) {
-                        $prefijo = Str::beforeLast($rutaPermitida, '.*');
-                        return $nombreRutaActual === $prefijo || Str::startsWith($nombreRutaActual, $prefijo . '.');
+                if ($departamentoOperarioId) {
+                    // Verificar si la tabla existe antes de consultar
+                    $tablaExiste = Cache::remember('tabla_departamento_ruta_existe', 3600, function () {
+                        return \Schema::hasTable('departamento_ruta');
+                    });
+
+                    if ($tablaExiste) {
+                        // Obtener las rutas permitidas del departamento "Operario"
+                        $rutasPermitidas = Cache::remember("rutas_departamento_{$departamentoOperarioId}", 300, function () use ($departamentoOperarioId) {
+                            return \DB::table('departamento_ruta')
+                                ->where('departamento_id', $departamentoOperarioId)
+                                ->pluck('ruta')
+                                ->toArray();
+                        });
+
+                        // Verificar si la ruta actual está permitida
+                        $permitido = collect($rutasPermitidas)->contains(function ($rutaPermitida) use ($nombreRutaActual) {
+                            // Si termina en .* es un prefijo (ej: "usuarios.*" permite "usuarios.index", "usuarios.show", etc.)
+                            if (Str::endsWith($rutaPermitida, '.*')) {
+                                $prefijo = Str::beforeLast($rutaPermitida, '.*');
+                                return $nombreRutaActual === $prefijo || Str::startsWith($nombreRutaActual, $prefijo . '.');
+                            }
+                            // Si no, es una ruta exacta
+                            return $nombreRutaActual === $rutaPermitida;
+                        });
+
+                        if ($permitido) {
+                            return $next($request);
+                        }
                     }
-                    // Si no, es una ruta exacta
-                    return $nombreRutaActual === $rutaPermitida;
-                });
-
-                if ($permitido) {
-                    return $next($request);
                 }
+            } catch (\Exception $e) {
+                Log::error('Error verificando permisos de operario', [
+                    'error' => $e->getMessage(),
+                    'usuario' => $usuarioAutenticado->email,
+                    'ruta' => $nombreRutaActual,
+                ]);
             }
 
             Log::info('🚫 Ruta denegada para operario', [
