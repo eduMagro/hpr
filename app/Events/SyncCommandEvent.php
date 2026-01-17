@@ -5,7 +5,7 @@ namespace App\Events;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Str;
@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
  * Este evento se dispara desde producción (Laravel) y es recibido por
  * el cliente sync-listener.php en Windows via Pusher.
  */
-class SyncCommandEvent implements ShouldBroadcast
+class SyncCommandEvent implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
