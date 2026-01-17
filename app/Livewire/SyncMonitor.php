@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Planilla;
 use App\Models\Elemento;
+use App\Events\SyncCommandEvent;
 
 class SyncMonitor extends Component
 {
@@ -457,22 +458,39 @@ class SyncMonitor extends Component
      */
     protected function ejecutarSync(string $año, ?string $desdeCodigo = null)
     {
-        // Verificar que estamos en un entorno donde se puede ejecutar sync
-        if (!$this->syncDir || !$this->isLocalSyncEnvironment()) {
-            session()->flash('error', 'La sincronización solo puede ejecutarse desde el entorno local');
+        // Usar el target seleccionado por el usuario
+        $target = $this->syncTarget;
+        $targetLabel = $target === 'production' ? 'PRODUCCIÓN' : 'LOCAL';
+
+        // Si estamos en producción (Linux), enviar comando remoto via Pusher
+        if (!$this->isLocalSyncEnvironment()) {
+            $this->enviarComandoRemoto('start', [
+                'año' => $año,
+                'target' => $target,
+                'desde_codigo' => $desdeCodigo,
+            ]);
+
+            $mensaje = $año === 'todos'
+                ? "Comando de sincronización COMPLETA enviado → {$targetLabel}"
+                : ($año === 'nuevas'
+                    ? "Comando de sincronización NUEVAS enviado → {$targetLabel}"
+                    : "Comando de sincronización {$año} enviado → {$targetLabel}");
+
+            if ($desdeCodigo && $año !== 'todos' && $año !== 'nuevas') {
+                $mensaje = "Comando de continuar desde {$desdeCodigo} enviado → {$targetLabel}";
+            }
+
+            session()->flash('message', $mensaje . ' (esperando respuesta del cliente local)');
             return;
         }
 
+        // Ejecución local directa (Windows)
         // Limpiar archivo de pausa si existe
         $sep = $this->isWindows() ? '\\' : '/';
         $pauseFile = $this->syncDir . $sep . 'sync.pause';
         if (file_exists($pauseFile)) {
             unlink($pauseFile);
         }
-
-        // Usar el target seleccionado por el usuario
-        $target = $this->syncTarget;
-        $targetLabel = $target === 'production' ? 'PRODUCCIÓN' : 'LOCAL';
 
         // Construir argumentos
         if ($año === 'todos') {
@@ -502,6 +520,28 @@ class SyncMonitor extends Component
 
         session()->flash('message', $mensaje);
         $this->isRunning = true;
+    }
+
+    /**
+     * Envía un comando remoto via Pusher al cliente Windows.
+     */
+    protected function enviarComandoRemoto(string $command, array $params = []): void
+    {
+        try {
+            event(new SyncCommandEvent($command, $params));
+
+            \Log::info("SyncMonitor: Comando remoto enviado via Pusher", [
+                'command' => $command,
+                'params' => $params,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("SyncMonitor: Error enviando comando remoto", [
+                'command' => $command,
+                'error' => $e->getMessage(),
+            ]);
+
+            session()->flash('error', 'Error enviando comando: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -608,12 +648,17 @@ class SyncMonitor extends Component
             return;
         }
 
-        // Verificar que estamos en un entorno donde se puede ejecutar sync
-        if (!$this->syncDir || !$this->isLocalSyncEnvironment()) {
-            session()->flash('error', 'La sincronización solo puede controlarse desde el entorno local');
+        // Si estamos en producción (Linux), enviar comando remoto via Pusher
+        if (!$this->isLocalSyncEnvironment()) {
+            $this->enviarComandoRemoto('pause', []);
+
+            $this->isPausing = true;
+            session()->flash('message', 'Comando de pausa enviado (esperando respuesta del cliente local)');
+
             return;
         }
 
+        // Control local directo (Windows)
         $sep = $this->isWindows() ? '\\' : '/';
         $pauseFile = $this->syncDir . $sep . 'sync.pause';
 
