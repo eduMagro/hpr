@@ -895,7 +895,7 @@
                                 </span>
                             @empty
                                 <span class="text-gray-500 italic">No hay secciones asignadas al departamento
-                                    Operarios</span>
+                                    {{ $departamentoOperarios->nombre }}</span>
                             @endforelse
                         </div>
                     </div>
@@ -909,16 +909,15 @@
                                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                                 <div>
-                                    <h5 class="font-semibold text-yellow-800">Departamento "Operarios" no encontrado
+                                    <h5 class="font-semibold text-yellow-800">Departamento "Operario" no encontrado
                                     </h5>
                                     <p class="text-sm text-yellow-700 mt-1">
                                         Para configurar las secciones visibles para operarios, primero crea un
-                                        departamento llamado
-                                        exactamente "Operarios".
+                                        departamento llamado exactamente "Operario".
                                     </p>
                                     <button type="button" @click="openNuevoDepartamentoModal = true"
                                         class="mt-2 text-sm text-yellow-800 hover:text-yellow-900 font-medium underline">
-                                        + Crear departamento Operarios
+                                        + Crear departamento Operario
                                     </button>
                                 </div>
                             </div>
