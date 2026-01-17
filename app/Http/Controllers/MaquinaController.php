@@ -181,6 +181,7 @@ class MaquinaController extends Controller
 
     public function show($id)
     {
+        try {
         // 0) Primero cargar solo la máquina para verificar el tipo
         $maquina = Maquina::findOrFail($id);
 
@@ -590,6 +591,16 @@ class MaquinaController extends Controller
             // productos base compatibles
             'productosBaseCompatibles' => $productosBaseCompatibles,
         ]));
+        } catch (\Throwable $e) {
+            \Log::error('ERROR en show maquina', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
     }
 
     /* =========================

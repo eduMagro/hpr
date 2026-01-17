@@ -27,8 +27,10 @@ class DepartamentoController extends Controller
         $usuariosOficina = User::where('rol', 'oficina')->orderBy('name')->get();
         $todasLasSecciones = Seccion::with('departamentos')->orderBy('orden')->get();
 
-        // Obtener el departamento "Operarios" para la configuración del dashboard
-        $departamentoOperarios = Departamento::where('nombre', 'Operarios')->with('secciones')->first();
+        // Obtener el departamento "Operario" para la configuración del dashboard
+        $departamentoOperarios = Departamento::whereRaw('LOWER(nombre) IN (?, ?)', ['operario', 'operarios'])
+            ->with('secciones')
+            ->first();
 
         // Secciones del dashboard ordenadas
         $seccionesDashboard = Seccion::where('mostrar_en_dashboard', true)->orderBy('orden')->get();

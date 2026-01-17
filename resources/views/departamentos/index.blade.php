@@ -52,7 +52,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=\"csrf-token\"]').content
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
                     },
                     body: JSON.stringify(this.nuevaRuta)
                 });
@@ -74,7 +74,7 @@
                 const response = await fetch(`/departamentos/${this.departamentoId}/rutas/${rutaId}`, {
                     method: 'DELETE',
                     headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=\"csrf-token\"]').content
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
                     }
                 });
                 const data = await response.json();
