@@ -179,6 +179,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'accesos' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/accesos/accesos.log'),
+            'level' => 'info',
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

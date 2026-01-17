@@ -16,16 +16,22 @@ use App\Models\Empresa;
 class VerificarAccesoSeccion
 {
     /**
+     * Log en el canal de accesos
+     */
+    private function logAcceso(string $level, string $mensaje, array $context = []): void
+    {
+        Log::channel('accesos')->{$level}($mensaje, $context);
+    }
+
+    /**
      * Deniega el acceso con redirect o JSON según el tipo de petición
      */
-    private function denegarAcceso(Request $request, string $mensaje)
+    private function denegarAcceso(Request $request, string $mensaje, array $context = [])
     {
-        Log::debug('🚫 Acceso denegado', [
-            'mensaje' => $mensaje,
+        $this->logAcceso('warning', '🚫 ' . $mensaje, array_merge([
             'url' => $request->fullUrl(),
-            'ajax' => $request->ajax(),
-            'expectsJson' => $request->expectsJson(),
-        ]);
+            'ip' => $request->ip(),
+        ], $context));
 
         // Si es petición AJAX o espera JSON
         if ($request->expectsJson() || $request->ajax()) {
@@ -125,18 +131,18 @@ class VerificarAccesoSeccion
                     }
                 }
             } catch (\Exception $e) {
-                Log::error('Error verificando permisos de operario', [
+                $this->logAcceso('error', 'Error verificando permisos de operario', [
                     'error' => $e->getMessage(),
                     'usuario' => $usuarioAutenticado->email,
                     'ruta' => $nombreRutaActual,
                 ]);
             }
 
-            Log::info('🚫 Ruta denegada para operario', [
+            return $this->denegarAcceso($request, 'No tienes permiso para acceder.', [
                 'usuario' => $usuarioAutenticado->email,
                 'ruta' => $nombreRutaActual,
+                'rol' => 'operario',
             ]);
-            return $this->denegarAcceso($request, 'No tienes permiso para acceder.');
         }
 
         if ($rolUsuario === 'transportista') {
@@ -146,11 +152,11 @@ class VerificarAccesoSeccion
             );
 
             if (!$permitido) {
-                Log::info('🚫 Ruta denegada para transportista', [
+                return $this->denegarAcceso($request, 'No tienes permiso para acceder.', [
                     'usuario' => $usuarioAutenticado->email,
                     'ruta' => $nombreRutaActual,
+                    'rol' => 'transportista',
                 ]);
-                return $this->denegarAcceso($request, 'No tienes permiso para acceder.');
             }
             return $next($request);
         }
@@ -166,8 +172,12 @@ class VerificarAccesoSeccion
 
             $seccion = Seccion::whereRaw('LOWER(ruta) LIKE ?', [strtolower($seccionBase) . '.%'])->first();
             if (!$seccion) {
-                Log::warning('❌ Ruta sin sección registrada', ['ruta' => $nombreRutaActual]);
-                return $this->denegarAcceso($request, "La sección '{$seccionBase}' no está registrada en el sistema.");
+                return $this->denegarAcceso($request, "La sección '{$seccionBase}' no está registrada en el sistema.", [
+                    'usuario' => $usuarioAutenticado->email,
+                    'ruta' => $nombreRutaActual,
+                    'seccion_base' => $seccionBase,
+                    'tipo' => 'seccion_no_registrada',
+                ]);
             }
 
             $permisos = PermisoAcceso::where('user_id', $usuarioAutenticado->id)
@@ -175,12 +185,12 @@ class VerificarAccesoSeccion
                 ->get();
 
             if ($permisos->isEmpty()) {
-                Log::debug('❌ Sin permisos para sección', [
+                return $this->denegarAcceso($request, "No tienes permisos asignados para la sección '{$seccion->nombre}'.", [
                     'usuario' => $usuarioAutenticado->email,
                     'seccion' => $seccion->ruta,
                     'ruta' => $nombreRutaActual,
+                    'tipo' => 'sin_permisos_seccion',
                 ]);
-                return $this->denegarAcceso($request, "No tienes permisos asignados para la sección '{$seccion->nombre}'.");
             }
 
             $autorizado = false;
@@ -208,13 +218,13 @@ class VerificarAccesoSeccion
                 }
             }
             if (!$autorizado) {
-                Log::warning('❌ Acción no autorizada', [
+                return $this->denegarAcceso($request, 'No tienes permisos suficientes para realizar esta acción.', [
                     'usuario' => $usuarioAutenticado->email,
                     'ruta' => $nombreRutaActual,
                     'accion' => $accionRuta,
                     'seccion' => $seccionBase,
+                    'tipo' => 'accion_no_autorizada',
                 ]);
-                return $this->denegarAcceso($request, 'No tienes permisos suficientes para realizar esta acción.');
             }
 
             return $next($request);
