@@ -41,9 +41,11 @@ function actualizarTotales(fechaISO) {
     if (semanalSpan) semanalSpan.textContent = etiquetaSemana(fechaISO);
     if (mensualSpan) mensualSpan.textContent = etiquetaMes(fechaISO);
 
-    const url = `${window.AppSalidas.routes.totales}?fecha=${encodeURIComponent(
-        fechaISO
-    )}`;
+    // Verificar que AppSalidas esté inicializado
+    const baseUrl = window.AppSalidas?.routes?.totales;
+    if (!baseUrl) return;
+
+    const url = `${baseUrl}?fecha=${encodeURIComponent(fechaISO)}`;
     fetch(url)
         .then((r) => r.json())
         .then((data) => {

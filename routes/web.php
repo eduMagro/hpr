@@ -803,6 +803,11 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/departamentos/{departamento}/asignar-usuarios', [DepartamentoController::class, 'asignarUsuarios'])->name('departamentos.asignar.usuarios');
     Route::post('/departamentos/{departamento}/asignar-secciones', [DepartamentoController::class, 'asignarSecciones'])->name('departamentos.asignarSecciones');
     Route::post('/departamentos/{departamento}/permisos', [DepartamentoController::class, 'actualizarPermiso']);
+    // Rutas permitidas por departamento (para roles como operario/transportista)
+    Route::get('/departamentos/{departamento}/rutas', [DepartamentoController::class, 'getRutas'])->name('departamentos.rutas');
+    Route::post('/departamentos/{departamento}/rutas', [DepartamentoController::class, 'guardarRutas'])->name('departamentos.guardarRutas');
+    Route::post('/departamentos/{departamento}/rutas/agregar', [DepartamentoController::class, 'agregarRuta'])->name('departamentos.agregarRuta');
+    Route::delete('/departamentos/{departamento}/rutas/{ruta}', [DepartamentoController::class, 'eliminarRuta'])->name('departamentos.eliminarRuta');
     // Rutas específicas de secciones ANTES del resource (evitar conflicto con {seccione})
     Route::post('/secciones/actualizar-orden', [SeccionController::class, 'actualizarOrden'])->name('secciones.actualizarOrden');
     Route::post('/secciones/sincronizar-todas', [SeccionController::class, 'sincronizarTodas'])->name('secciones.sincronizarTodas');

@@ -1170,8 +1170,8 @@ class PlanillaController extends Controller
                         $fechaNueva = Carbon::createFromFormat('Y-m-d', $fila['fecha_estimada_entrega']);
 
                         // Preservar la hora existente de la planilla
-                        if ($planilla->fecha_estimada_entrega) {
-                            $horaExistente = Carbon::parse($planilla->fecha_estimada_entrega);
+                        if ($planilla->getRawOriginal('fecha_estimada_entrega')) {
+                            $horaExistente = Carbon::parse($planilla->getRawOriginal('fecha_estimada_entrega'));
                             $fechaNueva->setTime($horaExistente->hour, $horaExistente->minute, 0);
                         } else {
                             $fechaNueva->setTime(7, 0, 0); // Hora por defecto si no tenía

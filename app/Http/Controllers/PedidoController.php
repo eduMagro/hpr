@@ -2017,7 +2017,7 @@ class PedidoController extends Controller
         }
         $pedido->save();
 
-        Log::info($todasCerradas ? '✅ Pedido marcado como completado' : 'ℹ️ Pedido con líneas pendientes', [
+        Log::channel('recepcion_material')->info($todasCerradas ? '✅ Pedido marcado como completado' : 'ℹ️ Pedido con líneas pendientes', [
             'pedido_id' => $pedido->id,
             'total_lineas' => $todas->count(),
             'lineas_relevantes' => $relevantes->count(),

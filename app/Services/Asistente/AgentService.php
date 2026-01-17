@@ -205,14 +205,14 @@ class AgentService
             'requiere_confirmacion' => false,
         ],
 
-        // === CORRECCIONES ===
-        'correccion_revertir' => [
-            'nombre' => 'Revertir cambio',
-            'descripcion' => 'Revierte un cambio reciente (estado, asignación, recepción)',
-            'categoria' => 'correcciones',
-            'nivel_permiso' => 2,
-            'requiere_confirmacion' => true,
-        ],
+        // === CORRECCIONES === (deshabilitado temporalmente)
+        // 'correccion_revertir' => [
+        //     'nombre' => 'Revertir cambio',
+        //     'descripcion' => 'Revierte un cambio reciente (estado, asignación, recepción)',
+        //     'categoria' => 'correcciones',
+        //     'nivel_permiso' => 2,
+        //     'requiere_confirmacion' => true,
+        // ],
     ];
 
     /**
@@ -254,6 +254,17 @@ class AgentService
      */
     public function procesar(string $mensaje): array
     {
+        // 0. PRIMERO: Detectar si es una pregunta informativa (no una acción)
+        // En ese caso, devolver null para que el flujo normal de OpenAI se encargue
+        if ($this->esPreguntaInformativa($mensaje)) {
+            Log::debug('AgentService: Pregunta informativa detectada, delegando a OpenAI');
+            return [
+                'tipo' => 'respuesta',
+                'contenido' => null, // null indica que debe pasar al flujo normal
+                'herramienta' => null,
+            ];
+        }
+
         // 1. Analizar el mensaje con IA para entender la intención
         $analisis = $this->analizarIntencion($mensaje);
 
@@ -263,11 +274,21 @@ class AgentService
             'confianza' => $analisis['confianza'] ?? 0,
         ]);
 
-        // 2. Si no se detectó ninguna herramienta, devolver respuesta genérica
+        // 2. Si no se detectó ninguna herramienta o confianza baja, dejar que OpenAI responda
         if (empty($analisis['herramienta']) || $analisis['herramienta'] === 'ninguna') {
             return [
                 'tipo' => 'respuesta',
-                'contenido' => $analisis['respuesta_sugerida'] ?? 'No entendí qué acción quieres realizar. ¿Puedes ser más específico?',
+                'contenido' => null, // null indica que debe pasar al flujo normal
+                'herramienta' => null,
+            ];
+        }
+
+        // 2.5 Si la confianza es menor a 70%, delegar a OpenAI
+        if (($analisis['confianza'] ?? 0) < 70) {
+            Log::debug('AgentService: Confianza baja, delegando a OpenAI');
+            return [
+                'tipo' => 'respuesta',
+                'contenido' => null,
                 'herramienta' => null,
             ];
         }
@@ -293,34 +314,63 @@ class AgentService
     }
 
     /**
+     * Detecta si el mensaje es una pregunta informativa (no una solicitud de acción)
+     */
+    protected function esPreguntaInformativa(string $mensaje): bool
+    {
+        $mensajeLower = mb_strtolower($mensaje);
+
+        // Patrones de preguntas informativas
+        $patronesInformativos = [
+            '/^(cómo|como)\s+(se\s+)?(hace|hago|puedo|debo|tengo que)/',  // "cómo hago...", "cómo puedo..."
+            '/^(qué|que)\s+(pasos|debo|tengo que|hay que)/',              // "qué pasos...", "qué debo..."
+            '/^(cuáles|cuales)\s+(son\s+)?(los\s+)?pasos/',               // "cuáles son los pasos"
+            '/^explíca(me)?|explica(me)?/',                                // "explícame..."
+            '/^(dime|me puedes decir)\s+(cómo|como|qué|que)/',            // "dime cómo..."
+            '/necesito\s+(saber|entender|que me expliques)/',             // "necesito saber..."
+            '/^(por qué|porque|porqué)\s/',                               // "por qué..."
+            '/^(cuál|cual)\s+es\s+(el|la)\s+(proceso|forma|manera)/',     // "cuál es el proceso..."
+            '/^(ayuda|ayúdame)\s+(a\s+)?(entender|saber)/',               // "ayúdame a entender..."
+            '/(si|soy)\s+administrador/',                                  // "si soy administrador"
+            '/permisos/',                                                  // preguntas sobre permisos
+        ];
+
+        foreach ($patronesInformativos as $patron) {
+            if (preg_match($patron, $mensajeLower)) {
+                return true;
+            }
+        }
+
+        // También es informativa si es una pregunta general (termina en ?)
+        // y NO contiene verbos de acción directa
+        if (str_contains($mensaje, '?')) {
+            $verbosAccion = ['cambia', 'adelanta', 'mueve', 'asigna', 'envía', 'envia', 'crea', 'elimina', 'borra'];
+            foreach ($verbosAccion as $verbo) {
+                if (str_contains($mensajeLower, $verbo)) {
+                    return false; // Es una solicitud de acción
+                }
+            }
+            return true; // Es una pregunta informativa
+        }
+
+        return false;
+    }
+
+    /**
      * Analiza la intención del usuario usando IA
      */
     protected function analizarIntencion(string $mensaje): array
     {
-        $prompt = $this->construirPromptIntencion($mensaje);
-
         try {
-            // Usar el método de análisis de la IA
-            $respuestaIA = $this->iaService->analizarProblema($mensaje);
-
-            // Si es un problema/error, delegar al DiagnosticoService
-            if ($respuestaIA['es_problema'] ?? false) {
-                return [
-                    'tipo' => 'diagnostico',
-                    'herramienta' => 'correccion_revertir',
-                    'parametros' => $respuestaIA,
-                    'confianza' => $respuestaIA['confianza'] ?? 70,
-                ];
-            }
-
-            // Hacer una segunda llamada para detectar herramientas específicas
+            // Detectar herramientas específicas directamente
+            // Ya no usamos analizarProblema porque causa falsos positivos
             return $this->detectarHerramienta($mensaje);
 
         } catch (\Exception $e) {
             Log::error('AgentService: Error analizando intención', ['error' => $e->getMessage()]);
             return [
                 'herramienta' => null,
-                'respuesta_sugerida' => 'Hubo un error procesando tu solicitud. ¿Puedes intentarlo de nuevo?',
+                'respuesta_sugerida' => null,
             ];
         }
     }
@@ -339,28 +389,40 @@ class AgentService
         );
 
         $prompt = <<<PROMPT
-Analiza el siguiente mensaje de un usuario de un sistema de gestión de ferralla y determina qué herramienta debe usarse.
+Analiza el siguiente mensaje de un usuario de un sistema de gestión de ferralla.
 
-## HERRAMIENTAS DISPONIBLES
+## IMPORTANTE - DISTINGUIR TIPOS DE MENSAJE
+1. **PREGUNTA INFORMATIVA** = El usuario quiere SABER cómo hacer algo, pide explicaciones, pregunta sobre procesos
+   - Ejemplos: "¿Cómo elimino una línea?", "¿Qué pasos debo seguir?", "Explícame el proceso"
+   - En estos casos: herramienta = "ninguna"
+
+2. **SOLICITUD DE ACCIÓN** = El usuario quiere que YO EJECUTE algo ahora mismo
+   - Ejemplos: "Cambia el estado de planilla 123", "Muéstrame las planillas pendientes", "Adelanta la planilla X"
+   - En estos casos: seleccionar la herramienta apropiada
+
+## HERRAMIENTAS DISPONIBLES (solo para SOLICITUDES DE ACCIÓN)
 {$herramientasJson}
 
 ## MENSAJE DEL USUARIO
 "{$mensaje}"
 
-## RESPUESTA
-Responde ÚNICAMENTE con un JSON válido:
+## REGLAS
+- Si es pregunta informativa (cómo, qué pasos, explícame, por qué, etc.) → herramienta: "ninguna"
+- Si pide que le muestres datos específicos (listar, ver, consultar) → seleccionar herramienta de consulta
+- Si pide modificar algo (cambiar, mover, adelantar) → seleccionar herramienta de modificación
+- Si no estás seguro → herramienta: "ninguna", confianza: 0
+
+## RESPUESTA (solo JSON válido)
 ```json
 {
-  "herramienta": "id_de_la_herramienta o 'ninguna' si no aplica",
+  "herramienta": "id_herramienta o 'ninguna'",
   "confianza": 0-100,
+  "es_pregunta_informativa": true/false,
   "parametros": {
-    "codigo": "si menciona un código específico",
-    "cantidad": "si menciona una cantidad",
-    "estado": "si menciona un estado",
-    "destino": "si menciona una nave/destino",
-    "otros": "cualquier otro parámetro relevante"
-  },
-  "respuesta_sugerida": "Si no hay herramienta, qué responder al usuario"
+    "codigo": "si menciona código",
+    "estado": "si menciona estado",
+    "periodo": "hoy/semana/mes si aplica"
+  }
 }
 ```
 PROMPT;
@@ -625,10 +687,9 @@ PROMPT;
         try {
             DB::table('acciones_asistente')->insert([
                 'user_id' => $this->user->id,
-                'tipo' => $herramienta,
+                'accion' => $herramienta,
                 'parametros' => json_encode($parametros),
                 'resultado' => json_encode($resultado),
-                'exito' => $resultado['exito'] ?? false,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

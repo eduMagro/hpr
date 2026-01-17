@@ -86,19 +86,41 @@ class VerificarAccesoSeccion
 
         // === 5) Roles y permisos ===
         if ($rolUsuario === 'operario') {
-            $prefijosOperario = config('acceso.prefijos_operario', []);
-            $permitido = collect($prefijosOperario)->contains(
-                fn($prefijo) => $nombreRutaActual === $prefijo || Str::startsWith($nombreRutaActual, $prefijo)
-            );
+            // Los operarios usan las rutas del departamento "Operario" (sin necesidad de asignación)
+            $departamentoOperarioId = Cache::remember('departamento_id_operario', 86400, function () {
+                return \App\Models\Departamento::whereRaw('LOWER(nombre) = ?', ['operario'])->value('id');
+            });
 
-            if (!$permitido) {
-                Log::info('🚫 Ruta denegada para operario', [
-                    'usuario' => $usuarioAutenticado->email,
-                    'ruta' => $nombreRutaActual,
-                ]);
-                return $this->denegarAcceso($request, 'No tienes permiso para acceder.');
+            if ($departamentoOperarioId) {
+                // Obtener las rutas permitidas del departamento "Operario"
+                $rutasPermitidas = Cache::remember("rutas_departamento_{$departamentoOperarioId}", 300, function () use ($departamentoOperarioId) {
+                    return \DB::table('departamento_ruta')
+                        ->where('departamento_id', $departamentoOperarioId)
+                        ->pluck('ruta')
+                        ->toArray();
+                });
+
+                // Verificar si la ruta actual está permitida
+                $permitido = collect($rutasPermitidas)->contains(function ($rutaPermitida) use ($nombreRutaActual) {
+                    // Si termina en .* es un prefijo (ej: "usuarios.*" permite "usuarios.index", "usuarios.show", etc.)
+                    if (Str::endsWith($rutaPermitida, '.*')) {
+                        $prefijo = Str::beforeLast($rutaPermitida, '.*');
+                        return $nombreRutaActual === $prefijo || Str::startsWith($nombreRutaActual, $prefijo . '.');
+                    }
+                    // Si no, es una ruta exacta
+                    return $nombreRutaActual === $rutaPermitida;
+                });
+
+                if ($permitido) {
+                    return $next($request);
+                }
             }
-            return $next($request);
+
+            Log::info('🚫 Ruta denegada para operario', [
+                'usuario' => $usuarioAutenticado->email,
+                'ruta' => $nombreRutaActual,
+            ]);
+            return $this->denegarAcceso($request, 'No tienes permiso para acceder.');
         }
 
         if ($rolUsuario === 'transportista') {

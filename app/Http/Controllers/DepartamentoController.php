@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Departamento;
+use App\Models\DepartamentoRuta;
 use App\Models\Seccion;
 use App\Models\User;
 use App\Models\PermisoAcceso;
 use App\Services\SeccionAutoDetectService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -222,5 +224,114 @@ class DepartamentoController extends Controller
         $departamento->delete();
 
         return redirect()->route('departamentos.index')->with('success', 'Departamento eliminado correctamente.');
+    }
+
+    /**
+     * Obtiene las rutas de un departamento
+     */
+    public function getRutas(Departamento $departamento)
+    {
+        $rutas = $departamento->rutas()->orderBy('ruta')->get();
+
+        return response()->json([
+            'success' => true,
+            'rutas' => $rutas,
+        ]);
+    }
+
+    /**
+     * Guarda las rutas de un departamento
+     */
+    public function guardarRutas(Request $request, Departamento $departamento)
+    {
+        $validated = $request->validate([
+            'rutas' => 'array',
+            'rutas.*.ruta' => 'required|string|max:255',
+            'rutas.*.descripcion' => 'nullable|string|max:255',
+        ]);
+
+        // Eliminar rutas existentes
+        $departamento->rutas()->delete();
+
+        // Insertar nuevas rutas
+        $rutasNuevas = collect($validated['rutas'] ?? [])->filter(fn($r) => !empty($r['ruta']));
+
+        foreach ($rutasNuevas as $ruta) {
+            DepartamentoRuta::create([
+                'departamento_id' => $departamento->id,
+                'ruta' => trim($ruta['ruta']),
+                'descripcion' => $ruta['descripcion'] ?? null,
+            ]);
+        }
+
+        // Limpiar caché de rutas del departamento
+        Cache::forget("rutas_departamento_{$departamento->id}");
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Rutas actualizadas correctamente.',
+            'total' => $rutasNuevas->count(),
+        ]);
+    }
+
+    /**
+     * Añade una ruta a un departamento
+     */
+    public function agregarRuta(Request $request, Departamento $departamento)
+    {
+        $validated = $request->validate([
+            'ruta' => 'required|string|max:255',
+            'descripcion' => 'nullable|string|max:255',
+        ]);
+
+        // Verificar si ya existe
+        $existe = DepartamentoRuta::where('departamento_id', $departamento->id)
+            ->where('ruta', $validated['ruta'])
+            ->exists();
+
+        if ($existe) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esta ruta ya existe en el departamento.',
+            ], 422);
+        }
+
+        $ruta = DepartamentoRuta::create([
+            'departamento_id' => $departamento->id,
+            'ruta' => trim($validated['ruta']),
+            'descripcion' => $validated['descripcion'] ?? null,
+        ]);
+
+        // Limpiar caché
+        Cache::forget("rutas_departamento_{$departamento->id}");
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Ruta añadida correctamente.',
+            'ruta' => $ruta,
+        ]);
+    }
+
+    /**
+     * Elimina una ruta de un departamento
+     */
+    public function eliminarRuta(Departamento $departamento, DepartamentoRuta $ruta)
+    {
+        if ($ruta->departamento_id !== $departamento->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La ruta no pertenece a este departamento.',
+            ], 403);
+        }
+
+        $ruta->delete();
+
+        // Limpiar caché
+        Cache::forget("rutas_departamento_{$departamento->id}");
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Ruta eliminada correctamente.',
+        ]);
     }
 }

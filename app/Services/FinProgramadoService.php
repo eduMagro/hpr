@@ -957,7 +957,8 @@ class FinProgramadoService
 
                     if ($elementosAfectados->isEmpty()) continue;
 
-                    $fechaEntregaPlanilla = $planilla->fecha_estimada_entrega;
+                    $fechaEntregaRaw = $planilla->getRawOriginal('fecha_estimada_entrega');
+                    $fechaEntregaPlanilla = $fechaEntregaRaw ? Carbon::parse($fechaEntregaRaw) : null;
 
                     // Calcular nuevo fin si se retrasa una posición
                     // (simplificación: asumimos que se retrasa)

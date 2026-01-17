@@ -522,12 +522,6 @@ class ProduccionController extends Controller
             ->whereIn('planilla_id', $planillasACargarIds)
             ->get();
 
-        Log::info('📊 maquinas(): elementos cargados', [
-            'fabricando' => count($planillasFabricandoIds),
-            'en_cola' => count($planillasEnColaIds),
-            'elementos' => $elementos->count(),
-        ]);
-
         // Filtrar solo pendiente/fabricando para el calendario
         $elementosCalendario = $elementos->filter(fn($e) => in_array($e->planilla?->estado, ['pendiente', 'fabricando']));
         $maquinaReal = function ($e) {
@@ -826,8 +820,6 @@ class ProduccionController extends Controller
                 ];
             })->values()->all();
 
-            Log::info('✅ obtenerRecursos: devolviendo ' . count($resources) . ' máquinas');
-
             return response()->json($resources);
         } catch (\Throwable $e) {
             Log::error('❌ obtenerRecursos error', [
@@ -852,11 +844,6 @@ class ProduccionController extends Controller
         if (!$rangoEnd) {
             $rangoEnd = Carbon::now()->addDays(6);
         }
-
-        Log::info('📅 obtenerEventos: rango solicitado', [
-            'start' => $rangoStart?->toDateTimeString(),
-            'end' => $rangoEnd->toDateTimeString(),
-        ]);
 
         // 1. Obtener máquinas - excepto grúas, soldadoras y ensambladoras
         $maquinas = Maquina::whereNotIn('tipo', ['grua', 'soldadora', 'ensambladora'])
@@ -888,13 +875,6 @@ class ProduccionController extends Controller
         $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2', 'maquina_3'])
             ->whereIn('planilla_id', $planillasACargar)
             ->get();
-
-        Log::info('📊 obtenerEventos: elementos cargados', [
-            'planillas_fabricando' => count($planillasFabricando),
-            'planillas_en_cola' => count($planillasEnCola),
-            'total_planillas' => count($planillasACargar),
-            'elementos_cargados' => $elementos->count(),
-        ]);
 
         $maquinaReal = function ($e) {
             $tipo1 = optional($e->maquina)->tipo;
@@ -971,12 +951,6 @@ class ProduccionController extends Controller
 
             // Convertir Collection a array para asegurar formato JSON correcto
             $eventosArray = $eventosFiltrados->values()->all();
-
-            Log::info('✅ obtenerEventos: devolviendo eventos', [
-                'total_generados' => $planillasEventos->count(),
-                'filtrados_por_rango' => count($eventosArray),
-                'rango' => $rangoStart?->toDateString() . ' - ' . $rangoEnd->toDateString(),
-            ]);
 
             return response()->json($eventosArray);
         } catch (\Throwable $e) {

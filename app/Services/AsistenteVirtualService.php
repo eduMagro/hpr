@@ -141,7 +141,8 @@ class AsistenteVirtualService
         }
 
         // SISTEMA EXPERTO: Detectar problemas/errores que necesitan diagnóstico
-        if ($this->diagnosticoService) {
+        // SOLO si NO es una pregunta informativa (cómo, qué pasos, etc.)
+        if ($this->diagnosticoService && !$this->esPreguntaInformativa($contenido)) {
             // Configurar el modelo de IA preferido del usuario
             $modeloUsuario = Asistente\IAService::obtenerPreferenciaUsuario($conversacion->user);
             $this->diagnosticoService->setModelo($modeloUsuario);
@@ -1290,6 +1291,15 @@ GUIDE;
      */
     private function procesarConAgente(ChatConversacion $conversacion, string $contenido): ?ChatMensaje
     {
+        // PRIMERO: Si es pregunta informativa, NO procesar con el agente
+        // Delegar directamente a OpenAI que tiene el contexto completo
+        if ($this->esPreguntaInformativa($contenido)) {
+            Log::debug('AsistenteVirtualService: Pregunta informativa, delegando a OpenAI', [
+                'contenido' => substr($contenido, 0, 50)
+            ]);
+            return null; // Pasar al flujo normal de OpenAI
+        }
+
         // Inicializar AgentService si no existe
         if (!$this->agentService) {
             $modeloUsuario = Asistente\IAService::obtenerPreferenciaUsuario($conversacion->user);
@@ -1326,8 +1336,8 @@ GUIDE;
         try {
             $resultado = $this->agentService->procesar($contenido);
 
-            // Si el agente no detectó ninguna herramienta, dejar que el flujo normal continúe
-            if ($resultado['tipo'] === 'respuesta' && empty($resultado['herramienta'])) {
+            // Si el agente no detectó ninguna herramienta o devuelve contenido null, dejar que OpenAI responda
+            if ($resultado['tipo'] === 'respuesta' && (empty($resultado['herramienta']) || $resultado['contenido'] === null)) {
                 return null; // Continuar con el flujo normal (OpenAI, informes, etc.)
             }
 
@@ -1380,6 +1390,52 @@ GUIDE;
             'contenido' => $resultado['contenido'] ?? 'Acción completada.',
             'metadata' => $metadata,
         ]);
+    }
+
+    /**
+     * Detecta si el mensaje es una pregunta informativa (no una solicitud de acción)
+     */
+    private function esPreguntaInformativa(string $mensaje): bool
+    {
+        $mensajeLower = mb_strtolower(trim($mensaje));
+
+        // Quitar signos de interrogación iniciales para simplificar detección
+        $mensajeLimpio = ltrim($mensajeLower, '¿?');
+
+        // Patrones de preguntas informativas
+        $patronesInformativos = [
+            '/(cómo|como)\s+(se\s+)?(hace|hago|puedo|debo|tengo que|elimino|borro)/',
+            '/(qué|que)\s+(pasos|debo|tengo que|hay que)/',
+            '/(cuáles|cuales)\s+(son\s+)?(los\s+)?pasos/',
+            '/explíca(me)?|explica(me)?/',
+            '/(dime|me puedes decir)\s+(cómo|como|qué|que)/',
+            '/necesito\s+(saber|entender|que me expliques)/',
+            '/(por qué|porque|porqué)/',
+            '/(cuál|cual)\s+es\s+(el|la)\s+(proceso|forma|manera)/',
+            '/(ayuda|ayúdame)\s+(a\s+)?(entender|saber)/',
+            '/si\s+(quiero|quisiera|necesito)\s+(eliminar|borrar|cambiar|modificar)/',
+            '/pasos.*(ejecutar|seguir|hacer)/',
+            '/qué\s+pasos/',
+            '/cómo\s+(elimino|borro|quito|revierto|deshago)/',
+        ];
+
+        foreach ($patronesInformativos as $patron) {
+            if (preg_match($patron, $mensajeLimpio)) {
+                return true;
+            }
+        }
+
+        // Si contiene signos de interrogación y palabras clave de pregunta informativa
+        if (str_contains($mensaje, '?')) {
+            $palabrasClave = ['cómo', 'como', 'qué', 'que', 'cuál', 'cual', 'dónde', 'donde', 'pasos', 'proceso', 'manera'];
+            foreach ($palabrasClave as $palabra) {
+                if (str_contains($mensajeLower, $palabra)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

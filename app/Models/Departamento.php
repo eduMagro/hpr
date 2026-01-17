@@ -35,4 +35,9 @@ class Departamento extends Model
     {
         return $this->hasMany(PermisoAcceso::class);
     }
+
+    public function rutas()
+    {
+        return $this->hasMany(DepartamentoRuta::class);
+    }
 }

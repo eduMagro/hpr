@@ -662,7 +662,7 @@ class PlanificacionController extends Controller
     ): array {
         // Usar la hora más temprana de las planillas del grupo (o 07:00 por defecto)
         $horaMinima = $planillas
-            ->map(fn($p) => $p->fecha_estimada_entrega ? Carbon::parse($p->fecha_estimada_entrega)->format('H:i') : '07:00')
+            ->map(fn($p) => $p->getRawOriginal('fecha_estimada_entrega') ? Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->format('H:i') : '07:00')
             ->filter(fn($h) => $h !== '00:00')
             ->sort()
             ->first() ?? '07:00';
@@ -831,7 +831,7 @@ class PlanificacionController extends Controller
             'tipo' => 'required|in:salida,planilla'
         ]);
 
-        $fecha = Carbon::parse($request->fecha)->timezone('Europe/Madrid');
+        $fecha = $this->parseFlexibleDate($request->fecha)?->timezone('Europe/Madrid') ?? now()->timezone('Europe/Madrid');
 
         if ($request->tipo === 'salida') {
             Log::info('🛠 Actualizando salida', [
@@ -915,7 +915,7 @@ class PlanificacionController extends Controller
             } else {
                 // Por compatibilidad, si solo hay un ID (antiguo método)
                 $planilla = Planilla::findOrFail($id);
-                $fechaAnterior = $planilla->fecha_estimada_entrega;
+                $fechaAnterior = $planilla->getRawOriginal('fecha_estimada_entrega');
                 $planilla->fecha_estimada_entrega = $fecha;
                 $planilla->save();
 
@@ -990,7 +990,7 @@ class PlanificacionController extends Controller
             ]);
 
             $elementosIds = $request->elementos_ids;
-            $fechaEntrega = Carbon::parse($request->fecha_entrega);
+            $fechaEntrega = $this->parseFlexibleDate($request->fecha_entrega) ?? now();
 
             $resultado = $finProgramadoService->simularAdelanto($elementosIds, $fechaEntrega);
 

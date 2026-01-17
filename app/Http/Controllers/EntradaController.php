@@ -564,7 +564,7 @@ class EntradaController extends Controller
             // ✅ Cambiar estado de línea según si hay código_sage o no
             if ($entrada->pedidoProducto) {
                 $nuevoEstado = $entrada->codigo_sage ? 'facturado' : 'completado';
-                Log::info("Línea de pedido actualizada a estado: $nuevoEstado");
+                Log::channel('recepcion_material')->info("Línea de pedido actualizada a estado: $nuevoEstado");
 
                 $entrada->pedidoProducto->update([
                     'estado' => $nuevoEstado,
@@ -787,7 +787,7 @@ class EntradaController extends Controller
                 ->whereHas('entrada', fn($q) => $q->where('pedido_producto_id', $pivot->id))
                 ->sum('peso_inicial');
 
-            Log::info('📦 Cierre de albarán por movimiento', [
+            Log::channel('recepcion_material')->info('📦 Cierre de albarán por movimiento', [
                 'entrada_id'           => $entrada->id,
                 'movimiento_id'        => $movimiento->id,
                 'pedido_producto_id'   => $pivot->id,
@@ -833,7 +833,7 @@ class EntradaController extends Controller
                 $this->recalcularEstadoPedido($entrada->pedido);
             }
 
-            Log::info('✅ Línea de pedido actualizada (cierre desde movimiento)', [
+            Log::channel('recepcion_material')->info('✅ Línea de pedido actualizada (cierre desde movimiento)', [
                 'pedido_producto_id' => $pivot->id,
                 'nuevo_estado'       => $estado,
                 'peso_recepcionado'  => $pesoRecepcionado,
@@ -961,7 +961,7 @@ class EntradaController extends Controller
         }
         $pedido->save();
 
-        Log::info($todasCerradas ? '✅ Pedido marcado como completado' : 'ℹ️ Pedido con líneas pendientes', [
+        Log::channel('recepcion_material')->info($todasCerradas ? '✅ Pedido marcado como completado' : 'ℹ️ Pedido con líneas pendientes', [
             'pedido_id' => $pedido->id,
             'total_lineas' => $todas->count(),
             'lineas_relevantes' => $relevantes->count(),

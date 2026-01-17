@@ -197,8 +197,8 @@ class AutoReordenadorService
                         $fechaNueva->setTime($hora->hour, $hora->minute, 0);
                     }
                     // Si no viene hora, preservar la hora existente de la planilla
-                    elseif ($planilla->fecha_estimada_entrega) {
-                        $horaExistente = Carbon::parse($planilla->fecha_estimada_entrega);
+                    elseif ($planilla->getRawOriginal('fecha_estimada_entrega')) {
+                        $horaExistente = Carbon::parse($planilla->getRawOriginal('fecha_estimada_entrega'));
                         // Solo preservar si no es medianoche (hora por defecto)
                         if ($horaExistente->hour !== 0 || $horaExistente->minute !== 0) {
                             $fechaNueva->setTime($horaExistente->hour, $horaExistente->minute, 0);

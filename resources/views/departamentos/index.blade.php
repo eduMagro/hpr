@@ -9,11 +9,16 @@
     <div class="px-2 sm:px-6 py-4 relative" x-data="{
         openModal: false,
         openModalSecciones: false,
+        openModalRutas: false,
         openNuevoDepartamentoModal: false,
         openNuevaSeccionModal: false,
         departamentoId: null,
+        departamentoNombre: '',
         usuariosMarcados: [],
-        todasLasSecciones: @json($todasLasSecciones),
+        todasLasSecciones: @js($todasLasSecciones),
+        rutasDepartamento: [],
+        cargandoRutas: false,
+        nuevaRuta: { ruta: '', descripcion: '' },
         agregarSeccionAlModal(seccion) {
             // Agregar la sección al array reactivo con estructura compatible
             this.todasLasSecciones.push({
@@ -24,6 +29,61 @@
                 mostrar_en_dashboard: seccion.mostrar_en_dashboard || false,
                 departamentos: []
             });
+        },
+        async cargarRutas(depId, depNombre) {
+            this.departamentoId = depId;
+            this.departamentoNombre = depNombre;
+            this.cargandoRutas = true;
+            this.openModalRutas = true;
+            try {
+                const response = await fetch(`/departamentos/${depId}/rutas`);
+                const data = await response.json();
+                this.rutasDepartamento = data.rutas || [];
+            } catch (error) {
+                console.error('Error cargando rutas:', error);
+                this.rutasDepartamento = [];
+            }
+            this.cargandoRutas = false;
+        },
+        async agregarRuta() {
+            if (!this.nuevaRuta.ruta.trim()) return;
+            try {
+                const response = await fetch(`/departamentos/${this.departamentoId}/rutas/agregar`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=\"csrf-token\"]').content
+                    },
+                    body: JSON.stringify(this.nuevaRuta)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    this.rutasDepartamento.push(data.ruta);
+                    this.nuevaRuta = { ruta: '', descripcion: '' };
+                } else {
+                    alert(data.message || 'Error al agregar ruta');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al agregar ruta');
+            }
+        },
+        async eliminarRuta(rutaId) {
+            if (!confirm('¿Eliminar esta ruta?')) return;
+            try {
+                const response = await fetch(`/departamentos/${this.departamentoId}/rutas/${rutaId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=\"csrf-token\"]').content
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    this.rutasDepartamento = this.rutasDepartamento.filter(r => r.id !== rutaId);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
         }
     }" @seccion-creada.window="agregarSeccionAlModal($event.detail)">
 
@@ -132,6 +192,15 @@
                                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                         Secciones
+                                    </button>
+                                    <button
+                                        @click="cargarRutas({{ $departamento->id }}, '{{ $departamento->nombre }}')"
+                                        class="inline-flex items-center px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-medium transition-colors shadow-sm hover:shadow">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                        </svg>
+                                        Rutas
                                     </button>
                                     <button
                                         @click="openModal = true; departamentoId = {{ $departamento->id }}; usuariosMarcados = {{ $departamento->usuarios->pluck('id') }}"
@@ -248,7 +317,7 @@
 
                         <!-- Botones de acción -->
                         <div class="p-3 space-y-2 bg-white">
-                            <div class="grid grid-cols-2 gap-2">
+                            <div class="grid grid-cols-3 gap-2">
                                 <button @click="openModalSecciones = true; departamentoId = {{ $departamento->id }};"
                                     class="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 px-3 rounded-lg text-xs font-semibold transition-colors shadow-sm">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -256,6 +325,15 @@
                                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                     Secciones
+                                </button>
+                                <button
+                                    @click="cargarRutas({{ $departamento->id }}, '{{ $departamento->nombre }}')"
+                                    class="flex items-center justify-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white py-2.5 px-3 rounded-lg text-xs font-semibold transition-colors shadow-sm">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                    </svg>
+                                    Rutas
                                 </button>
                                 <button
                                     @click="openModal = true; departamentoId = {{ $departamento->id }}; usuariosMarcados = {{ $departamento->usuarios->pluck('id') }}"
@@ -1505,6 +1583,116 @@
                             </div>
                         </div>
                     </form>
+                </div>
+            </div>
+        </template>
+
+        <!-- Modal Gestionar Rutas -->
+        <template x-if="openModalRutas">
+            <div class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+                    <!-- Header del modal -->
+                    <div class="bg-gradient-to-r from-orange-500 to-amber-600 px-6 py-4 flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-white/20 p-2 rounded-lg">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-white">Rutas Permitidas</h3>
+                                <p class="text-orange-100 text-sm">Departamento: <span x-text="departamentoNombre"></span></p>
+                            </div>
+                        </div>
+                        <button @click="openModalRutas = false" class="text-white hover:bg-white/20 rounded-lg p-2 transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Body del modal -->
+                    <div class="flex-1 overflow-y-auto p-6">
+                        <!-- Formulario para agregar nueva ruta -->
+                        <div class="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                            <h4 class="font-semibold text-gray-800 mb-3">Agregar nueva ruta</h4>
+                            <div class="flex flex-col sm:flex-row gap-3">
+                                <div class="flex-1">
+                                    <input type="text" x-model="nuevaRuta.ruta" placeholder="Ej: usuarios.* o vacaciones.eliminarSolicitud"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
+                                        @keydown.enter.prevent="agregarRuta()">
+                                </div>
+                                <div class="flex-1">
+                                    <input type="text" x-model="nuevaRuta.descripcion" placeholder="Descripción (opcional)"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
+                                        @keydown.enter.prevent="agregarRuta()">
+                                </div>
+                                <button @click="agregarRuta()"
+                                    class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition-colors whitespace-nowrap">
+                                    + Agregar
+                                </button>
+                            </div>
+                            <p class="mt-2 text-xs text-gray-500">
+                                Usa <code class="bg-gray-200 px-1 rounded">.*</code> al final para permitir todas las subrutas. Ej: <code class="bg-gray-200 px-1 rounded">usuarios.*</code>
+                            </p>
+                        </div>
+
+                        <!-- Lista de rutas -->
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="font-semibold text-gray-800">Rutas configuradas</h4>
+                                <span class="text-sm text-gray-500" x-text="rutasDepartamento.length + ' ruta(s)'"></span>
+                            </div>
+
+                            <!-- Loading state -->
+                            <div x-show="cargandoRutas" class="text-center py-8">
+                                <svg class="animate-spin h-8 w-8 text-orange-500 mx-auto" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                                <p class="mt-2 text-gray-500">Cargando rutas...</p>
+                            </div>
+
+                            <!-- Empty state -->
+                            <div x-show="!cargandoRutas && rutasDepartamento.length === 0" class="text-center py-8 bg-gray-50 rounded-xl">
+                                <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                </svg>
+                                <p class="text-gray-500 font-medium">No hay rutas configuradas</p>
+                                <p class="text-sm text-gray-400 mt-1">Los usuarios de este departamento no tendrán acceso especial</p>
+                            </div>
+
+                            <!-- Lista de rutas -->
+                            <template x-for="ruta in rutasDepartamento" :key="ruta.id">
+                                <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-orange-300 transition-colors group">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2">
+                                            <code class="text-sm font-mono text-orange-700 bg-orange-50 px-2 py-0.5 rounded" x-text="ruta.ruta"></code>
+                                            <span x-show="ruta.ruta.endsWith('.*')" class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Prefijo</span>
+                                        </div>
+                                        <p x-show="ruta.descripcion" class="text-xs text-gray-500 mt-1" x-text="ruta.descripcion"></p>
+                                    </div>
+                                    <button @click="eliminarRuta(ruta.id)"
+                                        class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Footer del modal -->
+                    <div class="border-t bg-gray-50 px-6 py-4 flex justify-end">
+                        <button type="button" @click="openModalRutas = false"
+                            class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors">
+                            Cerrar
+                        </button>
+                    </div>
                 </div>
             </div>
         </template>

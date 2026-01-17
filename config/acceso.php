@@ -2,49 +2,18 @@
 
 return [
 
-    // 📌 Prefijos que los operarios pueden usar en rutas (middleware)
-    'prefijos_operario' => [
-        'albaranes.',
-        'produccion.trabajadores',
-        'users.',
-        'users.verEventos-turnos',
-        'users.verResumen-asistencia',
-        'alertas.',
-        'productos.',
-        'pedidos.',
-        'ayuda.',
-        'maquinas.',
-        'etiquetas.',      // ✅ acceso para fabricar etiquetas
-        'elementos.',      // ✅ acceso para dividir/cambiar máquina elementos
-        'subetiquetas.',   // ✅ acceso para crear/mover subetiquetas
-        'paquetes.',       // ✅ acceso para crear/gestionar paquetes
-        'localizaciones.', // ✅ acceso para ubicar paquetes en mapa
-        'api.',            // ✅ acceso a rutas API (productos, paquetes, etc.)
-        'entradas.',       // ✅ acceso permitido
-        'movimientos.',    // ✅ acceso permitido
-        'ubicaciones.',
-        'inventario-backups.', // ✅ acceso para ver backups de inventario
-        'incorporaciones.descargarMiContrato', // ✅ acceso para descargar su contrato
-        'usuarios.getVacationData', // ✅ acceso para ver datos de vacaciones propios
-        'vacaciones.verMisSolicitudesPendientes', // ✅ acceso para ver solicitudes pendientes en calendario
-        'vacaciones.verSolicitudesPendientesUsuario', // ✅ acceso para ver sus propias solicitudes pendientes (validado en controlador)
-        'vacaciones.eliminarSolicitud', // ✅ acceso para eliminar solicitudes propias de vacaciones
-        'vacaciones.eliminarDiasSolicitud', // ✅ acceso para eliminar días específicos de solicitud
-    ],
-
-    // 📌 Prefijos que deben salir en el dashboard para operarios
-    'prefijos_operario_dashboard' => [
-        'produccion.trabajadores',
-        'users.',
-        'alertas.',
-        'productos.',
-        'pedidos.',
-        'ayuda.',
-        'maquinas.',
-        'ubicaciones.',
-        'albaranes.',
-        // 👀 aquí NO ponemos movimientos ni entradas
-    ],
+    // ══════════════════════════════════════════════════════════════════════════
+    // ⚠️  DEPRECADO: Los permisos de operarios ahora se gestionan desde
+    //     /departamentos asignando secciones al departamento "Operario"
+    //
+    // Para migrar: php artisan permisos:migrar-operarios
+    // ══════════════════════════════════════════════════════════════════════════
+    // 📌 Referencia de prefijos que los operarios necesitan (para migración):
+    // - albaranes, produccion.trabajadores, users, alertas, productos, pedidos
+    // - ayuda, maquinas, etiquetas, elementos, subetiquetas, paquetes
+    // - localizaciones, api, entradas, movimientos, ubicaciones
+    // - inventario-backups, incorporaciones, usuarios, vacaciones
+    // ══════════════════════════════════════════════════════════════════════════
 
 
     // 📌 Prefijos permitidos para TRANSPORTISTAS

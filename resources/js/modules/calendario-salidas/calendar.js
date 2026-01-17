@@ -70,6 +70,103 @@ function safeUpdateSize() {
     }, 150);
 }
 
+/* ▼ Helpers para mejorar el drag en vista diaria */
+
+// Crear ghost personalizado que sigue el cursor (solución robusta)
+function createCustomDragGhost(event, sourceEl) {
+    removeCustomDragGhost();
+
+    const ghost = document.createElement('div');
+    ghost.id = 'custom-drag-ghost';
+    ghost.className = 'custom-drag-ghost';
+
+    const p = event.extendedProps || {};
+    const tipo = p.tipo === 'salida' ? '🚚' : '📋';
+    const titulo = p.cod_obra || p.nombre_obra || event.title?.split('\n')[0] || 'Evento';
+    const peso = p.pesoTotal ? `${Number(p.pesoTotal).toLocaleString()} kg` : '';
+    const bgColor = sourceEl?.style?.backgroundColor || event.backgroundColor || '#3b82f6';
+
+    ghost.innerHTML = `
+        <div class="ghost-content" style="background: ${bgColor};">
+            <div class="ghost-header">
+                <span class="ghost-icon">${tipo}</span>
+                <span class="ghost-title">${titulo}</span>
+            </div>
+            ${peso ? `<div class="ghost-weight">📦 ${peso}</div>` : ''}
+            <div class="ghost-time">
+                <span class="ghost-time-label">Soltar en:</span>
+                <span class="ghost-time-value">--:--</span>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(ghost);
+    return ghost;
+}
+
+// Actualizar posición del ghost personalizado
+function updateCustomDragGhost(x, y, timeStr) {
+    const ghost = document.getElementById('custom-drag-ghost');
+    if (!ghost) return;
+
+    // Posicionar junto al cursor
+    ghost.style.left = `${x + 15}px`;
+    ghost.style.top = `${y - 30}px`;
+
+    // Actualizar hora
+    if (timeStr) {
+        const timeValue = ghost.querySelector('.ghost-time-value');
+        if (timeValue) {
+            timeValue.textContent = timeStr;
+        }
+    }
+}
+
+// Remover ghost personalizado
+function removeCustomDragGhost() {
+    const ghost = document.getElementById('custom-drag-ghost');
+    if (ghost) ghost.remove();
+}
+
+// Calcular hora basada en posición Y
+function calculateTimeFromY(clientY, calendarEl) {
+    const timeGrid = calendarEl?.querySelector('.fc-timegrid-slots');
+    if (!timeGrid) return null;
+
+    const gridRect = timeGrid.getBoundingClientRect();
+    const relativeY = clientY - gridRect.top + timeGrid.scrollTop;
+    const gridHeight = timeGrid.scrollHeight || gridRect.height;
+
+    const startHour = 5;
+    const endHour = 20;
+    const totalHours = endHour - startHour;
+
+    const hoursFromTop = (relativeY / gridHeight) * totalHours;
+    const totalMinutes = (startHour * 60) + (hoursFromTop * 60);
+
+    // Snap a 30 minutos
+    const snappedMinutes = Math.round(totalMinutes / 30) * 30;
+    const hours = Math.max(startHour, Math.min(endHour - 1, Math.floor(snappedMinutes / 60)));
+    const minutes = snappedMinutes % 60;
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+// Highlight de zonas de drop válidas
+function highlightDropZones(enable) {
+    const slots = document.querySelectorAll('.fc-timegrid-slot, .fc-timegrid-col');
+
+    if (enable) {
+        slots.forEach(slot => {
+            slot.classList.add('fc-drop-zone-highlight');
+        });
+    } else {
+        slots.forEach(slot => {
+            slot.classList.remove('fc-drop-zone-highlight');
+        });
+    }
+}
+
 export function crearCalendario() {
     if (!window.FullCalendar) {
         console.error(
@@ -543,26 +640,72 @@ export function crearCalendario() {
                 }
                 return true;
             },
-            eventDragStart: () => {
-                // Forzar ancho en elementos que se arrastran (FC aplica estilos inline)
-                const fixDragWidth = () => {
-                    document.querySelectorAll('.fc-event-dragging').forEach(el => {
-                        el.style.width = '150px';
-                        el.style.maxWidth = '150px';
-                        el.style.minWidth = '150px';
-                        el.style.height = '80px';
-                        el.style.maxHeight = '80px';
-                        el.style.overflow = 'hidden';
+            // Snap a intervalos de 30 minutos en vista diaria
+            snapDuration: '00:30:00',
+            eventDragStart: (info) => {
+                window._isDragging = true;
+                window._draggedEvent = info.event;
+
+                // Crear ghost personalizado (solución robusta para el problema del mirror)
+                createCustomDragGhost(info.event, info.el);
+
+                // Añadir clase al body para estilos globales durante drag
+                document.body.classList.add('fc-dragging-active');
+
+                // Ocultar el mirror de FullCalendar via JS (por si CSS no funciona)
+                const hideMirror = () => {
+                    document.querySelectorAll('.fc-event-mirror').forEach(el => {
+                        el.style.display = 'none';
+                        el.style.opacity = '0';
+                        el.style.visibility = 'hidden';
                     });
                     if (window._isDragging) {
-                        requestAnimationFrame(fixDragWidth);
+                        requestAnimationFrame(hideMirror);
                     }
                 };
-                window._isDragging = true;
-                requestAnimationFrame(fixDragWidth);
+                requestAnimationFrame(hideMirror);
+
+                // Highlight zona de drop en vista diaria
+                const calendarEl = document.getElementById('calendario');
+                if (calendar?.view?.type === 'resourceTimeGridDay') {
+                    highlightDropZones(true);
+                }
+
+                // Listener de mouse para actualizar ghost
+                const handleMouseMove = (e) => {
+                    if (!window._isDragging) return;
+
+                    const timeStr = calculateTimeFromY(e.clientY, calendarEl);
+                    updateCustomDragGhost(e.clientX, e.clientY, timeStr);
+                };
+
+                document.addEventListener('mousemove', handleMouseMove);
+                window._dragMouseMoveHandler = handleMouseMove;
+
+                // Posición inicial
+                if (info.jsEvent) {
+                    const timeStr = calculateTimeFromY(info.jsEvent.clientY, calendarEl);
+                    updateCustomDragGhost(info.jsEvent.clientX, info.jsEvent.clientY, timeStr);
+                }
             },
-            eventDragStop: () => {
+            eventDragStop: (info) => {
                 window._isDragging = false;
+                window._draggedEvent = null;
+
+                // Remover listener de mouse
+                if (window._dragMouseMoveHandler) {
+                    document.removeEventListener('mousemove', window._dragMouseMoveHandler);
+                    window._dragMouseMoveHandler = null;
+                }
+
+                // Remover ghost personalizado
+                removeCustomDragGhost();
+
+                // Quitar clase del body
+                document.body.classList.remove('fc-dragging-active');
+
+                // Quitar highlight de zonas
+                highlightDropZones(false);
             },
             eventDrop: (info) => {
                 const p = info.event.extendedProps || {};

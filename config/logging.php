@@ -171,6 +171,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'recepcion_material' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/recepcion-material/recepcion.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];
