@@ -181,7 +181,6 @@ class MaquinaController extends Controller
 
     public function show($id)
     {
-        try {
         // 0) Primero cargar solo la máquina para verificar el tipo
         $maquina = Maquina::findOrFail($id);
         // 1) Rama GRÚA: cargar contexto mínimo y devolver pronto
@@ -219,39 +218,28 @@ class MaquinaController extends Controller
             ));
         }
 
-        // 2) MÁQUINAS NORMALES: Cargar relaciones pesadas y contexto base
-        $maquina->load('elementos');
-        $count = $maquina->elementos->count();
-        die('DEBUG-R1: elementos=' . $count . ', memoria=' . round(memory_get_usage()/1024/1024, 2) . 'MB');
-        $maquina->load('elementos.etiquetaRelacion'); die('DEBUG-R3: elementos.etiquetaRelacion');
-        $maquina->load('elementos.subetiquetas'); die('DEBUG-R4: elementos.subetiquetas');
-        $maquina->load('elementos.maquina'); die('DEBUG-R5: elementos.maquina');
-        $maquina->load('elementos.maquina_2'); die('DEBUG-R6: elementos.maquina_2');
-        $maquina->load('elementos.maquina_3'); die('DEBUG-R7: elementos.maquina_3');
-        $maquina->load('productos'); die('DEBUG-R8: productos');
-        $maquina->load('elementos.producto'); die('DEBUG-R9: elementos.producto');
-        $maquina->load('elementos.producto2'); die('DEBUG-R10: elementos.producto2');
-        $maquina->load('elementos.producto3'); die('DEBUG-R11: elementos.producto3');
+        // 2) MÁQUINAS NORMALES: Cargar solo productos (no elementos - se cargan filtrados después)
+        $maquina->load('productos');
         $base = $this->cargarContextoBase($maquina);
-        die('DEBUG-1D: Despues de cargarContextoBase');
 
-        // 3) Elementos de la máquina (primera o segunda)
-        if ($this->esSegundaMaquina($maquina)) {
-            $elementosMaquina = Elemento::with(['planilla', 'etiquetaRelacion', 'subetiquetas', 'maquina', 'maquina_2', 'producto', 'producto2', 'producto3'])
-                ->where('maquina_id_2', $maquina->id)
-                ->get();
-        } else {
-            $elementosMaquina = Elemento::with(['planilla', 'etiquetaRelacion', 'subetiquetas', 'maquina', 'producto', 'producto2', 'producto3'])
-                ->where('maquina_id', $maquina->id)
-                ->get();
-        }
-        die('DEBUG-2: Elementos cargados: ' . $elementosMaquina->count());
-
-        // 4) Cola de planillas con lógica de salto de planillas sin revisar
+        // 3) Cola de planillas - solo planillas revisadas
         // ⚠️ LÓGICA ESTRICTA: Solo planillas revisadas entran en planificación
         $ordenesPlanillas = OrdenPlanilla::where('maquina_id', $maquina->id)
             ->with('planilla')
             ->orderBy('posicion', 'asc')
+            ->get();
+
+        // Obtener IDs de planillas revisadas en la cola
+        $planillasRevisadasIds = $ordenesPlanillas
+            ->filter(fn($orden) => $orden->planilla && $orden->planilla->revisada)
+            ->pluck('planilla_id')
+            ->toArray();
+
+        // 4) Cargar SOLO elementos de planillas revisadas en cola (no todos los 30k+)
+        $campoMaquina = $this->esSegundaMaquina($maquina) ? 'maquina_id_2' : 'maquina_id';
+        $elementosMaquina = Elemento::with(['planilla', 'etiquetaRelacion', 'subetiquetas', 'maquina', 'maquina_2', 'producto', 'producto2', 'producto3'])
+            ->where($campoMaquina, $maquina->id)
+            ->whereIn('planilla_id', $planillasRevisadasIds)
             ->get();
 
         // Obtener posiciones del request o calcular automáticamente
@@ -432,11 +420,10 @@ class MaquinaController extends Controller
 
         // 11) AUTO-RESUMEN: Ejecutar automáticamente resumen multi-planilla si hay etiquetas agrupables
         // Excluir MSR20 del auto-resumen (usa sistema de BVBs diferente)
-        // TEMPORAL: Comentado para debug del error 500
-        // if (strtoupper($maquina->nombre) !== 'MSR20') {
-        //     $resumenService = app(\App\Services\ResumenEtiquetaService::class);
-        //     $resumenService->resumirMultiplanilla($maquina->id, auth()->id());
-        // }
+        if (strtoupper($maquina->nombre) !== 'MSR20') {
+            $resumenService = app(\App\Services\ResumenEtiquetaService::class);
+            $resumenService->resumirMultiplanilla($maquina->id, auth()->id());
+        }
 
         // 12) Grupos de resumen activos para esta máquina
         // Incluye tanto grupos de planilla individual como grupos multi-planilla (planilla_id = null)
@@ -592,16 +579,6 @@ class MaquinaController extends Controller
             // productos base compatibles
             'productosBaseCompatibles' => $productosBaseCompatibles,
         ]));
-        } catch (\Throwable $e) {
-            \Log::error('ERROR en show maquina', [
-                'id' => $id,
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            throw $e;
-        }
     }
 
     /* =========================
