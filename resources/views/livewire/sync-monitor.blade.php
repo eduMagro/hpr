@@ -437,19 +437,33 @@
                         {{-- Selector de destino --}}
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Importar a:</label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <button wire:click="$set('syncTarget', 'local')"
-                                    class="px-4 py-3 rounded-lg border-2 text-center transition {{ $syncTarget === 'local' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">
-                                    <div class="flex items-center justify-center gap-2">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                        </svg>
-                                        <span class="font-semibold">LOCAL</span>
-                                    </div>
-                                    <p class="text-xs mt-1 opacity-75">Base de datos local</p>
-                                </button>
-                                <button wire:click="$set('syncTarget', 'production')"
-                                    class="px-4 py-3 rounded-lg border-2 text-center transition {{ $syncTarget === 'production' ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">
+                            @if ($canSyncToLocal)
+                                {{-- Programadores: pueden elegir local o producción --}}
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button wire:click="$set('syncTarget', 'local')"
+                                        class="px-4 py-3 rounded-lg border-2 text-center transition {{ $syncTarget === 'local' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">
+                                        <div class="flex items-center justify-center gap-2">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                            </svg>
+                                            <span class="font-semibold">LOCAL</span>
+                                        </div>
+                                        <p class="text-xs mt-1 opacity-75">Base de datos local</p>
+                                    </button>
+                                    <button wire:click="$set('syncTarget', 'production')"
+                                        class="px-4 py-3 rounded-lg border-2 text-center transition {{ $syncTarget === 'production' ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">
+                                        <div class="flex items-center justify-center gap-2">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <span class="font-semibold">PRODUCCIÓN</span>
+                                        </div>
+                                        <p class="text-xs mt-1 opacity-75">app.hierrospacoreyes.es</p>
+                                    </button>
+                                </div>
+                            @else
+                                {{-- Otros usuarios: solo producción --}}
+                                <div class="px-4 py-3 rounded-lg border-2 border-red-500 bg-red-50 text-red-700 text-center">
                                     <div class="flex items-center justify-center gap-2">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -457,8 +471,8 @@
                                         <span class="font-semibold">PRODUCCIÓN</span>
                                     </div>
                                     <p class="text-xs mt-1 opacity-75">app.hierrospacoreyes.es</p>
-                                </button>
-                            </div>
+                                </div>
+                            @endif
                         </div>
 
                         {{-- Estadísticas --}}

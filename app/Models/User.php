@@ -392,9 +392,19 @@ class User extends Authenticatable
 
                 // Ejemplo 2 - por nombre
                 // $q->orWhere('nombre', 'Administrador');
-    
+
                 // Ejemplo 3 - por rol en el pivot
                 // $q->orWherePivot('rol_departamental', 'administrador');
+            })
+            ->exists();
+    }
+
+    public function esProgramadorDepartamento(): bool
+    {
+        return $this->departamentos()
+            ->where(function ($q) {
+                $q->where('nombre', 'programador')
+                  ->orWhere('nombre', 'programacion');
             })
             ->exists();
     }

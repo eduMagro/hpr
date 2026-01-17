@@ -127,6 +127,9 @@ class SyncMonitor extends Component
     // Destino de sincronización seleccionado por el usuario
     public string $syncTarget = 'local';
 
+    // Si el usuario puede enviar a local (solo programadores)
+    public bool $canSyncToLocal = false;
+
     // Target de la sincronización en ejecución (detectado del log)
     public ?string $runningTarget = null;
 
@@ -141,6 +144,16 @@ class SyncMonitor extends Component
     public function mount()
     {
         $this->currentTarget = $this->detectarTarget();
+
+        // Solo programadores pueden enviar a local
+        $user = auth()->user();
+        $this->canSyncToLocal = $user && $user->esProgramadorDepartamento();
+
+        // Si no puede enviar a local, forzar producción como destino
+        if (!$this->canSyncToLocal) {
+            $this->syncTarget = 'production';
+        }
+
         $this->refresh();
     }
 
