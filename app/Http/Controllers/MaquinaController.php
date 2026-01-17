@@ -425,6 +425,7 @@ class MaquinaController extends Controller
         // }
 
         // 12) Grupos de resumen activos para esta máquina
+        die('DEBUG: antes de grupos resumen');
         // Incluye tanto grupos de planilla individual como grupos multi-planilla (planilla_id = null)
         $planillaIds = collect($planillasActivas)->pluck('id')->toArray();
         $gruposResumen = GrupoResumen::where('activo', true)
