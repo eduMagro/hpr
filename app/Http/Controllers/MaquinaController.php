@@ -236,12 +236,12 @@ class MaquinaController extends Controller
             ->toArray();
 
         // 4) Cargar SOLO elementos de planillas revisadas en cola (no todos los 30k+)
-        die('DEBUG: planillas revisadas=' . count($planillasRevisadasIds) . ', IDs=' . implode(',', array_slice($planillasRevisadasIds, 0, 10)));
         $campoMaquina = $this->esSegundaMaquina($maquina) ? 'maquina_id_2' : 'maquina_id';
         $elementosMaquina = Elemento::with(['planilla', 'etiquetaRelacion', 'subetiquetas', 'maquina', 'maquina_2', 'producto', 'producto2', 'producto3'])
             ->where($campoMaquina, $maquina->id)
             ->whereIn('planilla_id', $planillasRevisadasIds)
             ->get();
+        die('DEBUG: elementos cargados=' . $elementosMaquina->count() . ', memoria=' . round(memory_get_usage()/1024/1024, 2) . 'MB');
 
         // Obtener posiciones del request o calcular automáticamente
         $posicion1 = request('posicion_1');
