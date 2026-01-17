@@ -245,6 +245,7 @@ class MaquinaController extends Controller
             })
             ->whereIn('planilla_id', $planillasRevisadasIds)
             ->get();
+        die('DEBUG: elementos=' . $elementosMaquina->count() . ', memoria=' . round(memory_get_usage()/1024/1024,2) . 'MB');
 
         // Obtener posiciones del request o calcular automáticamente
         $posicion1 = request('posicion_1');
