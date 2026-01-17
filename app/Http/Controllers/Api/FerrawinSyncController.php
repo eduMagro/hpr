@@ -42,7 +42,7 @@ class FerrawinSyncController extends Controller
             $request->validate([
                 'planillas' => 'required|array|min:1',
                 'planillas.*.codigo' => 'required|string',
-                'planillas.*.elementos' => 'required|array',
+                'planillas.*.elementos' => 'nullable|array',
                 'metadata' => 'nullable|array',
             ]);
 

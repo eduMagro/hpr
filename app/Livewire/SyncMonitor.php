@@ -63,6 +63,47 @@ class SyncMonitor extends Component
         }
     }
 
+    /**
+     * Verifica si un proceso con el PID dado está corriendo.
+     */
+    protected function procesoExiste(int $pid): bool
+    {
+        if ($this->isWindows()) {
+            exec("tasklist /FI \"PID eq {$pid}\" 2>NUL", $output);
+            foreach ($output as $line) {
+                if (strpos($line, (string)$pid) !== false) {
+                    return true;
+                }
+            }
+            return false;
+        } else {
+            return file_exists("/proc/{$pid}");
+        }
+    }
+
+    /**
+     * Limpia archivos de control huérfanos.
+     */
+    protected function limpiarArchivosHuerfanos(): void
+    {
+        if (!$this->syncDir) {
+            return;
+        }
+
+        $sep = $this->isWindows() ? '\\' : '/';
+        $pidFile = $this->syncDir . $sep . 'sync.pid';
+        $pauseFile = $this->syncDir . $sep . 'sync.pause';
+
+        if (file_exists($pidFile)) {
+            @unlink($pidFile);
+        }
+        if (file_exists($pauseFile)) {
+            @unlink($pauseFile);
+        }
+
+        $this->isPausing = false;
+    }
+
     // Para continuar sincronización
     public ?string $ultimaPlanilla = null;
     public ?string $ultimoAño = null;
@@ -247,7 +288,15 @@ class SyncMonitor extends Component
         // Verificar si el proceso está corriendo (archivo PID)
         $pidFile = $this->syncDir . DIRECTORY_SEPARATOR . 'sync.pid';
         if (file_exists($pidFile)) {
-            $this->isRunning = true;
+            // Verificar que el proceso del PID realmente existe
+            $pid = (int) trim(file_get_contents($pidFile));
+            if ($pid > 0 && $this->procesoExiste($pid)) {
+                $this->isRunning = true;
+            } else {
+                // PID huérfano - limpiar archivos
+                $this->limpiarArchivosHuerfanos();
+                $this->isRunning = false;
+            }
         } else {
             // Fallback: verificar si última entrada es reciente
             $lastLine = end($lines);

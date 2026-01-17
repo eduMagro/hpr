@@ -390,6 +390,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/users/{user}/resumen-asistencia', [ProfileController::class, 'resumenAsistencia'])->name('users.verResumen-asistencia');
     Route::get('/users/{user}/eventos-turnos', [ProfileController::class, 'eventosTurnos'])->name('users.verEventos-turnos');
     Route::post('/usuarios/{user}/cerrar-sesiones', [ProfileController::class, 'cerrarSesionesDeUsuario'])->name('usuarios.cerrarSesiones');
+    Route::delete('/usuarios/{user}/sesion/{sessionId}', [ProfileController::class, 'cerrarSesionDeUsuario'])->name('usuarios.cerrarSesion');
     Route::post('/usuarios/{user}/despedir', [ProfileController::class, 'despedirUsuario'])->name('usuarios.editarDespedir');
     Route::post('/usuario/subir-imagen', [ProfileController::class, 'subirImagen'])->name('usuarios.editarSubirImagen');
     Route::get('/perfil/imagen/{nombre}', function ($nombre) {
@@ -403,6 +404,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     })->name('usuarios.imagen');
     Route::get('/mi-perfil/{user}', [PerfilController::class, 'show'])->name('usuarios.show');
     Route::post('/mi-perfil/cerrar-sesiones', [PerfilController::class, 'cerrarMisSesiones'])->name('perfil.cerrarMisSesiones');
+    Route::delete('/mi-perfil/sesion/{sessionId}', [PerfilController::class, 'cerrarSesion'])->name('perfil.cerrarSesion');
 
     // === DOCUMENTOS EMPLEADO ===
     Route::get('/api/usuarios/{user}/vacation-data', [ProfileController::class, 'getVacationData'])->name('usuarios.getVacationData');

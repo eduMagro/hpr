@@ -268,8 +268,9 @@ class MaquinaController extends Controller
             ->values();
 
         // Cola de planillas con posiciones específicas
+        // OPTIMIZADO: Pasamos $ordenesPlanillas para evitar consultas duplicadas
         [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles, $codigosPorPosicion] =
-            $this->aplicarColaPlanillasPorPosicion($maquina, $elementosMaquina, $posiciones);
+            $this->aplicarColaPlanillasPorPosicion($maquina, $elementosMaquina, $posiciones, $ordenesPlanillas);
 
         // 5) Datasets filtrados por planilla
         $elementosPorPlanilla = $elementosFiltrados->groupBy('planilla_id');
@@ -288,9 +289,14 @@ class MaquinaController extends Controller
         };
 
         // Obtener etiqueta_sub_ids que están en grupos de resumen (resumidas)
-        $etiquetasResumidas = Etiqueta::whereNotNull('grupo_resumen_id')
-            ->pluck('etiqueta_sub_id')
-            ->toArray();
+        // OPTIMIZADO: Solo de las planillas activas, no de toda la BD
+        $planillaIdsActivos = collect($planillasActivas)->pluck('id')->toArray();
+        $etiquetasResumidas = $planillaIdsActivos
+            ? Etiqueta::whereNotNull('grupo_resumen_id')
+                ->whereIn('planilla_id', $planillaIdsActivos)
+                ->pluck('etiqueta_sub_id')
+                ->toArray()
+            : [];
 
         $etiquetasData = $elementosFiltrados
             ->filter(fn($e) => !empty($e->etiqueta_sub_id) && !in_array($e->etiqueta_sub_id, $etiquetasResumidas))
@@ -441,16 +447,29 @@ class MaquinaController extends Controller
             ->with(['etiquetas.planilla', 'planilla'])
             ->get();
 
+        // OPTIMIZADO: Cargar todos los elementos de grupos en UNA sola consulta (evita N+1)
+        $todosEtiquetaIds = $gruposResumen->flatMap(fn($g) => $g->etiquetas->pluck('id'))->unique()->toArray();
+        $elementosDeGrupos = $todosEtiquetaIds
+            ? Elemento::with(['producto', 'producto2', 'producto3'])
+                ->whereIn('etiqueta_id', $todosEtiquetaIds)
+                ->where(function ($query) use ($maquina) {
+                    // CORREGIDO: Buscar en cualquier campo de máquina
+                    $query->where('maquina_id', $maquina->id)
+                        ->orWhere('maquina_id_2', $maquina->id)
+                        ->orWhere('maquina_id_3', $maquina->id);
+                })
+                ->get()
+                ->groupBy('etiqueta_id')
+            : collect();
+
         // Preparar datos de grupos para la vista (con elementos de cada etiqueta)
-        $gruposResumenData = $gruposResumen->map(function ($grupo) use ($maquina) {
+        $gruposResumenData = $gruposResumen->map(function ($grupo) use ($elementosDeGrupos) {
             // Obtener los IDs de etiquetas del grupo
             $etiquetaIds = $grupo->etiquetas->pluck('id')->toArray();
 
-            // Obtener elementos directamente de la BD (no depender de elementosFiltrados)
-            $elementosGrupo = Elemento::with(['producto', 'producto2', 'producto3'])
-                ->whereIn('etiqueta_id', $etiquetaIds)
-                ->where('maquina_id', $maquina->id)
-                ->get();
+            // OPTIMIZADO: Filtrar de la colección pre-cargada (no consulta adicional)
+            $elementosGrupo = collect($etiquetaIds)
+                ->flatMap(fn($id) => $elementosDeGrupos->get($id, collect()));
 
             // Para grupos multi-planilla, obtener códigos de planillas involucradas
             $esMultiplanilla = is_null($grupo->planilla_id);
@@ -590,42 +609,35 @@ class MaquinaController extends Controller
    ========================= */
 
     /**
-     * 🔥 NUEVO MÉTODO: Obtiene planillas según posiciones específicas
-     * 
+     * 🔥 Obtiene planillas según posiciones específicas
+     * OPTIMIZADO: Recibe $ordenesPlanillas para evitar consultas duplicadas
+     *
      * @param Maquina $maquina
      * @param Collection $elementos
      * @param Collection $posiciones - Collection de posiciones a mostrar [1, 3, 5...]
+     * @param Collection $ordenesPlanillas - Órdenes ya cargadas con relación planilla
      * @return array [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles, $codigosPorPosicion]
      */
-    private function aplicarColaPlanillasPorPosicion(Maquina $maquina, Collection $elementos, Collection $posiciones)
+    private function aplicarColaPlanillasPorPosicion(Maquina $maquina, Collection $elementos, Collection $posiciones, Collection $ordenesPlanillas)
     {
         // 1) Agrupar elementos por planilla
         $porPlanilla = $elementos->groupBy('planilla_id');
 
-        // 2) Traer orden manual completo: [planilla_id => posicion]
-        $ordenManual = OrdenPlanilla::where('maquina_id', $maquina->id)
-            ->orderBy('posicion', 'asc')
-            ->get()
-            ->pluck('posicion', 'planilla_id');
+        // 2) OPTIMIZADO: Usar $ordenesPlanillas ya cargada (evita consulta duplicada)
+        $ordenManual = $ordenesPlanillas->pluck('posicion', 'planilla_id');
 
         // 3) Crear un mapa inverso [posicion => planilla_id] para búsqueda rápida
         $posicionAPlanilla = $ordenManual->flip();
 
-        // 4) Obtener todas las posiciones disponibles (solo planillas REVISADAS)
-        // Consultamos directamente OrdenPlanilla con la relación planilla cargada
-        // para incluir TODAS las planillas revisadas en la cola, no solo las que tienen elementos
-        $ordenesConPlanilla = OrdenPlanilla::where('maquina_id', $maquina->id)
-            ->with('planilla')
-            ->orderBy('posicion', 'asc')
-            ->get()
-            ->filter(function ($orden) use ($porPlanilla) {
-                // Incluir solo si:
-                // 1. La planilla existe y está revisada
-                // 2. Y tiene elementos en esta máquina (está en $porPlanilla)
-                return $orden->planilla
-                    && $orden->planilla->revisada
-                    && $porPlanilla->has($orden->planilla_id);
-            });
+        // 4) OPTIMIZADO: Filtrar directamente de $ordenesPlanillas (evita consulta duplicada)
+        $ordenesConPlanilla = $ordenesPlanillas->filter(function ($orden) use ($porPlanilla) {
+            // Incluir solo si:
+            // 1. La planilla existe y está revisada
+            // 2. Y tiene elementos en esta máquina (está en $porPlanilla)
+            return $orden->planilla
+                && $orden->planilla->revisada
+                && $porPlanilla->has($orden->planilla_id);
+        });
 
         $posicionesDisponibles = $ordenesConPlanilla
             ->pluck('posicion')
@@ -1351,7 +1363,9 @@ class MaquinaController extends Controller
         };
 
         // Obtener etiqueta_sub_ids que están en grupos de resumen (resumidas)
+        // OPTIMIZADO: Solo de esta planilla específica
         $etiquetasResumidas = Etiqueta::whereNotNull('grupo_resumen_id')
+            ->where('planilla_id', $planillaId)
             ->pluck('etiqueta_sub_id')
             ->toArray();
 

@@ -186,17 +186,16 @@ class PerfilController extends Controller
     }
 
     /**
-     * Parsea el User-Agent usando jenssegers/agent para mejor detección
+     * Parsea el User-Agent para mostrar información amigable del dispositivo
      */
     private function parseUserAgent(?string $userAgent): array
     {
         if (!$userAgent) {
             return [
-                'navegador' => 'Desconocido',
-                'sistema' => 'Desconocido',
-                'dispositivo' => 'Desconocido',
+                'navegador' => 'Navegador desconocido',
+                'sistema' => 'Sistema desconocido',
+                'dispositivo' => null,
                 'icono' => 'desktop',
-                'es_bot' => false,
             ];
         }
 
@@ -208,36 +207,95 @@ class PerfilController extends Controller
             return [
                 'navegador' => $agent->robot() ?: 'Bot',
                 'sistema' => 'Robot/Crawler',
-                'dispositivo' => 'Bot',
+                'dispositivo' => null,
                 'icono' => 'bot',
-                'es_bot' => true,
             ];
         }
 
-        // Navegador y versión
+        // === NAVEGADOR ===
         $browser = $agent->browser();
+
+        // Corregir detección incorrecta de "Webkit"
+        if (!$browser || $browser === 'Webkit' || $browser === 'WebKit') {
+            // Intentar detectar manualmente
+            if (str_contains($userAgent, 'Edg/') || str_contains($userAgent, 'Edge/')) {
+                $browser = 'Edge';
+            } elseif (str_contains($userAgent, 'OPR/') || str_contains($userAgent, 'Opera')) {
+                $browser = 'Opera';
+            } elseif (str_contains($userAgent, 'Chrome/')) {
+                $browser = 'Chrome';
+            } elseif (str_contains($userAgent, 'Firefox/')) {
+                $browser = 'Firefox';
+            } elseif (str_contains($userAgent, 'Safari/')) {
+                $browser = 'Safari';
+            } else {
+                $browser = 'Navegador';
+            }
+        }
+
+        // Obtener versión del navegador
         $browserVersion = $agent->version($browser);
-        $navegador = $browser ?: 'Desconocido';
+        if (!$browserVersion && preg_match('/' . preg_quote($browser, '/') . '[\/\s](\d+)/i', $userAgent, $matches)) {
+            $browserVersion = $matches[1];
+        }
+
+        $navegador = $browser;
         if ($browserVersion) {
-            $navegador .= ' ' . explode('.', $browserVersion)[0]; // Solo versión mayor
+            $versionMajor = explode('.', (string)$browserVersion)[0];
+            if (is_numeric($versionMajor) && $versionMajor < 200) { // Versión razonable
+                $navegador .= ' ' . $versionMajor;
+            }
         }
 
-        // Sistema operativo y versión
+        // === SISTEMA OPERATIVO ===
         $platform = $agent->platform();
-        $platformVersion = $agent->version($platform);
-        $sistema = $platform ?: 'Desconocido';
-        if ($platformVersion && $platform !== 'Windows') {
-            $sistema .= ' ' . explode('.', $platformVersion)[0];
+
+        // Corregir detección incorrecta
+        if (!$platform || $platform === 'Webkit' || $platform === 'WebKit') {
+            if (str_contains($userAgent, 'Windows')) {
+                $platform = 'Windows';
+            } elseif (str_contains($userAgent, 'Android')) {
+                $platform = 'Android';
+            } elseif (str_contains($userAgent, 'iPhone') || str_contains($userAgent, 'iPad')) {
+                $platform = str_contains($userAgent, 'iPad') ? 'iPadOS' : 'iOS';
+            } elseif (str_contains($userAgent, 'Mac OS X') || str_contains($userAgent, 'Macintosh')) {
+                $platform = 'macOS';
+            } elseif (str_contains($userAgent, 'Linux')) {
+                $platform = 'Linux';
+            } else {
+                $platform = 'Sistema';
+            }
         }
 
-        // Dispositivo específico
-        $dispositivo = $agent->device() ?: null;
+        // Renombrar para claridad
+        if ($platform === 'AndroidOS') {
+            $platform = 'Android';
+        } elseif ($platform === 'OS X') {
+            $platform = 'macOS';
+        }
 
-        // Tipo de icono
+        $platformVersion = $agent->version($platform);
+        $sistema = $platform;
+
+        // Solo añadir versión si es razonable y no es Windows (donde la versión no es útil)
+        if ($platformVersion && !str_contains($platform, 'Windows')) {
+            $versionMajor = explode('.', (string)$platformVersion)[0];
+            if (is_numeric($versionMajor) && $versionMajor < 50) {
+                $sistema .= ' ' . $versionMajor;
+            }
+        }
+
+        // === DISPOSITIVO ===
+        $dispositivo = $agent->device();
+        if ($dispositivo === 'Webkit' || $dispositivo === 'WebKit' || $dispositivo === false) {
+            $dispositivo = null;
+        }
+
+        // === ICONO ===
         $icono = 'desktop';
-        if ($agent->isPhone()) {
+        if ($agent->isPhone() || str_contains($userAgent, 'Mobile')) {
             $icono = 'mobile';
-        } elseif ($agent->isTablet()) {
+        } elseif ($agent->isTablet() || str_contains($userAgent, 'Tablet')) {
             $icono = 'tablet';
         }
 
@@ -246,7 +304,6 @@ class PerfilController extends Controller
             'sistema' => $sistema,
             'dispositivo' => $dispositivo,
             'icono' => $icono,
-            'es_bot' => false,
         ];
     }
 
@@ -263,6 +320,31 @@ class PerfilController extends Controller
             ->where('id', '!=', $sesionActualId)
             ->delete();
 
-        return back()->with('success', "🛑 Se han cerrado $cerradas sesión(es) en otros dispositivos.");
+        return back()->with('success', "Se han cerrado $cerradas sesión(es) en otros dispositivos.");
+    }
+
+    /**
+     * Cerrar una sesión específica del usuario autenticado
+     */
+    public function cerrarSesion(string $sessionId)
+    {
+        $user = Auth::user();
+        $sesionActualId = FacadeSession::getId();
+
+        // No permitir cerrar la sesión actual
+        if ($sessionId === $sesionActualId) {
+            return back()->with('error', 'No puedes cerrar tu sesión actual.');
+        }
+
+        // Buscar y eliminar la sesión (solo si pertenece al usuario)
+        $eliminada = Session::where('id', $sessionId)
+            ->where('user_id', $user->id)
+            ->delete();
+
+        if ($eliminada) {
+            return back()->with('success', 'Sesión cerrada correctamente.');
+        }
+
+        return back()->with('error', 'No se encontró la sesión.');
     }
 }

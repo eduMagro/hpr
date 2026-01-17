@@ -13,33 +13,89 @@
                     @include('profile.partials.update-password-form')
                 </div>
             </div>
-            {{-- Cerrar sesiones en otros dispositivos --}}
+            {{-- Sesiones activas del usuario --}}
             <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
                 <div class="max-w-xl space-y-4">
-                    <form method="POST" action="{{ route('usuarios.cerrarSesiones', $user) }}">
-                        @csrf
-                        <button type="submit"
-                            class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded">
-                            🛑 Cerrar sesiones activas
-                        </button>
-                    </form>
-                    @if ($sesiones->isNotEmpty())
-                        <div class="mt-4 space-y-2 text-sm text-gray-700">
-                            <h3 class="font-semibold text-base text-gray-800">Sesiones activas de
-                                {{ $user->nombre_completo }}:</h3>
+                    <h3 class="text-lg font-semibold text-gray-800">Sesiones activas de {{ $user->nombre_completo }}</h3>
 
+                    @if ($sesiones->isNotEmpty())
+                        <div class="space-y-2">
                             @foreach ($sesiones as $sesion)
-                                <div class="p-3 border rounded bg-gray-50">
-                                    <p><strong>IP:</strong> {{ $sesion['ip_address'] ?? 'Desconocida' }}</p>
-                                    <p><strong>Navegador:</strong> {{ Str::limit($sesion['user_agent'], 80) }}</p>
-                                    <p><strong>Última actividad:</strong> {{ $sesion['ultima_actividad'] }}</p>
+                                <div class="p-3 rounded-lg {{ $sesion['actual'] ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-100' }}">
+                                    <div class="flex items-center gap-3">
+                                        {{-- Icono del dispositivo --}}
+                                        <div class="flex-shrink-0 w-10 h-10 rounded-full {{ $sesion['actual'] ? 'bg-blue-100' : 'bg-gray-200' }} flex items-center justify-center">
+                                            @if (($sesion['dispositivo']['icono'] ?? 'desktop') === 'mobile')
+                                                <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-blue-600' : 'text-gray-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                </svg>
+                                            @elseif (($sesion['dispositivo']['icono'] ?? 'desktop') === 'tablet')
+                                                <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-blue-600' : 'text-gray-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                </svg>
+                                            @else
+                                                <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-blue-600' : 'text-gray-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                </svg>
+                                            @endif
+                                        </div>
+                                        {{-- Info del dispositivo --}}
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex items-center gap-2">
+                                                <p class="text-sm font-semibold text-gray-800">
+                                                    {{ $sesion['dispositivo']['navegador'] ?? 'Navegador' }}
+                                                </p>
+                                                @if ($sesion['actual'])
+                                                    <span class="text-[9px] bg-blue-500 text-white px-1.5 py-0.5 rounded-full font-medium">TU SESIÓN</span>
+                                                @endif
+                                            </div>
+                                            <p class="text-xs text-gray-600">
+                                                {{ $sesion['dispositivo']['sistema'] ?? 'Sistema' }}
+                                                @if (!empty($sesion['dispositivo']['dispositivo']))
+                                                    <span class="text-gray-400">·</span> {{ $sesion['dispositivo']['dispositivo'] }}
+                                                @endif
+                                            </p>
+                                            <div class="flex items-center gap-2 mt-1">
+                                                <span class="text-[10px] text-gray-400">{{ $sesion['ip_address'] ?? 'IP desconocida' }}</span>
+                                                <span class="text-gray-300">·</span>
+                                                <span class="text-[10px] text-gray-400">
+                                                    {{ $sesion['tiempo_relativo'] ?? $sesion['ultima_actividad'] }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {{-- Botón cerrar sesión individual --}}
+                                        <form method="POST" action="{{ route('usuarios.cerrarSesion', [$user, $sesion['id']]) }}"
+                                              onsubmit="return confirm('¿Cerrar esta sesión?')"
+                                              class="flex-shrink-0">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                                title="Cerrar esta sesión">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
                             @endforeach
                         </div>
-                    @else
-                        <p class="text-sm text-gray-500 mt-4">Este usuario no tiene sesiones activas.</p>
-                    @endif
 
+                        @if ($sesiones->count() > 1)
+                            <form method="POST" action="{{ route('usuarios.cerrarSesiones', $user) }}"
+                                  onsubmit="return confirm('¿Cerrar TODAS las sesiones de {{ $user->nombre_completo }}?')"
+                                  class="pt-2">
+                                @csrf
+                                <button type="submit"
+                                    class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition-colors">
+                                    Cerrar todas las sesiones ({{ $sesiones->count() }})
+                                </button>
+                            </form>
+                        @endif
+                    @else
+                        <p class="text-sm text-gray-500">Este usuario no tiene sesiones activas.</p>
+                    @endif
                 </div>
             </div>
             {{-- 🧑‍💼 Despedir al trabajador --}}

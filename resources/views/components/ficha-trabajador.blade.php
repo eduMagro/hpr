@@ -477,6 +477,22 @@
                                                 </span>
                                             </div>
                                         </div>
+                                        {{-- Botón cerrar sesión individual --}}
+                                        @if (!$sesion['actual'])
+                                            <form method="POST" action="{{ route('perfil.cerrarSesion', $sesion['id']) }}"
+                                                  onsubmit="return confirm('¿Cerrar esta sesión?')"
+                                                  class="flex-shrink-0">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit"
+                                                    class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                                    title="Cerrar esta sesión">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </div>
                             @endforeach
