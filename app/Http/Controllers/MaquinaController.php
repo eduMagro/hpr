@@ -220,20 +220,17 @@ class MaquinaController extends Controller
         }
 
         // 2) MÁQUINAS NORMALES: Cargar relaciones pesadas y contexto base
-        die('DEBUG-1B: Antes de load relaciones');
-        $maquina->load([
-            'elementos.planilla',
-            'elementos.etiquetaRelacion',
-            'elementos.subetiquetas',
-            'elementos.maquina',
-            'elementos.maquina_2',
-            'elementos.maquina_3',
-            'productos',
-            'elementos.producto',
-            'elementos.producto2',
-            'elementos.producto3',
-        ]);
-        die('DEBUG-1C: Despues de load relaciones');
+        $maquina->load('elementos'); die('DEBUG-R1: elementos');
+        $maquina->load('elementos.planilla'); die('DEBUG-R2: elementos.planilla');
+        $maquina->load('elementos.etiquetaRelacion'); die('DEBUG-R3: elementos.etiquetaRelacion');
+        $maquina->load('elementos.subetiquetas'); die('DEBUG-R4: elementos.subetiquetas');
+        $maquina->load('elementos.maquina'); die('DEBUG-R5: elementos.maquina');
+        $maquina->load('elementos.maquina_2'); die('DEBUG-R6: elementos.maquina_2');
+        $maquina->load('elementos.maquina_3'); die('DEBUG-R7: elementos.maquina_3');
+        $maquina->load('productos'); die('DEBUG-R8: productos');
+        $maquina->load('elementos.producto'); die('DEBUG-R9: elementos.producto');
+        $maquina->load('elementos.producto2'); die('DEBUG-R10: elementos.producto2');
+        $maquina->load('elementos.producto3'); die('DEBUG-R11: elementos.producto3');
         $base = $this->cargarContextoBase($maquina);
         die('DEBUG-1D: Despues de cargarContextoBase');
 
