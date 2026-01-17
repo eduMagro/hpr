@@ -231,12 +231,12 @@ class VerificarAccesoSeccion
         }
 
         // === 6) Denegación por defecto ===
-        Log::warning('🚫 Ruta denegada por configuración (sin coincidencias)', [
+        return $this->denegarAcceso($request, 'No tienes permiso para acceder.', [
             'usuario' => $usuarioAutenticado->email,
             'empresa_id' => $empresaUsuarioId,
             'ruta' => $nombreRutaActual,
             'rol' => $rolUsuario,
+            'tipo' => 'sin_coincidencias',
         ]);
-        return $this->denegarAcceso($request, 'No tienes permiso para acceder.');
     }
 }

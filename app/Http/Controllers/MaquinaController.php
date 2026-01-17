@@ -184,8 +184,6 @@ class MaquinaController extends Controller
         try {
         // 0) Primero cargar solo la máquina para verificar el tipo
         $maquina = Maquina::findOrFail($id);
-        die('DEBUG-1: Maquina cargada OK - ' . $maquina->nombre);
-
         // 1) Rama GRÚA: cargar contexto mínimo y devolver pronto
         if ($this->esGrua($maquina)) {
             $base = $this->cargarContextoBase($maquina);
@@ -246,6 +244,7 @@ class MaquinaController extends Controller
                 ->where('maquina_id', $maquina->id)
                 ->get();
         }
+        die('DEBUG-2: Elementos cargados: ' . $elementosMaquina->count());
 
         // 4) Cola de planillas con lógica de salto de planillas sin revisar
         // ⚠️ LÓGICA ESTRICTA: Solo planillas revisadas entran en planificación

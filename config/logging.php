@@ -180,10 +180,9 @@ return [
         ],
 
         'accesos' => [
-            'driver' => 'daily',
+            'driver' => 'single',
             'path' => storage_path('logs/accesos/accesos.log'),
             'level' => 'info',
-            'days' => 30,
             'replace_placeholders' => true,
         ],
 
