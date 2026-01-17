@@ -422,13 +422,12 @@ class MaquinaController extends Controller
             })
             ->toArray();
 
-        // 11) AUTO-RESUMEN: Ejecutar automáticamente resumen multi-planilla si hay etiquetas agrupables
-        // Excluir MSR20 del auto-resumen (usa sistema de BVBs diferente)
-        if (strtoupper($maquina->nombre) !== 'MSR20') {
-            $resumenService = app(\App\Services\ResumenEtiquetaService::class);
-            $resumenService->resumirMultiplanilla($maquina->id, auth()->id());
-        }
-        die('DEBUG: despues de auto-resumen, memoria=' . round(memory_get_usage()/1024/1024,2) . 'MB');
+        // 11) AUTO-RESUMEN: DESACTIVADO - causa error de memoria en producción
+        // TODO: Optimizar resumirMultiplanilla para no cargar todos los elementos
+        // if (strtoupper($maquina->nombre) !== 'MSR20') {
+        //     $resumenService = app(\App\Services\ResumenEtiquetaService::class);
+        //     $resumenService->resumirMultiplanilla($maquina->id, auth()->id());
+        // }
 
         // 12) Grupos de resumen activos para esta máquina
         // Incluye tanto grupos de planilla individual como grupos multi-planilla (planilla_id = null)
