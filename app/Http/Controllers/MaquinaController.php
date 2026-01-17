@@ -425,7 +425,6 @@ class MaquinaController extends Controller
         // }
 
         // 12) Grupos de resumen activos para esta máquina
-        die('DEBUG: antes de grupos resumen');
         // Incluye tanto grupos de planilla individual como grupos multi-planilla (planilla_id = null)
         $planillaIds = collect($planillasActivas)->pluck('id')->toArray();
         $gruposResumen = GrupoResumen::where('activo', true)
@@ -436,6 +435,7 @@ class MaquinaController extends Controller
             })
             ->with(['etiquetas.planilla', 'planilla'])
             ->get();
+        die('DEBUG: grupos resumen=' . $gruposResumen->count());
 
         // Preparar datos de grupos para la vista (con elementos de cada etiqueta)
         $gruposResumenData = $gruposResumen->map(function ($grupo) use ($maquina) {
