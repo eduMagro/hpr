@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\FerrawinSync\FerrawinBulkImportService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -347,5 +348,85 @@ class FerrawinSyncController extends Controller
                 'message' => config('app.debug') ? $e->getMessage() : 'Error interno',
             ], 500);
         }
+    }
+
+    /**
+     * Recibe actualizaciones de estado de sincronización desde el cliente Windows.
+     *
+     * POST /api/ferrawin/sync-status
+     * Body: JSON con status, progress, message, year, target
+     */
+    public function syncStatus(Request $request)
+    {
+        try {
+            $request->validate([
+                'status' => 'required|string|in:running,completed,paused,error,idle',
+                'progress' => 'nullable|string',
+                'message' => 'nullable|string',
+                'year' => 'nullable|string',
+                'target' => 'nullable|string',
+                'last_planilla' => 'nullable|string',
+            ]);
+
+            $statusData = [
+                'status' => $request->input('status'),
+                'progress' => $request->input('progress'),
+                'message' => $request->input('message'),
+                'year' => $request->input('year'),
+                'target' => $request->input('target'),
+                'last_planilla' => $request->input('last_planilla'),
+                'updated_at' => now()->toIso8601String(),
+            ];
+
+            // Guardar en cache por 5 minutos
+            Cache::put('ferrawin_sync_status', $statusData, now()->addMinutes(5));
+
+            Log::channel('ferrawin_sync')->debug('📊 [API] Estado de sync actualizado', $statusData);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Estado actualizado',
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos inválidos',
+                'errors' => $e->errors(),
+            ], 422);
+
+        } catch (\Throwable $e) {
+            Log::channel('ferrawin_sync')->error('❌ [API] Error actualizando estado de sync', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => config('app.debug') ? $e->getMessage() : 'Error interno',
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtiene el estado actual de sincronización desde cache.
+     *
+     * GET /api/ferrawin/sync-status
+     */
+    public function getSyncStatus(Request $request)
+    {
+        $statusData = Cache::get('ferrawin_sync_status', [
+            'status' => 'idle',
+            'progress' => null,
+            'message' => null,
+            'year' => null,
+            'target' => null,
+            'last_planilla' => null,
+            'updated_at' => null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $statusData,
+        ]);
     }
 }

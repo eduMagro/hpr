@@ -17,7 +17,7 @@
 
     {{-- Modal --}}
     @if ($isOpen)
-        <div class="fixed inset-0 z-[9999] overflow-y-auto" @if($isRunning) wire:poll.5s="refresh" @endif>
+        <div class="fixed inset-0 z-[9999] overflow-y-auto" @if($isRunning || ($currentTarget === 'production' && $remoteStatus === 'running')) wire:poll.5s="refresh" @endif>
             {{-- Overlay - con z-index explícito para cubrir contenido inferior --}}
             <div class="fixed inset-0 z-[9999] bg-black/60 transition-opacity" wire:click="close"></div>
 
@@ -84,6 +84,83 @@
 
                     {{-- Stats Grid --}}
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gray-50 border-b">
+                        {{-- Estado Remoto (solo en producción) --}}
+                        @if ($currentTarget === 'production' && $remoteStatus)
+                            <div class="col-span-2 md:col-span-4 mb-2">
+                                <div class="rounded-lg p-4 border-2 flex items-center justify-between
+                                    @if($remoteStatus === 'running') bg-green-50 border-green-300
+                                    @elseif($remoteStatus === 'completed') bg-blue-50 border-blue-300
+                                    @elseif($remoteStatus === 'paused') bg-amber-50 border-amber-300
+                                    @elseif($remoteStatus === 'error') bg-red-50 border-red-300
+                                    @else bg-gray-50 border-gray-300 @endif">
+                                    <div class="flex items-center gap-3">
+                                        @if($remoteStatus === 'running')
+                                            <div class="flex items-center justify-center w-10 h-10 rounded-full bg-green-500 text-white">
+                                                <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <p class="font-bold text-green-800 text-lg">Sincronizando...</p>
+                                                <p class="text-sm text-green-600">{{ $remoteMessage ?: 'Procesando planillas' }}</p>
+                                            </div>
+                                        @elseif($remoteStatus === 'completed')
+                                            <div class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-500 text-white">
+                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <p class="font-bold text-blue-800 text-lg">Finalizado</p>
+                                                <p class="text-sm text-blue-600">{{ $remoteMessage ?: 'Sincronización completada' }}</p>
+                                            </div>
+                                        @elseif($remoteStatus === 'paused')
+                                            <div class="flex items-center justify-center w-10 h-10 rounded-full bg-amber-500 text-white">
+                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <p class="font-bold text-amber-800 text-lg">Pausado</p>
+                                                <p class="text-sm text-amber-600">{{ $remoteMessage ?: 'Sincronización pausada' }}</p>
+                                            </div>
+                                        @elseif($remoteStatus === 'error')
+                                            <div class="flex items-center justify-center w-10 h-10 rounded-full bg-red-500 text-white">
+                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <p class="font-bold text-red-800 text-lg">Error</p>
+                                                <p class="text-sm text-red-600">{{ $remoteMessage ?: 'Error en sincronización' }}</p>
+                                            </div>
+                                        @else
+                                            <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-400 text-white">
+                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <p class="font-bold text-gray-700 text-lg">En espera</p>
+                                                <p class="text-sm text-gray-500">{{ $remoteMessage ?: 'Esperando sincronización' }}</p>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <div class="text-right">
+                                        @if($remoteProgress)
+                                            <p class="font-bold text-lg text-gray-800">{{ $remoteProgress }}</p>
+                                        @endif
+                                        @if($remoteUpdatedAt)
+                                            <p class="text-xs text-gray-500">
+                                                {{ \Carbon\Carbon::parse($remoteUpdatedAt)->diffForHumans() }}
+                                            </p>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
                         <div class="bg-white rounded-lg p-3 shadow-sm border">
                             <p class="text-xs text-gray-500 uppercase tracking-wide">Progreso</p>
                             <p class="text-xl font-bold text-gray-900">{{ $currentProgress }}</p>

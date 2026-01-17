@@ -141,4 +141,12 @@ Route::prefix('ferrawin')->group(function () {
     Route::post('/actualizar-ferrawin-ids', [FerrawinSyncController::class, 'actualizarFerrawinIds'])
         ->middleware('ferrawin.api')
         ->name('api.ferrawin.actualizar-ferrawin-ids');
+
+    // Estado de sincronización remota (enviado desde Windows, leído desde producción)
+    Route::post('/sync-status', [FerrawinSyncController::class, 'syncStatus'])
+        ->middleware('ferrawin.api')
+        ->name('api.ferrawin.sync-status');
+
+    Route::get('/sync-status', [FerrawinSyncController::class, 'getSyncStatus'])
+        ->name('api.ferrawin.sync-status.get');
 });

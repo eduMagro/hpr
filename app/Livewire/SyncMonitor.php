@@ -25,6 +25,12 @@ class SyncMonitor extends Component
     public bool $isPausing = false; // Indica que se solicitó pausa y está esperando
     public string $activeTab = 'logs'; // 'logs' o 'errors'
 
+    // Estado remoto (recibido via Pusher)
+    public ?string $remoteStatus = null; // 'running', 'completed', 'paused', 'error', 'idle'
+    public ?string $remoteProgress = null;
+    public ?string $remoteMessage = null;
+    public ?string $remoteUpdatedAt = null;
+
     // Directorio de logs de ferrawin-sync (se configura en mount)
     protected ?string $logsDir = null;
     protected ?string $syncDir = null;
@@ -160,8 +166,13 @@ class SyncMonitor extends Component
         $this->totalPlanillas = Cache::remember('sync_monitor_planillas_count', 30, fn() => Planilla::count());
         $this->totalElementos = Cache::remember('sync_monitor_elementos_count', 30, fn() => Elemento::count());
 
-        // Leer logs (actualiza $this->isRunning)
-        $this->readLogs();
+        // Si estamos en producción, leer el estado remoto desde cache
+        if (!$this->isLocalSyncEnvironment()) {
+            $this->leerEstadoRemoto();
+        } else {
+            // Leer logs locales (actualiza $this->isRunning)
+            $this->readLogs();
+        }
 
         // Si estaba pausando y ya no está corriendo, resetear el flag
         if ($this->isPausing && !$this->isRunning) {
@@ -172,6 +183,107 @@ class SyncMonitor extends Component
         $this->detectarUltimaPlanilla();
 
         $this->lastUpdate = now()->format('H:i:s');
+    }
+
+    /**
+     * Lee el estado de sincronización remota desde cache.
+     * Se usa en producción para mostrar el estado del sync que corre en Windows.
+     */
+    protected function leerEstadoRemoto(): void
+    {
+        $statusData = Cache::get('ferrawin_sync_status');
+
+        if (!$statusData) {
+            // No hay datos de estado remoto
+            $this->remoteStatus = 'idle';
+            $this->remoteProgress = null;
+            $this->remoteMessage = 'Esperando conexión del cliente local';
+            $this->remoteUpdatedAt = null;
+            $this->isRunning = false;
+            $this->logs = ['La sincronización se ejecuta desde el entorno local (Windows)'];
+            $this->errors = [];
+            return;
+        }
+
+        $this->remoteStatus = $statusData['status'] ?? 'idle';
+        $this->remoteProgress = $statusData['progress'] ?? null;
+        $this->remoteMessage = $statusData['message'] ?? null;
+        $this->remoteUpdatedAt = $statusData['updated_at'] ?? null;
+        $this->runningTarget = $statusData['target'] ?? null;
+
+        // Actualizar currentYear y currentProgress si hay datos
+        if (!empty($statusData['year'])) {
+            $this->currentYear = $statusData['year'];
+        }
+        if (!empty($statusData['progress'])) {
+            $this->currentProgress = $statusData['progress'];
+        }
+        if (!empty($statusData['last_planilla'])) {
+            $this->ultimaPlanilla = $statusData['last_planilla'];
+        }
+
+        // Determinar si está corriendo basado en el estado remoto
+        $this->isRunning = in_array($this->remoteStatus, ['running']);
+
+        // Si el estado remoto es 'paused' y estábamos pausando, actualizar
+        if ($this->remoteStatus === 'paused' && $this->isPausing) {
+            $this->isPausing = false;
+        }
+
+        // Construir logs virtuales para mostrar en producción
+        $this->logs = $this->construirLogsVirtuales();
+        $this->errors = [];
+    }
+
+    /**
+     * Construye logs virtuales para mostrar en producción basado en el estado remoto.
+     */
+    protected function construirLogsVirtuales(): array
+    {
+        $logs = [];
+        $timestamp = $this->remoteUpdatedAt
+            ? \Carbon\Carbon::parse($this->remoteUpdatedAt)->format('Y-m-d H:i:s')
+            : now()->format('Y-m-d H:i:s');
+
+        switch ($this->remoteStatus) {
+            case 'running':
+                $logs[] = "[{$timestamp}] INFO: Sincronización en curso...";
+                if ($this->remoteProgress) {
+                    $logs[] = "[{$timestamp}] Progreso: {$this->remoteProgress}";
+                }
+                if ($this->remoteMessage) {
+                    $logs[] = "[{$timestamp}] {$this->remoteMessage}";
+                }
+                break;
+
+            case 'completed':
+                $logs[] = "[{$timestamp}] ✓ Sincronización completada";
+                if ($this->remoteMessage) {
+                    $logs[] = "[{$timestamp}] {$this->remoteMessage}";
+                }
+                break;
+
+            case 'paused':
+                $logs[] = "[{$timestamp}] ⏸ Sincronización pausada";
+                if ($this->remoteMessage) {
+                    $logs[] = "[{$timestamp}] {$this->remoteMessage}";
+                }
+                break;
+
+            case 'error':
+                $logs[] = "[{$timestamp}] ERROR: Error en sincronización";
+                if ($this->remoteMessage) {
+                    $logs[] = "[{$timestamp}] {$this->remoteMessage}";
+                }
+                break;
+
+            default:
+                $logs[] = "[{$timestamp}] Esperando inicio de sincronización...";
+                $logs[] = "La sincronización se ejecuta desde el entorno local (Windows)";
+                break;
+        }
+
+        return $logs;
     }
 
     protected function readLogs()
