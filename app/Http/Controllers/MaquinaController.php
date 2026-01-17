@@ -220,6 +220,7 @@ class MaquinaController extends Controller
         }
 
         // 2) MÁQUINAS NORMALES: Cargar relaciones pesadas y contexto base
+        die('DEBUG-1B: Antes de load relaciones');
         $maquina->load([
             'elementos.planilla',
             'elementos.etiquetaRelacion',
@@ -232,7 +233,9 @@ class MaquinaController extends Controller
             'elementos.producto2',
             'elementos.producto3',
         ]);
+        die('DEBUG-1C: Despues de load relaciones');
         $base = $this->cargarContextoBase($maquina);
+        die('DEBUG-1D: Despues de cargarContextoBase');
 
         // 3) Elementos de la máquina (primera o segunda)
         if ($this->esSegundaMaquina($maquina)) {
