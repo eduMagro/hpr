@@ -81,7 +81,9 @@
       "Bash(git restore:*)",
       "Bash(Get-Content \"C:\\\\xampp\\\\htdocs\\\\manager\\\\storage\\\\logs\\\\laravel.log\" -Tail 60)",
       "Bash(Select-Object -Last 80)",
-      "Bash(composer install:*)"
+      "Bash(composer install:*)",
+      "Bash(C:xamppmysqlbinmysql -u root manager_pruebas -e \"SELECT ruta, descripcion FROM departamento_ruta;\")",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

@@ -405,7 +405,7 @@
                                         d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
-                            <div x-show="open" x-transition:enter="transition ease-out duration-100"
+                            <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-100"
                                 x-transition:enter-start="opacity-0 scale-95"
                                 x-transition:enter-end="opacity-100 scale-100"
                                 x-transition:leave="transition ease-in duration-75"
@@ -1282,6 +1282,297 @@
 
         {{-- Script de atajos de teclado para control de columnas --}}
         <script>
+            // ============================================================
+            // ATAJOS DE FLECHAS - PRIORIDAD ABSOLUTA (fuera de init)
+            // ============================================================
+            (function() {
+                // Evitar registrar múltiples veces
+                if (window.__maquinasArrowKeysRegistered) return;
+                window.__maquinasArrowKeysRegistered = true;
+
+                // Estados: 'normal' -> 'solo' -> 'fullscreen'
+                window.__vistaMode = 'normal';
+                window.__fullscreenEtiquetaIndex = 0;
+                window.__etiquetasVisibles = [];
+
+                // Crear overlay de pantalla completa
+                const crearOverlayFullscreen = () => {
+                    if (document.getElementById('fullscreen-etiqueta-overlay')) return;
+
+                    const overlay = document.createElement('div');
+                    overlay.id = 'fullscreen-etiqueta-overlay';
+                    overlay.innerHTML = `
+                        <style>
+                            #fullscreen-etiqueta-overlay {
+                                position: fixed;
+                                top: 0;
+                                left: 0;
+                                right: 0;
+                                bottom: 0;
+                                background: #1a1a2e;
+                                z-index: 99999;
+                                display: none;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                opacity: 0;
+                                transition: opacity 0.3s ease;
+                            }
+                            #fullscreen-etiqueta-overlay.visible {
+                                display: flex;
+                                opacity: 1;
+                            }
+                            #fullscreen-etiqueta-container {
+                                transition: transform 0.3s ease, opacity 0.3s ease;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            }
+                            #fullscreen-etiqueta-container .etiqueta-card {
+                                width: 95vw !important;
+                                height: auto !important;
+                                max-height: 85vh !important;
+                                aspect-ratio: 126 / 71;
+                            }
+                            #fullscreen-etiqueta-container.changing {
+                                opacity: 0;
+                                transform: scale(0.95);
+                            }
+                            #fullscreen-contador {
+                                position: fixed;
+                                bottom: 2rem;
+                                left: 50%;
+                                transform: translateX(-50%);
+                                background: rgba(255,255,255,0.1);
+                                backdrop-filter: blur(10px);
+                                padding: 0.75rem 2rem;
+                                border-radius: 2rem;
+                                color: white;
+                                font-size: 1.25rem;
+                                font-weight: bold;
+                                display: flex;
+                                align-items: center;
+                                gap: 1rem;
+                            }
+                            #fullscreen-contador .actual {
+                                color: #a78bfa;
+                                font-size: 1.5rem;
+                            }
+                            #fullscreen-instrucciones {
+                                position: fixed;
+                                top: 1.5rem;
+                                right: 1.5rem;
+                                background: rgba(255,255,255,0.1);
+                                backdrop-filter: blur(10px);
+                                padding: 1rem 1.5rem;
+                                border-radius: 1rem;
+                                color: rgba(255,255,255,0.7);
+                                font-size: 0.85rem;
+                            }
+                            #fullscreen-instrucciones kbd {
+                                background: rgba(255,255,255,0.2);
+                                padding: 0.2rem 0.5rem;
+                                border-radius: 0.25rem;
+                                font-family: monospace;
+                            }
+                        </style>
+                        <div id="fullscreen-etiqueta-container"></div>
+                        <div id="fullscreen-contador">
+                            <span class="actual">1</span>
+                            <span>/</span>
+                            <span class="total">1</span>
+                        </div>
+                        <div id="fullscreen-instrucciones">
+                            <kbd>↑</kbd> Salir &nbsp;|&nbsp; <kbd>Rueda</kbd> Navegar
+                        </div>
+                    `;
+                    document.body.appendChild(overlay);
+                };
+
+                // Obtener etiquetas visibles
+                const obtenerEtiquetas = () => {
+                    const etiquetas = document.querySelectorAll('.etiqueta-card');
+                    return Array.from(etiquetas).filter(el => {
+                        const rect = el.getBoundingClientRect();
+                        return rect.width > 0 && rect.height > 0;
+                    });
+                };
+
+                // Mostrar etiqueta en fullscreen
+                const mostrarEtiquetaFullscreen = (index, direction = 0) => {
+                    const container = document.getElementById('fullscreen-etiqueta-container');
+                    const contador = document.getElementById('fullscreen-contador');
+                    if (!container || !window.__etiquetasVisibles.length) return;
+
+                    // Asegurar índice válido
+                    if (index < 0) index = window.__etiquetasVisibles.length - 1;
+                    if (index >= window.__etiquetasVisibles.length) index = 0;
+                    window.__fullscreenEtiquetaIndex = index;
+
+                    // Animación de cambio
+                    container.classList.add('changing');
+
+                    setTimeout(() => {
+                        const etiqueta = window.__etiquetasVisibles[index];
+                        const clone = etiqueta.cloneNode(true);
+
+                        // Limpiar botones del clone
+                        clone.querySelectorAll('.no-print, button, select').forEach(el => el.remove());
+                        clone.style.margin = '0';
+
+                        // Escalar el SVG para que ocupe todo el espacio
+                        const svg = clone.querySelector('svg');
+                        if (svg) {
+                            svg.style.width = '100%';
+                            svg.style.height = '100%';
+                        }
+
+                        container.innerHTML = '';
+                        container.appendChild(clone);
+
+                        // Actualizar contador
+                        contador.querySelector('.actual').textContent = index + 1;
+                        contador.querySelector('.total').textContent = window.__etiquetasVisibles.length;
+
+                        container.classList.remove('changing');
+                    }, 150);
+                };
+
+                // Activar modo fullscreen
+                const activarFullscreen = () => {
+                    crearOverlayFullscreen();
+                    window.__etiquetasVisibles = obtenerEtiquetas();
+
+                    if (!window.__etiquetasVisibles.length) {
+                        console.log('⚠️ No hay etiquetas visibles');
+                        return false;
+                    }
+
+                    window.__vistaMode = 'fullscreen';
+                    window.__fullscreenEtiquetaIndex = 0;
+
+                    const overlay = document.getElementById('fullscreen-etiqueta-overlay');
+                    overlay.style.display = 'flex';
+                    requestAnimationFrame(() => overlay.classList.add('visible'));
+
+                    mostrarEtiquetaFullscreen(0);
+                    document.body.style.overflow = 'hidden';
+
+                    console.log('🖥️ Modo fullscreen activado');
+                    return true;
+                };
+
+                // Desactivar modo fullscreen
+                const desactivarFullscreen = () => {
+                    const overlay = document.getElementById('fullscreen-etiqueta-overlay');
+                    if (overlay) {
+                        overlay.classList.remove('visible');
+                        setTimeout(() => overlay.style.display = 'none', 300);
+                    }
+                    document.body.style.overflow = '';
+                    window.__vistaMode = 'solo';
+                    console.log('🔙 Volviendo a modo solo');
+                };
+
+                // Handler del scroll en fullscreen
+                const wheelHandler = (e) => {
+                    if (window.__vistaMode !== 'fullscreen') return;
+
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const direction = e.deltaY > 0 ? 1 : -1;
+                    mostrarEtiquetaFullscreen(window.__fullscreenEtiquetaIndex + direction, direction);
+                };
+
+                document.addEventListener('wheel', wheelHandler, { passive: false, capture: true });
+
+                // Handler de flechas
+                const arrowHandler = function(e) {
+                    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+
+                    // Permitir en inputs de texto para mover cursor
+                    const el = document.activeElement;
+                    const isTextInput = el?.tagName === 'INPUT' &&
+                        ['text', 'search', 'email', 'password', 'tel', 'url', 'number'].includes(el.type);
+                    const isTextarea = el?.tagName === 'TEXTAREA';
+                    const isEditable = el?.isContentEditable;
+
+                    if ((isTextInput || isTextarea || isEditable) &&
+                        (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                        return;
+                    }
+
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+
+                    // En modo fullscreen
+                    if (window.__vistaMode === 'fullscreen') {
+                        if (e.key === 'ArrowUp') {
+                            desactivarFullscreen();
+                        } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                            mostrarEtiquetaFullscreen(window.__fullscreenEtiquetaIndex + 1, 1);
+                        } else if (e.key === 'ArrowLeft') {
+                            mostrarEtiquetaFullscreen(window.__fullscreenEtiquetaIndex - 1, -1);
+                        }
+                        return;
+                    }
+
+                    // Modos normales
+                    switch (e.key) {
+                        case 'ArrowLeft':
+                            const showL = JSON.parse(localStorage.getItem('showLeft') ?? 'true');
+                            localStorage.setItem('showLeft', JSON.stringify(!showL));
+                            window.dispatchEvent(new CustomEvent('toggleLeft'));
+                            window.__vistaMode = 'normal';
+                            break;
+
+                        case 'ArrowRight':
+                            const showR = JSON.parse(localStorage.getItem('showRight') ?? 'true');
+                            localStorage.setItem('showRight', JSON.stringify(!showR));
+                            window.dispatchEvent(new CustomEvent('toggleRight'));
+                            window.__vistaMode = 'normal';
+                            break;
+
+                        case 'ArrowUp':
+                            if (window.__vistaMode === 'solo') {
+                                // Volver a normal
+                                localStorage.setItem('showLeft', 'true');
+                                localStorage.setItem('showRight', 'true');
+                                window.dispatchEvent(new CustomEvent('toggleLeft'));
+                                window.dispatchEvent(new CustomEvent('toggleRight'));
+                                window.showHeader = true;
+                                localStorage.setItem('showHeader', 'true');
+                                if (window.aplicarEstadoHeader) window.aplicarEstadoHeader();
+                                window.__vistaMode = 'normal';
+                            } else {
+                                if (window.toggleMaquinaHeader) window.toggleMaquinaHeader();
+                            }
+                            break;
+
+                        case 'ArrowDown':
+                            if (window.__vistaMode === 'solo') {
+                                // Ya estamos en solo -> ir a fullscreen
+                                activarFullscreen();
+                            } else {
+                                // Normal -> ir a solo
+                                window.dispatchEvent(new CustomEvent('solo'));
+                                localStorage.setItem('showLeft', 'false');
+                                localStorage.setItem('showRight', 'false');
+                                window.showHeader = false;
+                                localStorage.setItem('showHeader', 'false');
+                                if (window.aplicarEstadoHeader) window.aplicarEstadoHeader();
+                                window.__vistaMode = 'solo';
+                            }
+                            break;
+                    }
+                };
+
+                document.addEventListener('keydown', arrowHandler, { capture: true });
+                console.log('✅ Atajos de flechas registrados (normal → solo → fullscreen)');
+            })();
+
             // Definir funciones globalmente para acceso
             window.showHeader = JSON.parse(localStorage.getItem('showHeader') ?? 'true');
 
@@ -1336,53 +1627,6 @@
                     selectCambiar.addEventListener('change', handleChangeMaquina);
                 }
 
-                // 3. Shortcuts de teclado
-                const keydownHandler = function(e) {
-                    // No activar si el usuario está escribiendo
-                    const activeElement = document.activeElement;
-                    const isTyping = activeElement.tagName === 'INPUT' ||
-                        activeElement.tagName === 'TEXTAREA' ||
-                        activeElement.tagName === 'SELECT' ||
-                        activeElement.isContentEditable;
-
-                    if (isTyping) return;
-                    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
-
-                    e.preventDefault();
-
-                    switch (e.key) {
-                        case 'ArrowLeft':
-                            const showLeftActual = JSON.parse(localStorage.getItem('showLeft') ?? 'true');
-                            localStorage.setItem('showLeft', JSON.stringify(!showLeftActual));
-                            window.dispatchEvent(new CustomEvent('toggleLeft'));
-                            console.log('⬅️ Columna izquierda:', !showLeftActual ? 'visible' : 'oculta');
-                            break;
-
-                        case 'ArrowRight':
-                            const showRightActual = JSON.parse(localStorage.getItem('showRight') ?? 'true');
-                            localStorage.setItem('showRight', JSON.stringify(!showRightActual));
-                            window.dispatchEvent(new CustomEvent('toggleRight'));
-                            console.log('➡️ Columna derecha:', !showRightActual ? 'visible' : 'oculta');
-                            break;
-
-                        case 'ArrowUp':
-                            window.toggleMaquinaHeader();
-                            break;
-
-                        case 'ArrowDown':
-                            window.dispatchEvent(new CustomEvent('solo'));
-                            localStorage.setItem('showLeft', 'false');
-                            localStorage.setItem('showRight', 'false');
-                            window.showHeader = false;
-                            localStorage.setItem('showHeader', 'false');
-                            window.aplicarEstadoHeader();
-                            console.log('⬇️ Modo solo: solo columna central visible');
-                            break;
-                    }
-                };
-
-                document.addEventListener('keydown', keydownHandler);
-
                 // --- Cleanup ---
                 document.body.dataset.maquinasShowPageInit = 'true';
 
@@ -1390,7 +1634,6 @@
                     if (selectCambiar) {
                         selectCambiar.removeEventListener('change', handleChangeMaquina);
                     }
-                    document.removeEventListener('keydown', keydownHandler);
                     document.body.dataset.maquinasShowPageInit = 'false';
                 };
 
