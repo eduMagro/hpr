@@ -6,17 +6,28 @@
  * Descarga un archivo SQL con las tablas necesarias para el sync
  */
 
-// Configuración - ajusta estos valores
-$config = [
-    'host' => env('DB_HOST', '127.0.0.1'),
-    'database' => env('DB_DATABASE', 'forge'),
-    'username' => env('DB_USERNAME', 'forge'),
-    'password' => env('DB_PASSWORD', ''),
+// Buscar la raíz del proyecto Laravel
+$basePath = null;
+$possiblePaths = [
+    __DIR__ . '/../..',           // public/scripts -> raíz
+    __DIR__ . '/..',              // Si scripts está en la raíz del public
+    dirname($_SERVER['DOCUMENT_ROOT']), // Un nivel arriba del document root
 ];
 
-// Cargar Laravel para usar env()
-require __DIR__ . '/../../vendor/autoload.php';
-$app = require_once __DIR__ . '/../../bootstrap/app.php';
+foreach ($possiblePaths as $path) {
+    if (file_exists($path . '/vendor/autoload.php') && file_exists($path . '/bootstrap/app.php')) {
+        $basePath = realpath($path);
+        break;
+    }
+}
+
+if (!$basePath) {
+    die('Error: No se pudo encontrar la raíz del proyecto Laravel. Rutas probadas: ' . implode(', ', $possiblePaths));
+}
+
+// Cargar Laravel
+require $basePath . '/vendor/autoload.php';
+$app = require_once $basePath . '/bootstrap/app.php';
 $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
 $config = [
