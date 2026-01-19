@@ -71,11 +71,31 @@ class AlbaranesScanController extends Controller
                     $parsed['bultos_total'] = $simulacion['bultos_albaran'];
                     $parsed['peso_total'] = $simulacion['peso_total'];
                     $parsed['tipo_compra'] = isset($parsed['tipo_compra']) ? mb_strtolower($parsed['tipo_compra']) : null;
-                    $parsed['distribuidor_recomendado'] = $this->determinarDistribuidorRecomendado(
-                        $parsed['tipo_compra'],
-                        $parsed['proveedor_texto'] ?? null,
-                        $distribuidores
-                    );
+
+                    // IA Inteligente para Distribuidor
+                    $distribuidorRecomendado = null;
+                    if ($parsed['tipo_compra'] === 'distribuidor') {
+                        try {
+                            /** @var PrioridadIAService $aiService */
+                            $aiService = app(PrioridadIAService::class);
+                            $contexto = $parsed;
+                            $contexto['raw_text'] = $log->raw_text ?? '';
+                            $distribuidorRecomendado = $aiService->recomendarDistribuidor($contexto, $distribuidores);
+                        } catch (\Throwable $e) {
+                            Log::warning('Fallo al recomendar distribuidor con IA: ' . $e->getMessage());
+                        }
+                    }
+
+                    // Fallback
+                    if (!$distribuidorRecomendado) {
+                        $distribuidorRecomendado = $this->determinarDistribuidorRecomendado(
+                            $parsed['tipo_compra'],
+                            $parsed['proveedor_texto'] ?? null,
+                            $distribuidores
+                        );
+                    }
+
+                    $parsed['distribuidor_recomendado'] = $distribuidorRecomendado;
 
                     $resultados[] = [
                         'ocr_log_id' => $log->id,
@@ -156,11 +176,31 @@ class AlbaranesScanController extends Controller
                     $parsed['bultos_total'] = $simulacion['bultos_albaran'];
                     $parsed['peso_total'] = $simulacion['peso_total'];
                     $parsed['tipo_compra'] = isset($parsed['tipo_compra']) ? mb_strtolower($parsed['tipo_compra']) : null;
-                    $parsed['distribuidor_recomendado'] = $this->determinarDistribuidorRecomendado(
-                        $parsed['tipo_compra'],
-                        $parsed['proveedor_texto'] ?? null,
-                        $distribuidores
-                    );
+
+                    // IA Inteligente para Distribuidor
+                    $distribuidorRecomendado = null;
+                    if ($parsed['tipo_compra'] === 'distribuidor') {
+                        try {
+                            /** @var PrioridadIAService $aiService */
+                            $aiService = app(PrioridadIAService::class);
+                            $contexto = $parsed;
+                            $contexto['raw_text'] = $log->raw_text ?? '';
+                            $distribuidorRecomendado = $aiService->recomendarDistribuidor($contexto, $distribuidores);
+                        } catch (\Throwable $e) {
+                            Log::warning('Fallo al recomendar distribuidor con IA (Ajax): ' . $e->getMessage());
+                        }
+                    }
+
+                    // Fallback
+                    if (!$distribuidorRecomendado) {
+                        $distribuidorRecomendado = $this->determinarDistribuidorRecomendado(
+                            $parsed['tipo_compra'],
+                            $parsed['proveedor_texto'] ?? null,
+                            $distribuidores
+                        );
+                    }
+
+                    $parsed['distribuidor_recomendado'] = $distribuidorRecomendado;
 
                     $resultados[] = [
                         'ocr_log_id' => $log->id,
