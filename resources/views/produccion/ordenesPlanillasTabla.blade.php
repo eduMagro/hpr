@@ -135,9 +135,14 @@
                                         data-posicion="{{ $pos }}"
                                         data-fecha="{{ $fechaEntrega }}">
                                         @if($planilla)
+                                            @php
+                                                $bgColor = $planilla->revisada ? 'bg-blue-200 hover:bg-blue-300' : 'bg-gray-100 hover:bg-blue-100';
+                                                $textColor = $planilla->revisada ? 'text-blue-800' : 'text-blue-700';
+                                            @endphp
                                             <a href="{{ route('planillas.show', $planilla->id) }}"
-                                               class="block p-2 rounded-lg bg-gray-100 hover:bg-blue-100 transition-colors text-center">
-                                                <div class="font-mono font-semibold text-blue-700 text-xs">
+                                               class="block p-2 rounded-lg {{ $bgColor }} transition-colors text-center"
+                                               title="{{ $planilla->revisada ? 'Revisada' : 'Pendiente de revisión' }}">
+                                                <div class="font-mono font-semibold {{ $textColor }} text-xs">
                                                     {{ $planilla->codigo }}
                                                 </div>
                                                 <div class="text-[10px] text-gray-500 truncate">
@@ -374,6 +379,57 @@
 
             // Inicial
             aplicarFiltros();
+
+            // ========== SCROLL CON FLECHAS ==========
+            const contenedorScroll = document.querySelector('.overflow-x-auto');
+            const scrollStep = 150; // píxeles por cada pulsación
+
+            document.addEventListener('keydown', function(e) {
+                // Ignorar si estamos en un input/select
+                if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+                // Buscar el contenedor principal con scroll (puede ser window o un contenedor específico)
+                const main = document.querySelector('main') || document.documentElement;
+
+                switch(e.key) {
+                    case 'ArrowUp':
+                        main.scrollBy(0, -scrollStep);
+                        window.scrollBy(0, -scrollStep);
+                        e.preventDefault();
+                        break;
+                    case 'ArrowDown':
+                        main.scrollBy(0, scrollStep);
+                        window.scrollBy(0, scrollStep);
+                        e.preventDefault();
+                        break;
+                    case 'ArrowLeft':
+                        contenedorScroll.scrollBy(-scrollStep, 0);
+                        e.preventDefault();
+                        break;
+                    case 'ArrowRight':
+                        contenedorScroll.scrollBy(scrollStep, 0);
+                        e.preventDefault();
+                        break;
+                    case 'Home':
+                        contenedorScroll.scrollTo(0, contenedorScroll.scrollTop);
+                        e.preventDefault();
+                        break;
+                    case 'End':
+                        contenedorScroll.scrollTo(contenedorScroll.scrollWidth, contenedorScroll.scrollTop);
+                        e.preventDefault();
+                        break;
+                    case 'PageUp':
+                        main.scrollBy(0, -window.innerHeight * 0.8);
+                        window.scrollBy(0, -window.innerHeight * 0.8);
+                        e.preventDefault();
+                        break;
+                    case 'PageDown':
+                        main.scrollBy(0, window.innerHeight * 0.8);
+                        window.scrollBy(0, window.innerHeight * 0.8);
+                        e.preventDefault();
+                        break;
+                }
+            });
         });
     </script>
 </x-app-layout>

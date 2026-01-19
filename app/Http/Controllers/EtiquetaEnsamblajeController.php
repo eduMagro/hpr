@@ -121,7 +121,6 @@ class EtiquetaEnsamblajeController extends Controller
         }
 
         DB::transaction(function () use ($planilla) {
-            $planilla->fecha_finalizacion = now();
             $planilla->estado = 'completada';
             $planilla->save();
 

@@ -525,6 +525,12 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/api/produccion/ultimo-snapshot', [ProduccionController::class, 'obtenerUltimoSnapshot'])->name('api.produccion.ultimo-snapshot');
     Route::post('/api/produccion/restaurar-snapshot', [ProduccionController::class, 'restaurarSnapshot'])->name('api.produccion.restaurar-snapshot');
 
+    // Endpoint para planillas con retraso
+    Route::get('/api/produccion/planillas-con-retraso', [ProduccionController::class, 'planillasConRetraso'])->name('api.produccion.planillas-con-retraso');
+
+    // Endpoint para simular turno de sábado
+    Route::get('/api/produccion/simular-turno-sabado', [ProduccionController::class, 'simularTurnoSabado'])->name('api.produccion.simular-turno-sabado');
+
     //MSR20 BVBS
     Route::get('/maquinas/{maquina}/exportar-bvbs', [MaquinaController::class, 'exportarBVBS'])
         ->name('maquinas.exportar-bvbs');
@@ -623,6 +629,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/planificacion/totales', [PlanificacionController::class, 'getTotalesAjax']);
     Route::post('/planificacion/simular-adelanto', [PlanificacionController::class, 'simularAdelanto'])->name('planificacion.simularAdelanto');
     Route::post('/planificacion/ejecutar-adelanto', [PlanificacionController::class, 'ejecutarAdelanto'])->name('planificacion.ejecutarAdelanto');
+    Route::post('/planificacion/ejecutar-adelanto-elementos', [PlanificacionController::class, 'ejecutarAdelantoElementos'])->name('planificacion.ejecutarAdelantoElementos');
+    Route::post('/planificacion/simular-retraso', [PlanificacionController::class, 'simularRetraso'])->name('planificacion.simularRetraso');
+    Route::post('/planificacion/ejecutar-retraso', [PlanificacionController::class, 'ejecutarRetraso'])->name('planificacion.ejecutarRetraso');
     Route::post('/planillas/completar-todas', [PlanillaController::class, 'completarTodas'])
         ->name('planillas.completarTodas');
 

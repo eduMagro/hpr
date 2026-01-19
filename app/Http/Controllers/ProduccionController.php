@@ -1334,6 +1334,7 @@ class ProduccionController extends Controller
             'crear_nueva_posicion' => 'sometimes|boolean',
             'usar_posicion_existente' => 'sometimes|boolean',
             'posicionar_por_fecha' => 'sometimes|boolean',
+            'check_only' => 'sometimes|boolean',
         ]);
 
         $planillaId   = (int) $request->id;
@@ -1344,6 +1345,7 @@ class ProduccionController extends Controller
         $crearNuevaPosicion = $request->boolean('crear_nueva_posicion', false);
         $usarPosicionExistente = $request->boolean('usar_posicion_existente', false);
         $posicionarPorFecha = $request->boolean('posicionar_por_fecha', false);
+        $checkOnly = $request->boolean('check_only', false);
 
         // Calcular posición según fecha de entrega si se solicita
         if ($posicionarPorFecha) {
@@ -1388,15 +1390,57 @@ class ProduccionController extends Controller
         ]);
 
         if ($incompatibles->isNotEmpty() && !$forzar) {
+            // Si NO hay elementos compatibles, no tiene sentido continuar
+            if ($compatibles->isEmpty()) {
+                Log::warning("❌ Todos los elementos son incompatibles con la máquina destino");
+                return response()->json([
+                    'success' => false,
+                    'requiresConfirmation' => false,
+                    'allIncompatible' => true,
+                    'message' => 'Ningún elemento es compatible con esta máquina. Diámetros incompatibles: ' . $diametrosIncompatibles->implode(', ') . ' mm',
+                    'diametros' => $diametrosIncompatibles->values(),
+                ], 422);
+            }
+
             Log::warning("⚠️ Mezcla detectada: requiere confirmación parcial");
             return response()->json([
                 'success' => false,
                 'requiresConfirmation' => true,
-                'message' => 'Hay elementos con diámetros incompatibles. ¿Quieres mover sólo los compatibles?',
+                'message' => 'Hay ' . $incompatibles->count() . ' elemento(s) con diámetros incompatibles (' . $diametrosIncompatibles->implode(', ') . ' mm). ¿Mover sólo los ' . $compatibles->count() . ' compatible(s)?',
                 'diametros' => $diametrosIncompatibles->values(),
+                'compatibles_count' => $compatibles->count(),
+                'incompatibles_count' => $incompatibles->count(),
                 // devolvemos los que SÍ se pueden mover (como esperas en el front)
                 'elementos' => $compatibles->pluck('id')->values(),
             ], 422);
+        }
+
+        // 🔍 Modo check_only: devolver información sin ejecutar el movimiento
+        if ($checkOnly) {
+            $ordenExistente = OrdenPlanilla::where('planilla_id', $planillaId)
+                ->where('maquina_id', $maqDestino)
+                ->first();
+
+            $elementosExistentes = 0;
+            $posicionExistente = null;
+
+            if ($ordenExistente && $maqOrigen !== $maqDestino) {
+                $elementosExistentes = Elemento::where('planilla_id', $planillaId)
+                    ->where('maquina_id', $maqDestino)
+                    ->count();
+                $posicionExistente = $ordenExistente->posicion;
+            }
+
+            $posicionPorFecha = $this->calcularPosicionPorFechaEntrega($planillaId, $maqDestino);
+
+            return response()->json([
+                'success' => true,
+                'check_only' => true,
+                'tiene_elementos_existentes' => $elementosExistentes > 0,
+                'elementos_existentes' => $elementosExistentes,
+                'posicion_existente' => $posicionExistente,
+                'posicion_por_fecha' => $posicionPorFecha,
+            ]);
         }
 
         // 🔍 Verificar si ya existen elementos de esta planilla en otra posición de la máquina destino
@@ -1530,6 +1574,12 @@ class ProduccionController extends Controller
                 if (!$crearNuevaPosicion && !$usarPosicionExistente) {
                     $this->reordenarPosicionEnMaquina($maqDestino, $planillaId, $posNueva);
                 }
+
+                // 6) Consolidar posiciones adyacentes de la misma planilla en ambas máquinas
+                $this->consolidarPosicionesAdyacentes($maqDestino);
+                if ($maqOrigen !== $maqDestino) {
+                    $this->consolidarPosicionesAdyacentes($maqOrigen);
+                }
             });
 
             // 🔄 Obtener eventos actualizados de ambas máquinas
@@ -1646,6 +1696,9 @@ class ProduccionController extends Controller
         ]);
 
         $this->reordenarPosicionEnMaquina($maquinaId, $planillaId, $posNueva);
+
+        // Consolidar posiciones adyacentes de la misma planilla
+        $this->consolidarPosicionesAdyacentes($maquinaId);
 
         // 🔄 Obtener eventos actualizados de la máquina
         $eventosActualizados = $this->obtenerEventosDeMaquinas([$maquinaId]);
@@ -2122,6 +2175,71 @@ class ProduccionController extends Controller
         }
 
         $orden->update(['posicion' => $posNueva]);
+    }
+
+    /**
+     * Consolida posiciones adyacentes de la misma planilla en una máquina.
+     * Si dos posiciones consecutivas tienen la misma planilla_id, elimina la duplicada
+     * y recompacta las posiciones.
+     */
+    private function consolidarPosicionesAdyacentes(int $maquinaId): void
+    {
+        $ordenes = OrdenPlanilla::where('maquina_id', $maquinaId)
+            ->orderBy('posicion')
+            ->get();
+
+        if ($ordenes->count() < 2) {
+            return;
+        }
+
+        $ordenesAEliminar = [];
+        $ordenAnterior = null;
+
+        foreach ($ordenes as $orden) {
+            if ($ordenAnterior && $ordenAnterior->planilla_id === $orden->planilla_id) {
+                // Posiciones adyacentes con la misma planilla: marcar para eliminar la segunda
+                $ordenesAEliminar[] = $orden->id;
+                Log::info("🔗 Consolidando posiciones adyacentes", [
+                    'maquina_id' => $maquinaId,
+                    'planilla_id' => $orden->planilla_id,
+                    'posicion_eliminada' => $orden->posicion,
+                    'posicion_mantenida' => $ordenAnterior->posicion,
+                ]);
+            } else {
+                $ordenAnterior = $orden;
+            }
+        }
+
+        if (!empty($ordenesAEliminar)) {
+            // Eliminar los duplicados
+            OrdenPlanilla::whereIn('id', $ordenesAEliminar)->delete();
+
+            // Recompactar posiciones
+            $this->recompactarPosiciones($maquinaId);
+
+            Log::info("✅ Posiciones consolidadas y recompactadas", [
+                'maquina_id' => $maquinaId,
+                'ordenes_eliminados' => count($ordenesAEliminar),
+            ]);
+        }
+    }
+
+    /**
+     * Recompacta las posiciones de una máquina para que sean consecutivas (1, 2, 3, ...)
+     */
+    private function recompactarPosiciones(int $maquinaId): void
+    {
+        $ordenes = OrdenPlanilla::where('maquina_id', $maquinaId)
+            ->orderBy('posicion')
+            ->get();
+
+        $posicion = 1;
+        foreach ($ordenes as $orden) {
+            if ($orden->posicion !== $posicion) {
+                $orden->update(['posicion' => $posicion]);
+            }
+            $posicion++;
+        }
     }
 
     /**
@@ -2909,9 +3027,9 @@ class ProduccionController extends Controller
      */
     public function verOrdenesPlanillasTabla(Request $request)
     {
-        // Máquinas (sin grúas)
-        $maquinas = Maquina::where('tipo', '!=', 'grua')
-            ->orderBy('codigo')
+        // Máquinas (sin grúas, soldadoras, ensambladoras) - mismo orden que en produccion/maquinas (por ID)
+        $maquinas = Maquina::whereNotIn('tipo', ['grua', 'soldadora', 'ensambladora'])
+            ->orderBy('id')
             ->get();
 
         // Órdenes con planillas aprobadas, no completadas y con fecha entrega >= hoy
@@ -3062,6 +3180,275 @@ class ProduccionController extends Controller
         $planillasConOrdenJs = $planillasConOrdenJs->values();
 
         return view('produccion.ordenesPlanillasTabla', compact('maquinas', 'ordenesPorMaquina', 'maxPosicion', 'obras', 'obrasConPlanillas', 'filtros', 'planillasSinOrdenJs', 'planillasConOrdenJs'));
+    }
+
+    /**
+     * Obtiene las planillas con retraso (fin programado > fecha de entrega)
+     * Solo planillas aprobadas y revisadas
+     */
+    public function planillasConRetraso(Request $request)
+    {
+        // Obtener planillas aprobadas y revisadas con orden de fabricación
+        $planillas = Planilla::with(['obra.cliente', 'cliente', 'elementos' => function($q) {
+                $q->where('estado', 'pendiente');
+            }])
+            ->where('aprobada', true)
+            ->where('revisada', true)
+            ->where('estado', '!=', 'completada')
+            ->whereNotNull('fecha_estimada_entrega')
+            ->whereHas('ordenProduccion')
+            ->orderBy('fecha_estimada_entrega')
+            ->get();
+
+        if ($planillas->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'planillas' => [],
+                'total' => 0,
+                'mensaje' => 'No hay planillas aprobadas y revisadas con orden de fabricación',
+            ]);
+        }
+
+        $finProgramadoService = app(FinProgramadoService::class);
+        $finProgramadoService->init();
+
+        $planillasConRetraso = [];
+
+        foreach ($planillas as $planilla) {
+            $elementosIds = $planilla->elementos->pluck('id')->toArray();
+
+            if (empty($elementosIds)) {
+                continue;
+            }
+
+            $fechaEntregaRaw = $planilla->getRawOriginal('fecha_estimada_entrega');
+            if (!$fechaEntregaRaw) {
+                continue;
+            }
+
+            $fechaEntrega = Carbon::parse($fechaEntregaRaw);
+
+            // Calcular fin programado
+            $resultado = $finProgramadoService->calcularFinProgramadoElementos($elementosIds, $fechaEntrega);
+
+            if ($resultado['hay_retraso'] && $resultado['fin_programado']) {
+                $diasRetraso = (int) ceil($fechaEntrega->diffInDays($resultado['fin_programado'], false));
+
+                $cliente = $planilla->cliente ?? $planilla->obra?->cliente;
+
+                // Obtener máquinas donde está la planilla
+                $maquinas = OrdenPlanilla::where('planilla_id', $planilla->id)
+                    ->with('maquina')
+                    ->get()
+                    ->map(fn($op) => [
+                        'id' => $op->maquina_id,
+                        'nombre' => $op->maquina->nombre ?? 'N/A',
+                        'codigo' => $op->maquina->codigo ?? 'N/A',
+                        'posicion' => $op->posicion,
+                    ]);
+
+                $planillasConRetraso[] = [
+                    'id' => $planilla->id,
+                    'codigo' => $planilla->codigo,
+                    'obra' => $planilla->obra?->obra ?? 'Sin obra',
+                    'cod_obra' => $planilla->obra?->cod_obra ?? '',
+                    'cliente' => $cliente?->empresa ?? 'Sin cliente',
+                    'fecha_entrega' => $fechaEntrega->format('d/m/Y'),
+                    'fin_programado' => $resultado['fin_programado']->format('d/m/Y H:i'),
+                    'dias_retraso' => $diasRetraso,
+                    'elementos_pendientes' => count($elementosIds),
+                    'maquinas' => $maquinas,
+                ];
+            }
+        }
+
+        // Ordenar por días de retraso descendente
+        usort($planillasConRetraso, fn($a, $b) => $b['dias_retraso'] <=> $a['dias_retraso']);
+
+        return response()->json([
+            'success' => true,
+            'planillas' => $planillasConRetraso,
+            'total' => count($planillasConRetraso),
+            'mensaje' => count($planillasConRetraso) > 0
+                ? count($planillasConRetraso) . ' planilla(s) con retraso'
+                : 'No hay planillas con retraso',
+        ]);
+    }
+
+    /**
+     * Simula trabajar sábados con un turno para ver qué planillas entrarían a tiempo
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function simularTurnoSabado(Request $request)
+    {
+        $horaInicio = $request->input('hora_inicio', '08:00');
+        $horaFin = $request->input('hora_fin', '14:00');
+        $modo = $request->input('modo', 'todos'); // 'todos' = todos los sábados, 'rango' = rango de fechas
+        $fechaDesde = $request->input('fecha_desde'); // Para modo rango
+        $fechaHasta = $request->input('fecha_hasta'); // Para modo rango
+
+        // Generar lista de sábados a simular según el modo
+        $sabadosSimulados = [];
+        $descripcionSimulacion = '';
+
+        if ($modo === 'rango' && $fechaDesde && $fechaHasta) {
+            $desde = Carbon::parse($fechaDesde);
+            $hasta = Carbon::parse($fechaHasta);
+
+            // Encontrar todos los sábados en el rango
+            $cursor = $desde->copy();
+            while ($cursor->lte($hasta)) {
+                if ($cursor->isSaturday()) {
+                    $sabadosSimulados[] = $cursor->copy();
+                }
+                $cursor->addDay();
+            }
+
+            $numSabados = count($sabadosSimulados);
+            $descripcionSimulacion = "{$numSabados} sábado(s) del {$desde->format('d/m/Y')} al {$hasta->format('d/m/Y')}";
+        } else {
+            // Modo "todos": simular todos los sábados futuros (pasamos array vacío)
+            $sabadosSimulados = []; // Array vacío = todos los sábados
+            $descripcionSimulacion = "Todos los sábados";
+        }
+
+        // Obtener planillas aprobadas y revisadas con orden de fabricación
+        $planillas = Planilla::with(['obra.cliente', 'cliente', 'elementos' => function($q) {
+                $q->where('estado', 'pendiente');
+            }])
+            ->where('aprobada', true)
+            ->where('revisada', true)
+            ->where('estado', '!=', 'completada')
+            ->whereNotNull('fecha_estimada_entrega')
+            ->whereHas('ordenProduccion')
+            ->orderBy('fecha_estimada_entrega')
+            ->get();
+
+        if ($planillas->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'planillas_mejoran' => [],
+                'planillas_siguen_retrasadas' => [],
+                'total_mejoran' => 0,
+                'turno_simulado' => "{$horaInicio} - {$horaFin}",
+                'descripcion_simulacion' => $descripcionSimulacion,
+                'sabados_simulados' => count($sabadosSimulados),
+                'mensaje' => 'No hay planillas aprobadas y revisadas con orden de fabricación',
+            ]);
+        }
+
+        $finProgramadoService = app(FinProgramadoService::class);
+        $finProgramadoService->init();
+
+        $planillasMejoran = [];
+        $planillasSiguenRetrasadas = [];
+
+        foreach ($planillas as $planilla) {
+            $elementosIds = $planilla->elementos->pluck('id')->toArray();
+
+            if (empty($elementosIds)) {
+                continue;
+            }
+
+            $fechaEntregaRaw = $planilla->getRawOriginal('fecha_estimada_entrega');
+            if (!$fechaEntregaRaw) {
+                continue;
+            }
+
+            $fechaEntrega = Carbon::parse($fechaEntregaRaw);
+
+            // Calcular fin programado ORIGINAL (sin sábado)
+            $finProgramadoService->deshabilitarSimulacionSabado();
+            $resultadoOriginal = $finProgramadoService->calcularFinProgramadoElementos($elementosIds, $fechaEntrega);
+
+            // Si no tiene retraso original, no nos interesa
+            if (!$resultadoOriginal['hay_retraso'] || !$resultadoOriginal['fin_programado']) {
+                continue;
+            }
+
+            // Calcular fin programado CON sábado
+            $finProgramadoService->habilitarSimulacionSabado($horaInicio, $horaFin, $sabadosSimulados);
+            $resultadoConSabado = $finProgramadoService->calcularFinProgramadoConSimulacionSabado($elementosIds, $fechaEntrega);
+
+            // DEBUG: Log para comparar resultados
+            Log::info('[SimularSabado] Comparación planilla ' . $planilla->codigo, [
+                'planilla_id' => $planilla->id,
+                'fecha_entrega' => $fechaEntrega->format('Y-m-d'),
+                'fin_original' => $resultadoOriginal['fin_programado']->format('Y-m-d H:i'),
+                'fin_con_sabado' => $resultadoConSabado['fin_programado']?->format('Y-m-d H:i'),
+                'diferencia_horas' => $resultadoOriginal['fin_programado'] && $resultadoConSabado['fin_programado']
+                    ? $resultadoOriginal['fin_programado']->diffInHours($resultadoConSabado['fin_programado'])
+                    : 0,
+            ]);
+
+            $cliente = $planilla->cliente ?? $planilla->obra?->cliente;
+
+            // Obtener máquinas
+            $maquinas = OrdenPlanilla::where('planilla_id', $planilla->id)
+                ->with('maquina')
+                ->get()
+                ->map(fn($op) => [
+                    'id' => $op->maquina_id,
+                    'nombre' => $op->maquina->nombre ?? 'N/A',
+                    'codigo' => $op->maquina->codigo ?? 'N/A',
+                    'posicion' => $op->posicion,
+                ]);
+
+            $diasRetrasoOriginal = (int) ceil($fechaEntrega->diffInDays($resultadoOriginal['fin_programado'], false));
+            $diasRetrasoConSabado = $resultadoConSabado['hay_retraso']
+                ? (int) ceil($fechaEntrega->diffInDays($resultadoConSabado['fin_programado'], false))
+                : 0;
+
+            $planillaInfo = [
+                'id' => $planilla->id,
+                'codigo' => $planilla->codigo,
+                'obra' => $planilla->obra?->obra ?? 'Sin obra',
+                'cod_obra' => $planilla->obra?->cod_obra ?? '',
+                'cliente' => $cliente?->empresa ?? 'Sin cliente',
+                'fecha_entrega' => $fechaEntrega->format('d/m/Y'),
+                'fin_original' => $resultadoOriginal['fin_programado']->format('d/m/Y H:i'),
+                'fin_con_sabado' => $resultadoConSabado['fin_programado']?->format('d/m/Y H:i') ?? 'N/A',
+                'dias_retraso_original' => $diasRetrasoOriginal,
+                'dias_retraso_con_sabado' => $diasRetrasoConSabado,
+                'elementos_pendientes' => count($elementosIds),
+                'maquinas' => $maquinas,
+            ];
+
+            // Clasificar: mejora (entra a tiempo) o sigue retrasada
+            if (!$resultadoConSabado['hay_retraso']) {
+                $planillaInfo['mejora'] = 'entra_a_tiempo';
+                $planillasMejoran[] = $planillaInfo;
+            } else {
+                // Verificar si al menos mejora los días de retraso
+                $diasGanados = $diasRetrasoOriginal - $diasRetrasoConSabado;
+                $planillaInfo['dias_ganados'] = $diasGanados;
+                $planillaInfo['mejora'] = $diasGanados > 0 ? 'reduce_retraso' : 'sin_mejora';
+                $planillasSiguenRetrasadas[] = $planillaInfo;
+            }
+        }
+
+        // Deshabilitar simulación
+        $finProgramadoService->deshabilitarSimulacionSabado();
+
+        // Ordenar: las que mejoran primero por días ganados
+        usort($planillasMejoran, fn($a, $b) => $b['dias_retraso_original'] <=> $a['dias_retraso_original']);
+        usort($planillasSiguenRetrasadas, fn($a, $b) => ($b['dias_ganados'] ?? 0) <=> ($a['dias_ganados'] ?? 0));
+
+        return response()->json([
+            'success' => true,
+            'planillas_mejoran' => $planillasMejoran,
+            'planillas_siguen_retrasadas' => $planillasSiguenRetrasadas,
+            'total_mejoran' => count($planillasMejoran),
+            'total_siguen_retrasadas' => count($planillasSiguenRetrasadas),
+            'turno_simulado' => "{$horaInicio} - {$horaFin}",
+            'descripcion_simulacion' => $descripcionSimulacion,
+            'sabados_simulados' => $modo === 'rango' ? count($sabadosSimulados) : 'todos',
+            'mensaje' => count($planillasMejoran) > 0
+                ? count($planillasMejoran) . ' planilla(s) entrarían a tiempo trabajando los sábados'
+                : 'Ninguna planilla entraría a tiempo con los turnos de sábado simulados',
+        ]);
     }
 
     public function guardar(Request $request)
@@ -3957,6 +4344,15 @@ class ProduccionController extends Controller
                 ]);
             }
 
+            // Consolidar posiciones adyacentes en todas las máquinas afectadas
+            $maquinasAfectadas = collect($movimientos)->flatMap(function ($mov) {
+                return [$mov['maquina_actual_id'] ?? null, $mov['maquina_nueva_id'] ?? null];
+            })->filter()->unique()->toArray();
+
+            foreach ($maquinasAfectadas as $maquinaId) {
+                $this->consolidarPosicionesAdyacentes($maquinaId);
+            }
+
             DB::commit();
 
             $mensaje = "Balanceo aplicado: $procesados elementos redistribuidos";
@@ -4280,6 +4676,18 @@ class ProduccionController extends Controller
                 Log::info('📋 Planillas marcadas como no revisadas (optimizar)', [
                     'planillas_ids' => array_keys($planillasAfectadas),
                 ]);
+            }
+
+            // Consolidar posiciones adyacentes en todas las máquinas afectadas
+            $todasMaquinasAfectadas = [];
+            foreach ($planillasAfectadas as $planillaId => $maquinas) {
+                foreach ($maquinas as $maquinaAnterior => $maquinasNuevas) {
+                    $todasMaquinasAfectadas[] = $maquinaAnterior;
+                    $todasMaquinasAfectadas = array_merge($todasMaquinasAfectadas, $maquinasNuevas);
+                }
+            }
+            foreach (array_unique(array_filter($todasMaquinasAfectadas)) as $maquinaId) {
+                $this->consolidarPosicionesAdyacentes($maquinaId);
             }
 
             DB::commit();
@@ -4731,7 +5139,7 @@ class ProduccionController extends Controller
 
                 // Verificar si hay retraso
                 if ($fechaFinProgramada->gt($fechaEntregaCarbon)) {
-                    $diasRetraso = $fechaFinProgramada->diffInDays($fechaEntregaCarbon);
+                    $diasRetraso = (int) ceil($fechaFinProgramada->diffInDays($fechaEntregaCarbon));
 
                     $planillasConRetraso[] = [
                         'planilla_id' => $planilla->id,

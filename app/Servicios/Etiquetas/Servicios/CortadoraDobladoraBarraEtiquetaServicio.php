@@ -69,11 +69,8 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                     if (!$planilla) {
                         throw new ServicioEtiquetaException('La etiqueta no tiene planilla asociada.');
                     }
-                    if (is_null($planilla->fecha_inicio)) {
-                        $planilla->fecha_inicio = now();
-                        $planilla->estado = 'fabricando';
-                        $planilla->save();
-                    }
+                    $planilla->estado = 'fabricando';
+                    $planilla->save();
 
                     // Primer clic: Asignar el producto actual a cada elemento
                     foreach ($elementosEnMaquina as $e) {

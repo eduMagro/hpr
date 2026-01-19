@@ -6,17 +6,52 @@
             <!-- Sección de Filtros y Resúmenes -->
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                 <!-- Filtros -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <!-- Filtro por código de obra -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+                    <!-- Filtro por cliente -->
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-3">Filtrar por cliente</h4>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <input id="filtro-cod-cliente" type="text" placeholder="Cód. cliente"
+                                class="border-gray-300 rounded-md px-3 py-2 text-sm w-24 focus:ring-purple-500 focus:border-purple-500"
+                                autocomplete="off" />
+                            <input id="filtro-cliente" type="text" placeholder="Nombre cliente"
+                                class="border-gray-300 rounded-md px-3 py-2 text-sm flex-1 min-w-[120px] focus:ring-purple-500 focus:border-purple-500"
+                                autocomplete="off" />
+                        </div>
+                    </div>
+
+                    <!-- Filtro por obra -->
                     <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
                         <h4 class="text-sm font-semibold text-gray-700 mb-3">Filtrar por obra</h4>
                         <div class="flex flex-wrap items-center gap-2">
-                            <input id="filtro-obra" type="text" placeholder="Código de obra"
+                            <input id="filtro-obra" type="text" placeholder="Cód. obra"
+                                class="border-gray-300 rounded-md px-3 py-2 text-sm w-24 focus:ring-purple-500 focus:border-purple-500"
+                                autocomplete="off" />
+                            <input id="filtro-nombre-obra" type="text" placeholder="Nombre obra"
                                 class="border-gray-300 rounded-md px-3 py-2 text-sm flex-1 min-w-[120px] focus:ring-purple-500 focus:border-purple-500"
                                 autocomplete="off" />
-                            <input id="filtro-nombre-obra" type="text" placeholder="Nombre de obra"
-                                class="border-gray-300 rounded-md px-3 py-2 text-sm flex-1 min-w-[200px] focus:ring-purple-500 focus:border-purple-500"
+                        </div>
+                    </div>
+
+                    <!-- Filtro por planilla y tipo -->
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-3">Filtrar por planilla / tipo</h4>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <input id="filtro-cod-planilla" type="text" placeholder="Cód. planilla"
+                                class="border-gray-300 rounded-md px-3 py-2 text-sm w-28 focus:ring-purple-500 focus:border-purple-500"
                                 autocomplete="off" />
+                            <div class="flex items-center gap-3">
+                                <label class="flex items-center text-sm text-gray-700 cursor-pointer">
+                                    <input type="checkbox" id="solo-salidas"
+                                        class="rounded border-gray-300 text-green-600 focus:ring-green-500 h-4 w-4 mr-1" />
+                                    Salidas
+                                </label>
+                                <label class="flex items-center text-sm text-gray-700 cursor-pointer">
+                                    <input type="checkbox" id="solo-planillas"
+                                        class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-4 w-4 mr-1" />
+                                    Planillas
+                                </label>
+                            </div>
                             <button type="button"
                                 class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-2 rounded-md text-sm flex items-center justify-center transition"
                                 id="btn-reset-filtros" title="Restablecer filtros">
@@ -26,25 +61,6 @@
                                         d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
                                 </svg>
                             </button>
-                        </div>
-                    </div>
-
-                    <!-- Filtros de tipo de evento -->
-                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                        <h4 class="text-sm font-semibold text-gray-700 mb-3">Filtrar por tipo</h4>
-                        <div class="flex flex-col gap-2">
-                            <div class="flex items-center">
-                                <input type="checkbox" id="solo-salidas"
-                                    class="rounded border-gray-300 text-green-600 focus:ring-green-500 h-4 w-4" />
-                                <label for="solo-salidas" class="ml-2 text-sm text-gray-700 cursor-pointer">Solo
-                                    salidas</label>
-                            </div>
-                            <div class="flex items-center">
-                                <input type="checkbox" id="solo-planillas"
-                                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-4 w-4" />
-                                <label for="solo-planillas" class="ml-2 text-sm text-gray-700 cursor-pointer">Solo
-                                    planillas y resúmenes</label>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -78,7 +94,17 @@
             </div>
 
             <!-- Calendario -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 relative">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 relative" id="calendario-wrapper">
+                <!-- Spinner de carga -->
+                <div id="calendario-loading" class="absolute inset-0 bg-white/80 backdrop-blur-sm z-20 flex items-center justify-center transition-opacity duration-300">
+                    <div class="flex flex-col items-center gap-3">
+                        <div class="relative">
+                            <div class="w-12 h-12 border-4 border-purple-200 rounded-full animate-spin border-t-purple-600"></div>
+                        </div>
+                        <span class="text-sm font-medium text-gray-600" id="loading-text">Cargando calendario...</span>
+                    </div>
+                </div>
+
                 <!-- Botón de pantalla completa en esquina superior derecha -->
                 <button onclick="toggleFullScreen()" id="fullscreen-btn" title="Pantalla completa"
                     class="absolute top-4 right-4 z-10 p-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors shadow-lg">

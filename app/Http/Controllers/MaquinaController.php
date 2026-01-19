@@ -1924,6 +1924,8 @@ class MaquinaController extends Controller
     public function elementosPendientes(Request $request, $id)
     {
         $tipo = $request->query('tipo', 'todos');
+        $soloRevisadas = $request->boolean('solo_revisadas', false);
+        $limite = $request->query('limite') ? (int) $request->query('limite') : null;
 
         try {
             $maquinaOrigen = Maquina::findOrFail($id);
@@ -1934,8 +1936,17 @@ class MaquinaController extends Controller
                 ->where('estado', 'pendiente')
                 ->orderBy('created_at', 'asc');
 
-            // Si es "primeros", limitamos a un número razonable
-            if ($tipo === 'primeros') {
+            // Filtrar solo planillas revisadas si se solicita
+            if ($soloRevisadas) {
+                $elementosQuery->whereHas('planilla', function ($q) {
+                    $q->where('revisada', true);
+                });
+            }
+
+            // Aplicar límite personalizado o por tipo
+            if ($limite) {
+                $elementosQuery->limit($limite);
+            } elseif ($tipo === 'primeros') {
                 $elementosQuery->limit(50);
             }
 
@@ -1956,6 +1967,8 @@ class MaquinaController extends Controller
 
             try {
                 $asignarMaquinaService = new \App\Services\AsignarMaquinaService();
+                // Excluir la máquina origen para que no se reasignen a la misma
+                $asignarMaquinaService->excluirMaquinas([(int) $id]);
 
                 // Guardar IDs originales
                 $elementosIds = $elementos->pluck('id')->toArray();
@@ -2026,21 +2039,34 @@ class MaquinaController extends Controller
     public function redistribuir(Request $request, $id)
     {
         $request->validate([
-            'tipo' => 'required|in:primeros,todos',
+            'tipo' => 'required|in:primeros,todos,limitado',
+            'solo_revisadas' => 'sometimes|boolean',
+            'limite' => 'sometimes|integer|min:1',
         ]);
 
         $maquina = Maquina::findOrFail($id);
         $tipo = $request->input('tipo');
+        $soloRevisadas = $request->boolean('solo_revisadas', false);
+        $limite = $request->input('limite') ? (int) $request->input('limite') : null;
 
         try {
             // Obtener elementos pendientes de esta máquina
             $elementosQuery = Elemento::with(['planilla'])
                 ->where('maquina_id', $id)
                 ->where('estado', 'pendiente')
-                ->orderBy('created_at', 'asc'); // Ordenar por fecha de creación
+                ->orderBy('created_at', 'asc');
 
-            // Si es "primeros", limitamos a un número razonable (por ejemplo, los primeros 50)
-            if ($tipo === 'primeros') {
+            // Filtrar solo planillas revisadas si se solicita
+            if ($soloRevisadas) {
+                $elementosQuery->whereHas('planilla', function ($q) {
+                    $q->where('revisada', true);
+                });
+            }
+
+            // Aplicar límite personalizado o por tipo
+            if ($limite) {
+                $elementosQuery->limit($limite);
+            } elseif ($tipo === 'primeros') {
                 $elementosQuery->limit(50);
             }
 
@@ -2074,6 +2100,8 @@ class MaquinaController extends Controller
             $elementosPorPlanilla = $elementos->groupBy('planilla_id');
 
             $asignarMaquinaService = new AsignarMaquinaService();
+            // Excluir la máquina origen para que no se reasignen a la misma
+            $asignarMaquinaService->excluirMaquinas([(int) $id]);
             $redistribuidos = 0;
 
             // Redistribuir cada grupo de elementos usando el servicio de asignación
@@ -2127,6 +2155,13 @@ class MaquinaController extends Controller
 
             // Convertir resumen a array de valores
             $resumen = array_values($resumen);
+
+            // Consolidar posiciones adyacentes en todas las máquinas afectadas
+            $maquinasAfectadas = $elementosActualizados->pluck('maquina_id')->unique()->filter()->toArray();
+            $maquinasAfectadas[] = $id; // Incluir la máquina origen
+            foreach (array_unique($maquinasAfectadas) as $maquinaAfectadaId) {
+                $this->consolidarPosicionesAdyacentes($maquinaAfectadaId);
+            }
 
             $mensaje = $tipo === 'todos'
                 ? "Se redistribuyeron {$redistribuidos} elementos de toda la cola de trabajo."
@@ -2325,5 +2360,70 @@ class MaquinaController extends Controller
             'success' => true,
             'movimientos' => $movimientosCompletados
         ]);
+    }
+
+    /**
+     * Consolida posiciones adyacentes de la misma planilla en una máquina.
+     * Si dos posiciones consecutivas tienen la misma planilla_id, elimina la duplicada
+     * y recompacta las posiciones.
+     */
+    private function consolidarPosicionesAdyacentes(int $maquinaId): void
+    {
+        $ordenes = OrdenPlanilla::where('maquina_id', $maquinaId)
+            ->orderBy('posicion')
+            ->get();
+
+        if ($ordenes->count() < 2) {
+            return;
+        }
+
+        $ordenesAEliminar = [];
+        $ordenAnterior = null;
+
+        foreach ($ordenes as $orden) {
+            if ($ordenAnterior && $ordenAnterior->planilla_id === $orden->planilla_id) {
+                // Posiciones adyacentes con la misma planilla: marcar para eliminar la segunda
+                $ordenesAEliminar[] = $orden->id;
+                Log::info("🔗 Consolidando posiciones adyacentes", [
+                    'maquina_id' => $maquinaId,
+                    'planilla_id' => $orden->planilla_id,
+                    'posicion_eliminada' => $orden->posicion,
+                    'posicion_mantenida' => $ordenAnterior->posicion,
+                ]);
+            } else {
+                $ordenAnterior = $orden;
+            }
+        }
+
+        if (!empty($ordenesAEliminar)) {
+            // Eliminar los duplicados
+            OrdenPlanilla::whereIn('id', $ordenesAEliminar)->delete();
+
+            // Recompactar posiciones
+            $this->recompactarPosiciones($maquinaId);
+
+            Log::info("✅ Posiciones consolidadas y recompactadas", [
+                'maquina_id' => $maquinaId,
+                'ordenes_eliminados' => count($ordenesAEliminar),
+            ]);
+        }
+    }
+
+    /**
+     * Recompacta las posiciones de una máquina para que sean consecutivas (1, 2, 3, ...)
+     */
+    private function recompactarPosiciones(int $maquinaId): void
+    {
+        $ordenes = OrdenPlanilla::where('maquina_id', $maquinaId)
+            ->orderBy('posicion')
+            ->get();
+
+        $posicion = 1;
+        foreach ($ordenes as $orden) {
+            if ($orden->posicion !== $posicion) {
+                $orden->update(['posicion' => $posicion]);
+            }
+            $posicion++;
+        }
     }
 }

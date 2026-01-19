@@ -431,6 +431,19 @@ export function crearCalendario() {
                 }
             },
             loading: (isLoading) => {
+                // Mostrar/ocultar spinner de carga
+                const loadingEl = document.getElementById('calendario-loading');
+                const loadingText = document.getElementById('loading-text');
+
+                if (loadingEl) {
+                    if (isLoading) {
+                        loadingEl.classList.remove('hidden');
+                        if (loadingText) loadingText.textContent = 'Cargando eventos...';
+                    } else {
+                        loadingEl.classList.add('hidden');
+                    }
+                }
+
                 // Cuando termina de cargar eventos
                 if (!isLoading && calendar) {
                     const viewType = calendar.view.type;
@@ -614,45 +627,68 @@ export function crearCalendario() {
                     info.el.classList.add('evento-fullwidth-event');
                 }
 
-                // lee filtros actuales (código y nombre)
-                const fCod = (
-                    document.getElementById("filtro-obra")?.value || ""
-                )
-                    .trim()
-                    .toLowerCase();
-                const fNom = (
-                    document.getElementById("filtro-nombre-obra")?.value || ""
-                )
-                    .trim()
-                    .toLowerCase();
+                // lee filtros actuales
+                const fCodObra = (document.getElementById("filtro-obra")?.value || "").trim().toLowerCase();
+                const fNomObra = (document.getElementById("filtro-nombre-obra")?.value || "").trim().toLowerCase();
+                const fCodCliente = (document.getElementById("filtro-cod-cliente")?.value || "").trim().toLowerCase();
+                const fCliente = (document.getElementById("filtro-cliente")?.value || "").trim().toLowerCase();
+                const fCodPlanilla = (document.getElementById("filtro-cod-planilla")?.value || "").trim().toLowerCase();
 
                 // aplica solo si hay algún filtro
-                if (fCod || fNom) {
+                if (fCodObra || fNomObra || fCodCliente || fCliente || fCodPlanilla) {
                     let coincide = false;
 
                     // Para eventos de salida con múltiples obras
                     if (p.tipo === "salida" && p.obras && Array.isArray(p.obras)) {
                         coincide = p.obras.some(obra => {
-                            const cod = (obra.codigo || "").toString().toLowerCase();
-                            const nom = (obra.nombre || "").toString().toLowerCase();
-                            return (fCod && cod.includes(fCod)) || (fNom && nom.includes(fNom));
-                        });
-                    } else {
-                        // Para eventos de planilla u otros con un solo cod_obra/nombre_obra
-                        const cod = (info.event.extendedProps?.cod_obra || "")
-                            .toString()
-                            .toLowerCase();
-                        const nom = (
-                            info.event.extendedProps?.nombre_obra ||
-                            info.event.title ||
-                            ""
-                        )
-                            .toString()
-                            .toLowerCase();
+                            const codObra = (obra.codigo || "").toString().toLowerCase();
+                            const nomObra = (obra.nombre || "").toString().toLowerCase();
+                            const codCli = (obra.cod_cliente || "").toString().toLowerCase();
+                            const nomCli = (obra.cliente || "").toString().toLowerCase();
 
-                        coincide =
-                            (fCod && cod.includes(fCod)) ||
-                            (fNom && nom.includes(fNom));
+                            // Verificar coincidencias (contain)
+                            const matchCodObra = !fCodObra || codObra.includes(fCodObra);
+                            const matchNomObra = !fNomObra || nomObra.includes(fNomObra);
+                            const matchCodCliente = !fCodCliente || codCli.includes(fCodCliente);
+                            const matchCliente = !fCliente || nomCli.includes(fCliente);
+
+                            return matchCodObra && matchNomObra && matchCodCliente && matchCliente;
+                        });
+
+                        // Para salidas, también verificar código de planilla si aplica
+                        if (fCodPlanilla && p.planillas_codigos && Array.isArray(p.planillas_codigos)) {
+                            const matchPlanilla = p.planillas_codigos.some(cod =>
+                                (cod || "").toString().toLowerCase().includes(fCodPlanilla)
+                            );
+                            coincide = coincide && matchPlanilla;
+                        }
+                    } else {
+                        // Para eventos de planilla u otros
+                        const codObra = (p.cod_obra || "").toString().toLowerCase();
+                        const nomObra = (p.nombre_obra || info.event.title || "").toString().toLowerCase();
+                        const codCli = (p.cod_cliente || "").toString().toLowerCase();
+                        const nomCli = (p.cliente || "").toString().toLowerCase();
+
+                        // Verificar coincidencias (contain) - AND lógico: todos los filtros deben coincidir
+                        const matchCodObra = !fCodObra || codObra.includes(fCodObra);
+                        const matchNomObra = !fNomObra || nomObra.includes(fNomObra);
+                        const matchCodCliente = !fCodCliente || codCli.includes(fCodCliente);
+                        const matchCliente = !fCliente || nomCli.includes(fCliente);
+
+                        // Para código de planilla, buscar en planillas_codigos (array) o en el título
+                        let matchCodPlanilla = true;
+                        if (fCodPlanilla) {
+                            if (p.planillas_codigos && Array.isArray(p.planillas_codigos)) {
+                                matchCodPlanilla = p.planillas_codigos.some(cod =>
+                                    (cod || "").toString().toLowerCase().includes(fCodPlanilla)
+                                );
+                            } else {
+                                // Fallback: buscar en el título del evento
+                                matchCodPlanilla = (info.event.title || "").toLowerCase().includes(fCodPlanilla);
+                            }
+                        }
+
+                        coincide = matchCodObra && matchNomObra && matchCodCliente && matchCliente && matchCodPlanilla;
                     }
 
                     if (coincide) {
@@ -893,11 +929,14 @@ export function crearCalendario() {
                         calendar.refetchResources();
                         safeUpdateSize();
 
-                        // Mostrar alerta si hay retraso en fabricación
+                        // Mostrar alerta si hay retraso en fabricación (fecha adelantada)
                         if (data.alerta_retraso) {
+                            const esElementosConFechaPropia = data.alerta_retraso.es_elementos_con_fecha_propia || false;
+                            const tipoTitulo = esElementosConFechaPropia ? "elementos" : "planilla";
+
                             Swal.fire({
                                 icon: "warning",
-                                title: "⚠️ Fecha de entrega adelantada",
+                                title: `⚠️ Fecha de entrega adelantada`,
                                 html: `
                                     <div class="text-left">
                                         <p class="mb-2">${data.alerta_retraso.mensaje}</p>
@@ -905,7 +944,7 @@ export function crearCalendario() {
                                             <p class="text-sm"><strong>Fin fabricación:</strong> ${data.alerta_retraso.fin_programado}</p>
                                             <p class="text-sm"><strong>Fecha entrega:</strong> ${data.alerta_retraso.fecha_entrega}</p>
                                         </div>
-                                        <p class="mt-3 text-sm text-gray-600">Los elementos no estarán listos para la fecha indicada según la programación actual de máquinas.</p>
+                                        <p class="mt-3 text-sm text-gray-600">Los ${tipoTitulo === 'elementos' ? 'elementos' : 'elementos de la planilla'} no estarán listos para la fecha indicada.</p>
                                     </div>
                                 `,
                                 showCancelButton: true,
@@ -915,8 +954,77 @@ export function crearCalendario() {
                                 cancelButtonColor: "#f59e0b",
                             }).then((result) => {
                                 if (result.isConfirmed) {
-                                    // Simular adelanto
-                                    simularAdelantoFabricacion(p.elementos_ids, nuevaFechaISO);
+                                    // Simular adelanto - pasar flag si son elementos con fecha propia
+                                    simularAdelantoFabricacion(
+                                        data.alerta_retraso.elementos_ids || p.elementos_ids,
+                                        nuevaFechaISO,
+                                        esElementosConFechaPropia
+                                    );
+                                }
+                            });
+                        }
+
+                        // Mostrar opción de retrasar fabricación (fecha pospuesta)
+                        if (data.opcion_posponer) {
+                            const esElementosConFechaPropia = data.opcion_posponer.es_elementos_con_fecha_propia || false;
+                            const ordenesInfo = data.opcion_posponer.ordenes_afectadas || [];
+                            const tipoTitulo = esElementosConFechaPropia ? "Elementos con fecha propia" : "Planilla";
+
+                            let tablaOrdenes = '';
+                            if (ordenesInfo.length > 0) {
+                                tablaOrdenes = `
+                                    <div class="max-h-40 overflow-y-auto mt-3">
+                                        <table class="w-full text-sm border">
+                                            <thead class="bg-blue-100">
+                                                <tr>
+                                                    <th class="px-2 py-1 text-left">Planilla</th>
+                                                    <th class="px-2 py-1 text-left">Máquina</th>
+                                                    <th class="px-2 py-1 text-center">Posición</th>
+                                                    ${esElementosConFechaPropia ? '<th class="px-2 py-1 text-center">Elementos</th>' : ''}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${ordenesInfo.map(ord => `
+                                                    <tr class="border-t">
+                                                        <td class="px-2 py-1">${ord.planilla_codigo}</td>
+                                                        <td class="px-2 py-1">${ord.maquina_nombre}</td>
+                                                        <td class="px-2 py-1 text-center">${ord.posicion_actual} / ${ord.total_posiciones}</td>
+                                                        ${esElementosConFechaPropia ? `<td class="px-2 py-1 text-center">${ord.elementos_count || '-'}</td>` : ''}
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                `;
+                            }
+
+                            Swal.fire({
+                                icon: "question",
+                                title: `📅 ${tipoTitulo} - Fecha pospuesta`,
+                                html: `
+                                    <div class="text-left">
+                                        <p class="mb-2">${data.opcion_posponer.mensaje}</p>
+                                        <div class="bg-blue-50 border border-blue-200 rounded p-3 mt-3">
+                                            <p class="text-sm"><strong>Fecha anterior:</strong> ${data.opcion_posponer.fecha_anterior}</p>
+                                            <p class="text-sm"><strong>Nueva fecha:</strong> ${data.opcion_posponer.fecha_nueva}</p>
+                                        </div>
+                                        ${tablaOrdenes}
+                                        <p class="mt-3 text-sm text-gray-600">Al retrasar la fabricación, otras planillas más urgentes podrán avanzar en la cola.</p>
+                                    </div>
+                                `,
+                                showCancelButton: true,
+                                confirmButtonText: "⏬ Retrasar fabricación",
+                                cancelButtonText: "No, mantener posición",
+                                confirmButtonColor: "#3b82f6",
+                                cancelButtonColor: "#6b7280",
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    // Simular y ejecutar retraso - pasar nueva fecha y flag
+                                    simularRetrasoFabricacion(
+                                        data.opcion_posponer.elementos_ids,
+                                        esElementosConFechaPropia,
+                                        nuevaFechaISO
+                                    );
                                 }
                             });
                         }
@@ -1028,6 +1136,15 @@ export function crearCalendario() {
 
         calendar.render();
         safeUpdateSize();
+
+        // Ocultar spinner inicial después de un breve delay (por si no hay eventos que cargar)
+        setTimeout(() => {
+            const loadingEl = document.getElementById('calendario-loading');
+            if (loadingEl && !loadingEl.classList.contains('opacity-0')) {
+                loadingEl.classList.add('opacity-0', 'pointer-events-none');
+                loadingEl.classList.remove('opacity-100');
+            }
+        }, 500);
 
         // Inicializar estado de días colapsados desde localStorage
         // Por defecto, los fines de semana están colapsados (true = colapsado por defecto)
@@ -1352,14 +1469,23 @@ function calcularFechaCentral(info) {
 
 /**
  * Simula el adelanto de fabricación y muestra opciones al usuario
+ * @param {Array} elementosIds - IDs de elementos
+ * @param {string} fechaEntrega - Fecha de entrega (ISO string)
+ * @param {boolean} esElementosConFechaPropia - Si son elementos con fecha_entrega propia
  */
-function simularAdelantoFabricacion(elementosIds, fechaEntrega) {
+function simularAdelantoFabricacion(elementosIds, fechaEntrega, esElementosConFechaPropia = false) {
     if (!elementosIds || elementosIds.length === 0) {
         Swal.fire({
             icon: "error",
             title: "Error",
             text: "No hay elementos para adelantar",
         });
+        return;
+    }
+
+    // Si son elementos con fecha propia, usar endpoint directo de adelanto
+    if (esElementosConFechaPropia) {
+        ejecutarAdelantoElementos(elementosIds, fechaEntrega);
         return;
     }
 
@@ -1677,6 +1803,354 @@ function ejecutarAdelantoFabricacion(ordenesAAdelantar) {
                 icon: "error",
                 title: "Error",
                 text: "No se pudo ejecutar el adelanto. " + err.message,
+            });
+        });
+}
+
+/**
+ * Ejecuta el adelanto de fabricación para elementos con fecha_entrega propia
+ * Este endpoint separa los elementos en su propia posición de cola y los adelanta
+ * @param {Array} elementosIds - IDs de elementos
+ * @param {string} nuevaFechaEntrega - Nueva fecha de entrega (ISO string)
+ */
+function ejecutarAdelantoElementos(elementosIds, nuevaFechaEntrega) {
+    if (!elementosIds || elementosIds.length === 0) {
+        Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No hay elementos para adelantar",
+        });
+        return;
+    }
+
+    Swal.fire({
+        title: "Ejecutando adelanto...",
+        html: "Separando elementos y actualizando posiciones en la cola",
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+    });
+
+    fetch("/planificacion/ejecutar-adelanto-elementos", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": window.AppSalidas?.csrf,
+        },
+        body: JSON.stringify({
+            elementos_ids: elementosIds,
+            nueva_fecha_entrega: nuevaFechaEntrega,
+        }),
+    })
+        .then((r) => {
+            if (!r.ok) throw new Error("Error al ejecutar el adelanto");
+            return r.json();
+        })
+        .then((data) => {
+            if (data.success) {
+                const resultados = data.resultados || [];
+                const exitos = resultados.filter(r => r.success);
+                const fallos = resultados.filter(r => !r.success);
+
+                let html = data.mensaje || "Las posiciones han sido actualizadas.";
+                if (exitos.length > 0) {
+                    html += `<br><br><strong>${exitos.length} orden(es) de elementos adelantadas.</strong>`;
+                }
+                if (fallos.length > 0) {
+                    html += `<br><span class="text-amber-600">${fallos.length} orden(es) no pudieron moverse.</span>`;
+                }
+
+                Swal.fire({
+                    icon: exitos.length > 0 ? "success" : "warning",
+                    title: exitos.length > 0 ? "¡Adelanto ejecutado!" : "Problemas al adelantar",
+                    html: html,
+                    confirmButtonColor: "#10b981",
+                }).then(() => {
+                    if (calendar) {
+                        invalidateCache();
+                        calendar.refetchEvents();
+                        calendar.refetchResources();
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: data.mensaje || "No se pudo ejecutar el adelanto.",
+                });
+            }
+        })
+        .catch((err) => {
+            console.error("Error al ejecutar adelanto de elementos:", err);
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudo ejecutar el adelanto. " + err.message,
+            });
+        });
+}
+
+/**
+ * Simula el retraso de fabricación y muestra opciones al usuario
+ * @param {Array} elementosIds - IDs de elementos
+ * @param {boolean} esElementosConFechaPropia - Si son elementos con fecha_entrega propia
+ * @param {string} nuevaFechaEntrega - Nueva fecha de entrega (ISO string)
+ */
+function simularRetrasoFabricacion(elementosIds, esElementosConFechaPropia = false, nuevaFechaEntrega = null) {
+    if (!elementosIds || elementosIds.length === 0) {
+        Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No hay elementos para retrasar",
+        });
+        return;
+    }
+
+    // Mostrar loading
+    Swal.fire({
+        title: "Analizando...",
+        html: "Calculando el impacto del retraso en la cola de fabricación",
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+    });
+
+    fetch("/planificacion/simular-retraso", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": window.AppSalidas?.csrf,
+        },
+        body: JSON.stringify({
+            elementos_ids: elementosIds,
+            es_elementos_con_fecha_propia: esElementosConFechaPropia,
+        }),
+    })
+        .then((r) => {
+            if (!r.ok) throw new Error("Error en la simulación");
+            return r.json();
+        })
+        .then((data) => {
+            if (!data.puede_retrasar) {
+                Swal.fire({
+                    icon: "info",
+                    title: "No se puede retrasar",
+                    text: data.mensaje || "Las planillas ya están al final de la cola.",
+                });
+                return;
+            }
+
+            // Construir HTML con detalles de órdenes a retrasar
+            let htmlOrdenes = "";
+            if (data.ordenes_a_retrasar && data.ordenes_a_retrasar.length > 0) {
+                htmlOrdenes = `
+                    <div class="mb-4">
+                        <h4 class="font-semibold text-blue-700 mb-2">📋 Planillas a retrasar:</h4>
+                        <div class="max-h-40 overflow-y-auto">
+                            <table class="w-full text-sm border">
+                                <thead class="bg-blue-100">
+                                    <tr>
+                                        <th class="px-2 py-1 text-left">Planilla</th>
+                                        <th class="px-2 py-1 text-left">Máquina</th>
+                                        <th class="px-2 py-1 text-center">Pos. Actual</th>
+                                        <th class="px-2 py-1 text-center">Nueva Pos.</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+                data.ordenes_a_retrasar.forEach((o) => {
+                    htmlOrdenes += `
+                        <tr class="border-t">
+                            <td class="px-2 py-1">${o.planilla_codigo}</td>
+                            <td class="px-2 py-1">${o.maquina_nombre}</td>
+                            <td class="px-2 py-1 text-center">${o.posicion_actual}</td>
+                            <td class="px-2 py-1 text-center font-bold text-blue-600">${o.posicion_nueva}</td>
+                        </tr>
+                    `;
+                });
+                htmlOrdenes += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Construir HTML con planillas que se beneficiarán
+            let htmlBeneficiados = "";
+            if (data.beneficiados && data.beneficiados.length > 0) {
+                htmlBeneficiados = `
+                    <div class="mb-4">
+                        <h4 class="font-semibold text-green-700 mb-2">✅ Planillas que avanzarán:</h4>
+                        <div class="max-h-32 overflow-y-auto bg-green-50 border border-green-200 rounded p-2">
+                            <table class="w-full text-sm">
+                                <thead class="bg-green-100">
+                                    <tr>
+                                        <th class="px-2 py-1 text-left">Planilla</th>
+                                        <th class="px-2 py-1 text-left">Obra</th>
+                                        <th class="px-2 py-1 text-center">Nueva Pos.</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+                data.beneficiados.slice(0, 10).forEach((b) => {
+                    htmlBeneficiados += `
+                        <tr class="border-t">
+                            <td class="px-2 py-1">${b.planilla_codigo}</td>
+                            <td class="px-2 py-1 truncate" style="max-width:150px">${b.obra}</td>
+                            <td class="px-2 py-1 text-center font-bold text-green-600">${b.posicion_nueva}</td>
+                        </tr>
+                    `;
+                });
+                htmlBeneficiados += `
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="text-xs text-green-600 mt-1">Estas planillas subirán una posición en la cola.</p>
+                    </div>
+                `;
+            }
+
+            const tituloModal = data.es_elementos_con_fecha_propia
+                ? "⏬ Retrasar fabricación (Elementos)"
+                : "⏬ Retrasar fabricación";
+
+            Swal.fire({
+                icon: "question",
+                title: tituloModal,
+                html: `
+                    <div class="text-left">
+                        <p class="mb-3">${data.mensaje}</p>
+                        ${htmlOrdenes}
+                        ${htmlBeneficiados}
+                        <p class="text-sm text-gray-600 mt-3">¿Deseas ejecutar el retraso?</p>
+                    </div>
+                `,
+                width: 600,
+                showCancelButton: true,
+                confirmButtonText: "✅ Ejecutar retraso",
+                cancelButtonText: "Cancelar",
+                confirmButtonColor: "#3b82f6",
+                cancelButtonColor: "#6b7280",
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    ejecutarRetrasoFabricacion(
+                        elementosIds,
+                        esElementosConFechaPropia,
+                        nuevaFechaEntrega
+                    );
+                }
+            });
+        })
+        .catch((err) => {
+            console.error("Error en simulación de retraso:", err);
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudo simular el retraso. " + err.message,
+            });
+        });
+}
+
+/**
+ * Ejecuta el retraso de fabricación
+ */
+/**
+ * Ejecuta el retraso de fabricación
+ * @param {Array} elementosIds - IDs de elementos
+ * @param {boolean} esElementosConFechaPropia - Si son elementos con fecha_entrega propia
+ * @param {string} nuevaFechaEntrega - Nueva fecha de entrega (ISO string)
+ */
+function ejecutarRetrasoFabricacion(elementosIds, esElementosConFechaPropia = false, nuevaFechaEntrega = null) {
+    if (!elementosIds || elementosIds.length === 0) {
+        Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No hay elementos para retrasar",
+        });
+        return;
+    }
+
+    // Mostrar loading
+    Swal.fire({
+        title: "Ejecutando retraso...",
+        html: "Actualizando posiciones en la cola de fabricación",
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+    });
+
+    const bodyData = {
+        elementos_ids: elementosIds,
+        es_elementos_con_fecha_propia: esElementosConFechaPropia,
+    };
+
+    // Si son elementos con fecha propia, enviar también la nueva fecha
+    if (esElementosConFechaPropia && nuevaFechaEntrega) {
+        bodyData.nueva_fecha_entrega = nuevaFechaEntrega;
+    }
+
+    fetch("/planificacion/ejecutar-retraso", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": window.AppSalidas?.csrf,
+        },
+        body: JSON.stringify(bodyData),
+    })
+        .then((r) => {
+            if (!r.ok) throw new Error("Error al ejecutar el retraso");
+            return r.json();
+        })
+        .then((data) => {
+            if (data.success) {
+                const resultados = data.resultados || [];
+                const exitos = resultados.filter(r => r.success);
+                const fallos = resultados.filter(r => !r.success);
+
+                let html = data.mensaje || "Las posiciones han sido actualizadas.";
+                if (exitos.length > 0) {
+                    html += `<br><br><strong>${exitos.length} planilla(s) movidas al final de la cola.</strong>`;
+                }
+                if (fallos.length > 0) {
+                    html += `<br><span class="text-amber-600">${fallos.length} orden(es) no pudieron moverse:</span>`;
+                    html += "<ul class='text-left text-sm mt-2'>";
+                    fallos.forEach(f => {
+                        html += `<li>• Planilla ${f.planilla_id}: ${f.mensaje}</li>`;
+                    });
+                    html += "</ul>";
+                }
+
+                Swal.fire({
+                    icon: exitos.length > 0 ? "success" : "warning",
+                    title: exitos.length > 0 ? "¡Retraso ejecutado!" : "Problemas al retrasar",
+                    html: html,
+                    confirmButtonColor: "#3b82f6",
+                }).then(() => {
+                    // Refrescar el calendario
+                    if (calendar) {
+                        invalidateCache();
+                        calendar.refetchEvents();
+                        calendar.refetchResources();
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: data.mensaje || "No se pudo ejecutar el retraso.",
+                });
+            }
+        })
+        .catch((err) => {
+            console.error("Error al ejecutar retraso:", err);
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudo ejecutar el retraso. " + err.message,
             });
         });
 }

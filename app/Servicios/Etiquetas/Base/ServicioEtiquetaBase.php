@@ -597,7 +597,6 @@ abstract class ServicioEtiquetaBase
                 ->doesntExist();
 
             if ($todosElementosPlanillaCompletos) {
-                $planilla->fecha_finalizacion = now();
                 $planilla->estado = 'completada';
                 $planilla->save();
             }

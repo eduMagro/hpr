@@ -134,12 +134,18 @@ function inicializarCalendario() {
     // Filtros
     const filtroCodigo = document.getElementById("filtro-obra");
     const filtroNombre = document.getElementById("filtro-nombre-obra");
+    const filtroCodCliente = document.getElementById("filtro-cod-cliente");
+    const filtroCliente = document.getElementById("filtro-cliente");
+    const filtroCodPlanilla = document.getElementById("filtro-cod-planilla");
     const btnReset = document.getElementById("btn-reset-filtros");
     const btnLimpiar = document.getElementById("btn-limpiar-filtros");
 
     btnReset?.addEventListener("click", () => {
         if (filtroCodigo) filtroCodigo.value = "";
         if (filtroNombre) filtroNombre.value = "";
+        if (filtroCodCliente) filtroCodCliente.value = "";
+        if (filtroCliente) filtroCliente.value = "";
+        if (filtroCodPlanilla) filtroCodPlanilla.value = "";
         if (checkboxSoloSalidas) {
             checkboxSoloSalidas.checked = false;
             localStorage.setItem("soloSalidas", "false");
@@ -167,6 +173,9 @@ function inicializarCalendario() {
 
     filtroCodigo?.addEventListener("input", refiltrar);
     filtroNombre?.addEventListener("input", refiltrar);
+    filtroCodCliente?.addEventListener("input", refiltrar);
+    filtroCliente?.addEventListener("input", refiltrar);
+    filtroCodPlanilla?.addEventListener("input", refiltrar);
 
     // Función para actualizar estilos de contenedores
     function actualizarEstilosContenedores() {
@@ -225,6 +234,9 @@ function inicializarCalendario() {
     btnLimpiar?.addEventListener("click", () => {
         if (filtroCodigo) filtroCodigo.value = "";
         if (filtroNombre) filtroNombre.value = "";
+        if (filtroCodCliente) filtroCodCliente.value = "";
+        if (filtroCliente) filtroCliente.value = "";
+        if (filtroCodPlanilla) filtroCodPlanilla.value = "";
         calendar.refetchEvents();
     });
 }

@@ -1292,6 +1292,7 @@ class FinProgramadoService
     public function ejecutarAdelanto(array $ordenesAAdelantar): array
     {
         $resultados = [];
+        $maquinasAfectadas = [];
 
         Log::info('[ejecutarAdelanto] Iniciando con ' . count($ordenesAAdelantar) . ' órdenes', $ordenesAAdelantar);
 
@@ -1341,6 +1342,9 @@ class FinProgramadoService
                 $ordenActual->posicion = $nuevaPosicion;
                 $ordenActual->save();
 
+                // Registrar máquina afectada para consolidación posterior
+                $maquinasAfectadas[$maquinaId] = true;
+
                 $resultados[] = [
                     'planilla_id' => $planillaId,
                     'maquina_id' => $maquinaId,
@@ -1355,6 +1359,11 @@ class FinProgramadoService
                     'posicion_anterior' => $posicionAnterior,
                     'posicion_nueva' => $nuevaPosicion,
                 ]);
+            }
+
+            // Consolidar posiciones adyacentes en todas las máquinas afectadas
+            foreach (array_keys($maquinasAfectadas) as $maquinaId) {
+                $this->consolidarPosicionesAdyacentes($maquinaId);
             }
 
             DB::commit();
@@ -1376,6 +1385,1177 @@ class FinProgramadoService
                 'resultados' => [],
                 'mensaje' => 'Error al ejecutar el adelanto: ' . $e->getMessage(),
             ];
+        }
+    }
+
+    /**
+     * Consolida posiciones adyacentes de la misma planilla en una máquina
+     * Si hay dos registros consecutivos para la misma planilla, elimina el duplicado
+     */
+    private function consolidarPosicionesAdyacentes(int $maquinaId): void
+    {
+        $ordenes = OrdenPlanilla::where('maquina_id', $maquinaId)
+            ->orderBy('posicion')
+            ->get();
+
+        if ($ordenes->count() < 2) {
+            return;
+        }
+
+        $ordenesAEliminar = [];
+        $ordenAnterior = null;
+
+        foreach ($ordenes as $orden) {
+            if ($ordenAnterior && $ordenAnterior->planilla_id === $orden->planilla_id) {
+                // Esta orden es de la misma planilla que la anterior, marcar para eliminar
+                $ordenesAEliminar[] = $orden->id;
+            } else {
+                $ordenAnterior = $orden;
+            }
+        }
+
+        if (!empty($ordenesAEliminar)) {
+            OrdenPlanilla::whereIn('id', $ordenesAEliminar)->delete();
+            $this->recompactarPosiciones($maquinaId);
+
+            Log::info('[FinProgramadoService] Consolidadas posiciones adyacentes', [
+                'maquina_id' => $maquinaId,
+                'ordenes_eliminadas' => count($ordenesAEliminar),
+            ]);
+        }
+    }
+
+    /**
+     * Recompacta las posiciones de una máquina para que sean consecutivas (1, 2, 3, ...)
+     */
+    private function recompactarPosiciones(int $maquinaId): void
+    {
+        $ordenes = OrdenPlanilla::where('maquina_id', $maquinaId)
+            ->orderBy('posicion')
+            ->get();
+
+        $posicion = 1;
+        foreach ($ordenes as $orden) {
+            if ($orden->posicion !== $posicion) {
+                $orden->posicion = $posicion;
+                $orden->save();
+            }
+            $posicion++;
+        }
+    }
+
+    /**
+     * Verifica si es posible retrasar la fabricación de los elementos dados
+     *
+     * @param array $elementosIds
+     * @return array
+     */
+    public function verificarPosibilidadRetraso(array $elementosIds): array
+    {
+        if (empty($elementosIds)) {
+            return [
+                'puede_retrasar' => false,
+                'planillas_afectadas' => [],
+                'mensaje' => 'No hay elementos para analizar',
+            ];
+        }
+
+        // Obtener elementos con sus planillas y máquinas
+        $elementos = Elemento::with(['planilla.obra'])
+            ->whereIn('id', $elementosIds)
+            ->where('estado', 'pendiente')
+            ->get();
+
+        if ($elementos->isEmpty()) {
+            return [
+                'puede_retrasar' => false,
+                'planillas_afectadas' => [],
+                'mensaje' => 'No hay elementos pendientes',
+            ];
+        }
+
+        // Agrupar por planilla y máquina
+        $planillasIds = $elementos->pluck('planilla_id')->unique()->toArray();
+        $maquinaIds = $elementos->pluck('maquina_id')->filter()->unique()->toArray();
+
+        if (empty($maquinaIds)) {
+            return [
+                'puede_retrasar' => false,
+                'planillas_afectadas' => [],
+                'mensaje' => 'Los elementos no tienen máquina asignada',
+            ];
+        }
+
+        // Verificar si las planillas tienen órdenes en máquinas
+        $ordenes = OrdenPlanilla::whereIn('planilla_id', $planillasIds)
+            ->whereIn('maquina_id', $maquinaIds)
+            ->with(['planilla.obra', 'maquina'])
+            ->get();
+
+        if ($ordenes->isEmpty()) {
+            return [
+                'puede_retrasar' => false,
+                'planillas_afectadas' => [],
+                'mensaje' => 'Las planillas no tienen órdenes de fabricación asignadas',
+            ];
+        }
+
+        // Verificar que no estén en primera posición (ya no se pueden retrasar más en términos relativos)
+        // Pero sí se pueden mover al final
+        $planillasAfectadas = [];
+        foreach ($ordenes as $orden) {
+            $totalOrdenes = OrdenPlanilla::where('maquina_id', $orden->maquina_id)->count();
+
+            // Solo tiene sentido retrasar si no está ya en la última posición
+            if ($orden->posicion < $totalOrdenes) {
+                $planillasAfectadas[] = [
+                    'planilla_id' => $orden->planilla_id,
+                    'planilla_codigo' => $orden->planilla->codigo ?? 'N/A',
+                    'obra' => $orden->planilla->obra->obra ?? 'Sin obra',
+                    'maquina_id' => $orden->maquina_id,
+                    'maquina_nombre' => $orden->maquina->nombre ?? 'Máquina ' . $orden->maquina_id,
+                    'posicion_actual' => $orden->posicion,
+                    'total_posiciones' => $totalOrdenes,
+                ];
+            }
+        }
+
+        return [
+            'puede_retrasar' => !empty($planillasAfectadas),
+            'planillas_afectadas' => $planillasAfectadas,
+            'mensaje' => empty($planillasAfectadas)
+                ? 'Las planillas ya están al final de la cola'
+                : count($planillasAfectadas) . ' planilla(s) pueden retrasarse',
+        ];
+    }
+
+    /**
+     * Simula el retraso de fabricación mostrando qué planillas se beneficiarían
+     *
+     * @param array $elementosIds
+     * @return array
+     */
+    public function simularRetraso(array $elementosIds): array
+    {
+        $verificacion = $this->verificarPosibilidadRetraso($elementosIds);
+
+        if (!$verificacion['puede_retrasar']) {
+            return [
+                'puede_retrasar' => false,
+                'ordenes_a_retrasar' => [],
+                'beneficiados' => [],
+                'mensaje' => $verificacion['mensaje'],
+            ];
+        }
+
+        $ordenesARetrasar = [];
+        $beneficiados = [];
+
+        foreach ($verificacion['planillas_afectadas'] as $info) {
+            $maquinaId = $info['maquina_id'];
+            $posicionActual = $info['posicion_actual'];
+            $totalPosiciones = $info['total_posiciones'];
+
+            // La nueva posición será la última
+            $nuevaPosicion = $totalPosiciones;
+
+            $ordenesARetrasar[] = [
+                'planilla_id' => $info['planilla_id'],
+                'planilla_codigo' => $info['planilla_codigo'],
+                'obra' => $info['obra'],
+                'maquina_id' => $maquinaId,
+                'maquina_nombre' => $info['maquina_nombre'],
+                'posicion_actual' => $posicionActual,
+                'posicion_nueva' => $nuevaPosicion,
+            ];
+
+            // Obtener las planillas que se beneficiarían (las que están detrás y subirán)
+            $ordenesBeneficiadas = OrdenPlanilla::where('maquina_id', $maquinaId)
+                ->where('posicion', '>', $posicionActual)
+                ->with(['planilla.obra'])
+                ->orderBy('posicion')
+                ->get();
+
+            foreach ($ordenesBeneficiadas as $ordenBenef) {
+                $beneficiados[] = [
+                    'planilla_id' => $ordenBenef->planilla_id,
+                    'planilla_codigo' => $ordenBenef->planilla->codigo ?? 'N/A',
+                    'obra' => $ordenBenef->planilla->obra->obra ?? 'Sin obra',
+                    'maquina_nombre' => $info['maquina_nombre'],
+                    'posicion_actual' => $ordenBenef->posicion,
+                    'posicion_nueva' => $ordenBenef->posicion - 1,
+                ];
+            }
+        }
+
+        // Eliminar duplicados en beneficiados
+        $beneficiados = collect($beneficiados)->unique('planilla_id')->values()->toArray();
+
+        return [
+            'puede_retrasar' => true,
+            'ordenes_a_retrasar' => $ordenesARetrasar,
+            'beneficiados' => $beneficiados,
+            'mensaje' => count($ordenesARetrasar) . ' orden(es) se moverán al final de la cola',
+        ];
+    }
+
+    /**
+     * Ejecuta el retraso de las órdenes especificadas (moverlas al final de la cola)
+     *
+     * @param array $elementosIds - IDs de elementos cuyas planillas se retrasarán
+     * @return array
+     */
+    public function ejecutarRetraso(array $elementosIds): array
+    {
+        $simulacion = $this->simularRetraso($elementosIds);
+
+        if (!$simulacion['puede_retrasar']) {
+            return [
+                'success' => false,
+                'resultados' => [],
+                'mensaje' => $simulacion['mensaje'],
+            ];
+        }
+
+        $resultados = [];
+        $maquinasAfectadas = [];
+
+        Log::info('[ejecutarRetraso] Iniciando con ' . count($simulacion['ordenes_a_retrasar']) . ' órdenes');
+
+        DB::beginTransaction();
+        try {
+            foreach ($simulacion['ordenes_a_retrasar'] as $ordenInfo) {
+                $planillaId = $ordenInfo['planilla_id'];
+                $maquinaId = $ordenInfo['maquina_id'];
+                $posicionActual = $ordenInfo['posicion_actual'];
+                $nuevaPosicion = $ordenInfo['posicion_nueva'];
+
+                Log::info("[ejecutarRetraso] Procesando planilla {$planillaId} en maquina {$maquinaId}: pos {$posicionActual} -> {$nuevaPosicion}");
+
+                // Obtener orden actual
+                $ordenActual = OrdenPlanilla::where('planilla_id', $planillaId)
+                    ->where('maquina_id', $maquinaId)
+                    ->first();
+
+                if (!$ordenActual) {
+                    Log::warning("[ejecutarRetraso] Orden no encontrada para planilla {$planillaId} en maquina {$maquinaId}");
+                    $resultados[] = [
+                        'planilla_id' => $planillaId,
+                        'success' => false,
+                        'mensaje' => "Orden no encontrada",
+                    ];
+                    continue;
+                }
+
+                // Desplazar las órdenes que están detrás hacia arriba
+                OrdenPlanilla::where('maquina_id', $maquinaId)
+                    ->where('posicion', '>', $posicionActual)
+                    ->where('posicion', '<=', $nuevaPosicion)
+                    ->decrement('posicion');
+
+                // Mover la orden a la nueva posición (al final)
+                $ordenActual->posicion = $nuevaPosicion;
+                $ordenActual->save();
+
+                // Registrar máquina afectada para consolidación
+                $maquinasAfectadas[$maquinaId] = true;
+
+                $resultados[] = [
+                    'planilla_id' => $planillaId,
+                    'maquina_id' => $maquinaId,
+                    'success' => true,
+                    'posicion_anterior' => $posicionActual,
+                    'posicion_nueva' => $nuevaPosicion,
+                ];
+
+                Log::info('Retraso ejecutado', [
+                    'planilla_id' => $planillaId,
+                    'maquina_id' => $maquinaId,
+                    'posicion_anterior' => $posicionActual,
+                    'posicion_nueva' => $nuevaPosicion,
+                ]);
+            }
+
+            // Consolidar posiciones adyacentes
+            foreach (array_keys($maquinasAfectadas) as $maquinaId) {
+                $this->consolidarPosicionesAdyacentes($maquinaId);
+            }
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'resultados' => $resultados,
+                'mensaje' => 'Retraso ejecutado correctamente. ' . count($resultados) . ' planilla(s) movidas al final de la cola.',
+            ];
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error al ejecutar retraso', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return [
+                'success' => false,
+                'resultados' => [],
+                'mensaje' => 'Error al ejecutar el retraso: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Flag para simular turnos extra en sábados
+     */
+    private bool $simularSabado = false;
+    private ?array $turnoSabadoSimulado = null;
+    private array $fechasSabadoSimuladas = []; // Fechas específicas de sábados a simular
+
+    /**
+     * Habilita la simulación de trabajo en sábado con un turno específico
+     *
+     * @param string $horaInicio Hora de inicio del turno (ej: "08:00")
+     * @param string $horaFin Hora de fin del turno (ej: "14:00")
+     * @param array $fechasEspecificas Array de fechas Carbon específicas (opcional, si vacío = todos los sábados)
+     */
+    public function habilitarSimulacionSabado(string $horaInicio = '08:00', string $horaFin = '14:00', array $fechasEspecificas = []): self
+    {
+        $this->simularSabado = true;
+        $this->turnoSabadoSimulado = [
+            'hora_inicio' => $horaInicio,
+            'hora_fin' => $horaFin,
+        ];
+        $this->fechasSabadoSimuladas = $fechasEspecificas;
+
+        Log::info('[FinProgramadoService] Simulación de sábado habilitada', [
+            'hora_inicio' => $horaInicio,
+            'hora_fin' => $horaFin,
+            'fechas_especificas' => count($fechasEspecificas),
+        ]);
+
+        return $this;
+    }
+
+    /**
+     * Deshabilita la simulación de sábado
+     */
+    public function deshabilitarSimulacionSabado(): self
+    {
+        $this->simularSabado = false;
+        $this->turnoSabadoSimulado = null;
+        $this->fechasSabadoSimuladas = [];
+        return $this;
+    }
+
+    /**
+     * Verifica si una fecha específica es un sábado simulado
+     */
+    private function esSabadoSimulado(Carbon $dia): bool
+    {
+        if (!$this->simularSabado) {
+            return false;
+        }
+
+        if (!$dia->isSaturday()) {
+            return false;
+        }
+
+        // Si no hay fechas específicas, todos los sábados están simulados
+        if (empty($this->fechasSabadoSimuladas)) {
+            return true;
+        }
+
+        // Verificar si esta fecha está en la lista
+        $fechaStr = $dia->toDateString();
+        foreach ($this->fechasSabadoSimuladas as $fechaSimulada) {
+            if ($fechaSimulada->toDateString() === $fechaStr) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Obtiene los segmentos laborables de un día, incluyendo sábado simulado si está activo
+     * OVERRIDE del método original cuando hay simulación activa
+     */
+    public function obtenerSegmentosLaborablesDiaConSimulacion(Carbon $dia): array
+    {
+        // Si no es un sábado simulado, usar método normal
+        if (!$this->esSabadoSimulado($dia)) {
+            return $this->obtenerSegmentosLaborablesDia($dia);
+        }
+
+        // Es un sábado simulado - obtener segmentos normales primero
+        $segmentosNormales = $this->obtenerSegmentosLaborablesDia($dia);
+
+        // SIEMPRE crear el segmento simulado para sábado (incluso si hay otros turnos)
+        // porque el usuario quiere AÑADIR un turno de sábado
+        if ($this->turnoSabadoSimulado) {
+            $horaInicio = Carbon::parse($this->turnoSabadoSimulado['hora_inicio']);
+            $horaFin = Carbon::parse($this->turnoSabadoSimulado['hora_fin']);
+
+            $inicio = $dia->copy()->setTime($horaInicio->hour, $horaInicio->minute, 0);
+            $fin = $dia->copy()->setTime($horaFin->hour, $horaFin->minute, 0);
+
+            $segmentoSimulado = [
+                'inicio' => $inicio,
+                'fin' => $fin,
+                'turno' => null, // Turno simulado
+            ];
+
+            // DEBUG: Log del sábado simulado (solo una vez por día único)
+            static $sabadosLogueados = [];
+            $diaKey = $dia->toDateString();
+            if (!isset($sabadosLogueados[$diaKey])) {
+                Log::debug('[SimSabado] Segmento simulado creado', [
+                    'fecha' => $diaKey,
+                    'inicio' => $inicio->format('H:i'),
+                    'fin' => $fin->format('H:i'),
+                    'segmentos_normales' => count($segmentosNormales),
+                ]);
+                $sabadosLogueados[$diaKey] = true;
+            }
+
+            // Si no hay segmentos normales, devolver solo el simulado
+            if (empty($segmentosNormales)) {
+                return [$segmentoSimulado];
+            }
+
+            // Si hay segmentos normales, añadir el simulado y reordenar
+            $segmentosNormales[] = $segmentoSimulado;
+
+            // Ordenar por hora de inicio
+            usort($segmentosNormales, fn($a, $b) => $a['inicio']->timestamp <=> $b['inicio']->timestamp);
+
+            return $segmentosNormales;
+        }
+
+        return $segmentosNormales;
+    }
+
+    /**
+     * Genera tramos laborales CON simulación de sábado activa
+     * Versión modificada de generarTramosLaborales que usa la simulación
+     */
+    public function generarTramosLaboralesConSimulacion(Carbon $inicio, int $durSeg): array
+    {
+        $tramos = [];
+        $restante = max(0, (int) $durSeg);
+
+        // Verificar si el inicio está dentro de horario laborable
+        $segmentosInicio = $this->obtenerSegmentosLaborablesDiaConSimulacion($inicio);
+        $segmentosDiaAnterior = $this->obtenerSegmentosLaborablesDiaConSimulacion($inicio->copy()->subDay());
+        $todosSegmentos = array_merge($segmentosDiaAnterior, $segmentosInicio);
+        $dentroDeSegmento = false;
+
+        foreach ($todosSegmentos as $seg) {
+            if ($inicio->gte($seg['inicio']) && $inicio->lt($seg['fin'])) {
+                $dentroDeSegmento = true;
+                break;
+            }
+        }
+
+        // Si el inicio NO está dentro de un segmento laborable, mover al siguiente
+        if (!$dentroDeSegmento) {
+            $inicio = $this->siguienteLaborableInicioConSimulacion($inicio);
+        }
+
+        $cursor = $inicio->copy();
+        $iter = 0;
+        $iterMax = 10000;
+
+        while ($restante > 0) {
+            if (++$iter > $iterMax) {
+                Log::error('FinProgramadoService: iteraciones excedidas (simulación)', [
+                    'cursor' => $cursor->toIso8601String(),
+                    'restante' => $restante,
+                ]);
+                break;
+            }
+
+            $diaActual = $cursor->copy()->startOfDay();
+            $segmentosHoy = $this->obtenerSegmentosLaborablesDiaConSimulacion($cursor);
+            $segmentosAyer = $this->obtenerSegmentosLaborablesDiaConSimulacion($cursor->copy()->subDay());
+
+            $segmentos = collect($segmentosAyer)
+                ->merge($segmentosHoy)
+                ->filter(fn($seg) => $cursor->lt($seg['fin']))
+                ->values()
+                ->all();
+
+            // Saltar no laborables
+            if ($this->esNoLaborableConSimulacion($cursor) && empty($segmentosHoy)) {
+                $cursor = $this->siguienteLaborableInicioConSimulacion($cursor);
+                continue;
+            }
+
+            if (empty($segmentos)) {
+                $limiteDia = $cursor->copy()->startOfDay()->addDay();
+                $tsLimite = (int) $limiteDia->getTimestamp();
+                $tsCursor = (int) $cursor->getTimestamp();
+                $capacidad = max(0, $tsLimite - $tsCursor);
+                $consume = min($restante, $capacidad);
+
+                if ($consume > 0) {
+                    $start = $cursor->copy();
+                    $end = $cursor->copy()->addSeconds($consume);
+                    $tramos[] = ['start' => $start, 'end' => $end];
+
+                    $restante -= $consume;
+                    $cursor = $end->copy();
+                }
+
+                if ($restante > 0 && (int)$cursor->getTimestamp() >= $tsLimite) {
+                    $cursor = $this->siguienteLaborableInicioConSimulacion($cursor);
+                }
+
+                if ($consume == 0) {
+                    $cursor->addDay()->startOfDay();
+                }
+            } else {
+                foreach ($segmentos as $segmento) {
+                    $inicioSeg = $segmento['inicio'];
+                    $finSeg = $segmento['fin'];
+
+                    if ($cursor->gte($finSeg)) {
+                        continue;
+                    }
+
+                    if ($cursor->lt($inicioSeg)) {
+                        $cursor = $inicioSeg->copy();
+                    }
+
+                    $capacidadSeg = max(0, $cursor->diffInSeconds($finSeg, false));
+                    $consume = min($restante, $capacidadSeg);
+
+                    if ($consume > 0) {
+                        $start = $cursor->copy();
+                        $end = $cursor->copy()->addSeconds($consume);
+                        $tramos[] = ['start' => $start, 'end' => $end];
+
+                        $restante -= $consume;
+                        $cursor = $end->copy();
+                    }
+
+                    if ($restante <= 0) {
+                        break;
+                    }
+                }
+
+                if ($restante > 0) {
+                    $diaDelCursor = $cursor->copy()->startOfDay();
+
+                    if ($diaDelCursor->gt($diaActual)) {
+                        continue;
+                    }
+
+                    $siguienteDia = $diaActual->copy()->addDay();
+                    $cursor = $siguienteDia->copy();
+
+                    $diasSaltados = 0;
+                    while ($diasSaltados < 365) {
+                        $segmentosDelDia = $this->obtenerSegmentosLaborablesDiaConSimulacion($cursor);
+
+                        if ($this->esNoLaborableConSimulacion($cursor) && empty($segmentosDelDia)) {
+                            $cursor->addDay()->startOfDay();
+                            $diasSaltados++;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    if ($diasSaltados >= 365) {
+                        Log::error('FinProgramadoService: bucle infinito (simulación)');
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $tramos;
+    }
+
+    /**
+     * Verifica si un día es no laborable, considerando simulación de sábado
+     */
+    public function esNoLaborableConSimulacion(Carbon $dia): bool
+    {
+        // Siempre es no laborable si es festivo
+        if (isset($this->festivosSet[$dia->toDateString()])) {
+            return true;
+        }
+
+        // Si es un sábado simulado, NO es no laborable
+        if ($this->esSabadoSimulado($dia)) {
+            return false;
+        }
+
+        // Si no es fin de semana, es laborable
+        if (!$dia->isWeekend()) {
+            return false;
+        }
+
+        // Para domingo u otros fines de semana sin simulación
+        if ($this->turnosActivos !== null && $this->turnosActivos->isNotEmpty()) {
+            foreach ($this->turnosActivos as $turno) {
+                if ($turno->trabajaEnDia($dia->dayOfWeek)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Siguiente laborable con simulación de sábado
+     */
+    public function siguienteLaborableInicioConSimulacion(Carbon $dt): Carbon
+    {
+        $x = $dt->copy();
+        $maxIter = 365;
+        $iter = 0;
+
+        while ($iter < $maxIter) {
+            // Sábado con simulación (verificar si este sábado específico está simulado)
+            if ($this->esSabadoSimulado($x)) {
+                $segmentosSabado = $this->obtenerSegmentosLaborablesDiaConSimulacion($x);
+                if (!empty($segmentosSabado)) {
+                    $primerSegmento = $segmentosSabado[0];
+                    if ($x->lt($primerSegmento['inicio'])) {
+                        return $primerSegmento['inicio']->copy();
+                    }
+                    foreach ($segmentosSabado as $seg) {
+                        if ($x->lt($seg['fin'])) {
+                            return $x->lt($seg['inicio']) ? $seg['inicio']->copy() : $x->copy();
+                        }
+                    }
+                }
+            }
+
+            // Domingo
+            if ($x->dayOfWeek === Carbon::SUNDAY) {
+                $segmentosDomingo = $this->obtenerSegmentosLaborablesDiaConSimulacion($x);
+                foreach ($segmentosDomingo as $seg) {
+                    if ($seg['inicio']->dayOfWeek === Carbon::SUNDAY && $x->lt($seg['fin'])) {
+                        return $x->lt($seg['inicio']) ? $seg['inicio']->copy() : $x->copy();
+                    }
+                }
+            }
+
+            if (!$this->esNoLaborableConSimulacion($x)) {
+                $segmentos = $this->obtenerSegmentosLaborablesDiaConSimulacion($x);
+
+                if (!empty($segmentos)) {
+                    $primerSegmento = $segmentos[0];
+                    if ($x->lt($primerSegmento['inicio'])) {
+                        return $primerSegmento['inicio']->copy();
+                    }
+
+                    foreach ($segmentos as $seg) {
+                        if ($x->lt($seg['fin'])) {
+                            return $x->lt($seg['inicio']) ? $seg['inicio']->copy() : $x->copy();
+                        }
+                    }
+                } else {
+                    return $x->copy()->startOfDay();
+                }
+            }
+
+            $x->addDay()->startOfDay();
+            $iter++;
+        }
+
+        return $x;
+    }
+
+    /**
+     * Calcula el fin programado CON simulación de turno sábado
+     * Similar a calcularFinProgramadoElementos pero usando la simulación
+     */
+    public function calcularFinProgramadoConSimulacionSabado(array $elementosIds, ?Carbon $fechaEntrega = null): array
+    {
+        if (empty($elementosIds)) {
+            return [
+                'fin_programado' => null,
+                'hay_retraso' => false,
+                'detalles' => [],
+            ];
+        }
+
+        $this->cargarFestivos();
+        $this->cargarTurnos();
+
+        $elementos = Elemento::with(['planilla'])
+            ->whereIn('id', $elementosIds)
+            ->where('estado', 'pendiente')
+            ->get();
+
+        if ($elementos->isEmpty()) {
+            return [
+                'fin_programado' => null,
+                'hay_retraso' => false,
+                'detalles' => [],
+            ];
+        }
+
+        $elementosPorMaquina = $elementos->groupBy('maquina_id');
+        $maquinaIds = $elementosPorMaquina->keys()->filter()->toArray();
+
+        if (empty($maquinaIds)) {
+            return [
+                'fin_programado' => null,
+                'hay_retraso' => false,
+                'detalles' => [],
+            ];
+        }
+
+        $colasMaquinas = $this->calcularColasIniciales($maquinaIds);
+
+        $ordenes = OrdenPlanilla::whereIn('maquina_id', $maquinaIds)
+            ->orderBy('maquina_id')
+            ->orderBy('posicion')
+            ->get()
+            ->groupBy('maquina_id');
+
+        $planillasIdsOrdenes = $ordenes->flatten()->pluck('planilla_id')->unique()->toArray();
+        $todosElementosPendientes = Elemento::whereIn('planilla_id', $planillasIdsOrdenes)
+            ->whereIn('maquina_id', $maquinaIds)
+            ->where('estado', 'pendiente')
+            ->get()
+            ->groupBy(fn($e) => $e->planilla_id . '_' . $e->maquina_id);
+
+        $finMasTardio = null;
+        $detalles = [];
+        $planillasIds = $elementos->pluck('planilla_id')->unique()->toArray();
+
+        foreach ($maquinaIds as $maquinaId) {
+            $ordenesMaquina = $ordenes->get($maquinaId, collect());
+
+            if ($ordenesMaquina->isEmpty()) {
+                continue;
+            }
+
+            $inicioCola = $colasMaquinas[$maquinaId] ?? Carbon::now();
+            $primeraOrdenId = $ordenesMaquina->first()->id ?? null;
+
+            foreach ($ordenesMaquina as $orden) {
+                $cacheKey = $orden->planilla_id . '_' . $maquinaId;
+                $elementosPlanilla = $todosElementosPendientes->get($cacheKey, collect());
+
+                if ($elementosPlanilla->isEmpty()) {
+                    continue;
+                }
+
+                $duracionSegundos = $elementosPlanilla->sum(function ($e) {
+                    $tiempoFab = (float) ($e->tiempo_fabricacion ?? 1200);
+                    $tiempoAmarrado = 1200;
+                    return $tiempoFab + $tiempoAmarrado;
+                });
+                $duracionSegundos = max($duracionSegundos, 3600);
+
+                $esPrimerEvento = ($orden->id === $primeraOrdenId);
+
+                if ($esPrimerEvento) {
+                    $fechaInicioFabricacion = $this->obtenerFechaInicioFabricacion($orden->planilla_id, $maquinaId);
+                    $fechaInicio = $fechaInicioFabricacion ?? Carbon::now();
+                } else {
+                    $fechaInicio = $inicioCola->copy();
+                }
+
+                // Usar generación de tramos CON simulación
+                $tramos = $this->generarTramosLaboralesConSimulacion($fechaInicio, $duracionSegundos);
+
+                if (empty($tramos)) {
+                    continue;
+                }
+
+                $ultimoTramo = end($tramos);
+                $fechaFinReal = $ultimoTramo['end'] instanceof Carbon
+                    ? $ultimoTramo['end']->copy()
+                    : Carbon::parse($ultimoTramo['end']);
+
+                if (in_array($orden->planilla_id, $planillasIds)) {
+                    $detalles[] = [
+                        'planilla_id' => $orden->planilla_id,
+                        'maquina_id' => $maquinaId,
+                        'fin_programado' => $fechaFinReal->format('d/m/Y H:i'),
+                        'fin_programado_carbon' => $fechaFinReal,
+                    ];
+
+                    if (!$finMasTardio || $fechaFinReal->gt($finMasTardio)) {
+                        $finMasTardio = $fechaFinReal->copy();
+                    }
+                }
+
+                $inicioCola = $fechaFinReal->copy();
+            }
+        }
+
+        $hayRetraso = false;
+        if ($finMasTardio && $fechaEntrega) {
+            $fechaEntregaFin = $fechaEntrega->copy()->endOfDay();
+            $hayRetraso = $finMasTardio->gt($fechaEntregaFin);
+        }
+
+        return [
+            'fin_programado' => $finMasTardio,
+            'fin_programado_str' => $finMasTardio?->format('d/m/Y H:i'),
+            'hay_retraso' => $hayRetraso,
+            'detalles' => $detalles,
+        ];
+    }
+
+    // ==================================================================================
+    // MÉTODOS PARA ELEMENTOS CON FECHA_ENTREGA PROPIA
+    // ==================================================================================
+
+    /**
+     * Separa elementos específicos en su propia posición de cola.
+     * Se usa cuando elementos con fecha_entrega propia comparten orden_planilla_id
+     * con otros elementos que no tienen fecha propia.
+     */
+    public function separarElementosEnNuevaPosicion(array $elementosIds, Carbon $nuevaFechaEntrega): array
+    {
+        if (empty($elementosIds)) {
+            return ['success' => false, 'mensaje' => 'No hay elementos para separar', 'ordenes_creadas' => []];
+        }
+
+        $elementos = Elemento::with(['planilla'])
+            ->whereIn('id', $elementosIds)
+            ->whereNotNull('fecha_entrega')
+            ->get();
+
+        if ($elementos->isEmpty()) {
+            return ['success' => false, 'mensaje' => 'No hay elementos con fecha_entrega propia', 'ordenes_creadas' => []];
+        }
+
+        $ordenesCreadas = [];
+        $maquinasAfectadas = [];
+
+        DB::beginTransaction();
+        try {
+            $grupos = $elementos->groupBy(fn($e) => $e->planilla_id . '-' . $e->maquina_id);
+
+            foreach ($grupos as $key => $elementosGrupo) {
+                $primerElemento = $elementosGrupo->first();
+                $planillaId = $primerElemento->planilla_id;
+                $maquinaId = $primerElemento->maquina_id;
+
+                if (!$maquinaId) continue;
+
+                $ordenActualId = $primerElemento->orden_planilla_id;
+
+                if (!$ordenActualId) {
+                    $nuevaOrden = $this->crearNuevaOrdenParaElementos($planillaId, $maquinaId, $nuevaFechaEntrega, $elementosGrupo->pluck('id')->toArray());
+                    $ordenesCreadas[] = $nuevaOrden;
+                    $maquinasAfectadas[$maquinaId] = true;
+                    continue;
+                }
+
+                // Verificar si hay otros elementos sin fecha_entrega propia
+                $otrosElementosEnOrden = Elemento::where('orden_planilla_id', $ordenActualId)
+                    ->whereNotIn('id', $elementosGrupo->pluck('id')->toArray())
+                    ->whereNull('fecha_entrega')
+                    ->exists();
+
+                if ($otrosElementosEnOrden) {
+                    Log::info('[separarElementos] Separando elementos con fecha propia', [
+                        'elementos_ids' => $elementosGrupo->pluck('id')->toArray(),
+                        'orden_original_id' => $ordenActualId,
+                    ]);
+                    $nuevaOrden = $this->crearNuevaOrdenParaElementos($planillaId, $maquinaId, $nuevaFechaEntrega, $elementosGrupo->pluck('id')->toArray());
+                    $ordenesCreadas[] = $nuevaOrden;
+                    $maquinasAfectadas[$maquinaId] = true;
+                } else {
+                    $ordenesCreadas[] = [
+                        'orden_planilla_id' => $ordenActualId,
+                        'planilla_id' => $planillaId,
+                        'maquina_id' => $maquinaId,
+                        'elementos_ids' => $elementosGrupo->pluck('id')->toArray(),
+                        'creada' => false,
+                    ];
+                }
+            }
+
+            DB::commit();
+            return ['success' => true, 'mensaje' => count($ordenesCreadas) . ' grupo(s) procesados', 'ordenes_creadas' => $ordenesCreadas, 'maquinas_afectadas' => array_keys($maquinasAfectadas)];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('[separarElementos] Error: ' . $e->getMessage());
+            return ['success' => false, 'mensaje' => 'Error: ' . $e->getMessage(), 'ordenes_creadas' => []];
+        }
+    }
+
+    private function crearNuevaOrdenParaElementos(int $planillaId, int $maquinaId, Carbon $fechaEntrega, array $elementosIds): array
+    {
+        $nuevaPosicion = $this->calcularPosicionPorFechaElementos($maquinaId, $fechaEntrega);
+
+        OrdenPlanilla::where('maquina_id', $maquinaId)
+            ->where('posicion', '>=', $nuevaPosicion)
+            ->increment('posicion');
+
+        $nuevaOrden = OrdenPlanilla::create([
+            'planilla_id' => $planillaId,
+            'maquina_id' => $maquinaId,
+            'posicion' => $nuevaPosicion,
+        ]);
+
+        Elemento::whereIn('id', $elementosIds)->update(['orden_planilla_id' => $nuevaOrden->id]);
+
+        Log::info('[crearNuevaOrden] Orden creada', [
+            'orden_id' => $nuevaOrden->id,
+            'planilla_id' => $planillaId,
+            'maquina_id' => $maquinaId,
+            'posicion' => $nuevaPosicion,
+        ]);
+
+        return [
+            'orden_planilla_id' => $nuevaOrden->id,
+            'planilla_id' => $planillaId,
+            'maquina_id' => $maquinaId,
+            'posicion' => $nuevaPosicion,
+            'elementos_ids' => $elementosIds,
+            'creada' => true,
+        ];
+    }
+
+    private function calcularPosicionPorFechaElementos(int $maquinaId, Carbon $fechaEntrega): int
+    {
+        $ordenes = OrdenPlanilla::where('maquina_id', $maquinaId)
+            ->join('planillas', 'orden_planillas.planilla_id', '=', 'planillas.id')
+            ->orderBy('orden_planillas.posicion')
+            ->select('orden_planillas.*', 'planillas.fecha_estimada_entrega')
+            ->get();
+
+        if ($ordenes->isEmpty()) return 1;
+
+        foreach ($ordenes as $orden) {
+            $fechaOrden = $orden->fecha_estimada_entrega ? Carbon::parse($orden->fecha_estimada_entrega) : null;
+            if ($fechaOrden && $fechaEntrega->lt($fechaOrden)) {
+                return $orden->posicion;
+            }
+        }
+
+        return $ordenes->max('posicion') + 1;
+    }
+
+    public function verificarPosibilidadRetrasoElementos(array $elementosIds): array
+    {
+        if (empty($elementosIds)) {
+            return ['puede_retrasar' => false, 'ordenes_afectadas' => [], 'mensaje' => 'No hay elementos'];
+        }
+
+        $elementos = Elemento::with(['planilla.obra'])
+            ->whereIn('id', $elementosIds)
+            ->whereNotNull('fecha_entrega')
+            ->where('estado', 'pendiente')
+            ->get();
+
+        if ($elementos->isEmpty()) {
+            return ['puede_retrasar' => false, 'ordenes_afectadas' => [], 'mensaje' => 'No hay elementos pendientes con fecha_entrega propia'];
+        }
+
+        $ordenIds = $elementos->pluck('orden_planilla_id')->filter()->unique()->toArray();
+
+        if (empty($ordenIds)) {
+            return ['puede_retrasar' => false, 'ordenes_afectadas' => [], 'mensaje' => 'Sin órdenes asignadas'];
+        }
+
+        $ordenes = OrdenPlanilla::whereIn('id', $ordenIds)->with(['planilla.obra', 'maquina'])->get();
+
+        $ordenesAfectadas = [];
+        foreach ($ordenes as $orden) {
+            $totalOrdenes = OrdenPlanilla::where('maquina_id', $orden->maquina_id)->count();
+
+            if ($orden->posicion < $totalOrdenes) {
+                $elementosEnOrden = $elementos->where('orden_planilla_id', $orden->id);
+                $ordenesAfectadas[] = [
+                    'orden_planilla_id' => $orden->id,
+                    'planilla_id' => $orden->planilla_id,
+                    'planilla_codigo' => $orden->planilla->codigo ?? 'N/A',
+                    'obra' => $orden->planilla->obra->obra ?? 'Sin obra',
+                    'maquina_id' => $orden->maquina_id,
+                    'maquina_nombre' => $orden->maquina->nombre ?? 'Máquina ' . $orden->maquina_id,
+                    'posicion_actual' => $orden->posicion,
+                    'total_posiciones' => $totalOrdenes,
+                    'elementos_count' => $elementosEnOrden->count(),
+                    'elementos_ids' => $elementosEnOrden->pluck('id')->toArray(),
+                ];
+            }
+        }
+
+        return [
+            'puede_retrasar' => !empty($ordenesAfectadas),
+            'ordenes_afectadas' => $ordenesAfectadas,
+            'mensaje' => empty($ordenesAfectadas) ? 'Ya están al final' : count($ordenesAfectadas) . ' orden(es) pueden retrasarse',
+        ];
+    }
+
+    public function simularRetrasoElementos(array $elementosIds): array
+    {
+        $verificacion = $this->verificarPosibilidadRetrasoElementos($elementosIds);
+
+        if (!$verificacion['puede_retrasar']) {
+            return ['puede_retrasar' => false, 'ordenes_a_retrasar' => [], 'beneficiados' => [], 'mensaje' => $verificacion['mensaje']];
+        }
+
+        $ordenesARetrasar = [];
+        $beneficiados = [];
+
+        foreach ($verificacion['ordenes_afectadas'] as $info) {
+            $ordenesARetrasar[] = [
+                'orden_planilla_id' => $info['orden_planilla_id'],
+                'planilla_id' => $info['planilla_id'],
+                'planilla_codigo' => $info['planilla_codigo'],
+                'obra' => $info['obra'],
+                'maquina_id' => $info['maquina_id'],
+                'maquina_nombre' => $info['maquina_nombre'],
+                'posicion_actual' => $info['posicion_actual'],
+                'posicion_nueva' => $info['total_posiciones'],
+                'elementos_count' => $info['elementos_count'],
+            ];
+
+            $ordenesBeneficiadas = OrdenPlanilla::where('maquina_id', $info['maquina_id'])
+                ->where('posicion', '>', $info['posicion_actual'])
+                ->with(['planilla.obra'])
+                ->get();
+
+            foreach ($ordenesBeneficiadas as $ob) {
+                $beneficiados[] = [
+                    'planilla_id' => $ob->planilla_id,
+                    'planilla_codigo' => $ob->planilla->codigo ?? 'N/A',
+                    'obra' => $ob->planilla->obra->obra ?? 'Sin obra',
+                    'maquina_nombre' => $info['maquina_nombre'],
+                    'posicion_actual' => $ob->posicion,
+                    'posicion_nueva' => $ob->posicion - 1,
+                ];
+            }
+        }
+
+        return [
+            'puede_retrasar' => true,
+            'ordenes_a_retrasar' => $ordenesARetrasar,
+            'beneficiados' => collect($beneficiados)->unique('planilla_id')->values()->toArray(),
+            'mensaje' => count($ordenesARetrasar) . ' orden(es) de elementos se moverán al final',
+            'es_elementos_con_fecha_propia' => true,
+        ];
+    }
+
+    public function ejecutarRetrasoElementos(array $elementosIds, Carbon $nuevaFechaEntrega): array
+    {
+        $separacion = $this->separarElementosEnNuevaPosicion($elementosIds, $nuevaFechaEntrega);
+
+        if (!$separacion['success']) {
+            return ['success' => false, 'resultados' => [], 'mensaje' => $separacion['mensaje']];
+        }
+
+        $simulacion = $this->simularRetrasoElementos($elementosIds);
+
+        if (!$simulacion['puede_retrasar']) {
+            return ['success' => true, 'resultados' => [], 'mensaje' => 'Elementos separados. ' . $simulacion['mensaje']];
+        }
+
+        $resultados = [];
+
+        DB::beginTransaction();
+        try {
+            foreach ($simulacion['ordenes_a_retrasar'] as $info) {
+                $ordenActual = OrdenPlanilla::find($info['orden_planilla_id']);
+                if (!$ordenActual) continue;
+
+                OrdenPlanilla::where('maquina_id', $info['maquina_id'])
+                    ->where('posicion', '>', $info['posicion_actual'])
+                    ->where('posicion', '<=', $info['posicion_nueva'])
+                    ->decrement('posicion');
+
+                $ordenActual->posicion = $info['posicion_nueva'];
+                $ordenActual->save();
+
+                $resultados[] = [
+                    'orden_planilla_id' => $info['orden_planilla_id'],
+                    'success' => true,
+                    'posicion_anterior' => $info['posicion_actual'],
+                    'posicion_nueva' => $info['posicion_nueva'],
+                ];
+            }
+
+            DB::commit();
+            return ['success' => true, 'resultados' => $resultados, 'mensaje' => count($resultados) . ' orden(es) retrasadas'];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return ['success' => false, 'resultados' => [], 'mensaje' => 'Error: ' . $e->getMessage()];
+        }
+    }
+
+    public function ejecutarAdelantoElementos(array $elementosIds, Carbon $nuevaFechaEntrega): array
+    {
+        $separacion = $this->separarElementosEnNuevaPosicion($elementosIds, $nuevaFechaEntrega);
+
+        if (!$separacion['success']) {
+            return ['success' => false, 'resultados' => [], 'mensaje' => $separacion['mensaje']];
+        }
+
+        $resultados = [];
+        $maquinasAfectadas = [];
+
+        DB::beginTransaction();
+        try {
+            foreach ($separacion['ordenes_creadas'] as $info) {
+                $ordenActual = OrdenPlanilla::find($info['orden_planilla_id']);
+                if (!$ordenActual) continue;
+
+                $posicionActual = $ordenActual->posicion;
+                $nuevaPosicion = $this->calcularPosicionPorFechaElementos($info['maquina_id'], $nuevaFechaEntrega);
+
+                if ($nuevaPosicion >= $posicionActual) {
+                    $resultados[] = ['orden_planilla_id' => $info['orden_planilla_id'], 'success' => true, 'mensaje' => 'Ya está en posición correcta'];
+                    continue;
+                }
+
+                OrdenPlanilla::where('maquina_id', $info['maquina_id'])
+                    ->where('posicion', '>=', $nuevaPosicion)
+                    ->where('posicion', '<', $posicionActual)
+                    ->where('id', '!=', $info['orden_planilla_id'])
+                    ->increment('posicion');
+
+                $ordenActual->posicion = $nuevaPosicion;
+                $ordenActual->save();
+                $maquinasAfectadas[$info['maquina_id']] = true;
+
+                $resultados[] = [
+                    'orden_planilla_id' => $info['orden_planilla_id'],
+                    'success' => true,
+                    'posicion_anterior' => $posicionActual,
+                    'posicion_nueva' => $nuevaPosicion,
+                ];
+            }
+
+            foreach (array_keys($maquinasAfectadas) as $maquinaId) {
+                $this->recompactarPosicionesMaquinaElementos($maquinaId);
+            }
+
+            DB::commit();
+            return ['success' => true, 'resultados' => $resultados, 'mensaje' => count($resultados) . ' orden(es) adelantadas'];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return ['success' => false, 'resultados' => [], 'mensaje' => 'Error: ' . $e->getMessage()];
+        }
+    }
+
+    private function recompactarPosicionesMaquinaElementos(int $maquinaId): void
+    {
+        $ordenes = OrdenPlanilla::where('maquina_id', $maquinaId)->orderBy('posicion')->get();
+        $posicion = 1;
+        foreach ($ordenes as $orden) {
+            if ($orden->posicion !== $posicion) {
+                $orden->update(['posicion' => $posicion]);
+            }
+            $posicion++;
         }
     }
 }

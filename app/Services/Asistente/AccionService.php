@@ -793,11 +793,6 @@ class AccionService
 
         $planilla->estado = $nuevoEstado;
 
-        // Si se completa, registrar fecha
-        if ($nuevoEstado === 'completada') {
-            $planilla->fecha_finalizacion = now();
-        }
-
         $planilla->save();
 
         return [

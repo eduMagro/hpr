@@ -1798,11 +1798,8 @@ class EtiquetaController extends Controller
                     );
 
                     if ($etiqueta->planilla) {
-                        if (is_null($etiqueta->planilla->fecha_inicio)) {
-                            $etiqueta->planilla->fecha_inicio = now();
-                            $etiqueta->planilla->estado       = "fabricando";
-                            $etiqueta->planilla->save();
-                        }
+                        $etiqueta->planilla->estado = "fabricando";
+                        $etiqueta->planilla->save();
                     } else {
                         // Caso raro: etiqueta sin planilla asociada → no podemos continuar
                         return response()->json([
@@ -2466,7 +2463,6 @@ class EtiquetaController extends Controller
                 $planilla->save();
             } else {
                 // Si NO tiene ensamblaje en taller → estado 'completada'
-                $planilla->fecha_finalizacion = now();
                 $planilla->estado = 'completada';
                 $planilla->save();
 

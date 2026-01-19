@@ -109,9 +109,27 @@ class AsignarMaquinaService
         return $grupos;
     }
 
+    /**
+     * Máquinas a excluir de la asignación (ej: la máquina origen en redistribución)
+     */
+    protected array $maquinasExcluidas = [];
+
+    /**
+     * Establecer máquinas a excluir de la asignación
+     */
+    public function excluirMaquinas(array $maquinaIds): self
+    {
+        $this->maquinasExcluidas = $maquinaIds;
+        return $this;
+    }
+
     public function repartirPlanilla(int $planillaId): void
     {
         Log::channel('planilla_import')->info("🎯 [AsignarMaquina] Iniciando reparto de planilla {$planillaId}");
+
+        if (!empty($this->maquinasExcluidas)) {
+            Log::channel('planilla_import')->info("🚫 [AsignarMaquina] Máquinas excluidas: " . implode(', ', $this->maquinasExcluidas));
+        }
 
         $planilla = Planilla::findOrFail($planillaId);
 
@@ -153,15 +171,19 @@ class AsignarMaquinaService
 
         Log::channel('planilla_import')->info("📋 [AsignarMaquina] Planilla {$planillaId} - Clasificación: {$grupos['estribos']->count()} estribos, {$grupos['resto']->count()} resto");
 
-        // Obtener máquinas disponibles (solo activas)
-
-        $maquinas = Maquina::naveA()
+        // Obtener máquinas disponibles (solo activas, excluyendo las marcadas)
+        $queryMaquinas = Maquina::naveA()
             ->where(function ($query) {
                 $query->where('estado', 'activa')
                     ->orWhereNull('estado');
-            })
-            ->get()
-            ->keyBy('id');
+            });
+
+        // Excluir máquinas si están configuradas
+        if (!empty($this->maquinasExcluidas)) {
+            $queryMaquinas->whereNotIn('id', $this->maquinasExcluidas);
+        }
+
+        $maquinas = $queryMaquinas->get()->keyBy('id');
         Log::channel('planilla_import')->debug("🏭 [AsignarMaquina] Máquinas activas disponibles en Nave A: {$maquinas->count()}");
 
         // Calcular cargas actuales
@@ -814,14 +836,19 @@ class AsignarMaquinaService
         }
 
         // Obtener máquinas de Nave B tipo cortadora_dobladora (activas)
-        $maquinasNaveB = Maquina::naveB()
+        $queryNaveB = Maquina::naveB()
             ->where('tipo', 'cortadora_dobladora')
             ->where(function ($query) {
                 $query->where('estado', 'activa')
                     ->orWhereNull('estado');
-            })
-            ->get()
-            ->keyBy('id');
+            });
+
+        // Excluir máquinas si están configuradas
+        if (!empty($this->maquinasExcluidas)) {
+            $queryNaveB->whereNotIn('id', $this->maquinasExcluidas);
+        }
+
+        $maquinasNaveB = $queryNaveB->get()->keyBy('id');
 
         Log::channel('planilla_import')->info("🏭 [AsignarMaquina/NaveB] Máquinas disponibles en Nave B: {$maquinasNaveB->count()} - Códigos: " . json_encode($maquinasNaveB->pluck('codigo')->toArray()));
 
@@ -962,10 +989,16 @@ class AsignarMaquinaService
         $naveLabel = "Nave {$nave}";
         Log::channel('planilla_import')->info("🏗️ [AsignarMaquina/Grúa] Asignando {$elementos->count()} elementos sin elaborar a grúa de {$naveLabel}");
 
-        // Obtener la primera grúa de la nave correspondiente
-        $grua = $nave === 'A'
-            ? Maquina::naveA()->where('tipo', 'grua')->orderBy('id')->first()
-            : Maquina::naveB()->where('tipo', 'grua')->orderBy('id')->first();
+        // Obtener la primera grúa de la nave correspondiente (excluyendo las configuradas)
+        $queryGrua = $nave === 'A'
+            ? Maquina::naveA()->where('tipo', 'grua')
+            : Maquina::naveB()->where('tipo', 'grua');
+
+        if (!empty($this->maquinasExcluidas)) {
+            $queryGrua->whereNotIn('id', $this->maquinasExcluidas);
+        }
+
+        $grua = $queryGrua->orderBy('id')->first();
 
         if (!$grua) {
             Log::channel('planilla_import')->error("❌ [AsignarMaquina/Grúa] No hay grúa disponible en {$naveLabel} para planilla {$planilla->id}");

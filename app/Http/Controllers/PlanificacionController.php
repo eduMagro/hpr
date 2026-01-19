@@ -70,14 +70,45 @@ class PlanificacionController extends Controller
 
     public function index(Request $request)
     {
-        [$startDate, $endDate] = $this->getDateRange($request);
+        // Si es carga inicial de la vista (no AJAX), devolver vista rápida sin eventos
+        // Los eventos se cargarán via AJAX por el calendario
+        $tipo = $request->input('tipo');
+        if (!$tipo) {
+            // Vista inicial - NO cargar eventos, el calendario los pedirá via AJAX
+            $fechas = collect(range(0, 13))->map(fn($i) => [
+                'fecha' => now()->addDays($i)->format('Y-m-d'),
+                'dia' => now()->addDays($i)->locale('es')->translatedFormat('l'),
+            ]);
 
+            $camiones = Camion::with('empresaTransporte:id,nombre')
+                ->get(['id', 'modelo', 'empresa_id']);
+
+            $obras = Obra::where('estado', 'activa')
+                ->orderBy('obra')
+                ->get(['id', 'obra']);
+
+            $empresasTransporte = EmpresaTransporte::orderBy('nombre')->get(['id', 'nombre']);
+
+            return view('planificacion.index', [
+                'fechas' => $fechas,
+                'camiones' => $camiones,
+                'obras' => $obras,
+                'eventos' => collect(), // Vacío - se cargan via AJAX
+                'empresasTransporte' => $empresasTransporte,
+            ]);
+        }
+
+        // ========== PETICIONES AJAX ==========
+        [$startDate, $endDate] = $this->getDateRange($request);
         $viewType = $request->input('viewType', 'resourceTimeGridDay');
 
-        // Eventos
+        // Cache deshabilitado temporalmente para debugging
+        // $cacheKey = "planificacion_eventos_{$viewType}_{$startDate->format('Y-m-d')}_{$endDate->format('Y-m-d')}";
+        // $cacheTTL = 30;
+
+        // Eventos (solo para AJAX)
         $salidasEventos = $this->getEventosSalidas($startDate, $endDate, $viewType);
         $planillasEventos = $this->getEventosPlanillas($startDate, $endDate, $viewType);
-        // Pasar los eventos de planillas para calcular el resumen basado en las fechas reales de los eventos
         $resumenEventos = $this->getEventosResumen($planillasEventos['eventos'], $viewType);
         $eventos = collect()
             ->concat($planillasEventos['eventos'])
@@ -85,7 +116,6 @@ class PlanificacionController extends Controller
             ->concat($resumenEventos)
             ->concat(Festivo::eventosCalendario())
             ->sortBy([
-                // Orden por tipo: planilla (0), salida (1), resumen (2), festivo (3)
                 fn($e) => match ($e['tipo'] ?? $e['extendedProps']['tipo'] ?? '') {
                     'planilla' => 0,
                     'salida' => 1,
@@ -93,7 +123,6 @@ class PlanificacionController extends Controller
                     'festivo' => 3,
                     default => 99,
                 },
-                // Orden secundario: por cod_obra si existe
                 fn($e) => $e['extendedProps']['cod_obra'] ?? '',
             ])
             ->values();
@@ -102,69 +131,63 @@ class PlanificacionController extends Controller
         $resources = $this->getResources($eventos, $viewType);
 
         // AJAX: tipo=all devuelve todo en una sola petición (optimización de rendimiento)
-        if ($request->input('tipo') === 'all') {
+        if ($tipo === 'all') {
             $fechaReferencia = $this->parseFlexibleDate($request->input('start')) ?? now();
             $startOfWeek = $fechaReferencia->copy()->startOfWeek(Carbon::MONDAY);
             $endOfWeek = $fechaReferencia->copy()->endOfWeek(Carbon::SUNDAY);
 
-            // Eager load elementos para evitar N+1 queries
-            $planillasSemana = Planilla::with('elementos:id,planilla_id,longitud,barras,diametro')
-                ->whereBetween('fecha_estimada_entrega', [$startOfWeek, $endOfWeek])
-                ->get(['id', 'peso_total', 'fecha_estimada_entrega']);
+            // Calcular totales con consultas optimizadas (sin cargar todos los elementos)
+            $totalesSemana = Planilla::whereBetween('fecha_estimada_entrega', [$startOfWeek, $endOfWeek])
+                ->selectRaw('SUM(peso_total) as peso')
+                ->first();
 
-            $planillasMes = Planilla::with('elementos:id,planilla_id,longitud,barras,diametro')
-                ->whereMonth('fecha_estimada_entrega', $fechaReferencia->month)
+            $totalesMes = Planilla::whereMonth('fecha_estimada_entrega', $fechaReferencia->month)
                 ->whereYear('fecha_estimada_entrega', $fechaReferencia->year)
-                ->get(['id', 'peso_total', 'fecha_estimada_entrega']);
+                ->selectRaw('SUM(peso_total) as peso')
+                ->first();
 
-            return response()->json([
+            // Para longitud y diámetro, usar consultas directas a elementos
+            $elementosSemana = Elemento::whereHas('planilla', fn($q) => $q->whereBetween('fecha_estimada_entrega', [$startOfWeek, $endOfWeek]))
+                ->selectRaw('SUM(longitud * barras) as longitud_total, AVG(diametro) as diametro_avg')
+                ->first();
+
+            $elementosMes = Elemento::whereHas('planilla', fn($q) => $q->whereMonth('fecha_estimada_entrega', $fechaReferencia->month)
+                ->whereYear('fecha_estimada_entrega', $fechaReferencia->year))
+                ->selectRaw('SUM(longitud * barras) as longitud_total, AVG(diametro) as diametro_avg')
+                ->first();
+
+            $responseData = [
                 'events' => $eventos->values(),
                 'resources' => $resources,
                 'totales' => [
                     'semana' => [
-                        'peso' => $planillasSemana->sum('peso_total'),
-                        'longitud' => $planillasSemana->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
-                        'diametro' => $planillasSemana->flatMap->elementos->pluck('diametro')->filter()->avg(),
+                        'peso' => $totalesSemana->peso ?? 0,
+                        'longitud' => $elementosSemana->longitud_total ?? 0,
+                        'diametro' => $elementosSemana->diametro_avg,
                     ],
                     'mes' => [
-                        'peso' => $planillasMes->sum('peso_total'),
-                        'longitud' => $planillasMes->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
-                        'diametro' => $planillasMes->flatMap->elementos->pluck('diametro')->filter()->avg(),
+                        'peso' => $totalesMes->peso ?? 0,
+                        'longitud' => $elementosMes->longitud_total ?? 0,
+                        'diametro' => $elementosMes->diametro_avg,
                     ],
                 ],
-            ]);
+            ];
+
+            // Cache deshabilitado temporalmente para debugging
+            // cache()->put($cacheKey, $responseData, $cacheTTL);
+
+            return response()->json($responseData);
         }
 
-        if ($request->input('tipo') === 'resources') {
+        if ($tipo === 'resources') {
             return response()->json($resources);
         }
-        if ($request->input('tipo') === 'events') {
+        if ($tipo === 'events') {
             return response()->json($eventos->values());
         }
 
-        // Vista normal (no AJAX)
-        $fechas = collect(range(0, 13))->map(fn($i) => [
-            'fecha' => now()->addDays($i)->format('Y-m-d'),
-            'dia' => now()->addDays($i)->locale('es')->translatedFormat('l'),
-        ]);
-
-        // 👉 Obtenemos camiones con su empresa
-        $camiones = Camion::with('empresaTransporte:id,nombre')
-            ->get(['id', 'modelo', 'empresa_id']);
-
-        $obras = Obra::where('estado', 'activa')
-            ->orderBy('obra')
-            ->get(['id', 'obra']);
-
-        $empresasTransporte = EmpresaTransporte::orderBy('nombre')->get(['id', 'nombre']);
-
-        return view('planificacion.index', [
-            'fechas' => $fechas,
-            'camiones' => $camiones,
-            'obras' => $obras,
-            'eventos' => $eventos,
-            'empresasTransporte' => $empresasTransporte,
-        ]);
+        // Tipo no reconocido
+        return response()->json(['error' => 'Tipo no válido'], 400);
     }
     /**
      * Obtiene el rango de fechas según la vista y los parámetros de la solicitud.
@@ -306,15 +329,12 @@ class PlanificacionController extends Controller
     private function getEventosSalidas(Carbon $startDate, Carbon $endDate, string $viewType = '')
     {
         $salidas = Salida::with([
-            'salidaClientes.obra:id,obra,cod_obra,cliente_id',
-            'salidaClientes.obra.cliente:id,empresa',
-            'salidaClientes.cliente:id,empresa',
-            'paquetes.planilla.obra:id,obra,cod_obra,cliente_id',
-            'paquetes.planilla.obra.cliente:id,empresa',
-            'paquetes.planilla.user',
-            'paquetes.etiquetas', // Para calcular peso desde etiquetas
-            'empresaTransporte:id,nombre',
-            'camion:id,modelo',
+            'salidaClientes.obra.cliente',
+            'salidaClientes.cliente',
+            'paquetes.planilla.obra.cliente',
+            'paquetes.etiquetas',
+            'empresaTransporte',
+            'camion',
         ])
             ->whereBetween('fecha_salida', [$startDate, $endDate])
             ->get();
@@ -350,6 +370,9 @@ class PlanificacionController extends Controller
                         ?? 'Cliente desconocido';
                     $clienteId = $relacion->cliente_id
                         ?? $relacion->obra?->cliente_id;
+                    $codCliente = $relacion->cliente?->codigo
+                        ?? $relacion->obra?->cliente?->codigo
+                        ?? '';
 
                     $obrasClientes->push([
                         'obra_id' => $relacion->obra_id,
@@ -357,6 +380,7 @@ class PlanificacionController extends Controller
                         'cod_obra' => $relacion->obra?->cod_obra ?? '',
                         'cliente' => $clienteNombre,
                         'cliente_id' => $clienteId,
+                        'cod_cliente' => $codCliente,
                     ]);
                 }
             }
@@ -374,6 +398,7 @@ class PlanificacionController extends Controller
                                 'cod_obra' => $obra->cod_obra ?? '',
                                 'cliente' => $obra->cliente?->empresa ?? 'Cliente desconocido',
                                 'cliente_id' => $obra->cliente?->id,
+                                'cod_cliente' => $obra->cliente?->codigo ?? '',
                             ]);
                         }
                     }
@@ -432,10 +457,13 @@ class PlanificacionController extends Controller
                         'id' => $oc['obra_id'],
                         'nombre' => $oc['obra'],
                         'codigo' => $oc['cod_obra'],
+                        'cliente' => $oc['cliente'] ?? '',
+                        'cod_cliente' => $oc['cod_cliente'] ?? '',
                     ])->toArray(),
                     'clientes' => $obrasClientes->map(fn($oc) => [
                         'id' => $oc['cliente_id'],
                         'nombre' => $oc['cliente'],
+                        'codigo' => $oc['cod_cliente'] ?? '',
                     ])->unique('id')->filter(fn($c) => $c['nombre'])->values()->toArray(),
                     'empresa' => $empresa,
                     'empresa_id' => $salida->empresa_id,
@@ -474,13 +502,20 @@ class PlanificacionController extends Controller
      */
     private function getEventosPlanillas(Carbon $startDate, Carbon $endDate, string $viewType = ''): array
     {
-        // 🔹 Traer planillas en el rango con relaciones necesarias
-        $planillas = Planilla::with(['obra.cliente', 'elementos', 'paquetes.salidas', 'paquetes.etiquetas'])
+        // 🔹 Traer planillas en el rango con relaciones
+        $planillas = Planilla::with([
+                'obra.cliente',
+                'elementos',
+                'paquetes.salidas',
+                'paquetes.etiquetas'
+            ])
             ->whereBetween('fecha_estimada_entrega', [$startDate, $endDate])
             ->get();
 
         // 🔹 También buscar elementos con fecha_entrega propia en el rango (cuya planilla puede estar fuera)
-        $elementosConFechaPropia = Elemento::with(['planilla.obra.cliente'])
+        $elementosConFechaPropia = Elemento::with([
+                'planilla.obra.cliente'
+            ])
             ->whereBetween('fecha_entrega', [$startDate, $endDate])
             ->whereHas('planilla', function ($q) use ($startDate, $endDate) {
                 // Excluir los que ya están en planillas del rango principal
@@ -507,9 +542,11 @@ class PlanificacionController extends Controller
             $nombreObra = $obra?->obra ?? 'Obra desconocida';
             $codObra = $obra?->cod_obra ?? 'Código desconocido';
             $clienteNombre = $obra?->cliente?->empresa ?? 'Sin cliente';
+            $codCliente = $obra?->cliente?->codigo ?? '';
             $fechaBase = Carbon::parse($grupo->first()->getRawOriginal('fecha_estimada_entrega'));
 
             $planillasIds = $grupo->pluck('id')->toArray();
+            $planillasCodigos = $grupo->pluck('codigo')->filter()->toArray();
 
             // Calcular peso de elementos SIN fecha_entrega propia (usan fecha de planilla)
             $pesoElementosSinFecha = $grupo->sum(function ($p) {
@@ -566,6 +603,7 @@ class PlanificacionController extends Controller
                         $codObra,
                         $nombreObra,
                         $clienteNombre,
+                        $codCliente,
                         $fechaSalida,
                         $isDayView,
                         $salida,
@@ -584,6 +622,7 @@ class PlanificacionController extends Controller
                         $codObra,
                         $nombreObra,
                         $clienteNombre,
+                        $codCliente,
                         $fechaBase,
                         $isDayView,
                         null,
@@ -618,6 +657,7 @@ class PlanificacionController extends Controller
                     $codObra,
                     $nombreObra,
                     $clienteNombre,
+                    $codCliente,
                     Carbon::parse($fecha),
                     $isDayView,
                     null,
@@ -645,6 +685,7 @@ class PlanificacionController extends Controller
                 $obra?->cod_obra ?? 'Código desconocido',
                 $obra?->obra ?? 'Obra desconocida',
                 $obra?->cliente?->empresa ?? 'Sin cliente',
+                $obra?->cliente?->codigo ?? '',
                 $primerElemento->fecha_entrega,
                 $isDayView,
                 null,
@@ -675,6 +716,7 @@ class PlanificacionController extends Controller
      * @param string $codObra
      * @param string $nombreObra
      * @param string $clienteNombre
+     * @param string $codCliente
      * @param Carbon $fechaBase
      * @param bool $isDayView
      * @param Salida|null $salida
@@ -688,6 +730,7 @@ class PlanificacionController extends Controller
         $codObra,
         $nombreObra,
         $clienteNombre,
+        $codCliente,
         Carbon $fechaBase,
         bool $isDayView,
         ?Salida $salida = null,
@@ -705,6 +748,7 @@ class PlanificacionController extends Controller
         [$hora, $minuto] = explode(':', $horaMinima);
         $fechaInicio = $fechaBase->copy()->setTime((int)$hora, (int)$minuto, 0);
         $planillasIds = $planillas->pluck('id')->toArray();
+        $planillasCodigos = $planillas->pluck('codigo')->filter()->toArray();
 
         // 👉 Diámetro medio
         $diametros = $planillas->flatMap->elementos->pluck('diametro')->filter();
@@ -757,10 +801,12 @@ class PlanificacionController extends Controller
                 'cod_obra' => $codObra,
                 'nombre_obra' => $nombreObra,
                 'cliente' => $clienteNombre,
+                'cod_cliente' => $codCliente,
                 'pesoTotal' => $pesoPlanillas,
                 'pesoPaquetesSalida' => $pesoPaquetesSalida,
                 'longitudTotal' => $planillas->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
                 'planillas_ids' => $planillasIds,
+                'planillas_codigos' => $planillasCodigos,
                 'elementos_ids' => $elementosIds,
                 'diametroMedio' => $diametroMedio,
                 'todasCompletadas' => $todasCompletadas,
@@ -918,32 +964,114 @@ class PlanificacionController extends Controller
             ]);
 
             $alertaRetraso = null;
+            $opcionPosponer = null;
             $elementosIds = $request->elementos_ids ?? [];
+            $planillasIds = $request->planillas_ids ?? [];
+
+            // Verificar si son elementos con fecha_entrega propia
+            $elementosConFechaPropia = false;
+            $fechaAnteriorMax = null;
+
+            if (!empty($elementosIds)) {
+                // Comprobar si alguno de estos elementos tiene fecha_entrega propia
+                $elementosConFechaPropiaQuery = Elemento::whereIn('id', $elementosIds)
+                    ->whereNotNull('fecha_entrega')
+                    ->get();
+
+                $elementosConFechaPropia = $elementosConFechaPropiaQuery->isNotEmpty();
+
+                if ($elementosConFechaPropia) {
+                    // Obtener fecha anterior desde los elementos
+                    foreach ($elementosConFechaPropiaQuery as $elemento) {
+                        $fechaElemento = Carbon::parse($elemento->fecha_entrega);
+                        if (!$fechaAnteriorMax || $fechaElemento->gt($fechaAnteriorMax)) {
+                            $fechaAnteriorMax = $fechaElemento;
+                        }
+                    }
+                }
+            }
+
+            // Si no hay elementos con fecha propia, obtener fecha desde las planillas
+            if (!$elementosConFechaPropia && is_array($planillasIds) && count($planillasIds) > 0) {
+                $planillas = Planilla::whereIn('id', $planillasIds)->get();
+                foreach ($planillas as $p) {
+                    $fechaRaw = $p->getRawOriginal('fecha_estimada_entrega');
+                    if ($fechaRaw) {
+                        $fechaPlanilla = Carbon::parse($fechaRaw);
+                        if (!$fechaAnteriorMax || $fechaPlanilla->gt($fechaAnteriorMax)) {
+                            $fechaAnteriorMax = $fechaPlanilla;
+                        }
+                    }
+                }
+            }
+
+            $esPostpone = $fechaAnteriorMax && $fecha->gt($fechaAnteriorMax);
 
             // Si tenemos IDs de elementos, verificar fin programado
             if (!empty($elementosIds)) {
                 $finProgramadoService = app(\App\Services\FinProgramadoService::class);
-                $verificacion = $finProgramadoService->verificarFechaEntrega($elementosIds, $fecha);
 
-                if (!$verificacion['es_alcanzable']) {
-                    $alertaRetraso = [
-                        'mensaje' => $verificacion['mensaje'],
-                        'fin_programado' => $verificacion['fin_programado'],
-                        'fecha_entrega' => $verificacion['fecha_entrega'],
-                    ];
+                if ($esPostpone) {
+                    // Es un postpone: ofrecer retrasar fabricación
+                    // Usar método específico para elementos con fecha propia
+                    if ($elementosConFechaPropia) {
+                        $verificacionRetraso = $finProgramadoService->verificarPosibilidadRetrasoElementos($elementosIds);
+                        $puedeRetrasar = $verificacionRetraso['puede_retrasar'];
+                        $ordenesAfectadas = $verificacionRetraso['ordenes_afectadas'] ?? [];
+                    } else {
+                        $verificacionRetraso = $finProgramadoService->verificarPosibilidadRetraso($elementosIds);
+                        $puedeRetrasar = $verificacionRetraso['puede_retrasar'];
+                        $ordenesAfectadas = $verificacionRetraso['planillas_afectadas'] ?? [];
+                    }
+
+                    if ($puedeRetrasar) {
+                        $tipoEntrega = $elementosConFechaPropia ? 'de estos elementos' : 'de la planilla';
+                        $opcionPosponer = [
+                            'mensaje' => "La fecha de entrega {$tipoEntrega} se ha pospuesto. ¿Deseas retrasar también la fabricación para dar prioridad a otros pedidos?",
+                            'fecha_anterior' => $fechaAnteriorMax->format('d/m/Y'),
+                            'fecha_nueva' => $fecha->format('d/m/Y'),
+                            'ordenes_afectadas' => $ordenesAfectadas,
+                            'elementos_ids' => $elementosIds,
+                            'es_elementos_con_fecha_propia' => $elementosConFechaPropia,
+                        ];
+                    }
+                } else {
+                    // Es un adelanto: verificar si llega a tiempo
+                    $verificacion = $finProgramadoService->verificarFechaEntrega($elementosIds, $fecha);
+
+                    if (!$verificacion['es_alcanzable']) {
+                        $tipoEntrega = $elementosConFechaPropia ? 'de estos elementos' : 'de la planilla';
+                        $alertaRetraso = [
+                            'mensaje' => $verificacion['mensaje'],
+                            'fin_programado' => $verificacion['fin_programado'],
+                            'fecha_entrega' => $verificacion['fecha_entrega'],
+                            'es_elementos_con_fecha_propia' => $elementosConFechaPropia,
+                            'elementos_ids' => $elementosIds,
+                        ];
+                    }
                 }
             }
 
-            if (is_array($request->planillas_ids) && count($request->planillas_ids) > 0) {
+            if ($elementosConFechaPropia) {
+                // 🔹 Actualizar fecha_entrega de los elementos específicos
+                Elemento::whereIn('id', $elementosIds)
+                    ->update(['fecha_entrega' => $fecha]);
+
+                $logger->logPlanificacion('fecha_elementos_actualizada', [
+                    'cantidad_elementos' => count($elementosIds),
+                    'elementos_ids' => $elementosIds,
+                    'fecha_nueva' => $fecha->format('Y-m-d H:i'),
+                ]);
+            } elseif (is_array($planillasIds) && count($planillasIds) > 0) {
                 // 🔥 Actualizar varias planillas
-                $planillas = Planilla::whereIn('id', $request->planillas_ids)->get();
+                $planillas = Planilla::whereIn('id', $planillasIds)->get();
                 $codigos = $planillas->pluck('codigo')->implode(', ');
 
-                Planilla::whereIn('id', $request->planillas_ids)
+                Planilla::whereIn('id', $planillasIds)
                     ->update(['fecha_estimada_entrega' => $fecha]);
 
                 $logger->logPlanificacion('fecha_planillas_actualizada', [
-                    'cantidad_planillas' => count($request->planillas_ids),
+                    'cantidad_planillas' => count($planillasIds),
                     'codigos_planillas' => $codigos,
                     'fecha_nueva' => $fecha->format('Y-m-d H:i'),
                 ]);
@@ -967,6 +1095,7 @@ class PlanificacionController extends Controller
                 'success' => true,
                 'modelo' => 'planilla',
                 'alerta_retraso' => $alertaRetraso,
+                'opcion_posponer' => $opcionPosponer,
             ]);
         }
 
@@ -1062,6 +1191,114 @@ class PlanificacionController extends Controller
             // Registrar en el log
             $logger->logPlanificacion('adelanto_fabricacion_ejecutado', [
                 'ordenes_adelantadas' => count($request->ordenes),
+                'detalles' => $resultado['resultados'],
+            ]);
+        }
+
+        return response()->json($resultado);
+    }
+
+    /**
+     * Simula el retraso de fabricación para un conjunto de elementos
+     */
+    public function simularRetraso(Request $request, FinProgramadoService $finProgramadoService)
+    {
+        try {
+            $request->validate([
+                'elementos_ids' => 'required|array',
+                'elementos_ids.*' => 'integer',
+            ]);
+
+            $elementosIds = $request->elementos_ids;
+            $esElementosConFechaPropia = $request->boolean('es_elementos_con_fecha_propia', false);
+
+            // Detectar automáticamente si son elementos con fecha_entrega propia
+            if (!$esElementosConFechaPropia) {
+                $esElementosConFechaPropia = Elemento::whereIn('id', $elementosIds)
+                    ->whereNotNull('fecha_entrega')
+                    ->exists();
+            }
+
+            if ($esElementosConFechaPropia) {
+                $resultado = $finProgramadoService->simularRetrasoElementos($elementosIds);
+            } else {
+                $resultado = $finProgramadoService->simularRetraso($elementosIds);
+            }
+
+            return response()->json($resultado);
+        } catch (\Throwable $e) {
+            \Log::error('[simularRetraso] Error: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'puede_retrasar' => false,
+                'mensaje' => 'Error al simular: ' . $e->getMessage(),
+                'error' => true,
+            ], 500);
+        }
+    }
+
+    /**
+     * Ejecuta el retraso de fabricación
+     */
+    public function ejecutarRetraso(Request $request, FinProgramadoService $finProgramadoService, ActionLoggerService $logger)
+    {
+        $request->validate([
+            'elementos_ids' => 'required|array',
+            'elementos_ids.*' => 'integer',
+        ]);
+
+        $elementosIds = $request->elementos_ids;
+        $esElementosConFechaPropia = $request->boolean('es_elementos_con_fecha_propia', false);
+        $nuevaFechaEntrega = $request->input('nueva_fecha_entrega');
+
+        // Detectar automáticamente si son elementos con fecha_entrega propia
+        if (!$esElementosConFechaPropia) {
+            $esElementosConFechaPropia = Elemento::whereIn('id', $elementosIds)
+                ->whereNotNull('fecha_entrega')
+                ->exists();
+        }
+
+        if ($esElementosConFechaPropia && $nuevaFechaEntrega) {
+            $fecha = $this->parseFlexibleDate($nuevaFechaEntrega) ?? now();
+            $resultado = $finProgramadoService->ejecutarRetrasoElementos($elementosIds, $fecha);
+        } else {
+            $resultado = $finProgramadoService->ejecutarRetraso($elementosIds);
+        }
+
+        if ($resultado['success']) {
+            $logger->logPlanificacion('retraso_fabricacion_ejecutado', [
+                'elementos_afectados' => count($elementosIds),
+                'es_elementos_con_fecha_propia' => $esElementosConFechaPropia,
+                'detalles' => $resultado['resultados'],
+            ]);
+        }
+
+        return response()->json($resultado);
+    }
+
+    /**
+     * Ejecuta el adelanto de fabricación para elementos con fecha_entrega propia
+     */
+    public function ejecutarAdelantoElementos(Request $request, FinProgramadoService $finProgramadoService, ActionLoggerService $logger)
+    {
+        $request->validate([
+            'elementos_ids' => 'required|array',
+            'elementos_ids.*' => 'integer',
+            'nueva_fecha_entrega' => 'required|date',
+        ]);
+
+        $elementosIds = $request->elementos_ids;
+        $fecha = $this->parseFlexibleDate($request->nueva_fecha_entrega) ?? now();
+
+        $resultado = $finProgramadoService->ejecutarAdelantoElementos($elementosIds, $fecha);
+
+        if ($resultado['success']) {
+            $logger->logPlanificacion('adelanto_elementos_ejecutado', [
+                'elementos_afectados' => count($elementosIds),
+                'fecha_nueva' => $fecha->format('Y-m-d H:i'),
                 'detalles' => $resultado['resultados'],
             ]);
         }

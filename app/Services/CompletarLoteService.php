@@ -329,7 +329,6 @@ class CompletarLoteService
         // ✅ Si todos los elementos de la planilla están completados, actualizar la planilla
         $todosElementosPlanillaCompletos = $planilla->elementos()->where('estado', '!=', 'fabricado')->doesntExist();
         if ($todosElementosPlanillaCompletos) {
-            $planilla->fecha_finalizacion = now();
             $planilla->estado = 'completada';
             $planilla->save();
 
@@ -463,6 +462,7 @@ class CompletarLoteService
             'codigo'      => $codigoPaquete,
             'planilla_id' => $etiqueta->planilla_id,
             'peso'        => $etiqueta->peso ?? 0,
+            'estado'      => 'pendiente',
         ]);
 
         if (!$paquete || !$paquete->exists) {

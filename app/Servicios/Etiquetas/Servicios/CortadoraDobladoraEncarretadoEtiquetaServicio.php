@@ -256,11 +256,8 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                     //    - Ponemos la etiqueta en "fabricando".
                     // ─────────────────────────────────────────────────────────────────────
                     if ($etiqueta->planilla) {
-                        if (is_null($etiqueta->planilla->fecha_inicio)) {
-                            $etiqueta->planilla->fecha_inicio = now();
-                            $etiqueta->planilla->estado       = "fabricando";
-                            $etiqueta->planilla->save();
-                        }
+                        $etiqueta->planilla->estado = "fabricando";
+                        $etiqueta->planilla->save();
                     } else {
                         // Caso raro: etiqueta sin planilla asociada → no podemos continuar
                         return response()->json([

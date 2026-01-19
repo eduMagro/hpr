@@ -237,7 +237,7 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
                     'planilla_id' => $etiqueta->planilla_id,
                     'ubicacion_id' => null, // Se asignará en el mapa
                     'peso' => $pesoEtiqueta,
-                    'estado' => 'disponible',
+                    'estado' => 'pendiente',
                 ]);
 
                 // Asignar paquete a la etiqueta
@@ -255,7 +255,6 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
                     ->doesntExist();
 
                 if ($todosElementosPlanillaCompletos) {
-                    $planilla->fecha_finalizacion = now();
                     $planilla->estado = 'completada';
                     $planilla->save();
                 }

@@ -609,7 +609,8 @@ class PaqueteController extends Controller
                 'user_id'       => auth()->id(),
                 'peso'          => $pesoTotal ?? 0,
                 'codigo'        => $codigo,
-                'nave_id'     => $obraId,
+                'nave_id'       => $obraId,
+                'estado'        => 'pendiente',
             ]);
         } catch (Exception $e) {
             Log::error('Error al crear paquete: ' . $e->getMessage());

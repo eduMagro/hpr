@@ -1,3 +1,30 @@
+/* === SPINNER DE CARGA === */
+#calendario-loading {
+    transition: opacity 0.3s ease-in-out;
+}
+
+#calendario-loading.opacity-0 {
+    opacity: 0;
+}
+
+#calendario-loading.opacity-100 {
+    opacity: 1;
+}
+
+#calendario-loading.pointer-events-none {
+    pointer-events: none;
+}
+
+/* Animación de pulso para el texto de carga */
+@keyframes pulse-text {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+#loading-text {
+    animation: pulse-text 1.5s ease-in-out infinite;
+}
+
 .fc-contextmenu button:hover {
     background: #f3f4f6;
 }

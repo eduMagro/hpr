@@ -230,6 +230,18 @@
                         <span class="text-sm font-medium hidden md:inline">Resumen</span>
                     </button>
 
+                    <!-- Botón de planillas con retraso -->
+                    <button onclick="abrirModalRetrasos()" id="retrasos-btn" title="Ver planillas con retraso"
+                        class="px-3 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
+                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z">
+                            </path>
+                        </svg>
+                        <span class="text-sm font-medium hidden md:inline">Retrasos</span>
+                    </button>
+
                     <!-- Botón de deshacer última operación -->
                     <button onclick="deshacerUltimaOperacion()" id="deshacer-btn" title="Deshacer última operación"
                         class="px-3 py-2 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
@@ -441,35 +453,39 @@
                     <div class="mb-4 bg-orange-50 border border-orange-200 rounded-lg p-4">
                         <p class="text-sm text-orange-800">
                             <strong>⚠️ Atención:</strong> Esta acción redistribuirá los elementos pendientes de
-                            esta
-                            máquina en las otras máquinas disponibles, siguiendo las reglas de asignación
+                            esta máquina en las otras máquinas disponibles, siguiendo las reglas de asignación
                             automática.
                         </p>
                     </div>
+
+                    <!-- Opciones de filtrado -->
+                    <div class="mb-4 space-y-3">
+                        <div class="flex items-center gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="chkSoloRevisadas" class="w-4 h-4 text-orange-600 rounded">
+                                <span class="text-sm text-gray-700">Solo planillas revisadas</span>
+                            </label>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label class="text-sm text-gray-700">Límite de elementos:</label>
+                            <input type="number" id="inputLimiteElementos" min="1" max="10000" placeholder="Sin límite"
+                                class="w-28 border border-gray-300 rounded px-2 py-1 text-sm focus:ring-orange-500 focus:border-orange-500">
+                            <span class="text-xs text-gray-500">(vacío = todos)</span>
+                        </div>
+                    </div>
+
                     <label class="block text-gray-700 font-medium mb-3">Selecciona qué redistribuir:</label>
                     <div class="space-y-2">
-                        <button onclick="redistribuir('primeros')"
-                            class="w-full bg-orange-400 hover:bg-orange-500 text-white px-4 py-3 rounded-lg flex items-center justify-start gap-3 transition-colors">
+                        <button onclick="redistribuir('limitado')"
+                            class="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-lg flex items-center justify-start gap-3 transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                                 viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 5l7 7-7 7" />
                             </svg>
                             <div class="text-left">
-                                <div class="font-medium">Los primeros elementos</div>
-                                <div class="text-xs opacity-90">Redistribuir solo los próximos en la cola</div>
-                            </div>
-                        </button>
-                        <button onclick="redistribuir('todos')"
-                            class="w-full bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-lg flex items-center justify-start gap-3 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                                viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                            </svg>
-                            <div class="text-left">
-                                <div class="font-medium">Todos los elementos pendientes</div>
-                                <div class="text-xs opacity-90">Redistribuir toda la cola de trabajo</div>
+                                <div class="font-medium">Redistribuir con filtros</div>
+                                <div class="text-xs opacity-90">Aplicar las opciones seleccionadas arriba</div>
                             </div>
                         </button>
                     </div>
@@ -918,6 +934,133 @@
                             Aplicar Balanceo
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Planillas con Retraso -->
+        <div id="modalRetrasos" onclick="if(event.target === this) cerrarModalRetrasos()"
+            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
+                <div class="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 rounded-t-xl flex justify-between items-center">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Planillas con Retraso</span>
+                        <span id="retrasos-contador" class="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-sm"></span>
+                    </h3>
+                    <button onclick="cerrarModalRetrasos()" class="text-white hover:text-gray-200 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-4 text-sm text-gray-600 bg-red-50 border-b border-red-100">
+                    Planillas aprobadas y revisadas cuyo fin de fabricación programado supera la fecha de entrega.
+                </div>
+                <div id="retrasos-contenido" class="flex-1 overflow-y-auto p-4">
+                    <div class="flex items-center justify-center py-12">
+                        <svg class="animate-spin h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="ml-3 text-gray-600">Calculando retrasos...</span>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+                    <button onclick="simularTurnoSabado()" id="btn-simular-sabado"
+                        class="px-5 py-2.5 rounded-lg bg-amber-500 text-white font-medium hover:bg-amber-600 transition-colors flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        Simular Turno Sábado
+                    </button>
+                    <button onclick="cerrarModalRetrasos()"
+                        class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition-colors">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Simulación Turno Sábado -->
+        <div id="modalSimularSabado" onclick="if(event.target === this) cerrarModalSimularSabado()"
+            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl mx-4 max-h-[90vh] flex flex-col">
+                <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-6 py-4 rounded-t-xl flex justify-between items-center">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <span>Simulación: Turno de Sábado</span>
+                        <span id="simulacion-turno" class="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-sm"></span>
+                    </h3>
+                    <button onclick="cerrarModalSimularSabado()" class="text-white hover:text-gray-200 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-4 bg-amber-50 border-b border-amber-100">
+                    <div class="space-y-3">
+                        <div class="flex flex-wrap items-center gap-4">
+                            <!-- Modo de simulación -->
+                            <div class="flex items-center gap-2">
+                                <label class="text-sm font-medium text-gray-700">Simular:</label>
+                                <select id="sabado-modo" onchange="toggleRangoFechas()" class="px-3 py-1.5 border rounded text-sm bg-white">
+                                    <option value="todos">Todos los sábados</option>
+                                    <option value="rango">Rango de fechas</option>
+                                </select>
+                            </div>
+
+                            <!-- Rango de fechas (oculto por defecto) -->
+                            <div id="sabado-rango-container" class="hidden flex items-center gap-2">
+                                <label class="text-sm text-gray-600">Desde:</label>
+                                <input type="date" id="sabado-fecha-desde" class="px-2 py-1 border rounded text-sm">
+                                <label class="text-sm text-gray-600">Hasta:</label>
+                                <input type="date" id="sabado-fecha-hasta" class="px-2 py-1 border rounded text-sm">
+                            </div>
+
+                            <!-- Horario del turno -->
+                            <div class="flex items-center gap-2">
+                                <label class="text-sm text-gray-600">Turno:</label>
+                                <input type="time" id="sabado-hora-inicio" value="08:00" class="px-2 py-1 border rounded text-sm">
+                                <span class="text-gray-400">a</span>
+                                <input type="time" id="sabado-hora-fin" value="14:00" class="px-2 py-1 border rounded text-sm">
+                            </div>
+
+                            <button onclick="ejecutarSimulacionSabado()"
+                                class="px-4 py-1.5 bg-amber-500 text-white rounded hover:bg-amber-600 text-sm font-medium flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Simular
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500">
+                            <strong>Todos los sábados:</strong> Simula trabajar cada sábado hasta completar las planillas.
+                            <strong>Rango de fechas:</strong> Solo simula los sábados dentro del rango especificado.
+                        </p>
+                    </div>
+                </div>
+                <div id="simulacion-contenido" class="flex-1 overflow-y-auto p-4">
+                    <div class="flex items-center justify-center py-12">
+                        <svg class="animate-spin h-8 w-8 text-amber-600" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="ml-3 text-gray-600">Simulando...</span>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                    <button onclick="cerrarModalSimularSabado()"
+                        class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition-colors">
+                        Cerrar
+                    </button>
                 </div>
             </div>
         </div>
@@ -2147,326 +2290,203 @@
                                 nuevaPosicion = i + 2;
                             }
 
-                            // Confirmar movimiento y tipo de posicionamiento
-                            const mensaje = dataMovimiento.cantidad > 1 ?
-                                `¿Mover ${dataMovimiento.cantidad} elementos a <strong>${maquinaDestinoNombre}</strong>?` :
-                                `¿Mover elemento a <strong>${maquinaDestinoNombre}</strong>?`;
-
-                            console.log('❓ Mostrando Swal de tipo de posicionamiento');
-                            const resultado = await Swal.fire({
-                                title: dataMovimiento.cantidad > 1 ? '¿Mover elementos?' :
-                                    '¿Mover elemento?',
-                                html: mensaje + '<br><br><strong>¿Cómo deseas posicionarlo?</strong>',
-                                icon: 'question',
-                                showCancelButton: true,
-                                showDenyButton: true,
-                                confirmButtonText: 'Posición elegida',
-                                denyButtonText: 'Según fecha de entrega',
-                                cancelButtonText: 'Cancelar',
-                                confirmButtonColor: '#3b82f6',
-                                denyButtonColor: '#10b981',
-                                cancelButtonColor: '#6b7280',
-                            });
-
-                            console.log('✅ Resultado Swal posicionamiento:', resultado);
-
-                            if (!resultado.isConfirmed && !resultado.isDenied) {
-                                console.log('❌ Usuario canceló');
-                                info.revert();
-                                return;
-                            }
-
-                            // Determinar tipo de posicionamiento
-                            const posicionarPorFecha = resultado.isDenied;
-
-                            console.log('✅ Usuario confirmó movimiento, iniciando try-catch');
+                            // Primero hacer una llamada check_only para obtener información
+                            console.log('🔍 Verificando información de movimiento...');
+                            mostrarSpinner('Verificando...');
 
                             try {
-                                console.log('🚀 Enviando petición a /planillas/reordenar', { posicionarPorFecha });
-                                const res = await fetch('/planillas/reordenar', {
+                                const checkRes = await fetch('/planillas/reordenar', {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json',
                                         'Accept': 'application/json',
-                                        'X-CSRF-TOKEN': document.querySelector(
-                                            'meta[name="csrf-token"]').content
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                                     },
                                     body: JSON.stringify({
                                         id: dataMovimiento.planillaId,
                                         maquina_id: maquinaDestinoId,
                                         maquina_origen_id: dataMovimiento.maquinaOriginal,
-                                        nueva_posicion: posicionarPorFecha ? null : nuevaPosicion,
+                                        nueva_posicion: nuevaPosicion,
                                         elementos_id: dataMovimiento.elementosIds,
-                                        posicionar_por_fecha: posicionarPorFecha
+                                        check_only: true
                                     })
                                 });
 
-                                // Parsear respuesta JSON independientemente del código HTTP
-                                let data;
-                                try {
-                                    data = await res.json();
-                                } catch (jsonError) {
-                                    console.error('❌ Error parseando JSON:', jsonError);
-                                    throw new Error('Error al procesar la respuesta del servidor');
+                                const checkData = await checkRes.json();
+                                cerrarSpinner();
+
+                                // Verificar si TODOS los elementos son incompatibles
+                                if (checkData.allIncompatible) {
+                                    // Ocultar tooltips antes de mostrar el error
+                                    ocultarTooltips();
+
+                                    await Swal.fire({
+                                        title: 'No se puede mover',
+                                        html: `<div class="text-left">
+                                            <p class="mb-3">${checkData.message}</p>
+                                            <p class="text-sm text-gray-600">Ninguno de los elementos seleccionados es compatible con esta máquina.</p>
+                                        </div>`,
+                                        icon: 'error',
+                                        confirmButtonText: 'Entendido',
+                                        confirmButtonColor: '#dc2626'
+                                    });
+                                    info.revert();
+                                    return;
                                 }
 
-                                // 🔍 Verificar si hay elementos existentes de esta planilla en la máquina destino
-                                if (data.requiresDecisionElementosExistentes) {
-                                    console.log('✅ Mostrando diálogo de decisión con 3 opciones');
-
-                                    const { value: decision } = await Swal.fire({
-                                        title: 'Elementos existentes detectados',
-                                        html: `${data.message}<br><br><strong>¿Qué deseas hacer?</strong>`,
+                                // Verificar si hay ALGUNOS elementos incompatibles (pero hay compatibles)
+                                if (checkData.requiresConfirmation) {
+                                    const confirmDiametro = await Swal.fire({
+                                        title: 'Diámetros incompatibles',
+                                        html: `<div class="text-left">
+                                            <p class="mb-3">${checkData.message}</p>
+                                            <p class="text-sm text-green-600">✓ ${checkData.compatibles_count || 0} elemento(s) compatible(s)</p>
+                                            <p class="text-sm text-red-600">✗ ${checkData.incompatibles_count || 0} elemento(s) incompatible(s)</p>
+                                        </div>`,
                                         icon: 'warning',
-                                        input: 'radio',
-                                        inputOptions: {
-                                            'juntar': `🔗 Juntar con existentes → Posición ${data.posicion_existente}`,
-                                            'nueva_posicion': `📍 Crear nueva posición → Posición ${nuevaPosicion}`,
-                                            'por_fecha': `📅 Según fecha de entrega → Posición ${data.posicion_por_fecha}`
-                                        },
-                                        inputValidator: (value) => {
-                                            if (!value) {
-                                                return 'Debes seleccionar una opción';
-                                            }
-                                        },
                                         showCancelButton: true,
-                                        confirmButtonText: 'Continuar',
-                                        cancelButtonText: 'Cancelar',
-                                        confirmButtonColor: '#3b82f6',
-                                        cancelButtonColor: '#6b7280',
+                                        confirmButtonText: `Mover ${checkData.compatibles_count || 0} compatible(s)`,
+                                        cancelButtonText: 'Cancelar'
                                     });
-
-                                    if (!decision) {
+                                    if (!confirmDiametro.isConfirmed) {
                                         info.revert();
                                         return;
                                     }
-
-                                    // Preparar parámetros según decisión
-                                    const params = {
-                                        id: dataMovimiento.planillaId,
-                                        maquina_id: maquinaDestinoId,
-                                        maquina_origen_id: dataMovimiento.maquinaOriginal,
-                                        elementos_id: dataMovimiento.elementosIds,
-                                    };
-
-                                    if (decision === 'juntar') {
-                                        params.usar_posicion_existente = true;
-                                        params.nueva_posicion = data.posicion_existente;
-                                    } else if (decision === 'nueva_posicion') {
-                                        params.crear_nueva_posicion = true;
-                                        params.nueva_posicion = nuevaPosicion;
-                                    } else if (decision === 'por_fecha') {
-                                        params.posicionar_por_fecha = true;
+                                    // Actualizar los elementos a mover con solo los compatibles
+                                    if (checkData.elementos && checkData.elementos.length > 0) {
+                                        dataMovimiento.elementosIds = checkData.elementos;
+                                        dataMovimiento.cantidad = checkData.elementos.length;
                                     }
-
-                                    const res2 = await fetch('/planillas/reordenar', {
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'Accept': 'application/json',
-                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                                        },
-                                        body: JSON.stringify(params)
-                                    });
-
-                                    const data2 = await res2.json();
-
-                                    if (!res2.ok || !data2.success) {
-                                        throw new Error(data2.message || 'Error al mover elementos');
-                                    }
-
-                                    // Remover elementos del panel
-                                    window.MultiSelectElementos.removerElementosDelPanel(dataMovimiento.elementosIds);
-                                    info.event.remove();
-                                    calendar.refetchResources();
-                                    calendar.refetchEvents();
-                                    refrescarPanelElementos();
-
-                                    const mensajeExito = decision === 'juntar' ? 'Elementos juntados' :
-                                        decision === 'nueva_posicion' ? 'Nueva posición creada' : 'Posicionado por fecha';
-
-                                    Swal.mixin({
-                                        toast: true,
-                                        position: 'top-end',
-                                        showConfirmButton: false,
-                                        timer: 1500,
-                                    }).fire({ icon: 'success', title: mensajeExito });
-
-                                    return;
                                 }
 
-                                // 🔍 IMPORTANTE: Verificar requiresNuevaPosicionConfirmation ANTES de verificar success
-                                // Esto es necesario porque el backend devuelve 422 con requiresNuevaPosicionConfirmation
-                                if (data.requiresNuevaPosicionConfirmation) {
-                                    console.log('✅ Mostrando diálogo de confirmación con 3 botones');
-                                    const resultadoConfirmacion = await Swal.fire({
-                                        title: 'Posición ya existe',
-                                        html: data.message +
-                                            '<br><br><strong>¿Qué deseas hacer?</strong>',
+                                // Construir opciones del diálogo según la situación
+                                const mensaje = dataMovimiento.cantidad > 1 ?
+                                    `¿Mover ${dataMovimiento.cantidad} elementos a <strong>${maquinaDestinoNombre}</strong>?` :
+                                    `¿Mover elemento a <strong>${maquinaDestinoNombre}</strong>?`;
+
+                                let decision;
+
+                                if (checkData.tiene_elementos_existentes) {
+                                    // Mostrar 3 opciones con botones si hay elementos existentes
+                                    console.log('✅ Mostrando diálogo con 3 botones (elementos existentes)');
+                                    const { value } = await Swal.fire({
+                                        title: dataMovimiento.cantidad > 1 ? '¿Mover elementos?' : '¿Mover elemento?',
+                                        html: `${mensaje}<br><br>
+                                            <small class="text-yellow-600">⚠️ Ya hay ${checkData.elementos_existentes} elemento(s) de esta planilla en esta máquina</small>
+                                            <div class="mt-4 space-y-2">
+                                                <button type="button" class="swal-option-btn w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition" data-value="juntar">
+                                                    🔗 Juntar con existentes → Posición ${checkData.posicion_existente}
+                                                </button>
+                                                <button type="button" class="swal-option-btn w-full px-4 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition" data-value="nueva_posicion">
+                                                    📍 Crear nueva posición → Posición ${nuevaPosicion}
+                                                </button>
+                                                <button type="button" class="swal-option-btn w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition" data-value="por_fecha">
+                                                    📅 Según fecha de entrega → Posición ${checkData.posicion_por_fecha}
+                                                </button>
+                                            </div>`,
+                                        showConfirmButton: false,
+                                        showCancelButton: true,
+                                        cancelButtonText: 'Cancelar',
+                                        cancelButtonColor: '#6b7280',
+                                        didOpen: () => {
+                                            const btns = Swal.getPopup().querySelectorAll('.swal-option-btn');
+                                            btns.forEach(btn => {
+                                                btn.addEventListener('click', () => {
+                                                    Swal.close({ value: btn.dataset.value });
+                                                });
+                                            });
+                                        }
+                                    });
+                                    decision = value;
+                                } else {
+                                    // Mostrar 2 opciones con botones confirm/deny
+                                    console.log('✅ Mostrando diálogo con 2 botones (sin elementos existentes)');
+                                    const resultado = await Swal.fire({
+                                        title: dataMovimiento.cantidad > 1 ? '¿Mover elementos?' : '¿Mover elemento?',
+                                        html: mensaje,
                                         icon: 'question',
                                         showCancelButton: true,
                                         showDenyButton: true,
-                                        confirmButtonText: 'Crear nueva posición',
-                                        denyButtonText: 'Usar posición existente',
+                                        confirmButtonText: `📍 Posición ${nuevaPosicion}`,
+                                        denyButtonText: `📅 Por fecha → Pos. ${checkData.posicion_por_fecha}`,
                                         cancelButtonText: 'Cancelar',
-                                        confirmButtonColor: '#10b981',
-                                        denyButtonColor: '#3b82f6',
+                                        confirmButtonColor: '#3b82f6',
+                                        denyButtonColor: '#10b981',
                                         cancelButtonColor: '#6b7280',
-                                        reverseButtons: false,
-                                        allowOutsideClick: false,
-                                        buttonsStyling: true
                                     });
 
-                                    if (resultadoConfirmacion.isConfirmed) {
-                                        // Usuario quiere crear una nueva posición
-                                        const res2 = await fetch('/planillas/reordenar', {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'Accept': 'application/json',
-                                                'X-CSRF-TOKEN': document.querySelector(
-                                                    'meta[name="csrf-token"]').content
-                                            },
-                                            body: JSON.stringify({
-                                                id: dataMovimiento.planillaId,
-                                                maquina_id: maquinaDestinoId,
-                                                maquina_origen_id: dataMovimiento
-                                                    .maquinaOriginal,
-                                                nueva_posicion: nuevaPosicion,
-                                                elementos_id: dataMovimiento.elementosIds,
-                                                crear_nueva_posicion: true
-                                            })
-                                        });
-
-                                        const data2 = await res2.json();
-
-                                        if (!res2.ok || !data2.success) {
-                                            throw new Error(data2.message || 'Error al mover elementos');
-                                        }
-
-                                        // Remover elementos del panel
-                                        window.MultiSelectElementos.removerElementosDelPanel(dataMovimiento
-                                            .elementosIds);
-
-                                        // Remover el evento temporal que se creó
-                                        info.event.remove();
-
-                                        // Recargar recursos y eventos desde el servidor
-                                        calendar.refetchResources();
-                                        calendar.refetchEvents();
-
-                                        // Refrescar panel lateral si está abierto
-                                        refrescarPanelElementos();
-
-                                        const Toast = Swal.mixin({
-                                            toast: true,
-                                            position: 'top-end',
-                                            showConfirmButton: false,
-                                            timer: 1500,
-                                            timerProgressBar: true,
-                                        });
-                                        Toast.fire({
-                                            icon: 'success',
-                                            title: 'Nueva posición creada'
-                                        });
-
-                                    } else if (resultadoConfirmacion.isDenied) {
-                                        // Usuario quiere mover a la posición existente
-                                        const res2 = await fetch('/planillas/reordenar', {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'Accept': 'application/json',
-                                                'X-CSRF-TOKEN': document.querySelector(
-                                                    'meta[name="csrf-token"]').content
-                                            },
-                                            body: JSON.stringify({
-                                                id: dataMovimiento.planillaId,
-                                                maquina_id: maquinaDestinoId,
-                                                maquina_origen_id: dataMovimiento
-                                                    .maquinaOriginal,
-                                                nueva_posicion: nuevaPosicion,
-                                                elementos_id: dataMovimiento.elementosIds,
-                                                crear_nueva_posicion: false,
-                                                usar_posicion_existente: true
-                                            })
-                                        });
-
-                                        const data2 = await res2.json();
-
-                                        if (!res2.ok || !data2.success) {
-                                            throw new Error(data2.message || 'Error al mover elementos');
-                                        }
-
-                                        // Remover elementos del panel
-                                        window.MultiSelectElementos.removerElementosDelPanel(dataMovimiento
-                                            .elementosIds);
-
-                                        // Remover el evento temporal que se creó
-                                        info.event.remove();
-
-                                        // Recargar recursos y eventos desde el servidor
-                                        calendar.refetchResources();
-                                        calendar.refetchEvents();
-
-                                        // Refrescar panel lateral si está abierto
-                                        refrescarPanelElementos();
-
-                                        const Toast = Swal.mixin({
-                                            toast: true,
-                                            position: 'top-end',
-                                            showConfirmButton: false,
-                                            timer: 1500,
-                                            timerProgressBar: true,
-                                        });
-                                        Toast.fire({
-                                            icon: 'success',
-                                            title: 'Elementos movidos a posición existente'
-                                        });
-
-                                    } else {
-                                        // Usuario canceló
-                                        info.revert();
+                                    if (resultado.isConfirmed) {
+                                        decision = 'nueva_posicion';
+                                    } else if (resultado.isDenied) {
+                                        decision = 'por_fecha';
                                     }
+                                }
 
+                                if (!decision) {
+                                    console.log('❌ Usuario canceló');
+                                    info.revert();
                                     return;
                                 }
 
-                                // Solo verificar errores si NO es el caso de requiresNuevaPosicionConfirmation
-                                if ((!res.ok || !data.success) && !data.requiresNuevaPosicionConfirmation) {
+                                // Preparar parámetros según decisión
+                                const params = {
+                                    id: dataMovimiento.planillaId,
+                                    maquina_id: maquinaDestinoId,
+                                    maquina_origen_id: dataMovimiento.maquinaOriginal,
+                                    elementos_id: dataMovimiento.elementosIds,
+                                };
+
+                                if (decision === 'juntar') {
+                                    params.usar_posicion_existente = true;
+                                    params.nueva_posicion = checkData.posicion_existente;
+                                } else if (decision === 'nueva_posicion') {
+                                    params.crear_nueva_posicion = true;
+                                    params.nueva_posicion = nuevaPosicion;
+                                } else if (decision === 'por_fecha') {
+                                    params.posicionar_por_fecha = true;
+                                }
+
+                                // Ejecutar el movimiento real
+                                mostrarSpinner('Moviendo elementos...');
+                                console.log('🚀 Enviando petición a /planillas/reordenar', params);
+
+                                const res = await fetch('/planillas/reordenar', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                    },
+                                    body: JSON.stringify(params)
+                                });
+
+                                const data = await res.json();
+                                cerrarSpinner();
+
+                                if (!res.ok || !data.success) {
                                     throw new Error(data.message || 'Error al mover elementos');
                                 }
 
-                                // Remover elementos del panel
-                                window.MultiSelectElementos.removerElementosDelPanel(dataMovimiento
-                                    .elementosIds);
-
-                                // Remover el evento temporal que se creó
+                                // Éxito: actualizar UI
+                                window.MultiSelectElementos.removerElementosDelPanel(dataMovimiento.elementosIds);
                                 info.event.remove();
-
-                                // Recargar recursos y eventos desde el servidor
                                 calendar.refetchResources();
                                 calendar.refetchEvents();
-
-                                // Refrescar panel lateral si está abierto
                                 refrescarPanelElementos();
 
-                                const Toast = Swal.mixin({
+                                const mensajeExito = decision === 'juntar' ? 'Elementos juntados' :
+                                    decision === 'nueva_posicion' ? 'Nueva posición creada' : 'Posicionado por fecha';
+
+                                Swal.mixin({
                                     toast: true,
                                     position: 'top-end',
                                     showConfirmButton: false,
                                     timer: 1500,
-                                    timerProgressBar: true,
-                                });
-                                Toast.fire({
-                                    icon: 'success',
-                                    title: dataMovimiento.cantidad > 1 ?
-                                        `${dataMovimiento.cantidad} elementos movidos` :
-                                        'Elemento movido'
-                                });
+                                }).fire({ icon: 'success', title: mensajeExito });
 
                             } catch (error) {
-                                console.error('❌ Error en eventReceive (try interno):', error);
+                                cerrarSpinner();
+                                console.error('❌ Error en eventReceive:', error);
                                 console.error('Stack trace:', error.stack);
                                 info.revert();
                                 Swal.fire({
@@ -2476,14 +2496,13 @@
                                 });
                             }
                         } catch (globalError) {
+                            cerrarSpinner();
                             console.error('💥💥💥 ERROR GLOBAL EN eventReceive:', globalError);
-                            console.error('💥 Stack:', globalError.stack);
-                            console.error('💥 Message:', globalError.message);
                             info.revert();
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error crítico',
-                                html: `<strong>Error:</strong> ${globalError.message}<br><br><pre>${globalError.stack}</pre>`
+                                text: globalError.message || 'Error inesperado'
                             });
                         }
                     },
@@ -2642,11 +2661,14 @@
                         }
 
                         try {
+                            mostrarSpinner('Cargando elementos...');
                             const response = await fetch(`/elementos/por-ids?planilla_id=${planillaId}`);
                             const elementos = await response.json();
+                            cerrarSpinner();
                             console.log('✅ Elementos cargados:', elementos.length);
                             mostrarPanelElementos(elementos, planillaId, codigoPlanilla);
                         } catch (error) {
+                            cerrarSpinner();
                             console.error('❌ Error al cargar elementos:', error);
                             Swal.fire({
                                 icon: 'error',
@@ -2767,35 +2789,59 @@
                         const maquinaDestinoId = info.newResource?.id ?? info.event.getResources()[0]?.id;
                         const elementosId = info.event.extendedProps.elementos_id || [];
 
-                        const resultado = await Swal.fire({
-                            title: '¿Reordenar planilla?',
-                            html: `¿Quieres mover la planilla <strong>${codigoPlanilla}</strong> ${maquinaOrigenId !== maquinaDestinoId ? 'a otra máquina' : 'en la misma máquina'}?`,
-                            icon: 'question',
-                            showCancelButton: true,
-                            confirmButtonColor: '#3085d6',
-                            cancelButtonColor: '#d33',
-                            confirmButtonText: 'Sí, reordenar',
-                            cancelButtonText: 'Cancelar'
-                        });
-
-                        if (!resultado.isConfirmed) {
-                            info.revert();
-                            return;
-                        }
-
+                        // Calcular nueva posición basada en el orden visual
                         const eventosOrdenados = calendar.getEvents()
                             .filter(ev => ev.getResources().some(r => r && r.id == maquinaDestinoId))
                             .sort((a, b) => a.start - b.start);
                         const nuevaPosicion = eventosOrdenados.findIndex(ev => ev.id === info.event.id) + 1;
 
+                        // Si es la misma máquina, solo reordenar sin preguntas complejas
+                        if (maquinaOrigenId === maquinaDestinoId) {
+                            try {
+                                mostrarSpinner('Reordenando...');
+                                const res = await fetch('/planillas/reordenar', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                    },
+                                    body: JSON.stringify({
+                                        id: planillaId,
+                                        maquina_id: maquinaDestinoId,
+                                        maquina_origen_id: maquinaOrigenId,
+                                        nueva_posicion: nuevaPosicion,
+                                        elementos_id: elementosId,
+                                    })
+                                });
+                                const data = await res.json();
+                                cerrarSpinner();
+
+                                if (!res.ok || !data.success) {
+                                    throw new Error(data.message || 'Error al reordenar');
+                                }
+
+                                calendar.refetchEvents();
+                                Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 })
+                                    .fire({ icon: 'success', title: 'Planilla reordenada' });
+                            } catch (error) {
+                                cerrarSpinner();
+                                info.revert();
+                                Swal.fire({ icon: 'error', title: 'Error', text: error.message });
+                            }
+                            return;
+                        }
+
+                        // Cambio de máquina: hacer check_only primero
                         try {
-                            const res = await fetch('/planillas/reordenar', {
+                            mostrarSpinner('Verificando...');
+
+                            const checkRes = await fetch('/planillas/reordenar', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
                                     'Accept': 'application/json',
-                                    'X-CSRF-TOKEN': document.querySelector(
-                                        'meta[name="csrf-token"]').content
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                                 },
                                 body: JSON.stringify({
                                     id: planillaId,
@@ -2803,145 +2849,171 @@
                                     maquina_origen_id: maquinaOrigenId,
                                     nueva_posicion: nuevaPosicion,
                                     elementos_id: elementosId,
+                                    check_only: true
                                 })
                             });
 
-                            const data = await res.json();
+                            const checkData = await checkRes.json();
+                            cerrarSpinner();
 
-                            // 🔍 Verificar si requiere confirmación de nueva posición
-                            if (data.requiresNuevaPosicionConfirmation) {
+                            // Verificar si TODOS los elementos son incompatibles
+                            if (checkData.allIncompatible) {
+                                // Ocultar tooltips antes de mostrar el error
+                                ocultarTooltips();
 
-                                const confirmacion = await Swal.fire({
-                                    title: 'Posición ya existe',
-                                    html: data.message +
-                                        '<br><br><strong>¿Qué deseas hacer?</strong>',
-                                    icon: 'question',
-                                    showCancelButton: true,
-                                    showDenyButton: true,
-                                    confirmButtonText: 'Crear nueva posición',
-                                    denyButtonText: 'Usar posición existente',
-                                    cancelButtonText: 'Cancelar',
-                                    confirmButtonColor: '#10b981',
-                                    denyButtonColor: '#3b82f6',
-                                    cancelButtonColor: '#6b7280',
-                                    reverseButtons: false,
-                                    allowOutsideClick: false,
-                                    buttonsStyling: true
+                                await Swal.fire({
+                                    title: 'No se puede mover',
+                                    html: `<div class="text-left">
+                                        <p class="mb-3">${checkData.message}</p>
+                                        <p class="text-sm text-gray-600">Ninguno de los elementos seleccionados es compatible con esta máquina.</p>
+                                    </div>`,
+                                    icon: 'error',
+                                    confirmButtonText: 'Entendido',
+                                    confirmButtonColor: '#dc2626'
                                 });
-
-                                if (confirmacion.isConfirmed) {
-                                    // Crear nueva posición
-                                    const res2 = await fetch('/planillas/reordenar', {
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'Accept': 'application/json',
-                                            'X-CSRF-TOKEN': document.querySelector(
-                                                'meta[name="csrf-token"]').content
-                                        },
-                                        body: JSON.stringify({
-                                            id: planillaId,
-                                            maquina_id: maquinaDestinoId,
-                                            maquina_origen_id: maquinaOrigenId,
-                                            nueva_posicion: nuevaPosicion,
-                                            elementos_id: elementosId,
-                                            crear_nueva_posicion: true
-                                        })
-                                    });
-
-                                    const data2 = await res2.json();
-                                    if (!res2.ok || !data2.success) {
-                                        throw new Error(data2.message || 'Error al crear nueva posición');
-                                    }
-
-                                    // Recargar eventos desde el servidor
-                                    calendar.refetchEvents();
-
-                                    Swal.mixin({
-                                        toast: true,
-                                        position: 'top-end',
-                                        showConfirmButton: false,
-                                        timer: 1500,
-                                        timerProgressBar: true
-                                    }).fire({
-                                        icon: 'success',
-                                        title: 'Nueva posición creada'
-                                    });
-
-                                } else if (confirmacion.isDenied) {
-                                    // Usar posición existente
-                                    const res2 = await fetch('/planillas/reordenar', {
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'Accept': 'application/json',
-                                            'X-CSRF-TOKEN': document.querySelector(
-                                                'meta[name="csrf-token"]').content
-                                        },
-                                        body: JSON.stringify({
-                                            id: planillaId,
-                                            maquina_id: maquinaDestinoId,
-                                            maquina_origen_id: maquinaOrigenId,
-                                            nueva_posicion: nuevaPosicion,
-                                            elementos_id: elementosId,
-                                            usar_posicion_existente: true
-                                        })
-                                    });
-
-                                    const data2 = await res2.json();
-                                    if (!res2.ok || !data2.success) {
-                                        throw new Error(data2.message ||
-                                            'Error al mover a posición existente');
-                                    }
-
-                                    // Recargar eventos desde el servidor
-                                    calendar.refetchEvents();
-
-                                    Swal.mixin({
-                                        toast: true,
-                                        position: 'top-end',
-                                        showConfirmButton: false,
-                                        timer: 1500,
-                                        timerProgressBar: true
-                                    }).fire({
-                                        icon: 'success',
-                                        title: 'Planilla movida a posición existente'
-                                    });
-
-                                } else {
-                                    // Cancelar
-                                    info.revert();
-                                }
-
+                                info.revert();
                                 return;
                             }
 
-                            if (!res.ok || !data.success) {
-                                throw new Error(data.message || 'Error al reordenar');
+                            // Verificar si hay ALGUNOS elementos incompatibles (pero hay compatibles)
+                            if (checkData.requiresConfirmation) {
+                                const confirmDiametro = await Swal.fire({
+                                    title: 'Diámetros incompatibles',
+                                    html: `<div class="text-left">
+                                        <p class="mb-3">${checkData.message}</p>
+                                        <p class="text-sm text-green-600">✓ ${checkData.compatibles_count || 0} elemento(s) compatible(s)</p>
+                                        <p class="text-sm text-red-600">✗ ${checkData.incompatibles_count || 0} elemento(s) incompatible(s)</p>
+                                    </div>`,
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    confirmButtonText: `Mover ${checkData.compatibles_count || 0} compatible(s)`,
+                                    cancelButtonText: 'Cancelar'
+                                });
+                                if (!confirmDiametro.isConfirmed) {
+                                    info.revert();
+                                    return;
+                                }
+                                // Actualizar los elementos a mover con solo los compatibles
+                                if (checkData.elementos && checkData.elementos.length > 0) {
+                                    elementosId = checkData.elementos;
+                                }
                             }
 
-                            // Recargar eventos desde el servidor
+                            // Obtener nombre de máquina destino
+                            const recursoDestino = info.newResource || info.event.getResources()[0];
+                            const maquinaDestinoNombre = recursoDestino?.title || 'máquina destino';
+
+                            let decision;
+
+                            if (checkData.tiene_elementos_existentes) {
+                                // Mostrar 3 opciones con botones
+                                const { value } = await Swal.fire({
+                                    title: '¿Mover planilla?',
+                                    html: `¿Mover <strong>${codigoPlanilla}</strong> a <strong>${maquinaDestinoNombre}</strong>?<br><br>
+                                        <small class="text-yellow-600">⚠️ Ya hay ${checkData.elementos_existentes} elemento(s) de esta planilla en esta máquina</small>
+                                        <div class="mt-4 space-y-2">
+                                            <button type="button" class="swal-option-btn w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition" data-value="juntar">
+                                                🔗 Juntar con existentes → Posición ${checkData.posicion_existente}
+                                            </button>
+                                            <button type="button" class="swal-option-btn w-full px-4 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition" data-value="nueva_posicion">
+                                                📍 Crear nueva posición → Posición ${nuevaPosicion}
+                                            </button>
+                                            <button type="button" class="swal-option-btn w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition" data-value="por_fecha">
+                                                📅 Según fecha de entrega → Posición ${checkData.posicion_por_fecha}
+                                            </button>
+                                        </div>`,
+                                    showConfirmButton: false,
+                                    showCancelButton: true,
+                                    cancelButtonText: 'Cancelar',
+                                    cancelButtonColor: '#6b7280',
+                                    didOpen: () => {
+                                        const btns = Swal.getPopup().querySelectorAll('.swal-option-btn');
+                                        btns.forEach(btn => {
+                                            btn.addEventListener('click', () => {
+                                                Swal.close({ value: btn.dataset.value });
+                                            });
+                                        });
+                                    }
+                                });
+                                decision = value;
+                            } else {
+                                // Mostrar 2 opciones con botones
+                                const resultado = await Swal.fire({
+                                    title: '¿Mover planilla?',
+                                    html: `¿Mover <strong>${codigoPlanilla}</strong> a <strong>${maquinaDestinoNombre}</strong>?`,
+                                    icon: 'question',
+                                    showCancelButton: true,
+                                    showDenyButton: true,
+                                    confirmButtonText: `📍 Posición ${nuevaPosicion}`,
+                                    denyButtonText: `📅 Por fecha → Pos. ${checkData.posicion_por_fecha}`,
+                                    cancelButtonText: 'Cancelar',
+                                    confirmButtonColor: '#3b82f6',
+                                    denyButtonColor: '#10b981',
+                                    cancelButtonColor: '#6b7280',
+                                });
+
+                                if (resultado.isConfirmed) {
+                                    decision = 'nueva_posicion';
+                                } else if (resultado.isDenied) {
+                                    decision = 'por_fecha';
+                                }
+                            }
+
+                            if (!decision) {
+                                info.revert();
+                                return;
+                            }
+
+                            // Preparar parámetros según decisión
+                            const params = {
+                                id: planillaId,
+                                maquina_id: maquinaDestinoId,
+                                maquina_origen_id: maquinaOrigenId,
+                                elementos_id: elementosId,
+                            };
+
+                            if (decision === 'juntar') {
+                                params.usar_posicion_existente = true;
+                                params.nueva_posicion = checkData.posicion_existente;
+                            } else if (decision === 'nueva_posicion') {
+                                params.crear_nueva_posicion = true;
+                                params.nueva_posicion = nuevaPosicion;
+                            } else if (decision === 'por_fecha') {
+                                params.posicionar_por_fecha = true;
+                            }
+
+                            // Ejecutar el movimiento
+                            mostrarSpinner('Moviendo planilla...');
+
+                            const res = await fetch('/planillas/reordenar', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                },
+                                body: JSON.stringify(params)
+                            });
+
+                            const data = await res.json();
+                            cerrarSpinner();
+
+                            if (!res.ok || !data.success) {
+                                throw new Error(data.message || 'Error al mover planilla');
+                            }
+
                             calendar.refetchEvents();
 
-                            const Toast = Swal.mixin({
-                                toast: true,
-                                position: 'top-end',
-                                showConfirmButton: false,
-                                timer: 1500,
-                                timerProgressBar: true,
-                            });
-                            Toast.fire({
-                                icon: 'success',
-                                title: 'Planilla reordenada'
-                            });
+                            const mensajeExito = decision === 'juntar' ? 'Planilla juntada' :
+                                decision === 'nueva_posicion' ? 'Nueva posición creada' : 'Posicionada por fecha';
+
+                            Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 })
+                                .fire({ icon: 'success', title: mensajeExito });
 
                         } catch (error) {
+                            cerrarSpinner();
                             info.revert();
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: error.message || 'No se pudo reordenar'
-                            });
+                            Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'No se pudo mover' });
                         }
                     },
 
@@ -4874,6 +4946,44 @@
                 }, 3000);
             }
 
+            // Función global para mostrar spinner de carga
+            function mostrarSpinner(mensaje = 'Procesando...') {
+                Swal.fire({
+                    title: mensaje,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+            }
+
+            // Función global para cerrar spinner
+            function cerrarSpinner() {
+                Swal.close();
+            }
+
+            // Función global para ocultar todos los tooltips
+            function ocultarTooltips() {
+                // Ocultar tooltip global
+                const tooltipGlobal = document.getElementById('fc-tooltip-global');
+                if (tooltipGlobal) {
+                    tooltipGlobal.style.display = 'none';
+                }
+                // Eliminar cualquier tooltip residual
+                document.querySelectorAll('.fc-tooltip').forEach(t => {
+                    t.style.display = 'none';
+                    t.remove();
+                });
+                // Deshabilitar tooltips temporalmente
+                window.tooltipsDeshabilitados = true;
+                // Reactivar después de un momento
+                setTimeout(() => {
+                    window.tooltipsDeshabilitados = false;
+                }, 500);
+            }
+
             window.window.maquinaActualId = window.maquinaActualId || null;
 
             // Modal Estado
@@ -4903,9 +5013,12 @@
             async function cambiarEstado(nuevoEstado) {
                 if (!maquinaActualId) return;
 
+                mostrarSpinner('Cambiando estado...');
+
                 try {
                     const csrfToken = document.querySelector('meta[name="csrf-token"]');
                     if (!csrfToken) {
+                        cerrarSpinner();
                         console.error('No se encontró el token CSRF');
                         alert('Error: No se encontró el token de seguridad. Recarga la página.');
                         return;
@@ -4931,6 +5044,8 @@
 
                     const data = await response.json();
 
+                    cerrarSpinner();
+
                     if (data.success) {
                         cerrarModalEstado();
                         console.log('✅ Estado actualizado en el servidor');
@@ -4942,6 +5057,7 @@
                         alert('Error al cambiar el estado: ' + (data.mensaje || 'Error desconocido'));
                     }
                 } catch (error) {
+                    cerrarSpinner();
                     console.error('Error completo:', error);
                     alert('Error al comunicarse con el servidor: ' + error.message);
                 }
@@ -5120,12 +5236,26 @@
             async function redistribuir(tipo) {
                 if (!maquinaActualId) return;
 
+                // Obtener opciones del modal
+                const soloRevisadas = document.getElementById('chkSoloRevisadas')?.checked || false;
+                const limiteInput = document.getElementById('inputLimiteElementos')?.value;
+                const limite = limiteInput ? parseInt(limiteInput) : null;
+
                 window.tipoRedistribucionSeleccionado = tipo;
-                window.maquinaRedistribucionId = maquinaActualId; // Guardar el ID
+                window.maquinaRedistribucionId = maquinaActualId;
+                window.redistribuirSoloRevisadas = soloRevisadas;
+                window.redistribuirLimite = limite;
+
+                mostrarSpinner('Obteniendo elementos...');
 
                 try {
+                    // Construir URL con parámetros
+                    let url = `/maquinas/${maquinaActualId}/elementos-pendientes?tipo=${tipo}`;
+                    if (soloRevisadas) url += '&solo_revisadas=1';
+                    if (limite) url += `&limite=${limite}`;
+
                     // Obtener los elementos que serán redistribuidos (sin ejecutar la redistribución)
-                    const response = await fetch(`/maquinas/${maquinaActualId}/elementos-pendientes?tipo=${tipo}`, {
+                    const response = await fetch(url, {
                         method: 'GET',
                         headers: {
                             'Accept': 'application/json',
@@ -5137,6 +5267,7 @@
                     }
 
                     const data = await response.json();
+                    cerrarSpinner();
 
                     if (data.success && data.elementos) {
                         // Mostrar modal de confirmación con los elementos
@@ -5147,6 +5278,7 @@
                         alert('No hay elementos para redistribuir');
                     }
                 } catch (error) {
+                    cerrarSpinner();
                     console.error('Error completo:', error);
                     alert('Error al obtener elementos: ' + error.message);
                 }
@@ -5161,8 +5293,13 @@
 
                 window.maquinasDisponiblesGlobal = maquinasDisponibles;
 
+                // Construir mensaje con filtros aplicados
+                let filtrosTexto = '';
+                if (window.redistribuirSoloRevisadas) filtrosTexto += ' (solo revisadas)';
+                if (window.redistribuirLimite) filtrosTexto += ` - Límite: ${window.redistribuirLimite}`;
+
                 mensaje.textContent =
-                    `Se redistribuirán ${elementos.length} elemento(s) desde "${maquinaOrigen.nombre}" - ${tipo === 'todos' ? 'TODOS los pendientes' : 'Los primeros elementos'}`;
+                    `Se redistribuirán ${elementos.length} elemento(s) desde "${maquinaOrigen.nombre}"${filtrosTexto}`;
 
                 lista.innerHTML = '';
                 elementos.forEach((elemento, index) => {
@@ -5316,6 +5453,7 @@
                         return;
                     }
 
+                    mostrarSpinner('Redistribuyendo elementos...');
                     console.log('Enviando petición de redistribución...');
 
                     const response = await fetch(`/maquinas/${window.maquinaRedistribucionId}/redistribuir`, {
@@ -5327,7 +5465,9 @@
                         },
                         body: JSON.stringify({
                             tipo: window.tipoRedistribucionSeleccionado,
-                            maquinas_destino: window.maquinasDestinoSeleccionadas
+                            maquinas_destino: window.maquinasDestinoSeleccionadas,
+                            solo_revisadas: window.redistribuirSoloRevisadas || false,
+                            limite: window.redistribuirLimite || null
                         })
                     });
 
@@ -5340,6 +5480,7 @@
                     }
 
                     const data = await response.json();
+                    cerrarSpinner();
                     console.log('Datos de respuesta:', data);
 
                     if (data.success) {
@@ -5358,6 +5499,7 @@
                         alert('Error al redistribuir: ' + (data.mensaje || 'Error desconocido'));
                     }
                 } catch (error) {
+                    cerrarSpinner();
                     console.error('Error completo:', error);
                     alert('Error al comunicarse con el servidor: ' + error.message);
                 }
@@ -6636,6 +6778,427 @@
                     content.classList.add('hidden');
                     icon.classList.remove('rotate-90');
                 }
+            }
+
+            // ============================================================
+            // PLANILLAS CON RETRASO
+            // ============================================================
+
+            async function abrirModalRetrasos() {
+                const modal = document.getElementById('modalRetrasos');
+                const contenido = document.getElementById('retrasos-contenido');
+                const contador = document.getElementById('retrasos-contador');
+
+                // Mostrar modal en estado de carga
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                contador.textContent = '';
+                contenido.innerHTML = `
+                    <div class="flex items-center justify-center py-12">
+                        <svg class="animate-spin h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="ml-3 text-gray-600">Calculando retrasos...</span>
+                    </div>
+                `;
+
+                try {
+                    const response = await fetch('/api/produccion/planillas-con-retraso', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Error al obtener planillas con retraso');
+                    }
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        contador.textContent = data.total;
+
+                        if (data.planillas.length === 0) {
+                            contenido.innerHTML = `
+                                <div class="flex flex-col items-center justify-center py-12 text-gray-500">
+                                    <svg class="w-16 h-16 text-green-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <p class="text-lg font-medium text-green-600">¡Sin retrasos!</p>
+                                    <p class="text-sm">Todas las planillas revisadas llegarán a tiempo.</p>
+                                </div>
+                            `;
+                        } else {
+                            let html = '<div class="space-y-3">';
+
+                            data.planillas.forEach(p => {
+                                const diasTexto = p.dias_retraso === 1 ? '1 día' : `${p.dias_retraso} días`;
+                                const maquinasHtml = p.maquinas.map(m =>
+                                    `<span class="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-xs">
+                                        <span class="font-semibold text-gray-700">${m.codigo}</span>
+                                        <span class="text-gray-400 mx-1">pos.</span>
+                                        <span class="font-semibold text-gray-700">${m.posicion}</span>
+                                    </span>`
+                                ).join(' ');
+
+                                html += `
+                                    <div class="border border-red-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
+                                        <div class="flex items-start justify-between">
+                                            <div class="flex-1">
+                                                <div class="flex items-center gap-3 mb-2">
+                                                    <a href="/planillas/${p.id}" class="font-mono font-bold text-blue-700 hover:underline text-lg">
+                                                        ${p.codigo}
+                                                    </a>
+                                                    <span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
+                                                        ${diasTexto} de retraso
+                                                    </span>
+                                                </div>
+                                                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
+                                                    <div>
+                                                        <span class="text-gray-500">Cliente:</span>
+                                                        <span class="font-medium text-gray-800">${p.cliente}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-gray-500">Obra:</span>
+                                                        <span class="font-medium text-gray-800">${p.obra}</span>
+                                                        ${p.cod_obra ? `<span class="text-gray-400 text-xs">(${p.cod_obra})</span>` : ''}
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-gray-500">Fecha entrega:</span>
+                                                        <span class="font-medium text-orange-600">${p.fecha_entrega}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-gray-500">Fin programado:</span>
+                                                        <span class="font-medium text-red-600">${p.fin_programado}</span>
+                                                    </div>
+                                                </div>
+                                                <div class="flex items-center gap-2 text-sm">
+                                                    <span class="text-gray-500">Máquinas:</span>
+                                                    <div class="flex flex-wrap gap-1">
+                                                        ${maquinasHtml}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="text-right ml-4">
+                                                <div class="text-xs text-gray-500">Elementos</div>
+                                                <div class="text-2xl font-bold text-gray-700">${p.elementos_pendientes}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+
+                            html += '</div>';
+                            contenido.innerHTML = html;
+                        }
+                    } else {
+                        throw new Error(data.mensaje || 'Error desconocido');
+                    }
+                } catch (error) {
+                    console.error('Error al cargar retrasos:', error);
+                    contenido.innerHTML = `
+                        <div class="flex flex-col items-center justify-center py-12 text-red-500">
+                            <svg class="w-12 h-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p class="font-medium">Error al cargar datos</p>
+                            <p class="text-sm text-gray-500">${error.message}</p>
+                        </div>
+                    `;
+                }
+            }
+
+            function cerrarModalRetrasos() {
+                const modal = document.getElementById('modalRetrasos');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            // ============================================================
+            // SIMULACIÓN TURNO SÁBADO
+            // ============================================================
+
+            function toggleRangoFechas() {
+                const modo = document.getElementById('sabado-modo').value;
+                const rangoContainer = document.getElementById('sabado-rango-container');
+
+                if (modo === 'rango') {
+                    rangoContainer.classList.remove('hidden');
+                    // Establecer fechas por defecto: hoy hasta 3 meses después
+                    const hoy = new Date();
+                    const tresMeses = new Date();
+                    tresMeses.setMonth(tresMeses.getMonth() + 3);
+
+                    document.getElementById('sabado-fecha-desde').value = hoy.toISOString().split('T')[0];
+                    document.getElementById('sabado-fecha-hasta').value = tresMeses.toISOString().split('T')[0];
+                } else {
+                    rangoContainer.classList.add('hidden');
+                }
+            }
+
+            function simularTurnoSabado() {
+                const modalSabado = document.getElementById('modalSimularSabado');
+                modalSabado.classList.remove('hidden');
+                modalSabado.classList.add('flex');
+
+                // Inicializar con modo "todos" seleccionado
+                document.getElementById('sabado-modo').value = 'todos';
+                document.getElementById('sabado-rango-container').classList.add('hidden');
+
+                ejecutarSimulacionSabado();
+            }
+
+            async function ejecutarSimulacionSabado() {
+                const contenido = document.getElementById('simulacion-contenido');
+                const turnoSpan = document.getElementById('simulacion-turno');
+                const horaInicio = document.getElementById('sabado-hora-inicio').value || '08:00';
+                const horaFin = document.getElementById('sabado-hora-fin').value || '14:00';
+                const modo = document.getElementById('sabado-modo').value;
+                const fechaDesde = document.getElementById('sabado-fecha-desde')?.value || '';
+                const fechaHasta = document.getElementById('sabado-fecha-hasta')?.value || '';
+
+                turnoSpan.textContent = `${horaInicio} - ${horaFin}`;
+
+                // Construir descripción del loading
+                let descripcionLoading = modo === 'todos'
+                    ? 'todos los sábados'
+                    : `sábados del ${fechaDesde} al ${fechaHasta}`;
+
+                // Mostrar loading
+                contenido.innerHTML = `
+                    <div class="flex items-center justify-center py-12">
+                        <svg class="animate-spin h-8 w-8 text-amber-600" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="ml-3 text-gray-600">Simulando ${descripcionLoading} (${horaInicio} - ${horaFin})...</span>
+                    </div>
+                `;
+
+                // Construir URL con parámetros
+                let url = `/api/produccion/simular-turno-sabado?hora_inicio=${horaInicio}&hora_fin=${horaFin}&modo=${modo}`;
+                if (modo === 'rango' && fechaDesde && fechaHasta) {
+                    url += `&fecha_desde=${fechaDesde}&fecha_hasta=${fechaHasta}`;
+                }
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Error al simular turno de sábado');
+                    }
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        renderizarResultadosSimulacion(data);
+                    } else {
+                        throw new Error(data.mensaje || 'Error en la simulación');
+                    }
+                } catch (error) {
+                    console.error('Error en simulación de sábado:', error);
+                    contenido.innerHTML = `
+                        <div class="flex flex-col items-center justify-center py-12 text-red-500">
+                            <svg class="w-12 h-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p class="text-lg font-medium">Error al simular</p>
+                            <p class="text-sm text-gray-500">${error.message}</p>
+                        </div>
+                    `;
+                }
+            }
+
+            function renderizarResultadosSimulacion(data) {
+                const contenido = document.getElementById('simulacion-contenido');
+
+                if (data.planillas_mejoran.length === 0 && data.planillas_siguen_retrasadas.length === 0) {
+                    contenido.innerHTML = `
+                        <div class="flex flex-col items-center justify-center py-12 text-gray-500">
+                            <svg class="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <p class="text-lg font-medium">Sin planillas con retraso</p>
+                            <p class="text-sm">No hay planillas que analizar para esta simulación.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+
+                // Sección: Planillas que entran a tiempo
+                if (data.planillas_mejoran.length > 0) {
+                    html += `
+                        <div class="mb-6">
+                            <div class="flex items-center gap-2 mb-3">
+                                <span class="flex items-center justify-center w-8 h-8 rounded-full bg-green-100">
+                                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </span>
+                                <h4 class="text-lg font-semibold text-green-700">Entrarían a tiempo (${data.planillas_mejoran.length})</h4>
+                            </div>
+                            <div class="space-y-2">
+                    `;
+
+                    data.planillas_mejoran.forEach(p => {
+                        html += renderPlanillaSimulacion(p, 'mejora');
+                    });
+
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Sección: Planillas que siguen retrasadas (pero pueden mejorar)
+                if (data.planillas_siguen_retrasadas.length > 0) {
+                    html += `
+                        <div class="mb-6">
+                            <div class="flex items-center gap-2 mb-3">
+                                <span class="flex items-center justify-center w-8 h-8 rounded-full bg-orange-100">
+                                    <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </span>
+                                <h4 class="text-lg font-semibold text-orange-700">Siguen con retraso (${data.planillas_siguen_retrasadas.length})</h4>
+                            </div>
+                            <div class="space-y-2">
+                    `;
+
+                    data.planillas_siguen_retrasadas.forEach(p => {
+                        html += renderPlanillaSimulacion(p, 'sigue_retrasada');
+                    });
+
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Resumen
+                const sabadosTexto = data.sabados_simulados === 'todos'
+                    ? 'todos los sábados'
+                    : `${data.sabados_simulados} sábado(s)`;
+                const descripcionTexto = data.descripcion_simulacion || sabadosTexto;
+
+                html += `
+                    <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <h4 class="font-semibold text-gray-700 mb-2">Resumen de la Simulación</h4>
+                        <p class="text-sm text-gray-600 mb-3">
+                            <strong>Configuración:</strong> ${descripcionTexto}, turno de ${data.turno_simulado}
+                        </p>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                                <span class="text-gray-600">Entrarían a tiempo:</span>
+                                <span class="font-bold text-green-700">${data.total_mejoran}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-orange-500"></span>
+                                <span class="text-gray-600">Siguen con retraso:</span>
+                                <span class="font-bold text-orange-700">${data.total_siguen_retrasadas}</span>
+                            </div>
+                        </div>
+                        ${data.total_mejoran > 0 ? `
+                            <div class="mt-3 p-3 bg-green-50 rounded border border-green-200 text-sm text-green-800">
+                                <strong>Resultado:</strong> Trabajando ${descripcionTexto} (${data.turno_simulado}), ${data.total_mejoran} planilla(s) entrarían a tiempo.
+                            </div>
+                        ` : `
+                            <div class="mt-3 p-3 bg-yellow-50 rounded border border-yellow-200 text-sm text-yellow-800">
+                                <strong>Nota:</strong> La configuración simulada no resuelve los retrasos actuales. Considera ampliar el horario, trabajar más sábados, o un rango de fechas más amplio.
+                            </div>
+                        `}
+                    </div>
+                `;
+
+                contenido.innerHTML = html;
+            }
+
+            function renderPlanillaSimulacion(p, tipo) {
+                const maquinasHtml = p.maquinas.map(m =>
+                    `<span class="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-xs">
+                        <span class="font-semibold text-gray-700">${m.codigo}</span>
+                    </span>`
+                ).join(' ');
+
+                const diasOriginal = p.dias_retraso_original === 1 ? '1 día' : `${p.dias_retraso_original} días`;
+                const diasConSabado = p.dias_retraso_con_sabado === 1 ? '1 día' : `${p.dias_retraso_con_sabado} días`;
+
+                let estadoBadge = '';
+                if (tipo === 'mejora') {
+                    estadoBadge = `<span class="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-semibold">Entra a tiempo</span>`;
+                } else if (p.dias_ganados > 0) {
+                    estadoBadge = `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">Reduce ${p.dias_ganados} día(s)</span>`;
+                } else {
+                    estadoBadge = `<span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold">Sin mejora</span>`;
+                }
+
+                const bgClass = tipo === 'mejora' ? 'border-green-200 bg-green-50/50' : 'border-orange-200 bg-orange-50/50';
+
+                return `
+                    <div class="border ${bgClass} rounded-lg p-3 hover:shadow-sm transition-shadow">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <a href="/planillas/${p.id}" class="font-mono font-bold text-blue-700 hover:underline">
+                                        ${p.codigo}
+                                    </a>
+                                    ${estadoBadge}
+                                </div>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-sm">
+                                    <div>
+                                        <span class="text-gray-500">Cliente:</span>
+                                        <span class="font-medium text-gray-800">${p.cliente}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500">Obra:</span>
+                                        <span class="font-medium text-gray-800">${p.obra}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500">Entrega:</span>
+                                        <span class="font-medium text-orange-600">${p.fecha_entrega}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500">Máquinas:</span>
+                                        ${maquinasHtml}
+                                    </div>
+                                </div>
+                                <div class="mt-2 flex items-center gap-4 text-sm">
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-gray-500">Fin original:</span>
+                                        <span class="font-medium text-red-600">${p.fin_original}</span>
+                                        <span class="text-gray-400">(${diasOriginal})</span>
+                                    </div>
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                                    </svg>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-gray-500">Fin con sábado:</span>
+                                        <span class="font-medium ${tipo === 'mejora' ? 'text-green-600' : 'text-orange-600'}">${p.fin_con_sabado}</span>
+                                        ${tipo !== 'mejora' ? `<span class="text-gray-400">(${diasConSabado})</span>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function cerrarModalSimularSabado() {
+                const modal = document.getElementById('modalSimularSabado');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
             }
 
             // ============================================================

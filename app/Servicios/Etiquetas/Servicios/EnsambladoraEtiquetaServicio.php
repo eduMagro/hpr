@@ -238,13 +238,10 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
                         }
                     }
 
-                    // Arranque de fabricación: estados y fechas
+                    // Arranque de fabricación: estados
                     if ($etiqueta->planilla) {
-                        if (is_null($etiqueta->planilla->fecha_inicio)) {
-                            $etiqueta->planilla->fecha_inicio = now();
-                            $etiqueta->planilla->estado       = 'fabricando';
-                            $etiqueta->planilla->save();
-                        }
+                        $etiqueta->planilla->estado = 'fabricando';
+                        $etiqueta->planilla->save();
                     } else {
                         throw new RuntimeException('La etiqueta no tiene una planilla asociada.');
                     }
@@ -791,7 +788,6 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
             ->doesntExist();
 
         if ($todosElementosPlanillaCompletos) {
-            $planilla->fecha_finalizacion = now();
             $planilla->estado = 'completada';
             $planilla->save();
 
