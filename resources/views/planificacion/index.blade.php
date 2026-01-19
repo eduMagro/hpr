@@ -293,75 +293,41 @@
 
         <!-- Tooltip con atajos -->
         <div
-            class="absolute bottom-12 left-0 w-80 bg-gray-900 text-white rounded-lg shadow-2xl p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
+            class="absolute bottom-12 left-0 w-64 bg-gray-900 text-white rounded-lg shadow-2xl p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
             <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-700">
-                <h3 class="font-semibold text-sm">⌨️ Atajos de Planificación</h3>
-                <a href="{{ route('atajos.index') }}" class="text-xs text-blue-400 hover:text-blue-300">Ver todos
-                    →</a>
+                <h3 class="font-semibold text-sm">⌨️ Atajos de teclado</h3>
             </div>
 
-            <!-- Modo Días -->
+            <!-- Navegación -->
             <div class="mb-3">
-                <div class="flex items-center gap-2 mb-2">
-                    <span class="bg-blue-500 text-white text-xs px-2 py-0.5 rounded">DÍAS</span>
-                </div>
-                <div class="grid grid-cols-2 gap-1 text-xs">
-                    <div class="flex items-center gap-2">
-                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">← → ↑ ↓</kbd>
-                        <span class="text-gray-400">Navegar</span>
+                <div class="text-xs text-gray-500 mb-2">Navegación</div>
+                <div class="space-y-2 text-xs">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-400">Mes/Semana anterior</span>
+                        <kbd class="px-2 py-0.5 bg-gray-700 rounded text-gray-300">←</kbd>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">Enter</kbd>
-                        <span class="text-gray-400">Vista día</span>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-400">Mes/Semana siguiente</span>
+                        <kbd class="px-2 py-0.5 bg-gray-700 rounded text-gray-300">→</kbd>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">T</kbd>
-                        <span class="text-gray-400">Hoy</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">PgUp/Dn</kbd>
-                        <span class="text-gray-400">Mes ±</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modo Eventos -->
-            <div class="mb-3">
-                <div class="flex items-center gap-2 mb-2">
-                    <span class="bg-green-500 text-white text-xs px-2 py-0.5 rounded">EVENTOS</span>
-                    <span class="text-xs text-gray-500">(Tab para cambiar)</span>
-                </div>
-                <div class="grid grid-cols-2 gap-1 text-xs">
-                    <div class="flex items-center gap-2">
-                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">↑ ↓</kbd>
-                        <span class="text-gray-400">Navegar</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">Enter</kbd>
-                        <span class="text-gray-400">Abrir</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">E</kbd>
-                        <span class="text-gray-400">Menú</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">I</kbd>
-                        <span class="text-gray-400">Info</span>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-400">Ir a hoy</span>
+                        <kbd class="px-2 py-0.5 bg-gray-700 rounded text-gray-300">T</kbd>
                     </div>
                 </div>
             </div>
 
             <!-- Generales -->
             <div class="pt-2 border-t border-gray-700">
-                <div class="text-xs text-gray-500 mb-2">Generales</div>
-                <div class="grid grid-cols-2 gap-1 text-xs">
-                    <div class="flex items-center gap-2">
-                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">F11</kbd>
+                <div class="text-xs text-gray-500 mb-2">General</div>
+                <div class="space-y-2 text-xs">
+                    <div class="flex items-center justify-between">
                         <span class="text-gray-400">Pantalla completa</span>
+                        <kbd class="px-2 py-0.5 bg-gray-700 rounded text-gray-300">F11</kbd>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">Esc</kbd>
-                        <span class="text-gray-400">Salir/Cerrar</span>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-400">Salir fullscreen</span>
+                        <kbd class="px-2 py-0.5 bg-gray-700 rounded text-gray-300">Esc</kbd>
                     </div>
                 </div>
             </div>

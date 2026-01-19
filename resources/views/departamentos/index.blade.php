@@ -1070,6 +1070,11 @@
             }
         </script>
 
+        <!-- ═══════════════════════════════════════════════════════════════════════════════
+             CONFIGURACIÓN DE ALERTAS DE APROBACIÓN DE PLANILLAS
+        ═══════════════════════════════════════════════════════════════════════════════ -->
+        @include('departamentos.partials.config-alertas-planilla')
+
         <!-- Script para Drag & Drop con SortableJS -->
         <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
         <script>

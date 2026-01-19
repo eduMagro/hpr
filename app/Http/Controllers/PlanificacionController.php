@@ -100,8 +100,43 @@ class PlanificacionController extends Controller
 
         // Resources
         $resources = $this->getResources($eventos, $viewType);
+
+        // AJAX: tipo=all devuelve todo en una sola petición (optimización de rendimiento)
+        if ($request->input('tipo') === 'all') {
+            $fechaReferencia = $this->parseFlexibleDate($request->input('start')) ?? now();
+            $startOfWeek = $fechaReferencia->copy()->startOfWeek(Carbon::MONDAY);
+            $endOfWeek = $fechaReferencia->copy()->endOfWeek(Carbon::SUNDAY);
+
+            // Eager load elementos para evitar N+1 queries
+            $planillasSemana = Planilla::with('elementos:id,planilla_id,longitud,barras,diametro')
+                ->whereBetween('fecha_estimada_entrega', [$startOfWeek, $endOfWeek])
+                ->get(['id', 'peso_total', 'fecha_estimada_entrega']);
+
+            $planillasMes = Planilla::with('elementos:id,planilla_id,longitud,barras,diametro')
+                ->whereMonth('fecha_estimada_entrega', $fechaReferencia->month)
+                ->whereYear('fecha_estimada_entrega', $fechaReferencia->year)
+                ->get(['id', 'peso_total', 'fecha_estimada_entrega']);
+
+            return response()->json([
+                'events' => $eventos->values(),
+                'resources' => $resources,
+                'totales' => [
+                    'semana' => [
+                        'peso' => $planillasSemana->sum('peso_total'),
+                        'longitud' => $planillasSemana->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
+                        'diametro' => $planillasSemana->flatMap->elementos->pluck('diametro')->filter()->avg(),
+                    ],
+                    'mes' => [
+                        'peso' => $planillasMes->sum('peso_total'),
+                        'longitud' => $planillasMes->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
+                        'diametro' => $planillasMes->flatMap->elementos->pluck('diametro')->filter()->avg(),
+                    ],
+                ],
+            ]);
+        }
+
         if ($request->input('tipo') === 'resources') {
-            return response()->json($resources); // ✅ usa la variable correcta
+            return response()->json($resources);
         }
         if ($request->input('tipo') === 'events') {
             return response()->json($eventos->values());

@@ -266,7 +266,6 @@ class FerrawinSyncService
             // Usar el procesador directamente
             $processor = app(\App\Services\PlanillaImport\PlanillaProcessor::class);
             $asignador = app(\App\Services\AsignarMaquinaService::class);
-            $ordenService = app(\App\Services\OrdenPlanillaService::class);
 
             $advertencias = [];
             $porPlanilla = $datosImportacion->agruparPorPlanilla();
@@ -290,8 +289,7 @@ class FerrawinSyncService
                 // Aplicar política de subetiquetas
                 $processor->aplicarPoliticaSubetiquetasPostAsignacion($resultado->planilla);
 
-                // Crear orden_planillas
-                $ordenService->crearOrdenParaPlanilla($resultado->planilla->id);
+                // NO crear orden_planillas aquí - se crea al aprobar la planilla
 
                 $elementosCreados += $resultado->elementosCreados;
             }

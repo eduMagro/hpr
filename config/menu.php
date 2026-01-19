@@ -392,6 +392,7 @@ return [
                 ['label' => 'Todas', 'route' => 'planillas.index', 'icon' => '📋'],
                 ['label' => 'Nueva Planilla', 'route' => 'planillas.create', 'icon' => '➕'],
                 ['label' => 'Órdenes', 'route' => 'produccion.verOrdenesPlanillas', 'icon' => '📦'],
+                ['label' => 'Tabla Órdenes', 'route' => 'produccion.ordenesPlanillasTabla', 'icon' => '📊'],
             ],
             'config' => [
                 'colorBase' => 'blue',

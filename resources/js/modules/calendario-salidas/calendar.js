@@ -1,8 +1,6 @@
-import { dataEvents } from "./eventos.js";
-import { dataResources } from "./recursos.js";
+import { dataEvents, dataResources, updateTotalesFromCache, invalidateCache } from "./eventos.js";
 import { configurarTooltipsYMenus } from "./tooltips.js";
 import { attachEventoContextMenu } from "./calendario-menu.js";
-import { actualizarTotales } from "./totales.js";
 let currentViewType = "resourceTimelineWeek";
 export let calendar = null;
 
@@ -72,6 +70,20 @@ function safeUpdateSize() {
 
 /* ▼ Helpers para mejorar el drag en vista diaria */
 
+// Crear imagen de drag transparente para ocultar el ghost nativo del navegador
+function createTransparentDragImage() {
+    let img = document.getElementById('transparent-drag-image');
+    if (!img) {
+        img = document.createElement('img');
+        img.id = 'transparent-drag-image';
+        // 1x1 pixel transparente
+        img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        img.style.cssText = 'position: fixed; left: -9999px; top: -9999px; width: 1px; height: 1px; opacity: 0;';
+        document.body.appendChild(img);
+    }
+    return img;
+}
+
 // Crear ghost personalizado que sigue el cursor (solución robusta)
 function createCustomDragGhost(event, sourceEl) {
     removeCustomDragGhost();
@@ -81,21 +93,44 @@ function createCustomDragGhost(event, sourceEl) {
     ghost.className = 'custom-drag-ghost';
 
     const p = event.extendedProps || {};
-    const tipo = p.tipo === 'salida' ? '🚚' : '📋';
-    const titulo = p.cod_obra || p.nombre_obra || event.title?.split('\n')[0] || 'Evento';
-    const peso = p.pesoTotal ? `${Number(p.pesoTotal).toLocaleString()} kg` : '';
-    const bgColor = sourceEl?.style?.backgroundColor || event.backgroundColor || '#3b82f6';
+    const esSalida = p.tipo === 'salida';
+    const tipoIcon = esSalida ? '🚚' : '📋';
+    const tipoLabel = esSalida ? 'Salida' : 'Planilla';
+    const codObra = p.cod_obra || '';
+    const nombreObra = p.nombre_obra || event.title?.split('\n')[0] || '';
+    const cliente = p.cliente || '';
+    const peso = p.pesoTotal ? Number(p.pesoTotal).toLocaleString('es-ES', { maximumFractionDigits: 0 }) : '';
+    const longitud = p.longitudTotal ? Number(p.longitudTotal).toLocaleString('es-ES', { maximumFractionDigits: 0 }) : '';
+    const diametro = p.diametroMedio ? Number(p.diametroMedio).toFixed(1) : '';
+    const bgColor = sourceEl?.style?.backgroundColor || event.backgroundColor || '#6366f1';
 
     ghost.innerHTML = `
-        <div class="ghost-content" style="background: ${bgColor};">
-            <div class="ghost-header">
-                <span class="ghost-icon">${tipo}</span>
-                <span class="ghost-title">${titulo}</span>
+        <div class="ghost-card" style="--ghost-color: ${bgColor};">
+            <!-- Tipo -->
+            <div class="ghost-type-badge ${esSalida ? 'badge-salida' : 'badge-planilla'}">
+                <span>${tipoIcon}</span>
+                <span>${tipoLabel}</span>
             </div>
-            ${peso ? `<div class="ghost-weight">📦 ${peso}</div>` : ''}
-            <div class="ghost-time">
-                <span class="ghost-time-label">Soltar en:</span>
-                <span class="ghost-time-value">--:--</span>
+
+            <!-- Info principal -->
+            <div class="ghost-main">
+                ${codObra ? `<div class="ghost-code">${codObra}</div>` : ''}
+                ${nombreObra ? `<div class="ghost-name">${nombreObra}</div>` : ''}
+                ${cliente ? `<div class="ghost-client">👤 ${cliente}</div>` : ''}
+            </div>
+
+            <!-- Métricas -->
+            ${(peso || longitud || diametro) ? `
+            <div class="ghost-metrics">
+                ${peso ? `<span class="ghost-metric">📦 ${peso} kg</span>` : ''}
+                ${longitud ? `<span class="ghost-metric">📏 ${longitud} m</span>` : ''}
+                ${diametro ? `<span class="ghost-metric">⌀ ${diametro} mm</span>` : ''}
+            </div>
+            ` : ''}
+
+            <!-- Destino del drop -->
+            <div class="ghost-destination">
+                <span class="ghost-dest-date">--</span>
             </div>
         </div>
     `;
@@ -105,19 +140,30 @@ function createCustomDragGhost(event, sourceEl) {
 }
 
 // Actualizar posición del ghost personalizado
-function updateCustomDragGhost(x, y, timeStr) {
+function updateCustomDragGhost(x, y, timeStr, dateStr) {
     const ghost = document.getElementById('custom-drag-ghost');
     if (!ghost) return;
 
-    // Posicionar junto al cursor
-    ghost.style.left = `${x + 15}px`;
-    ghost.style.top = `${y - 30}px`;
+    // Posicionar junto al cursor con offset
+    ghost.style.left = `${x + 20}px`;
+    ghost.style.top = `${y - 20}px`;
 
     // Actualizar hora
     if (timeStr) {
-        const timeValue = ghost.querySelector('.ghost-time-value');
+        const timeValue = ghost.querySelector('.ghost-dest-time');
         if (timeValue) {
             timeValue.textContent = timeStr;
+        }
+    }
+
+    // Actualizar fecha
+    if (dateStr) {
+        const dateValue = ghost.querySelector('.ghost-dest-date');
+        if (dateValue) {
+            // Formatear fecha a formato legible
+            const date = new Date(dateStr + 'T00:00:00');
+            const options = { weekday: 'short', day: 'numeric', month: 'short' };
+            dateValue.textContent = date.toLocaleDateString('es-ES', options);
         }
     }
 }
@@ -173,6 +219,40 @@ export function crearCalendario() {
             "FullCalendar (global) no está cargado. Asegúrate de tener los <script> CDN en el Blade."
         );
         return null;
+    }
+
+    // ✅ INYECTAR ESTILOS GLOBALES para ocultar el ghost de FullCalendar SIEMPRE
+    if (!document.getElementById('fc-mirror-hide-style-global')) {
+        const globalStyle = document.createElement('style');
+        globalStyle.id = 'fc-mirror-hide-style-global';
+        globalStyle.textContent = `
+            /* Ocultar el elemento que FullCalendar mueve con position:fixed durante el drag */
+            .fc-event-dragging[style*="position: fixed"],
+            .fc-event-dragging[style*="position:fixed"],
+            .fc-event.fc-event-dragging[style*="fixed"],
+            a.fc-event.fc-event-dragging {
+                opacity: 0 !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+            }
+
+            /* Ocultar completamente el mirror de FullCalendar */
+            .fc-event-mirror,
+            .fc .fc-event-mirror,
+            .fc-timegrid-event.fc-event-mirror,
+            .fc-daygrid-event.fc-event-mirror,
+            .fc-timeline-event.fc-event-mirror,
+            .fc-timegrid-event-harness.fc-event-mirror,
+            .fc-daygrid-event-harness .fc-event-mirror,
+            [class*="fc-event-mirror"],
+            .fc-event.fc-event-mirror {
+                display: none !important;
+                opacity: 0 !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+            }
+        `;
+        document.head.appendChild(globalStyle);
     }
 
     if (calendar) calendar.destroy();
@@ -326,14 +406,20 @@ export function crearCalendario() {
                     // Limpiar resúmenes personalizados previos al cambiar de vista
                     limpiarResumenesCustom();
 
-                    // actualizar totales
-                    setTimeout(() => actualizarTotales(fecha), 0);
-
-                    // ► refetch tras cambio de vista/mes
+                    // ► refetch tras cambio de vista/mes (una sola petición trae eventos + recursos + totales)
                     clearTimeout(refetchTimer);
-                    refetchTimer = setTimeout(() => {
+                    refetchTimer = setTimeout(async () => {
+                        // Invalidar cache para forzar nueva petición
+                        invalidateCache();
                         calendar.refetchResources();
                         calendar.refetchEvents();
+
+                        // Actualizar totales desde el cache (ya cargados con eventos/recursos)
+                        await updateTotalesFromCache(info.view.type, {
+                            startStr: info.startStr,
+                            endStr: info.endStr
+                        });
+
                         safeUpdateSize();
                         // Aplicar colapso de fines de semana después de refetch
                         if ((info.view.type === "resourceTimelineWeek" || info.view.type === "dayGridMonth") && window.applyWeekendCollapse) {
@@ -504,6 +590,14 @@ export function crearCalendario() {
             eventDidMount: function (info) {
                 const p = info.event.extendedProps || {};
 
+                // ✅ Desactivar completamente el HTML5 drag nativo para evitar el ghost del navegador
+                // FullCalendar usa pointer events internamente, no necesita HTML5 drag
+                info.el.setAttribute('draggable', 'false');
+                info.el.ondragstart = (e) => {
+                    e.preventDefault();
+                    return false;
+                };
+
                 // Si es un evento de resumen, no aplicar tooltips ni menú contextual
                 if (p.tipo === "resumen-dia") {
                     // Asegurar que tenga la clase correcta
@@ -513,39 +607,11 @@ export function crearCalendario() {
                     return; // Salir temprano
                 }
 
-                // Forzar ancho completo en vista mensual (solo para eventos normales, no resumen)
+                // Forzar ancho completo en vista mensual (usando clases CSS)
                 if (info.view.type === "dayGridMonth") {
-                    // Forzar en el contenedor padre (harness)
                     const harness = info.el.closest('.fc-daygrid-event-harness');
-                    if (harness) {
-                        harness.style.setProperty('width', '100%', 'important');
-                        harness.style.setProperty('max-width', '100%', 'important');
-                        harness.style.setProperty('min-width', '100%', 'important');
-                        harness.style.setProperty('position', 'static', 'important');
-                        harness.style.setProperty('left', 'unset', 'important');
-                        harness.style.setProperty('right', 'unset', 'important');
-                        harness.style.setProperty('top', 'unset', 'important');
-                        harness.style.setProperty('inset', 'unset', 'important');
-                        harness.style.setProperty('margin', '0 0 2px 0', 'important');
-                        harness.style.setProperty('display', 'block', 'important');
-                    }
-
-                    // Forzar en el elemento del evento
-                    info.el.style.setProperty('width', '100%', 'important');
-                    info.el.style.setProperty('max-width', '100%', 'important');
-                    info.el.style.setProperty('min-width', '100%', 'important');
-                    info.el.style.setProperty('margin', '0', 'important');
-                    info.el.style.setProperty('position', 'static', 'important');
-                    info.el.style.setProperty('left', 'unset', 'important');
-                    info.el.style.setProperty('right', 'unset', 'important');
-                    info.el.style.setProperty('inset', 'unset', 'important');
-                    info.el.style.setProperty('display', 'block', 'important');
-
-                    // Forzar en todos los hijos
-                    info.el.querySelectorAll('*').forEach(child => {
-                        child.style.setProperty('width', '100%', 'important');
-                        child.style.setProperty('max-width', '100%', 'important');
-                    });
+                    if (harness) harness.classList.add('evento-fullwidth');
+                    info.el.classList.add('evento-fullwidth-event');
                 }
 
                 // lee filtros actuales (código y nombre)
@@ -590,20 +656,8 @@ export function crearCalendario() {
                     }
 
                     if (coincide) {
+                        // Solo añadir clase, el CSS se encarga del resto
                         info.el.classList.add("evento-filtrado");
-                        // Forzar fondo negro en el evento y TODOS sus hijos
-                        const colorFondo = '#1f2937';
-                        const colorBorde = '#111827';
-                        info.el.style.setProperty('background-color', colorFondo, 'important');
-                        info.el.style.setProperty('background', colorFondo, 'important');
-                        info.el.style.setProperty('border-color', colorBorde, 'important');
-                        info.el.style.setProperty('color', 'white', 'important');
-                        // Aplicar a TODOS los elementos hijos
-                        info.el.querySelectorAll('*').forEach(child => {
-                            child.style.setProperty('background-color', colorFondo, 'important');
-                            child.style.setProperty('background', colorFondo, 'important');
-                            child.style.setProperty('color', 'white', 'important');
-                        });
                     }
                 }
 
@@ -650,20 +704,18 @@ export function crearCalendario() {
                 createCustomDragGhost(info.event, info.el);
 
                 // Añadir clase al body para estilos globales durante drag
+                // El CSS en estilosCalendarioSalidas.css se encarga de ocultar mirrors
                 document.body.classList.add('fc-dragging-active');
 
-                // Ocultar el mirror de FullCalendar via JS (por si CSS no funciona)
-                const hideMirror = () => {
-                    document.querySelectorAll('.fc-event-mirror').forEach(el => {
-                        el.style.display = 'none';
-                        el.style.opacity = '0';
-                        el.style.visibility = 'hidden';
-                    });
-                    if (window._isDragging) {
-                        requestAnimationFrame(hideMirror);
+                // ✅ Interceptar HTML5 drag para usar imagen transparente
+                const transparentImg = createTransparentDragImage();
+                const handleNativeDragStart = (e) => {
+                    if (e.dataTransfer && window._isDragging) {
+                        e.dataTransfer.setDragImage(transparentImg, 0, 0);
                     }
                 };
-                requestAnimationFrame(hideMirror);
+                document.addEventListener('dragstart', handleNativeDragStart, true);
+                window._nativeDragStartHandler = handleNativeDragStart;
 
                 // Highlight zona de drop en vista diaria
                 const calendarEl = document.getElementById('calendario');
@@ -671,32 +723,104 @@ export function crearCalendario() {
                     highlightDropZones(true);
                 }
 
-                // Listener de mouse para actualizar ghost
-                const handleMouseMove = (e) => {
-                    if (!window._isDragging) return;
-
-                    const timeStr = calculateTimeFromY(e.clientY, calendarEl);
-                    updateCustomDragGhost(e.clientX, e.clientY, timeStr);
+                // Función para obtener fecha del elemento bajo el cursor
+                const getDateFromPosition = (x, y) => {
+                    const elements = document.elementsFromPoint(x, y);
+                    for (const el of elements) {
+                        // Buscar celda de día en vista mensual
+                        const dayCell = el.closest('.fc-daygrid-day');
+                        if (dayCell) {
+                            return dayCell.getAttribute('data-date');
+                        }
+                        // Buscar slot en vista timeline
+                        const timelineSlot = el.closest('[data-date]');
+                        if (timelineSlot) {
+                            return timelineSlot.getAttribute('data-date');
+                        }
+                    }
+                    return null;
                 };
 
-                document.addEventListener('mousemove', handleMouseMove);
+                // Listener de mouse para actualizar ghost (throttled con RAF)
+                let rafPending = false;
+                const handleMouseMove = (e) => {
+                    if (!window._isDragging || rafPending) return;
+
+                    rafPending = true;
+                    requestAnimationFrame(() => {
+                        rafPending = false;
+                        if (!window._isDragging) return;
+
+                        const timeStr = calculateTimeFromY(e.clientY, calendarEl);
+                        const dateStr = getDateFromPosition(e.clientX, e.clientY);
+                        updateCustomDragGhost(e.clientX, e.clientY, timeStr, dateStr);
+                    });
+                };
+
+                document.addEventListener('mousemove', handleMouseMove, { passive: true });
                 window._dragMouseMoveHandler = handleMouseMove;
 
                 // Posición inicial
                 if (info.jsEvent) {
                     const timeStr = calculateTimeFromY(info.jsEvent.clientY, calendarEl);
-                    updateCustomDragGhost(info.jsEvent.clientX, info.jsEvent.clientY, timeStr);
+                    const dateStr = getDateFromPosition(info.jsEvent.clientX, info.jsEvent.clientY);
+                    updateCustomDragGhost(info.jsEvent.clientX, info.jsEvent.clientY, timeStr, dateStr);
                 }
+
+                // Guardar posición original para poder revertir
+                window._dragOriginalStart = info.event.start;
+                window._dragOriginalEnd = info.event.end;
+                window._dragEventId = info.event.id;
+
+                // Clic derecho cancela el drag
+                const handleContextMenu = (e) => {
+                    if (window._isDragging) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+
+                        window._cancelDrag = true;
+                        removeCustomDragGhost();
+
+                        // Simular mouseup para terminar el drag de FullCalendar
+                        const mouseUpEvent = new PointerEvent('pointerup', {
+                            bubbles: true,
+                            cancelable: true,
+                            clientX: e.clientX,
+                            clientY: e.clientY
+                        });
+                        document.dispatchEvent(mouseUpEvent);
+                    }
+                };
+                document.addEventListener('contextmenu', handleContextMenu, { capture: true });
+                window._dragContextMenuHandler = handleContextMenu;
             },
             eventDragStop: (info) => {
                 window._isDragging = false;
                 window._draggedEvent = null;
+
+                // Remover listener de HTML5 drag
+                if (window._nativeDragStartHandler) {
+                    document.removeEventListener('dragstart', window._nativeDragStartHandler, true);
+                    window._nativeDragStartHandler = null;
+                }
 
                 // Remover listener de mouse
                 if (window._dragMouseMoveHandler) {
                     document.removeEventListener('mousemove', window._dragMouseMoveHandler);
                     window._dragMouseMoveHandler = null;
                 }
+
+                // Remover listener de contextmenu
+                if (window._dragContextMenuHandler) {
+                    document.removeEventListener('contextmenu', window._dragContextMenuHandler, { capture: true });
+                    window._dragContextMenuHandler = null;
+                }
+
+                // Limpiar datos de posición original
+                window._dragOriginalStart = null;
+                window._dragOriginalEnd = null;
+                window._dragEventId = null;
 
                 // Remover ghost personalizado
                 removeCustomDragGhost();
@@ -708,6 +832,20 @@ export function crearCalendario() {
                 highlightDropZones(false);
             },
             eventDrop: (info) => {
+                // Si se canceló con clic derecho, revertir a posición original
+                if (window._cancelDrag) {
+                    window._cancelDrag = false;
+                    info.revert();
+                    // Por si revert no funciona, restaurar manualmente
+                    if (window._dragOriginalStart) {
+                        info.event.setStart(window._dragOriginalStart);
+                        if (window._dragOriginalEnd) {
+                            info.event.setEnd(window._dragOriginalEnd);
+                        }
+                    }
+                    return;
+                }
+
                 const p = info.event.extendedProps || {};
                 const id = info.event.id;
                 const nuevaFechaISO = info.event.start?.toISOString();
@@ -720,6 +858,18 @@ export function crearCalendario() {
                 const url = (
                     window.AppSalidas?.routes?.updateItem || ""
                 ).replace("__ID__", id);
+
+                // Mostrar spinner de carga
+                Swal.fire({
+                    title: 'Actualizando fecha...',
+                    html: 'Verificando programación de fabricación',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
 
                 fetch(url, {
                     method: "PUT",
@@ -734,12 +884,13 @@ export function crearCalendario() {
                             throw new Error("No se pudo actualizar la fecha.");
                         return r.json();
                     })
-                    .then((data) => {
+                    .then(async (data) => {
+                        // Cerrar spinner
+                        Swal.close();
+                        // Invalidar cache y refetch
+                        invalidateCache();
                         calendar.refetchEvents();
                         calendar.refetchResources();
-                        const nuevaFecha = info.event.start;
-                        const fechaISO = nuevaFecha.toISOString().split("T")[0];
-                        actualizarTotales(fechaISO);
                         safeUpdateSize();
 
                         // Mostrar alerta si hay retraso en fabricación
@@ -771,7 +922,14 @@ export function crearCalendario() {
                         }
                     })
                     .catch((err) => {
+                        Swal.close();
                         console.error("Error:", err);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'No se pudo actualizar la fecha.',
+                            timer: 3000,
+                        });
                         info.revert();
                     });
             },
@@ -924,12 +1082,10 @@ export function crearCalendario() {
                 // Verificar si sábados/domingos están expandidos
                 const satExpanded = window.expandedWeekendDays?.has('saturday');
                 const sunExpanded = window.expandedWeekendDays?.has('sunday');
-                console.log('applyWeekendCollapse - satExpanded:', satExpanded, 'sunExpanded:', sunExpanded);
 
                 // Aplicar a headers (th) - importante para que el ancho sea consistente
                 const satHeaders = document.querySelectorAll('.fc-col-header-cell.fc-day-sat');
                 const sunHeaders = document.querySelectorAll('.fc-col-header-cell.fc-day-sun');
-                console.log('Headers encontrados - sat:', satHeaders.length, 'sun:', sunHeaders.length);
 
                 satHeaders.forEach(header => {
                     if (satExpanded) {
@@ -937,7 +1093,6 @@ export function crearCalendario() {
                     } else {
                         header.classList.add('weekend-day-collapsed');
                     }
-                    console.log('Header sat después:', header.classList.contains('weekend-day-collapsed'));
                 });
                 sunHeaders.forEach(header => {
                     if (sunExpanded) {
@@ -987,25 +1142,16 @@ export function crearCalendario() {
 
         // Función para alternar expansión de un día de fin de semana
         function toggleWeekendCollapse(key) {
-            console.log('toggleWeekendCollapse llamado con key:', key);
-            console.log('expandedWeekendDays antes:', [...(window.expandedWeekendDays || [])]);
-
             if (!window.expandedWeekendDays) {
                 window.expandedWeekendDays = new Set();
             }
 
             // Lógica invertida: por defecto colapsados, toggle para expandir
             if (window.expandedWeekendDays.has(key)) {
-                // Si estaba expandido, quitarlo (volver a colapsar)
                 window.expandedWeekendDays.delete(key);
-                console.log('Colapsando:', key);
             } else {
-                // Si estaba colapsado, expandirlo
                 window.expandedWeekendDays.add(key);
-                console.log('Expandiendo:', key);
             }
-
-            console.log('expandedWeekendDays después:', [...window.expandedWeekendDays]);
 
             // Guardar en localStorage
             localStorage.setItem("expandedWeekendDays", JSON.stringify([...window.expandedWeekendDays]));
@@ -1016,12 +1162,9 @@ export function crearCalendario() {
 
         // Event listener para clics en encabezados de fin de semana
         el.addEventListener('click', (e) => {
-            console.log('Click detectado en:', e.target);
-
             const weekendHeader = e.target.closest('.weekend-header');
             if (weekendHeader) {
                 const dateStr = weekendHeader.getAttribute('data-date');
-                console.log('Click en weekend-header, dateStr:', dateStr);
                 if (dateStr) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -1032,30 +1175,25 @@ export function crearCalendario() {
 
             // Vista mensual: clic en header de sábado/domingo
             const viewType = calendar?.view?.type;
-            console.log('Vista actual:', viewType);
 
             if (viewType === "dayGridMonth") {
                 const headerCell = e.target.closest('.fc-col-header-cell.fc-day-sat, .fc-col-header-cell.fc-day-sun');
-                console.log('Header cell encontrado:', headerCell);
                 if (headerCell) {
                     e.preventDefault();
                     e.stopPropagation();
                     const isSaturday = headerCell.classList.contains('fc-day-sat');
                     const key = isSaturday ? 'saturday' : 'sunday';
-                    console.log('Toggling:', key);
                     toggleWeekendCollapse(key);
                     return;
                 }
 
                 // También permitir clic en las celdas de días de fin de semana
                 const dayCell = e.target.closest('.fc-daygrid-day.fc-day-sat, .fc-daygrid-day.fc-day-sun');
-                console.log('Day cell encontrado:', dayCell);
                 if (dayCell && !e.target.closest('.fc-event')) {
                     e.preventDefault();
                     e.stopPropagation();
                     const isSaturday = dayCell.classList.contains('fc-day-sat');
                     const key = isSaturday ? 'saturday' : 'sunday';
-                    console.log('Toggling day:', key);
                     toggleWeekendCollapse(key);
                     return;
                 }
@@ -1070,6 +1208,11 @@ export function crearCalendario() {
 
         // Añadir menú contextual para celdas del calendario (clic derecho en día)
         el.addEventListener('contextmenu', (e) => {
+            // No mostrar menú si estamos arrastrando un evento
+            if (window._isDragging || window._cancelDrag) {
+                return;
+            }
+
             // Buscar si el clic fue en una celda de día
             const dayCell = e.target.closest('.fc-daygrid-day, .fc-timeline-slot, .fc-timegrid-slot, .fc-col-header-cell');
             if (dayCell) {
@@ -1230,6 +1373,10 @@ function simularAdelantoFabricacion(elementosIds, fechaEntrega) {
         },
     });
 
+    // Timeout de 60 segundos para cálculos con muchas planillas
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
     fetch("/planificacion/simular-adelanto", {
         method: "POST",
         headers: {
@@ -1240,18 +1387,88 @@ function simularAdelantoFabricacion(elementosIds, fechaEntrega) {
             elementos_ids: elementosIds,
             fecha_entrega: fechaEntrega,
         }),
+        signal: controller.signal,
     })
         .then((r) => {
+            clearTimeout(timeoutId);
             if (!r.ok) throw new Error("Error en la simulación");
             return r.json();
         })
         .then((data) => {
             if (!data.necesita_adelanto) {
-                Swal.fire({
-                    icon: "info",
-                    title: "No es necesario adelantar",
-                    text: data.mensaje || "Los elementos llegarán a tiempo.",
-                });
+                // Convertir saltos de línea a HTML y mostrar mensaje detallado
+                const mensajeHtml = (data.mensaje || "Los elementos llegarán a tiempo.")
+                    .replace(/\n/g, '<br>')
+                    .replace(/•/g, '<span class="text-amber-600">•</span>');
+
+                // Si hay razones con fin_minimo, ofrecer mover a primera posición de todas formas
+                const tieneRazones = data.razones && data.razones.length > 0;
+                const puedeAdelantar = tieneRazones && data.razones.some(r => r.fin_minimo);
+
+                if (puedeAdelantar) {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "No se puede entregar a tiempo",
+                        html: `
+                            <div class="text-left text-sm mb-4">${mensajeHtml}</div>
+                            <div class="text-left text-sm font-semibold text-amber-700 border-t pt-3">
+                                ¿Deseas adelantar a primera posición de todas formas?
+                            </div>
+                        `,
+                        width: 650,
+                        showCancelButton: true,
+                        confirmButtonText: "Sí, adelantar a 1ª posición",
+                        cancelButtonText: "Cancelar",
+                        confirmButtonColor: "#f59e0b",
+                        cancelButtonColor: "#6b7280",
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Construir órdenes para mover a posición 1
+                            // Ahora razones está agrupado por máquina con planillas_ids
+                            const ordenesParaAdelantar = [];
+                            data.razones
+                                .filter(r => r.fin_minimo)
+                                .forEach(r => {
+                                    // Si tiene planillas_ids (nuevo formato agrupado)
+                                    if (r.planillas_ids && r.planillas_ids.length > 0) {
+                                        r.planillas_ids.forEach(planillaId => {
+                                            ordenesParaAdelantar.push({
+                                                planilla_id: planillaId,
+                                                maquina_id: r.maquina_id,
+                                                posicion_nueva: 1,
+                                            });
+                                        });
+                                    } else if (r.planilla_id) {
+                                        // Formato antiguo por si acaso
+                                        ordenesParaAdelantar.push({
+                                            planilla_id: r.planilla_id,
+                                            maquina_id: r.maquina_id,
+                                            posicion_nueva: 1,
+                                        });
+                                    }
+                                });
+
+                            if (ordenesParaAdelantar.length > 0) {
+                                console.log("Órdenes a adelantar:", ordenesParaAdelantar);
+                                ejecutarAdelantoFabricacion(ordenesParaAdelantar);
+                            } else {
+                                console.warn("No se encontraron órdenes para adelantar", data.razones);
+                                Swal.fire({
+                                    icon: "warning",
+                                    title: "Sin órdenes",
+                                    text: "No se encontraron órdenes para adelantar.",
+                                });
+                            }
+                        }
+                    });
+                } else {
+                    Swal.fire({
+                        icon: "info",
+                        title: "No es necesario adelantar",
+                        html: `<div class="text-left text-sm">${mensajeHtml}</div>`,
+                        width: 600,
+                    });
+                }
                 return;
             }
 
@@ -1352,11 +1569,17 @@ function simularAdelantoFabricacion(elementosIds, fechaEntrega) {
             });
         })
         .catch((err) => {
+            clearTimeout(timeoutId);
             console.error("Error en simulación:", err);
+
+            // Mensaje específico para timeout
+            const isTimeout = err.name === 'AbortError';
             Swal.fire({
                 icon: "error",
-                title: "Error",
-                text: "No se pudo simular el adelanto. " + err.message,
+                title: isTimeout ? "Tiempo agotado" : "Error",
+                text: isTimeout
+                    ? "El cálculo está tardando demasiado. La operación fue cancelada."
+                    : "No se pudo simular el adelanto. " + err.message,
             });
         });
 }
@@ -1391,6 +1614,8 @@ function ejecutarAdelantoFabricacion(ordenesAAdelantar) {
         posicion_nueva: o.posicion_nueva,
     }));
 
+    console.log("Enviando órdenes al servidor:", JSON.stringify({ ordenes }, null, 2));
+
     fetch("/planificacion/ejecutar-adelanto", {
         method: "POST",
         headers: {
@@ -1404,15 +1629,36 @@ function ejecutarAdelantoFabricacion(ordenesAAdelantar) {
             return r.json();
         })
         .then((data) => {
+            console.log("Respuesta del servidor:", data);
+
             if (data.success) {
+                // Contar éxitos y fallos
+                const resultados = data.resultados || [];
+                const exitos = resultados.filter(r => r.success);
+                const fallos = resultados.filter(r => !r.success);
+
+                let html = data.mensaje || "Las posiciones han sido actualizadas.";
+                if (exitos.length > 0) {
+                    html += `<br><br><strong>${exitos.length} orden(es) movidas correctamente.</strong>`;
+                }
+                if (fallos.length > 0) {
+                    html += `<br><span class="text-amber-600">${fallos.length} orden(es) no pudieron moverse:</span>`;
+                    html += "<ul class='text-left text-sm mt-2'>";
+                    fallos.forEach(f => {
+                        html += `<li>• Planilla ${f.planilla_id}: ${f.mensaje}</li>`;
+                    });
+                    html += "</ul>";
+                }
+
                 Swal.fire({
-                    icon: "success",
-                    title: "¡Adelanto ejecutado!",
-                    text: data.mensaje || "Las posiciones han sido actualizadas correctamente.",
+                    icon: exitos.length > 0 ? "success" : "warning",
+                    title: exitos.length > 0 ? "¡Adelanto ejecutado!" : "Problemas al adelantar",
+                    html: html,
                     confirmButtonColor: "#10b981",
                 }).then(() => {
                     // Refrescar el calendario
                     if (calendar) {
+                        invalidateCache();
                         calendar.refetchEvents();
                         calendar.refetchResources();
                     }

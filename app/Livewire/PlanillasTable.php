@@ -5,6 +5,8 @@ namespace App\Livewire;
 use App\Models\Planilla;
 use App\Models\Cliente;
 use App\Models\Obra;
+use App\Services\OrdenPlanillaService;
+use App\Services\PlanillaAprobacionAlertaService;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Url;
@@ -497,6 +499,13 @@ class PlanillasTable extends Component
         $planilla->fecha_estimada_entrega = now()->addDays(7)->setTime(10, 0, 0);
         $planilla->save();
 
+        // Crear posición en orden_planillas al aprobar
+        app(OrdenPlanillaService::class)->crearOrdenParaPlanilla($planillaId);
+
+        // Notificar aprobación a destinatarios configurados
+        app(PlanillaAprobacionAlertaService::class)
+            ->notificarAprobacion(collect([$planilla]), auth()->user());
+
         $this->dispatch('planilla-actualizada', [
             'message' => 'Planilla aprobada. Fecha de entrega: ' . $planilla->fecha_estimada_entrega,
             'type' => 'success'
@@ -570,6 +579,8 @@ class PlanillasTable extends Component
             ->where('aprobada', false)
             ->get();
 
+        $ordenService = app(OrdenPlanillaService::class);
+
         $count = 0;
         foreach ($planillas as $planilla) {
             $planilla->aprobada = true;
@@ -577,7 +588,17 @@ class PlanillasTable extends Component
             $planilla->aprobada_at = now();
             $planilla->fecha_estimada_entrega = now()->addDays(7)->setTime(10, 0, 0);
             $planilla->save();
+
+            // Crear posición en orden_planillas al aprobar
+            $ordenService->crearOrdenParaPlanilla($planilla->id);
+
             $count++;
+        }
+
+        // Notificar aprobación a destinatarios configurados
+        if ($planillas->isNotEmpty()) {
+            app(PlanillaAprobacionAlertaService::class)
+                ->notificarAprobacion($planillas, auth()->user());
         }
 
         // Resetear selección y modo

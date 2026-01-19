@@ -270,38 +270,40 @@ function inicializarNavegacionTeclado() {
         }
 
         const calendar = window.calendar;
-        if (!calendar || !focusedDate) return;
+        if (!calendar) return;
 
         let handled = false;
 
-        // Tab: cambiar entre modo días y modo eventos
-        if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
-            e.preventDefault();
-            toggleNavMode();
-            return;
-        }
+        switch (e.key) {
+            // ← → Cambiar mes/semana
+            case 'ArrowLeft':
+                calendar.prev();
+                handled = true;
+                break;
+            case 'ArrowRight':
+                calendar.next();
+                handled = true;
+                break;
 
-        // Escape: volver a modo días
-        if (e.key === 'Escape' && navMode === 'events') {
-            e.preventDefault();
-            navMode = 'days';
-            focusedEventIndex = -1;
-            limpiarFocoEventos();
-            actualizarFocoVisual();
-            actualizarIndicadorFecha();
-            return;
-        }
+            // T: Ir a hoy
+            case 't':
+            case 'T':
+                calendar.today();
+                handled = true;
+                break;
 
-        // Navegación según el modo
-        if (navMode === 'events') {
-            handled = navegarEventos(e);
-        } else {
-            handled = navegarDias(e);
+            // Escape: cerrar menús, salir de fullscreen
+            case 'Escape':
+                if (window.isFullScreen) {
+                    window.toggleFullScreen?.();
+                    handled = true;
+                }
+                break;
         }
 
         if (handled) {
             e.preventDefault();
-            e.stopPropagation(); // Evitar que el evento llegue al menú lateral
+            e.stopPropagation();
         }
     }
 

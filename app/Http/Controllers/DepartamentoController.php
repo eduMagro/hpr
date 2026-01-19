@@ -8,6 +8,7 @@ use App\Models\Seccion;
 use App\Models\User;
 use App\Models\PermisoAcceso;
 use App\Services\SeccionAutoDetectService;
+use App\Services\PlanillaAprobacionAlertaService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -334,6 +335,43 @@ class DepartamentoController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Ruta eliminada correctamente.',
+        ]);
+    }
+
+    /**
+     * Obtiene la configuración de alertas de aprobación de planillas
+     */
+    public function getAlertasPlanillaConfig()
+    {
+        $service = app(PlanillaAprobacionAlertaService::class);
+        $destinatariosIds = $service->getDestinatarios();
+
+        $usuarios = User::whereIn('id', $destinatariosIds)
+            ->get(['id', 'name', 'primer_apellido', 'segundo_apellido', 'rol', 'imagen']);
+
+        return response()->json([
+            'success' => true,
+            'destinatarios' => $usuarios,
+            'destinatarios_ids' => $destinatariosIds,
+        ]);
+    }
+
+    /**
+     * Actualiza la configuración de alertas de aprobación de planillas
+     */
+    public function updateAlertasPlanillaConfig(Request $request)
+    {
+        $request->validate([
+            'usuarios' => 'array',
+            'usuarios.*' => 'integer|exists:users,id',
+        ]);
+
+        $service = app(PlanillaAprobacionAlertaService::class);
+        $service->setDestinatarios($request->usuarios ?? []);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Configuración de alertas de planillas guardada correctamente.',
         ]);
     }
 }

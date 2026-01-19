@@ -802,6 +802,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     // === DEPARTAMENTOS Y SECCIONES ===
     Route::put('/departamentos/alertas', [DepartamentoController::class, 'updateAlertSettings'])->name('departamentos.updateAlertSettings')->middleware(['auth', 'verified']);
+    Route::get('/configuracion/alertas-planilla', [DepartamentoController::class, 'getAlertasPlanillaConfig'])->name('configuracion.alertas-planilla.get');
+    Route::post('/configuracion/alertas-planilla', [DepartamentoController::class, 'updateAlertasPlanillaConfig'])->name('configuracion.alertas-planilla.update');
     Route::resource('departamentos', DepartamentoController::class)->names('departamentos');
     Route::post('/departamentos/{departamento}/asignar-usuarios', [DepartamentoController::class, 'asignarUsuarios'])->name('departamentos.asignar.usuarios');
     Route::post('/departamentos/{departamento}/asignar-secciones', [DepartamentoController::class, 'asignarSecciones'])->name('departamentos.asignarSecciones');
@@ -837,6 +839,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === ORDENES PLANILLAS ===
     Route::get('/produccion/OrdenesPlanillas', [App\Http\Controllers\ProduccionController::class, 'verOrdenesPlanillas'])
         ->name('produccion.verOrdenesPlanillas');
+
+    Route::get('/produccion/ordenes-planillas-tabla', [App\Http\Controllers\ProduccionController::class, 'verOrdenesPlanillasTabla'])
+        ->name('produccion.ordenesPlanillasTabla');
 
     // 🔄 Endpoint para actualizaciones en tiempo real
     Route::get('/produccion/maquinas/actualizaciones', [App\Http\Controllers\ProduccionController::class, 'obtenerActualizaciones'])

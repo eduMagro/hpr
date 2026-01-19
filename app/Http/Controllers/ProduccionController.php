@@ -2799,6 +2799,166 @@ class ProduccionController extends Controller
         return view('produccion.ordenesPlanillas', compact('maquinas', 'localizacionMaquinas', 'ordenPlanillas', 'planillas', 'elementos', 'obras'));
     }
 
+    /**
+     * Vista de tabla de órdenes de planillas con filtros por obra
+     */
+    public function verOrdenesPlanillasTabla(Request $request)
+    {
+        // Máquinas (sin grúas)
+        $maquinas = Maquina::where('tipo', '!=', 'grua')
+            ->orderBy('codigo')
+            ->get();
+
+        // Órdenes con planillas aprobadas, no completadas y con fecha entrega >= hoy
+        $ordenes = OrdenPlanilla::with(['planilla.obra.cliente', 'planilla.cliente'])
+            ->whereHas('planilla', function ($q) {
+                $q->where('aprobada', true)
+                  ->where('estado', '!=', 'completada')
+                  ->where('fecha_estimada_entrega', '>=', now()->startOfDay());
+            })
+            ->orderBy('posicion')
+            ->get();
+
+        // Agrupar por máquina y posición
+        $ordenesPorMaquina = [];
+        $maxPosicion = 1;
+        $planillaIds = [];
+
+        foreach ($ordenes as $orden) {
+            $ordenesPorMaquina[$orden->maquina_id][$orden->posicion] = $orden;
+            if ($orden->posicion > $maxPosicion) {
+                $maxPosicion = $orden->posicion;
+            }
+            if ($orden->planilla_id) {
+                $planillaIds[] = $orden->planilla_id;
+            }
+        }
+
+        // Obras para el filtro
+        $obras = Obra::orderBy('obra')->get(['id', 'obra']);
+
+        // Obras con sus planillas que están en órdenes (aprobadas, no completadas, fecha >= hoy)
+        $obrasConPlanillas = Obra::whereHas('planillas', function ($q) use ($planillaIds) {
+            $q->whereIn('id', $planillaIds)
+              ->where('aprobada', true)
+              ->where('estado', '!=', 'completada')
+              ->where('fecha_estimada_entrega', '>=', now()->startOfDay());
+        })
+            ->with(['planillas' => function ($q) use ($planillaIds) {
+                $q->whereIn('id', $planillaIds)
+                  ->where('aprobada', true)
+                  ->where('estado', '!=', 'completada')
+                  ->where('fecha_estimada_entrega', '>=', now()->startOfDay())
+                  ->orderBy('fecha_estimada_entrega');
+            }])
+            ->orderBy('obra')
+            ->get();
+
+        // Añadir planillas como relación temporal
+        foreach ($obrasConPlanillas as $obra) {
+            $obra->planillasEnOrden = $obra->planillas;
+        }
+
+        // Planillas sin orden (aprobadas, no completadas, fecha >= hoy, pero sin OrdenPlanilla)
+        $planillasSinOrden = Planilla::with(['obra.cliente', 'cliente'])
+            ->where('aprobada', true)
+            ->where('estado', '!=', 'completada')
+            ->where('fecha_estimada_entrega', '>=', now()->startOfDay())
+            ->whereDoesntHave('ordenProduccion')
+            ->orderBy('fecha_estimada_entrega')
+            ->get();
+
+        // Generar datos para los filtros (incluir planillas con y sin orden)
+        $filtros = [
+            'codigosObra' => [],
+            'obras' => [],
+            'codigosEmpresa' => [],
+            'empresas' => [],
+            'planillas' => [],
+        ];
+
+        // Función para agregar planilla a filtros
+        $agregarAFiltros = function($planilla) use (&$filtros) {
+            $obra = $planilla->obra;
+            $cliente = $planilla->cliente ?? $obra?->cliente;
+
+            if ($obra?->cod_obra && !in_array($obra->cod_obra, $filtros['codigosObra'])) {
+                $filtros['codigosObra'][] = $obra->cod_obra;
+            }
+            if ($obra && !isset($filtros['obras'][$obra->id])) {
+                $filtros['obras'][$obra->id] = $obra->obra;
+            }
+            if ($cliente?->codigo && !in_array($cliente->codigo, $filtros['codigosEmpresa'])) {
+                $filtros['codigosEmpresa'][] = $cliente->codigo;
+            }
+            if ($cliente?->empresa && !in_array($cliente->empresa, $filtros['empresas'])) {
+                $filtros['empresas'][] = $cliente->empresa;
+            }
+            if (!isset($filtros['planillas'][$planilla->id])) {
+                $fechaRaw = $planilla->getRawOriginal('fecha_estimada_entrega');
+                $filtros['planillas'][$planilla->id] = [
+                    'codigo' => $planilla->codigo,
+                    'fecha' => $fechaRaw ? Carbon::parse($fechaRaw)->format('d/m/Y') : '-',
+                ];
+            }
+        };
+
+        foreach ($ordenes as $orden) {
+            if ($orden->planilla) {
+                $agregarAFiltros($orden->planilla);
+            }
+        }
+
+        foreach ($planillasSinOrden as $planilla) {
+            $agregarAFiltros($planilla);
+        }
+
+        // Ordenar filtros
+        sort($filtros['codigosObra']);
+        asort($filtros['obras']);
+        sort($filtros['codigosEmpresa']);
+        sort($filtros['empresas']);
+
+        // Preparar datos de planillas sin orden para JS
+        $planillasSinOrdenJs = $planillasSinOrden->map(function($p) {
+            $cliente = $p->cliente ?? $p->obra?->cliente;
+            return [
+                'id' => $p->id,
+                'codigo' => $p->codigo,
+                'descripcion' => $p->descripcion ?? '',
+                'obra_id' => $p->obra_id,
+                'obra_nombre' => $p->obra?->obra ?? '',
+                'obra_codigo' => strtolower($p->obra?->cod_obra ?? ''),
+                'cliente_nombre' => $cliente?->empresa ?? '',
+                'empresa_codigo' => strtolower($cliente?->codigo ?? ''),
+                'empresa_nombre' => strtolower($cliente?->empresa ?? ''),
+            ];
+        })->values();
+
+        // Preparar datos de planillas CON orden para JS (para mostrar ficha)
+        $planillasConOrdenJs = collect();
+        foreach ($ordenes as $orden) {
+            if ($orden->planilla && !$planillasConOrdenJs->has($orden->planilla_id)) {
+                $p = $orden->planilla;
+                $cliente = $p->cliente ?? $p->obra?->cliente;
+                $planillasConOrdenJs[$orden->planilla_id] = [
+                    'id' => $p->id,
+                    'codigo' => $p->codigo,
+                    'descripcion' => $p->descripcion ?? '',
+                    'obra_id' => $p->obra_id,
+                    'obra_nombre' => $p->obra?->obra ?? '',
+                    'obra_codigo' => strtolower($p->obra?->cod_obra ?? ''),
+                    'cliente_nombre' => $cliente?->empresa ?? '',
+                    'empresa_codigo' => strtolower($cliente?->codigo ?? ''),
+                    'empresa_nombre' => strtolower($cliente?->empresa ?? ''),
+                ];
+            }
+        }
+        $planillasConOrdenJs = $planillasConOrdenJs->values();
+
+        return view('produccion.ordenesPlanillasTabla', compact('maquinas', 'ordenesPorMaquina', 'maxPosicion', 'obras', 'obrasConPlanillas', 'filtros', 'planillasSinOrdenJs', 'planillasConOrdenJs'));
+    }
+
     public function guardar(Request $request)
     {
         $data = $request->validate([

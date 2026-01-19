@@ -653,37 +653,39 @@ class VacacionesController extends Controller
                 'borderColor' => '#b22222',
                 'textColor' => 'white',
                 'allDay' => true,
-                'editable' => true
+                'editable' => false
             ];
         })->toArray();
 
-        // Query base de vacaciones
-        $query = AsignacionTurno::with(['user.maquina', 'turno'])
+        // Función para aplicar filtro de grupo a una query con relación user
+        $aplicarFiltroGrupo = function ($query) use ($grupo) {
+            if ($grupo === 'maquinistas') {
+                $query->whereHas('user', function ($q) {
+                    $q->where('rol', 'operario')
+                        ->whereHas('maquina', function ($mq) {
+                            $mq->whereIn('tipo', ['estribadora', 'cortadora_dobladora', 'grua']);
+                        });
+                });
+            } elseif ($grupo === 'ferrallas') {
+                $query->whereHas('user', function ($q) {
+                    $q->where('rol', 'operario')
+                        ->where(function ($inner) {
+                            $inner->whereNull('maquina_id')
+                                ->orWhereHas('maquina', fn($mq) => $mq->where('tipo', 'ensambladora'));
+                        });
+                });
+            } elseif ($grupo === 'oficina') {
+                $query->whereHas('user', fn($q) => $q->where('rol', 'oficina'));
+            }
+        };
+
+        // Query de vacaciones aprobadas
+        $queryVacaciones = AsignacionTurno::with(['user.maquina', 'turno'])
             ->where('estado', 'vacaciones');
+        $aplicarFiltroGrupo($queryVacaciones);
+        $vacaciones = $queryVacaciones->get();
 
-        // Filtrar por grupo
-        if ($grupo === 'maquinistas') {
-            $query->whereHas('user', function ($q) {
-                $q->where('rol', 'operario')
-                    ->whereHas('maquina', function ($mq) {
-                        $mq->whereIn('tipo', ['estribadora', 'cortadora_dobladora', 'grua']);
-                    });
-            });
-        } elseif ($grupo === 'ferrallas') {
-            $query->whereHas('user', function ($q) {
-                $q->where('rol', 'operario')
-                    ->where(function ($inner) {
-                        $inner->whereNull('maquina_id')
-                            ->orWhereHas('maquina', fn($mq) => $mq->where('tipo', 'ensambladora'));
-                    });
-            });
-        } elseif ($grupo === 'oficina') {
-            $query->whereHas('user', fn($q) => $q->where('rol', 'oficina'));
-        }
-
-        $vacaciones = $query->get();
-
-        $eventos = $vacaciones->map(function ($asignacion) {
+        $eventosVacaciones = $vacaciones->map(function ($asignacion) {
             return [
                 'title' => $asignacion->user->nombre_completo,
                 'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
@@ -693,11 +695,57 @@ class VacacionesController extends Controller
                 'allDay' => true,
                 'extendedProps' => [
                     'user_id' => $asignacion->user->id,
+                    'tipo' => 'vacaciones',
                 ],
             ];
         })->toArray();
 
-        return response()->json(array_merge($eventos, $festivos));
+        // Query de solicitudes pendientes
+        $querySolicitudes = VacacionesSolicitud::with(['user.maquina'])
+            ->where('estado', 'pendiente');
+        $aplicarFiltroGrupo($querySolicitudes);
+        $solicitudes = $querySolicitudes->get();
+
+        // Obtener fechas de festivos para excluirlas
+        $fechasFestivos = Festivo::pluck('fecha')->map(fn($f) => Carbon::parse($f)->format('Y-m-d'))->toArray();
+
+        // Convertir solicitudes a eventos (un evento por cada día laborable del rango)
+        $eventosSolicitudes = [];
+        foreach ($solicitudes as $solicitud) {
+            $fechaInicio = Carbon::parse($solicitud->fecha_inicio);
+            $fechaFin = Carbon::parse($solicitud->fecha_fin);
+
+            // Crear un evento por cada día del rango, excluyendo fines de semana y festivos
+            for ($fecha = $fechaInicio->copy(); $fecha->lte($fechaFin); $fecha->addDay()) {
+                // Saltar fines de semana (sábado = 6, domingo = 0)
+                if ($fecha->isWeekend()) {
+                    continue;
+                }
+
+                // Saltar festivos
+                if (in_array($fecha->format('Y-m-d'), $fechasFestivos)) {
+                    continue;
+                }
+
+                $eventosSolicitudes[] = [
+                    'id' => 'solicitud-' . $solicitud->id . '-' . $fecha->format('Y-m-d'),
+                    'title' => '🕐 ' . $solicitud->user->nombre_completo,
+                    'start' => $fecha->format('Y-m-d'),
+                    'backgroundColor' => '#fce7f3',
+                    'borderColor' => '#f9a8d4',
+                    'textColor' => '#831843',
+                    'allDay' => true,
+                    'editable' => false,
+                    'extendedProps' => [
+                        'user_id' => $solicitud->user->id,
+                        'solicitud_id' => $solicitud->id,
+                        'tipo' => 'solicitud_pendiente',
+                    ],
+                ];
+            }
+        }
+
+        return response()->json(array_merge($eventosVacaciones, $eventosSolicitudes, $festivos));
     }
 
     /**

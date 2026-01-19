@@ -21,6 +21,7 @@ class FinProgramadoService
     /**
      * Calcula el fin programado para un conjunto de elementos
      * Usa la MISMA lógica que ProduccionController::generarEventosMaquinas
+     * OPTIMIZADO: Pre-carga todos los elementos para evitar N+1 queries
      */
     public function calcularFinProgramadoElementos(array $elementosIds, ?Carbon $fechaEntrega = null): array
     {
@@ -71,6 +72,14 @@ class FinProgramadoService
             ->get()
             ->groupBy('maquina_id');
 
+        // OPTIMIZACIÓN: Pre-cargar TODOS los elementos pendientes de las planillas y máquinas involucradas
+        $planillasIdsOrdenes = $ordenes->flatten()->pluck('planilla_id')->unique()->toArray();
+        $todosElementosPendientes = Elemento::whereIn('planilla_id', $planillasIdsOrdenes)
+            ->whereIn('maquina_id', $maquinaIds)
+            ->where('estado', 'pendiente')
+            ->get()
+            ->groupBy(fn($e) => $e->planilla_id . '_' . $e->maquina_id);
+
         $finMasTardio = null;
         $detalles = [];
 
@@ -88,11 +97,9 @@ class FinProgramadoService
             $primeraOrdenId = $ordenesMaquina->first()->id ?? null;
 
             foreach ($ordenesMaquina as $orden) {
-                // Obtener elementos pendientes de esta planilla en esta máquina
-                $elementosPlanilla = Elemento::where('planilla_id', $orden->planilla_id)
-                    ->where('maquina_id', $maquinaId)
-                    ->where('estado', 'pendiente')
-                    ->get();
+                // OPTIMIZACIÓN: Usar elementos pre-cargados en vez de query
+                $cacheKey = $orden->planilla_id . '_' . $maquinaId;
+                $elementosPlanilla = $todosElementosPendientes->get($cacheKey, collect());
 
                 if ($elementosPlanilla->isEmpty()) {
                     continue;
@@ -648,9 +655,7 @@ class FinProgramadoService
 
     /**
      * Simula el adelanto de fabricación para un conjunto de elementos
-     *
-     * Identifica qué ordenes de planilla necesitan adelantarse,
-     * calcula la posición óptima, y detecta colaterales.
+     * OPTIMIZADO: Pre-carga todos los datos necesarios para evitar queries redundantes
      *
      * @param array $elementosIds - IDs de elementos del evento
      * @param Carbon $fechaEntrega - Fecha de entrega objetivo
@@ -670,7 +675,7 @@ class FinProgramadoService
         $this->cargarFestivos();
         $this->cargarTurnos();
 
-        // Obtener elementos con sus planillas
+        // Obtener elementos con sus planillas y obras
         $elementos = Elemento::with(['planilla.obra'])
             ->whereIn('id', $elementosIds)
             ->where('estado', 'pendiente')
@@ -698,8 +703,18 @@ class FinProgramadoService
             ];
         }
 
-        // Planillas involucradas
+        // Planillas involucradas (del evento que estamos moviendo)
         $planillasIds = $elementos->pluck('planilla_id')->unique()->toArray();
+
+        // OPTIMIZACIÓN: Pre-cargar planillas y máquinas de una sola vez
+        $planillasCache = Planilla::with('obra')
+            ->whereIn('id', $planillasIds)
+            ->get()
+            ->keyBy('id');
+
+        $maquinasCache = Maquina::whereIn('id', $maquinaIds)
+            ->get()
+            ->keyBy('id');
 
         // Obtener órdenes actuales
         $ordenes = OrdenPlanilla::whereIn('maquina_id', $maquinaIds)
@@ -740,6 +755,37 @@ class FinProgramadoService
         $ordenesAAdelantar = [];
         $cambiosPropuestos = []; // maquina_id => [cambios]
 
+        $razonesNoAdelanto = []; // Guardar razones por las que no se puede adelantar
+
+        // OPTIMIZACIÓN: Pre-cargar TODOS los datos necesarios UNA sola vez
+        $todasPlanillasIds = $ordenes->flatten()->pluck('planilla_id')->unique()->toArray();
+        $todosElementosCache = Elemento::whereIn('planilla_id', $todasPlanillasIds)
+            ->whereIn('maquina_id', $maquinaIds)
+            ->where('estado', 'pendiente')
+            ->get()
+            ->groupBy(fn($e) => $e->maquina_id . '_' . $e->planilla_id);
+
+        $colasCache = $this->calcularColasIniciales($maquinaIds);
+
+        // Pre-calcular duraciones para todas las planillas/máquinas
+        $duracionesGlobalCache = [];
+        foreach ($maquinaIds as $mid) {
+            $duracionesGlobalCache[$mid] = [];
+            $ordenesMaq = $ordenes->get($mid, collect());
+            foreach ($ordenesMaq as $ord) {
+                $key = $mid . '_' . $ord->planilla_id;
+                $elementosPlanilla = $todosElementosCache->get($key, collect());
+                if ($elementosPlanilla->isEmpty()) {
+                    $duracionesGlobalCache[$mid][$ord->planilla_id] = 0;
+                    continue;
+                }
+                $duracion = $elementosPlanilla->sum(function ($e) {
+                    return (float) ($e->tiempo_fabricacion ?? 1200) + 1200;
+                });
+                $duracionesGlobalCache[$mid][$ord->planilla_id] = max($duracion, 3600);
+            }
+        }
+
         foreach ($ordenesConRetraso as $ordenRetraso) {
             $maquinaId = $ordenRetraso['maquina_id'];
             $planillaId = $ordenRetraso['planilla_id'];
@@ -753,23 +799,29 @@ class FinProgramadoService
 
             $posicionActual = $ordenActual->posicion;
 
-            // Buscar posición óptima mediante búsqueda binaria
-            $posicionOptima = $this->buscarPosicionOptima(
+            // Buscar posición óptima usando datos pre-cargados
+            $resultado = $this->buscarPosicionOptimaRapida(
                 $maquinaId,
                 $planillaId,
                 $fechaEntrega,
-                $ordenesMaquina
+                $ordenesMaquina,
+                $colasCache[$maquinaId] ?? Carbon::now(),
+                $duracionesGlobalCache[$maquinaId] ?? []
             );
 
+            $posicionOptima = $resultado['posicion'];
+
             if ($posicionOptima !== null && $posicionOptima < $posicionActual) {
-                $planilla = Planilla::with('obra')->find($planillaId);
+                // OPTIMIZACIÓN: Usar cache en vez de queries individuales
+                $planilla = $planillasCache->get($planillaId);
+                $maquina = $maquinasCache->get($maquinaId);
 
                 $ordenesAAdelantar[] = [
                     'planilla_id' => $planillaId,
                     'planilla_codigo' => $planilla->codigo ?? 'N/A',
-                    'obra' => optional($planilla->obra)->obra ?? 'Sin obra',
+                    'obra' => optional($planilla?->obra)->obra ?? 'Sin obra',
                     'maquina_id' => $maquinaId,
-                    'maquina_nombre' => Maquina::find($maquinaId)->nombre ?? 'Máquina ' . $maquinaId,
+                    'maquina_nombre' => $maquina->nombre ?? 'Máquina ' . $maquinaId,
                     'posicion_actual' => $posicionActual,
                     'posicion_nueva' => $posicionOptima,
                     'fin_actual' => $ordenRetraso['fin_actual'],
@@ -784,15 +836,72 @@ class FinProgramadoService
                     'de' => $posicionActual,
                     'a' => $posicionOptima,
                 ];
+            } else if ($resultado['razon']) {
+                // Guardar la razón por la que no se puede adelantar
+                $planilla = $planillasCache->get($planillaId);
+                $maquina = $maquinasCache->get($maquinaId);
+                $razonesNoAdelanto[] = [
+                    'planilla_id' => $planillaId,
+                    'maquina_id' => $maquinaId,
+                    'planilla' => $planilla->codigo ?? 'Planilla ' . $planillaId,
+                    'maquina' => $maquina->nombre ?? 'Máquina ' . $maquinaId,
+                    'razon' => $resultado['razon'],
+                    'fin_minimo' => $resultado['fin_minimo'],
+                ];
             }
         }
 
         if (empty($ordenesAAdelantar)) {
+            // Agrupar razones por máquina para evitar mensajes repetitivos
+            $razonesPorMaquina = [];
+            foreach ($razonesNoAdelanto as $r) {
+                $maquinaId = $r['maquina_id'];
+                if (!isset($razonesPorMaquina[$maquinaId])) {
+                    $razonesPorMaquina[$maquinaId] = [
+                        'maquina_id' => $maquinaId,
+                        'maquina' => $r['maquina'],
+                        'planillas' => [],
+                        'fin_minimo' => $r['fin_minimo'],
+                        'peor_razon' => $r['razon'],
+                    ];
+                }
+                $razonesPorMaquina[$maquinaId]['planillas'][] = $r['planilla_id'];
+
+                // Guardar el peor fin_minimo (el más tardío)
+                if ($r['fin_minimo'] && (!$razonesPorMaquina[$maquinaId]['fin_minimo'] ||
+                    $r['fin_minimo'] > $razonesPorMaquina[$maquinaId]['fin_minimo'])) {
+                    $razonesPorMaquina[$maquinaId]['fin_minimo'] = $r['fin_minimo'];
+                    $razonesPorMaquina[$maquinaId]['peor_razon'] = $r['razon'];
+                }
+            }
+
+            // Construir mensaje consolidado (sin mostrar número de planillas para mayor claridad)
+            $mensajeDetallado = 'No se encontró una posición que mejore los tiempos.';
+            if (!empty($razonesPorMaquina)) {
+                $detalles = [];
+                foreach ($razonesPorMaquina as $info) {
+                    $detalles[] = "• {$info['maquina']}: {$info['peor_razon']}";
+                }
+                $mensajeDetallado = implode("\n", $detalles);
+            }
+
+            // Convertir razones agrupadas para el frontend
+            $razonesAgrupadas = array_values(array_map(function($info) {
+                return [
+                    'maquina_id' => $info['maquina_id'],
+                    'maquina' => $info['maquina'],
+                    'planillas_ids' => $info['planillas'],
+                    'fin_minimo' => $info['fin_minimo'],
+                    'razon' => $info['peor_razon'],
+                ];
+            }, $razonesPorMaquina));
+
             return [
                 'necesita_adelanto' => false,
                 'ordenes_a_adelantar' => [],
                 'colaterales' => [],
-                'mensaje' => 'No se encontró una posición que mejore los tiempos',
+                'mensaje' => $mensajeDetallado,
+                'razones' => $razonesAgrupadas,
             ];
         }
 
@@ -810,112 +919,307 @@ class FinProgramadoService
 
     /**
      * Busca la posición óptima para que una planilla llegue a tiempo
-     * Busca desde la posición actual hacia atrás para encontrar la posición
-     * más alta (menos adelanto) que aún permita entregar a tiempo
+     * OPTIMIZADO: Usa búsqueda binaria y pre-carga datos para evitar queries
+     *
+     * @return array ['posicion' => int|null, 'razon' => string, 'fin_minimo' => string|null]
      */
     private function buscarPosicionOptima(
         int $maquinaId,
         int $planillaId,
         Carbon $fechaEntrega,
         Collection $ordenesMaquina
-    ): ?int {
+    ): array {
         $ordenActual = $ordenesMaquina->firstWhere('planilla_id', $planillaId);
         if (!$ordenActual) {
-            return null;
+            return [
+                'posicion' => null,
+                'razon' => 'La planilla no tiene orden de fabricación asignada en esta máquina',
+                'fin_minimo' => null,
+            ];
         }
 
         $posicionActual = $ordenActual->posicion;
         $fechaEntregaFin = $fechaEntrega->copy()->endOfDay();
 
-        // Buscar desde posición actual-1 hacia atrás hasta encontrar
-        // la posición más alta que permita entregar a tiempo
+        // Si solo hay 1 posición, no hay nada que optimizar
+        if ($posicionActual <= 1) {
+            return [
+                'posicion' => null,
+                'razon' => 'La planilla ya está en la primera posición de la cola, no se puede adelantar más',
+                'fin_minimo' => null,
+            ];
+        }
+
+        // OPTIMIZACIÓN: Pre-cargar todos los datos necesarios UNA sola vez
+        $planillasIds = $ordenesMaquina->pluck('planilla_id')->toArray();
+        $elementosCache = Elemento::whereIn('planilla_id', $planillasIds)
+            ->where('maquina_id', $maquinaId)
+            ->where('estado', 'pendiente')
+            ->get()
+            ->groupBy('planilla_id');
+
+        $colasCache = $this->calcularColasIniciales([$maquinaId]);
+        $inicioCola = $colasCache[$maquinaId] ?? Carbon::now();
+
+        // Pre-calcular duraciones para cada planilla (evita recalcular en cada iteración)
+        $duracionesCache = [];
+        foreach ($planillasIds as $pid) {
+            $elementosPlanilla = $elementosCache->get($pid, collect());
+            if ($elementosPlanilla->isEmpty()) {
+                $duracionesCache[$pid] = 0;
+                continue;
+            }
+            $duracion = $elementosPlanilla->sum(function ($e) {
+                return (float) ($e->tiempo_fabricacion ?? 1200) + 1200;
+            });
+            $duracionesCache[$pid] = max($duracion, 3600);
+        }
+
+        // Calcular el fin mínimo posible (si se pone en posición 1)
+        $finMinimo = $this->simularFinRapido(
+            $maquinaId,
+            $planillaId,
+            1,
+            $ordenesMaquina,
+            $inicioCola,
+            $duracionesCache
+        );
+
+        // Si incluso en posición 1 no llega a tiempo, no hay solución
+        if ($finMinimo && $finMinimo->gt($fechaEntregaFin)) {
+            // Calcular el retraso de forma clara
+            $diasRetraso = (int) $fechaEntregaFin->diffInDays($finMinimo, false);
+            $horasRetraso = (int) abs($fechaEntregaFin->diffInHours($finMinimo) % 24);
+
+            $textoRetraso = '';
+            if ($diasRetraso > 0) {
+                $textoRetraso = "{$diasRetraso} día(s)";
+                if ($horasRetraso > 0) {
+                    $textoRetraso .= " y {$horasRetraso} hora(s)";
+                }
+            } else {
+                $textoRetraso = "{$horasRetraso} hora(s)";
+            }
+
+            return [
+                'posicion' => null,
+                'razon' => "Incluso en primera posición, terminaría el {$finMinimo->format('d/m/Y H:i')} " .
+                          "(retraso de {$textoRetraso} vs entrega {$fechaEntrega->format('d/m/Y')})",
+                'fin_minimo' => $finMinimo->format('d/m/Y H:i'),
+            ];
+        }
+
+        // BÚSQUEDA BINARIA: encontrar la posición más alta que cumple
+        $izq = 1;
+        $der = $posicionActual - 1;
         $mejorPosicion = null;
 
-        for ($posPrueba = $posicionActual - 1; $posPrueba >= 1; $posPrueba--) {
-            // Simular el orden con la planilla en esta posición
-            $finSimulado = $this->simularFinEnPosicion(
+        while ($izq <= $der) {
+            $mid = (int) floor(($izq + $der) / 2);
+
+            $finSimulado = $this->simularFinRapido(
                 $maquinaId,
                 $planillaId,
-                $posPrueba,
-                $ordenesMaquina
+                $mid,
+                $ordenesMaquina,
+                $inicioCola,
+                $duracionesCache
             );
 
             if ($finSimulado && $finSimulado->lte($fechaEntregaFin)) {
-                // Esta posición funciona - es la más alta que cumple
-                $mejorPosicion = $posPrueba;
-                break; // Encontramos la posición más alta que funciona
+                // Esta posición funciona, buscar si hay una más alta
+                $mejorPosicion = $mid;
+                $izq = $mid + 1;
+            } else {
+                // No funciona, necesitamos posición más baja (más adelanto)
+                $der = $mid - 1;
             }
         }
 
-        return $mejorPosicion;
+        if ($mejorPosicion === null) {
+            return [
+                'posicion' => null,
+                'razon' => 'No se encontró una posición que permita entregar a tiempo',
+                'fin_minimo' => $finMinimo?->format('d/m/Y H:i'),
+            ];
+        }
+
+        return [
+            'posicion' => $mejorPosicion,
+            'razon' => null,
+            'fin_minimo' => null,
+        ];
     }
 
     /**
-     * Simula el fin programado si la planilla estuviera en una posición específica
+     * Versión ultra-rápida de buscarPosicionOptima que recibe datos pre-cargados
+     * OPTIMIZADO: Sin ninguna query de base de datos
      */
-    private function simularFinEnPosicion(
+    private function buscarPosicionOptimaRapida(
+        int $maquinaId,
+        int $planillaId,
+        Carbon $fechaEntrega,
+        Collection $ordenesMaquina,
+        Carbon $inicioCola,
+        array $duracionesCache
+    ): array {
+        $ordenActual = $ordenesMaquina->firstWhere('planilla_id', $planillaId);
+        if (!$ordenActual) {
+            return [
+                'posicion' => null,
+                'razon' => 'La planilla no tiene orden de fabricación asignada en esta máquina',
+                'fin_minimo' => null,
+            ];
+        }
+
+        $posicionActual = $ordenActual->posicion;
+        $fechaEntregaFin = $fechaEntrega->copy()->endOfDay();
+
+        // Si solo hay 1 posición, no hay nada que optimizar
+        if ($posicionActual <= 1) {
+            return [
+                'posicion' => null,
+                'razon' => 'La planilla ya está en la primera posición de la cola, no se puede adelantar más',
+                'fin_minimo' => null,
+            ];
+        }
+
+        // Calcular el fin mínimo posible (si se pone en posición 1)
+        $finMinimo = $this->simularFinRapido(
+            $maquinaId,
+            $planillaId,
+            1,
+            $ordenesMaquina,
+            $inicioCola,
+            $duracionesCache
+        );
+
+        // Si incluso en posición 1 no llega a tiempo, no hay solución
+        if ($finMinimo && $finMinimo->gt($fechaEntregaFin)) {
+            $diasRetraso = (int) $fechaEntregaFin->diffInDays($finMinimo, false);
+            $horasRetraso = (int) abs($fechaEntregaFin->diffInHours($finMinimo) % 24);
+
+            $textoRetraso = '';
+            if ($diasRetraso > 0) {
+                $textoRetraso = "{$diasRetraso} día(s)";
+                if ($horasRetraso > 0) {
+                    $textoRetraso .= " y {$horasRetraso} hora(s)";
+                }
+            } else {
+                $textoRetraso = "{$horasRetraso} hora(s)";
+            }
+
+            return [
+                'posicion' => null,
+                'razon' => "Incluso en primera posición, terminaría el {$finMinimo->format('d/m/Y H:i')} " .
+                          "(retraso de {$textoRetraso} vs entrega {$fechaEntrega->format('d/m/Y')})",
+                'fin_minimo' => $finMinimo->format('d/m/Y H:i'),
+            ];
+        }
+
+        // BÚSQUEDA BINARIA: encontrar la posición más alta que cumple
+        $izq = 1;
+        $der = $posicionActual - 1;
+        $mejorPosicion = null;
+
+        while ($izq <= $der) {
+            $mid = (int) floor(($izq + $der) / 2);
+
+            $finSimulado = $this->simularFinRapido(
+                $maquinaId,
+                $planillaId,
+                $mid,
+                $ordenesMaquina,
+                $inicioCola,
+                $duracionesCache
+            );
+
+            if ($finSimulado && $finSimulado->lte($fechaEntregaFin)) {
+                $mejorPosicion = $mid;
+                $izq = $mid + 1;
+            } else {
+                $der = $mid - 1;
+            }
+        }
+
+        if ($mejorPosicion === null) {
+            return [
+                'posicion' => null,
+                'razon' => 'No se encontró una posición que permita entregar a tiempo',
+                'fin_minimo' => $finMinimo?->format('d/m/Y H:i'),
+            ];
+        }
+
+        return [
+            'posicion' => $mejorPosicion,
+            'razon' => null,
+            'fin_minimo' => null,
+        ];
+    }
+
+    /**
+     * Simula el fin programado de forma rápida usando datos pre-cargados
+     * OPTIMIZADO: Sin queries de base de datos
+     */
+    private function simularFinRapido(
         int $maquinaId,
         int $planillaId,
         int $nuevaPosicion,
-        Collection $ordenesMaquina
+        Collection $ordenesMaquina,
+        Carbon $inicioCola,
+        array $duracionesCache
     ): ?Carbon {
-        // Reordenar: sacar planilla de su posición y meterla en nuevaPosicion
-        $ordenesSimuladas = $ordenesMaquina->map(function ($o) use ($planillaId, $nuevaPosicion) {
-            $orden = clone $o;
-            if ($orden->planilla_id == $planillaId) {
-                $orden->posicion = $nuevaPosicion;
-            } elseif ($orden->posicion >= $nuevaPosicion && $orden->posicion < $ordenesMaquina->firstWhere('planilla_id', $planillaId)->posicion) {
-                $orden->posicion = $orden->posicion + 1;
+        $posicionOriginal = $ordenesMaquina->firstWhere('planilla_id', $planillaId)?->posicion;
+        if (!$posicionOriginal) {
+            return null;
+        }
+
+        // Reordenar virtualmente las órdenes
+        $ordenesSimuladas = $ordenesMaquina->map(function ($o) use ($planillaId, $nuevaPosicion, $posicionOriginal) {
+            $pos = $o->posicion;
+            if ($o->planilla_id == $planillaId) {
+                $pos = $nuevaPosicion;
+            } elseif ($o->posicion >= $nuevaPosicion && $o->posicion < $posicionOriginal) {
+                $pos = $o->posicion + 1;
             }
-            return $orden;
+            return ['planilla_id' => $o->planilla_id, 'posicion' => $pos];
         })->sortBy('posicion')->values();
 
-        // Calcular fin para la planilla objetivo
-        $colasMaquinas = $this->calcularColasIniciales([$maquinaId]);
-        $inicioCola = $colasMaquinas[$maquinaId] ?? Carbon::now();
+        // Simular la cola hasta llegar a la planilla objetivo
+        $cursor = $inicioCola->copy();
+        $esPrimero = true;
 
-        foreach ($ordenesSimuladas as $idx => $orden) {
-            $elementosPlanilla = Elemento::where('planilla_id', $orden->planilla_id)
-                ->where('maquina_id', $maquinaId)
-                ->where('estado', 'pendiente')
-                ->get();
+        foreach ($ordenesSimuladas as $orden) {
+            $duracion = $duracionesCache[$orden['planilla_id']] ?? 0;
 
-            if ($elementosPlanilla->isEmpty()) {
+            if ($duracion <= 0) {
                 continue;
             }
 
-            $duracionSegundos = $elementosPlanilla->sum(function ($e) {
-                $tiempoFab = (float) ($e->tiempo_fabricacion ?? 1200);
-                $tiempoAmarrado = 1200;
-                return $tiempoFab + $tiempoAmarrado;
-            });
-            $duracionSegundos = max($duracionSegundos, 3600);
-
-            $esPrimerEvento = ($idx === 0);
-
-            if ($esPrimerEvento) {
-                $fechaInicioFabricacion = $this->obtenerFechaInicioFabricacion($orden->planilla_id, $maquinaId);
-                $fechaInicio = $fechaInicioFabricacion ?? Carbon::now();
+            if ($esPrimero) {
+                $fechaInicioFab = $this->obtenerFechaInicioFabricacion($orden['planilla_id'], $maquinaId);
+                $fechaInicio = $fechaInicioFab ?? Carbon::now();
+                $esPrimero = false;
             } else {
-                $fechaInicio = $inicioCola->copy();
+                $fechaInicio = $cursor->copy();
             }
 
-            $tramos = $this->generarTramosLaborales($fechaInicio, $duracionSegundos);
+            $tramos = $this->generarTramosLaborales($fechaInicio, $duracion);
 
             if (empty($tramos)) {
                 continue;
             }
 
             $ultimoTramo = end($tramos);
-            $fechaFinReal = $ultimoTramo['end'] instanceof Carbon
+            $fechaFin = $ultimoTramo['end'] instanceof Carbon
                 ? $ultimoTramo['end']->copy()
                 : Carbon::parse($ultimoTramo['end']);
 
-            if ($orden->planilla_id == $planillaId) {
-                return $fechaFinReal;
+            if ($orden['planilla_id'] == $planillaId) {
+                return $fechaFin;
             }
 
-            $inicioCola = $fechaFinReal->copy();
+            $cursor = $fechaFin->copy();
         }
 
         return null;
@@ -989,6 +1293,8 @@ class FinProgramadoService
     {
         $resultados = [];
 
+        Log::info('[ejecutarAdelanto] Iniciando con ' . count($ordenesAAdelantar) . ' órdenes', $ordenesAAdelantar);
+
         DB::beginTransaction();
         try {
             foreach ($ordenesAAdelantar as $orden) {
@@ -996,16 +1302,19 @@ class FinProgramadoService
                 $maquinaId = $orden['maquina_id'];
                 $nuevaPosicion = $orden['posicion_nueva'];
 
+                Log::info("[ejecutarAdelanto] Procesando planilla {$planillaId} en maquina {$maquinaId} a posicion {$nuevaPosicion}");
+
                 // Obtener orden actual
                 $ordenActual = OrdenPlanilla::where('planilla_id', $planillaId)
                     ->where('maquina_id', $maquinaId)
                     ->first();
 
                 if (!$ordenActual) {
+                    Log::warning("[ejecutarAdelanto] Orden no encontrada para planilla {$planillaId} en maquina {$maquinaId}");
                     $resultados[] = [
                         'planilla_id' => $planillaId,
                         'success' => false,
-                        'mensaje' => 'Orden no encontrada',
+                        'mensaje' => "Orden no encontrada para planilla {$planillaId} en máquina {$maquinaId}",
                     ];
                     continue;
                 }
@@ -1013,10 +1322,11 @@ class FinProgramadoService
                 $posicionAnterior = $ordenActual->posicion;
 
                 if ($nuevaPosicion >= $posicionAnterior) {
+                    Log::warning("[ejecutarAdelanto] Posición nueva ({$nuevaPosicion}) no es menor que actual ({$posicionAnterior}) para planilla {$planillaId}");
                     $resultados[] = [
                         'planilla_id' => $planillaId,
                         'success' => false,
-                        'mensaje' => 'La nueva posición no es menor que la actual',
+                        'mensaje' => "La nueva posición ({$nuevaPosicion}) no es menor que la actual ({$posicionAnterior})",
                     ];
                     continue;
                 }
