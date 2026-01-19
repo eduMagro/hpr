@@ -117,6 +117,28 @@
                                     <option value="completada">Completada</option>
                                 </select>
                             </div>
+
+                            <!-- Filtro por planilla (select con fechas) -->
+                            <div class="col-span-2">
+                                <label class="block text-gray-700 font-medium mb-1 text-xs">Planilla</label>
+                                <select id="filtroPlanillaSelect"
+                                    class="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">-- Seleccionar planilla --</option>
+                                    @foreach($obrasConPlanillas as $obra)
+                                        <optgroup label="{{ $obra->obra }}">
+                                            @foreach($obra->planillasEnOrden as $planilla)
+                                                @php
+                                                    $fechaRaw = $planilla->getRawOriginal('fecha_estimada_entrega');
+                                                    $fechaDisplay = $fechaRaw ? \Carbon\Carbon::parse($fechaRaw)->format('d/m/Y') : '-';
+                                                @endphp
+                                                <option value="{{ $planilla->codigo }}" data-planilla-id="{{ $planilla->id }}">
+                                                    {{ $planilla->codigo }} - {{ $fechaDisplay }}
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
 
                         <!-- Control de Turnos -->
@@ -2301,8 +2323,8 @@
                     slotLabelContent: function(arg) {
                         // Obtener la fecha inicial del calendario
                         const initialDateStr = "{{ $initialDate }}";
-                        // Parsear la fecha correctamente (puede venir como "Y-m-d" o "Y-m-d H:i:s")
-                        const datePart = initialDateStr.split(' ')[0]; // Tomar solo la parte de fecha
+                        // Parsear la fecha correctamente (puede venir como "Y-m-d", "Y-m-d H:i:s" o ISO8601 "Y-m-dTH:i:s+00:00")
+                        const datePart = initialDateStr.split(/[T ]/)[0]; // Dividir por T o espacio
                         const [year, month, day] = datePart.split('-').map(Number);
                         const calendarInitialDate = new Date(year, month - 1, day, 0, 0, 0, 0);
 
@@ -2920,7 +2942,7 @@
                                 // Convertir el tiempo del slot a una fecha para comparar
                                 const [hours, minutes] = slotTime.split(':').map(Number);
                                 const initialDateStr = "{{ $initialDate }}";
-                                const datePart = initialDateStr.split(' ')[0]; // Tomar solo la parte de fecha
+                                const datePart = initialDateStr.split(/[T ]/)[0]; // Dividir por T o espacio (ISO8601)
                                 const [year, month, day] = datePart.split('-').map(Number);
                                 const initialDate = new Date(year, month - 1, day, 0, 0, 0, 0);
 
@@ -3990,6 +4012,7 @@
 
                         let planillasResaltadas = 0;
                         let segmentosResaltados = 0;
+                        let planillaCoincidente = null; // Guardar info de planilla coincidente para abrir panel
 
                         // 🔧 OPTIMIZACIÓN: Cachear querySelectorAll y crear mapa de elementos por ID
                         const todosElementosDOM = document.querySelectorAll('.fc-event');
@@ -4068,6 +4091,12 @@
 
                             if (cumple) {
                                 planillasResaltadas++;
+                                // Guardar info de la planilla coincidente
+                                planillaCoincidente = {
+                                    id: planillaId,
+                                    codigo: data.title,
+                                    props: data.props
+                                };
                             }
                         });
 
@@ -4084,10 +4113,24 @@
                                 timer: 2000,
                                 showConfirmButton: false
                             });
-                        } else {
-                            //  console.log('🎉 Resaltado aplicado con éxito');
+                        } else if (planillasResaltadas === 1 && filtrosActivos.codigoPlanilla && planillaCoincidente) {
+                            // Si solo hay una planilla coincidente y se filtró por código, abrir panel automáticamente
+                            console.log('📋 Abriendo panel automáticamente para planilla:', planillaCoincidente);
+                            abrirPanelAutomatico(planillaCoincidente.id, planillaCoincidente.codigo);
                         }
                     }, 100);
+                }
+
+                // Función para abrir el panel automáticamente cuando hay una sola planilla filtrada
+                async function abrirPanelAutomatico(planillaId, codigoPlanilla) {
+                    try {
+                        const response = await fetch(`/elementos/por-ids?planilla_id=${planillaId}`);
+                        const elementos = await response.json();
+                        console.log('✅ Elementos cargados automáticamente:', elementos.length);
+                        mostrarPanelElementos(elementos, planillaId, codigoPlanilla);
+                    } catch (error) {
+                        console.error('❌ Error al cargar elementos automáticamente:', error);
+                    }
                 }
                 /**
                  * Limpia todos los resaltados
@@ -4232,6 +4275,13 @@
                 document.getElementById('filtroFechaEntrega').addEventListener('change', capturarYAplicarFiltros);
                 document.getElementById('filtroEstado').addEventListener('change', capturarYAplicarFiltros);
 
+                // Listener para el select de planillas - actualiza el input de código y aplica filtros
+                document.getElementById('filtroPlanillaSelect').addEventListener('change', function() {
+                    const codigoPlanilla = this.value;
+                    document.getElementById('filtroCodigoPlanilla').value = codigoPlanilla;
+                    capturarYAplicarFiltros();
+                });
+
                 document.getElementById('limpiarResaltado').addEventListener('click', function() {
                     // Limpiar los valores de los inputs
                     document.getElementById('filtroCliente').value = '';
@@ -4241,6 +4291,7 @@
                     document.getElementById('filtroCodigoPlanilla').value = '';
                     document.getElementById('filtroFechaEntrega').value = '';
                     document.getElementById('filtroEstado').value = '';
+                    document.getElementById('filtroPlanillaSelect').value = '';
 
                     // Limpiar y aplicar (esto limpiará los resaltados automáticamente)
                     limpiarResaltado();

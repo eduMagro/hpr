@@ -182,13 +182,6 @@ class StockService
     {
         $configuracionVistaStock = $this->obtenerConfiguracionVistaStock($idsObrasFiltradas);
 
-        $productosAlmacenados = Producto::with('productoBase')
-            ->where('estado', 'almacenado')
-            ->whereNotNull('obra_id')  // ✅ Excluir productos sin obra asignada
-            ->when($idsObrasFiltradas, fn($q) => $q->whereIn('obra_id', $idsObrasFiltradas))
-            ->get()
-            ->filter(fn($producto) => $producto->productoBase);
-
         // Inicializamos la estructura de resultados
         $resultadoStock = [];
         foreach ($configuracionVistaStock['diametros_considerados'] as $diametro) {
@@ -202,32 +195,39 @@ class StockService
             ];
         }
 
-        // Recorremos productos
-        foreach ($productosAlmacenados as $producto) {
-            $productoBase = $producto->productoBase;
-            if (!$productoBase)
-                continue;
+        // OPTIMIZADO: Usar agregación SQL en lugar de cargar todos los productos
+        $query = DB::table('productos')
+            ->join('productos_base', 'productos.producto_base_id', '=', 'productos_base.id')
+            ->where('productos.estado', 'almacenado')
+            ->whereNotNull('productos.obra_id')
+            ->whereIn('productos_base.diametro', $configuracionVistaStock['diametros_considerados'])
+            ->when($idsObrasFiltradas, fn($q) => $q->whereIn('productos.obra_id', $idsObrasFiltradas))
+            ->select(
+                'productos_base.tipo',
+                'productos_base.diametro',
+                'productos_base.longitud',
+                DB::raw('SUM(productos.peso_inicial) as total_peso')
+            )
+            ->groupBy('productos_base.tipo', 'productos_base.diametro', 'productos_base.longitud')
+            ->get();
 
-            $diametro = (int) $productoBase->diametro;
-            if (!array_key_exists($diametro, $resultadoStock))
-                continue;
+        foreach ($query as $row) {
+            $diametro = (int) $row->diametro;
+            if (!array_key_exists($diametro, $resultadoStock)) continue;
 
-            if ($productoBase->tipo === 'encarretado') {
+            if ($row->tipo === 'encarretado') {
                 if ($configuracionVistaStock['incluir_encarretado']) {
-                    $resultadoStock[$diametro]['encarretado'] += (float) $producto->peso_inicial;
+                    $resultadoStock[$diametro]['encarretado'] += (float) $row->total_peso;
                 }
-            } elseif ($productoBase->tipo === 'barra') {
-                $longitudBarra = (int) ($productoBase->longitud ?? 12);
-
-                // En Almacén solo admitimos 12 m y 6 m
+            } elseif ($row->tipo === 'barra') {
+                $longitudBarra = (int) ($row->longitud ?? 12);
                 if (!in_array($longitudBarra, $configuracionVistaStock['longitudes_barras'], true)) {
                     continue;
                 }
-
                 if (!isset($resultadoStock[$diametro]['barras'][$longitudBarra])) {
                     $resultadoStock[$diametro]['barras'][$longitudBarra] = 0.0;
                 }
-                $resultadoStock[$diametro]['barras'][$longitudBarra] += (float) $producto->peso_inicial;
+                $resultadoStock[$diametro]['barras'][$longitudBarra] += (float) $row->total_peso;
             }
         }
 
@@ -245,12 +245,6 @@ class StockService
     {
         $configuracionVistaStock = $this->obtenerConfiguracionVistaStock($idsObrasFiltradas);
 
-        $elementosPendientes = Elemento::with(['maquina', 'planilla'])
-            ->where('estado', 'pendiente')
-            ->when($idsObrasFiltradas, fn($q) => $q->whereHas('planilla', fn($p) => $p->whereIn('obra_id', $idsObrasFiltradas)))
-            ->get()
-            ->filter(fn($elemento) => $elemento->maquina && $elemento->maquina->tipo_material && $elemento->diametro);
-
         $resultadoNecesario = [];
         foreach ($configuracionVistaStock['diametros_considerados'] as $diametro) {
             $resultadoNecesario[$diametro] = [
@@ -263,20 +257,36 @@ class StockService
             ];
         }
 
-        foreach ($elementosPendientes as $elemento) {
-            $diametro = (int) $elemento->diametro;
-            if (!isset($resultadoNecesario[$diametro]))
-                continue;
+        // OPTIMIZADO: Usar agregación SQL en lugar de cargar todos los elementos
+        $query = DB::table('elementos')
+            ->join('maquinas', 'elementos.maquina_id', '=', 'maquinas.id')
+            ->join('planillas', 'elementos.planilla_id', '=', 'planillas.id')
+            ->where('elementos.estado', 'pendiente')
+            ->whereNull('elementos.deleted_at')
+            ->whereNotNull('maquinas.tipo_material')
+            ->whereNotNull('elementos.diametro')
+            ->whereIn('elementos.diametro', $configuracionVistaStock['diametros_considerados'])
+            ->when($idsObrasFiltradas, fn($q) => $q->whereIn('planillas.obra_id', $idsObrasFiltradas))
+            ->select(
+                'elementos.diametro',
+                'maquinas.tipo_material',
+                DB::raw('SUM(elementos.peso) as total_peso')
+            )
+            ->groupBy('elementos.diametro', 'maquinas.tipo_material')
+            ->get();
 
-            $pesoNecesario = (float) ($elemento->peso ?? 0);
-            $tipoMaterial = $elemento->maquina->tipo_material; // 'barra' | 'encarretado'
+        foreach ($query as $row) {
+            $diametro = (int) $row->diametro;
+            if (!isset($resultadoNecesario[$diametro])) continue;
+
+            $pesoNecesario = (float) ($row->total_peso ?? 0);
+            $tipoMaterial = $row->tipo_material;
 
             if ($tipoMaterial === 'encarretado') {
                 if ($configuracionVistaStock['incluir_encarretado']) {
                     $resultadoNecesario[$diametro]['encarretado'] += $pesoNecesario;
                 }
             } else {
-                // No conocemos longitud exacta → sumamos al total de barras
                 $resultadoNecesario[$diametro]['barras_total'] += $pesoNecesario;
             }
         }
@@ -396,7 +406,10 @@ class StockService
 
     private function getProductoBaseInfo()
     {
-        return ProductoBase::all(['id', 'tipo', 'diametro', 'longitud'])
+        // OPTIMIZADO: usar query builder en lugar de Eloquent
+        return DB::table('productos_base')
+            ->select('id', 'tipo', 'diametro', 'longitud')
+            ->get()
             ->keyBy('id')
             ->map(fn($p) => [
                 'tipo' => $p->tipo,

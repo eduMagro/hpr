@@ -669,6 +669,29 @@ class ProduccionController extends Controller
             ];
         });
 
+        // 🆕 Obras con planillas para el filtro (igual que en ordenesPlanillasTabla)
+        $planillaIdsEnCola = OrdenPlanilla::pluck('planilla_id')->unique()->toArray();
+        $obrasConPlanillas = Obra::whereHas('planillas', function ($q) use ($planillaIdsEnCola) {
+            $q->whereIn('id', $planillaIdsEnCola)
+              ->where('aprobada', true)
+              ->where('estado', '!=', 'completada')
+              ->where('fecha_estimada_entrega', '>=', now()->startOfDay());
+        })
+            ->with(['planillas' => function ($q) use ($planillaIdsEnCola) {
+                $q->whereIn('id', $planillaIdsEnCola)
+                  ->where('aprobada', true)
+                  ->where('estado', '!=', 'completada')
+                  ->where('fecha_estimada_entrega', '>=', now()->startOfDay())
+                  ->orderBy('fecha_estimada_entrega');
+            }])
+            ->orderBy('obra')
+            ->get();
+
+        // Añadir planillas como relación temporal
+        foreach ($obrasConPlanillas as $obra) {
+            $obra->planillasEnOrden = $obra->planillas;
+        }
+
         return view('produccion.maquinas', [
             'maquinas'                         => $maquinas,
             'maquinasParaJS' => $maquinasParaJS,
@@ -686,6 +709,7 @@ class ProduccionController extends Controller
             'filtro_fecha_fin'                 => $fechaFin,
             'filtro_turno'                     => $turnoFiltro,
             'initialDate'                     => $initialDate,
+            'obrasConPlanillas'               => $obrasConPlanillas,
         ]);
     }
 
@@ -4212,16 +4236,21 @@ class ProduccionController extends Controller
      */
     private function crearSnapshotProduccion(string $tipoOperacion): SnapshotProduccion
     {
-        // Capturar estado actual de orden_planillas
+        // Capturar estado actual de orden_planillas (query ligera)
         $ordenPlanillasData = DB::table('orden_planillas')
             ->select('id', 'planilla_id', 'maquina_id', 'posicion')
             ->get()
+            ->map(fn($row) => (array) $row)
             ->toArray();
 
-        // Capturar estado actual de elementos (solo campos relevantes para producción)
-        $elementosData = Elemento::whereNotIn('estado', ['completado', 'fabricado'])
-            ->select('id', 'maquina_id', 'orden_planilla_id', 'etiqueta_id', 'etiqueta_sub_id')
+        // Capturar estado actual de elementos usando query builder (más rápido que Eloquent)
+        // Solo guardamos los IDs de elementos con sus asignaciones de máquina
+        $elementosData = DB::table('elementos')
+            ->whereNull('deleted_at')
+            ->whereNotIn('estado', ['completado', 'fabricado'])
+            ->select('id', 'maquina_id', 'orden_planilla_id')
             ->get()
+            ->map(fn($row) => (array) $row)
             ->toArray();
 
         // Crear snapshot
@@ -4361,16 +4390,25 @@ class ProduccionController extends Controller
         $obrasIds = $request->input('obras');
         $incluirFabricando = $request->boolean('incluir_fabricando', false);
 
+        // Reconectar BD para evitar "MySQL server has gone away"
+        DB::reconnect();
+
+        // Crear snapshot ANTES de la transacción (operación pesada)
+        try {
+            $this->crearSnapshotProduccion('priorizar_obras');
+        } catch (\Exception $e) {
+            Log::warning('No se pudo crear snapshot de priorización', ['error' => $e->getMessage()]);
+        }
+
         DB::beginTransaction();
 
         try {
-            // Crear snapshot antes de la operación
-            $this->crearSnapshotProduccion('priorizar_obras');
 
             $maquinas = Maquina::pluck('id');
             $cambiosRealizados = 0;
             $omitidos = 0;
             $planillasAfectadas = [];
+            $actualizacionesBatch = [];
 
             foreach ($maquinas as $maquinaId) {
                 // Obtener todas las orden_planillas de esta máquina ordenadas por posición actual
@@ -4423,12 +4461,14 @@ class ProduccionController extends Controller
                     $omitidos++;
                 }
 
-                // Actualizar posiciones
+                // Recolectar cambios para actualización batch
                 $posicion = $posicionInicial;
                 foreach ($nuevoOrden as $op) {
                     if ($op->posicion !== $posicion) {
-                        $op->posicion = $posicion;
-                        $op->save();
+                        $actualizacionesBatch[] = [
+                            'id' => $op->id,
+                            'posicion' => $posicion,
+                        ];
                         $cambiosRealizados++;
 
                         // Registrar planilla afectada
@@ -4438,6 +4478,21 @@ class ProduccionController extends Controller
                     }
                     $posicion++;
                 }
+            }
+
+            // Actualización batch de posiciones usando CASE WHEN (mucho más rápido)
+            if (!empty($actualizacionesBatch)) {
+                $cases = [];
+                $ids = [];
+                foreach ($actualizacionesBatch as $item) {
+                    $cases[] = "WHEN {$item['id']} THEN {$item['posicion']}";
+                    $ids[] = $item['id'];
+                }
+
+                $caseSql = implode(' ', $cases);
+                $idsSql = implode(',', $ids);
+
+                DB::statement("UPDATE orden_planillas SET posicion = CASE id {$caseSql} END WHERE id IN ({$idsSql})");
             }
 
             // Marcar planillas afectadas como no revisadas

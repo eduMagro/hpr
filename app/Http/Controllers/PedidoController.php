@@ -284,20 +284,19 @@ class PedidoController extends Controller
 
     public function index(Request $request, StockService $stockService)
     {
-        // Cargamos todos los modelos y relaciones necesarios
+        // OPTIMIZADO: Cargar solo relaciones necesarias y evitar duplicados
         $query = Pedido::with([
-            'fabricante',
-            'distribuidor',
-            'productos',
-            'pedidoGlobal',
-
-            'pedidoProductos.productoBase',
-            'pedidoProductos.obra',  // 👈 Cargar la obra desde la línea
-            'pedidoProductos.pedidoGlobal',
+            'fabricante:id,nombre',
+            'distribuidor:id,nombre',
+            'pedidoGlobal:id,codigo',
             'pedidoProductos' => function ($query) {
-                $query->with(['productoBase', 'pedidoGlobal', 'obra']); // ✅ Cargar obra aquí
+                $query->select('id', 'pedido_id', 'producto_base_id', 'obra_id', 'pedido_global_id', 'cantidad', 'estado', 'fecha_estimada_entrega')
+                    ->with([
+                        'productoBase:id,tipo,diametro,longitud',
+                        'obra:id,obra',
+                        'pedidoGlobal:id,codigo'
+                    ]);
             },
-
         ]);
 
         if (auth()->user()->rol === 'operario') {
@@ -418,8 +417,9 @@ class PedidoController extends Controller
             ->where('cliente_id', '!=', $idClienteHpr)
             ->orderBy('obra')
             ->get();
-        // Obtener productos base ordenados
-        $productosBase = ProductoBase::orderBy('tipo')
+        // Obtener productos base ordenados (solo campos necesarios para reducir memoria)
+        $productosBase = ProductoBase::select('id', 'tipo', 'diametro', 'longitud', 'descripcion')
+            ->orderBy('tipo')
             ->orderBy('diametro')
             ->orderBy('longitud')
             ->get();
