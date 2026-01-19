@@ -28,3 +28,4 @@ print-service/__pycache__/
 readme*.tmp
 tmpclaude-*
 compose.yaml
+readme
