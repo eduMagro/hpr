@@ -46,7 +46,7 @@ class ChunkReadFilter implements IReadFilter
 class AsignarMaquinasExcelCommand extends Command
 {
     protected $signature = 'planillas:sincronizar-excel
-                            {archivo? : Ruta al archivo Excel. Por defecto: Hoja de cálculo sin título.xlsx}
+                            {archivo? : Ruta al archivo Excel. Por defecto: excelMaestro.xlsx}
                             {--dry-run : Solo mostrar qué se haría sin ejecutar cambios}
                             {--solo-maquinas : Solo asignar máquinas, sin actualizar fechas ni completar}
                             {--solo-pendientes : Solo procesar planillas pendientes (por defecto procesa todas)}';
@@ -162,7 +162,7 @@ class AsignarMaquinasExcelCommand extends Command
         // Aumentar límite de memoria para archivos Excel grandes
         ini_set('memory_limit', '2G');
 
-        $archivo = $this->argument('archivo') ?? 'Hoja de cálculo sin título.xlsx';
+        $archivo = $this->argument('archivo') ?? 'excelMaestro.xlsx';
         $dryRun = $this->option('dry-run');
         $soloMaquinas = $this->option('solo-maquinas');
         $soloPendientes = $this->option('solo-pendientes');
