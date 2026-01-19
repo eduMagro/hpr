@@ -922,6 +922,90 @@
             </div>
         </div>
 
+        <!-- Modal Información de Planilla (clic derecho) -->
+        <div id="modalInfoPlanilla"
+            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+                <div class="bg-blue-600 text-white px-6 py-4 rounded-t-lg flex justify-between items-center">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                            </path>
+                        </svg>
+                        <span id="modalInfoPlanilla-titulo">Información de Planilla</span>
+                    </h3>
+                    <button onclick="cerrarModalInfoPlanilla()" class="text-white hover:text-gray-200">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Cliente -->
+                        <div class="col-span-2 bg-gray-50 rounded-lg p-3">
+                            <label class="text-xs text-gray-500 uppercase tracking-wide">Cliente</label>
+                            <p id="modalInfo-cliente" class="font-semibold text-gray-800 text-lg"></p>
+                            <span id="modalInfo-codCliente" class="text-xs text-gray-500"></span>
+                        </div>
+                        <!-- Obra -->
+                        <div class="col-span-2 bg-gray-50 rounded-lg p-3">
+                            <label class="text-xs text-gray-500 uppercase tracking-wide">Obra</label>
+                            <p id="modalInfo-obra" class="font-semibold text-gray-800"></p>
+                            <span id="modalInfo-codObra" class="text-xs text-gray-500"></span>
+                        </div>
+                        <!-- Código Planilla -->
+                        <div class="bg-blue-50 rounded-lg p-3">
+                            <label class="text-xs text-gray-500 uppercase tracking-wide">Planilla</label>
+                            <p id="modalInfo-codigoPlanilla" class="font-mono font-bold text-blue-700"></p>
+                        </div>
+                        <!-- Estado -->
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <label class="text-xs text-gray-500 uppercase tracking-wide">Estado</label>
+                            <p id="modalInfo-estado" class="font-semibold"></p>
+                        </div>
+                        <!-- Fecha Entrega -->
+                        <div class="bg-orange-50 rounded-lg p-3">
+                            <label class="text-xs text-gray-500 uppercase tracking-wide">Fecha Entrega</label>
+                            <p id="modalInfo-fechaEntrega" class="font-semibold text-orange-700"></p>
+                        </div>
+                        <!-- Fin Programado -->
+                        <div class="bg-green-50 rounded-lg p-3">
+                            <label class="text-xs text-gray-500 uppercase tracking-wide">Fin Programado</label>
+                            <p id="modalInfo-finProgramado" class="font-semibold text-green-700"></p>
+                        </div>
+                        <!-- Duración -->
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <label class="text-xs text-gray-500 uppercase tracking-wide">Duración</label>
+                            <p id="modalInfo-duracion" class="font-semibold"></p>
+                        </div>
+                        <!-- Progreso -->
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <label class="text-xs text-gray-500 uppercase tracking-wide">Progreso</label>
+                            <p id="modalInfo-progreso" class="font-semibold"></p>
+                        </div>
+                        <!-- Revisión -->
+                        <div class="col-span-2 rounded-lg p-3" id="modalInfo-revisionContainer">
+                            <label class="text-xs text-gray-500 uppercase tracking-wide">Estado de Revisión</label>
+                            <p id="modalInfo-revision" class="font-semibold"></p>
+                        </div>
+                        <!-- Elementos -->
+                        <div class="col-span-2 bg-gray-50 rounded-lg p-3">
+                            <label class="text-xs text-gray-500 uppercase tracking-wide">Elementos (<span id="modalInfo-numElementos">0</span>)</label>
+                            <p id="modalInfo-elementos" class="text-sm text-gray-600 max-h-24 overflow-y-auto font-mono"></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-6 py-3 rounded-b-lg flex justify-end">
+                    <button onclick="cerrarModalInfoPlanilla()"
+                        class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal Priorizar Obras (hasta 5 posiciones) -->
         <div id="modalPriorizarObra"
             class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
@@ -2806,6 +2890,12 @@
                             fechaEntrega: props.fecha_entrega,
                             estadoRevision: estadoRevision
                         };
+
+                        // 🖱️ Menú contextual con clic derecho - información detallada de la planilla
+                        info.el.addEventListener('contextmenu', function(e) {
+                            e.preventDefault();
+                            mostrarInfoPlanilla(props, info.event.title, maquinaId);
+                        });
                     },
 
                     // 🔧 OPTIMIZACIÓN: Limpiar datos del tooltip cuando el evento se desmonta
@@ -4793,6 +4883,67 @@
                 modal.classList.remove('flex');
                 window.maquinaActualId = null;
             }
+
+            // Funciones para modal de información de planilla (clic derecho)
+            function mostrarInfoPlanilla(props, titulo, maquinaId) {
+                const modal = document.getElementById('modalInfoPlanilla');
+
+                // Llenar datos
+                document.getElementById('modalInfoPlanilla-titulo').textContent = props.codigo_planilla || titulo;
+                document.getElementById('modalInfo-cliente').textContent = props.cliente || '—';
+                document.getElementById('modalInfo-codCliente').textContent = props.cod_cliente ? `Código: ${props.cod_cliente}` : '';
+                document.getElementById('modalInfo-obra').textContent = props.obra || '—';
+                document.getElementById('modalInfo-codObra').textContent = props.cod_obra ? `Código: ${props.cod_obra}` : '';
+                document.getElementById('modalInfo-codigoPlanilla').textContent = props.codigo_planilla || '—';
+
+                // Estado con color
+                const estadoEl = document.getElementById('modalInfo-estado');
+                estadoEl.textContent = props.estado || '—';
+                estadoEl.className = 'font-semibold ' + (
+                    props.estado === 'fabricando' ? 'text-blue-600' :
+                    props.estado === 'pendiente' ? 'text-yellow-600' :
+                    props.estado === 'completada' ? 'text-green-600' : 'text-gray-600'
+                );
+
+                document.getElementById('modalInfo-fechaEntrega').textContent = props.fecha_entrega || '—';
+                document.getElementById('modalInfo-finProgramado').textContent = props.fin_programado || '—';
+                document.getElementById('modalInfo-duracion').textContent = props.duracion_horas ? `${props.duracion_horas} horas` : '—';
+                document.getElementById('modalInfo-progreso').textContent = props.progreso !== undefined ? `${props.progreso}%` : '—';
+
+                // Revisión con color
+                const revisionContainer = document.getElementById('modalInfo-revisionContainer');
+                const revisionEl = document.getElementById('modalInfo-revision');
+                if (props.revisada === true || props.revisada === 1) {
+                    revisionContainer.className = 'col-span-2 bg-green-50 rounded-lg p-3';
+                    revisionEl.innerHTML = `<span class="text-green-700">✅ Revisada por ${props.revisada_por || 'N/A'}</span>` +
+                        (props.revisada_at ? `<br><span class="text-xs text-gray-500">${props.revisada_at}</span>` : '');
+                } else {
+                    revisionContainer.className = 'col-span-2 bg-red-50 rounded-lg p-3';
+                    revisionEl.innerHTML = '<span class="text-red-700 font-bold">⚠️ SIN REVISAR - No iniciar producción</span>';
+                }
+
+                // Elementos
+                const elementos = props.codigos_elementos || [];
+                document.getElementById('modalInfo-numElementos').textContent = elementos.length;
+                document.getElementById('modalInfo-elementos').textContent = elementos.length > 0 ? elementos.join(', ') : 'Sin elementos';
+
+                // Mostrar modal
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+
+            function cerrarModalInfoPlanilla() {
+                const modal = document.getElementById('modalInfoPlanilla');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            // Cerrar modal con Escape
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    cerrarModalInfoPlanilla();
+                }
+            });
 
             // Funciones para selector de máquina desde botones superiores
             window.accionSeleccionada = window.accionSeleccionada || null; // 'estado' o 'redistribuir'
