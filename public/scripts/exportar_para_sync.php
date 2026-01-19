@@ -1,31 +1,16 @@
 <?php
 /**
  * PASO 1: Ejecutar en PRODUCCIÓN desde el navegador
- * URL: https://tudominio.com/scripts/exportar_para_sync.php
- *
  * Descarga un archivo SQL con las tablas necesarias para el sync
  */
 
-// Buscar la raíz del proyecto Laravel
-$basePath = null;
-$possiblePaths = [
-    __DIR__ . '/../..',           // public/scripts -> raíz
-    __DIR__ . '/..',              // Si scripts está en la raíz del public
-    dirname($_SERVER['DOCUMENT_ROOT']), // Un nivel arriba del document root
-];
-
-foreach ($possiblePaths as $path) {
-    if (file_exists($path . '/vendor/autoload.php') && file_exists($path . '/bootstrap/app.php')) {
-        $basePath = realpath($path);
-        break;
-    }
-}
-
-if (!$basePath) {
-    die('Error: No se pudo encontrar la raíz del proyecto Laravel. Rutas probadas: ' . implode(', ', $possiblePaths));
-}
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('memory_limit', '512M');
+ini_set('max_execution_time', 300);
 
 // Cargar Laravel
+$basePath = dirname(dirname(__DIR__)); // public/scripts -> public -> raíz
 require $basePath . '/vendor/autoload.php';
 $app = require_once $basePath . '/bootstrap/app.php';
 $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
@@ -52,12 +37,10 @@ try {
     $sql = "-- Exportación para sincronización de planillas\n";
     $sql .= "-- Fecha: " . date('Y-m-d H:i:s') . "\n";
     $sql .= "-- Base de datos: {$config['database']}\n\n";
-    $sql .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
+    $sql .= "SET FOREIGN_KEY_CHECKS=0;\n";
+    $sql .= "SET NAMES utf8mb4;\n\n";
 
     foreach ($tablas as $tabla) {
-        echo "Exportando tabla: $tabla<br>";
-        flush();
-
         // Estructura de la tabla
         $stmt = $pdo->query("SHOW CREATE TABLE `$tabla`");
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -65,47 +48,65 @@ try {
         $sql .= "DROP TABLE IF EXISTS `$tabla`;\n";
         $sql .= $row['Create Table'] . ";\n\n";
 
-        // Datos de la tabla
-        $stmt = $pdo->query("SELECT * FROM `$tabla`");
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Contar registros
+        $countStmt = $pdo->query("SELECT COUNT(*) FROM `$tabla`");
+        $totalRows = $countStmt->fetchColumn();
 
-        if (count($rows) > 0) {
-            $columns = array_keys($rows[0]);
+        if ($totalRows > 0) {
+            // Obtener columnas
+            $stmt = $pdo->query("SELECT * FROM `$tabla` LIMIT 1");
+            $sample = $stmt->fetch(PDO::FETCH_ASSOC);
+            $columns = array_keys($sample);
             $columnList = '`' . implode('`, `', $columns) . '`';
 
-            // Insertar en lotes de 500
-            $chunks = array_chunk($rows, 500);
-            foreach ($chunks as $chunk) {
-                $values = [];
-                foreach ($chunk as $row) {
-                    $rowValues = [];
-                    foreach ($row as $value) {
-                        if ($value === null) {
-                            $rowValues[] = 'NULL';
-                        } else {
-                            $rowValues[] = $pdo->quote($value);
+            // Exportar en lotes de 1000
+            $batchSize = 1000;
+            $offset = 0;
+
+            while ($offset < $totalRows) {
+                $stmt = $pdo->query("SELECT * FROM `$tabla` LIMIT $batchSize OFFSET $offset");
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                if (count($rows) > 0) {
+                    $values = [];
+                    foreach ($rows as $row) {
+                        $rowValues = [];
+                        foreach ($row as $value) {
+                            if ($value === null) {
+                                $rowValues[] = 'NULL';
+                            } else {
+                                $rowValues[] = $pdo->quote($value);
+                            }
                         }
+                        $values[] = '(' . implode(', ', $rowValues) . ')';
                     }
-                    $values[] = '(' . implode(', ', $rowValues) . ')';
+                    $sql .= "INSERT INTO `$tabla` ($columnList) VALUES\n" . implode(",\n", $values) . ";\n";
                 }
-                $sql .= "INSERT INTO `$tabla` ($columnList) VALUES\n" . implode(",\n", $values) . ";\n";
+
+                $offset += $batchSize;
             }
             $sql .= "\n";
         }
-
-        echo "- $tabla: " . count($rows) . " registros<br>";
-        flush();
     }
 
     $sql .= "SET FOREIGN_KEY_CHECKS=1;\n";
 
     // Descargar archivo
     $filename = 'backup_produccion_' . date('Y-m-d_His') . '.sql';
-    header('Content-Type: application/sql');
+
+    // Limpiar cualquier output previo
+    if (ob_get_level()) ob_end_clean();
+
+    header('Content-Type: application/octet-stream');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
-    header('Content-Length: ' . strlen($sql));
+    header('Content-Transfer-Encoding: binary');
+    header('Cache-Control: must-revalidate');
+    header('Pragma: public');
+
     echo $sql;
+    exit;
 
 } catch (Exception $e) {
-    echo "Error: " . $e->getMessage();
+    echo "<h2>Error</h2>";
+    echo "<pre>" . $e->getMessage() . "\n\n" . $e->getTraceAsString() . "</pre>";
 }
