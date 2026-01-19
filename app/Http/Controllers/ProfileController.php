@@ -371,7 +371,7 @@ class ProfileController extends Controller
             return back()->with('error', 'No tienes permiso para ver este perfil.');
         }
 
-        $user = User::with(['asignacionesTurnos.turno'])->findOrFail($id);
+        $user = User::with(['asignacionesTurnos.turno', 'tallas'])->findOrFail($id);
         $turnos = Turno::all();
 
         $resumen = $this->getResumenAsistencia($user);
@@ -1341,7 +1341,7 @@ class ProfileController extends Controller
 
         $navegador = $browser;
         if ($browserVersion) {
-            $versionMajor = explode('.', (string)$browserVersion)[0];
+            $versionMajor = explode('.', (string) $browserVersion)[0];
             if (is_numeric($versionMajor) && $versionMajor < 200) {
                 $navegador .= ' ' . $versionMajor;
             }
@@ -1365,13 +1365,15 @@ class ProfileController extends Controller
             }
         }
 
-        if ($platform === 'AndroidOS') $platform = 'Android';
-        elseif ($platform === 'OS X') $platform = 'macOS';
+        if ($platform === 'AndroidOS')
+            $platform = 'Android';
+        elseif ($platform === 'OS X')
+            $platform = 'macOS';
 
         $platformVersion = $agent->version($platform);
         $sistema = $platform;
         if ($platformVersion && !str_contains($platform, 'Windows')) {
-            $versionMajor = explode('.', (string)$platformVersion)[0];
+            $versionMajor = explode('.', (string) $platformVersion)[0];
             if (is_numeric($versionMajor) && $versionMajor < 50) {
                 $sistema .= ' ' . $versionMajor;
             }

@@ -568,7 +568,7 @@
 
         /* Borde lateral sutil */
         .fc .fc-event:not(.fichaje-evento) {
-            border-left: 3px solid rgba(0,0,0,0.2) !important;
+            border-left: 3px solid rgba(0, 0, 0, 0.2) !important;
             border-right: none !important;
             border-top: none !important;
             border-bottom: none !important;

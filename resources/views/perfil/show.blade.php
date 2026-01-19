@@ -535,7 +535,7 @@
 
         /* Borde lateral sutil */
         .fc .fc-event:not(.fichaje-evento) {
-            border-left: 3px solid rgba(0,0,0,0.2) !important;
+            border-left: 3px solid rgba(0, 0, 0, 0.2) !important;
             border-right: none !important;
             border-top: none !important;
             border-bottom: none !important;
@@ -781,46 +781,46 @@
                                         };
 
                                         fetch("{{ url('/fichar') }}", {
-                                            method: "POST",
-                                            headers: {
-                                                "Content-Type": "application/json",
-                                                "X-CSRF-TOKEN": "{{ csrf_token() }}"
-                                            },
-                                            body: JSON.stringify(payloadConfirmado)
-                                        })
-                                        .then(r => r.json())
-                                        .then(dataConfirmado => {
-                                            window._fichajePendiente = false;
-                                            bloquearBotonesFichaje(false, boton, textoOriginal);
+                                                method: "POST",
+                                                headers: {
+                                                    "Content-Type": "application/json",
+                                                    "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                                                },
+                                                body: JSON.stringify(payloadConfirmado)
+                                            })
+                                            .then(r => r.json())
+                                            .then(dataConfirmado => {
+                                                window._fichajePendiente = false;
+                                                bloquearBotonesFichaje(false, boton, textoOriginal);
 
-                                            if (dataConfirmado.success) {
-                                                Swal.fire({
-                                                    icon: 'success',
-                                                    title: dataConfirmado.success,
-                                                    text: `📍 Lugar: ${dataConfirmado.obra_nombre}`,
-                                                    showConfirmButton: false,
-                                                    timer: 3000
-                                                });
-                                                if (window.calendar) {
-                                                    window.calendar.refetchEvents();
+                                                if (dataConfirmado.success) {
+                                                    Swal.fire({
+                                                        icon: 'success',
+                                                        title: dataConfirmado.success,
+                                                        text: `📍 Lugar: ${dataConfirmado.obra_nombre}`,
+                                                        showConfirmButton: false,
+                                                        timer: 3000
+                                                    });
+                                                    if (window.calendar) {
+                                                        window.calendar.refetchEvents();
+                                                    }
+                                                } else {
+                                                    Swal.fire({
+                                                        icon: 'error',
+                                                        title: 'Error',
+                                                        text: dataConfirmado.error
+                                                    });
                                                 }
-                                            } else {
+                                            })
+                                            .catch(err => {
+                                                window._fichajePendiente = false;
+                                                bloquearBotonesFichaje(false, boton, textoOriginal);
                                                 Swal.fire({
                                                     icon: 'error',
                                                     title: 'Error',
-                                                    text: dataConfirmado.error
+                                                    text: 'No se pudo comunicar con el servidor'
                                                 });
-                                            }
-                                        })
-                                        .catch(err => {
-                                            window._fichajePendiente = false;
-                                            bloquearBotonesFichaje(false, boton, textoOriginal);
-                                            Swal.fire({
-                                                icon: 'error',
-                                                title: 'Error',
-                                                text: 'No se pudo comunicar con el servidor'
                                             });
-                                        });
                                     } else {
                                         // Usuario canceló turno partido
                                         window._fichajePendiente = false;

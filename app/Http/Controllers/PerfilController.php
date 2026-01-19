@@ -44,6 +44,7 @@ class PerfilController extends Controller
             'etiquetasComoEnsamblador1',
             'etiquetasComoEnsamblador2',
             'permisosAcceso',
+            'tallas',
         ])->findOrFail($user->id);
 
         // Turnos disponibles para mostrarlos si hace falta
@@ -241,7 +242,7 @@ class PerfilController extends Controller
 
         $navegador = $browser;
         if ($browserVersion) {
-            $versionMajor = explode('.', (string)$browserVersion)[0];
+            $versionMajor = explode('.', (string) $browserVersion)[0];
             if (is_numeric($versionMajor) && $versionMajor < 200) { // Versión razonable
                 $navegador .= ' ' . $versionMajor;
             }
@@ -279,7 +280,7 @@ class PerfilController extends Controller
 
         // Solo añadir versión si es razonable y no es Windows (donde la versión no es útil)
         if ($platformVersion && !str_contains($platform, 'Windows')) {
-            $versionMajor = explode('.', (string)$platformVersion)[0];
+            $versionMajor = explode('.', (string) $platformVersion)[0];
             if (is_numeric($versionMajor) && $versionMajor < 50) {
                 $sistema .= ' ' . $versionMajor;
             }

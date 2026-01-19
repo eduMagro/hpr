@@ -4,16 +4,22 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        Schema::table('asignaciones_turnos', function (Blueprint $table) {
-            $table->dropColumn('anio_cargo');
-        });
+        try {
+            Schema::table('asignaciones_turnos', function (Blueprint $table) {
+                $table->dropColumn('anio_cargo');
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Code 42S22: Column not found in MySQL
+            if ($e->getCode() != '42S22') {
+                throw $e;
+            }
+        }
     }
 
     /**
