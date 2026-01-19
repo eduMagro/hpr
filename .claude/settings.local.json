@@ -83,7 +83,8 @@
       "Bash(Select-Object -Last 80)",
       "Bash(composer install:*)",
       "Bash(C:xamppmysqlbinmysql -u root manager_pruebas -e \"SELECT ruta, descripcion FROM departamento_ruta;\")",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []
