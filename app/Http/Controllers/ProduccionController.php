@@ -1412,12 +1412,16 @@ class ProduccionController extends Controller
                 ->count();
 
             if ($elementosExistentes > 0) {
+                // Calcular qué posición le correspondería por fecha de entrega
+                $posicionPorFecha = $this->calcularPosicionPorFechaEntrega($planillaId, $maqDestino);
+
                 Log::warning("⚠️ Ya existen elementos de esta planilla en otra posición de la máquina destino");
                 return response()->json([
                     'success' => false,
                     'requiresDecisionElementosExistentes' => true,
-                    'message' => "Ya hay {$elementosExistentes} elemento(s) de esta planilla en la posición {$ordenExistente->posicion} de esta máquina.",
+                    'message' => "Ya hay {$elementosExistentes} elemento(s) de esta planilla en esta máquina.",
                     'posicion_existente' => $ordenExistente->posicion,
+                    'posicion_por_fecha' => $posicionPorFecha,
                     'elementos_existentes' => $elementosExistentes,
                 ], 422);
             }

@@ -2216,14 +2216,13 @@
 
                                     const { value: decision } = await Swal.fire({
                                         title: 'Elementos existentes detectados',
-                                        html: data.message +
-                                            '<br><br><strong>¿Qué deseas hacer?</strong>',
+                                        html: `${data.message}<br><br><strong>¿Qué deseas hacer?</strong>`,
                                         icon: 'warning',
                                         input: 'radio',
                                         inputOptions: {
-                                            'juntar': `🔗 Juntar con existentes (posición ${data.posicion_existente})`,
-                                            'nueva_posicion': '📍 Crear nueva posición (donde solté)',
-                                            'por_fecha': '📅 Posicionar según fecha de entrega'
+                                            'juntar': `🔗 Juntar con existentes → Posición ${data.posicion_existente}`,
+                                            'nueva_posicion': `📍 Crear nueva posición → Posición ${nuevaPosicion}`,
+                                            'por_fecha': `📅 Según fecha de entrega → Posición ${data.posicion_por_fecha}`
                                         },
                                         inputValidator: (value) => {
                                             if (!value) {
