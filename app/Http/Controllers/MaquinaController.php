@@ -1949,15 +1949,16 @@ class MaquinaController extends Controller
                 ->get();
 
             // Calcular a qué máquina iría cada elemento automáticamente
-            // Usando una transacción para simular sin persistir cambios
+            // Usando transacción manual para simular sin persistir cambios
             $elementosConDestino = [];
 
-            DB::transaction(function () use ($elementos, $id, &$elementosConDestino) {
+            DB::beginTransaction();
+
+            try {
                 $asignarMaquinaService = new \App\Services\AsignarMaquinaService();
 
                 // Guardar IDs originales
                 $elementosIds = $elementos->pluck('id')->toArray();
-                $maquinasOriginales = Elemento::whereIn('id', $elementosIds)->pluck('maquina_id', 'id')->toArray();
 
                 // Quitar asignación de máquina temporalmente
                 Elemento::whereIn('id', $elementosIds)->update(['maquina_id' => null]);
@@ -1998,10 +1999,10 @@ class MaquinaController extends Controller
                         'maquina_destino_nombre' => $maquinaDestino ? $maquinaDestino->nombre : 'Sin asignar'
                     ];
                 }
-
-                // IMPORTANTE: hacer rollback para que no se guarden los cambios
+            } finally {
+                // IMPORTANTE: siempre hacer rollback para que no se guarden los cambios
                 DB::rollBack();
-            });
+            }
 
             return response()->json([
                 'success' => true,
