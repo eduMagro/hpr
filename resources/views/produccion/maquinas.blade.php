@@ -2210,6 +2210,92 @@
                                     throw new Error('Error al procesar la respuesta del servidor');
                                 }
 
+                                // 🔍 Verificar si hay elementos existentes de esta planilla en la máquina destino
+                                if (data.requiresDecisionElementosExistentes) {
+                                    console.log('✅ Mostrando diálogo de decisión con 3 opciones');
+
+                                    const { value: decision } = await Swal.fire({
+                                        title: 'Elementos existentes detectados',
+                                        html: data.message +
+                                            '<br><br><strong>¿Qué deseas hacer?</strong>',
+                                        icon: 'warning',
+                                        input: 'radio',
+                                        inputOptions: {
+                                            'juntar': `🔗 Juntar con existentes (posición ${data.posicion_existente})`,
+                                            'nueva_posicion': '📍 Crear nueva posición (donde solté)',
+                                            'por_fecha': '📅 Posicionar según fecha de entrega'
+                                        },
+                                        inputValidator: (value) => {
+                                            if (!value) {
+                                                return 'Debes seleccionar una opción';
+                                            }
+                                        },
+                                        showCancelButton: true,
+                                        confirmButtonText: 'Continuar',
+                                        cancelButtonText: 'Cancelar',
+                                        confirmButtonColor: '#3b82f6',
+                                        cancelButtonColor: '#6b7280',
+                                    });
+
+                                    if (!decision) {
+                                        info.revert();
+                                        return;
+                                    }
+
+                                    // Preparar parámetros según decisión
+                                    const params = {
+                                        id: dataMovimiento.planillaId,
+                                        maquina_id: maquinaDestinoId,
+                                        maquina_origen_id: dataMovimiento.maquinaOriginal,
+                                        elementos_id: dataMovimiento.elementosIds,
+                                    };
+
+                                    if (decision === 'juntar') {
+                                        params.usar_posicion_existente = true;
+                                        params.nueva_posicion = data.posicion_existente;
+                                    } else if (decision === 'nueva_posicion') {
+                                        params.crear_nueva_posicion = true;
+                                        params.nueva_posicion = nuevaPosicion;
+                                    } else if (decision === 'por_fecha') {
+                                        params.posicionar_por_fecha = true;
+                                    }
+
+                                    const res2 = await fetch('/planillas/reordenar', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Accept': 'application/json',
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                        },
+                                        body: JSON.stringify(params)
+                                    });
+
+                                    const data2 = await res2.json();
+
+                                    if (!res2.ok || !data2.success) {
+                                        throw new Error(data2.message || 'Error al mover elementos');
+                                    }
+
+                                    // Remover elementos del panel
+                                    window.MultiSelectElementos.removerElementosDelPanel(dataMovimiento.elementosIds);
+                                    info.event.remove();
+                                    calendar.refetchResources();
+                                    calendar.refetchEvents();
+                                    refrescarPanelElementos();
+
+                                    const mensajeExito = decision === 'juntar' ? 'Elementos juntados' :
+                                        decision === 'nueva_posicion' ? 'Nueva posición creada' : 'Posicionado por fecha';
+
+                                    Swal.mixin({
+                                        toast: true,
+                                        position: 'top-end',
+                                        showConfirmButton: false,
+                                        timer: 1500,
+                                    }).fire({ icon: 'success', title: mensajeExito });
+
+                                    return;
+                                }
+
                                 // 🔍 IMPORTANTE: Verificar requiresNuevaPosicionConfirmation ANTES de verificar success
                                 // Esto es necesario porque el backend devuelve 422 con requiresNuevaPosicionConfirmation
                                 if (data.requiresNuevaPosicionConfirmation) {

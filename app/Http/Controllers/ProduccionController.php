@@ -1405,19 +1405,20 @@ class ProduccionController extends Controller
             ->first();
 
         // Si existe un orden en la máquina destino y no es el mismo que el origen, verificar si realmente hay elementos allí
-        if ($ordenExistente && $maqOrigen !== $maqDestino && !$crearNuevaPosicion && !$usarPosicionExistente) {
+        if ($ordenExistente && $maqOrigen !== $maqDestino && !$crearNuevaPosicion && !$usarPosicionExistente && !$posicionarPorFecha) {
             // Verificar si realmente hay elementos de esta planilla en esa máquina
             $elementosExistentes = Elemento::where('planilla_id', $planillaId)
                 ->where('maquina_id', $maqDestino)
-                ->exists();
+                ->count();
 
-            if ($elementosExistentes) {
+            if ($elementosExistentes > 0) {
                 Log::warning("⚠️ Ya existen elementos de esta planilla en otra posición de la máquina destino");
                 return response()->json([
                     'success' => false,
-                    'requiresNuevaPosicionConfirmation' => true,
-                    'message' => "Ya hay elementos de esta planilla en la posición {$ordenExistente->posicion} de esta máquina. ¿Quieres crear una nueva posición o mover a la posición existente?",
+                    'requiresDecisionElementosExistentes' => true,
+                    'message' => "Ya hay {$elementosExistentes} elemento(s) de esta planilla en la posición {$ordenExistente->posicion} de esta máquina.",
                     'posicion_existente' => $ordenExistente->posicion,
+                    'elementos_existentes' => $elementosExistentes,
                 ], 422);
             }
         }
