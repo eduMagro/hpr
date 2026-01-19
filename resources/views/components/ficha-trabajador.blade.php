@@ -14,9 +14,11 @@
     seccionNomina: false,
     seccionContrato: false,
     seccionJustificante: false,
-    seccionSesiones: false
-}"
-@justificante-guardado-success.window="
+    seccionSesiones: false,
+    seccionTallas: false,
+    faltanTallas: {{ !($user->tallas && $user->tallas->talla_guante && $user->tallas->talla_zapato && $user->tallas->talla_pantalon && $user->tallas->talla_chaqueta) ? 'true' : 'false' }},
+}" @tallas-updated.window="faltanTallas = $event.detail.faltanTallas"
+    @justificante-guardado-success.window="
     seccionJustificante = false;
     Swal.fire({
         icon: 'success',
@@ -42,13 +44,13 @@
                         <div class="relative z-10 flex-shrink-0">
                             @if ($user->ruta_imagen)
                                 <div
-                                    class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl ring-4 ring-gray-700 shadow-2xl overflow-hidden bg-white">
+                                    class="w-20 h-20 sm:w-24 h-24 rounded-2xl ring-4 ring-gray-700 shadow-2xl overflow-hidden bg-white">
                                     <img src="{{ $user->ruta_imagen }}" alt="Foto de perfil"
                                         class="w-full h-full object-cover">
                                 </div>
                             @else
                                 <div
-                                    class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-gray-700 to-gray-800 rounded-2xl flex items-center justify-center text-3xl sm:text-4xl font-bold text-white shadow-2xl ring-4 ring-gray-700">
+                                    class="w-20 h-20 sm:w-24 h-24 bg-gradient-to-br from-gray-700 to-gray-800 rounded-2xl flex items-center justify-center text-3xl sm:text-4xl font-bold text-white shadow-2xl ring-4 ring-gray-700">
                                     {{ strtoupper(substr($user->name, 0, 1)) }}
                                 </div>
                             @endif
@@ -113,6 +115,17 @@
                         viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
+
+                    <svg x-show="faltanTallas" x-cloak xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="lucide lucide-badge-alert-icon lucide-badge-alert text-orange-400 w-5 h-5 absolute -top-7 left-1/2 -translate-x-1/2">
+                        <path
+                            d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
+                        <line x1="12" x2="12" y1="8" y2="12" />
+                        <line x1="12" x2="12.01" y1="16" y2="16" />
+                    </svg>
+
                 </button>
             </div>
         </div>
@@ -139,13 +152,15 @@
                     <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
                         :class="{ 'rotate-180': seccionContacto }" fill="none" stroke="currentColor"
                         viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                        </path>
                     </svg>
                 </button>
                 <div x-cloak x-show="seccionContacto" x-collapse>
                     <div class="px-3 pb-3 space-y-2">
                         <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
@@ -225,6 +240,90 @@
                                     {{ optional($user->maquina)->nombre ?? 'N/A' }}</p>
                             </div>
                         @endif
+                    </div>
+                </div>
+            </div>
+
+            {{-- Sección de Tallas (Mis Tallas de EPIs) --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" x-data="tallasManager({{ $user->id }}, {{ $user->tallas ? $user->tallas->toJson() : '{}' }})">
+                <button @click="seccionTallas = !seccionTallas"
+                    class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
+                    <div class="flex items-center gap-2">
+                        <div class="bg-pink-100 rounded-lg p-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-pink-600" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path
+                                    d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
+                            </svg>
+                        </div>
+                        <span class="text-sm font-semibold text-gray-900">Mis tallas de EPIs</span>
+
+                        <svg x-show="faltanTallas" x-cloak xmlns="http://www.w3.org/2000/svg" width="24"
+                            height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="lucide lucide-badge-alert-icon lucide-badge-alert text-orange-400 w-5 h-5">
+                            <path
+                                d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
+                            <line x1="12" x2="12" y1="8" y2="12" />
+                            <line x1="12" x2="12.01" y1="16" y2="16" />
+                        </svg>
+
+                    </div>
+                    <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
+                        :class="{ 'rotate-180': seccionTallas }" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                        </path>
+                    </svg>
+                </button>
+                <div x-cloak x-show="seccionTallas" x-collapse>
+                    <div class="p-4 border-t border-gray-200 bg-gray-50/50">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label
+                                    class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Guante</label>
+                                <input type="text" x-model="tallas.talla_guante"
+                                    class="w-full px-3 py-2 text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                    placeholder="Ej: 9, L...">
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Zapato</label>
+                                <input type="text" x-model="tallas.talla_zapato"
+                                    class="w-full px-3 py-2 text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                    placeholder="Ej: 42, 43...">
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Pantalón</label>
+                                <input type="text" x-model="tallas.talla_pantalon"
+                                    class="w-full px-3 py-2 text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                    placeholder="Ej: 44, XL...">
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Chaqueta</label>
+                                <input type="text" x-model="tallas.talla_chaqueta"
+                                    class="w-full px-3 py-2 text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                    placeholder="Ej: 52, L...">
+                            </div>
+                        </div>
+                        <div class="mt-4 flex justify-end">
+                            <button type="button"
+                                class="px-4 py-2 rounded-lg bg-gray-900 text-white text-xs font-semibold hover:bg-gray-800 transition-all shadow-sm hover:shadow active:scale-95 flex items-center gap-2"
+                                @click="saveTallas()" :disabled="saving">
+                                <svg x-show="saving" class="animate-spin -ml-1 h-3 w-3 text-white"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10"
+                                        stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                    </path>
+                                </svg>
+                                <span x-text="saving ? 'Guardando...' : 'Guardar Cambios'"></span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -350,11 +449,13 @@
                         <div class="px-3 pb-3 space-y-3">
                             @if ($user->fecha_incorporacion_efectiva)
                                 <div class="flex items-center gap-2 text-xs text-gray-600">
-                                    <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
-                                    <span>Fecha de incorporación: <strong class="text-gray-900">{{ $user->fecha_incorporacion_efectiva->format('d/m/Y') }}</strong></span>
+                                    <span>Fecha de incorporación: <strong
+                                            class="text-gray-900">{{ $user->fecha_incorporacion_efectiva->format('d/m/Y') }}</strong></span>
                                 </div>
                             @endif
                             <a href="{{ route('incorporaciones.descargarMiContrato') }}"
@@ -419,7 +520,8 @@
                                 </svg>
                             </div>
                             <span class="text-sm font-semibold text-gray-900">Sesiones activas</span>
-                            <span class="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full">{{ $sesiones->count() }}</span>
+                            <span
+                                class="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full">{{ $sesiones->count() }}</span>
                         </div>
                         <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
                             :class="{ 'rotate-180': seccionSesiones }" fill="none" stroke="currentColor"
@@ -431,25 +533,39 @@
                     <div x-cloak x-show="seccionSesiones" x-collapse>
                         <div class="px-3 pb-3 space-y-2">
                             @foreach ($sesiones as $sesion)
-                                <div class="p-3 rounded-lg {{ $sesion['actual'] ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-100' }}">
+                                <div
+                                    class="p-3 rounded-lg {{ $sesion['actual'] ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-100' }}">
                                     <div class="flex items-center gap-3">
                                         {{-- Icono del dispositivo --}}
-                                        <div class="flex-shrink-0 w-10 h-10 rounded-full {{ $sesion['actual'] ? 'bg-green-100' : 'bg-gray-200' }} flex items-center justify-center">
+                                        <div
+                                            class="flex-shrink-0 w-10 h-10 rounded-full {{ $sesion['actual'] ? 'bg-green-100' : 'bg-gray-200' }} flex items-center justify-center">
                                             @if (($sesion['dispositivo']['icono'] ?? 'desktop') === 'mobile')
-                                                <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-green-600' : 'text-gray-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-green-600' : 'text-gray-500' }}"
+                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                                 </svg>
                                             @elseif (($sesion['dispositivo']['icono'] ?? 'desktop') === 'tablet')
-                                                <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-green-600' : 'text-gray-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-green-600' : 'text-gray-500' }}"
+                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                                 </svg>
                                             @elseif (($sesion['dispositivo']['icono'] ?? 'desktop') === 'bot')
-                                                <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-green-600' : 'text-gray-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-green-600' : 'text-gray-500' }}"
+                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                                 </svg>
                                             @else
-                                                <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-green-600' : 'text-gray-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-green-600' : 'text-gray-500' }}"
+                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                                 </svg>
                                             @endif
                                         </div>
@@ -460,35 +576,42 @@
                                                     {{ $sesion['dispositivo']['navegador'] ?? 'Navegador' }}
                                                 </p>
                                                 @if ($sesion['actual'])
-                                                    <span class="text-[9px] bg-green-500 text-white px-1.5 py-0.5 rounded-full font-medium">ACTUAL</span>
+                                                    <span
+                                                        class="text-[9px] bg-green-500 text-white px-1.5 py-0.5 rounded-full font-medium">ACTUAL</span>
                                                 @endif
                                             </div>
                                             <p class="text-xs text-gray-600">
                                                 {{ $sesion['dispositivo']['sistema'] ?? 'Sistema' }}
                                                 @if (!empty($sesion['dispositivo']['dispositivo']))
-                                                    <span class="text-gray-400">·</span> {{ $sesion['dispositivo']['dispositivo'] }}
+                                                    <span class="text-gray-400">·</span>
+                                                    {{ $sesion['dispositivo']['dispositivo'] }}
                                                 @endif
                                             </p>
                                             <div class="flex items-center gap-2 mt-1">
-                                                <span class="text-[10px] text-gray-400">{{ $sesion['ip_address'] ?? 'IP desconocida' }}</span>
+                                                <span
+                                                    class="text-[10px] text-gray-400">{{ $sesion['ip_address'] ?? 'IP desconocida' }}</span>
                                                 <span class="text-gray-300">·</span>
-                                                <span class="text-[10px] {{ $sesion['actual'] ? 'text-green-600 font-medium' : 'text-gray-400' }}">
-                                                    {{ $sesion['actual'] ? 'Activa ahora' : ($sesion['tiempo_relativo'] ?? $sesion['ultima_actividad']) }}
+                                                <span
+                                                    class="text-[10px] {{ $sesion['actual'] ? 'text-green-600 font-medium' : 'text-gray-400' }}">
+                                                    {{ $sesion['actual'] ? 'Activa ahora' : $sesion['tiempo_relativo'] ?? $sesion['ultima_actividad'] }}
                                                 </span>
                                             </div>
                                         </div>
                                         {{-- Botón cerrar sesión individual --}}
                                         @if (!$sesion['actual'])
-                                            <form method="POST" action="{{ route('perfil.cerrarSesion', $sesion['id']) }}"
-                                                  onsubmit="return confirm('¿Cerrar esta sesión?')"
-                                                  class="flex-shrink-0">
+                                            <form method="POST"
+                                                action="{{ route('perfil.cerrarSesion', $sesion['id']) }}"
+                                                onsubmit="return confirm('¿Cerrar esta sesión?')"
+                                                class="flex-shrink-0">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit"
                                                     class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
                                                     title="Cerrar esta sesión">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                                     </svg>
                                                 </button>
                                             </form>
@@ -499,8 +622,8 @@
 
                             @if ($sesiones->where('actual', false)->count() > 0)
                                 <form method="POST" action="{{ route('perfil.cerrarMisSesiones') }}"
-                                      onsubmit="return confirm('¿Cerrar todas las sesiones en otros dispositivos?')"
-                                      class="pt-2">
+                                    onsubmit="return confirm('¿Cerrar todas las sesiones en otros dispositivos?')"
+                                    class="pt-2">
                                     @csrf
                                     <button type="submit"
                                         class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg text-xs transition-colors">
@@ -518,3 +641,69 @@
         </div>
     </div>
 </div>
+
+<script>
+    function tallasManager(userId, initialTallas) {
+        return {
+            userId: userId,
+            tallas: {
+                talla_guante: initialTallas?.talla_guante || '',
+                talla_zapato: initialTallas?.talla_zapato || '',
+                talla_pantalon: initialTallas?.talla_pantalon || '',
+                talla_chaqueta: initialTallas?.talla_chaqueta || ''
+            },
+            saving: false,
+            async saveTallas() {
+                this.saving = true;
+                try {
+                    const response = await fetch(`/epis/usuarios/${this.userId}/tallas`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
+                                'content')
+                        },
+                        body: JSON.stringify(this.tallas)
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.ok) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Guardado',
+                            text: 'Tallas actualizadas correctamente',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            toast: true,
+                            position: 'top-end'
+                        });
+
+                        // Check if all tallas are filled
+                        const faltan = !(this.tallas.talla_guante && this.tallas.talla_zapato && this.tallas
+                            .talla_pantalon && this.tallas.talla_chaqueta);
+
+                        // Dispatch event to update parent component
+                        window.dispatchEvent(new CustomEvent('tallas-updated', {
+                            detail: {
+                                faltanTallas: faltan
+                            }
+                        }));
+
+                    } else {
+                        throw new Error(data.message || 'Error al guardar');
+                    }
+                } catch (error) {
+                    console.error(error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudieron guardar las tallas: ' + error.message
+                    });
+                } finally {
+                    this.saving = false;
+                }
+            }
+        }
+    }
+</script>
