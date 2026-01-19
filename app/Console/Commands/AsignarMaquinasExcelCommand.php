@@ -49,7 +49,9 @@ class AsignarMaquinasExcelCommand extends Command
                             {archivo? : Ruta al archivo Excel. Por defecto: excelMaestro.xlsx}
                             {--dry-run : Solo mostrar qué se haría sin ejecutar cambios}
                             {--solo-maquinas : Solo asignar máquinas, sin actualizar fechas ni completar}
-                            {--solo-pendientes : Solo procesar planillas pendientes (por defecto procesa todas)}';
+                            {--solo-pendientes : Solo procesar planillas pendientes (por defecto procesa todas)}
+                            {--desde=8 : Fila inicial del Excel (por defecto 8)}
+                            {--hasta= : Fila final del Excel (por defecto: todas)}';
 
     protected $description = 'Sincroniza planillas desde Excel: asigna máquinas, actualiza fechas y completa planillas fabricadas';
 
@@ -166,6 +168,8 @@ class AsignarMaquinasExcelCommand extends Command
         $dryRun = $this->option('dry-run');
         $soloMaquinas = $this->option('solo-maquinas');
         $soloPendientes = $this->option('solo-pendientes');
+        $filaDesde = (int) $this->option('desde');
+        $filaHasta = $this->option('hasta') ? (int) $this->option('hasta') : null;
 
         if (!file_exists($archivo)) {
             $this->error("Archivo no encontrado: {$archivo}");
@@ -175,12 +179,15 @@ class AsignarMaquinasExcelCommand extends Command
         $this->info("Leyendo archivo: {$archivo}");
         $this->info($dryRun ? '🔍 Modo dry-run: no se realizarán cambios' : '⚡ Modo ejecución: se aplicarán cambios');
         $this->info($soloPendientes ? '📋 Solo planillas pendientes (sin fecha_finalizacion)' : '📋 Procesando TODAS las planillas (pendientes y completadas)');
+        if ($filaHasta) {
+            $this->info("📊 Rango de filas: {$filaDesde} - {$filaHasta}");
+        }
 
         // Cargar máquinas en caché
         $this->cargarMaquinas();
 
         // Leer Excel (ahora incluye fechas)
-        $datosExcel = $this->leerExcel($archivo);
+        $datosExcel = $this->leerExcel($archivo, $filaDesde, $filaHasta);
         $this->info("Total combinaciones planilla+diámetro en Excel: " . count($datosExcel['asignaciones']));
         $this->info("Total planillas únicas con datos: " . count($datosExcel['planillas']));
 
@@ -229,12 +236,11 @@ class AsignarMaquinasExcelCommand extends Command
         $this->info("Máquinas cargadas: " . count($this->maquinasCache));
     }
 
-    protected function leerExcel(string $archivo): array
+    protected function leerExcel(string $archivo, int $filaDesde = 8, ?int $filaHasta = null): array
     {
         $asignaciones = [];
         $planillas = []; // Datos de fechas por planilla
         $chunkSize = 5000;
-        $startRow = 8;
         $chunkFilter = new ChunkReadFilter();
 
         // Primero obtener el total de filas (lectura rápida solo de estructura)
@@ -250,14 +256,20 @@ class AsignarMaquinasExcelCommand extends Command
             }
         }
 
-        $this->info("Total filas en Excel: {$totalRows}");
+        // Aplicar límites de rango
+        $startRow = max($filaDesde, 8); // Mínimo fila 8 (donde empiezan los datos)
+        $endRowLimit = $filaHasta ? min($filaHasta, $totalRows) : $totalRows;
 
-        $bar = $this->output->createProgressBar($totalRows - 7);
+        $this->info("Total filas en Excel: {$totalRows}");
+        $this->info("Procesando filas: {$startRow} - {$endRowLimit}");
+
+        $filasAProcesar = $endRowLimit - $startRow + 1;
+        $bar = $this->output->createProgressBar($filasAProcesar);
         $bar->setFormat(' %current%/%max% [%bar%] %percent:3s%% Leyendo Excel...');
         $bar->start();
 
         // Leer en chunks
-        for ($currentRow = $startRow; $currentRow <= $totalRows; $currentRow += $chunkSize) {
+        for ($currentRow = $startRow; $currentRow <= $endRowLimit; $currentRow += $chunkSize) {
             $chunkFilter->setRows($currentRow, $chunkSize);
 
             $reader = new Xlsx();
@@ -268,7 +280,7 @@ class AsignarMaquinasExcelCommand extends Command
             $spreadsheet = $reader->load($archivo);
             $sheet = $spreadsheet->getActiveSheet();
 
-            $endRow = min($currentRow + $chunkSize - 1, $totalRows);
+            $endRow = min($currentRow + $chunkSize - 1, $endRowLimit);
 
             for ($row = $currentRow; $row <= $endRow; $row++) {
                 $numPlanilla = trim($sheet->getCellByColumnAndRow(9, $row)->getValue() ?? '');
