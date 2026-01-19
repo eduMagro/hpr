@@ -1327,22 +1327,31 @@ class ProduccionController extends Controller
             'id'                => 'required|integer|exists:planillas,id',
             'maquina_id'        => 'required|integer|exists:maquinas,id',
             'maquina_origen_id' => 'required|integer|exists:maquinas,id',
-            'nueva_posicion'    => 'required|integer|min:1',
+            'nueva_posicion'    => 'nullable|integer|min:1',
             'forzar_movimiento' => 'sometimes|boolean',
             'elementos_id'      => 'sometimes|array',
             'elementos_id.*'    => 'integer|exists:elementos,id',
             'crear_nueva_posicion' => 'sometimes|boolean',
             'usar_posicion_existente' => 'sometimes|boolean',
+            'posicionar_por_fecha' => 'sometimes|boolean',
         ]);
 
         $planillaId   = (int) $request->id;
         $maqDestino   = (int) $request->maquina_id;
         $maqOrigen    = (int) $request->maquina_origen_id;
-        $posNueva     = (int) $request->nueva_posicion;
         $forzar       = (bool) $request->boolean('forzar_movimiento');
         $subsetIds    = collect($request->input('elementos_id', []))->map(fn($v) => (int)$v);
         $crearNuevaPosicion = $request->boolean('crear_nueva_posicion', false);
         $usarPosicionExistente = $request->boolean('usar_posicion_existente', false);
+        $posicionarPorFecha = $request->boolean('posicionar_por_fecha', false);
+
+        // Calcular posición según fecha de entrega si se solicita
+        if ($posicionarPorFecha) {
+            $posNueva = $this->calcularPosicionPorFechaEntrega($planillaId, $maqDestino);
+            $crearNuevaPosicion = true; // Forzar crear nueva posición en el lugar calculado
+        } else {
+            $posNueva = (int) ($request->nueva_posicion ?? 1);
+        }
 
         Log::info("➡️ ReordenarPlanillas iniciado", [
             'planilla_id'       => $planillaId,
@@ -2008,6 +2017,73 @@ class ProduccionController extends Controller
 
         return $planillasEventos->values();
     }
+
+    /**
+     * Calcula la posición correcta para una planilla en una máquina
+     * basándose en su fecha estimada de entrega.
+     * Las planillas se ordenan por fecha de entrega (más urgentes primero).
+     */
+    private function calcularPosicionPorFechaEntrega(int $planillaId, int $maquinaDestino): int
+    {
+        // Obtener la planilla que se está moviendo
+        $planilla = Planilla::find($planillaId);
+        if (!$planilla) {
+            return 1;
+        }
+
+        $fechaEntregaNueva = $planilla->getRawOriginal('fecha_estimada_entrega');
+        if (!$fechaEntregaNueva) {
+            // Si no tiene fecha, ponerla al final
+            $maxPos = (int) (OrdenPlanilla::where('maquina_id', $maquinaDestino)->max('posicion') ?? 0);
+            return $maxPos + 1;
+        }
+
+        $fechaEntregaNueva = Carbon::parse($fechaEntregaNueva);
+
+        // Obtener todas las órdenes de la máquina destino con sus planillas
+        $ordenesExistentes = OrdenPlanilla::where('maquina_id', $maquinaDestino)
+            ->with('planilla')
+            ->orderBy('posicion')
+            ->get();
+
+        if ($ordenesExistentes->isEmpty()) {
+            return 1;
+        }
+
+        // Encontrar la posición correcta según fecha de entrega
+        $posicionCalculada = 1;
+        foreach ($ordenesExistentes as $orden) {
+            if (!$orden->planilla) {
+                $posicionCalculada++;
+                continue;
+            }
+
+            $fechaExistente = $orden->planilla->getRawOriginal('fecha_estimada_entrega');
+            if (!$fechaExistente) {
+                // Planillas sin fecha van al final, así que insertamos antes
+                break;
+            }
+
+            $fechaExistente = Carbon::parse($fechaExistente);
+
+            // Si la fecha de la planilla nueva es anterior o igual, esta es la posición
+            if ($fechaEntregaNueva->lte($fechaExistente)) {
+                break;
+            }
+
+            $posicionCalculada++;
+        }
+
+        Log::info("📅 Posición calculada por fecha de entrega", [
+            'planilla_id' => $planillaId,
+            'fecha_entrega' => $fechaEntregaNueva->format('Y-m-d H:i'),
+            'maquina_destino' => $maquinaDestino,
+            'posicion_calculada' => $posicionCalculada,
+        ]);
+
+        return $posicionCalculada;
+    }
+
     //---------------------------------------------------------- REORDENAR PLANILLAS
     //---------------------------------------------------------- REORDENAR PLANILLAS
     /** Reordena la posición de la planilla en una máquina dada */

@@ -2063,34 +2063,42 @@
                                 nuevaPosicion = i + 2;
                             }
 
-                            // Confirmar movimiento
+                            // Confirmar movimiento y tipo de posicionamiento
                             const mensaje = dataMovimiento.cantidad > 1 ?
                                 `¿Mover ${dataMovimiento.cantidad} elementos a <strong>${maquinaDestinoNombre}</strong>?` :
                                 `¿Mover elemento a <strong>${maquinaDestinoNombre}</strong>?`;
 
-                            console.log('❓ Mostrando primer Swal de confirmación');
+                            console.log('❓ Mostrando Swal de tipo de posicionamiento');
                             const resultado = await Swal.fire({
                                 title: dataMovimiento.cantidad > 1 ? '¿Mover elementos?' :
                                     '¿Mover elemento?',
-                                html: mensaje,
+                                html: mensaje + '<br><br><strong>¿Cómo deseas posicionarlo?</strong>',
                                 icon: 'question',
                                 showCancelButton: true,
-                                confirmButtonText: 'Sí, mover',
-                                cancelButtonText: 'Cancelar'
+                                showDenyButton: true,
+                                confirmButtonText: 'Posición elegida',
+                                denyButtonText: 'Según fecha de entrega',
+                                cancelButtonText: 'Cancelar',
+                                confirmButtonColor: '#3b82f6',
+                                denyButtonColor: '#10b981',
+                                cancelButtonColor: '#6b7280',
                             });
 
-                            console.log('✅ Resultado primer Swal:', resultado);
+                            console.log('✅ Resultado Swal posicionamiento:', resultado);
 
-                            if (!resultado.isConfirmed) {
-                                console.log('❌ Usuario canceló el primer Swal');
+                            if (!resultado.isConfirmed && !resultado.isDenied) {
+                                console.log('❌ Usuario canceló');
                                 info.revert();
                                 return;
                             }
 
+                            // Determinar tipo de posicionamiento
+                            const posicionarPorFecha = resultado.isDenied;
+
                             console.log('✅ Usuario confirmó movimiento, iniciando try-catch');
 
                             try {
-                                console.log('🚀 Enviando petición a /planillas/reordenar');
+                                console.log('🚀 Enviando petición a /planillas/reordenar', { posicionarPorFecha });
                                 const res = await fetch('/planillas/reordenar', {
                                     method: 'POST',
                                     headers: {
@@ -2103,8 +2111,9 @@
                                         id: dataMovimiento.planillaId,
                                         maquina_id: maquinaDestinoId,
                                         maquina_origen_id: dataMovimiento.maquinaOriginal,
-                                        nueva_posicion: nuevaPosicion,
-                                        elementos_id: dataMovimiento.elementosIds
+                                        nueva_posicion: posicionarPorFecha ? null : nuevaPosicion,
+                                        elementos_id: dataMovimiento.elementosIds,
+                                        posicionar_por_fecha: posicionarPorFecha
                                     })
                                 });
 
