@@ -923,7 +923,7 @@
         </div>
 
         <!-- Modal Información de Planilla (clic derecho) -->
-        <div id="modalInfoPlanilla"
+        <div id="modalInfoPlanilla" onclick="if(event.target === this) cerrarModalInfoPlanilla()"
             class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
             <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
                 <div class="bg-blue-600 text-white px-6 py-4 rounded-t-lg flex justify-between items-center">
