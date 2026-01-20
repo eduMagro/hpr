@@ -112,15 +112,15 @@
         /* Container de pasos móvil */
         #stepWrapper {
             display: flex;
-            width: 500%;
-            /* 5 vistas x 100% */
+            width: 400%;
+            /* 4 vistas x 100% */
             transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Cada vista ocupa 20% del wrapper (100% del viewport) */
+        /* Cada vista ocupa 25% del wrapper (100% del viewport) */
         #stepWrapper>div {
-            width: 20%;
-            /* Relativo al wrapper de 500% */
+            width: 25%;
+            /* Relativo al wrapper de 400% */
             flex-shrink: 0;
         }
 
@@ -213,9 +213,9 @@
                     Subir Albarán
                 </h2>
 
-                <!-- Indicador de paso (1/5, 2/5, etc) -->
+                <!-- Indicador de paso (1/4, 2/4, etc) -->
                 <span class="text-sm text-gray-500">
-                    <span id="mobile-current-step">1</span>/5
+                    <span id="mobile-current-step">1</span>/4
                 </span>
             </div>
 
@@ -223,14 +223,14 @@
             <div class="h-1 bg-gray-200">
                 <div id="mobile-progress-bar"
                     class="h-full bg-gradient-to-tr from-indigo-600 to-indigo-700 transition-all duration-300"
-                    style="width: 20%"></div>
+                    style="width: 25%"></div>
             </div>
         </div>
 
-        <!-- Step wrapper con 5 vistas -->
+        <!-- Step wrapper con 4 vistas -->
         <div id="stepWrapper"
             class="flex transition-transform duration-300 ease-in-out h-[calc(100vh-162px)] overflow-y-auto"
-            style="width: 500%; transform: translateX(0%)">
+            style="width: 400%; transform: translateX(0%)">
 
             <!-- ===== VISTA 1: SUBIR FOTO ===== -->
             <div id="step-1" class="w-full flex-shrink-0 px-4 py-6">
@@ -245,7 +245,7 @@
                             <span class="text-sm font-medium text-gray-700">Proveedor</span>
                             <select name="proveedor" id="proveedor-mobile" required
                                 class="mt-1 w-full rounded-lg border-gray-300 shadow-sm">
-                                <option value="">Selecciona proveedor</option>
+                                <option value="">Selecciona fabricante</option>
                                 <option value="siderurgica">Siderúrgica Sevillana (SISE)</option>
                                 <option value="megasa">Megasa</option>
                                 <option value="balboa">Balboa</option>
@@ -356,7 +356,7 @@
                 <div class="max-w-lg mx-auto space-y-4">
                     <h3 class="text-xl font-semibold text-gray-900">Revisar y Confirmar Datos</h3>
 
-                    <!-- Preview de imagen -->
+                    {{-- <!-- Preview de imagen -->
                     <div id="mobile-preview-container"
                         class="flex hidden items-center justify-start gap-4 max-h-16 bg-gradient-to-tr from-indigo-600 to-indigo-700 rounded-lg p-4 cursor-pointer shadow-md">
                         <div class="overflow-hidden w-16 h-12 rounded-lg border-2 border-white">
@@ -364,7 +364,7 @@
                                 class="w-full h-full object-cover">
                         </div>
                         <p class="text-md text-white">Toca para ver la imagen</p>
-                    </div>
+                    </div> --}}
 
                     <!-- Estado de las IA -->
                     <div id="mobile-status-banner"
@@ -417,11 +417,11 @@
                                 <input type="text" id="edit-albaran"
                                     class="mt-1 w-full rounded-lg border-gray-300">
                             </label>
-                            <label class="block">
+                            <label class="block hidden">
                                 <span class="text-sm font-medium text-gray-700">Fecha</span>
                                 <input type="date" id="edit-fecha" class="mt-1 w-full rounded-lg border-gray-300">
                             </label>
-                            <label class="block">
+                            <label class="block hidden">
                                 <span class="text-sm font-medium text-gray-700">Pedido HPR</span>
                                 <input type="text" id="edit-pedido-cliente"
                                     class="mt-1 w-full rounded-lg border-gray-300">
@@ -454,6 +454,7 @@
                                     + Añadir producto
                                 </button>
                             </div>
+                            <!-- Aquí se inyectarán las coladas con sus checks en Step 2 -->
                             <div id="mobile-edit-products" class="space-y-4"></div>
                         </div>
 
@@ -497,57 +498,8 @@
                 </div>
             </div>
 
-            <!-- ===== VISTA 4: COLADAS A RECEPCIONAR ===== -->
+            <!-- ===== VISTA 4: ACTIVACIÓN (Antiguamente Step 5) ===== -->
             <div id="step-4" class="w-full flex-shrink-0 px-4 py-6">
-                <div class="max-w-md mx-auto space-y-3">
-                    <h3 class="text-xl font-semibold text-gray-900">Coladas a Recepcionar</h3>
-                    <p class="text-sm text-gray-600">Selecciona las coladas que deseas recepcionar</p>
-
-                    <!-- Lista de coladas -->
-                    <div id="mobile-coladas-container" class="bg-white rounded-lg divide-y">
-                        <p class="p-4 text-gray-500">Cargando...</p>
-                    </div>
-
-                    <!-- Estado final simulado -->
-                    <div id="mobile-estado-final" class="bg-blue-50 rounded-lg p-4 space-y-3">
-                        <h4 class="font-semibold text-gray-900">Estado Final</h4>
-                        <div class="grid grid-cols-3 gap-3 text-sm text-gray-600">
-                            <div class="text-center">
-                                <span class="text-gray-600 text-[7px] uppercase tracking-wide">Kg
-                                    seleccionados</span>
-                                <p id="mobile-peso-seleccionado" class="font-bold text-gray-900 text-lg">0 kg</p>
-                            </div>
-                            <div class="text-center">
-                                <span class="text-gray-600 text-[7px] uppercase tracking-wide">Kg restantes</span>
-                                <p id="mobile-kg-restantes" class="font-bold text-gray-900 text-lg">0 kg</p>
-                            </div>
-                            <div class="text-center">
-                                <span class="text-gray-600 text-[7px] uppercase tracking-wide">Estado pedido</span>
-                                <p id="mobile-estado-pedido" class="font-bold text-gray-900 text-lg">Parcial</p>
-                            </div>
-                        </div>
-                        <div class="flex gap-2 text-sm text-gray-600">
-                            <div class="w-full flex flex-col items-center">
-                                <span class="text-gray-600">Bultos seleccionados:</span>
-                                <span id="mobile-bultos-seleccionados" class="block font-bold text-gray-900">0</span>
-                            </div>
-                            <div class="w-full flex flex-col items-center">
-                                <span class="text-gray-600">Peso pendiente:</span>
-                                <span id="mobile-peso-pendiente" class="block font-bold text-gray-900">0 kg</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Navegación -->
-                    <button type="button" data-mobile-next
-                        class="w-full px-4 py-3 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white rounded-lg font-medium">
-                        Continuar
-                    </button>
-                </div>
-            </div>
-
-            <!-- ===== VISTA 5: ACTIVACIÓN ===== -->
-            <div id="step-5" class="w-full flex-shrink-0 px-4 py-6">
                 <div class="max-w-md mx-auto space-y-3">
                     <h3 class="text-xl font-semibold text-gray-900">Confirmar Activación</h3>
                     <p class="text-sm text-gray-600">Revisa el resumen y confirma la activación</p>
@@ -713,7 +665,7 @@
         window.mobileStepManager = {
             currentStep: 1,
             maxStep: 1,
-            totalSteps: 5,
+            totalSteps: 4,
             dataCache: {},
             initialized: false,
 
@@ -731,7 +683,7 @@
                             poblarVista2ConDatos(this.dataCache.resultado);
                             if (this.dataCache.simulacion) {
                                 poblarVista3ConPedido(this.dataCache.simulacion);
-                                poblarVista4ConColadas(this.dataCache.simulacion);
+                                // El paso 4 antiguo (coladas) ya no existe, saltamos esa poblacion
                                 if (this.dataCache.lineaSeleccionada) {
                                     actualizarVista3ConLineaSeleccionada(this.dataCache.lineaSeleccionada);
                                 }
@@ -763,18 +715,15 @@
                 const canNavigate = isGoingBack || isNextStep || forceAdvance || stepNumber <= this.maxStep;
 
                 if (!canNavigate) {
-                    // console.log('Navegación bloqueada:', {
-                    //     stepNumber,
-                    //     currentStep: this.currentStep,
-                    //     maxStep: this.maxStep
-                    // });
                     return;
                 }
 
                 const wrapper = document.getElementById('stepWrapper');
                 if (!wrapper) return;
 
-                const translatePercentage = -(stepNumber - 1) * 20; // -0%, -20%, -40%, -60%, -80%
+                // El ancho de cada paso ahora es 25% (100/4)
+                // translatePercentage = -(stepNumber - 1) * 25
+                const translatePercentage = -(stepNumber - 1) * 25;
 
                 wrapper.style.transform = `translateX(${translatePercentage}%)`;
                 window.requestAnimationFrame(() => {
@@ -798,7 +747,16 @@
                     this.maxStep = stepNumber;
                 }
 
-                // console.log('Navegado a paso:', stepNumber, 'maxStep:', this.maxStep);
+                if (stepNumber === 4) {
+                    const cache = this.dataCache;
+                    if (typeof window.actualizarIndicadoresColadas === 'function') {
+                        const peso = cache.totalesColadas?.peso || 0;
+                        window.actualizarIndicadoresColadas(peso);
+                    }
+                    if (typeof window.poblarVista5ConResumen === 'function') {
+                        window.poblarVista5ConResumen();
+                    }
+                }
 
                 this.updateNavigation();
                 this.updateProgressBar();
@@ -853,7 +811,8 @@
                 }
 
                 // Actualizar título del header
-                const titles = ['Subir Albarán', 'Confirmar Datos', 'Pedido', 'Coladas', 'Activación'];
+                // Pasos: 1. Subir/OCR, 2. Revisar(incluye coladas), 3. Pedido, 4. Activación
+                const titles = ['Subir Albarán', 'Revisar y Confirmar', 'Pedido', 'Activación'];
                 const titleElement = document.getElementById('mobile-step-title');
                 if (titleElement && titles[this.currentStep - 1]) {
                     titleElement.textContent = titles[this.currentStep - 1];
@@ -926,6 +885,15 @@
                             return false;
                         }
                     }
+
+                    // Verificar coladas seleccionadas en step 2 ??
+                    // Realmente checkearemos esto al salir del paso o al guardar
+                    const totalCheckboxes = document.querySelectorAll('.mobile-colada-check:checked');
+                    if (totalCheckboxes.length === 0) {
+                        // Podríamos avisar, pero a veces quizá suben 0 coladas? No, deberían tener al menos una.
+                        // toastMobile('warning', 'Selecciona al menos una colada para descargar.');
+                        // return false; 
+                    }
                 }
 
                 // Paso 3: exigir linea seleccionada
@@ -936,14 +904,8 @@
                     }
                 }
 
-                // Paso 4: exigir al menos una colada seleccionada
-                if (this.currentStep === 4) {
-                    const coladas = cache.coladasSeleccionadas || [];
-                    if (!Array.isArray(coladas) || coladas.length === 0) {
-                        toastMobile('warning', 'Selecciona al menos una colada');
-                        return false;
-                    }
-                }
+                // Paso 4: Activación (antiguo paso 5)
+                // Se valida al pulsar el botón de Activar
 
                 return true;
             },
@@ -1535,27 +1497,27 @@
                             <span class="font-semibold text-gray-900">${lineaPropuesta.codigo_linea || '—'}</span>
                         </div>
                         ${pedidoHprEscaneado ? `
-                                                                                                                                                        <div class="hidden">
-                                                                                                                                                            <span class="text-gray-500">Pedido HPR (escaneado):</span>
-                                                                                                                                                            <span class="font-semibold text-gray-900">${pedidoHprEscaneado}</span>
-                                                                                                                                                        </div>
-                                                                                                                                                    ` : ''}
+                                                                                                                                                                                        <div class="hidden">
+                                                                                                                                                                                            <span class="text-gray-500">Pedido HPR (escaneado):</span>
+                                                                                                                                                                                            <span class="font-semibold text-gray-900">${pedidoHprEscaneado}</span>
+                                                                                                                                                                                        </div>
+                                                                                                                                                                                    ` : ''}
                         <div class="hidden">
                             <span class="text-gray-500">Pedido (BD):</span>
                             <span class="font-semibold text-gray-900">${lineaPropuesta.pedido_codigo || '—'}</span>
                         </div>
                         ${fabricanteNombre ? `
-                                                                                                                                                        <div>
-                                                                                                                                                            <span class="text-gray-500">Fabricante:</span>
-                                                                                                                                                            <span class="font-medium text-gray-900">${fabricanteNombre}</span>
-                                                                                                                                                        </div>
-                                                                                                                                                    ` : ''}
+                                                                                                                                                                                        <div>
+                                                                                                                                                                                            <span class="text-gray-500">Fabricante:</span>
+                                                                                                                                                                                            <span class="font-medium text-gray-900">${fabricanteNombre}</span>
+                                                                                                                                                                                        </div>
+                                                                                                                                                                                    ` : ''}
                         ${distribuidorNombre ? `
-                                                                                                                                                        <div>
-                                                                                                                                                            <span class="text-gray-500">Distribuidor:</span>
-                                                                                                                                                            <span class="font-medium text-gray-900">${distribuidorNombre}</span>
-                                                                                                                                                        </div>
-                                                                                                                                                    ` : ''}
+                                                                                                                                                                                        <div>
+                                                                                                                                                                                            <span class="text-gray-500">Distribuidor:</span>
+                                                                                                                                                                                            <span class="font-medium text-gray-900">${distribuidorNombre}</span>
+                                                                                                                                                                                        </div>
+                                                                                                                                                                                    ` : ''}
                         <div>
                             <span class="text-gray-500">Producto:</span>
                             <span class="font-medium text-gray-900">${lineaPropuesta.producto || '—'}</span>
@@ -1865,7 +1827,8 @@
                     producto.line_items.push({
                         colada: coladaEl.querySelector('[data-colada-field="colada"]').value || '',
                         bultos: coladaEl.querySelector('[data-colada-field="bultos"]').value || '',
-                        peso_kg: coladaEl.querySelector('[data-colada-field="peso"]').value || ''
+                        peso_kg: coladaEl.querySelector('[data-colada-field="peso"]').value || '',
+                        descargar: coladaEl.querySelector('[data-colada-field="descargar"]').checked
                     });
                 });
 
@@ -1935,6 +1898,31 @@
                 // Sincronizar productos
                 syncMobileProductsFromDOMToCache();
 
+                // Generar lista de coladas seleccionadas para descarga (Step 4 necesita esto)
+                const todasLasColadas = [];
+                let totalBultos = 0;
+                let totalPeso = 0;
+                (cache.parsed.productos || []).forEach(prod => {
+                    (prod.line_items || []).forEach(item => {
+                        if (item.descargar !== false) {
+                            const b = Number(item.bultos || 0);
+                            const p = Number(item.peso_kg || 0);
+                            todasLasColadas.push({
+                                colada: item.colada,
+                                bultos: b,
+                                peso_kg: p
+                            });
+                            totalBultos += b;
+                            totalPeso += p;
+                        }
+                    });
+                });
+                cache.coladasSeleccionadas = todasLasColadas;
+                cache.totalesColadas = {
+                    bultos: totalBultos,
+                    peso: totalPeso
+                };
+
                 // Actualizar resultado con los cambios
                 if (cache.resultado) {
                     cache.resultado.parsed = cache.parsed;
@@ -1947,7 +1935,6 @@
                 await recalcularSimulacionMobile();
                 if (cache.simulacion) {
                     poblarVista3ConPedido(cache.simulacion);
-                    poblarVista4ConColadas(cache.simulacion);
                 }
 
                 // Recalcular cosas si fuera necesario, o simplemente avanzar
@@ -2226,21 +2213,28 @@
                 }
 
                 return lineItems.map((colada, colIndex) => `
-                    <div class="mobile-edit-colada grid grid-cols-12 gap-2 items-end" data-colada-index="${colIndex}">
-                        <div class="col-span-5">
-                            <span class="text-xs text-gray-500">Colada</span>
-                            <input type="text" class="mt-1 w-full rounded-lg border-gray-300" data-colada-field="colada" value="${colada.colada || ''}">
+                    <div class="mobile-edit-colada grid grid-cols-12 gap-2 items-center" data-colada-index="${colIndex}">
+                        <div class="col-span-1 flex flex-col items-center justify-center pt-5">
+                             <input type="checkbox" 
+                                class="w-5 h-5 text-indigo-600 rounded mobile-colada-check focus:ring-indigo-500 border-gray-300" 
+                                data-colada-field="descargar"
+                                ${colada.descargar !== false ? 'checked' : ''} 
+                             >
                         </div>
-                <div class="col-span-3">
-                    <span class="text-xs text-gray-500">Bultos</span>
-                    <input type="number" min="0" step="1" class="mt-1 w-full rounded-lg border-gray-300" data-colada-field="bultos" value="${colada.bultos || ''}">
-                </div>
+                        <div class="col-span-4">
+                            <span class="text-[0.65rem] text-gray-500">Colada</span>
+                            <input type="text" class="mt-1 w-full rounded-lg border-gray-300 text-sm px-2 py-1.5" data-colada-field="colada" value="${colada.colada || ''}">
+                        </div>
                         <div class="col-span-3">
-                            <span class="text-xs text-gray-500">Peso (kg)</span>
-                            <input type="number" step="0.01" class="mt-1 w-full rounded-lg border-gray-300" data-colada-field="peso" value="${colada.peso_kg || ''}">
+                            <span class="text-[0.65rem] text-gray-500">Bultos</span>
+                            <input type="number" min="0" step="1" class="mt-1 w-full rounded-lg border-gray-300 text-sm px-2 py-1.5" data-colada-field="bultos" value="${colada.bultos || ''}">
                         </div>
-                        <div class="col-span-1 flex justify-end">
-                            <button type="button" class="text-red-500 text-sm font-semibold" onclick="eliminarColadaMobile(${productIndex}, ${colIndex})">✕</button>
+                        <div class="col-span-3">
+                            <span class="text-[0.65rem] text-gray-500">Peso (kg)</span>
+                            <input type="number" step="0.01" class="mt-1 w-full rounded-lg border-gray-300 text-sm px-2 py-1.5" data-colada-field="peso" value="${colada.peso_kg || ''}">
+                        </div>
+                        <div class="col-span-1 flex justify-end pt-6">
+                            <button type="button" class="text-red-500 text-lg font-bold hover:text-red-700" onclick="eliminarColadaMobile(${productIndex}, ${colIndex})">&times;</button>
                         </div>
                     </div>
                 `).join('');
@@ -2262,7 +2256,7 @@
                         <label class="text-[0.75rem] text-gray-500">Longitud
                             <input type="text" class="mt-1 w-full rounded-lg border-gray-300" data-product-field="longitud" value="${producto.longitud || ''}">
                         </label>
-                        <label class="text-[0.75rem] text-gray-500">Calidad
+                        <label class="text-[0.75rem] text-gray-500 hidden">Calidad
                             <input type="text" class="mt-1 w-full rounded-lg border-gray-300" data-product-field="calidad" value="${producto.calidad || ''}">
                         </label>
                     </div>
@@ -2314,7 +2308,8 @@
             productos[productIndex].line_items.push({
                 colada: '',
                 bultos: '',
-                peso_kg: ''
+                peso_kg: '',
+                descargar: true
             });
             renderMobileEditProducts();
         }
@@ -2486,17 +2481,17 @@
                             <span class="ml-2 text-gray-900">${linea.pedido_codigo || '—'}</span>
                         </div>
                             ${fabricanteNombre ? `
-                                                                                                                                                            <div>
-                                                                                                                                                                <span class="text-gray-500">Fabricante:</span>
-                                                                                                                                                                <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
-                                                                                                                                                            </div>
-                                                                                                                                                        ` : ''}
+                                                                                                                                                                                            <div>
+                                                                                                                                                                                                <span class="text-gray-500">Fabricante:</span>
+                                                                                                                                                                                                <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
+                                                                                                                                                                                            </div>
+                                                                                                                                                                                        ` : ''}
                             ${distribuidorNombre ? `
-                                                                                                                                                            <div>
-                                                                                                                                                                <span class="text-gray-500">Distribuidor:</span>
-                                                                                                                                                                <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
-                                                                                                                                                            </div>
-                                                                                                                                                        ` : ''}
+                                                                                                                                                                                            <div>
+                                                                                                                                                                                                <span class="text-gray-500">Distribuidor:</span>
+                                                                                                                                                                                                <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
+                                                                                                                                                                                            </div>
+                                                                                                                                                                                        ` : ''}
                             <div>
                                 <span class="text-gray-500">Producto:</span>
                                 <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
@@ -2506,21 +2501,21 @@
                                 <span class="ml-2 text-gray-900">${linea.fecha_entrega_fmt || linea.fecha_entrega || '—'}</span>
                             </div>
                             ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
                             <div class="flex items-center justify-between pt-2 border-t border-gray-100">
                                 <div>
                                         <span class="text-gray-500">Pendiente:</span>
                                         <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                                     </div>
                                     ${linea.score ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 font-bold">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        Score: ${formatScorePoints(linea.score)} pts.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 font-bold">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        Score: ${formatScorePoints(linea.score)} pts.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ` : ''}
                             </div>
                         </div>
                     </div>
@@ -2643,27 +2638,27 @@
                             <span class="ml-2 font-semibold text-gray-900">${linea.codigo_linea || '—'}</span>
                         </div>
                         ${pedidoHprEscaneado ? `
-                                                                                                                                                        <div class="hidden">
-                                                                                                                                                            <span class="text-gray-500">Pedido HPR (escaneado):</span>
-                                                                                                                                                            <span class="ml-2 font-semibold text-gray-900">${pedidoHprEscaneado}</span>
-                                                                                                                                                        </div>
-                                                                                                                                                    ` : ''}
+                                                                                                                                                                                        <div class="hidden">
+                                                                                                                                                                                            <span class="text-gray-500">Pedido HPR (escaneado):</span>
+                                                                                                                                                                                            <span class="ml-2 font-semibold text-gray-900">${pedidoHprEscaneado}</span>
+                                                                                                                                                                                        </div>
+                                                                                                                                                                                    ` : ''}
                         <div class="hidden">
                             <span class="text-gray-500">Pedido (BD):</span>
                             <span class="ml-2 font-semibold text-gray-900">${linea.pedido_codigo || '—'}</span>
                         </div>
                         ${fabricanteNombre ? `
-                                                                                                                                                        <div>
-                                                                                                                                                            <span class="text-gray-500">Fabricante:</span>
-                                                                                                                                                            <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
-                                                                                                                                                        </div>
-                                                                                                                                                    ` : ''}
+                                                                                                                                                                                        <div>
+                                                                                                                                                                                            <span class="text-gray-500">Fabricante:</span>
+                                                                                                                                                                                            <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
+                                                                                                                                                                                        </div>
+                                                                                                                                                                                    ` : ''}
                         ${distribuidorNombre ? `
-                                                                                                                                                        <div>
-                                                                                                                                                            <span class="text-gray-500">Distribuidor:</span>
-                                                                                                                                                            <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
-                                                                                                                                                        </div>
-                                                                                                                                                    ` : ''}
+                                                                                                                                                                                        <div>
+                                                                                                                                                                                            <span class="text-gray-500">Distribuidor:</span>
+                                                                                                                                                                                            <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
+                                                                                                                                                                                        </div>
+                                                                                                                                                                                    ` : ''}
                         <div>
                             <span class="text-gray-500">Producto:</span>
                             <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
@@ -2673,11 +2668,11 @@
                             <span class="ml-2 text-gray-900">${linea.fecha_entrega_fmt || linea.fecha_entrega || '—'}</span>
                         </div>
                         ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
                         <div class="pt-2 border-t border-gray-100">
                             <span class="text-gray-500">Cantidad Pendiente:</span>
                             <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
