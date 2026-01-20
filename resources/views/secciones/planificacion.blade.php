@@ -18,8 +18,18 @@
                         <span class="text-6xl">⚙️</span>
                     </div>
                     <div class="p-4 text-center">
-                        <h3 class="font-bold text-gray-800 group-hover:text-purple-600 transition">Planificación Máquinas</h3>
-                        <p class="text-xs text-gray-500 mt-1">Planificación de máquinas</p>
+                        <h3 class="font-bold text-gray-800 group-hover:text-purple-600 transition">Planificacion Maquinas</h3>
+                        <p class="text-xs text-gray-500 mt-1">Planificacion de maquinas</p>
+                    </div>
+                </a>
+
+                <a href="{{ route('produccion.ordenesPlanillasTabla') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                    <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 text-center">
+                        <span class="text-6xl">📋</span>
+                    </div>
+                    <div class="p-4 text-center">
+                        <h3 class="font-bold text-gray-800 group-hover:text-indigo-600 transition">Ordenes Planillas</h3>
+                        <p class="text-xs text-gray-500 mt-1">Vista tabla de ordenes</p>
                     </div>
                 </a>
 

@@ -242,6 +242,17 @@
                         <span class="text-sm font-medium hidden md:inline">Retrasos</span>
                     </button>
 
+                    <!-- Enlace a vista tabla de ordenes -->
+                    <a href="{{ route('produccion.ordenesPlanillasTabla') }}" title="Ver ordenes en formato tabla"
+                        class="px-3 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
+                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                        </svg>
+                        <span class="text-sm font-medium hidden md:inline">Vista Tabla</span>
+                    </a>
+
                     <!-- Botón de deshacer última operación -->
                     <button onclick="deshacerUltimaOperacion()" id="deshacer-btn" title="Deshacer última operación"
                         class="px-3 py-2 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
