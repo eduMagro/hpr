@@ -43,9 +43,13 @@ class OrdenPlanillaService
         }
 
         $fechaEntregaNueva = $planilla->fecha_estimada_entrega;
-        // Asegurar que sea Carbon (a veces llega como string)
+        // Asegurar que sea Carbon (a veces llega como string en formato d/m/Y H:i)
         if ($fechaEntregaNueva && is_string($fechaEntregaNueva)) {
-            $fechaEntregaNueva = \Carbon\Carbon::parse($fechaEntregaNueva);
+            try {
+                $fechaEntregaNueva = \Carbon\Carbon::createFromFormat('d/m/Y H:i', $fechaEntregaNueva);
+            } catch (\Exception $e) {
+                $fechaEntregaNueva = \Carbon\Carbon::parse($fechaEntregaNueva);
+            }
         }
         Log::channel('planilla_import')->info("[OrdenPlanilla] Planilla {$planillaId} - Fecha entrega: " . ($fechaEntregaNueva ? $fechaEntregaNueva->format('Y-m-d H:i') : 'SIN FECHA'));
 
@@ -148,9 +152,13 @@ class OrdenPlanillaService
 
         foreach ($ordenesExistentes as $orden) {
             $fechaExistente = $orden->fecha_estimada_entrega;
-            // Asegurar que sea Carbon (el join no aplica casts de Eloquent)
+            // Asegurar que sea Carbon (el join no aplica casts de Eloquent, puede venir en formato d/m/Y H:i)
             if ($fechaExistente && is_string($fechaExistente)) {
-                $fechaExistente = \Carbon\Carbon::parse($fechaExistente);
+                try {
+                    $fechaExistente = \Carbon\Carbon::createFromFormat('d/m/Y H:i', $fechaExistente);
+                } catch (\Exception $e) {
+                    $fechaExistente = \Carbon\Carbon::parse($fechaExistente);
+                }
             }
 
             // Si la planilla existente no tiene fecha, la nueva (que sí tiene) va antes

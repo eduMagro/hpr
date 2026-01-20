@@ -146,17 +146,19 @@ class PedidoProducto extends Model
             return null;
         }
 
-        // Obtener diámetro del producto
+        // Obtener datos del producto
         $diametro = (int) ($this->productoBase?->diametro ?? 0);
+        $longitud = $this->productoBase?->longitud; // en metros
+        $esEncarretado = strtolower($this->productoBase?->tipo ?? '') === 'encarretado';
 
         // Obtener incremento por diámetro
         $incrementoDiametro = PrecioMaterialDiametro::getIncremento($diametro);
 
-        // Determinar si es encarretado y obtener incremento por formato
-        $esEncarretado = strtolower($this->productoBase?->tipo ?? '') === 'encarretado';
-        $formatoCodigo = $esEncarretado ? 'encarretado' : 'estandar_12m';
+        // Determinar formato según longitud y tipo
+        $formato = PrecioMaterialFormato::determinarFormato($longitud, $esEncarretado);
+        $formatoCodigo = $formato?->codigo ?? 'estandar_12m';
 
-        // Buscar excepción o usar formato base
+        // Buscar excepción por fabricante/distribuidor o usar formato base
         $fabricanteId = $this->pedido?->fabricante_id;
         $distribuidorId = $this->pedido?->distribuidor_id;
 
@@ -165,9 +167,8 @@ class PedidoProducto extends Model
 
         if ($excepcion) {
             $incrementoFormato = (float) $excepcion->incremento;
-        } else {
-            $formato = PrecioMaterialFormato::where('codigo', $formatoCodigo)->first();
-            $incrementoFormato = (float) ($formato?->incremento ?? 0);
+        } elseif ($formato) {
+            $incrementoFormato = (float) $formato->incremento;
         }
 
         // Calcular toneladas
@@ -203,10 +204,14 @@ class PedidoProducto extends Model
         }
 
         $diametro = (int) ($this->productoBase?->diametro ?? 0);
+        $longitud = $this->productoBase?->longitud;
+        $esEncarretado = strtolower($this->productoBase?->tipo ?? '') === 'encarretado';
+
         $incrementoDiametro = PrecioMaterialDiametro::getIncremento($diametro);
 
-        $esEncarretado = strtolower($this->productoBase?->tipo ?? '') === 'encarretado';
-        $formatoCodigo = $esEncarretado ? 'encarretado' : 'estandar_12m';
+        // Determinar formato según longitud y tipo
+        $formato = PrecioMaterialFormato::determinarFormato($longitud, $esEncarretado);
+        $formatoCodigo = $formato?->codigo ?? 'estandar_12m';
 
         $fabricanteId = $this->pedido?->fabricante_id;
         $distribuidorId = $this->pedido?->distribuidor_id;
@@ -218,9 +223,8 @@ class PedidoProducto extends Model
         if ($excepcion) {
             $incrementoFormato = (float) $excepcion->incremento;
             $origenFormato = $excepcion->distribuidor_id ? 'excepcion_especifica' : 'excepcion_fabricante';
-        } else {
-            $formato = PrecioMaterialFormato::where('codigo', $formatoCodigo)->first();
-            $incrementoFormato = (float) ($formato?->incremento ?? 0);
+        } elseif ($formato) {
+            $incrementoFormato = (float) $formato->incremento;
         }
 
         $toneladas = ($this->cantidad ?? 0) / 1000;
@@ -234,6 +238,7 @@ class PedidoProducto extends Model
             'toneladas' => round($toneladas, 4),
             'coste_total' => round($precioTonelada * $toneladas, 2),
             'diametro' => $diametro,
+            'longitud' => $longitud,
             'formato' => $formatoCodigo,
             'origen_formato' => $origenFormato,
         ];
