@@ -205,20 +205,19 @@ class AplicarSubetiquetasCommand extends Command
      */
     protected function procesarTodas(bool $dryRun, ?int $limit): int
     {
+        // Forzar output inmediato
+        echo "Iniciando comando...\n";
+        flush();
+
         // Configurar para larga ejecución
         set_time_limit(0);
         ini_set('memory_limit', '512M');
 
-        // Forzar output inmediato (sin buffering)
-        if (function_exists('ob_implicit_flush')) {
-            ob_implicit_flush(true);
-        }
-        while (ob_get_level()) {
-            ob_end_flush();
-        }
+        echo "=== PROCESAR TODAS LAS PLANILLAS PENDIENTES ===\n\n";
+        flush();
 
-        $this->output->writeln('=== PROCESAR TODAS LAS PLANILLAS PENDIENTES ===');
-        $this->output->writeln('');
+        echo "Contando planillas (puede tardar)...\n";
+        flush();
 
         // Contar totales
         $totalPlanillas = DB::table('elementos')
@@ -233,19 +232,19 @@ class AplicarSubetiquetasCommand extends Command
             ->whereNotNull('etiqueta_id')
             ->count();
 
-        $this->output->writeln("Planillas pendientes: {$totalPlanillas}");
-        $this->output->writeln("Elementos sin subetiqueta: {$totalElementosSinSub}");
-        $this->output->writeln('');
+        echo "Planillas pendientes: {$totalPlanillas}\n";
+        echo "Elementos sin subetiqueta: {$totalElementosSinSub}\n\n";
+        flush();
 
         if ($totalPlanillas === 0) {
-            $this->output->writeln('✅ Todas las planillas ya tienen subetiquetas asignadas');
+            echo "✅ Todas las planillas ya tienen subetiquetas asignadas\n";
             return 0;
         }
 
         // Usar limit por defecto de 50 si no se especifica (lotes pequeños para evitar timeouts)
         $batchSize = $limit ?? 50;
-        $this->output->writeln("Procesando en lotes de {$batchSize} planillas");
-        $this->output->writeln('');
+        echo "Procesando en lotes de {$batchSize} planillas\n\n";
+        flush();
 
         $totalElementos = 0;
         $totalSubsCreadas = 0;
@@ -271,7 +270,8 @@ class AplicarSubetiquetasCommand extends Command
             }
 
             $loteActual = count($planillaIds);
-            $this->output->writeln("📦 Procesando lote de {$loteActual} planillas...");
+            echo "📦 Procesando lote de {$loteActual} planillas...\n";
+            flush();
 
             foreach ($planillaIds as $index => $planillaId) {
                 $planilla = Planilla::find($planillaId);
@@ -282,7 +282,8 @@ class AplicarSubetiquetasCommand extends Command
                 // Mostrar progreso cada 10 planillas
                 if ($index % 10 === 0) {
                     $memoria = round(memory_get_usage() / 1024 / 1024, 1);
-                    $this->output->writeln("   [{$index}/{$loteActual}] {$planilla->codigo} (Mem: {$memoria}MB)");
+                    echo "   [{$index}/{$loteActual}] {$planilla->codigo} (Mem: {$memoria}MB)\n";
+                    flush();
                 }
 
                 // Procesar elementos en chunks de 50 para evitar memory issues
@@ -318,7 +319,8 @@ class AplicarSubetiquetasCommand extends Command
                     } catch (\Exception $e) {
                         DB::rollBack();
                         $totalErrores++;
-                        $this->output->writeln("   ❌ Error en planilla {$planilla->codigo}: " . substr($e->getMessage(), 0, 50));
+                        echo "   ❌ Error en planilla {$planilla->codigo}: " . substr($e->getMessage(), 0, 50) . "\n";
+                        flush();
                     }
 
                     $offset += $chunkSize;
@@ -354,32 +356,29 @@ class AplicarSubetiquetasCommand extends Command
                 ->count('planilla_id');
 
             if ($pendientes > 0) {
-                $this->output->writeln('');
-                $this->output->writeln("✓ Lote completado. Quedan {$pendientes} planillas pendientes.");
-                $this->output->writeln('');
+                echo "\n✓ Lote completado. Quedan {$pendientes} planillas pendientes.\n\n";
+                flush();
             }
         }
 
         $elapsed = round(microtime(true) - $startTime, 1);
-        $this->output->writeln('');
-        $this->output->writeln('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        $this->output->writeln('=== RESUMEN FINAL ===');
-        $this->output->writeln('');
-
-        $this->output->writeln("Tiempo total: {$elapsed} segundos");
-        $this->output->writeln("Planillas procesadas: {$planillasProcesadas}");
+        echo "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        echo "=== RESUMEN FINAL ===\n\n";
+        echo "Tiempo total: {$elapsed} segundos\n";
+        echo "Planillas procesadas: {$planillasProcesadas}\n";
+        flush();
 
         if ($dryRun) {
-            $this->output->writeln("Elementos a procesar: {$totalElementos}");
-            $this->output->writeln('');
-            $this->output->writeln('🔍 Ejecuta sin --dry-run para aplicar cambios');
+            echo "Elementos a procesar: {$totalElementos}\n\n";
+            echo "🔍 Ejecuta sin --dry-run para aplicar cambios\n";
         } else {
-            $this->output->writeln("Elementos procesados: {$totalElementos}");
-            $this->output->writeln("Subetiquetas asignadas: {$totalSubsCreadas}");
+            echo "Elementos procesados: {$totalElementos}\n";
+            echo "Subetiquetas asignadas: {$totalSubsCreadas}\n";
             if ($totalErrores > 0) {
-                $this->output->writeln("⚠️ Errores: {$totalErrores}");
+                echo "⚠️ Errores: {$totalErrores}\n";
             }
         }
+        flush();
 
         // Verificar si quedan pendientes
         $pendientesFinales = DB::table('elementos')
@@ -388,12 +387,11 @@ class AplicarSubetiquetasCommand extends Command
             ->count();
 
         if ($pendientesFinales > 0 && !$dryRun) {
-            $this->output->writeln('');
-            $this->output->writeln("⚠️ Quedan {$pendientesFinales} elementos pendientes. Ejecuta el comando de nuevo.");
+            echo "\n⚠️ Quedan {$pendientesFinales} elementos pendientes. Ejecuta el comando de nuevo.\n";
         } elseif ($pendientesFinales === 0 && !$dryRun) {
-            $this->output->writeln('');
-            $this->output->writeln('✅ ¡Todos los elementos tienen subetiqueta asignada!');
+            echo "\n✅ ¡Todos los elementos tienen subetiqueta asignada!\n";
         }
+        flush();
 
         return 0;
     }
