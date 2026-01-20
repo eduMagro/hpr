@@ -24,8 +24,16 @@ class AlbaranesScanController extends Controller
             ->values()
             ->toArray();
 
+        $fabricantes = \App\Models\Fabricante::query()
+            ->pluck('nombre')
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
         return view('albaranes.scan', [
             'distribuidores' => $distribuidores,
+            'fabricantes' => $fabricantes,
         ]);
     }
 
@@ -145,9 +153,18 @@ class AlbaranesScanController extends Controller
             foreach ($request->file('imagenes') as $imagen) {
                 try {
                     $log = $service->parseAndLog($imagen, Auth::id(), $proveedor);
-                    $parsed = $log->parsed_payload ?? [];
-                    $statusMessages = $parsed['_ai_status'] ?? [];
-                    $aiMeta = $parsed['_ai_meta'] ?? [];
+                    $rawParsed = $log->parsed_payload ?? [];
+
+                    // Asegurar que usamos 'data' si existe, o el root si no
+                    $parsed = $rawParsed['data'] ?? $rawParsed;
+
+                    // Si hay claves en el root que no están en 'data', fusionarlas (por compatibilidad)
+                    if (isset($rawParsed['data']) && is_array($rawParsed['data'])) {
+                        $parsed = array_merge($rawParsed, $rawParsed['data']);
+                    }
+
+                    $statusMessages = $rawParsed['_ai_status'] ?? [];
+                    $aiMeta = $rawParsed['_ai_meta'] ?? [];
                     unset($parsed['_ai_status'], $parsed['_ai_meta']);
 
                     // Generar preview base64 para mostrar al usuario
@@ -162,23 +179,54 @@ class AlbaranesScanController extends Controller
 
                     // Buscar líneas pendientes y generar simulación
                     $simulacion = $this->generarSimulacion($parsed);
-                    $parsed['bultos_total'] = $simulacion['bultos_albaran'];
-                    $parsed['peso_total'] = $simulacion['peso_total'];
-                    $parsed['tipo_compra'] = isset($parsed['tipo_compra']) ? mb_strtolower($parsed['tipo_compra']) : null;
 
-                    // IA Inteligente para Distribuidor
-                    $distribuidorRecomendado = $this->obtenerDistribuidorIA($parsed, $log->raw_text ?? '', $distribuidores);
+                    // Asegurar que totales vengan del bloque 'data' si es posible
+                    $parsed['bultos_total'] = $parsed['bultosTotal'] ?? $parsed['bultos_total'] ?? $simulacion['bultos_albaran'];
+                    $parsed['peso_total'] = $parsed['pesoTotal'] ?? $parsed['peso_total'] ?? $simulacion['peso_total'];
 
-                    // Fallback
-                    if (!$distribuidorRecomendado) {
+                    // Normalizar tipo de compra
+                    $parsed['tipo_compra'] = isset($parsed['tipoCompra'])
+                        ? mb_strtolower($parsed['tipoCompra'])
+                        : (isset($parsed['tipo_compra']) ? mb_strtolower($parsed['tipo_compra']) : null);
+
+                    // IA Inteligente para Distribuidor (SOLO SI es distribuidor)
+                    $distribuidorRecomendado = null;
+                    if ($parsed['tipo_compra'] === 'distribuidor') {
+                        $distribuidorRecomendado = $this->obtenerDistribuidorIA($parsed, $log->raw_text ?? '', $distribuidores);
+                    }
+
+                    // Fallback para distribuidor
+                    if (!$distribuidorRecomendado && $parsed['tipo_compra'] === 'distribuidor') {
                         $distribuidorRecomendado = $this->determinarDistribuidorRecomendado(
                             $parsed['tipo_compra'],
-                            $parsed['proveedor_texto'] ?? null,
+                            $parsed['proveedorTexto'] ?? $parsed['proveedor_texto'] ?? null,
                             $distribuidores
                         );
                     }
 
+                    // Si es directo, asegurarnos de que no haya distribuidor recomendado basura
+                    if ($parsed['tipo_compra'] === 'directo') {
+                        $distribuidorRecomendado = null;
+                    }
+
                     $parsed['distribuidor_recomendado'] = $distribuidorRecomendado;
+
+                    // Normalizar productos para la vista (camelCase a snake_case si hace falta)
+                    if (isset($parsed['productos']) && is_array($parsed['productos'])) {
+                        foreach ($parsed['productos'] as &$p) {
+                            if (isset($p['lineItems'])) {
+                                $p['line_items'] = $p['lineItems'];
+                                // unset($p['lineItems']); // Opcional, mantener ambas por si acaso
+                            }
+                            // Normalizar items internos
+                            if (isset($p['line_items']) && is_array($p['line_items'])) {
+                                foreach ($p['line_items'] as &$item) {
+                                    if (isset($item['pesoNeto']))
+                                        $item['peso_kg'] = $item['pesoNeto'];
+                                }
+                            }
+                        }
+                    }
 
                     $resultados[] = [
                         'ocr_log_id' => $log->id,
@@ -681,6 +729,7 @@ class AlbaranesScanController extends Controller
 
         // Re-priorizar con IA si hay candidatos
         $lineasConScoring = collect($lineasConScoring);
+        $lineaPropuesta = null; // Inicializar variable
         if ($lineasConScoring->isNotEmpty()) {
             $aiService = app(PrioridadIAService::class);
             $candidatos = $lineasConScoring->toArray();

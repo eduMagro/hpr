@@ -193,369 +193,326 @@
     <!-- Vista Desktop Eliminada - Solo versión Móvil activa -->
 
 
-    <!-- ========================================== -->
-    <!-- VISTA WIZARD DE 5 PASOS (para todas las resoluciones) -->
-    <!-- ========================================== -->
-    <div id="mobileStepContainer" class="block relative overflow-hidden min-h-[calc(100vh-56px)] pb-4 bg-gray-100">
-        <!-- Header superior -->
-        <div class="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
-            <div class="flex items-center justify-between px-4 py-3">
-                <!-- Botón retroceder -->
-                <button id="mobile-back-btn" type="button"
-                    class="hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                    </svg>
-                </button>
+    <!-- Header superior -->
+    <div class="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
+        <div class="flex items-center justify-between px-4 py-3">
+            <!-- Botón retroceder -->
+            <button id="mobile-back-btn" type="button"
+                class="hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
 
-                <!-- Título del paso actual -->
-                <h2 id="mobile-step-title" class="text-lg font-semibold text-gray-900">
-                    Subir Albarán
-                </h2>
+            <!-- Título del paso actual -->
+            <h2 id="mobile-step-title" class="text-lg font-semibold text-gray-900">
+                Subir Albarán
+            </h2>
 
-                <!-- Indicador de paso (1/4, 2/4, etc) -->
-                <span class="text-sm text-gray-500">
-                    <span id="mobile-current-step">1</span>/4
-                </span>
-            </div>
+            <!-- Indicador de paso (1/3, 2/3, etc) -->
+            <span class="text-sm text-gray-500">
+                <span id="mobile-current-step">1</span>/3
+            </span>
+        </div>
 
-            <!-- Barra de progreso -->
-            <div class="h-1 bg-gray-200">
-                <div id="mobile-progress-bar"
-                    class="h-full bg-gradient-to-tr from-indigo-600 to-indigo-700 transition-all duration-300"
-                    style="width: 25%"></div>
+        <!-- Barra de progreso -->
+        <div class="h-1 bg-gray-200">
+            <div id="mobile-progress-bar"
+                class="h-full bg-gradient-to-tr from-indigo-600 to-indigo-700 transition-all duration-300"
+                style="width: 33.33%"></div>
+        </div>
+    </div>
+
+    <!-- Step wrapper con 3 vistas -->
+    <div id="stepWrapper"
+        class="flex transition-transform duration-300 ease-in-out h-[calc(100vh-162px)] overflow-y-auto"
+        style="width: 300%; transform: translateX(0%)">
+
+        <!-- ===== VISTA 1: SUBIR FOTO ===== -->
+        <div id="step-1" class="flex-shrink-0 px-4 py-6" style="width: 33.33%;">
+            <!-- (Contenido de VISTA 1 sin cambios) -->
+            <div class="max-w-lg mx-auto space-y-3">
+                <p class="text-sm text-gray-600">Selecciona el proveedor y sube una foto del albarán</p>
+
+                <!-- Formulario móvil -->
+                <form id="ocrForm-mobile" class="space-y-4">
+                    @csrf
+                    <!-- Selector de proveedor -->
+                    <label class="block">
+                        <span class="text-sm font-medium text-gray-700">Proveedor</span>
+                        <select name="proveedor" id="proveedor-mobile" required
+                            class="mt-1 w-full rounded-lg border-gray-300 shadow-sm">
+                            <option value="">Selecciona fabricante</option>
+                            <option value="siderurgica">Siderúrgica Sevillana (SISE)</option>
+                            <option value="megasa">Megasa</option>
+                            <option value="balboa">Balboa</option>
+                            <option value="otro">Otro / No listado</option>
+                        </select>
+                    </label>
+
+                    <!-- Input de archivo (Dual: Cámara o Galería) -->
+                    <label class="block mb-2 text-sm font-medium text-gray-700">Foto del albarán</label>
+                    <div class="grid grid-cols-2 gap-3 mb-2">
+                        <!-- Opción Cámara -->
+                        <label
+                            class="relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-indigo-200 rounded-xl bg-indigo-50/50 hover:bg-indigo-50 transition cursor-pointer text-center group">
+                            <div class="p-2 bg-indigo-100 rounded-full mb-2 group-hover:scale-110 transition-transform">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </div>
+                            <span class="text-xs font-semibold text-indigo-900">Usar Cámara</span>
+                            <input type="file" name="imagenes[]" id="camera-mobile" accept="image/*"
+                                capture="environment" class="hidden" onchange="handleMobileFileSelection(this)">
+                        </label>
+
+                        <!-- Opción Galería -->
+                        <label
+                            class="relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 hover:bg-gray-100 transition cursor-pointer text-center group">
+                            <div class="p-2 bg-gray-200 rounded-full mb-2 group-hover:scale-110 transition-transform">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 8l-3-3m3 3l3-3" />
+                                </svg>
+                            </div>
+                            <span class="text-xs font-semibold text-gray-700">Subir Archivo</span>
+                            <input type="file" name="imagenes[]" id="imagenes-mobile"
+                                accept="image/*,application/pdf" class="hidden"
+                                onchange="handleMobileFileSelection(this)">
+                        </label>
+                    </div>
+
+                    <!-- Feedback de selección -->
+                    <div id="mobile-file-feedback"
+                        class="hidden p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+                        <div class="flex items-center gap-2 overflow-hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 flex-shrink-0"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span class="text-sm text-green-800 font-medium truncate"
+                                id="mobile-file-name">NombreArchivo.jpg</span>
+                        </div>
+                        <button type="button" onclick="clearMobileSelection()"
+                            class="text-gray-400 hover:text-red-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Botón procesar -->
+                    <div class="space-y-3">
+                        <button type="button" id="processBtn-mobile" onclick="procesarAlbaranMobile()"
+                            class="relative w-full px-4 py-3 bg-indigo-600 text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition overflow-hidden flex items-center justify-center">
+                            <span id="processBtnLabel-mobile">Procesar albarán</span>
+                            <span id="processing-mobile" class="processing-overlay hidden">
+                                <svg class="processing-circle" width="60" height="60" viewBox="0 0 50 50">
+                                    <g fill="none" stroke="#ffffff" stroke-width="2">
+                                        <path d="M15 10h15l5 5v20H15V10">
+                                            <animate attributeName="stroke-dasharray" values="0,100;100,0"
+                                                dur="2s" repeatCount="indefinite"></animate>
+                                        </path>
+                                        <path d="M30 10v5h5">
+                                            <animate attributeName="opacity" values="0;1;0" dur="2s"
+                                                repeatCount="indefinite"></animate>
+                                        </path>
+                                        <path d="M20 20h10M20 25h10M20 30h10">
+                                            <animate attributeName="stroke-dasharray" values="0,60;60,0"
+                                                dur="2s" repeatCount="indefinite"></animate>
+                                        </path>
+                                    </g>
+                                </svg>
+                                <span>Procesando</span>
+                            </span>
+                        </button>
+
+                        <!-- Botón continuar (solo si ya tenemos datos) -->
+                        <button type="button" id="mobile-step1-continue-btn" data-mobile-next
+                            class="hidden w-full px-4 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium border border-gray-300 transition">
+                            Continuar con datos actuales
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 
-        <!-- Step wrapper con 4 vistas -->
-        <div id="stepWrapper"
-            class="flex transition-transform duration-300 ease-in-out h-[calc(100vh-162px)] overflow-y-auto"
-            style="width: 400%; transform: translateX(0%)">
+        <!-- ===== VISTA 2: CONFIRMAR DATOS (EDICIÓN DIRECTA) ===== -->
+        <div id="step-2" class="flex-shrink-0 px-4 py-6" style="width: 33.33%;">
+            <!-- (Contenido de VISTA 2 sin cambios) -->
+            <div class="max-w-lg mx-auto space-y-4">
+                <h3 class="text-xl font-semibold text-gray-900">Revisar y Confirmar Datos</h3>
 
-            <!-- ===== VISTA 1: SUBIR FOTO ===== -->
-            <div id="step-1" class="w-full flex-shrink-0 px-4 py-6">
-                <div class="max-w-lg mx-auto space-y-3">
-                    <p class="text-sm text-gray-600">Selecciona el proveedor y sube una foto del albarán</p>
+                {{-- <!-- Preview de imagen --> --}}
 
-                    <!-- Formulario móvil -->
-                    <form id="ocrForm-mobile" class="space-y-4">
-                        @csrf
-                        <!-- Selector de proveedor -->
+                <!-- Estado de las IA -->
+                <div id="mobile-status-banner"
+                    class="hidden items-center gap-2 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-2 text-sm text-indigo-900">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-500" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M12 18a9 9 0 110-18 9 9 0 010 18z" />
+                    </svg>
+                    <span id="mobile-status-text" class="font-medium"></span>
+                </div>
+
+                <!-- Formulario de Edición (Integrado) -->
+                <form id="mobile-step2-form" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <label class="block">
-                            <span class="text-sm font-medium text-gray-700">Proveedor</span>
-                            <select name="proveedor" id="proveedor-mobile" required
-                                class="mt-1 w-full rounded-lg border-gray-300 shadow-sm">
-                                <option value="">Selecciona fabricante</option>
-                                <option value="siderurgica">Siderúrgica Sevillana (SISE)</option>
-                                <option value="megasa">Megasa</option>
-                                <option value="balboa">Balboa</option>
-                                <option value="otro">Otro / No listado</option>
-                            </select>
+                            <span class="text-sm font-medium text-gray-700">Tipo de compra</span>
+                            <input type="hidden" id="edit-tipo-compra">
+                            <div class="mt-1 flex rounded-lg border border-gray-300 overflow-hidden shadow-sm">
+                                <button type="button" id="btn-tipo-directo"
+                                    class="flex-1 py-2 text-sm font-bold transition-colors bg-white text-gray-600 hover:bg-gray-50"
+                                    onclick="setMobileTipoCompra('directo')">
+                                    DIRECTO
+                                </button>
+                                <div class="w-px bg-gray-300"></div>
+                                <button type="button" id="btn-tipo-distribuidor"
+                                    class="flex-1 py-2 text-sm font-bold transition-colors bg-white text-gray-600 hover:bg-gray-50"
+                                    onclick="setMobileTipoCompra('distribuidor')">
+                                    DISTRIBUIDOR
+                                </button>
+                            </div>
+                        </label>
                         </label>
 
-                        <!-- Input de archivo (Dual: Cámara o Galería) -->
-                        <label class="block mb-2 text-sm font-medium text-gray-700">Foto del albarán</label>
-                        <div class="grid grid-cols-2 gap-3 mb-2">
-                            <!-- Opción Cámara -->
-                            <label
-                                class="relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-indigo-200 rounded-xl bg-indigo-50/50 hover:bg-indigo-50 transition cursor-pointer text-center group">
-                                <div
-                                    class="p-2 bg-indigo-100 rounded-full mb-2 group-hover:scale-110 transition-transform">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600"
-                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                </div>
-                                <span class="text-xs font-semibold text-indigo-900">Usar Cámara</span>
-                                <input type="file" name="imagenes[]" id="camera-mobile" accept="image/*"
-                                    capture="environment" class="hidden" onchange="handleMobileFileSelection(this)">
-                            </label>
+                        <!-- Contenedor Fabricante (Solo visible en DIRECTO) -->
+                        <label class="block" id="container-fabricante-mobile">
+                            <span class="text-sm font-medium text-gray-700">Fabricante</span>
 
-                            <!-- Opción Galería -->
-                            <label
-                                class="relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 hover:bg-gray-100 transition cursor-pointer text-center group">
-                                <div
-                                    class="p-2 bg-gray-200 rounded-full mb-2 group-hover:scale-110 transition-transform">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 8l-3-3m3 3l3-3" />
-                                    </svg>
-                                </div>
-                                <span class="text-xs font-semibold text-gray-700">Subir Archivo</span>
-                                <input type="file" name="imagenes[]" id="imagenes-mobile"
-                                    accept="image/*,application/pdf" class="hidden"
-                                    onchange="handleMobileFileSelection(this)">
-                            </label>
-                        </div>
+                            <!-- Select de fabricantes -->
+                            <select id="edit-proveedor-select" class="mt-1 w-full rounded-lg border-gray-300">
+                                <option value="">Selecciona fabricante</option>
+                                @if (isset($fabricantes))
+                                    @foreach ($fabricantes as $fab)
+                                        <option value="{{ $fab }}">{{ $fab }}</option>
+                                    @endforeach
+                                @endif
+                                <option value="otro">Otro / No listado</option>
+                            </select>
 
-                        <!-- Feedback de selección -->
-                        <div id="mobile-file-feedback"
-                            class="hidden p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
-                            <div class="flex items-center gap-2 overflow-hidden">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 flex-shrink-0"
-                                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M5 13l4 4L19 7" />
-                                </svg>
-                                <span class="text-sm text-green-800 font-medium truncate"
-                                    id="mobile-file-name">NombreArchivo.jpg</span>
-                            </div>
-                            <button type="button" onclick="clearMobileSelection()"
-                                class="text-gray-400 hover:text-red-500">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
+                            <!-- Hidden input para compatibilidad -->
+                            <input type="hidden" id="edit-proveedor">
+                        </label>
 
-                        <!-- Botón procesar -->
-                        <div class="space-y-3">
-                            <button type="button" id="processBtn-mobile" onclick="procesarAlbaranMobile()"
-                                class="relative w-full px-4 py-3 bg-indigo-600 text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition overflow-hidden flex items-center justify-center">
-                                <span id="processBtnLabel-mobile">Procesar albarán</span>
-                                <span id="processing-mobile" class="processing-overlay hidden">
-                                    <svg class="processing-circle" width="60" height="60"
-                                        viewBox="0 0 50 50">
-                                        <g fill="none" stroke="#ffffff" stroke-width="2">
-                                            <path d="M15 10h15l5 5v20H15V10">
-                                                <animate attributeName="stroke-dasharray" values="0,100;100,0"
-                                                    dur="2s" repeatCount="indefinite"></animate>
-                                            </path>
-                                            <path d="M30 10v5h5">
-                                                <animate attributeName="opacity" values="0;1;0" dur="2s"
-                                                    repeatCount="indefinite"></animate>
-                                            </path>
-                                            <path d="M20 20h10M20 25h10M20 30h10">
-                                                <animate attributeName="stroke-dasharray" values="0,60;60,0"
-                                                    dur="2s" repeatCount="indefinite"></animate>
-                                            </path>
-                                        </g>
-                                    </svg>
-                                    <span>Procesando</span>
-                                </span>
-                            </button>
-
-                            <!-- Botón continuar (solo si ya tenemos datos) -->
-                            <button type="button" id="mobile-step1-continue-btn" data-mobile-next
-                                class="hidden w-full px-4 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium border border-gray-300 transition">
-                                Continuar con datos actuales
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- ===== VISTA 2: CONFIRMAR DATOS (EDICIÓN DIRECTA) ===== -->
-            <div id="step-2" class="w-full flex-shrink-0 px-4 py-6">
-                <div class="max-w-lg mx-auto space-y-4">
-                    <h3 class="text-xl font-semibold text-gray-900">Revisar y Confirmar Datos</h3>
-
-                    {{-- <!-- Preview de imagen -->
-                    <div id="mobile-preview-container"
-                        class="flex hidden items-center justify-start gap-4 max-h-16 bg-gradient-to-tr from-indigo-600 to-indigo-700 rounded-lg p-4 cursor-pointer shadow-md">
-                        <div class="overflow-hidden w-16 h-12 rounded-lg border-2 border-white">
-                            <img id="mobile-preview-img" src="" alt="Preview"
-                                class="w-full h-full object-cover">
-                        </div>
-                        <p class="text-md text-white">Toca para ver la imagen</p>
-                    </div> --}}
-
-                    <!-- Estado de las IA -->
-                    <div id="mobile-status-banner"
-                        class="hidden items-center gap-2 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-2 text-sm text-indigo-900">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-500" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M13 16h-1v-4h-1m1-4h.01M12 18a9 9 0 110-18 9 9 0 010 18z" />
-                        </svg>
-                        <span id="mobile-status-text" class="font-medium"></span>
-                    </div>
-
-                    <!-- Formulario de Edición (Integrado) -->
-                    <form id="mobile-step2-form" class="space-y-4">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <label class="block">
-                                <span class="text-sm font-medium text-gray-700">Tipo de compra</span>
-                                <select id="edit-tipo-compra" class="mt-1 w-full rounded-lg border-gray-300">
-                                    <option value="">Selecciona tipo</option>
-                                    <option value="directo">Directo</option>
-                                    <option value="distribuidor">Distribuidor</option>
-                                </select>
-                            </label>
-                            <label class="block">
-                                <span class="text-sm font-medium text-gray-700">Fabricante</span>
-                                <input type="text" id="edit-proveedor"
-                                    class="mt-1 w-full rounded-lg border-gray-300">
-                            </label>
-
-                            <!-- Distribuidor: Input text OR Select depending on logic -->
-                            <div class="block" id="container-distribuidor-mobile">
-                                <span class="text-sm font-medium text-gray-700">Distribuidor</span>
-
-                                <!-- Select para cuando es "proveedor" -->
-                                <select id="edit-distribuidor-select"
-                                    class="mt-1 w-full rounded-lg border-gray-300 hidden">
-                                    <option value="">Seleccionar distribuidor</option>
+                        <!-- Contenedor Distribuidor (Solo visible en DISTRIBUIDOR) -->
+                        <label class="block hidden" id="container-distribuidor-mobile">
+                            <span class="text-sm font-medium text-gray-700">Distribuidor</span>
+                            <!-- Select de Distribuidores -->
+                            <select id="edit-distribuidor-select" class="mt-1 w-full rounded-lg border-gray-300">
+                                <option value="">Selecciona distribuidor</option>
+                                @if (isset($distribuidores))
                                     @foreach ($distribuidores as $dist)
                                         <option value="{{ $dist }}">{{ $dist }}</option>
                                     @endforeach
-                                </select>
+                                @endif
+                                <option value="otro">Otro / No listado</option>
+                            </select>
+                            <!-- Hidden input si fuera necesario -->
+                            <input type="hidden" id="edit-distribuidor-input">
+                        </label>
 
-                                <!-- Input para cuando es "otro" o fallback -->
-                                <input type="text" id="edit-distribuidor-input"
-                                    class="mt-1 w-full rounded-lg border-gray-300">
-                            </div>
-
-                            <label class="block hidden">
-                                <span class="text-sm font-medium text-gray-700">Albarán</span>
-                                <input type="text" id="edit-albaran"
+                        <label class="block hidden">
+                            <span class="text-sm font-medium text-gray-700">Albarán</span>
+                            <input type="text" id="edit-albaran" class="mt-1 w-full rounded-lg border-gray-300">
+                        </label>
+                        <label class="block hidden">
+                            <span class="text-sm font-medium text-gray-700">Fecha</span>
+                            <input type="date" id="edit-fecha" class="mt-1 w-full rounded-lg border-gray-300">
+                        </label>
+                        <label class="block hidden">
+                            <span class="text-sm font-medium text-gray-700">Pedido HPR</span>
+                            <input type="text" id="edit-pedido-cliente"
+                                class="mt-1 w-full rounded-lg border-gray-300">
+                        </label>
+                        <label class="block hidden">
+                            <span class="text-sm font-medium text-gray-700">Pedido Código</span>
+                            <input type="text" id="edit-pedido-codigo"
+                                class="mt-1 w-full rounded-lg border-gray-300">
+                        </label>
+                        <div class="grid grid-cols-2 gap-3 hidden">
+                            <label class="block">
+                                <span class="text-sm font-medium text-gray-700">Peso (kg)</span>
+                                <input type="number" id="edit-peso-total" step="0.01"
                                     class="mt-1 w-full rounded-lg border-gray-300">
                             </label>
-                            <label class="block hidden">
-                                <span class="text-sm font-medium text-gray-700">Fecha</span>
-                                <input type="date" id="edit-fecha" class="mt-1 w-full rounded-lg border-gray-300">
+                            <label class="block">
+                                <span class="text-sm font-medium text-gray-700">Bultos</span>
+                                <input type="number" id="edit-bultos-total"
+                                    class="mt-1 w-full rounded-lg border-gray-300 bg-gray-50 cursor-not-allowed"
+                                    readonly>
                             </label>
-                            <label class="block hidden">
-                                <span class="text-sm font-medium text-gray-700">Pedido HPR</span>
-                                <input type="text" id="edit-pedido-cliente"
-                                    class="mt-1 w-full rounded-lg border-gray-300">
-                            </label>
-                            <label class="block hidden">
-                                <span class="text-sm font-medium text-gray-700">Pedido Código</span>
-                                <input type="text" id="edit-pedido-codigo"
-                                    class="mt-1 w-full rounded-lg border-gray-300">
-                            </label>
-                            <div class="grid grid-cols-2 gap-3">
-                                <label class="block">
-                                    <span class="text-sm font-medium text-gray-700">Peso (kg)</span>
-                                    <input type="number" id="edit-peso-total" step="0.01"
-                                        class="mt-1 w-full rounded-lg border-gray-300">
-                                </label>
-                                <label class="block">
-                                    <span class="text-sm font-medium text-gray-700">Bultos</span>
-                                    <input type="number" id="edit-bultos-total"
-                                        class="mt-1 w-full rounded-lg border-gray-300 bg-gray-50 cursor-not-allowed"
-                                        readonly>
-                                </label>
-                            </div>
                         </div>
+                    </div>
 
-                        <div class="space-y-3 pt-2">
-                            <div class="flex items-center justify-between">
-                                <h4 class="text-base font-semibold text-gray-900">Productos escaneados</h4>
-                                <button type="button" onclick="agregarProductoMobile()"
-                                    class="px-3 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-semibold hover:bg-indigo-200">
-                                    + Añadir producto
-                                </button>
-                            </div>
-                            <!-- Aquí se inyectarán las coladas con sus checks en Step 2 -->
-                            <div id="mobile-edit-products" class="space-y-4"></div>
-                        </div>
-
-                        <!-- Botón de acción -->
-                        <div class="pt-4">
-                            <button type="button" id="mobile-step2-confirm-btn" onclick="guardarYContinuarStep2()"
-                                class="w-full px-4 py-3 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white rounded-lg font-bold text-lg shadow-md hover:shadow-lg transition">
-                                <span id="mobile-step2-confirm-label">Confirmar y Continuar</span>
-                                <span id="mobile-step2-confirm-loading" class="hidden ml-2 align-middle">
-                                    <span class="ia-spinner inline-block align-middle"></span>
-                                </span>
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-base font-semibold text-gray-900">Productos escaneados</h4>
+                            <button type="button" onclick="agregarProductoMobile()"
+                                class="px-3 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-semibold hover:bg-indigo-200">
+                                + Añadir producto
                             </button>
                         </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- ===== VISTA 3: PEDIDO SELECCIONADO ===== -->
-            <div id="step-3" class="w-full flex-shrink-0 px-4 py-6">
-                <div class="max-w-md mx-auto space-y-3">
-                    <h3 class="text-xl font-semibold text-gray-900">Pedido Seleccionado</h3>
-                    <div id="mobile-pedido-db-banner" class="hidden rounded-lg border px-3 py-2 text-sm"></div>
-                    <p class="text-sm text-gray-600">Verifica el pedido propuesto o selecciona otro</p>
-
-                    <!-- Card del pedido será añadido dinámicamente -->
-                    <div id="mobile-pedido-card" class="bg-white rounded-lg p-4">
-                        <p class="text-gray-500">Cargando...</p>
+                        <!-- Aquí se inyectarán las coladas con sus checks en Step 2 -->
+                        <div id="mobile-edit-products" class="space-y-4"></div>
                     </div>
 
-                    <!-- Botón para ver otros pedidos -->
-                    <button type="button" id="mobile-ver-otros-pedidos"
-                        class="w-full px-4 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium">
-                        Ver otros pedidos
-                    </button>
-
-                    <!-- Navegación -->
-                    <button type="button" data-mobile-next
-                        class="w-full px-4 py-3 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white rounded-lg font-medium">
-                        Continuar
-                    </button>
-                </div>
-            </div>
-
-            <!-- ===== VISTA 4: ACTIVACIÓN (Antiguamente Step 5) ===== -->
-            <div id="step-4" class="w-full flex-shrink-0 px-4 py-6">
-                <div class="max-w-md mx-auto space-y-3">
-                    <h3 class="text-xl font-semibold text-gray-900">Confirmar Activación</h3>
-                    <p class="text-sm text-gray-600">Revisa el resumen y confirma la activación</p>
-
-                    <!-- Resumen -->
-                    <div id="mobile-resumen-container" class="bg-white rounded-lg p-4 space-y-4">
-                        <div>
-                            <h4 class="font-semibold text-gray-900 mb-2">Datos del Albarán</h4>
-                            <div class="text-sm space-y-1">
-                                <p><span class="text-gray-600">Albarán:</span> <span
-                                        id="mobile-resumen-albaran">—</span></p>
-                                <p><span class="text-gray-600">Pedido:</span> <span
-                                        id="mobile-resumen-pedido">—</span></p>
-                            </div>
-                        </div>
-                        <div>
-                            <h4 class="font-semibold text-gray-900 mb-2">Coladas Seleccionadas</h4>
-                            <p id="mobile-resumen-coladas" class="text-sm text-gray-600">—</p>
-                        </div>
-                        <div>
-                            <div class="grid grid-cols-3 gap-3 text-sm text-gray-600">
-                                <div class="text-center">
-                                    <span class="text-xs uppercase tracking-wide text-gray-500">Kg
-                                        seleccionados</span>
-                                    <p id="mobile-resumen-kg-seleccionados" class="font-bold text-gray-900 text-lg">0
-                                        kg</p>
-                                </div>
-                                <div class="text-center">
-                                    <span class="text-xs uppercase tracking-wide text-gray-500">Kg restantes</span>
-                                    <p id="mobile-resumen-kg-restantes" class="font-bold text-gray-900 text-lg">0
-                                        kg
-                                    </p>
-                                </div>
-                                <div class="text-center">
-                                    <span class="text-xs uppercase tracking-wide text-gray-500">Estado
-                                        pedido</span>
-                                    <p id="mobile-resumen-estado" class="font-bold text-gray-900 text-lg">
-                                        Pendiente
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                    <!-- Botón de acción -->
+                    <div class="pt-4">
+                        <button type="button" id="mobile-step2-confirm-btn" onclick="guardarYContinuarStep2()"
+                            class="w-full px-4 py-3 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white rounded-lg font-bold text-lg shadow-md hover:shadow-lg transition">
+                            <span id="mobile-step2-confirm-label">Confirmar y Continuar</span>
+                            <span id="mobile-step2-confirm-loading" class="hidden ml-2 align-middle">
+                                <span class="ia-spinner inline-block align-middle"></span>
+                            </span>
+                        </button>
                     </div>
-
-                    <!-- Botón de activación -->
-                    <button type="button" id="mobile-btn-activar"
-                        class="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg font-bold text-lg">
-                        <span id="mobile-activar-label">Confirmar y Activar</span>
-                        <span id="mobile-activar-loading" class="hidden ml-2 align-middle">
-                            <span class="ia-spinner inline-block align-middle"></span>
-                        </span>
-                    </button>
-                </div>
+                </form>
             </div>
+        </div>
 
-        </div> <!-- Fin stepWrapper -->
+        <!-- ===== VISTA 3: PEDIDO SELECCIONADO Y ACTIVACIÓN ===== -->
+        <div id="step-3" class="flex-shrink-0 px-4 py-6" style="width: 33.33%;">
+            <div class="max-w-md mx-auto space-y-3">
+                <h3 class="text-xl font-semibold text-gray-900">Confirmar Pedido y Activar</h3>
+                <div id="mobile-pedido-db-banner" class="hidden rounded-lg border px-3 py-2 text-sm"></div>
+                <p class="text-sm text-gray-600">Verifica el pedido y confirma la activación</p>
+
+                <!-- Card del pedido -->
+                <div id="mobile-pedido-card" class="bg-white rounded-lg p-4">
+                    <p class="text-gray-500">Cargando...</p>
+                </div>
+
+                <!-- Botón para ver otros pedidos -->
+                <button type="button" id="mobile-ver-otros-pedidos"
+                    class="w-full px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200">
+                    Ver otros pedidos compatibles
+                </button>
+
+                <div class="h-4"></div>
+
+                <!-- Botón de Activación Final -->
+                <button type="button" id="mobile-btn-activar" onclick="activarAlbaranMobile()"
+                    class="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg font-bold text-lg shadow-lg hover:shadow-xl hover:bg-emerald-700 transition">
+                    <span id="mobile-activar-label">Confirmar y Activar Albarán</span>
+                    <span id="mobile-activar-loading" class="hidden ml-2 align-middle">
+                        <span class="ia-spinner inline-block align-middle"></span>
+                    </span>
+                </button>
+            </div>
+        </div>
+
+    </div> <!-- Fin stepWrapper -->
     </div> <!-- Fin mobileStepContainer -->
 
     <!-- ========================================== -->
@@ -665,7 +622,7 @@
         window.mobileStepManager = {
             currentStep: 1,
             maxStep: 1,
-            totalSteps: 4,
+            totalSteps: 3,
             dataCache: {},
             initialized: false,
 
@@ -721,9 +678,8 @@
                 const wrapper = document.getElementById('stepWrapper');
                 if (!wrapper) return;
 
-                // El ancho de cada paso ahora es 25% (100/4)
-                // translatePercentage = -(stepNumber - 1) * 25
-                const translatePercentage = -(stepNumber - 1) * 25;
+                // El ancho de cada paso ahora es 33.33% (100/3)
+                const translatePercentage = -(stepNumber - 1) * 33.33;
 
                 wrapper.style.transform = `translateX(${translatePercentage}%)`;
                 window.requestAnimationFrame(() => {
@@ -747,17 +703,6 @@
                     this.maxStep = stepNumber;
                 }
 
-                if (stepNumber === 4) {
-                    const cache = this.dataCache;
-                    if (typeof window.actualizarIndicadoresColadas === 'function') {
-                        const peso = cache.totalesColadas?.peso || 0;
-                        window.actualizarIndicadoresColadas(peso);
-                    }
-                    if (typeof window.poblarVista5ConResumen === 'function') {
-                        window.poblarVista5ConResumen();
-                    }
-                }
-
                 this.updateNavigation();
                 this.updateProgressBar();
 
@@ -765,7 +710,6 @@
                 this.dataCache.lastStep = this.currentStep;
                 localStorage.setItem('lastScanMobileCache', JSON.stringify(this.dataCache));
 
-                // Mostrar botón continuar en paso 1 si ya hay datos
                 if (stepNumber === 1) {
                     const continueBtn = document.getElementById('mobile-step1-continue-btn');
                     if (continueBtn) {
@@ -775,6 +719,12 @@
                             continueBtn.classList.add('hidden');
                         }
                     }
+                }
+
+                // Si vamos al paso 2, la sincronizacion de datos se maneja en 'poblarVista2ConDatos' y 'setMobileTipoCompra'
+                // No forzamos sobrescritura manual aquí para evitar conflictos con la lógica de select/input
+                if (stepNumber === 2) {
+                    // Logic moved to initialization to be smarter
                 }
             },
 
@@ -811,8 +761,8 @@
                 }
 
                 // Actualizar título del header
-                // Pasos: 1. Subir/OCR, 2. Revisar(incluye coladas), 3. Pedido, 4. Activación
-                const titles = ['Subir Albarán', 'Revisar y Confirmar', 'Pedido', 'Activación'];
+                // Pasos: 1. Subir/OCR, 2. Revisar(incluye coladas), 3. Pedido/Activar
+                const titles = ['Subir Albarán', 'Revisar y Confirmar', 'Pedido / Activar'];
                 const titleElement = document.getElementById('mobile-step-title');
                 if (titleElement && titles[this.currentStep - 1]) {
                     titleElement.textContent = titles[this.currentStep - 1];
@@ -904,9 +854,6 @@
                     }
                 }
 
-                // Paso 4: Activación (antiguo paso 5)
-                // Se valida al pulsar el botón de Activar
-
                 return true;
             },
         };
@@ -947,27 +894,19 @@
          */
         function confirmarActivacionMobile() {
             const cache = window.mobileStepManager.dataCache;
+            const lineaId = cache.lineaSeleccionada?.id;
+
+            if (!lineaId) {
+                toastMobile('error', 'Error: No hay línea de pedido seleccionada.');
+                setMobileActionLoading('mobile-btn-activar', 'mobile-activar-loading', false);
+                return;
+            }
+
+            const url = `{{ url('/albaranes/scan/activar') }}/${lineaId}`;
+
+            // Preparar payload
+            // Las coladas seleccionadas vienen de Step 2 (guardadas en cache.coladasSeleccionadas)
             const coladas = cache.coladasSeleccionadas || [];
-            const linea = cache.lineaSeleccionada || {};
-            setMobileActionLoading('mobile-btn-activar', 'mobile-activar-loading', true);
-
-            if (coladas.length === 0) {
-                toastMobile('warning', 'Selecciona al menos una colada');
-                setMobileActionLoading('mobile-btn-activar', 'mobile-activar-loading', false);
-                return;
-            }
-
-            if (!linea.id || !linea.pedido_id) {
-                toastMobile('error', 'No se pudo determinar la línea/pedido');
-                setMobileActionLoading('mobile-btn-activar', 'mobile-activar-loading', false);
-                return;
-            }
-
-            const urlTemplate =
-                "{{ route('pedidos.lineas.activarConColadas', ['pedido' => '___PEDIDO___', 'linea' => '___LINEA___']) }}";
-            const url = urlTemplate
-                .replace('___PEDIDO___', encodeURIComponent(String(linea.pedido_id)))
-                .replace('___LINEA___', encodeURIComponent(String(linea.id)));
 
             const payload = {
                 coladas: coladas
@@ -1018,6 +957,7 @@
                     window.mobileStepManager.currentStep = 1;
                     window.mobileStepManager.maxStep = 1;
                     window.mobileStepManager.goToStep(1, true);
+                    localStorage.removeItem('lastScanMobileCache');
 
                     // Limpiar inputs del paso 1
                     if (window.clearMobileSelection) {
@@ -1283,6 +1223,9 @@
         /**
          * Poblar Vista 2 con datos recibidos (Modo Edición Directa)
          */
+        /**
+         * Poblar Vista 2 con datos recibidos (Modo Edición Directa)
+         */
         function poblarVista2ConDatos(resultado) {
             const parsed = resultado.parsed || resultado.data || resultado || {};
             const sim = resultado.simulacion || {};
@@ -1303,33 +1246,41 @@
             };
 
             const source = parsed.data ?? parsed;
-            const productosDetectados = source.productos ?? source.products ?? [];
+
+            // Función helper para leer propiedades anidadas o directas
+            const sourceValue = (prop) => {
+                let val = source[prop];
+                if (val === undefined || val === null) val = parsed[prop];
+                // Soporte camelCase si falla snake_case
+                if (val === undefined || val === null) {
+                    const camel = prop.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+                    val = source[camel] ?? parsed[camel];
+                }
+                return val ?? '';
+            };
+
+            // Normalización robusta de productos
+            const productosDetectados = source.productos ?? source.products ?? parsed.productos ?? [];
             if (productosDetectados.length) {
                 parsed.productos = productosDetectados.map(prod => ({
                     descripcion: prod.descripcion ?? '',
                     diametro: prod.diametro ?? '',
                     longitud: prod.longitud ?? '',
                     calidad: prod.calidad ?? '',
-                    line_items: Array.isArray(prod.line_items) ? prod.line_items.map(item => ({
-                        colada: item.colada ?? '',
-                        bultos: item.bultos ?? '',
-                        peso_kg: item.peso_kg ?? '',
-                    })) : [],
+                    line_items: Array.isArray(prod.line_items || prod.lineItems) ?
+                        (prod.line_items || prod.lineItems).map(item => ({
+                            colada: item.colada ?? '',
+                            bultos: item.bultos ?? '',
+                            peso_kg: item.peso_kg ?? item.pesoNeto ?? item.peso ?? '',
+                            descargar: true // Por defecto marcados
+                        })) : [],
                 }));
             }
 
-            actualizarBultosTotalesMobile();
+            // NOTA: No llamamos a actualizarBultosTotalesMobile() aquí porque calcularía 0
+            // al leer inputs que aún no existen. Confiamos en los datos del OCR primero.
 
             console.log('Datos para poblar vista 2:', source);
-            console.log('rellenando tipo de compra:', source.tipo_compra);
-            console.log('rellenando Albarán:', source.albaran);
-            console.log('rellenando fecha:', source.fecha);
-            console.log('rellenando pedido cliente:', source.pedido_cliente);
-            console.log('rellenando pedido código:', source.pedido_codigo);
-            console.log('rellenando peso total:', source.peso_total);
-            console.log('rellenando bultos total:', source.bultos_total);
-
-            const sourceValue = (prop) => source[prop] ?? parsed[prop] ?? '';
 
             setVal('edit-tipo-compra', sourceValue('tipo_compra'));
 
@@ -1337,89 +1288,92 @@
             const proveedorStep1 = document.getElementById('proveedor-mobile') || document.getElementById('proveedor');
             const proveedorSeleccionado = proveedorStep1?.options?.[proveedorStep1.selectedIndex]?.text || proveedorStep1
                 ?.value || '';
-            setVal('edit-proveedor', proveedorSeleccionado || sourceValue('proveedor_texto') || sourceValue('proveedor'));
+            const provTexto = sourceValue('proveedor_texto') || sourceValue('proveedorTexto') || sourceValue('proveedor');
+            setVal('edit-proveedor', proveedorSeleccionado || provTexto);
 
-            // Setear ambos por si acaso
+            // Inicializar Select de Fabricante (Solo si no estuviéramos en modo distribuidor, pero inicializamos todo)
+            const selectProv = document.getElementById('edit-proveedor-select');
+            const inputProv = document.getElementById('edit-proveedor');
+            const currentProv = proveedorSeleccionado || provTexto || '';
+
+            if (selectProv && currentProv) {
+                // Intentar match exacto o aproximado
+                let found = false;
+                // 1. Exacto
+                for (let i = 0; i < selectProv.options.length; i++) {
+                    if (selectProv.options[i].value === currentProv) {
+                        selectProv.selectedIndex = i;
+                        found = true;
+                        break;
+                    }
+                }
+                // 2. Texto aproximado
+                if (!found) {
+                    const lower = currentProv.toLowerCase();
+                    for (let i = 0; i < selectProv.options.length; i++) {
+                        if (selectProv.options[i].text.toLowerCase() === lower || selectProv.options[i].text.toLowerCase()
+                            .includes(lower)) {
+                            selectProv.selectedIndex = i;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Lógica 'otro'
+                if (!found) {
+                    selectProv.value = 'otro';
+                    if (inputProv) inputProv.value = currentProv; // Guardar valor original
+                } else {
+                    if (inputProv) inputProv.value = selectProv.value;
+                }
+            } else if (selectProv) {
+                selectProv.value = '';
+            }
+
+            // Inicializar Select Distribuidor
+            const selectDist = document.getElementById('edit-distribuidor-select');
             const distRecomendado = sourceValue('distribuidor_recomendado');
 
-            console.log('distribuidores de la aplicacion:', window.mobileStepManager?.dataCache?.distribuidores);
-            console.log('distribuidor elegido por ia:', distRecomendado);
+            if (selectDist && distRecomendado) {
+                // Intentar seleccionar distribuidor recomendado si existe
+                // Si no, default
+                selectDist.value = distRecomendado;
+                // Si falla asignación directa (no está en la lista), ver si hay match
+                if (!selectDist.value) {
+                    // Buscar match
+                    for (let i = 0; i < selectDist.options.length; i++) {
+                        if (selectDist.options[i].text.toLowerCase().includes(distRecomendado.toLowerCase())) {
+                            selectDist.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+            }
 
+            // Setear inputs auxiliares por si acaso
             setVal('edit-distribuidor-input', distRecomendado);
-            // Autoseleccionar si hay recomendación
-            setVal('edit-distribuidor-select', distRecomendado);
+
+            // Determinar tipo inicial
+            let initialTipo = 'directo';
+            const rawTipo = sourceValue('tipo_compra');
+            if (rawTipo) {
+                initialTipo = rawTipo.toLowerCase();
+            } else if (distRecomendado) {
+                initialTipo = 'distribuidor';
+            }
+
+            // Inicializar botones y estados UI
+            setMobileTipoCompra(initialTipo);
 
             setVal('edit-albaran', sourceValue('albaran'));
             setVal('edit-fecha', sourceValue('fecha'));
-            setVal('edit-pedido-cliente', sourceValue('pedido_cliente'));
-            setVal('edit-pedido-codigo', sourceValue('pedido_codigo'));
-            setVal('edit-peso-total', sourceValue('peso_total'));
-            setVal('edit-bultos-total', sourceValue('bultos_total'));
+            setVal('edit-pedido-cliente', sourceValue('pedido_cliente') || sourceValue('pedidoCliente'));
+            setVal('edit-pedido-codigo', sourceValue('pedido_codigo') || sourceValue('pedidoCodigo'));
+            setVal('edit-peso-total', sourceValue('peso_total') || sourceValue('pesoTotal'));
+            setVal('edit-bultos-total', sourceValue('bultos_total') || sourceValue('bultosTotal') || '0');
 
-            // -------------------------------------------------------------
-            // Lógica de visualización dinámica según Tipo de Compra
-            // -------------------------------------------------------------
-            const tipoCompraSelect = document.getElementById('edit-tipo-compra');
 
-            // Función interna para manejar cambios de tipo
-            const handleMobileTipoChange = () => {
-                const tipo = tipoCompraSelect.value;
-                const containerDist = document.getElementById('container-distribuidor-mobile');
-                const inputDist = document.getElementById('edit-distribuidor-input');
-                const selectDist = document.getElementById('edit-distribuidor-select');
-                const inputProv = document.getElementById('edit-proveedor');
-                const proveedorStep1 = document.getElementById('proveedor-mobile') || document.getElementById(
-                    'proveedor'); // Intenta mobile, fallback desktop (aunque desktop id es 'proveedor')
-
-                if (tipo === 'directo') {
-                    // Ocultar distribuidor
-                    if (containerDist) containerDist.classList.add('hidden');
-
-                    // Forzar proveedor desde Step 1 (value del select)
-                    if (proveedorStep1 && inputProv) {
-                        // El usuario pide "el seleccionado antes de subir la foto"
-                        // Normalmente el value es 'siderurgica', 'megasa', etc.
-                        // Y en inputProv queremos mostrar eso mismo o el texto? 
-                        // Si inputProv era texto libre ("Aceros SA"), quizás 'siderurgica' queda feo.
-                        // Pero para "Directo", el proveedor ES el de la fábrica (Siderurgica, etc).
-                        // Asignaremos el texto de la opción seleccionada para que sea legible
-                        const selectedOption = proveedorStep1.options[proveedorStep1.selectedIndex];
-                        if (selectedOption) inputProv.value = selectedOption.text;
-                    }
-                    if (inputProv) {
-                        inputProv.readOnly = true;
-                        inputProv.classList.add('bg-gray-100', 'text-gray-500');
-                    }
-
-                } else if (tipo === 'distribuidor') {
-                    // Mostrar container
-                    if (containerDist) containerDist.classList.remove('hidden');
-                    // Mostrar SELECT, ocultar INPUT
-                    if (selectDist) selectDist.classList.remove('hidden');
-                    if (inputDist) inputDist.classList.add('hidden');
-                    if (selectDist && !selectDist.value) {
-                        selectDist.value = '';
-                    }
-
-                    if (inputProv) {
-                        inputProv.readOnly = false;
-                        inputProv.classList.remove('bg-gray-100', 'text-gray-500');
-                    }
-                }
-
-                // Guardar tipo en cache y refrescar el pedido mostrado (Paso 3)
-                if (window.mobileStepManager?.dataCache?.parsed) {
-                    window.mobileStepManager.dataCache.parsed.tipo_compra = tipo || null;
-                }
-                poblarVista3ConPedido(window.mobileStepManager?.dataCache?.simulacion || {});
-            };
-
-            // Attach listener
-            if (tipoCompraSelect) {
-                tipoCompraSelect.onchange = handleMobileTipoChange;
-                // Ejecutar una vez al inicio
-                handleMobileTipoChange();
-            }
 
             // Guardar en cache inicial
             window.mobileStepManager.dataCache.parsed = parsed;
@@ -1497,27 +1451,27 @@
                             <span class="font-semibold text-gray-900">${lineaPropuesta.codigo_linea || '—'}</span>
                         </div>
                         ${pedidoHprEscaneado ? `
-                                                                                                                                                                                        <div class="hidden">
-                                                                                                                                                                                            <span class="text-gray-500">Pedido HPR (escaneado):</span>
-                                                                                                                                                                                            <span class="font-semibold text-gray-900">${pedidoHprEscaneado}</span>
-                                                                                                                                                                                        </div>
-                                                                                                                                                                                    ` : ''}
+                                                                                                                                                                                                                                                                                                                    <div class="hidden">
+                                                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Pedido HPR (escaneado):</span>
+                                                                                                                                                                                                                                                                                                                        <span class="font-semibold text-gray-900">${pedidoHprEscaneado}</span>
+                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                ` : ''}
                         <div class="hidden">
                             <span class="text-gray-500">Pedido (BD):</span>
                             <span class="font-semibold text-gray-900">${lineaPropuesta.pedido_codigo || '—'}</span>
                         </div>
                         ${fabricanteNombre ? `
-                                                                                                                                                                                        <div>
-                                                                                                                                                                                            <span class="text-gray-500">Fabricante:</span>
-                                                                                                                                                                                            <span class="font-medium text-gray-900">${fabricanteNombre}</span>
-                                                                                                                                                                                        </div>
-                                                                                                                                                                                    ` : ''}
+                                                                                                                                                                                                                                                                                                                    <div>
+                                                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Fabricante:</span>
+                                                                                                                                                                                                                                                                                                                        <span class="font-medium text-gray-900">${fabricanteNombre}</span>
+                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                ` : ''}
                         ${distribuidorNombre ? `
-                                                                                                                                                                                        <div>
-                                                                                                                                                                                            <span class="text-gray-500">Distribuidor:</span>
-                                                                                                                                                                                            <span class="font-medium text-gray-900">${distribuidorNombre}</span>
-                                                                                                                                                                                        </div>
-                                                                                                                                                                                    ` : ''}
+                                                                                                                                                                                                                                                                                                                    <div>
+                                                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Distribuidor:</span>
+                                                                                                                                                                                                                                                                                                                        <span class="font-medium text-gray-900">${distribuidorNombre}</span>
+                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                ` : ''}
                         <div>
                             <span class="text-gray-500">Producto:</span>
                             <span class="font-medium text-gray-900">${lineaPropuesta.producto || '—'}</span>
@@ -1816,19 +1770,20 @@
             const productos = [];
             document.querySelectorAll('.mobile-edit-product').forEach((productEl) => {
                 const producto = {
-                    descripcion: productEl.querySelector('[data-product-field="descripcion"]').value || '',
-                    diametro: productEl.querySelector('[data-product-field="diametro"]').value || null,
-                    longitud: productEl.querySelector('[data-product-field="longitud"]').value || null,
-                    calidad: productEl.querySelector('[data-product-field="calidad"]').value || '',
+                    descripcion: productEl.querySelector('[data-product-field="descripcion"]')?.value || '',
+                    diametro: productEl.querySelector('[data-product-field="diametro"]')?.value || null,
+                    longitud: productEl.querySelector('[data-product-field="longitud"]')?.value || null,
+                    calidad: productEl.querySelector('[data-product-field="calidad"]')?.value || '',
                     line_items: []
                 };
 
                 productEl.querySelectorAll('.mobile-edit-colada').forEach((coladaEl) => {
                     producto.line_items.push({
-                        colada: coladaEl.querySelector('[data-colada-field="colada"]').value || '',
-                        bultos: coladaEl.querySelector('[data-colada-field="bultos"]').value || '',
-                        peso_kg: coladaEl.querySelector('[data-colada-field="peso"]').value || '',
-                        descargar: coladaEl.querySelector('[data-colada-field="descargar"]').checked
+                        colada: coladaEl.querySelector('[data-colada-field="colada"]')?.value || '',
+                        bultos: coladaEl.querySelector('[data-colada-field="bultos"]')?.value || '',
+                        peso_kg: coladaEl.querySelector('[data-colada-field="peso"]')?.value || '',
+                        descargar: coladaEl.querySelector('[data-colada-field="descargar"]')
+                            ?.checked || false
                     });
                 });
 
@@ -1855,11 +1810,15 @@
             if (input) {
                 input.value = total;
             }
-            const cache = window.mobileStepManager.dataCache;
-            if (cache.parsed) {
-                cache.parsed.bultos_total = total;
+            // Fix: Usar referencia correcta a dataCache
+            const currentCache = window.mobileStepManager?.dataCache;
+            if (currentCache && currentCache.parsed) {
+                currentCache.parsed.bultos_total = total;
             }
         }
+
+        // Función para mostrar/ocultar input "otro" fabricante
+
 
 
         /**
@@ -1874,7 +1833,20 @@
                 if (!cache.parsed) cache.parsed = {};
 
                 cache.parsed.tipo_compra = document.getElementById('edit-tipo-compra').value || null;
-                cache.parsed.proveedor_texto = document.getElementById('edit-proveedor').value || null;
+                cache.parsed.tipo_compra = document.getElementById('edit-tipo-compra').value || null;
+
+                // Capturar fabricante correctamente:
+                // Si select != 'otro' y tiene valor, usamos ese. Si es 'otro', usamos el input.
+                const selectProv = document.getElementById('edit-proveedor-select');
+                const inputProv = document.getElementById('edit-proveedor');
+                let proveedorFinal = '';
+
+                if (selectProv && selectProv.value && selectProv.value !== 'otro') {
+                    proveedorFinal = selectProv.value;
+                } else if (inputProv) {
+                    proveedorFinal = inputProv.value;
+                }
+                cache.parsed.proveedor_texto = proveedorFinal || null;
 
                 // Determinar cuál distribuidor tomar
                 const tipo = cache.parsed.tipo_compra;
@@ -1953,6 +1925,101 @@
             if (!Number.isFinite(numberValue)) return '—';
             return `${numberValue.toLocaleString('es-ES', { maximumFractionDigits: 2 })} kg`;
         }
+
+        // Validar si el texto actual es un numero decimal
+        function isNumeric(str) {
+            if (typeof str != "string") return false;
+            return !isNaN(str) && !isNaN(parseFloat(str));
+        }
+
+        // Función simplificada para manejo de cambio de tipo
+        window.setMobileTipoCompra = function(tipo) {
+            const input = document.getElementById('edit-tipo-compra');
+            if (input) input.value = tipo;
+
+            // Actualizar botones UI
+            const btnDirecto = document.getElementById('btn-tipo-directo');
+            const btnDistribuidor = document.getElementById('btn-tipo-distribuidor');
+
+            const activeClass = "bg-indigo-600 text-white shadow-inner";
+            const inactiveClass = "bg-white text-gray-600 hover:bg-gray-50";
+
+            if (btnDirecto) btnDirecto.className =
+                `flex-1 py-2 text-sm font-bold transition-colors ${tipo === 'directo' ? activeClass : inactiveClass}`;
+            if (btnDistribuidor) btnDistribuidor.className =
+                `flex-1 py-2 text-sm font-bold transition-colors ${tipo === 'distribuidor' ? activeClass : inactiveClass}`;
+
+            // Contenedores
+            const containerDist = document.getElementById('container-distribuidor-mobile');
+            const containerFab = document.getElementById('container-fabricante-mobile');
+
+            // Inputs
+            const selectDist = document.getElementById('edit-distribuidor-select');
+            const inputDist = document.getElementById('edit-distribuidor-input'); // Backup hidden
+            const selectProv = document.getElementById('edit-proveedor-select');
+            const inputProv = document.getElementById('edit-proveedor'); // Hidden real value
+
+            if (tipo === 'directo') {
+                // MODO DIRECTO: Mostrar Fabricante, Ocultar Distribuidor
+                if (containerDist) containerDist.classList.add('hidden');
+                if (containerFab) containerFab.classList.remove('hidden');
+
+                // Sincronizar Fabricante desde Step 1
+                const proveedorStep1 = document.getElementById('proveedor-mobile') || document.getElementById(
+                    'proveedor');
+                if (proveedorStep1 && selectProv) {
+                    const selectedText = proveedorStep1.options[proveedorStep1.selectedIndex]?.text;
+                    const selectedVal = proveedorStep1.value;
+
+                    // Intentar encontrar valor exacto en el select
+                    let found = false;
+                    // 1. Verificar si el value coincide (ej. 'megasa')
+                    for (let i = 0; i < selectProv.options.length; i++) {
+                        if (selectProv.options[i].value === selectedVal || selectProv.options[i].text ===
+                            selectedText) {
+                            selectProv.selectedIndex = i;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        // Si no encuentra, marcar como 'otro' y asignar valor al hidden input
+                        selectProv.value = 'otro';
+                        if (inputProv) inputProv.value = selectedText; // Guardar el texto original aunque sea 'otro'
+                    } else {
+                        // Si encuentra, sincronizar input hidden
+                        if (inputProv) inputProv.value = selectProv.value;
+                    }
+                } else if (inputProv && selectProv) {
+                    // Sync general si no hay step 1 (raro)
+                    inputProv.value = selectProv.value;
+                }
+
+                if (inputDist) inputDist.value = ''; // Limpiar distribuidor
+
+            } else {
+                // MODO DISTRIBUIDOR: Ocultar Fabricante, Mostrar Distribuidor
+                if (containerDist) containerDist.classList.remove('hidden');
+                if (containerFab) containerFab.classList.add('hidden');
+
+                // Limpiar fabricante (backend lo ignorará o lo seteará null)
+                // Opcional: Podríamos dejarlo si el usuario quiere guardar esa info, pero lo pedido es que desaparezca.
+                if (inputProv) inputProv.value = '';
+            }
+
+            // Persistir cambios
+            if (window.mobileStepManager?.dataCache?.parsed) {
+                window.mobileStepManager.dataCache.parsed.tipo_compra = tipo;
+                // Guardar en localStorage para persistencia tras refresh
+                localStorage.setItem('lastScanMobileCache', JSON.stringify(window.mobileStepManager.dataCache));
+            }
+            // Recalcular simulación
+            if (window.mobileStepManager?.dataCache?.simulacion) {
+                recalcularSimulacionMobile().then(sim => {
+                    if (sim) poblarVista3ConPedido(sim);
+                });
+            }
+        };
 
         function formatScorePoints(score) {
             const n = Number(score);
@@ -2180,6 +2247,18 @@
             });
         }
 
+        function setMobileDescription(index, val) {
+            syncMobileProductsFromDOMToCache();
+            const cache = window.mobileStepManager.dataCache;
+            if (cache.parsed && cache.parsed.productos && cache.parsed.productos[index]) {
+                cache.parsed.productos[index].descripcion = val;
+                if (val === 'ENCARRETADO') {
+                    cache.parsed.productos[index].longitud = '';
+                }
+                renderMobileEditProducts();
+            }
+        }
+
         function renderMobileEditProducts() {
             const container = document.getElementById('mobile-edit-products');
             const cache = window.mobileStepManager.dataCache;
@@ -2213,8 +2292,8 @@
                 }
 
                 return lineItems.map((colada, colIndex) => `
-                    <div class="mobile-edit-colada grid grid-cols-12 gap-2 items-center" data-colada-index="${colIndex}">
-                        <div class="col-span-1 flex flex-col items-center justify-center pt-5">
+                    <div class="mobile-edit-colada grid grid-cols-8 gap-2 items-center" data-colada-index="${colIndex}">
+                        <div class="col-span-1 flex flex-col items-center justify-end pb-2 h-full">
                              <input type="checkbox" 
                                 class="w-5 h-5 text-indigo-600 rounded mobile-colada-check focus:ring-indigo-500 border-gray-300" 
                                 data-colada-field="descargar"
@@ -2225,37 +2304,62 @@
                             <span class="text-[0.65rem] text-gray-500">Colada</span>
                             <input type="text" class="mt-1 w-full rounded-lg border-gray-300 text-sm px-2 py-1.5" data-colada-field="colada" value="${colada.colada || ''}">
                         </div>
-                        <div class="col-span-3">
+                        <div class="col-span-2">
                             <span class="text-[0.65rem] text-gray-500">Bultos</span>
                             <input type="number" min="0" step="1" class="mt-1 w-full rounded-lg border-gray-300 text-sm px-2 py-1.5" data-colada-field="bultos" value="${colada.bultos || ''}">
                         </div>
-                        <div class="col-span-3">
+                        <div class="col-span-0 hidden">
                             <span class="text-[0.65rem] text-gray-500">Peso (kg)</span>
                             <input type="number" step="0.01" class="mt-1 w-full rounded-lg border-gray-300 text-sm px-2 py-1.5" data-colada-field="peso" value="${colada.peso_kg || ''}">
                         </div>
-                        <div class="col-span-1 flex justify-end pt-6">
+                        <div class="col-span-1 flex justify-center pt-6">
                             <button type="button" class="text-red-500 text-lg font-bold hover:text-red-700" onclick="eliminarColadaMobile(${productIndex}, ${colIndex})">&times;</button>
                         </div>
                     </div>
                 `).join('');
             };
 
-            container.innerHTML = productos.map((producto, productIndex) => `
+            container.innerHTML = productos.map((producto, productIndex) => {
+                const descUpper = (producto.descripcion || '').toUpperCase();
+                const isEncarretado = descUpper.includes('ENCARRETADO') || descUpper.includes('ROLLO') || descUpper
+                    .includes('BOBINA');
+                const val = isEncarretado ? 'ENCARRETADO' : 'BARRAS';
+
+                return `
                 <div class="border border-gray-200 rounded-2xl p-4 bg-white space-y-3 mobile-edit-product" data-product-index="${productIndex}">
                     <div class="flex items-center justify-between">
                         <h5 class="text-sm font-semibold text-gray-900">Producto ${productIndex + 1}</h5>
                         <button type="button" class="text-xs text-red-500 font-bold" onclick="eliminarProductoMobile(${productIndex})">Eliminar</button>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <label class="text-[0.75rem] text-gray-500">Descripción
-                            <input type="text" class="mt-1 w-full rounded-lg border-gray-300" data-product-field="descripcion" value="${producto.descripcion || ''}">
-                        </label>
-                        <label class="text-[0.75rem] text-gray-500">Diámetro
+                    <div class="grid grid-cols-1 gap-3">
+                        <div>
+                             <span class="text-[0.75rem] text-gray-500 block mb-1">Descripción</span>
+                             <input type="hidden" data-product-field="descripcion" value="${val}">
+                             <div class="flex rounded-lg border border-gray-300 overflow-hidden">
+                                <button type="button" 
+                                    class="flex-1 py-2 text-xs font-bold transition-colors ${val === 'ENCARRETADO' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}"
+                                    onclick="setMobileDescription(${productIndex}, 'ENCARRETADO')">
+                                    ENCARRETADO
+                                </button>
+                                <div class="w-px bg-gray-300"></div>
+                                <button type="button" 
+                                    class="flex-1 py-2 text-xs font-bold transition-colors ${val === 'BARRAS' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}"
+                                    onclick="setMobileDescription(${productIndex}, 'BARRAS')">
+                                    BARRAS
+                                </button>
+                             </div>
+                        </div>
+
+                        <label class="text-[0.75rem] text-gray-500 block w-full">Diámetro
                             <input type="text" class="mt-1 w-full rounded-lg border-gray-300" data-product-field="diametro" value="${producto.diametro || ''}">
                         </label>
-                        <label class="text-[0.75rem] text-gray-500">Longitud
-                            <input type="text" class="mt-1 w-full rounded-lg border-gray-300" data-product-field="longitud" value="${producto.longitud || ''}">
-                        </label>
+                        
+                        <div class="${val === 'ENCARRETADO' ? 'hidden' : 'block'} w-full">
+                            <label class="text-[0.75rem] text-gray-500 block w-full">Longitud
+                                <input type="text" class="mt-1 w-full rounded-lg border-gray-300" data-product-field="longitud" value="${producto.longitud || ''}">
+                            </label>
+                        </div>
+
                         <label class="text-[0.75rem] text-gray-500 hidden">Calidad
                             <input type="text" class="mt-1 w-full rounded-lg border-gray-300" data-product-field="calidad" value="${producto.calidad || ''}">
                         </label>
@@ -2270,7 +2374,8 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
             actualizarBultosTotalesMobile(productos);
             attachColadaInputListener(container);
@@ -2481,17 +2586,17 @@
                             <span class="ml-2 text-gray-900">${linea.pedido_codigo || '—'}</span>
                         </div>
                             ${fabricanteNombre ? `
-                                                                                                                                                                                            <div>
-                                                                                                                                                                                                <span class="text-gray-500">Fabricante:</span>
-                                                                                                                                                                                                <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
-                                                                                                                                                                                            </div>
-                                                                                                                                                                                        ` : ''}
+                                                                                                                                                                                                                                                                                                                        <div>
+                                                                                                                                                                                                                                                                                                                            <span class="text-gray-500">Fabricante:</span>
+                                                                                                                                                                                                                                                                                                                            <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
+                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                    ` : ''}
                             ${distribuidorNombre ? `
-                                                                                                                                                                                            <div>
-                                                                                                                                                                                                <span class="text-gray-500">Distribuidor:</span>
-                                                                                                                                                                                                <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
-                                                                                                                                                                                            </div>
-                                                                                                                                                                                        ` : ''}
+                                                                                                                                                                                                                                                                                                                        <div>
+                                                                                                                                                                                                                                                                                                                            <span class="text-gray-500">Distribuidor:</span>
+                                                                                                                                                                                                                                                                                                                            <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
+                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                    ` : ''}
                             <div>
                                 <span class="text-gray-500">Producto:</span>
                                 <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
@@ -2501,21 +2606,21 @@
                                 <span class="ml-2 text-gray-900">${linea.fecha_entrega_fmt || linea.fecha_entrega || '—'}</span>
                             </div>
                             ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
                             <div class="flex items-center justify-between pt-2 border-t border-gray-100">
                                 <div>
                                         <span class="text-gray-500">Pendiente:</span>
                                         <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                                     </div>
                                     ${linea.score ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 font-bold">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        Score: ${formatScorePoints(linea.score)} pts.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 font-bold">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    Score: ${formatScorePoints(linea.score)} pts.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ` : ''}
                             </div>
                         </div>
                     </div>
@@ -2638,27 +2743,27 @@
                             <span class="ml-2 font-semibold text-gray-900">${linea.codigo_linea || '—'}</span>
                         </div>
                         ${pedidoHprEscaneado ? `
-                                                                                                                                                                                        <div class="hidden">
-                                                                                                                                                                                            <span class="text-gray-500">Pedido HPR (escaneado):</span>
-                                                                                                                                                                                            <span class="ml-2 font-semibold text-gray-900">${pedidoHprEscaneado}</span>
-                                                                                                                                                                                        </div>
-                                                                                                                                                                                    ` : ''}
+                                                                                                                                                                                                                                                                                                                    <div class="hidden">
+                                                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Pedido HPR (escaneado):</span>
+                                                                                                                                                                                                                                                                                                                        <span class="ml-2 font-semibold text-gray-900">${pedidoHprEscaneado}</span>
+                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                ` : ''}
                         <div class="hidden">
                             <span class="text-gray-500">Pedido (BD):</span>
                             <span class="ml-2 font-semibold text-gray-900">${linea.pedido_codigo || '—'}</span>
                         </div>
                         ${fabricanteNombre ? `
-                                                                                                                                                                                        <div>
-                                                                                                                                                                                            <span class="text-gray-500">Fabricante:</span>
-                                                                                                                                                                                            <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
-                                                                                                                                                                                        </div>
-                                                                                                                                                                                    ` : ''}
+                                                                                                                                                                                                                                                                                                                    <div>
+                                                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Fabricante:</span>
+                                                                                                                                                                                                                                                                                                                        <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
+                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                ` : ''}
                         ${distribuidorNombre ? `
-                                                                                                                                                                                        <div>
-                                                                                                                                                                                            <span class="text-gray-500">Distribuidor:</span>
-                                                                                                                                                                                            <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
-                                                                                                                                                                                        </div>
-                                                                                                                                                                                    ` : ''}
+                                                                                                                                                                                                                                                                                                                    <div>
+                                                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Distribuidor:</span>
+                                                                                                                                                                                                                                                                                                                        <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
+                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                ` : ''}
                         <div>
                             <span class="text-gray-500">Producto:</span>
                             <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
@@ -2668,11 +2773,11 @@
                             <span class="ml-2 text-gray-900">${linea.fecha_entrega_fmt || linea.fecha_entrega || '—'}</span>
                         </div>
                         ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ` : ''}
                         <div class="pt-2 border-t border-gray-100">
                             <span class="text-gray-500">Cantidad Pendiente:</span>
                             <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
@@ -2711,5 +2816,9 @@
             window.addEventListener('resize', syncAppContentPadding);
             document.addEventListener('DOMContentLoaded', syncAppContentPadding);
         })();
+    </script>
+
+    <script>
+        document.getElementById('mainlayout').classList.remove('py-4');
     </script>
 </x-app-layout>
