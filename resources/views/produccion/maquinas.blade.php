@@ -264,6 +264,17 @@
                         </svg>
                         <span class="text-sm font-medium hidden md:inline">Deshacer</span>
                     </button>
+
+                    <!-- Botón de logs de planificación -->
+                    <button onclick="abrirVentanaLogs()" id="logs-btn" title="Ver historial de cambios"
+                        class="px-3 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
+                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                        </svg>
+                        <span class="text-sm font-medium hidden md:inline">Historial</span>
+                    </button>
                 </div>
 
                 <!-- Botón de pantalla completa en esquina superior derecha -->
@@ -1068,6 +1079,56 @@
                         class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition-colors">
                         Cerrar
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Logs de Planificación -->
+        <div id="modalLogs" onclick="if(event.target === this) cerrarVentanaLogs()"
+            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] flex flex-col">
+                <div class="bg-indigo-600 text-white px-6 py-4 rounded-t-lg flex justify-between items-center">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                        </svg>
+                        Historial de Cambios
+                    </h3>
+                    <button onclick="cerrarVentanaLogs()" class="text-white hover:text-gray-200">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="px-6 py-4 flex-1 overflow-y-auto" id="logs-container">
+                    <div id="logs-loading" class="flex justify-center py-8">
+                        <svg class="animate-spin h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+                    <div id="logs-list" class="space-y-3 hidden">
+                        <!-- Los logs se cargarán aquí dinámicamente -->
+                    </div>
+                    <div id="logs-empty" class="hidden text-center py-8 text-gray-500">
+                        <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        <p>No hay registros de cambios</p>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+                    <span id="logs-total" class="text-sm text-gray-500"></span>
+                    <div class="flex gap-3">
+                        <button onclick="cargarMasLogs()" id="logs-cargar-mas" class="hidden px-4 py-2 text-sm bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors">
+                            Cargar más
+                        </button>
+                        <button onclick="cerrarVentanaLogs()"
+                            class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition-colors">
+                            Cerrar
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -7393,10 +7454,13 @@
             // DESHACER ÚLTIMA OPERACIÓN
             // ============================================================
 
-            // Verificar si hay snapshot disponible al cargar la página
-            async function verificarSnapshotDisponible() {
+            // Almacenar la última acción reversible para el botón deshacer
+            let ultimaAccionReversible = null;
+
+            // Verificar si hay acción reversible disponible al cargar la página
+            async function verificarAccionReversible() {
                 try {
-                    const response = await fetch('/api/produccion/ultimo-snapshot', {
+                    const response = await fetch('/api/produccion/logs-planificacion?limit=1', {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -7407,35 +7471,37 @@
                     const data = await response.json();
                     const btn = document.getElementById('deshacer-btn');
 
-                    if (data.success && data.snapshot) {
+                    if (data.success && data.logs.length > 0 && data.logs[0].puede_revertirse) {
+                        ultimaAccionReversible = data.logs[0];
                         btn.disabled = false;
-                        btn.title = `Deshacer: ${data.snapshot.tipo_operacion} (${data.snapshot.created_at})`;
+                        const tipoTexto = {
+                            'optimizar_planillas': 'Optimizar Planillas',
+                            'balancear_carga': 'Balancear Carga',
+                            'priorizar_obras': 'Priorizar Obras',
+                            'mover_elementos': 'Mover Elementos',
+                            'cambiar_posicion': 'Cambiar Posición'
+                        }[ultimaAccionReversible.accion] || ultimaAccionReversible.accion;
+                        btn.title = `Deshacer: ${tipoTexto} (${ultimaAccionReversible.fecha_relativa})`;
                     } else {
+                        ultimaAccionReversible = null;
                         btn.disabled = true;
                         btn.title = 'No hay operaciones para deshacer';
                     }
                 } catch (error) {
-                    console.error('Error verificando snapshot:', error);
+                    console.error('Error verificando acción reversible:', error);
                 }
             }
 
+            // Compatibilidad con el nombre antiguo
+            const verificarSnapshotDisponible = verificarAccionReversible;
+
             // Ejecutar al cargar y después de cada operación
-            document.addEventListener('DOMContentLoaded', verificarSnapshotDisponible);
+            document.addEventListener('DOMContentLoaded', verificarAccionReversible);
 
             async function deshacerUltimaOperacion() {
                 try {
-                    // Primero verificar qué se va a deshacer
-                    const checkResponse = await fetch('/api/produccion/ultimo-snapshot', {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        }
-                    });
-
-                    const checkData = await checkResponse.json();
-
-                    if (!checkData.success || !checkData.snapshot) {
+                    // Verificar que hay una acción reversible
+                    if (!ultimaAccionReversible) {
                         Swal.fire({
                             icon: 'info',
                             title: 'Sin cambios',
@@ -7444,12 +7510,14 @@
                         return;
                     }
 
-                    const snapshot = checkData.snapshot;
+                    const log = ultimaAccionReversible;
                     const tipoTexto = {
                         'optimizar_planillas': 'Optimizar Planillas',
                         'balancear_carga': 'Balancear Carga',
-                        'priorizar_obras': 'Priorizar Obras'
-                    } [snapshot.tipo_operacion] || snapshot.tipo_operacion;
+                        'priorizar_obras': 'Priorizar Obras',
+                        'mover_elementos': 'Mover Elementos',
+                        'cambiar_posicion': 'Cambiar Posición'
+                    }[log.accion] || log.accion;
 
                     // Confirmar con el usuario
                     const result = await Swal.fire({
@@ -7458,10 +7526,10 @@
                         html: `
                             <div class="text-left">
                                 <p class="mb-2"><strong>Operación:</strong> ${tipoTexto}</p>
-                                <p class="mb-2"><strong>Realizada:</strong> ${snapshot.created_at}</p>
-                                <p class="mb-2"><strong>Por:</strong> ${snapshot.user}</p>
+                                <p class="mb-2"><strong>Descripción:</strong> ${log.usuario} ${log.descripcion}</p>
+                                <p class="mb-2"><strong>Realizada:</strong> ${log.fecha}</p>
                             </div>
-                            <p class="mt-4 text-sm text-gray-500">Esta acción restaurará el estado anterior de las planillas y elementos.</p>
+                            <p class="mt-4 text-sm text-gray-500">Esta acción restaurará el estado anterior.</p>
                         `,
                         showCancelButton: true,
                         confirmButtonText: 'Sí, deshacer',
@@ -7479,15 +7547,15 @@
                         didOpen: () => Swal.showLoading()
                     });
 
-                    // Ejecutar restauración
-                    const response = await fetch('/api/produccion/restaurar-snapshot', {
+                    // Ejecutar reversión
+                    const response = await fetch('/api/produccion/revertir-log', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         },
                         body: JSON.stringify({
-                            snapshot_id: snapshot.id
+                            log_id: log.id
                         })
                     });
 
@@ -7507,8 +7575,8 @@
                             calendar.refetchEvents();
                         }
 
-                        // Verificar si hay más snapshots
-                        verificarSnapshotDisponible();
+                        // Verificar si hay más acciones reversibles
+                        verificarAccionReversible();
                     } else {
                         throw new Error(data.message || 'Error al deshacer');
                     }
@@ -7525,7 +7593,180 @@
 
             // Actualizar botón después de cada operación exitosa
             function actualizarBotonDeshacer() {
-                verificarSnapshotDisponible();
+                verificarAccionReversible();
+            }
+
+            // ============================================================
+            // LOGS DE PLANIFICACIÓN
+            // ============================================================
+
+            let logsOffset = 0;
+            const logsLimit = 20;
+            let logsTotalCount = 0;
+
+            function abrirVentanaLogs() {
+                const modal = document.getElementById('modalLogs');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                logsOffset = 0;
+                cargarLogs(true);
+            }
+
+            function cerrarVentanaLogs() {
+                const modal = document.getElementById('modalLogs');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            async function cargarLogs(reset = false) {
+                if (reset) {
+                    logsOffset = 0;
+                    document.getElementById('logs-list').innerHTML = '';
+                }
+
+                document.getElementById('logs-loading').classList.remove('hidden');
+                document.getElementById('logs-list').classList.add('hidden');
+                document.getElementById('logs-empty').classList.add('hidden');
+
+                try {
+                    const response = await fetch(`/api/produccion/logs-planificacion?limit=${logsLimit}&offset=${logsOffset}`, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    document.getElementById('logs-loading').classList.add('hidden');
+
+                    if (data.success) {
+                        logsTotalCount = data.total;
+                        document.getElementById('logs-total').textContent = `${data.total} registro(s) en total`;
+
+                        if (data.logs.length === 0 && logsOffset === 0) {
+                            document.getElementById('logs-empty').classList.remove('hidden');
+                        } else {
+                            document.getElementById('logs-list').classList.remove('hidden');
+                            renderizarLogs(data.logs, reset);
+
+                            // Mostrar/ocultar botón cargar más
+                            const cargarMasBtn = document.getElementById('logs-cargar-mas');
+                            if (data.has_more) {
+                                cargarMasBtn.classList.remove('hidden');
+                            } else {
+                                cargarMasBtn.classList.add('hidden');
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error cargando logs:', error);
+                    document.getElementById('logs-loading').classList.add('hidden');
+                }
+            }
+
+            function cargarMasLogs() {
+                logsOffset += logsLimit;
+                cargarLogs(false);
+            }
+
+            function renderizarLogs(logs, reset) {
+                const container = document.getElementById('logs-list');
+
+                if (reset) {
+                    container.innerHTML = '';
+                }
+
+                logs.forEach(log => {
+                    const iconos = {
+                        'optimizar_planillas': { icon: '🔧', color: 'bg-purple-100 text-purple-700' },
+                        'balancear_carga': { icon: '⚖️', color: 'bg-blue-100 text-blue-700' },
+                        'priorizar_obras': { icon: '⭐', color: 'bg-yellow-100 text-yellow-700' },
+                        'mover_elementos': { icon: '↔️', color: 'bg-green-100 text-green-700' },
+                        'cambiar_posicion': { icon: '↕️', color: 'bg-cyan-100 text-cyan-700' },
+                        'deshacer': { icon: '↩️', color: 'bg-gray-100 text-gray-700' },
+                        'revertir_accion': { icon: '↩️', color: 'bg-orange-100 text-orange-700' }
+                    };
+
+                    const config = iconos[log.accion] || { icon: '📝', color: 'bg-gray-100 text-gray-700' };
+
+                    const detallesHtml = log.detalles ? `
+                        <button onclick="toggleDetallesLog(${log.id})" class="text-xs text-indigo-600 hover:text-indigo-800 mt-1">
+                            Ver detalles
+                        </button>
+                        <pre id="detalles-log-${log.id}" class="hidden mt-2 text-xs bg-gray-50 p-2 rounded overflow-x-auto">${JSON.stringify(log.detalles, null, 2)}</pre>
+                    ` : '';
+
+                    // Botón de revertir si puede revertirse
+                    let revertirHtml = '';
+                    if (log.puede_revertirse) {
+                        revertirHtml = `
+                            <button onclick="revertirLog(${log.id})" class="ml-2 px-2 py-1 text-xs bg-orange-500 hover:bg-orange-600 text-white rounded transition-colors" title="Deshacer esta acción">
+                                ↩️ Deshacer
+                            </button>
+                        `;
+                    } else if (log.revertido) {
+                        revertirHtml = `<span class="ml-2 text-xs text-gray-400 italic">Revertido</span>`;
+                    }
+
+                    const html = `
+                        <div class="flex gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors ${log.revertido ? 'opacity-60' : ''}">
+                            <div class="flex-shrink-0">
+                                <span class="inline-flex items-center justify-center w-10 h-10 rounded-full ${config.color} text-lg">
+                                    ${config.icon}
+                                </span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between">
+                                    <p class="text-sm text-gray-900">
+                                        <span class="font-semibold text-indigo-700">${log.usuario}</span> ${log.descripcion}
+                                    </p>
+                                    ${revertirHtml}
+                                </div>
+                                <span class="text-xs text-gray-500" title="${log.fecha}">${log.fecha_relativa}</span>
+                                ${detallesHtml}
+                            </div>
+                        </div>
+                    `;
+
+                    container.insertAdjacentHTML('beforeend', html);
+                });
+            }
+
+            async function revertirLog(logId) {
+                if (!confirm('¿Estás seguro de que deseas deshacer esta acción?')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/produccion/revertir-log', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({ log_id: logId })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert('Acción revertida correctamente');
+                        // Recargar logs y calendario
+                        cargarLogs(true);
+                        calendar.refetchEvents();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                } catch (error) {
+                    console.error('Error al revertir:', error);
+                    alert('Error al revertir la acción');
+                }
+            }
+
+            function toggleDetallesLog(logId) {
+                const detalles = document.getElementById(`detalles-log-${logId}`);
+                detalles.classList.toggle('hidden');
             }
 
             // ============================================================

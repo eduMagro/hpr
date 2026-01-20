@@ -527,6 +527,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/api/produccion/ultimo-snapshot', [ProduccionController::class, 'obtenerUltimoSnapshot'])->name('api.produccion.ultimo-snapshot');
     Route::post('/api/produccion/restaurar-snapshot', [ProduccionController::class, 'restaurarSnapshot'])->name('api.produccion.restaurar-snapshot');
 
+    // Endpoint para logs de planificación
+    Route::get('/api/produccion/logs-planificacion', [ProduccionController::class, 'obtenerLogsPlanificacion'])->name('api.produccion.logs-planificacion');
+    Route::post('/api/produccion/revertir-log', [ProduccionController::class, 'revertirLogPlanificacion'])->name('api.produccion.revertir-log');
+
     // Endpoint para planillas con retraso
     Route::get('/api/produccion/planillas-con-retraso', [ProduccionController::class, 'planillasConRetraso'])->name('api.produccion.planillas-con-retraso');
 

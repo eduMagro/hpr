@@ -24,6 +24,7 @@ use App\Models\Festivo;
 use App\Models\EventoFicticioObra;
 use App\Models\TrabajadorFicticio;
 use App\Models\SnapshotProduccion;
+use App\Models\LogPlanificacionProduccion;
 use App\Models\Etiqueta;
 use App\Models\OrdenPlanillaEnsamblaje;
 use App\Models\PlanillaEntidad;
@@ -654,7 +655,11 @@ class ProduccionController extends Controller
         // 🔹 7. Fecha de inicio del calendario (OPTIMIZADO: reutiliza calcularInitialDate)
         $initialDate = $this->calcularInitialDate();
         $fechaInicioCalendario = Carbon::parse($initialDate)->toDateString();
-        $turnosLista = Turno::orderBy('orden')->orderBy('hora_inicio')->get();
+        // Solo turnos principales (Mañana, Tarde, Noche) para el calendario y filtros
+        $turnosLista = Turno::whereIn('nombre', ['Mañana', 'Tarde', 'Noche'])
+            ->orderBy('orden')
+            ->orderBy('hora_inicio')
+            ->get();
 
         // 🆕 Obtener el turno que determina el inicio real de la semana laboral
         // Buscar el turno activo con el offset más bajo (más negativo) = el que empieza antes
@@ -1030,7 +1035,9 @@ class ProduccionController extends Controller
         try {
             // Obtener el turno que determina el inicio real de la semana laboral
             // Buscar el turno activo con el offset más bajo (más negativo) = el que empieza antes
+            // Solo considerar turnos principales (Mañana, Tarde, Noche)
             $primerTurno = Turno::where('activo', true)
+                ->whereIn('nombre', ['Mañana', 'Tarde', 'Noche'])
                 ->whereNotNull('hora_inicio')
                 ->orderBy('offset_dias_inicio') // Offset más bajo primero (ej: -1 antes que 0)
                 ->orderBy('hora_inicio') // Hora más temprana como desempate
@@ -1135,7 +1142,10 @@ class ProduccionController extends Controller
     {
         static $turnosDefinidos = null;
         if ($turnosDefinidos === null) {
-            $turnosDefinidos = Turno::all(); // nombre, hora_inicio, hora_fin (HH:MM)
+            // Solo turnos principales (Mañana, Tarde, Noche)
+            $turnosDefinidos = Turno::whereIn('nombre', ['Mañana', 'Tarde', 'Noche'])
+                ->orderBy('orden')
+                ->get();
         }
 
         $resolverMaquinaElemento = function (Elemento $e) {
@@ -1338,8 +1348,10 @@ class ProduccionController extends Controller
             ->orderBy('tipo')      // luego por tipo dentro de cada obra
             ->get();
 
-        // 🔹 Calcular cargas por turno
-        $turnosLista = Turno::all();
+        // 🔹 Calcular cargas por turno (solo turnos principales)
+        $turnosLista = Turno::whereIn('nombre', ['Mañana', 'Tarde', 'Noche'])
+            ->orderBy('orden')
+            ->get();
         [$cargaTurnoResumen, $planDetallado, $realDetallado] =
             $this->calcularPlanificadoYRealPorTurno($maquinas, $fechaInicio, $fechaFin, $turnoFiltro);
 
@@ -1510,8 +1522,27 @@ class ProduccionController extends Controller
             }
         }
 
+        // 📸 Capturar estado anterior para reversión
+        $estadoAnteriorElementos = $compatibles->map(fn($e) => [
+            'id' => $e->id,
+            'maquina_id' => $e->maquina_id,
+            'orden_planilla_id' => $e->orden_planilla_id,
+        ])->toArray();
+
+        // Capturar posiciones anteriores para cambiar_posicion (cuando es misma máquina)
+        $posicionesAnterioresMaquina = [];
+        if ($maqOrigen === $maqDestino) {
+            $posicionesAnterioresMaquina = OrdenPlanilla::where('maquina_id', $maqDestino)
+                ->get()
+                ->map(fn($op) => ['id' => $op->id, 'posicion' => $op->posicion])
+                ->toArray();
+        }
+
+        $ordenPlanillasCreados = [];
+        $ordenPlanillasEliminados = [];
+
         try {
-            DB::transaction(function () use ($planillaId, $maqOrigen, $maqDestino, $posNueva, $compatibles, $subsetIds, $forzar, $crearNuevaPosicion, $usarPosicionExistente) {
+            DB::transaction(function () use ($planillaId, $maqOrigen, $maqDestino, $posNueva, $compatibles, $subsetIds, $forzar, $crearNuevaPosicion, $usarPosicionExistente, &$ordenPlanillasCreados, &$ordenPlanillasEliminados) {
                 // 3) Movimiento (parcial si venía forzado)
                 if ($compatibles->isNotEmpty()) {
                     // Usar SubEtiquetaService para reubicar subetiquetas correctamente
@@ -1570,6 +1601,7 @@ class ProduccionController extends Controller
                                 'maquina_id'  => $maqDestino,
                                 'posicion'    => $posNueva,
                             ]);
+                            $ordenPlanillasCreados[] = $ordenDestino->id;
                             Log::info("➕ Orden creado en nueva posición", ['posicion' => $posNueva, 'crear_nueva' => true]);
                         } else {
                             $maxPos = (int) (OrdenPlanilla::where('maquina_id', $maqDestino)->max('posicion') ?? 0);
@@ -1578,6 +1610,7 @@ class ProduccionController extends Controller
                                 'maquina_id'  => $maqDestino,
                                 'posicion'    => $maxPos + 1,
                             ]);
+                            $ordenPlanillasCreados[] = $ordenDestino->id;
                             Log::info("➕ Orden creado al final", ['posicion' => $maxPos + 1, 'crear_nueva' => false]);
                         }
                     }
@@ -1608,6 +1641,12 @@ class ProduccionController extends Controller
 
                     if (!$quedanEnOrigen) {
                         $posAnterior = $ordenOrigen->posicion;
+                        // Guardar datos antes de eliminar para reversión
+                        $ordenPlanillasEliminados[] = [
+                            'planilla_id' => $ordenOrigen->planilla_id,
+                            'maquina_id' => $ordenOrigen->maquina_id,
+                            'posicion' => $ordenOrigen->posicion,
+                        ];
                         OrdenPlanilla::where('maquina_id', $maqOrigen)
                             ->where('posicion', '>', $posAnterior)
                             ->decrement('posicion');
@@ -1640,6 +1679,49 @@ class ProduccionController extends Controller
                 'planilla_id' => $planillaId,
                 'eventos_actualizados' => count($eventosActualizados),
             ]);
+
+            // Registrar en log de planificación
+            $maquinaOrigen = Maquina::find($maqOrigen);
+            $maquinaDestino = Maquina::find($maqDestino);
+            $planilla = Planilla::find($planillaId);
+            $cantidadElementos = $compatibles->count();
+
+            if ($maqOrigen === $maqDestino) {
+                LogPlanificacionProduccion::registrar(
+                    'cambiar_posicion',
+                    "ha movido planilla {$planilla->numero_planilla} a posición {$posNueva} en {$maquinaDestino->nombre}",
+                    [
+                        'planilla' => $planilla->numero_planilla,
+                        'maquina' => $maquinaDestino->nombre,
+                        'posicion' => $posNueva,
+                    ],
+                    ['maquina_id' => $maqDestino, 'planilla_id' => $planillaId],
+                    ['posiciones' => $posicionesAnterioresMaquina]
+                );
+            } else {
+                // Obtener códigos de elementos para el log
+                $codigosElementos = $compatibles->pluck('codigo')->values()->toArray();
+                $codigosTexto = count($codigosElementos) <= 5
+                    ? implode(', ', $codigosElementos)
+                    : implode(', ', array_slice($codigosElementos, 0, 5)) . ' (+' . (count($codigosElementos) - 5) . ' más)';
+
+                LogPlanificacionProduccion::registrar(
+                    'mover_elementos',
+                    "ha pasado {$codigosTexto} de {$maquinaOrigen->nombre} a {$maquinaDestino->nombre}",
+                    [
+                        'codigos' => $codigosElementos,
+                        'origen' => $maquinaOrigen->nombre,
+                        'destino' => $maquinaDestino->nombre,
+                    ],
+                    ['maquina_id' => $maqDestino, 'planilla_id' => $planillaId],
+                    // Datos de reversión
+                    [
+                        'elementos' => $estadoAnteriorElementos,
+                        'orden_planillas_creados' => $ordenPlanillasCreados,
+                        'orden_planillas_eliminados' => $ordenPlanillasEliminados,
+                    ]
+                );
+            }
 
             return response()->json([
                 'success' => true,
@@ -1746,6 +1828,12 @@ class ProduccionController extends Controller
             'nueva_pos' => $posNueva,
         ]);
 
+        // 📸 Capturar estado anterior para reversión
+        $posicionesAnteriores = OrdenPlanilla::where('maquina_id', $maquinaId)
+            ->get()
+            ->map(fn($op) => ['id' => $op->id, 'posicion' => $op->posicion])
+            ->toArray();
+
         // Usar transacción corta para evitar lock timeout
         DB::transaction(function () use ($maquinaId, $planillaId, $posNueva, $ordenPlanillaId) {
             $this->reordenarPosicionEnMaquinaRapido($maquinaId, $planillaId, $posNueva, $ordenPlanillaId);
@@ -1756,6 +1844,21 @@ class ProduccionController extends Controller
 
         // 🔄 Obtener eventos actualizados de la máquina
         $eventosActualizados = $this->obtenerEventosDeMaquinas([$maquinaId]);
+
+        // Registrar en log de planificación
+        $maquina = Maquina::find($maquinaId);
+        $planilla = Planilla::find($planillaId);
+        LogPlanificacionProduccion::registrar(
+            'cambiar_posicion',
+            "ha movido planilla {$planilla->numero_planilla} a posición {$posNueva} en {$maquina->nombre}",
+            [
+                'planilla' => $planilla->numero_planilla,
+                'maquina' => $maquina->nombre,
+                'posicion' => $posNueva,
+            ],
+            ['maquina_id' => $maquinaId, 'planilla_id' => $planillaId],
+            ['posiciones' => $posicionesAnteriores]
+        );
 
         return response()->json([
             'success' => true,
@@ -4292,14 +4395,20 @@ class ProduccionController extends Controller
                 ], 400);
             }
 
-            DB::beginTransaction();
+            // 📸 Capturar estado anterior de elementos para reversión
+            $elementoIds = collect($movimientos)->pluck('elemento_id')->toArray();
+            $estadoAnteriorElementos = Elemento::whereIn('id', $elementoIds)
+                ->get()
+                ->map(fn($e) => [
+                    'id' => $e->id,
+                    'maquina_id' => $e->maquina_id,
+                    'orden_planilla_id' => $e->orden_planilla_id,
+                ])->toArray();
 
-            // Crear snapshot antes de la operación (puede ser lento)
-            try {
-                $this->crearSnapshotProduccion('balancear_carga');
-            } catch (\Exception $e) {
-                Log::warning('⚠️ Error creando snapshot, continuando sin él: ' . $e->getMessage());
-            }
+            $ordenPlanillasCreados = [];
+            $ordenPlanillasEliminados = [];
+
+            DB::beginTransaction();
 
             // Si no incluir fabricando, obtener IDs de planillas en posición 1 y fabricando
             $planillasExcluidas = [];
@@ -4403,12 +4512,26 @@ class ProduccionController extends Controller
                             continue;
                         }
 
-                        // Guardar máquina anterior
+                        // Guardar máquina anterior y orden_planilla_id para reversión de hermanos
                         $maquinaAnterior = $elem->maquina_id;
+                        $ordenPlanillaIdAnterior = $elem->orden_planilla_id;
                         $planillaId = $elem->planilla_id;
+
+                        // Capturar estado de hermanos para reversión (si no está ya capturado)
+                        if (!collect($estadoAnteriorElementos)->contains('id', $elem->id)) {
+                            $estadoAnteriorElementos[] = [
+                                'id' => $elem->id,
+                                'maquina_id' => $maquinaAnterior,
+                                'orden_planilla_id' => $ordenPlanillaIdAnterior,
+                            ];
+                        }
 
                         // 1. Buscar o crear OrdenPlanilla en la máquina destino
                         $maxPosicion = OrdenPlanilla::where('maquina_id', $mov['maquina_nueva_id'])->max('posicion');
+
+                        $ordenPlanillaExistia = OrdenPlanilla::where('planilla_id', $planillaId)
+                            ->where('maquina_id', $mov['maquina_nueva_id'])
+                            ->exists();
 
                         $ordenPlanillaDestino = OrdenPlanilla::firstOrCreate([
                             'planilla_id' => $planillaId,
@@ -4416,6 +4539,11 @@ class ProduccionController extends Controller
                         ], [
                             'posicion' => ($maxPosicion ?? 0) + 1
                         ]);
+
+                        // Registrar si se creó nuevo orden_planilla
+                        if (!$ordenPlanillaExistia && !in_array($ordenPlanillaDestino->id, $ordenPlanillasCreados)) {
+                            $ordenPlanillasCreados[] = $ordenPlanillaDestino->id;
+                        }
 
                         // 2. Actualizar elemento con nueva máquina y orden_planilla_id
                         $nuevaMaquinaId = (int) $mov['maquina_nueva_id'];
@@ -4440,6 +4568,12 @@ class ProduccionController extends Controller
                                     ->count();
 
                                 if ($elementosRestantes == 0) {
+                                    // Guardar datos antes de eliminar
+                                    $ordenPlanillasEliminados[] = [
+                                        'planilla_id' => $ordenPlanillaOrigen->planilla_id,
+                                        'maquina_id' => $ordenPlanillaOrigen->maquina_id,
+                                        'posicion' => $ordenPlanillaOrigen->posicion,
+                                    ];
                                     $ordenPlanillaOrigen->delete();
                                 }
                             }
@@ -4487,6 +4621,22 @@ class ProduccionController extends Controller
             if ($omitidos > 0) {
                 $mensaje .= " ({$omitidos} omitidos por estar fabricando)";
             }
+
+            // Registrar en log de planificación
+            LogPlanificacionProduccion::registrar(
+                'balancear_carga',
+                "ha balanceado carga: {$procesados} elementos redistribuidos",
+                [
+                    'procesados' => $procesados,
+                    'omitidos' => $omitidos,
+                ],
+                [],
+                [
+                    'elementos' => $estadoAnteriorElementos,
+                    'orden_planillas_creados' => $ordenPlanillasCreados,
+                    'orden_planillas_eliminados' => $ordenPlanillasEliminados,
+                ]
+            );
 
             return response()->json([
                 'success' => true,
@@ -4668,12 +4818,23 @@ class ProduccionController extends Controller
 
         $incluirFabricando = $request->boolean('incluir_fabricando', false);
 
+        // 📸 Capturar estado anterior de elementos para reversión
+        $redistribuciones = $request->input('redistribuciones');
+        $elementoIds = collect($redistribuciones)->pluck('elemento_id')->toArray();
+        $estadoAnteriorElementos = Elemento::whereIn('id', $elementoIds)
+            ->get()
+            ->map(fn($e) => [
+                'id' => $e->id,
+                'maquina_id' => $e->maquina_id,
+                'orden_planilla_id' => $e->orden_planilla_id,
+            ])->toArray();
+
+        $ordenPlanillasCreados = [];
+        $ordenPlanillasEliminados = [];
+
         DB::beginTransaction();
 
         try {
-            // Crear snapshot antes de la operación
-            $this->crearSnapshotProduccion('optimizar_planillas');
-
             // Si no incluir fabricando, obtener IDs de planillas en posición 1 y fabricando
             $planillasExcluidas = [];
             if (!$incluirFabricando) {
@@ -4683,7 +4844,6 @@ class ProduccionController extends Controller
                     ->toArray();
             }
 
-            $redistribuciones = $request->input('redistribuciones');
             $elementosMovidos = 0;
             $elementosOmitidos = 0;
 
@@ -4747,6 +4907,20 @@ class ProduccionController extends Controller
                         ->count();
 
                     if ($elementosRestantes === 0) {
+                        // Capturar datos antes de eliminar
+                        $ordenAEliminar = DB::table('orden_planillas')
+                            ->where('planilla_id', $planillaId)
+                            ->where('maquina_id', $maquinaAnterior)
+                            ->first();
+
+                        if ($ordenAEliminar) {
+                            $ordenPlanillasEliminados[] = [
+                                'planilla_id' => $ordenAEliminar->planilla_id,
+                                'maquina_id' => $ordenAEliminar->maquina_id,
+                                'posicion' => $ordenAEliminar->posicion,
+                            ];
+                        }
+
                         // 🗑️ No quedan elementos, borrar de orden_planillas
                         DB::table('orden_planillas')
                             ->where('planilla_id', $planillaId)
@@ -4773,13 +4947,16 @@ class ProduccionController extends Controller
                                 ->max('posicion') ?? 0;
 
                             // Insertar nuevo registro al final de la cola
-                            DB::table('orden_planillas')->insert([
+                            $nuevoOrdenId = DB::table('orden_planillas')->insertGetId([
                                 'planilla_id' => $planillaId,
                                 'maquina_id' => $maquinaNueva,
                                 'posicion' => $ultimaPosicion + 1,
                                 'created_at' => now(),
                                 'updated_at' => now(),
                             ]);
+
+                            // Registrar ID creado para reversión
+                            $ordenPlanillasCreados[] = $nuevoOrdenId;
 
                             Log::info('✅ Registro creado en orden_planillas', [
                                 'planilla_id' => $planillaId,
@@ -4824,6 +5001,22 @@ class ProduccionController extends Controller
             if ($elementosOmitidos > 0) {
                 $mensaje .= " ({$elementosOmitidos} omitidos por estar fabricando)";
             }
+
+            // Registrar en log de planificación
+            LogPlanificacionProduccion::registrar(
+                'optimizar_planillas',
+                "ha optimizado planillas: {$elementosMovidos} elementos redistribuidos",
+                [
+                    'movidos' => $elementosMovidos,
+                    'omitidos' => $elementosOmitidos,
+                ],
+                [],
+                [
+                    'elementos' => $estadoAnteriorElementos,
+                    'orden_planillas_creados' => $ordenPlanillasCreados,
+                    'orden_planillas_eliminados' => $ordenPlanillasEliminados,
+                ]
+            );
 
             return response()->json([
                 'success' => true,
@@ -4913,6 +5106,90 @@ class ProduccionController extends Controller
     }
 
     /**
+     * Obtener logs de planificación de producción
+     */
+    public function obtenerLogsPlanificacion(Request $request)
+    {
+        $limit = $request->input('limit', 50);
+        $offset = $request->input('offset', 0);
+
+        $logs = LogPlanificacionProduccion::with('user:id,name')
+            ->orderBy('created_at', 'desc')
+            ->skip($offset)
+            ->take($limit)
+            ->get()
+            ->map(function ($log) {
+                return [
+                    'id' => $log->id,
+                    'accion' => $log->accion,
+                    'descripcion' => $log->descripcion,
+                    'detalles' => $log->detalles,
+                    'usuario' => $log->user?->name ?? 'Sistema',
+                    'fecha' => $log->created_at->format('d/m/Y H:i:s'),
+                    'fecha_relativa' => $log->created_at->diffForHumans(),
+                    'puede_revertirse' => $log->puedeRevertirse(),
+                    'revertido' => $log->revertido,
+                ];
+            });
+
+        $total = LogPlanificacionProduccion::count();
+
+        return response()->json([
+            'success' => true,
+            'logs' => $logs,
+            'total' => $total,
+            'has_more' => ($offset + $limit) < $total,
+        ]);
+    }
+
+    /**
+     * Revertir una acción desde el log
+     */
+    public function revertirLogPlanificacion(Request $request)
+    {
+        $request->validate([
+            'log_id' => 'required|integer|exists:logs_planificacion_produccion,id',
+        ]);
+
+        $log = LogPlanificacionProduccion::find($request->input('log_id'));
+
+        if (!$log) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Log no encontrado',
+            ], 404);
+        }
+
+        if (!$log->puedeRevertirse()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esta acción no puede ser revertida. Solo se puede revertir la última acción no revertida.',
+            ], 422);
+        }
+
+        try {
+            $log->revertir();
+
+            // Registrar en log
+            LogPlanificacionProduccion::registrar(
+                'revertir_accion',
+                "ha revertido: {$log->descripcion}",
+                ['log_revertido_id' => $log->id, 'accion_original' => $log->accion]
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Acción revertida correctamente',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al revertir: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Restaurar el último snapshot (deshacer última operación)
      */
     public function restaurarSnapshot(Request $request)
@@ -4973,6 +5250,21 @@ class ProduccionController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
+            // Registrar en log de planificación
+            $tipoTexto = [
+                'optimizar_planillas' => 'optimización',
+                'balancear_carga' => 'balanceo de carga',
+                'priorizar_obras' => 'priorización de obras',
+            ][$tipoOperacion] ?? $tipoOperacion;
+
+            LogPlanificacionProduccion::registrar(
+                'deshacer',
+                "ha deshecho {$tipoTexto}",
+                [
+                    'operacion' => $tipoOperacion,
+                ]
+            );
+
             return response()->json([
                 'success' => true,
                 'message' => "Operación '{$tipoOperacion}' deshecha correctamente"
@@ -5010,12 +5302,8 @@ class ProduccionController extends Controller
         // Reconectar BD para evitar "MySQL server has gone away"
         DB::reconnect();
 
-        // Crear snapshot ANTES de la transacción (operación pesada)
-        try {
-            $this->crearSnapshotProduccion('priorizar_obras');
-        } catch (\Exception $e) {
-            Log::warning('No se pudo crear snapshot de priorización', ['error' => $e->getMessage()]);
-        }
+        // 📸 Capturar posiciones anteriores para reversión
+        $posicionesAnteriores = [];
 
         DB::beginTransaction();
 
@@ -5082,6 +5370,12 @@ class ProduccionController extends Controller
                 $posicion = $posicionInicial;
                 foreach ($nuevoOrden as $op) {
                     if ($op->posicion !== $posicion) {
+                        // Capturar posición anterior para reversión
+                        $posicionesAnteriores[] = [
+                            'id' => $op->id,
+                            'posicion' => $op->posicion,
+                        ];
+
                         $actualizacionesBatch[] = [
                             'id' => $op->id,
                             'posicion' => $posicion,
@@ -5135,6 +5429,22 @@ class ProduccionController extends Controller
             if ($omitidos > 0) {
                 $mensaje .= " ({$omitidos} planillas en fabricación no afectadas)";
             }
+
+            // Registrar en log de planificación
+            $obrasNombres = Obra::whereIn('id', $obrasIds)->pluck('nombre')->toArray();
+            $obrasTexto = count($obrasNombres) <= 3
+                ? implode(', ', $obrasNombres)
+                : implode(', ', array_slice($obrasNombres, 0, 3)) . ' (+' . (count($obrasNombres) - 3) . ' más)';
+            LogPlanificacionProduccion::registrar(
+                'priorizar_obras',
+                "ha priorizado obras: {$obrasTexto}",
+                [
+                    'obras' => $obrasNombres,
+                    'cambios' => $cambiosRealizados,
+                ],
+                [],
+                ['posiciones' => $posicionesAnteriores]
+            );
 
             return response()->json([
                 'success' => true,
