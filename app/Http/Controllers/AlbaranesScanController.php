@@ -458,356 +458,175 @@ class AlbaranesScanController extends Controller
      */
     protected function generarSimulacion(array $parsed): array
     {
-        // Docupipe puede devolver el payload dentro de "data"; la UI lo normaliza, pero aquí necesitamos soportarlo.
+        // 1. NORMALIZACIÓN DE DATOS
         $source = (isset($parsed['data']) && is_array($parsed['data'])) ? $parsed['data'] : $parsed;
 
+        Log::info('GenerarSimulacion - Input Params:', $source);
+
         $productos = $source['productos'] ?? ($source['products'] ?? []);
-        $proveedor = $parsed['proveedor'] ?? null;
-        // En algunos OCR el código viene en "pedido_cliente"
-        $pedidoCodigo = $source['pedido_cliente'] ?? ($source['pedido_codigo'] ?? null);
+        $pedidoCodigo = $source['pedido_codigo'] ?? ($source['pedido_cliente'] ?? null);
 
-        $normalizeCode = static function (?string $value): string {
-            $value = (string) ($value ?? '');
-            $value = preg_replace('/\s+/', '', $value);
-            return mb_strtolower($value);
-        };
+        $tipoCompra = mb_strtolower($source['tipo_compra'] ?? 'directo');
+        $nombreFabricante = $source['proveedor_texto'] ?? null;
+        $nombreDistribuidor = $source['distribuidor_seleccionado'] ?? ($source['distribuidor_recomendado'] ?? null);
 
-        $normalizedPedidoCodigo = $normalizeCode($pedidoCodigo);
-
-        $isCodeMatch = function ($scannedCode, $dbCode) use ($normalizeCode) {
-            $s = $normalizeCode($scannedCode);
-            $d = $normalizeCode($dbCode);
-            if (!$s || !$d)
-                return false;
-            return str_contains($s, $d) || str_contains($d, $s);
-        };
-
-        // Recopilar todos los line_items de todos los productos
-        $allLineItems = [];
-        foreach ((array) $productos as $producto) {
-            if (!is_array($producto)) {
-                continue;
-            }
-            $lineItems = $producto['line_items'] ?? [];
-            foreach ((array) $lineItems as $item) {
-                if (!is_array($item)) {
-                    continue;
-                }
-                $allLineItems[] = array_merge($item, [
-                    'producto_descripcion' => $producto['descripcion'] ?? null,
-                    'producto_diametro' => $producto['diametro'] ?? null,
-                    'producto_calidad' => $producto['calidad'] ?? null,
-                ]);
-            }
-        }
-
-        $extractNumber = static function ($value): ?float {
-            if ($value === null) {
-                return null;
-            }
-            if (is_int($value) || is_float($value)) {
-                return (float) $value;
-            }
-            $text = trim((string) $value);
-            if ($text === '') {
-                return null;
-            }
-            if (is_numeric($text)) {
-                return (float) $text;
-            }
-            if (preg_match('/(\\d+(?:[\\.,]\\d+)?)/', $text, $m)) {
-                $num = str_replace(',', '.', $m[1]);
-                return is_numeric($num) ? (float) $num : null;
-            }
-            return null;
-        };
-
-        $extractDiameterFromText = static function ($value) use ($extractNumber): ?float {
-            if ($value === null) {
-                return null;
-            }
-            $text = trim((string) $value);
-            if ($text === '') {
-                return null;
-            }
-            $lower = mb_strtolower($text);
-            // Heurística: solo intentar extraer diámetros si el texto sugiere Ø/mm/diámetro
-            if (!str_contains($lower, 'ø') && !str_contains($lower, 'mm') && !str_contains($lower, 'diam')) {
-                return null;
-            }
-            return $extractNumber($text);
-        };
-
-        // Extraer diámetros escaneados con tolerancia a diferentes formatos (ej: "Ø16", "16mm", 16).
-        $diametrosEscaneados = collect()
-            ->merge(collect($productos)->pluck('diametro'))
-            ->merge(collect($allLineItems)->pluck('producto_diametro'))
-            ->merge([data_get($source, 'producto.diametro')])
-            ->merge(collect($productos)->pluck('descripcion')->map(fn($t) => $extractDiameterFromText($t)))
-            ->merge(collect($allLineItems)->pluck('producto_descripcion')->map(fn($t) => $extractDiameterFromText($t)))
-            ->map(fn($d) => $extractNumber($d))
-            ->filter(fn($d) => $d !== null)
-            ->map(fn($d) => (int) round((float) $d))
-            ->filter(fn($d) => $d > 0)
-            ->unique()
-            ->values()
-            ->toArray();
-        $lineItemsWeight = collect($allLineItems)->sum('peso_kg');
-        $pesoTotal = $lineItemsWeight > 0 ? $lineItemsWeight : (float) ($source['peso_total'] ?? 0);
-
-        // Buscar FABRICANTE según proveedor (todos los pedidos tienen fabricante)
+        // 2. RESOLVER IDs DE EMPRESA
         $fabricanteId = null;
-        $fabricanteNombre = 'Desconocido';
-
-        if ($proveedor === 'siderurgica') {
-            $fabricante = \App\Models\Fabricante::where('nombre', 'LIKE', '%Siderurgica%')
-                ->orWhere('nombre', 'LIKE', '%SISE%')
-                ->first();
-            $fabricanteId = $fabricante?->id;
-            $fabricanteNombre = $fabricante?->nombre ?? 'Siderúrgica Sevillana';
-        } elseif ($proveedor === 'megasa') {
-            $fabricante = \App\Models\Fabricante::where('nombre', 'LIKE', '%Megasa%')->first();
-            $fabricanteId = $fabricante?->id;
-            $fabricanteNombre = $fabricante?->nombre ?? 'Megasa';
-        } elseif ($proveedor === 'balboa') {
-            $fabricante = \App\Models\Fabricante::where('nombre', 'LIKE', '%Balboa%')->first();
-            $fabricanteId = $fabricante?->id;
-            $fabricanteNombre = $fabricante?->nombre ?? 'Balboa';
-        }
-
-        // Fallback: si no tenemos fabricanteId por el tipo de proveedor, intentar buscarlo por el texto editado
-        $proveedorTexto = $parsed['proveedor_texto'] ?? $parsed['fabricante'] ?? null;
-        if (!$fabricanteId && $proveedorTexto) {
-            $f = \App\Models\Fabricante::where('nombre', 'LIKE', "%{$proveedorTexto}%")->first();
-            if ($f) {
-                $fabricanteId = $f->id;
-                $fabricanteNombre = $f->nombre;
-            }
-        }
-
-        // Obtener tipo de compra y distribuidor de los datos parseados/editados
-        $tipoCompra = $parsed['tipo_compra'] ?? null;
-        $distribuidorNombre = $parsed['distribuidor_recomendado'] ?? null;
         $distribuidorId = null;
 
-        if ($distribuidorNombre) {
-            $distribuidorId = \App\Models\Distribuidor::where('nombre', $distribuidorNombre)->value('id');
+        if ($tipoCompra === 'directo' && $nombreFabricante && $nombreFabricante !== 'otro') {
+            $fab = \App\Models\Fabricante::where('nombre', $nombreFabricante)->first();
+            if ($fab) {
+                $fabricanteId = $fab->id;
+                Log::info("Simulación: Fabricante encontrado ID: {$fabricanteId}");
+            }
+        } elseif ($tipoCompra === 'distribuidor' && $nombreDistribuidor && $nombreDistribuidor !== 'otro') {
+            $dist = \App\Models\Distribuidor::where('nombre', $nombreDistribuidor)->first();
+            if ($dist) {
+                $distribuidorId = $dist->id;
+                Log::info("Simulación: Distribuidor encontrado ID: {$distribuidorId}");
+            }
         }
 
-        // Buscar líneas de pedidos de COMPRA pendientes (filtrar solo por FABRICANTE y TIPO DE COMPRA)
-        $lineasPendientes = \App\Models\PedidoProducto::query()
-            ->with(['pedido.fabricante', 'pedido.distribuidor', 'productoBase', 'obra'])
-            ->whereHas('pedido')
-            ->whereNotIn('estado', ['completado', 'cancelado', 'facturado'])
-            ->get()
-            ->filter(fn($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados, $tipoCompra, $distribuidorId));
+        // 3. IDENTIFICAR PRODUCTOS BASE y BUSCAR CANDIDATOS
+        $candidatos = collect();
+        $bultosTotal = 0;
+        $pesoTotal = 0;
 
-        $hoy = now();
-        $lineasConScoring = $lineasPendientes->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $fabricanteId, $normalizedPedidoCodigo, $normalizeCode, $isCodeMatch) {
-            $razones = [];
-            $incompatibilidades = [];
+        foreach ((array) $productos as $idx => $prod) {
+            if (!is_array($prod))
+                continue;
 
-            // Validación básica de obra
-            if (!$linea->obra && !$linea->obra_manual) {
-                Log::info('Pedido pendiente sin obra detectado', [
-                    'linea_id' => $linea->id,
-                    'codigo' => $linea->codigo,
-                    'pedido_codigo' => $linea->pedido?->codigo,
-                    'pedido_id' => $linea->pedido_id,
-                ]);
+            // Calcular totales
+            $items = $prod['line_items'] ?? $prod['lineItems'] ?? [];
+            foreach ($items as $item) {
+                $bultosTotal += (float) ($item['bultos'] ?? 0);
+                $pesoTotal += (float) ($item['peso_kg'] ?? ($item['pesoNeto'] ?? 0));
             }
 
-            // Información de Fabricante
-            if ($fabricanteId && $linea->pedido->fabricante_id == $fabricanteId) {
-                $razones[] = "✓ Fabricante coincide";
+            // Datos del producto
+            $tipoRaw = mb_strtoupper($prod['descripcion'] ?? '');
+            $diametro = $this->extractNumber($prod['diametro'] ?? null);
+            $longitud = $this->extractNumber($prod['longitud'] ?? null);
+
+            $tipoDb = '';
+            if (str_contains($tipoRaw, 'ENCARRETADO') || str_contains($tipoRaw, 'ROLLO')) {
+                $tipoDb = 'encarretado';
+            } elseif (str_contains($tipoRaw, 'BARRA')) {
+                $tipoDb = 'barra';
             }
 
-            // Información de Diámetro
-            $diametroLinea = $linea->productoBase->diametro ?? null;
-            $diametroLineaInt = $diametroLinea !== null ? (int) round((float) $diametroLinea) : null;
-            if ($diametroLineaInt && in_array($diametroLineaInt, $diametrosEscaneados, true)) {
-                $razones[] = "✓ Diámetro Ø{$diametroLineaInt} coincide";
+            // Buscar IDs de ProductoBase
+            $queryPb = \App\Models\ProductoBase::query();
+            if ($tipoDb) {
+                $queryPb->where('tipo', 'LIKE', "%{$tipoDb}%");
+            }
+            if ($diametro) {
+                $queryPb->whereBetween('diametro', [$diametro - 0.1, $diametro + 0.1]);
+            }
+            if ($tipoDb === 'barra' && $longitud) {
+                $queryPb->whereBetween('longitud', [$longitud - 0.05, $longitud + 0.05]);
+            }
+            $productoBasesIds = $queryPb->pluck('id')->toArray();
+
+            if (empty($productoBasesIds)) {
+                Log::warning("Simulación: No se encontró ProductoBase para [{$tipoDb}, d={$diametro}]");
+                continue;
             }
 
-            // Información de Cantidad
-            $cantidadPendienteKg = ($linea->cantidad ?? 0) - ($linea->cantidad_recepcionada ?? 0);
-            if ($pesoTotal <= $cantidadPendienteKg) {
-                $razones[] = "✓ Cantidad pendiente suficiente ({$cantidadPendienteKg} kg)";
-            } else {
-                $sobra = $pesoTotal - $cantidadPendienteKg;
-                $incompatibilidades[] = "⚠ Cantidad importada supera la pendiente en {$sobra} kg";
+            // Buscar Líneas de Pedido
+            $queryLineas = \App\Models\PedidoProducto::query()
+                ->whereIn('producto_base_id', $productoBasesIds)
+                ->whereIn('estado', ['pendiente', 'parcial'])
+                ->with(['pedido.fabricante', 'pedido.distribuidor', 'productoBase', 'obra']);
+
+            $queryLineas->whereHas('pedido', function ($q) use ($tipoCompra, $fabricanteId, $distribuidorId, $pedidoCodigo) {
+                if ($tipoCompra === 'directo' && $fabricanteId) {
+                    $q->where('fabricante_id', $fabricanteId);
+                } elseif ($tipoCompra === 'distribuidor' && $distribuidorId) {
+                    $q->where('distribuidor_id', $distribuidorId);
+                }
+            });
+
+            $lineasEncontradas = $queryLineas->get();
+
+            foreach ($lineasEncontradas as $linea) {
+                $score = 100;
+                $linea->razones = [];
+
+                // Score Código
+                if ($pedidoCodigo && $linea->pedido && str_contains(mb_strtolower($linea->pedido->codigo), mb_strtolower(str_replace(' ', '', $pedidoCodigo)))) {
+                    $score += 1000;
+                    $linea->razones[] = 'Coincidencia exacta código pedido';
+                }
+
+                // Score Cantidad
+                $pendiente = $linea->cantidad - $linea->cantidad_recepcionada;
+                if ($pesoTotal > 0) {
+                    $diff = abs($pendiente - $pesoTotal);
+                    if ($diff < 100)
+                        $score += 100;
+                }
+
+                // Formatear para frontend
+                $lineaFmt = $linea->toArray();
+                $lineaFmt['producto'] = $linea->productoBase->descripcion ?? $linea->productoBase->tipo . ' Ø' . $linea->productoBase->diametro;
+                $lineaFmt['pedido_codigo'] = $linea->pedido->codigo ?? '—';
+                $lineaFmt['fabricante'] = $linea->pedido->fabricante->nombre ?? null;
+                $lineaFmt['distribuidor'] = $linea->pedido->distribuidor->nombre ?? null;
+                $lineaFmt['obra'] = $linea->obra->nombre ?? ($linea->obra_manual ?? '—');
+                $lineaFmt['score'] = $score;
+                $lineaFmt['cantidad_pendiente'] = $pendiente;
+
+                $candidatos->push($lineaFmt);
             }
-
-            // Información de Código de Pedido (Prioridad Máxima Heurística)
-            $coincideCodigo = $normalizedPedidoCodigo && $isCodeMatch($linea->pedido->codigo, $normalizedPedidoCodigo);
-            if ($coincideCodigo) {
-                $razones[] = "★ Código de pedido coincide";
-                $score = 1000;
-            } else {
-                $score = 0;
-            }
-
-            // Descripciones
-            $fabricante = $linea->pedido->fabricante->nombre ?? null;
-            $distribuidor = $linea->pedido->distribuidor->nombre ?? null;
-            $productoDescripcion = $linea->productoBase->nombre ?? ($diametroLineaInt ? "Ø{$diametroLineaInt}mm" : "ProductoBase #{$linea->producto_base_id}");
-
-            return [
-                'id' => $linea->id,
-                'pedido_id' => $linea->pedido_id,
-                'codigo_linea' => $linea->codigo ?? null,
-                'pedido_codigo' => $linea->pedido->codigo ?? '(sin código)',
-                'fabricante' => $fabricante,
-                'distribuidor' => $distribuidor,
-                'obra' => $linea->obra->obra ?? $linea->obra_manual ?? '(sin obra)',
-                'producto' => $productoDescripcion,
-                'diametro' => $diametroLineaInt,
-                'cantidad' => $linea->cantidad ?? 0,
-                'cantidad_recepcionada' => $linea->cantidad_recepcionada ?? 0,
-                'cantidad_pendiente' => $cantidadPendienteKg,
-                'estado' => $linea->estado,
-                'fecha_creacion' => $linea->pedido->created_at->format('d/m/Y'),
-                'fecha_entrega' => $linea->fecha_estimada_entrega?->toDateString(),
-                'fecha_entrega_fmt' => $linea->fecha_estimada_entrega?->format('d/m/Y'),
-                'score' => $score,
-                'coincide_codigo' => $coincideCodigo,
-                'razones' => $razones,
-                'incompatibilidades' => $incompatibilidades,
-                'es_viable' => count($incompatibilidades) === 0,
-            ];
-        })
-            ->sortBy('fecha_entrega') // Orden básico por fecha antes de la IA
-            ->values()
-            ->toArray();
-
-        // Obtener TODAS las líneas pendientes/parciales (sin filtro de fabricante)
-        // Para que el usuario pueda elegir manualmente si lo desea
-        $todasLasLineasQuery = \App\Models\PedidoProducto::query()
-            ->with(['pedido.fabricante', 'pedido.distribuidor', 'productoBase', 'obra'])
-            ->whereIn('estado', ['pendiente', 'parcial'])
-            ->whereHas('pedido', function ($q) {
-                $q->whereNotIn('estado', ['completado', 'cancelado', 'facturado']);
-            })
-            ->get()
-            ->filter(fn($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados, $tipoCompra, $distribuidorId));
-
-        $todasLasLineas = $todasLasLineasQuery->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $normalizedPedidoCodigo, $normalizeCode, $fabricanteId, $isCodeMatch) {
-            $cantidadPendiente = ($linea->cantidad ?? 0) - ($linea->cantidad_recepcionada ?? 0);
-            $diametroLinea = $linea->productoBase->diametro ?? null;
-            $diametroLineaInt = $diametroLinea !== null ? (int) round((float) $diametroLinea) : null;
-            $fabricante = $linea->pedido->fabricante->nombre ?? null;
-            $distribuidor = $linea->pedido->distribuidor->nombre ?? null;
-            $productoDescripcion = $linea->productoBase->nombre ?? ($diametroLineaInt ? "Ø{$diametroLineaInt}mm" : "ProductoBase #{$linea->producto_base_id}");
-            $coincideDiametro = $diametroLineaInt && in_array($diametroLineaInt, $diametrosEscaneados, true);
-            $coincideCodigo = $normalizedPedidoCodigo && $isCodeMatch($linea->pedido->codigo, $normalizedPedidoCodigo);
-
-            return [
-                'id' => $linea->id,
-                'pedido_id' => $linea->pedido_id,
-                'codigo_linea' => $linea->codigo ?? null,
-                'pedido_codigo' => $linea->pedido->codigo ?? '(sin código)',
-                'fabricante' => $fabricante,
-                'distribuidor' => $distribuidor,
-                'obra' => $linea->obra->obra ?? $linea->obra_manual ?? '(sin obra)',
-                'producto' => $productoDescripcion,
-                'diametro' => $diametroLineaInt,
-                'cantidad' => $linea->cantidad ?? 0,
-                'cantidad_recepcionada' => $linea->cantidad_recepcionada ?? 0,
-                'cantidad_pendiente' => $cantidadPendiente,
-                'estado' => $linea->estado,
-                'fecha_creacion' => $linea->pedido->created_at->format('d/m/Y'),
-                'fecha_entrega' => $linea->fecha_estimada_entrega?->toDateString(),
-                'fecha_entrega_fmt' => $linea->fecha_estimada_entrega?->format('d/m/Y'),
-                'score' => 0,
-                'coincide_diametro' => $coincideDiametro,
-                'coincide_codigo' => $coincideCodigo,
-            ];
-        })
-            ->sortBy('fecha_entrega')
-            ->values()
-            ->toArray();
-
-        // Re-priorizar con IA si hay candidatos
-        $lineasConScoring = collect($lineasConScoring);
-        $lineaPropuesta = null; // Inicializar variable
-        if ($lineasConScoring->isNotEmpty()) {
-            $aiService = app(PrioridadIAService::class);
-            $candidatos = $lineasConScoring->toArray();
-            $reordenados = $aiService->recomendarPrioridades($source, $candidatos);
-            $lineasConScoring = collect($reordenados);
-
-            // SOBREESCRITURA DE SEGURIDAD: Si hay alguno que coincida por código, FORZARLO al principio.
-            // Para el usuario esto es "prioridad absoluta".
-            $matchCodigoIdx = $lineasConScoring->search(fn($linea) => !empty($linea['coincide_codigo']));
-            if ($matchCodigoIdx !== false) {
-                $match = $lineasConScoring->splice($matchCodigoIdx, 1)->first();
-                $lineasConScoring->prepend($match);
-            }
-
-            // La nueva propuesta es la primera de la lista reordenada (con nuestro override de seguridad)
-            $lineaPropuesta = $lineasConScoring->first();
-            $tipoRecomendacion = 'ia_recomendada';
         }
 
-        // Agregar tipo de recomendación a la línea propuesta
-        if ($lineaPropuesta) {
-            $lineaPropuesta['tipo_recomendacion'] = $tipoRecomendacion;
-        }
+        // 4. SELECCIÓN MEJOR CANDIDATO
+        $candidatosSorted = $candidatos->sortByDesc('score')->values();
+        $mejorCandidato = $candidatosSorted->first();
 
-        // Preparar productos escaneados para mostrar
-        $productosEscaneados = collect($productos)->map(function ($prod, $index) {
-            return [
-                'numero' => $index + 1,
-                'diametro' => $prod['diametro'] ?? '—',
-                'peso_kg' => $prod['peso_kg'] ?? null,
-                'descripcion' => $prod['descripcion'] ?? '—',
-            ];
-        })->toArray();
-
-        // Estado final simulado de la línea
+        $datosLinea = $mejorCandidato;
         $estadoFinalSimulado = null;
-        if ($lineaPropuesta && $lineaPropuesta['es_viable']) {
-            $nuevaCantidadRecepcionada = $lineaPropuesta['cantidad_recepcionada'] + $pesoTotal;
-            $nuevoEstado = $nuevaCantidadRecepcionada >= $lineaPropuesta['cantidad'] ? 'completado' : 'parcial';
+
+        if ($datosLinea) {
+            $nuevaCantidadRecepcionada = ($datosLinea['cantidad_recepcionada'] ?? 0) + $pesoTotal;
+            $nuevoEstado = $nuevaCantidadRecepcionada >= ($datosLinea['cantidad'] ?? 0) ? 'completado' : 'parcial';
 
             $estadoFinalSimulado = [
                 'cantidad_recepcionada_nueva' => $nuevaCantidadRecepcionada,
-                'cantidad_total' => $lineaPropuesta['cantidad'],
+                'cantidad_total' => $datosLinea['cantidad'],
                 'estado_nuevo' => $nuevoEstado,
-                'progreso' => round(($nuevaCantidadRecepcionada / $lineaPropuesta['cantidad']) * 100, 1),
+                'progreso' => ($datosLinea['cantidad'] > 0) ? round(($nuevaCantidadRecepcionada / $datosLinea['cantidad']) * 100, 1) : 0,
             ];
+            $datosLinea['tipo_recomendacion'] = 'exacta_bd';
         }
 
-        $bultosSimulados = collect($allLineItems)->map(function ($item, $index) {
-            return [
-                'numero' => $index + 1,
-                'colada' => $item['colada'] ?? '—',
-                'bultos' => (int) ($item['bultos'] ?? 1),
-                'peso_kg' => $item['peso_kg'] ?? null,
-                'producto_descripcion' => $item['producto_descripcion'] ?? '—',
-                'producto_diametro' => $item['producto_diametro'] ?? '—',
-                'producto_calidad' => $item['producto_calidad'] ?? '—',
-                'estado_simulado' => 'Se crearía',
-            ];
-        })->values()->toArray();
-        $bultosTotal = collect($bultosSimulados)->sum('bultos');
-
         return [
-            'albaran' => $parsed['albaran'] ?? null,
-            'fecha' => $parsed['fecha'] ?? null,
+            'albaran' => $source['albaran'] ?? null,
+            'fecha' => $source['fecha'] ?? null,
             'pedido_codigo' => $pedidoCodigo,
-            'fabricante' => $fabricanteNombre,
-            'diametros_escaneados' => $diametrosEscaneados,
+            'fabricante' => $nombreFabricante,
             'peso_total' => $pesoTotal,
-            'productos_escaneados' => $productosEscaneados,
-            'lineas_pendientes' => $lineasConScoring,
-            'todas_las_lineas' => $todasLasLineas,
-            'linea_propuesta' => $lineaPropuesta,
+            'lineas_pendientes' => $candidatosSorted->toArray(), // Para IA / Debug
+            'todas_las_lineas' => $candidatosSorted->toArray(), // Para lista "otros compatibles"
+            'linea_propuesta' => $datosLinea,
             'estado_final_simulado' => $estadoFinalSimulado,
-            'hay_coincidencias' => $lineaPropuesta !== null, // True si hay línea propuesta (por código o por score)
+            'hay_coincidencias' => $datosLinea !== null,
             'bultos_albaran' => $bultosTotal,
-            'bultos_simulados' => $bultosSimulados,
         ];
+    }
+
+    protected function extractNumber($val)
+    {
+        if (is_numeric($val))
+            return (float) $val;
+        if (is_string($val)) {
+            $v = preg_replace('/[^0-9,.]/', '', $val);
+            $v = str_replace(',', '.', $v);
+            return is_numeric($v) ? (float) $v : null;
+        }
+        return null;
     }
 
     protected function esLineaPermitida($linea, ?int $fabricanteId, array $diametrosEscaneados, ?string $tipoCompra = null, ?int $distribuidorId = null): bool
