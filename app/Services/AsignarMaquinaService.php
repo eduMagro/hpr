@@ -298,9 +298,9 @@ class AsignarMaquinaService
             // Asignar TODOS los elementos del grupo a la MISMA máquina
             $asignados = 0;
             foreach ($elementos as $e) {
-                // VALIDACIÓN: No permitir asignar a CM si no cumple requisitos
-                if (!$this->puedeIrACM($e, $maquinaDestino)) {
-                    Log::channel('planilla_import')->error("⚠️ [AsignarMaquina] Estribo {$e->id} BLOQUEADO para {$maquinaDestino->codigo} (validación CM fallida)");
+                // VALIDACIÓN: Verificar todas las restricciones de máquina (CM, MSR20, etc.)
+                if (!$this->puedeAsignarAMaquina($e, $maquinaDestino)) {
+                    Log::channel('planilla_import')->error("⚠️ [AsignarMaquina] Estribo {$e->id} BLOQUEADO para {$maquinaDestino->codigo} (validación fallida)");
                     continue;
                 }
 
@@ -385,7 +385,8 @@ class AsignarMaquinaService
 
                 // Asignar TODOS los elementos del grupo a la MISMA máquina
                 foreach ($elementos as $e) {
-                    if (!$this->puedeIrACM($e, $maquinaDestino)) {
+                    // VALIDACIÓN: Verificar todas las restricciones de máquina (CM, MSR20, etc.)
+                    if (!$this->puedeAsignarAMaquina($e, $maquinaDestino)) {
                         Log::channel('planilla_import')->error("⚠️ [AsignarMaquina] Elemento {$e->id} BLOQUEADO para {$maquinaDestino->codigo}");
                         continue;
                     }
@@ -434,6 +435,12 @@ class AsignarMaquinaService
 
                 // Asignar TODOS los elementos del grupo a la MISMA máquina
                 foreach ($elementos as $e) {
+                    // VALIDACIÓN: Verificar todas las restricciones de máquina (CM, MSR20, etc.)
+                    if (!$this->puedeAsignarAMaquina($e, $maquinaDestino)) {
+                        Log::channel('planilla_import')->error("⚠️ [AsignarMaquina] Elemento dobleces {$e->id} BLOQUEADO para {$maquinaDestino->codigo}");
+                        continue;
+                    }
+
                     $e->maquina_id = $maquinaDestino->id;
                     $e->save();
                     $this->sumarCarga($cargas, $maquinaDestino->id, (float)$e->peso, (int)($e->tiempo_fabricacion ?? 0));
@@ -598,6 +605,80 @@ class AsignarMaquinaService
 
         if ($dobles !== 0) {
             Log::channel('planilla_import')->error("🚨🚨🚨 [VALIDACIÓN CRÍTICA] BLOQUEADO: Elemento {$elemento->id} (dobles_barra={$dobles}) NO puede ir a CM (solo dobles=0)");
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Valida si un elemento puede ser asignado a la MSR20
+     * REGLA: MSR20 solo puede fabricar elementos donde AL MENOS UNA dimensión sea >= 90
+     * Ejemplo: "50 90d 60 90d 50" → tiene 90, SÍ puede
+     * Ejemplo: "50 60d 40 60d 50" → ninguna >= 90, NO puede
+     *
+     * @param Elemento $elemento
+     * @param Maquina $maquina
+     * @return bool
+     */
+    protected function puedeIrAMSR20(Elemento $elemento, Maquina $maquina): bool
+    {
+        // Si no es la MSR20, no aplica esta restricción
+        if ($maquina->codigo !== 'MSR20') {
+            return true;
+        }
+
+        $dimensiones = $elemento->dimensiones ?? '';
+
+        // Si no tiene dimensiones, no puede ir a MSR20
+        if (empty(trim($dimensiones))) {
+            Log::channel('planilla_import')->warning("⚠️ [MSR20] Elemento {$elemento->id} sin dimensiones, no puede ir a MSR20");
+            return false;
+        }
+
+        // Extraer todos los números de las dimensiones (ej: "50 90d 60 90d 50" → [50, 90, 60, 90, 50])
+        preg_match_all('/(\d+(?:\.\d+)?)/', $dimensiones, $matches);
+        $valores = array_map('floatval', $matches[1] ?? []);
+
+        if (empty($valores)) {
+            Log::channel('planilla_import')->warning("⚠️ [MSR20] Elemento {$elemento->id} no tiene valores numéricos en dimensiones: '{$dimensiones}'");
+            return false;
+        }
+
+        // Verificar si al menos una dimensión es >= 90
+        $tieneMinimo90 = false;
+        foreach ($valores as $valor) {
+            if ($valor >= 90) {
+                $tieneMinimo90 = true;
+                break;
+            }
+        }
+
+        if (!$tieneMinimo90) {
+            $maxDimension = max($valores);
+            Log::channel('planilla_import')->info("🚫 [MSR20] Elemento {$elemento->id} BLOQUEADO: ninguna dimensión >= 90 (máx: {$maxDimension}) en '{$dimensiones}'");
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Valida todas las restricciones de máquina para un elemento
+     *
+     * @param Elemento $elemento
+     * @param Maquina $maquina
+     * @return bool
+     */
+    protected function puedeAsignarAMaquina(Elemento $elemento, Maquina $maquina): bool
+    {
+        // Validar restricción CM
+        if (!$this->puedeIrACM($elemento, $maquina)) {
+            return false;
+        }
+
+        // Validar restricción MSR20
+        if (!$this->puedeIrAMSR20($elemento, $maquina)) {
             return false;
         }
 
@@ -897,6 +978,12 @@ class AsignarMaquinaService
 
             // Asignar TODOS los elementos del grupo a la MISMA máquina
             foreach ($elementosGrupo as $elemento) {
+                // VALIDACIÓN: Verificar todas las restricciones de máquina (CM, MSR20, etc.)
+                if (!$this->puedeAsignarAMaquina($elemento, $maquinaDestino)) {
+                    Log::channel('planilla_import')->error("⚠️ [AsignarMaquina/NaveB] Elemento {$elemento->id} BLOQUEADO para {$maquinaDestino->codigo}");
+                    continue;
+                }
+
                 $elemento->maquina_id = $maquinaDestino->id;
                 $elemento->save();
                 $this->sumarCarga($cargas, $maquinaDestino->id, (float)$elemento->peso, (int)($elemento->tiempo_fabricacion ?? 0));
@@ -974,6 +1061,17 @@ class AsignarMaquinaService
                 'success' => false,
                 'message' => "Elemento {$elemento->codigo} con dobleces solo puede ir a cortadora_dobladora o estribadora, no a {$maquinaDestino->tipo}"
             ];
+        }
+
+        // 7. Validar MSR20: solo elementos con al menos una dimensión >= 90
+        if ($maquinaDestino->codigo === 'MSR20') {
+            if (!$this->puedeIrAMSR20($elemento, $maquinaDestino)) {
+                $dimensiones = $elemento->dimensiones ?? 'sin dimensiones';
+                return [
+                    'success' => false,
+                    'message' => "Elemento {$elemento->codigo} no puede ir a MSR20: ninguna dimensión >= 90 (dimensiones: {$dimensiones})"
+                ];
+            }
         }
 
         return ['success' => true, 'message' => 'OK'];
