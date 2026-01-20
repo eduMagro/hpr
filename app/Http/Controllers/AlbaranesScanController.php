@@ -411,6 +411,7 @@ class AlbaranesScanController extends Controller
                         'diametro' => $diametro,
                         'nombre' => $producto,
                     ],
+                    'obra' => $linea->obra?->obra ?? $linea->obra_manual ?? null,
                 ];
             })
             ->values()
@@ -574,7 +575,7 @@ class AlbaranesScanController extends Controller
                 $lineaFmt['pedido_codigo'] = $linea->pedido->codigo ?? '—';
                 $lineaFmt['fabricante'] = $linea->pedido->fabricante->nombre ?? null;
                 $lineaFmt['distribuidor'] = $linea->pedido->distribuidor->nombre ?? null;
-                $lineaFmt['obra'] = $linea->obra->nombre ?? ($linea->obra_manual ?? '—');
+                $lineaFmt['obra'] = $linea->obra?->obra ?? ($linea->obra_manual ?? '—');
                 $lineaFmt['score'] = $score;
                 $lineaFmt['cantidad_pendiente'] = $pendiente;
 
