@@ -1,16 +1,18 @@
 <?php
 /**
  * Script para aplicar subetiquetas a TODAS las planillas que tengan elementos sin asignar
+ * OPTIMIZADO para bajo consumo de memoria
  *
  * Uso: https://tudominio.com/scripts/aplicar_subetiquetas_todas.php
  *
  * Parámetros:
  *   - dry_run: Si es "1", solo muestra qué se haría sin hacer cambios
  *   - limit: Número máximo de planillas a procesar (por defecto: todas)
+ *   - offset: Saltar las primeras N planillas (para continuar si se interrumpe)
  */
 
-set_time_limit(600);
-ini_set('memory_limit', '512M');
+set_time_limit(1800); // 30 minutos
+ini_set('memory_limit', '256M');
 
 ob_implicit_flush(true);
 if (ob_get_level()) ob_end_flush();
@@ -30,148 +32,198 @@ use Illuminate\Support\Facades\DB;
 header('Content-Type: text/plain; charset=utf-8');
 header('X-Accel-Buffering: no');
 
-echo "=== APLICAR SUBETIQUETAS A TODAS LAS PLANILLAS ===\n\n";
+echo "=== APLICAR SUBETIQUETAS A TODAS LAS PLANILLAS ===\n";
+echo "Memoria inicial: " . round(memory_get_usage() / 1024 / 1024, 2) . " MB\n\n";
 
 $dryRun = ($_GET['dry_run'] ?? '0') === '1';
 $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : null;
+$offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
 
 if ($dryRun) {
     echo "🔍 MODO DRY-RUN: No se harán cambios\n\n";
 }
 
-// 1. Buscar planillas con elementos sin subetiqueta
-echo "Buscando planillas con elementos sin subetiqueta...\n";
+// 1. Contar planillas afectadas (query ligera)
+echo "Contando planillas con elementos sin subetiqueta...\n";
 flush();
 
-$planillaIds = Elemento::whereNull('etiqueta_sub_id')
+$totalPlanillas = DB::table('elementos')
+    ->whereNull('etiqueta_sub_id')
     ->whereNotNull('etiqueta_id')
     ->whereNotNull('planilla_id')
     ->distinct()
-    ->pluck('planilla_id');
+    ->count('planilla_id');
 
-echo "Encontradas: {$planillaIds->count()} planillas\n\n";
+echo "Total planillas afectadas: {$totalPlanillas}\n";
 
-if ($planillaIds->isEmpty()) {
+if ($totalPlanillas === 0) {
     echo "✅ Todas las planillas ya tienen subetiquetas asignadas\n";
     exit;
 }
 
-// Aplicar límite si se especifica
-if ($limit) {
-    $planillaIds = $planillaIds->take($limit);
-    echo "⚠️ Limitando a {$limit} planillas\n\n";
+// Contar elementos
+$totalElementosSinSub = DB::table('elementos')
+    ->whereNull('etiqueta_sub_id')
+    ->whereNotNull('etiqueta_id')
+    ->count();
+
+echo "Total elementos sin subetiqueta: {$totalElementosSinSub}\n\n";
+
+if ($offset > 0) {
+    echo "⏭️ Saltando las primeras {$offset} planillas\n\n";
 }
 
-// Cargar planillas con sus datos
-$planillas = Planilla::whereIn('id', $planillaIds)
-    ->with('obra')
-    ->orderBy('codigo')
-    ->get();
+if ($limit) {
+    echo "⚠️ Limitando a {$limit} planillas\n\n";
+}
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
 flush();
 
+// 2. Obtener IDs de planillas afectadas (solo IDs, no modelos completos)
+$planillaIds = DB::table('elementos')
+    ->whereNull('etiqueta_sub_id')
+    ->whereNotNull('etiqueta_id')
+    ->whereNotNull('planilla_id')
+    ->distinct()
+    ->orderBy('planilla_id')
+    ->when($offset > 0, fn($q) => $q->skip($offset))
+    ->when($limit, fn($q) => $q->take($limit))
+    ->pluck('planilla_id')
+    ->toArray();
+
+$totalAProcesar = count($planillaIds);
+echo "Planillas a procesar: {$totalAProcesar}\n\n";
+flush();
+
 $subEtiquetaService = new SubEtiquetaService();
 
-$totalPlanillas = 0;
+$procesadas = 0;
 $totalElementos = 0;
 $totalSubsCreadas = 0;
 $totalErrores = 0;
 
-foreach ($planillas as $planilla) {
-    $totalPlanillas++;
+// 3. Procesar una planilla a la vez para ahorrar memoria
+foreach ($planillaIds as $planillaId) {
+    $procesadas++;
 
-    echo "\n[{$totalPlanillas}/{$planillas->count()}] 📋 {$planilla->codigo}";
-    echo " - " . ($planilla->obra->nombre ?? 'Sin obra') . "\n";
+    // Cargar solo datos básicos de la planilla
+    $planillaData = DB::table('planillas')
+        ->where('id', $planillaId)
+        ->select('id', 'codigo')
+        ->first();
+
+    if (!$planillaData) {
+        continue;
+    }
+
+    // Obtener nombre de obra
+    $obraNombre = DB::table('planillas')
+        ->join('obras', 'planillas.obra_id', '=', 'obras.id')
+        ->where('planillas.id', $planillaId)
+        ->value('obras.obra') ?? 'Sin obra';
+
+    echo "[{$procesadas}/{$totalAProcesar}] 📋 {$planillaData->codigo} - {$obraNombre}\n";
     flush();
 
-    // Obtener elementos sin subetiqueta de esta planilla
-    $elementosSinSub = Elemento::where('planilla_id', $planilla->id)
+    // Contar elementos sin subetiqueta de esta planilla
+    $cantidadSinSub = DB::table('elementos')
+        ->where('planilla_id', $planillaId)
         ->whereNull('etiqueta_sub_id')
         ->whereNotNull('etiqueta_id')
-        ->get();
+        ->count();
 
-    if ($elementosSinSub->isEmpty()) {
+    if ($cantidadSinSub === 0) {
         echo "   ✅ Ya procesada\n";
         continue;
     }
 
-    echo "   Elementos sin sub: {$elementosSinSub->count()}\n";
+    echo "   Elementos sin sub: {$cantidadSinSub}\n";
 
     if ($dryRun) {
-        // Mostrar desglose por máquina
-        $porMaquina = $elementosSinSub->groupBy(function ($e) {
-            return $e->maquina_id ?? $e->maquina_id_2 ?? $e->maquina_id_3 ?? 0;
-        });
-
-        foreach ($porMaquina as $maquinaId => $elementos) {
-            if ($maquinaId) {
-                $maquina = Maquina::find($maquinaId);
-                $nombre = $maquina ? $maquina->codigo : "ID:{$maquinaId}";
-                $tipo = $maquina ? ($maquina->tipo_material ?? '?') : '?';
-                echo "      - {$nombre} ({$tipo}): {$elementos->count()}\n";
-            } else {
-                echo "      - Sin máquina: {$elementos->count()}\n";
-            }
-        }
-
-        $totalElementos += $elementosSinSub->count();
+        $totalElementos += $cantidadSinSub;
         continue;
     }
 
-    // Procesar elementos
+    // Procesar en lotes de 100 elementos
     $subsCreadas = 0;
     $errores = 0;
+    $loteSize = 100;
+    $procesadosLote = 0;
 
-    DB::beginTransaction();
-    try {
-        foreach ($elementosSinSub as $elemento) {
-            $maquinaReal = $elemento->maquina_id ?? $elemento->maquina_id_2 ?? $elemento->maquina_id_3;
+    do {
+        // Obtener lote de elementos
+        $elementosLote = Elemento::where('planilla_id', $planillaId)
+            ->whereNull('etiqueta_sub_id')
+            ->whereNotNull('etiqueta_id')
+            ->limit($loteSize)
+            ->get();
 
-            if (!$maquinaReal) {
-                // Sin máquina: crear subetiqueta individual
-                $padre = Etiqueta::find($elemento->etiqueta_id);
-                if ($padre) {
-                    $subId = Etiqueta::generarCodigoSubEtiqueta($padre->codigo);
-                    $subRowId = asegurarFilaSub($subId, $padre);
-
-                    $elemento->update([
-                        'etiqueta_sub_id' => $subId,
-                        'etiqueta_id' => $subRowId,
-                    ]);
-                    $subsCreadas++;
-                }
-                continue;
-            }
-
-            try {
-                [$subDestino, $subOriginal] = $subEtiquetaService->reubicarSegunTipoMaterial($elemento, $maquinaReal);
-
-                if ($subDestino) {
-                    $subsCreadas++;
-                }
-            } catch (\Exception $e) {
-                $errores++;
-                // No mostrar cada error para no saturar la salida
-            }
+        if ($elementosLote->isEmpty()) {
+            break;
         }
 
-        DB::commit();
+        DB::beginTransaction();
+        try {
+            foreach ($elementosLote as $elemento) {
+                $maquinaReal = $elemento->maquina_id ?? $elemento->maquina_id_2 ?? $elemento->maquina_id_3;
 
-        echo "   ✅ {$subsCreadas} subetiquetas asignadas";
-        if ($errores > 0) {
-            echo " ({$errores} errores)";
+                if (!$maquinaReal) {
+                    // Sin máquina: crear subetiqueta individual
+                    $padre = Etiqueta::find($elemento->etiqueta_id);
+                    if ($padre) {
+                        $subId = Etiqueta::generarCodigoSubEtiqueta($padre->codigo);
+                        $subRowId = asegurarFilaSub($subId, $padre);
+
+                        $elemento->update([
+                            'etiqueta_sub_id' => $subId,
+                            'etiqueta_id' => $subRowId,
+                        ]);
+                        $subsCreadas++;
+                    }
+                    continue;
+                }
+
+                try {
+                    [$subDestino, $subOriginal] = $subEtiquetaService->reubicarSegunTipoMaterial($elemento, $maquinaReal);
+
+                    if ($subDestino) {
+                        $subsCreadas++;
+                    }
+                } catch (\Exception $e) {
+                    $errores++;
+                }
+            }
+
+            DB::commit();
+            $procesadosLote += $elementosLote->count();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            echo "   ❌ Error en lote: " . substr($e->getMessage(), 0, 80) . "\n";
+            $errores++;
+            break;
         }
-        echo "\n";
 
-        $totalElementos += $elementosSinSub->count();
-        $totalSubsCreadas += $subsCreadas;
-        $totalErrores += $errores;
+        // Liberar memoria
+        unset($elementosLote);
 
-    } catch (\Exception $e) {
-        DB::rollBack();
-        echo "   ❌ Error: " . substr($e->getMessage(), 0, 100) . "\n";
-        $totalErrores++;
+    } while (true);
+
+    echo "   ✅ {$subsCreadas} subetiquetas";
+    if ($errores > 0) {
+        echo " ({$errores} errores)";
+    }
+    echo "\n";
+
+    $totalElementos += $procesadosLote;
+    $totalSubsCreadas += $subsCreadas;
+    $totalErrores += $errores;
+
+    // Liberar memoria cada 10 planillas
+    if ($procesadas % 10 === 0) {
+        gc_collect_cycles();
+        echo "   [Memoria: " . round(memory_get_usage() / 1024 / 1024, 2) . " MB]\n";
     }
 
     flush();
@@ -180,7 +232,7 @@ foreach ($planillas as $planilla) {
 echo "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
 echo "=== RESUMEN FINAL ===\n\n";
 
-echo "Planillas procesadas: {$totalPlanillas}\n";
+echo "Planillas procesadas: {$procesadas}\n";
 
 if ($dryRun) {
     echo "Elementos a procesar: {$totalElementos}\n";
@@ -193,6 +245,7 @@ if ($dryRun) {
     }
 }
 
+echo "\nMemoria final: " . round(memory_get_usage() / 1024 / 1024, 2) . " MB\n";
 echo "\n=== COMPLETADO ===\n";
 
 // ============ FUNCIONES ============
