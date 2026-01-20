@@ -652,6 +652,13 @@
                         const fechaInput = document.getElementById('swal-fecha-corte');
                         let debounceTimer;
 
+                        // Función para resaltar texto de búsqueda
+                        function resaltarTexto(texto, busqueda) {
+                            if (!busqueda || !texto) return texto;
+                            const regex = new RegExp(`(${busqueda.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                            return texto.replace(regex, '<mark class="bg-yellow-200 px-0.5 rounded">$1</mark>');
+                        }
+
                         // Función para buscar y mostrar resultados
                         async function buscarPlanillas(query = '') {
                             try {
@@ -662,8 +669,8 @@
                                     resultsDiv.innerHTML = data.planillas.map(p => `
                                         <div class="planilla-option px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100"
                                             data-id="${p.id}" data-codigo="${p.codigo}">
-                                            <div class="font-semibold text-sm">${p.codigo}</div>
-                                            <div class="text-xs text-gray-500">${p.obra} - ${p.cliente}</div>
+                                            <div class="font-semibold text-sm">${resaltarTexto(p.codigo, query)}</div>
+                                            <div class="text-xs text-gray-500">${resaltarTexto(p.obra, query)} - ${resaltarTexto(p.cliente, query)}</div>
                                             <div class="text-xs text-gray-400">${p.estado} | Entrega: ${p.fecha_entrega || 'Sin fecha'}</div>
                                         </div>
                                     `).join('');

@@ -692,9 +692,18 @@ export function crearCalendario() {
                     }
 
                     if (coincide) {
-                        // Solo añadir clase, el CSS se encarga del resto
+                        // Destacar eventos que coinciden
                         info.el.classList.add("evento-filtrado");
+                        info.el.classList.remove("evento-atenuado");
+                    } else {
+                        // Atenuar eventos que no coinciden cuando hay filtros activos
+                        info.el.classList.add("evento-atenuado");
+                        info.el.classList.remove("evento-filtrado");
                     }
+                } else {
+                    // Sin filtros activos: resetear clases para mostrar estado normal
+                    info.el.classList.remove("evento-filtrado");
+                    info.el.classList.remove("evento-atenuado");
                 }
 
                 // tooltips + menú contextual (solo para eventos que no son resumen)

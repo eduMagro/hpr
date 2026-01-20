@@ -131,8 +131,8 @@
                                                     $fechaRaw = $planilla->getRawOriginal('fecha_estimada_entrega');
                                                     $fechaDisplay = $fechaRaw ? \Carbon\Carbon::parse($fechaRaw)->format('d/m/Y') : '-';
                                                 @endphp
-                                                <option value="{{ $planilla->codigo }}" data-planilla-id="{{ $planilla->id }}">
-                                                    {{ $planilla->codigo }} - {{ $fechaDisplay }}
+                                                <option value="{{ $planilla->codigo_limpio }}" data-planilla-id="{{ $planilla->id }}">
+                                                    {{ $planilla->codigo_limpio }} - {{ $fechaDisplay }}
                                                 </option>
                                             @endforeach
                                         </optgroup>
@@ -4350,7 +4350,6 @@
 
                         let planillasResaltadas = 0;
                         let segmentosResaltados = 0;
-                        let planillaCoincidente = null; // Guardar info de planilla coincidente para abrir panel
 
                         // 🔧 OPTIMIZACIÓN: Cachear querySelectorAll y crear mapa de elementos por ID
                         const todosElementosDOM = document.querySelectorAll('.fc-event');
@@ -4429,12 +4428,6 @@
 
                             if (cumple) {
                                 planillasResaltadas++;
-                                // Guardar info de la planilla coincidente
-                                planillaCoincidente = {
-                                    id: planillaId,
-                                    codigo: data.title,
-                                    props: data.props
-                                };
                             }
                         });
 
@@ -4445,17 +4438,26 @@
                         actualizarIndicadorFiltros(planillasResaltadas);
 
                         if (planillasResaltadas === 0) {
-                            Swal.fire({
-                                icon: 'info',
-                                title: 'Sin resultados',
-                                timer: 2000,
-                                showConfirmButton: false
-                            });
-                        } else if (planillasResaltadas === 1 && filtrosActivos.codigoPlanilla && planillaCoincidente) {
-                            // Si solo hay una planilla coincidente y se filtró por código, abrir panel automáticamente
-                            console.log('📋 Abriendo panel automáticamente para planilla:', planillaCoincidente);
-                            abrirPanelAutomatico(planillaCoincidente.id, planillaCoincidente.codigo);
+                            // Verificar si la planilla viene del select (tiene posición en cola)
+                            const selectPlanilla = document.getElementById('filtroPlanillaSelect');
+                            const planillaIdSeleccionada = selectPlanilla.selectedOptions[0]?.dataset?.planillaId;
+
+                            if (planillaIdSeleccionada && filtrosActivos.codigoPlanilla) {
+                                // La planilla tiene posición pero no está visible en el calendario
+                                // Abrir el sidebar para mostrar sus elementos
+                                console.log('📋 Planilla con posición no visible, abriendo panel:', planillaIdSeleccionada);
+                                abrirPanelAutomatico(planillaIdSeleccionada, filtrosActivos.codigoPlanilla);
+                            } else {
+                                Swal.fire({
+                                    icon: 'info',
+                                    title: 'Sin resultados',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+                            }
                         }
+                        // Ya no abrimos el sidebar automáticamente cuando SÍ encuentra eventos
+                        // Solo resaltamos los eventos encontrados
                     }, 100);
                 }
 
@@ -4479,11 +4481,14 @@
                 function limpiarResaltado() {
                     console.log('%c🧹 LIMPIANDO FILTROS', 'font-size: 14px; font-weight: bold; color: #dc2626;');
 
-                    calendar.getEvents().forEach(evento => {
-                        const elemento = evento.el;
-                        if (elemento) {
-                            elemento.classList.remove('evento-resaltado', 'evento-opaco', 'pulsando');
-                        }
+                    // Seleccionar directamente del DOM todos los eventos con clases de filtrado
+                    document.querySelectorAll('.fc-event.evento-resaltado, .fc-event.evento-opaco, .fc-event.pulsando').forEach(el => {
+                        el.classList.remove('evento-resaltado', 'evento-opaco', 'pulsando');
+                    });
+
+                    // También limpiar segmentos resaltados
+                    document.querySelectorAll('.segmento-planilla.resaltado, .segmento-planilla.opaco').forEach(el => {
+                        el.classList.remove('resaltado', 'opaco');
                     });
 
                     // Limpiar filtros

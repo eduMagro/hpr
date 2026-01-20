@@ -1,8 +1,7 @@
 import { crearCalendario } from "./calendar.js";
 import { onPageReady, onPageLeave } from "../../utils/livewire-helper.js";
 import { gestionarPaquetesSalida } from "./calendario-menu.js";
-
-import "./eventos.js";
+import { invalidateCache } from "./eventos.js";
 import "./recursos.js";
 import "./tooltips.js";
 import "./totales.js";
@@ -156,6 +155,12 @@ function inicializarCalendario() {
         }
         // Actualizar estilos
         actualizarEstilosContenedores();
+        // Limpiar clases de filtrado directamente del DOM
+        document.querySelectorAll(".fc-event.evento-filtrado, .fc-event.evento-atenuado").forEach(el => {
+            el.classList.remove("evento-filtrado", "evento-atenuado");
+        });
+        // Invalidar cache y refetch
+        invalidateCache();
         calendar.refetchEvents();
     });
 
@@ -237,6 +242,12 @@ function inicializarCalendario() {
         if (filtroCodCliente) filtroCodCliente.value = "";
         if (filtroCliente) filtroCliente.value = "";
         if (filtroCodPlanilla) filtroCodPlanilla.value = "";
+        // Limpiar clases de filtrado de todos los eventos en el DOM
+        document.querySelectorAll(".fc-event.evento-filtrado, .fc-event.evento-atenuado").forEach(el => {
+            el.classList.remove("evento-filtrado", "evento-atenuado");
+        });
+        // Invalidar cache y forzar re-render completo
+        invalidateCache();
         calendar.refetchEvents();
     });
 }
