@@ -46,12 +46,24 @@ class LimpiarOrdenPlanillasCommand extends Command
             return 0;
         }
 
-        // Eliminar registros
-        $this->info("\n📋 Eliminando registros...");
-        $eliminados = OrdenPlanilla::whereHas('planilla', function ($query) {
-            $query->where('estado', 'completada');
-        })->delete();
+        // Eliminar registros en lotes
+        $this->info("\n📋 Eliminando registros en lotes...");
+        $idsAEliminar = $registrosAEliminar->pluck('id')->toArray();
+        $totalEliminar = count($idsAEliminar);
+        $eliminados = 0;
+        $batchSize = 500;
 
+        $bar = $this->output->createProgressBar($totalEliminar);
+        $bar->start();
+
+        foreach (array_chunk($idsAEliminar, $batchSize) as $chunk) {
+            OrdenPlanilla::whereIn('id', $chunk)->delete();
+            $eliminados += count($chunk);
+            $bar->advance(count($chunk));
+        }
+
+        $bar->finish();
+        $this->newLine();
         $this->info("✓ Eliminados: $eliminados registros");
 
         // Reindexar posiciones por máquina
