@@ -3283,36 +3283,37 @@ class ProduccionController extends Controller
      */
     public function simularTurnoSabado(Request $request)
     {
-        $horaInicio = $request->input('hora_inicio', '08:00');
-        $horaFin = $request->input('hora_fin', '14:00');
-        $modo = $request->input('modo', 'todos'); // 'todos' = todos los sábados, 'rango' = rango de fechas
-        $fechaDesde = $request->input('fecha_desde'); // Para modo rango
-        $fechaHasta = $request->input('fecha_hasta'); // Para modo rango
+        // Nuevo formato: { sabados: { "2026-01-25": [{turno: "manana", horaInicio: "05:00", horaFin: "14:00"}, ...], ... } }
+        $sabadosInput = $request->input('sabados', []);
 
-        // Generar lista de sábados a simular según el modo
-        $sabadosSimulados = [];
-        $descripcionSimulacion = '';
-
-        if ($modo === 'rango' && $fechaDesde && $fechaHasta) {
-            $desde = Carbon::parse($fechaDesde);
-            $hasta = Carbon::parse($fechaHasta);
-
-            // Encontrar todos los sábados en el rango
-            $cursor = $desde->copy();
-            while ($cursor->lte($hasta)) {
-                if ($cursor->isSaturday()) {
-                    $sabadosSimulados[] = $cursor->copy();
-                }
-                $cursor->addDay();
-            }
-
-            $numSabados = count($sabadosSimulados);
-            $descripcionSimulacion = "{$numSabados} sábado(s) del {$desde->format('d/m/Y')} al {$hasta->format('d/m/Y')}";
-        } else {
-            // Modo "todos": simular todos los sábados futuros (pasamos array vacío)
-            $sabadosSimulados = []; // Array vacío = todos los sábados
-            $descripcionSimulacion = "Todos los sábados";
+        if (empty($sabadosInput)) {
+            return response()->json([
+                'success' => false,
+                'mensaje' => 'Debes seleccionar al menos un sábado con un turno para simular',
+            ], 400);
         }
+
+        // Procesar sábados y turnos seleccionados
+        // Formato para el servicio: array de [fecha => [turnos]]
+        $sabadosConTurnos = [];
+        $totalTurnos = 0;
+
+        foreach ($sabadosInput as $fechaStr => $turnos) {
+            $fecha = Carbon::parse($fechaStr);
+            $sabadosConTurnos[$fechaStr] = [];
+
+            foreach ($turnos as $turno) {
+                $sabadosConTurnos[$fechaStr][] = [
+                    'hora_inicio' => $turno['horaInicio'],
+                    'hora_fin' => $turno['horaFin'],
+                    'nombre' => $turno['turno'],
+                ];
+                $totalTurnos++;
+            }
+        }
+
+        $numSabados = count($sabadosConTurnos);
+        $descripcionSimulacion = "{$numSabados} sábado(s) con {$totalTurnos} turno(s)";
 
         // Obtener planillas aprobadas y revisadas con orden de fabricación
         $planillas = Planilla::with(['obra.cliente', 'cliente', 'elementos' => function($q) {
@@ -3332,9 +3333,8 @@ class ProduccionController extends Controller
                 'planillas_mejoran' => [],
                 'planillas_siguen_retrasadas' => [],
                 'total_mejoran' => 0,
-                'turno_simulado' => "{$horaInicio} - {$horaFin}",
                 'descripcion_simulacion' => $descripcionSimulacion,
-                'sabados_simulados' => count($sabadosSimulados),
+                'sabados_simulados' => $numSabados,
                 'mensaje' => 'No hay planillas aprobadas y revisadas con orden de fabricación',
             ]);
         }
@@ -3368,20 +3368,9 @@ class ProduccionController extends Controller
                 continue;
             }
 
-            // Calcular fin programado CON sábado
-            $finProgramadoService->habilitarSimulacionSabado($horaInicio, $horaFin, $sabadosSimulados);
+            // Calcular fin programado CON sábados seleccionados
+            $finProgramadoService->habilitarSimulacionSabadoConTurnos($sabadosConTurnos);
             $resultadoConSabado = $finProgramadoService->calcularFinProgramadoConSimulacionSabado($elementosIds, $fechaEntrega);
-
-            // DEBUG: Log para comparar resultados
-            Log::info('[SimularSabado] Comparación planilla ' . $planilla->codigo, [
-                'planilla_id' => $planilla->id,
-                'fecha_entrega' => $fechaEntrega->format('Y-m-d'),
-                'fin_original' => $resultadoOriginal['fin_programado']->format('Y-m-d H:i'),
-                'fin_con_sabado' => $resultadoConSabado['fin_programado']?->format('Y-m-d H:i'),
-                'diferencia_horas' => $resultadoOriginal['fin_programado'] && $resultadoConSabado['fin_programado']
-                    ? $resultadoOriginal['fin_programado']->diffInHours($resultadoConSabado['fin_programado'])
-                    : 0,
-            ]);
 
             $cliente = $planilla->cliente ?? $planilla->obra?->cliente;
 
@@ -3442,9 +3431,8 @@ class ProduccionController extends Controller
             'planillas_siguen_retrasadas' => $planillasSiguenRetrasadas,
             'total_mejoran' => count($planillasMejoran),
             'total_siguen_retrasadas' => count($planillasSiguenRetrasadas),
-            'turno_simulado' => "{$horaInicio} - {$horaFin}",
             'descripcion_simulacion' => $descripcionSimulacion,
-            'sabados_simulados' => $modo === 'rango' ? count($sabadosSimulados) : 'todos',
+            'sabados_simulados' => $numSabados,
             'mensaje' => count($planillasMejoran) > 0
                 ? count($planillasMejoran) . ' planilla(s) entrarían a tiempo trabajando los sábados'
                 : 'Ninguna planilla entraría a tiempo con los turnos de sábado simulados',
@@ -5157,7 +5145,7 @@ class ProduccionController extends Controller
                         'fin_programado' => $fechaFinProgramada->format('d/m/Y'),
                         'dias_retraso' => $diasRetraso,
                         'maquina_id' => $ordenPlanilla->maquina_id,
-                        'maquina_codigo' => $ordenPlanilla->maquina->codigo ?? 'N/A',
+                        'maquina_codigo' => $ordenPlanilla->maquina?->codigo ?? 'N/A',
                         'posicion' => $ordenPlanilla->posicion,
                     ];
                 }
