@@ -1,15 +1,26 @@
 <?php
 /**
- * Script web para aplicar subetiquetas
+ * Script web para aplicar subetiquetas a TODOS los elementos
+ * Se auto-recarga si detecta que está cerca del timeout
+ *
  * Ejecutar desde: /scripts/aplicar_subetiquetas_v2.php
  *
  * Parámetros:
  *   ?dry_run=1  - Solo ver qué se haría
- *   ?limit=50   - Limitar planillas por lote
+ *   ?limit=100  - Planillas por lote (default: 100)
+ *   ?stop=1     - Detener el proceso automático
  */
 
+// Configurar tiempo máximo (10 minutos)
+set_time_limit(600);
+ini_set('memory_limit', '512M');
+
+// Tiempo máximo antes de auto-recarga (segundos)
+$maxExecutionTime = 120; // 2 minutos por seguridad
+$startTime = microtime(true);
+
 // Forzar output inmediato
-header('Content-Type: text/plain; charset=utf-8');
+header('Content-Type: text/html; charset=utf-8');
 header('X-Accel-Buffering: no');
 header('Cache-Control: no-cache');
 
@@ -17,14 +28,31 @@ header('Cache-Control: no-cache');
 while (ob_get_level()) ob_end_flush();
 ob_implicit_flush(true);
 
-echo "=== INICIANDO SCRIPT ===\n";
-echo "Fecha: " . date('Y-m-d H:i:s') . "\n\n";
+// Parámetros
+$dryRun = ($_GET['dry_run'] ?? '0') === '1';
+$limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 100;
+$stop = ($_GET['stop'] ?? '0') === '1';
+
+// HTML inicial
+echo "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Aplicar Subetiquetas</title>";
+echo "<style>body{font-family:monospace;background:#1a1a2e;color:#eee;padding:20px;} .ok{color:#4ade80;} .warn{color:#fbbf24;} .err{color:#f87171;}</style>";
+echo "</head><body><pre>";
+
+echo "=== APLICAR SUBETIQUETAS - MODO AUTOMÁTICO ===\n";
+echo "Fecha: " . date('Y-m-d H:i:s') . "\n";
+if ($stop) {
+    echo "\n<span class='warn'>⏹️ Proceso detenido manualmente.</span>\n";
+    echo "\n<a href='?'>▶️ Reanudar proceso</a>\n";
+    echo "</pre></body></html>";
+    exit;
+}
+if ($dryRun) {
+    echo "<span class='warn'>*** MODO DRY-RUN: No se harán cambios ***</span>\n";
+}
+echo "\n";
 flush();
 
 // Bootstrap Laravel
-echo "Cargando Laravel...\n";
-flush();
-
 require_once __DIR__ . '/../../vendor/autoload.php';
 $app = require_once __DIR__ . '/../../bootstrap/app.php';
 $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
@@ -32,26 +60,19 @@ $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 use App\Models\Planilla;
 use App\Models\Elemento;
 use App\Models\Etiqueta;
-use App\Services\SubEtiquetaService;
 use Illuminate\Support\Facades\DB;
 
-echo "Laravel cargado OK\n\n";
-flush();
+// Contar pendientes inicial
+$totalPendientes = DB::table('elementos')
+    ->whereNull('etiqueta_sub_id')
+    ->whereNotNull('etiqueta_id')
+    ->count();
 
-// Parámetros
-$dryRun = ($_GET['dry_run'] ?? '0') === '1';
-$limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
-
-if ($dryRun) {
-    echo "*** MODO DRY-RUN: No se harán cambios ***\n\n";
+if ($totalPendientes === 0) {
+    echo "<span class='ok'>✅ ¡COMPLETADO! Todos los elementos tienen subetiqueta.</span>\n";
+    echo "</pre></body></html>";
+    exit;
 }
-
-// Configurar tiempo
-set_time_limit(0);
-ini_set('memory_limit', '512M');
-
-echo "Contando planillas pendientes...\n";
-flush();
 
 $totalPlanillas = DB::table('elementos')
     ->whereNull('etiqueta_sub_id')
@@ -60,227 +81,184 @@ $totalPlanillas = DB::table('elementos')
     ->distinct()
     ->count('planilla_id');
 
-$totalElementos = DB::table('elementos')
-    ->whereNull('etiqueta_sub_id')
-    ->whereNotNull('etiqueta_id')
-    ->count();
-
-echo "Planillas pendientes: {$totalPlanillas}\n";
-echo "Elementos sin subetiqueta: {$totalElementos}\n\n";
-flush();
-
-if ($totalPlanillas === 0) {
-    echo "✅ Todo completado. No hay planillas pendientes.\n";
-    exit;
-}
-
+echo "Elementos pendientes: <strong>{$totalPendientes}</strong>\n";
+echo "Planillas pendientes: <strong>{$totalPlanillas}</strong>\n";
 echo "Procesando en lotes de {$limit} planillas...\n";
+echo "<a href='?stop=1' style='color:#f87171;'>⏹️ Detener proceso</a>\n";
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
 flush();
 
-$subEtiquetaService = new SubEtiquetaService();
-$procesadas = 0;
-$elementosProcesados = 0;
-$subetiquetasCreadas = 0;
-$errores = 0;
-$startTime = microtime(true);
+$totalElementosProcesados = 0;
+$totalSubsCreadas = 0;
+$totalErrores = 0;
+$lotesCompletados = 0;
 
-// Obtener lote de planillas
-$planillaIds = DB::table('elementos')
-    ->whereNull('etiqueta_sub_id')
-    ->whereNotNull('etiqueta_id')
-    ->whereNotNull('planilla_id')
-    ->distinct()
-    ->orderBy('planilla_id')
-    ->limit($limit)
-    ->pluck('planilla_id')
-    ->toArray();
+// Procesar en loop hasta terminar o timeout
+while (true) {
+    $elapsedTime = microtime(true) - $startTime;
 
-$total = count($planillaIds);
-echo "Planillas en este lote: {$total}\n\n";
-flush();
+    // Verificar si estamos cerca del timeout
+    if ($elapsedTime > $maxExecutionTime) {
+        echo "\n<span class='warn'>⏱️ Tiempo límite alcanzado ({$maxExecutionTime}s). Auto-recargando...</span>\n";
+        echo "\nElementos procesados en esta sesión: {$totalElementosProcesados}\n";
+        echo "Subetiquetas creadas en esta sesión: {$totalSubsCreadas}\n";
 
-foreach ($planillaIds as $index => $planillaId) {
-    $planilla = Planilla::find($planillaId);
-    if (!$planilla) continue;
+        // Auto-recarga
+        $url = "?limit={$limit}" . ($dryRun ? '&dry_run=1' : '');
+        echo "\n<script>setTimeout(function(){ window.location.href='{$url}'; }, 1000);</script>";
+        echo "<noscript><meta http-equiv='refresh' content='1;url={$url}'></noscript>";
+        echo "\n<a href='{$url}'>🔄 Click aquí si no recarga automáticamente</a>\n";
+        echo "</pre></body></html>";
+        exit;
+    }
 
-    $num = $index + 1;
-    echo "[{$num}/{$total}] {$planilla->codigo}";
-    flush();
-
-    // Contar elementos de esta planilla
-    $elementos = Elemento::where('planilla_id', $planillaId)
+    // Obtener lote de planillas
+    $planillaIds = DB::table('elementos')
         ->whereNull('etiqueta_sub_id')
         ->whereNotNull('etiqueta_id')
-        ->get();
+        ->whereNotNull('planilla_id')
+        ->distinct()
+        ->orderBy('planilla_id')
+        ->limit($limit)
+        ->pluck('planilla_id')
+        ->toArray();
 
-    $cantElementos = $elementos->count();
-    echo " - {$cantElementos} elementos";
+    if (empty($planillaIds)) {
+        break; // No hay más pendientes
+    }
+
+    $cantLote = count($planillaIds);
+    $lotesCompletados++;
+
+    echo "📦 <strong>Lote #{$lotesCompletados}</strong> - {$cantLote} planillas\n";
     flush();
 
-    if ($cantElementos === 0) {
-        echo " ✓ (ya procesada)\n";
+    foreach ($planillaIds as $index => $planillaId) {
+        $planilla = Planilla::find($planillaId);
+        if (!$planilla) continue;
+
+        $num = $index + 1;
+
+        // Obtener elementos sin subetiqueta de esta planilla
+        $elementos = Elemento::where('planilla_id', $planillaId)
+            ->whereNull('etiqueta_sub_id')
+            ->whereNotNull('etiqueta_id')
+            ->get();
+
+        $cantElementos = $elementos->count();
+        if ($cantElementos === 0) continue;
+
+        echo "  [{$num}/{$cantLote}] {$planilla->codigo} - {$cantElementos} elem";
         flush();
-        continue;
-    }
 
-    if ($dryRun) {
-        echo " [dry-run]\n";
-        $elementosProcesados += $cantElementos;
-        flush();
-        continue;
-    }
+        if ($dryRun) {
+            echo " <span class='warn'>[dry-run]</span>\n";
+            $totalElementosProcesados += $cantElementos;
+            continue;
+        }
 
-    // Procesar elementos
-    $subsEnPlanilla = 0;
-    $sinMaquina = 0;
-    $sinPadre = 0;
-    $sinTipoMaterial = 0;
+        // Procesar elementos
+        $subsEnPlanilla = 0;
+        $erroresEnPlanilla = 0;
 
-    DB::beginTransaction();
-    try {
-        foreach ($elementos as $elemento) {
-            $subIdAntes = $elemento->etiqueta_sub_id;
-            $maquinaReal = $elemento->maquina_id ?? $elemento->maquina_id_2 ?? $elemento->maquina_id_3;
+        DB::beginTransaction();
+        try {
+            foreach ($elementos as $elemento) {
+                // Buscar etiqueta padre (incluyendo soft-deleted)
+                $padre = Etiqueta::withTrashed()->find($elemento->etiqueta_id);
 
-            // Buscar etiqueta padre (incluyendo soft-deleted)
-            $padre = Etiqueta::withTrashed()->find($elemento->etiqueta_id);
+                if (!$padre) {
+                    $erroresEnPlanilla++;
+                    continue;
+                }
 
-            if (!$padre) {
-                $sinPadre++;
-                continue;
-            }
+                // Si la etiqueta padre está eliminada, restaurarla
+                if ($padre->trashed()) {
+                    $padre->restore();
+                }
 
-            // Si la etiqueta padre está eliminada, restaurarla
-            if ($padre->trashed()) {
-                $padre->restore();
-            }
-
-            if (!$maquinaReal) {
-                $sinMaquina++;
-                // Sin máquina: crear subetiqueta individual
+                // Crear subetiqueta
                 $subId = Etiqueta::generarCodigoSubEtiqueta($padre->codigo);
                 $subRowId = asegurarFilaSub($subId, $padre);
+
                 $elemento->etiqueta_sub_id = $subId;
                 $elemento->etiqueta_id = $subRowId;
                 $elemento->save();
                 $subsEnPlanilla++;
-                continue;
             }
 
-            // Con máquina: verificar tipo_material y asignar según eso
-            $maquina = \App\Models\Maquina::find($maquinaReal);
-            if (!$maquina) {
-                $sinMaquina++;
-                continue;
+            DB::commit();
+            $totalElementosProcesados += $cantElementos;
+            $totalSubsCreadas += $subsEnPlanilla;
+
+            echo " <span class='ok'>✓ {$subsEnPlanilla} subs</span>";
+            if ($erroresEnPlanilla > 0) {
+                echo " <span class='err'>({$erroresEnPlanilla} err)</span>";
+                $totalErrores += $erroresEnPlanilla;
             }
+            echo "\n";
 
-            $tipoMaterial = strtolower((string)($maquina->tipo_material ?? ''));
-
-            // Crear subetiqueta directamente según tipo de material
-            // BARRA = 1 elemento por sub, ENCARRETADO = agrupar
-            $subId = Etiqueta::generarCodigoSubEtiqueta($padre->codigo);
-            $subRowId = asegurarFilaSub($subId, $padre);
-
-            $elemento->etiqueta_sub_id = $subId;
-            $elemento->etiqueta_id = $subRowId;
-            $elemento->save();
-            $subsEnPlanilla++;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $totalErrores++;
+            echo " <span class='err'>❌ " . substr($e->getMessage(), 0, 40) . "</span>\n";
         }
 
-        DB::commit();
-        $elementosProcesados += $cantElementos;
-        $subetiquetasCreadas += $subsEnPlanilla;
-
-        $info = "{$subsEnPlanilla} subs";
-        if ($sinMaquina > 0) $info .= ", {$sinMaquina} sin máq";
-        if ($sinPadre > 0) $info .= ", {$sinPadre} sin etiq padre";
-        echo " ✓ ({$info})\n";
-
-        // Mostrar progreso cada 10 planillas
-        if ($procesadas % 10 === 0) {
-            $memoria = round(memory_get_usage() / 1024 / 1024, 1);
-            echo "   [Mem: {$memoria}MB]\n";
-        }
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        $errores++;
-        echo " ❌ Error: " . substr($e->getMessage(), 0, 40) . "\n";
+        flush();
     }
 
+    // Liberar memoria
+    gc_collect_cycles();
+
+    // Mostrar progreso
+    $pendientesAhora = DB::table('elementos')
+        ->whereNull('etiqueta_sub_id')
+        ->whereNotNull('etiqueta_id')
+        ->count();
+
+    $elapsed = round(microtime(true) - $startTime, 1);
+    $memoria = round(memory_get_usage() / 1024 / 1024, 1);
+
+    echo "\n   📊 Pendientes: {$pendientesAhora} | Tiempo: {$elapsed}s | Mem: {$memoria}MB\n\n";
     flush();
-    $procesadas++;
 
-    // Liberar memoria cada 10 planillas
-    if ($procesadas % 10 === 0) {
-        gc_collect_cycles();
+    if ($pendientesAhora === 0) {
+        break;
     }
 }
 
+// Resumen final
 $elapsed = round(microtime(true) - $startTime, 1);
-
-echo "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-echo "=== RESUMEN ===\n\n";
-echo "Tiempo: {$elapsed} segundos\n";
-echo "Planillas procesadas: {$procesadas}\n";
-echo "Elementos procesados: {$elementosProcesados}\n";
-
-if (!$dryRun) {
-    echo "Subetiquetas asignadas: {$subetiquetasCreadas}\n";
-}
-
-if ($errores > 0) {
-    echo "Errores: {$errores}\n";
-}
-
-// Verificar pendientes
-$pendientes = DB::table('elementos')
+$pendientesFinales = DB::table('elementos')
     ->whereNull('etiqueta_sub_id')
     ->whereNotNull('etiqueta_id')
     ->count();
 
-echo "\nElementos pendientes: {$pendientes}\n";
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+echo "=== RESUMEN FINAL ===\n\n";
+echo "Tiempo: {$elapsed} segundos\n";
+echo "Lotes completados: {$lotesCompletados}\n";
+echo "Elementos procesados: {$totalElementosProcesados}\n";
 
-// Debug: verificar datos
-echo "\n--- DEBUG ---\n";
-
-// Contar etiquetas soft-deleted que tienen elementos pendientes
-$etiquetasSoftDeleted = DB::table('elementos')
-    ->join('etiquetas', 'elementos.etiqueta_id', '=', 'etiquetas.id')
-    ->whereNull('elementos.etiqueta_sub_id')
-    ->whereNotNull('elementos.etiqueta_id')
-    ->whereNotNull('etiquetas.deleted_at')
-    ->distinct()
-    ->count('etiquetas.id');
-
-echo "Etiquetas soft-deleted restauradas en este lote: (ver subs creadas)\n";
-
-// Ver un ejemplo de elemento pendiente
-$ejemploElemento = Elemento::whereNull('etiqueta_sub_id')
-    ->whereNotNull('etiqueta_id')
-    ->first();
-
-if ($ejemploElemento) {
-    echo "Ejemplo elemento pendiente:\n";
-    echo "  - Elemento ID: {$ejemploElemento->id}\n";
-    echo "  - etiqueta_id: " . ($ejemploElemento->etiqueta_id ?? 'NULL') . "\n";
-
-    // Verificar con withTrashed
-    $etiqueta = Etiqueta::withTrashed()->find($ejemploElemento->etiqueta_id);
-    if ($etiqueta) {
-        $estado = $etiqueta->trashed() ? '(SOFT-DELETED)' : '(activa)';
-        echo "  - Etiqueta: codigo={$etiqueta->codigo} {$estado}\n";
-    } else {
-        echo "  - ❌ Etiqueta NO existe ni siquiera con soft-delete\n";
-    }
+if (!$dryRun) {
+    echo "Subetiquetas creadas: <span class='ok'>{$totalSubsCreadas}</span>\n";
 }
 
-if ($pendientes > 0) {
-    echo "\n⚠️ Recarga la página para procesar el siguiente lote.\n";
+if ($totalErrores > 0) {
+    echo "Errores: <span class='err'>{$totalErrores}</span>\n";
+}
+
+echo "\nElementos pendientes: ";
+if ($pendientesFinales === 0) {
+    echo "<span class='ok'>0 - ¡COMPLETADO!</span>\n";
+    echo "\n<span class='ok'>✅ ¡Todos los elementos tienen subetiqueta asignada!</span>\n";
 } else {
-    echo "\n✅ ¡COMPLETADO! Todos los elementos tienen subetiqueta.\n";
+    echo "<span class='warn'>{$pendientesFinales}</span>\n";
+    $url = "?limit={$limit}" . ($dryRun ? '&dry_run=1' : '');
+    echo "\n<a href='{$url}'>🔄 Continuar procesando</a>\n";
 }
+
+echo "</pre></body></html>";
 
 // ============ FUNCIONES ============
 
