@@ -234,8 +234,8 @@ class AplicarSubetiquetasCommand extends Command
             return 0;
         }
 
-        // Usar limit por defecto de 500 si no se especifica (para evitar timeouts)
-        $batchSize = $limit ?? 500;
+        // Usar limit por defecto de 50 si no se especifica (lotes pequeños para evitar timeouts)
+        $batchSize = $limit ?? 50;
         $this->info("Procesando en lotes de {$batchSize} planillas");
         $this->newLine();
 
