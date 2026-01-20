@@ -207,10 +207,18 @@ class PlanillaImportService
                 'cantidad' => $elementosEliminados,
             ]);
 
-            // 5. ELIMINAR ETIQUETAS HUÉRFANAS (sin elementos)
-            Etiqueta::where('planilla_id', $planilla->id)
-                ->whereDoesntHave('elementos')
-                ->delete();
+            // 5. ELIMINAR ETIQUETAS HUÉRFANAS (verificando por etiqueta_id, no por relación elementos)
+            $etiquetasHuerfanas = Etiqueta::where('planilla_id', $planilla->id)
+                ->whereNotExists(function ($query) {
+                    $query->select(\DB::raw(1))
+                        ->from('elementos')
+                        ->whereColumn('elementos.etiqueta_id', 'etiquetas.id');
+                })
+                ->pluck('id');
+
+            if ($etiquetasHuerfanas->isNotEmpty()) {
+                Etiqueta::whereIn('id', $etiquetasHuerfanas)->delete();
+            }
 
             // 6. PRE-CARGAR DATOS EN CACHE
             $this->precargarCaches($datosFiltrados);

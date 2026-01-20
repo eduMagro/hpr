@@ -93,10 +93,35 @@ class Etiqueta extends Model
      * Relación: Una etiqueta puede tener múltiples elementos
      * Los elementos son las barras o estribos individuales
      * Usa etiqueta_sub_id para distinguir subetiquetas correctamente
+     * NOTA: Esta relación funciona para SUB-etiquetas (donde etiqueta_sub_id está definido)
      */
     public function elementos()
     {
         return $this->hasMany(Elemento::class, 'etiqueta_sub_id', 'etiqueta_sub_id');
+    }
+
+    /**
+     * Relación: Elementos que referencian esta etiqueta por su ID (FK numérica)
+     * Útil para etiquetas padre (sin etiqueta_sub_id) o cuando se necesita
+     * verificar qué elementos apuntan directamente a esta etiqueta.
+     */
+    public function elementosPorId()
+    {
+        return $this->hasMany(Elemento::class, 'etiqueta_id', 'id');
+    }
+
+    /**
+     * Verifica si esta etiqueta tiene elementos asociados (por cualquier relación)
+     */
+    public function tieneElementos(): bool
+    {
+        // Verificar por etiqueta_sub_id (para sub-etiquetas)
+        if ($this->etiqueta_sub_id && $this->elementos()->exists()) {
+            return true;
+        }
+
+        // Verificar por etiqueta_id (para cualquier etiqueta)
+        return $this->elementosPorId()->exists();
     }
 
     /**

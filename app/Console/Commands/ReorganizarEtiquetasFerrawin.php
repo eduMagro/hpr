@@ -224,19 +224,25 @@ class ReorganizarEtiquetasFerrawin extends Command
             }
 
             // Eliminar etiquetas huérfanas (sin elementos)
-            $etiquetasHuerfanas = Etiqueta::where('planilla_id', $planilla->id)
+            // IMPORTANTE: Para etiquetas padre debemos verificar por etiqueta_id,
+            // no por la relación elementos() que usa etiqueta_sub_id
+            $etiquetasPadre = Etiqueta::where('planilla_id', $planilla->id)
                 ->whereNull('etiqueta_sub_id')
-                ->whereDoesntHave('elementos')
                 ->get();
 
-            foreach ($etiquetasHuerfanas as $huerfana) {
-                // También eliminar subetiquetas asociadas
-                Etiqueta::where('codigo', $huerfana->codigo)
-                    ->whereNotNull('etiqueta_sub_id')
-                    ->delete();
+            foreach ($etiquetasPadre as $etiqueta) {
+                // Verificar si tiene elementos por etiqueta_id (relación correcta para padres)
+                $tieneElementos = Elemento::where('etiqueta_id', $etiqueta->id)->exists();
 
-                $huerfana->delete();
-                $resultado['etiquetas_eliminadas']++;
+                if (!$tieneElementos) {
+                    // También eliminar subetiquetas asociadas
+                    Etiqueta::where('codigo', $etiqueta->codigo)
+                        ->whereNotNull('etiqueta_sub_id')
+                        ->delete();
+
+                    $etiqueta->delete();
+                    $resultado['etiquetas_eliminadas']++;
+                }
             }
         });
 

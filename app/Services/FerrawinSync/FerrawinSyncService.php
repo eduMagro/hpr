@@ -322,10 +322,18 @@ class FerrawinSyncService
             // Eliminar elementos pendientes
             $planilla->elementos()->where('estado', 'pendiente')->forceDelete();
 
-            // Eliminar etiquetas huérfanas
-            \App\Models\Etiqueta::where('planilla_id', $planilla->id)
-                ->whereDoesntHave('elementos')
-                ->delete();
+            // Eliminar etiquetas huérfanas (verificando por etiqueta_id, no por relación elementos)
+            $etiquetasHuerfanas = \App\Models\Etiqueta::where('planilla_id', $planilla->id)
+                ->whereNotExists(function ($query) {
+                    $query->select(\DB::raw(1))
+                        ->from('elementos')
+                        ->whereColumn('elementos.etiqueta_id', 'etiquetas.id');
+                })
+                ->pluck('id');
+
+            if ($etiquetasHuerfanas->isNotEmpty()) {
+                \App\Models\Etiqueta::whereIn('id', $etiquetasHuerfanas)->delete();
+            }
 
             // Reimportar
             $processor = app(\App\Services\PlanillaImport\PlanillaProcessor::class);

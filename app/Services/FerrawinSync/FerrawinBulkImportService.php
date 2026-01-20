@@ -673,10 +673,18 @@ class FerrawinBulkImportService
             $eliminados += $elementosSinFerrawinId;
         }
 
-        // Eliminar etiquetas huérfanas
-        Etiqueta::where('planilla_id', $planilla->id)
-            ->whereDoesntHave('elementos')
-            ->delete();
+        // Eliminar etiquetas huérfanas (verificando por etiqueta_id, no por relación elementos)
+        $etiquetasHuerfanas = Etiqueta::where('planilla_id', $planilla->id)
+            ->whereNotExists(function ($query) {
+                $query->select(\DB::raw(1))
+                    ->from('elementos')
+                    ->whereColumn('elementos.etiqueta_id', 'etiquetas.id');
+            })
+            ->pluck('id');
+
+        if ($etiquetasHuerfanas->isNotEmpty()) {
+            Etiqueta::whereIn('id', $etiquetasHuerfanas)->delete();
+        }
 
         // Reasignar máquinas solo si hubo cambios
         if ($creados > 0 || $eliminados > 0) {
