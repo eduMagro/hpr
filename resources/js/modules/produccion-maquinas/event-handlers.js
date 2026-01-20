@@ -37,7 +37,7 @@ function calcularPosicion(calendar, recursoId, eventoId, tiempoReferencia) {
     return posicion;
 }
 
-async function reordenarPlanilla(planillaId, maquinaDestinoId, maquinaOrigenId, nuevaPosicion, elementosId, opcionesExtras = {}) {
+async function reordenarPlanilla(planillaId, maquinaDestinoId, maquinaOrigenId, nuevaPosicion, elementosId, ordenPlanillaId = null, opcionesExtras = {}) {
     const res = await fetch('/planillas/reordenar', {
         method: 'POST',
         headers: {
@@ -51,6 +51,7 @@ async function reordenarPlanilla(planillaId, maquinaDestinoId, maquinaOrigenId, 
             maquina_origen_id: maquinaOrigenId,
             nueva_posicion: nuevaPosicion,
             elementos_id: elementosId,
+            orden_planilla_id: ordenPlanillaId, // ID específico de la posición en cola
             ...opcionesExtras
         })
     });
@@ -106,6 +107,7 @@ export function eventHandlers(calendar) {
             const maquinaOrigenId = info.oldResource?.id ?? info.event.getResources()[0]?.id;
             const maquinaDestinoId = info.newResource?.id ?? info.event.getResources()[0]?.id;
             const elementosId = info.event.extendedProps.elementos_id || [];
+            const ordenPlanillaId = info.event.extendedProps.orden_planilla_id || null;
 
             const resultado = await Swal.fire({
                 title: '¿Reordenar planilla?',
@@ -129,7 +131,7 @@ export function eventHandlers(calendar) {
             const nuevaPosicion = eventosOrdenados.findIndex(ev => ev.id === info.event.id) + 1;
 
             try {
-                const data = await reordenarPlanilla(planillaId, maquinaDestinoId, maquinaOrigenId, nuevaPosicion, elementosId);
+                const data = await reordenarPlanilla(planillaId, maquinaDestinoId, maquinaOrigenId, nuevaPosicion, elementosId, ordenPlanillaId);
 
                 if (data.requiresNuevaPosicionConfirmation) {
                     const confirmacion = await Swal.fire({
@@ -149,7 +151,7 @@ export function eventHandlers(calendar) {
                     });
 
                     if (confirmacion.isConfirmed) {
-                        const data2 = await reordenarPlanilla(planillaId, maquinaDestinoId, maquinaOrigenId, nuevaPosicion, elementosId, { crear_nueva_posicion: true });
+                        const data2 = await reordenarPlanilla(planillaId, maquinaDestinoId, maquinaOrigenId, nuevaPosicion, elementosId, ordenPlanillaId, { crear_nueva_posicion: true });
                         if (!data2.success) throw new Error(data2.message || 'Error al crear nueva posición');
 
                         calendar.refetchEvents();
@@ -162,7 +164,7 @@ export function eventHandlers(calendar) {
                         }).fire({ icon: 'success', title: 'Nueva posición creada' });
 
                     } else if (confirmacion.isDenied) {
-                        const data2 = await reordenarPlanilla(planillaId, maquinaDestinoId, maquinaOrigenId, nuevaPosicion, elementosId, { usar_posicion_existente: true });
+                        const data2 = await reordenarPlanilla(planillaId, maquinaDestinoId, maquinaOrigenId, nuevaPosicion, elementosId, ordenPlanillaId, { usar_posicion_existente: true });
                         if (!data2.success) throw new Error(data2.message || 'Error al mover a posición existente');
 
                         calendar.refetchEvents();

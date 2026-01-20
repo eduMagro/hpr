@@ -517,13 +517,36 @@ class ProduccionController extends Controller
         // Combinar
         $planillasACargarIds = array_unique(array_merge($planillasFabricandoIds, $planillasEnColaIds));
 
+        // DEBUG: Verificar si planilla 4982 está en la lista
+        if (in_array(4982, $planillasACargarIds)) {
+            Log::info('DEBUG: Planilla 4982 SÍ está en planillasACargarIds');
+        } else {
+            Log::warning('DEBUG: Planilla 4982 NO está en planillasACargarIds', [
+                'planillasEnColaIds' => $planillasEnColaIds,
+            ]);
+        }
+
         // Cargar elementos solo de esas planillas (sin etiquetaRelacion que no se usa aquí)
         $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2', 'maquina_3'])
             ->whereIn('planilla_id', $planillasACargarIds)
             ->get();
 
+        // DEBUG: Verificar elementos de planilla 4982
+        $elementos4982 = $elementos->where('planilla_id', 4982);
+        Log::info('DEBUG: Elementos de planilla 4982', [
+            'total' => $elementos4982->count(),
+            'maquinas' => $elementos4982->pluck('maquina_id')->unique()->values(),
+        ]);
+
         // Filtrar solo pendiente/fabricando para el calendario
         $elementosCalendario = $elementos->filter(fn($e) => in_array($e->planilla?->estado, ['pendiente', 'fabricando']));
+
+        // DEBUG: Verificar después del filtro
+        $elementosCalendario4982 = $elementosCalendario->where('planilla_id', 4982);
+        Log::info('DEBUG: Elementos calendario planilla 4982', [
+            'total' => $elementosCalendario4982->count(),
+            'estados_planilla' => $elementosCalendario4982->map(fn($e) => $e->planilla?->estado)->unique()->values(),
+        ]);
         $maquinaReal = function ($e) {
             $tipo1 = optional($e->maquina)->tipo;      // según maquina_id
             $tipo2 = optional($e->maquina_2)->tipo;    // según maquina_id_2
@@ -553,9 +576,16 @@ class ProduccionController extends Controller
             return $e->maquina_id;
         };
 
+        // Agrupar elementos por orden_planilla_id (si existe) o por planilla_id-maquina_id
+        // Esto permite que una planilla tenga múltiples posiciones en la misma máquina
         $planillasAgrupadas = $elementosCalendario
             ->groupBy(function ($e) use ($maquinaReal) {
                 $maquinaId = $maquinaReal($e);
+                // Si tiene orden_planilla_id, usar ese como clave principal
+                if ($e->orden_planilla_id) {
+                    return 'orden_' . $e->orden_planilla_id;
+                }
+                // Fallback: agrupar por planilla-maquina
                 return $e->planilla_id . '-' . $maquinaId;
             })
             ->map(function ($grupo) use ($maquinaReal) {
@@ -563,9 +593,10 @@ class ProduccionController extends Controller
                 $maquinaId = $maquinaReal($primero);
 
                 return [
-                    'planilla'   => $primero->planilla,
-                    'elementos'  => $grupo,
-                    'maquina_id' => $maquinaId,
+                    'planilla'          => $primero->planilla,
+                    'elementos'         => $grupo,
+                    'maquina_id'        => $maquinaId,
+                    'orden_planilla_id' => $primero->orden_planilla_id,
                 ];
             })
             ->filter(fn($data) => !is_null($data['maquina_id']));
@@ -597,10 +628,15 @@ class ProduccionController extends Controller
         }
 
         // 🔹 4. Obtener ordenes desde la tabla orden_planillas (SIN reordenar)
+        // Incluir el id de orden_planilla para soportar múltiples posiciones de la misma planilla
         $ordenes = OrdenPlanilla::orderBy('posicion')
             ->get()
             ->groupBy('maquina_id')
-            ->map(fn($ordenesMaquina) => $ordenesMaquina->pluck('planilla_id')->all());
+            ->map(fn($ordenesMaquina) => $ordenesMaquina->map(fn($o) => [
+                'id' => $o->id,
+                'planilla_id' => $o->planilla_id,
+                'posicion' => $o->posicion,
+            ])->all());
 
         // 🔹 5. Generar eventos del calendario
         try {
@@ -1331,6 +1367,7 @@ class ProduccionController extends Controller
             'forzar_movimiento' => 'sometimes|boolean',
             'elementos_id'      => 'sometimes|array',
             'elementos_id.*'    => 'integer|exists:elementos,id',
+            'orden_planilla_id' => 'nullable|integer|exists:orden_planillas,id', // ID específico de la posición
             'crear_nueva_posicion' => 'sometimes|boolean',
             'usar_posicion_existente' => 'sometimes|boolean',
             'posicionar_por_fecha' => 'sometimes|boolean',
@@ -1342,6 +1379,7 @@ class ProduccionController extends Controller
         $maqOrigen    = (int) $request->maquina_origen_id;
         $forzar       = (bool) $request->boolean('forzar_movimiento');
         $subsetIds    = collect($request->input('elementos_id', []))->map(fn($v) => (int)$v);
+        $ordenPlanillaIdOrigen = $request->input('orden_planilla_id') ? (int) $request->input('orden_planilla_id') : null;
         $crearNuevaPosicion = $request->boolean('crear_nueva_posicion', false);
         $usarPosicionExistente = $request->boolean('usar_posicion_existente', false);
         $posicionarPorFecha = $request->boolean('posicionar_por_fecha', false);
@@ -1356,17 +1394,18 @@ class ProduccionController extends Controller
         }
 
         Log::info("➡️ ReordenarPlanillas iniciado", [
-            'planilla_id'       => $planillaId,
-            'maquina_destino'   => $maqDestino,
-            'maquina_origen'    => $maqOrigen,
-            'nueva_posicion'    => $posNueva,
-            'forzar_movimiento' => $forzar,
-            'elementos_id'      => $subsetIds->values(),
+            'planilla_id'           => $planillaId,
+            'orden_planilla_id'     => $ordenPlanillaIdOrigen,
+            'maquina_destino'       => $maqDestino,
+            'maquina_origen'        => $maqOrigen,
+            'nueva_posicion'        => $posNueva,
+            'forzar_movimiento'     => $forzar,
+            'elementos_id'          => $subsetIds->values(),
         ]);
 
         // 1) MISMA MÁQUINA → sólo reordenar, NADA de validar
         if ($maqOrigen === $maqDestino) {
-            return $this->soloReordenarEnMismaMaquina($maqDestino, $planillaId, $posNueva);
+            return $this->soloReordenarEnMismaMaquina($maqDestino, $planillaId, $posNueva, $ordenPlanillaIdOrigen);
         }
 
         // 2) Cambio de máquina → validar SÓLO el subset del evento
@@ -1544,6 +1583,17 @@ class ProduccionController extends Controller
                     }
                 }
 
+                // 🔗 Actualizar orden_planilla_id de los elementos movidos
+                if ($ordenDestino && $compatibles->isNotEmpty()) {
+                    Elemento::whereIn('id', $compatibles->pluck('id'))
+                        ->update(['orden_planilla_id' => $ordenDestino->id]);
+
+                    Log::info("🔗 Elementos vinculados a orden_planilla", [
+                        'orden_planilla_id' => $ordenDestino->id,
+                        'elementos_ids' => $compatibles->pluck('id')->values(),
+                    ]);
+                }
+
                 // En el origen, si no quedan elementos (o si tu regla es sacarla siempre en cambio de máquina):
                 // aquí puedes decidir si eliminar el orden de origen o no.
                 // Si deseas mantener una sola cola por planilla, elimina del origen:
@@ -1687,17 +1737,18 @@ class ProduccionController extends Controller
         return $this->generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas);
     }
     /** Reordena sólo en la misma máquina, sin validar nada */
-    private function soloReordenarEnMismaMaquina($maquinaId, $planillaId, $posNueva)
+    private function soloReordenarEnMismaMaquina($maquinaId, $planillaId, $posNueva, $ordenPlanillaId = null)
     {
         Log::info("🔁 Movimiento en misma máquina (sin validación)", [
             'maquina' => $maquinaId,
             'planilla' => $planillaId,
+            'orden_planilla_id' => $ordenPlanillaId,
             'nueva_pos' => $posNueva,
         ]);
 
         // Usar transacción corta para evitar lock timeout
-        DB::transaction(function () use ($maquinaId, $planillaId, $posNueva) {
-            $this->reordenarPosicionEnMaquinaRapido($maquinaId, $planillaId, $posNueva);
+        DB::transaction(function () use ($maquinaId, $planillaId, $posNueva, $ordenPlanillaId) {
+            $this->reordenarPosicionEnMaquinaRapido($maquinaId, $planillaId, $posNueva, $ordenPlanillaId);
         }, 3); // 3 intentos en caso de deadlock
 
         // Consolidar fuera de la transacción principal
@@ -1771,16 +1822,23 @@ class ProduccionController extends Controller
         $planillasAgrupadasCol = collect($planillasAgrupadas);
         if ($ordenes instanceof Collection) $ordenes = $ordenes->all();
 
-        // 3) Índice estable
-        $agrupadasIndex = $planillasAgrupadasCol
-            ->values()
-            ->mapWithKeys(function ($data) {
-                $planilla   = Arr::get($data, 'planilla');
-                $planillaId = is_object($planilla) ? ($planilla->id ?? null) : Arr::get($planilla, 'id');
-                $maquinaId  = Arr::get($data, 'maquina_id');
-                if (!$planillaId || !$maquinaId) return [];
-                return ["{$planillaId}-{$maquinaId}" => $data];
-            });
+        // 3) Índice estable - soporta búsqueda por orden_planilla_id o por planilla_id-maquina_id
+        $agrupadasIndex = collect();
+        foreach ($planillasAgrupadasCol as $key => $data) {
+            $planilla   = Arr::get($data, 'planilla');
+            $planillaId = is_object($planilla) ? ($planilla->id ?? null) : Arr::get($planilla, 'id');
+            $maquinaId  = Arr::get($data, 'maquina_id');
+            $ordenPlanillaId = Arr::get($data, 'orden_planilla_id');
+
+            if (!$planillaId || !$maquinaId) continue;
+
+            // Indexar por orden_planilla_id si existe
+            if ($ordenPlanillaId) {
+                $agrupadasIndex["orden_{$ordenPlanillaId}"] = $data;
+            }
+            // También indexar por planilla_id-maquina_id como fallback
+            $agrupadasIndex["{$planillaId}-{$maquinaId}"] = $data;
+        }
 
 
 
@@ -1837,15 +1895,22 @@ class ProduccionController extends Controller
 
                 if (!$planillaId) continue;
 
-                $clave = "{$planillaId}-{$maquinaId}";
+                // Primero buscar por orden_planilla_id, luego por planilla_id-maquina_id
+                $claveOrden = $ordenId ? "orden_{$ordenId}" : null;
+                $claveFallback = "{$planillaId}-{$maquinaId}";
+
+                $data = null;
+                if ($claveOrden && $agrupadasIndex->has($claveOrden)) {
+                    $data = $agrupadasIndex->get($claveOrden);
+                } elseif ($agrupadasIndex->has($claveFallback)) {
+                    $data = $agrupadasIndex->get($claveFallback);
+                }
 
                 try {
-                    if (!$agrupadasIndex->has($clave)) {
-
+                    if (!$data) {
                         continue;
                     }
 
-                    $data     = $agrupadasIndex->get($clave);
                     $planilla = Arr::get($data, 'planilla');
                     $grupo    = Arr::get($data, 'elementos');
 
@@ -1867,13 +1932,8 @@ class ProduccionController extends Controller
                         $subGrupos = collect(['unico' => $grupo]);
                     }
 
-                    // CONSOLIDAR: Si hay múltiples subgrupos para la misma planilla/máquina, unificarlos
-                    if ($subGrupos->count() > 1) {
-                        // Usar el primer orden_planilla_id y consolidar todos los elementos
-                        $primerOrdenKey = $subGrupos->keys()->first();
-                        $todosElementos = $subGrupos->flatten();
-                        $subGrupos = collect([$primerOrdenKey => $todosElementos]);
-                    }
+                    // NO consolidar: cada orden_planilla_id representa una posición independiente
+                    // Esto permite que la misma planilla aparezca múltiples veces en la misma máquina
 
                     // Procesar cada sub-grupo como un evento independiente
                     foreach ($subGrupos as $ordenKey => $subGrupo) {
@@ -2027,11 +2087,12 @@ class ProduccionController extends Controller
 
                             // Propiedades del evento
                             $propsEvento = [
-                                'planilla_id'    => $planilla->id,
+                                'planilla_id'       => $planilla->id,
+                                'orden_planilla_id' => $ordenId, // ID de la posición en cola (orden_planillas.id)
                                 'obra'           => optional($planilla->obra)->obra ?? '—',
                                 'cod_obra'       => optional($planilla->obra)->cod_obra ?? '—',
-                                'cliente'        => optional($planilla->obra->cliente)->empresa ?? '—',
-                                'cod_cliente'    => optional($planilla->obra->cliente)->codigo ?? '—',
+                                'cliente'        => optional(optional($planilla->obra)->cliente)->empresa ?? '—',
+                                'cod_cliente'    => optional(optional($planilla->obra)->cliente)->codigo ?? '—',
                                 'codigo_planilla' => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
                                 'estado'         => $planilla->estado,
                                 'duracion_horas' => round($duracionSegundos / 3600, 2),
@@ -2173,11 +2234,27 @@ class ProduccionController extends Controller
     //---------------------------------------------------------- REORDENAR PLANILLAS
 
     /** Versión rápida sin lockForUpdate para evitar lock timeout */
-    private function reordenarPosicionEnMaquinaRapido(int $maquinaId, int $planillaId, int $posNueva): void
+    private function reordenarPosicionEnMaquinaRapido(int $maquinaId, int $planillaId, int $posNueva, ?int $ordenPlanillaId = null): void
     {
-        $orden = OrdenPlanilla::where('maquina_id', $maquinaId)
-            ->where('planilla_id', $planillaId)
-            ->first();
+        // Si tenemos el ID específico del orden_planilla, usarlo directamente
+        // Esto permite manejar múltiples posiciones de la misma planilla en la misma máquina
+        if ($ordenPlanillaId) {
+            $orden = OrdenPlanilla::find($ordenPlanillaId);
+            // Verificar que pertenece a la máquina correcta
+            if ($orden && $orden->maquina_id !== $maquinaId) {
+                Log::warning("⚠️ orden_planilla_id no coincide con maquina_id", [
+                    'orden_planilla_id' => $ordenPlanillaId,
+                    'orden_maquina_id' => $orden->maquina_id,
+                    'maquina_id' => $maquinaId,
+                ]);
+                $orden = null;
+            }
+        } else {
+            // Fallback: buscar por planilla_id y maquina_id
+            $orden = OrdenPlanilla::where('maquina_id', $maquinaId)
+                ->where('planilla_id', $planillaId)
+                ->first();
+        }
 
         if (!$orden) {
             $maxPos = (int) (OrdenPlanilla::where('maquina_id', $maquinaId)->max('posicion') ?? 0);

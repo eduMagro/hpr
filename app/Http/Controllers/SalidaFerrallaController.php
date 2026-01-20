@@ -1301,24 +1301,26 @@ class SalidaFerrallaController extends Controller
                 ->get()
                 ->map($mapPaquete);
 
-            // Extraer listas únicas de obras y planillas para los filtros (de paquetes con estado pendiente)
+            // Extraer listas únicas de obras desde los paquetes
             $todasObras = $paquetesTodos
                 ->pluck('planilla.obra')
                 ->filter(fn($o) => !empty($o['id']))
                 ->unique(fn($o) => $o['id'])
                 ->values();
 
-            $todasPlanillas = $paquetesTodos
-                ->pluck('planilla')
-                ->filter(fn($p) => !empty($p['id']))
-                ->unique(fn($p) => $p['id'])
+            // Obtener TODAS las planillas aprobadas (independiente de si tienen paquetes)
+            $todasPlanillas = Planilla::where('aprobada', true)
+                ->whereIn('estado', ['pendiente', 'fabricando'])
+                ->select('id', 'codigo', 'obra_id')
+                ->orderBy('codigo')
+                ->get()
                 ->map(function ($p) {
                     return [
-                        'id' => $p['id'],
-                        'codigo' => $p['codigo'],
-                        'obra_id' => $p['obra']['id'] ?? null,
+                        'id' => $p->id,
+                        'codigo' => $p->codigo,
+                        'obra_id' => $p->obra_id,
                     ];
-                })->values();
+                });
 
             Log::info('✅ Información de paquetes de salida obtenida', [
                 'num_paquetes_asignados' => $paquetesAsignados->count(),

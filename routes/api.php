@@ -6,6 +6,7 @@ use App\Http\Controllers\PaqueteController;
 use App\Http\Controllers\AsistenteVirtualController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ResumenEtiquetaController;
+use App\Http\Controllers\PlanillaController;
 
 Route::get('/codigos/info', [MovimientoController::class, 'infoCodigo'])
     ->name('api.codigos.info');   // ← este será el nombre exacto
@@ -29,8 +30,6 @@ Route::delete('/paquetes/{paqueteId}/eliminar-etiqueta', [PaqueteController::cla
     ->name('api.paquetes.eliminar-etiqueta');
 Route::delete('/paquetes/{paqueteId}', [PaqueteController::class, 'eliminarPaquete'])
     ->name('api.paquetes.eliminar');
-
-use App\Http\Controllers\PlanillaController;
 
 Route::get('/planillas/import/progress/{id}', [PlanillaController::class, 'importProgress'])
     ->name('planillas.import.progress');

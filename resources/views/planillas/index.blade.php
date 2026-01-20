@@ -101,7 +101,12 @@
 
             <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-3">
                 <form method="GET" action="{{ route('planillas.index') }}" class="space-y-2">
-                    <div class="grid grid-cols-3 gap-2">
+                    <div class="grid grid-cols-4 gap-2">
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[10px] font-semibold text-gray-700">ID</label>
+                            <input type="number" name="id" value="{{ request('id') }}" placeholder="ID..."
+                                class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700" />
+                        </div>
                         <div class="flex flex-col gap-1">
                             <label class="text-[10px] font-semibold text-gray-700">Código</label>
                             <input type="text" name="codigo" value="{{ request('codigo') }}" placeholder="Buscar..."
@@ -614,25 +619,28 @@
                     title: 'Completar planillas',
                     html: `
                         <p class="text-sm text-gray-600 mb-4">
-                            Selecciona una planilla específica o deja en blanco para completar todas
-                            con fecha de entrega anterior o igual a la fecha de corte.
+                            Elige <b>una</b> de las dos opciones:
                         </p>
-                        <div class="text-left mb-3">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Planilla específica (opcional):</label>
+                        <div class="text-left mb-4 p-3 border border-blue-200 rounded-lg bg-blue-50">
+                            <label class="block text-sm font-medium text-blue-800 mb-2">Opción 1: Planilla específica</label>
                             <div class="relative">
                                 <input type="text" id="swal-planilla-search" placeholder="Buscar por código, obra o cliente..."
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
                                     autocomplete="off">
                                 <input type="hidden" id="swal-planilla-id">
-                                <div id="swal-planilla-results" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-48 overflow-y-auto hidden shadow-lg"></div>
+                                <div id="swal-planilla-results" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-64 overflow-y-auto hidden shadow-lg"></div>
                             </div>
                         </div>
-                        <div class="text-left">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de corte:</label>
-                            <input type="date" id="swal-fecha-corte" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" value="${hoy}">
+                        <div class="flex items-center justify-center mb-4">
+                            <span class="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">— O —</span>
+                        </div>
+                        <div class="text-left p-3 border border-green-200 rounded-lg bg-green-50">
+                            <label class="block text-sm font-medium text-green-800 mb-2">Opción 2: Todas por fecha de corte</label>
+                            <input type="date" id="swal-fecha-corte" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 bg-white" value="">
+                            <p class="text-xs text-green-700 mt-1">Completará planillas con fecha de entrega ≤ fecha seleccionada</p>
                         </div>
                     `,
-                    icon: 'warning',
+                    icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: 'Completar',
                     cancelButtonText: 'Cancelar',
@@ -641,49 +649,71 @@
                         const searchInput = document.getElementById('swal-planilla-search');
                         const resultsDiv = document.getElementById('swal-planilla-results');
                         const hiddenInput = document.getElementById('swal-planilla-id');
+                        const fechaInput = document.getElementById('swal-fecha-corte');
                         let debounceTimer;
 
+                        // Función para buscar y mostrar resultados
+                        async function buscarPlanillas(query = '') {
+                            try {
+                                const response = await fetch(`/api/planillas/buscar?q=${encodeURIComponent(query)}`);
+                                const data = await response.json();
+
+                                if (data.planillas && data.planillas.length > 0) {
+                                    resultsDiv.innerHTML = data.planillas.map(p => `
+                                        <div class="planilla-option px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100"
+                                            data-id="${p.id}" data-codigo="${p.codigo}">
+                                            <div class="font-semibold text-sm">${p.codigo}</div>
+                                            <div class="text-xs text-gray-500">${p.obra} - ${p.cliente}</div>
+                                            <div class="text-xs text-gray-400">${p.estado} | Entrega: ${p.fecha_entrega || 'Sin fecha'}</div>
+                                        </div>
+                                    `).join('');
+                                    resultsDiv.classList.remove('hidden');
+
+                                    resultsDiv.querySelectorAll('.planilla-option').forEach(opt => {
+                                        opt.addEventListener('click', function() {
+                                            hiddenInput.value = this.dataset.id;
+                                            searchInput.value = this.dataset.codigo;
+                                            resultsDiv.classList.add('hidden');
+                                            // Limpiar fecha al seleccionar planilla
+                                            fechaInput.value = '';
+                                        });
+                                    });
+                                } else {
+                                    resultsDiv.innerHTML = '<div class="px-3 py-2 text-sm text-gray-500">No se encontraron planillas</div>';
+                                    resultsDiv.classList.remove('hidden');
+                                }
+                            } catch (e) {
+                                console.error('Error buscando planillas:', e);
+                            }
+                        }
+
+                        // Cargar planillas iniciales al abrir el modal
+                        buscarPlanillas('');
+
+                        // Mostrar resultados al hacer focus en el input
+                        searchInput.addEventListener('focus', function() {
+                            if (resultsDiv.children.length > 0) {
+                                resultsDiv.classList.remove('hidden');
+                            }
+                        });
+
+                        // Buscar mientras escribe
                         searchInput.addEventListener('input', function() {
                             clearTimeout(debounceTimer);
                             const query = this.value.trim();
 
-                            if (query.length < 2) {
-                                resultsDiv.classList.add('hidden');
+                            // Limpiar selección si se modifica el texto
+                            hiddenInput.value = '';
+
+                            debounceTimer = setTimeout(() => buscarPlanillas(query), 300);
+                        });
+
+                        // Al cambiar la fecha, limpiar planilla seleccionada
+                        fechaInput.addEventListener('change', function() {
+                            if (this.value) {
                                 hiddenInput.value = '';
-                                return;
+                                searchInput.value = '';
                             }
-
-                            debounceTimer = setTimeout(async () => {
-                                try {
-                                    const response = await fetch(`/api/planillas/buscar?q=${encodeURIComponent(query)}`);
-                                    const data = await response.json();
-
-                                    if (data.planillas && data.planillas.length > 0) {
-                                        resultsDiv.innerHTML = data.planillas.map(p => `
-                                            <div class="planilla-option px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100"
-                                                data-id="${p.id}" data-codigo="${p.codigo}">
-                                                <div class="font-semibold text-sm">${p.codigo}</div>
-                                                <div class="text-xs text-gray-500">${p.obra} - ${p.cliente}</div>
-                                                <div class="text-xs text-gray-400">${p.estado} | Entrega: ${p.fecha_entrega || 'Sin fecha'}</div>
-                                            </div>
-                                        `).join('');
-                                        resultsDiv.classList.remove('hidden');
-
-                                        resultsDiv.querySelectorAll('.planilla-option').forEach(opt => {
-                                            opt.addEventListener('click', function() {
-                                                hiddenInput.value = this.dataset.id;
-                                                searchInput.value = this.dataset.codigo;
-                                                resultsDiv.classList.add('hidden');
-                                            });
-                                        });
-                                    } else {
-                                        resultsDiv.innerHTML = '<div class="px-3 py-2 text-sm text-gray-500">No se encontraron planillas</div>';
-                                        resultsDiv.classList.remove('hidden');
-                                    }
-                                } catch (e) {
-                                    console.error('Error buscando planillas:', e);
-                                }
-                            }, 300);
                         });
 
                         // Cerrar resultados al hacer clic fuera
@@ -697,12 +727,18 @@
                         const fechaCorte = document.getElementById('swal-fecha-corte').value;
                         const planillaId = document.getElementById('swal-planilla-id').value;
 
-                        if (!fechaCorte) {
-                            Swal.showValidationMessage('Debes seleccionar una fecha de corte');
+                        if (!fechaCorte && !planillaId) {
+                            Swal.showValidationMessage('Debes seleccionar una planilla o una fecha de corte');
                             return false;
                         }
+
+                        if (fechaCorte && planillaId) {
+                            Swal.showValidationMessage('Selecciona solo una opción: planilla O fecha de corte');
+                            return false;
+                        }
+
                         return {
-                            fecha_corte: fechaCorte,
+                            fecha_corte: fechaCorte || null,
                             planilla_id: planillaId || null
                         };
                     }

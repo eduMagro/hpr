@@ -132,7 +132,11 @@
                         @if ($modoSeleccion)
                             <th class="p-1 border"></th>
                         @endif
-                        <th class="p-1 border"></th>
+                        <th class="p-1 border">
+                            <input type="number" wire:model.live.debounce.300ms="id"
+                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                placeholder="ID...">
+                        </th>
                         <th class="p-1 border">
                             <input type="text" wire:model.live.debounce.300ms="codigo"
                                 class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"

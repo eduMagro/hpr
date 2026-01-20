@@ -20,6 +20,9 @@ class PlanillasTable extends Component
 
     // Filtros - usando #[Url] para mantenerlos en la URL
     #[Url(keep: true)]
+    public $id = '';
+
+    #[Url(keep: true)]
     public $codigo = '';
 
     #[Url(keep: true)]
@@ -101,6 +104,11 @@ class PlanillasTable extends Component
 
     public function aplicarFiltros($query)
     {
+        // ID exacto
+        if (!empty($this->id)) {
+            $query->where('id', (int) $this->id);
+        }
+
         // Código (permite múltiples valores separados por coma o punto)
         if (!empty($this->codigo)) {
             $input = trim($this->codigo);
@@ -372,6 +380,9 @@ class PlanillasTable extends Component
     {
         $filtros = [];
 
+        if (!empty($this->id)) {
+            $filtros[] = "<strong>ID:</strong> {$this->id}";
+        }
         if (!empty($this->codigo)) {
             $filtros[] = "<strong>Código:</strong> {$this->codigo}";
         }

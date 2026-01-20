@@ -50,6 +50,10 @@ class PlanillaController extends Controller
     {
         $filtros = [];
 
+        if ($request->filled('id')) {
+            $filtros[] = 'ID: <strong>' . $request->id . '</strong>';
+        }
+
         if ($request->filled('nombre_completo')) {
             $usuario = User::where(DB::raw("CONCAT(name, ' ', primer_apellido, ' ', segundo_apellido)"), 'like', '%' . $request->nombre_completo . '%')->first();
 
@@ -190,6 +194,11 @@ class PlanillaController extends Controller
     //------------------------------------------------------------------------------------ FILTROS
     public function aplicarFiltros($query, Request $request)
     {
+        // Filtro por ID exacto
+        if ($request->filled('id')) {
+            $query->where('id', $request->id);
+        }
+
         // Filtro por usuario
         if ($request->filled('nombre_completo')) {
             $query->whereHas('user', function ($q) use ($request) {
@@ -1073,23 +1082,29 @@ class PlanillaController extends Controller
      */
     public function buscarParaCompletar(Request $request)
     {
-        $query = $request->input('q', '');
+        $busqueda = trim($request->input('q', ''));
 
-        $planillas = Planilla::query()
+        $query = Planilla::query()
             ->whereIn('estado', ['pendiente', 'fabricando'])
             ->where('aprobada', true)
-            ->where(function ($q) use ($query) {
-                $q->where('codigo', 'like', "%{$query}%")
-                    ->orWhereHas('obra', function ($q2) use ($query) {
-                        $q2->where('obra', 'like', "%{$query}%");
+            ->with(['obra:id,obra', 'cliente:id,empresa']);
+
+        // Solo aplicar filtro de búsqueda si hay texto
+        if ($busqueda !== '') {
+            $query->where(function ($q) use ($busqueda) {
+                $q->where('codigo', 'like', "%{$busqueda}%")
+                    ->orWhereHas('obra', function ($q2) use ($busqueda) {
+                        $q2->where('obra', 'like', "%{$busqueda}%");
                     })
-                    ->orWhereHas('cliente', function ($q2) use ($query) {
-                        $q2->where('empresa', 'like', "%{$query}%");
+                    ->orWhereHas('cliente', function ($q2) use ($busqueda) {
+                        $q2->where('empresa', 'like', "%{$busqueda}%");
                     });
-            })
-            ->with(['obra:id,obra', 'cliente:id,empresa'])
+            });
+        }
+
+        $planillas = $query
             ->orderBy('fecha_estimada_entrega')
-            ->limit(20)
+            ->limit(30)
             ->get(['id', 'codigo', 'obra_id', 'cliente_id', 'fecha_estimada_entrega', 'estado']);
 
         return response()->json([

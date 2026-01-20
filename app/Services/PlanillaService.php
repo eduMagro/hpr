@@ -101,30 +101,35 @@ class PlanillaService
         $ok = 0;
         $fail = 0;
         $errores = [];
-
-        // Fecha de corte: usar la proporcionada o por defecto hoy
-        $fechaCorte = $fechaCorteStr
-            ? Carbon::parse($fechaCorteStr)->endOfDay()
-            : Carbon::today()->endOfDay();
+        $omitidasPorFecha = 0;
 
         // Base: planillas en estado pendiente o fabricando
         $base = Planilla::query()->whereIn('estado', ['pendiente', 'fabricando']);
+
+        // Si hay planillas específicas, procesarlas sin filtro de fecha
         if (!empty($planillaIds)) {
             $base->whereIn('id', $planillaIds);
-        }
-        // Métrica: cuántas omitimos por fecha (futuras o sin fecha)
-        $omitidasPorFecha = (clone $base)
-            ->where(function ($q) use ($fechaCorte) {
-                $q->whereNull('fecha_estimada_entrega')
-                    ->orWhereDate('fecha_estimada_entrega', '>', $fechaCorte);
-            })
-            ->count();
+            $planillas = $base->get();
+        } else {
+            // Si no hay planillas específicas, usar fecha de corte
+            $fechaCorte = $fechaCorteStr
+                ? Carbon::parse($fechaCorteStr)->endOfDay()
+                : Carbon::today()->endOfDay();
 
-        // Planillas candidatas
-        $planillas = (clone $base)
-            ->whereNotNull('fecha_estimada_entrega')
-            ->whereDate('fecha_estimada_entrega', '<=', $fechaCorte)
-            ->get();
+            // Métrica: cuántas omitimos por fecha (futuras o sin fecha)
+            $omitidasPorFecha = (clone $base)
+                ->where(function ($q) use ($fechaCorte) {
+                    $q->whereNull('fecha_estimada_entrega')
+                        ->orWhereDate('fecha_estimada_entrega', '>', $fechaCorte);
+                })
+                ->count();
+
+            // Planillas candidatas por fecha
+            $planillas = (clone $base)
+                ->whereNotNull('fecha_estimada_entrega')
+                ->whereDate('fecha_estimada_entrega', '<=', $fechaCorte)
+                ->get();
+        }
 
         foreach ($planillas as $planilla) {
             $subetiquetas = Etiqueta::where('planilla_id', $planilla->id)
