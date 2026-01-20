@@ -1358,66 +1358,159 @@ class PlanillaController extends Controller
      * - Elementos: estado = pendiente, fechas = null, operarios = null, maquina_id = null
      * - Paquetes: eliminar todos
      * - OrdenPlanillas: eliminar y recrear usando los servicios
+     *
+     * Sistema robusto con reintentos automáticos y transacciones optimizadas.
      */
     public function resetearPlanilla(Request $request, $id)
     {
-        $planilla = Planilla::with(['elementos', 'etiquetas', 'paquetes'])->findOrFail($id);
+        $planilla = Planilla::findOrFail($id);
+        $maxReintentos = 3;
+        $intento = 0;
+        $ultimoError = null;
 
-        DB::beginTransaction();
+        // Verificar que la planilla no esté siendo procesada activamente
+        $etiquetasEnProceso = \App\Models\Etiqueta::where('planilla_id', $id)
+            ->whereIn('estado', ['cortando', 'procesando'])
+            ->count();
 
-        try {
-            // Instanciar servicios
-            $asignarMaquinaService = new \App\Services\AsignarMaquinaService();
-            $ordenPlanillaService = new \App\Services\OrdenPlanillaService();
+        if ($etiquetasEnProceso > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "No se puede resetear: hay {$etiquetasEnProceso} etiquetas siendo procesadas activamente. Espere a que terminen."
+            ], 409);
+        }
 
-            // 1. Eliminar todos los paquetes de esta planilla
-            $paquetesEliminados = $planilla->paquetes()->count();
+        while ($intento < $maxReintentos) {
+            $intento++;
+
+            try {
+                $resultado = $this->ejecutarResetPlanilla($planilla);
+
+                Log::info('Planilla reseteada exitosamente', [
+                    'planilla_id' => $planilla->id,
+                    'codigo' => $planilla->codigo,
+                    'intento' => $intento,
+                    'detalles' => $resultado,
+                    'user_id' => auth()->id(),
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Planilla {$planilla->codigo} reseteada correctamente",
+                    'detalles' => $resultado,
+                    'intentos' => $intento,
+                ]);
+
+            } catch (\Illuminate\Database\QueryException $e) {
+                $ultimoError = $e;
+
+                // Detectar errores de bloqueo/deadlock que pueden reintentarse
+                $esErrorReintentable = str_contains($e->getMessage(), 'Lock wait timeout')
+                    || str_contains($e->getMessage(), 'Deadlock')
+                    || $e->getCode() == 1205
+                    || $e->getCode() == 1213;
+
+                if ($esErrorReintentable && $intento < $maxReintentos) {
+                    Log::warning("Reset planilla: reintentando por bloqueo", [
+                        'planilla_id' => $id,
+                        'intento' => $intento,
+                        'error' => $e->getMessage(),
+                    ]);
+
+                    // Esperar antes de reintentar (backoff exponencial)
+                    sleep(pow(2, $intento)); // 2s, 4s, 8s
+                    continue;
+                }
+
+                throw $e;
+            }
+        }
+
+        // Si llegamos aquí, agotamos los reintentos
+        Log::error('Error al resetear planilla después de todos los reintentos', [
+            'planilla_id' => $id,
+            'intentos' => $intento,
+            'error' => $ultimoError?->getMessage(),
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al resetear la planilla después de ' . $maxReintentos . ' intentos. Por favor, inténtelo de nuevo en unos minutos.',
+            'error_tecnico' => $ultimoError?->getMessage(),
+        ], 500);
+    }
+
+    /**
+     * Ejecuta el reset de una planilla en transacciones optimizadas.
+     */
+    private function ejecutarResetPlanilla(Planilla $planilla): array
+    {
+        // Configurar timeout de sesión
+        DB::statement('SET SESSION innodb_lock_wait_timeout = 60');
+
+        $resultado = [
+            'paquetes_eliminados' => 0,
+            'etiquetas_reseteadas' => 0,
+            'elementos_reseteados' => 0,
+            'maquinas_asignadas' => [],
+        ];
+
+        // Obtener IDs fuera de la transacción para minimizar tiempo de bloqueo
+        $etiquetaIds = $planilla->etiquetas()->pluck('id')->toArray();
+        $elementoIds = $planilla->elementos()->pluck('id')->toArray();
+        $paquetesCount = $planilla->paquetes()->count();
+
+        // FASE 1: Limpiar datos (transacción separada para minimizar bloqueos)
+        DB::transaction(function () use ($planilla, $etiquetaIds, $elementoIds, &$resultado, $paquetesCount) {
+            // Bloquear filas al inicio de la transacción
+            if (!empty($etiquetaIds)) {
+                DB::table('etiquetas')->whereIn('id', array_slice($etiquetaIds, 0, 1000))
+                    ->lockForUpdate()->get(['id']);
+            }
+
+            // 1. Eliminar paquetes
             $planilla->paquetes()->delete();
+            $resultado['paquetes_eliminados'] = $paquetesCount;
 
-            // 2. Resetear etiquetas en lotes para evitar lock timeout
-            $etiquetasReseteadas = $planilla->etiquetas()->count();
-            $planilla->etiquetas()
-                ->select('id')
-                ->chunkById(500, function ($etiquetas) {
-                    \App\Models\Etiqueta::whereIn('id', $etiquetas->pluck('id'))
-                        ->update([
-                            'estado' => 'pendiente',
-                            'fecha_inicio' => null,
-                            'fecha_finalizacion' => null,
-                            'fecha_inicio_ensamblado' => null,
-                            'fecha_finalizacion_ensamblado' => null,
-                            'fecha_inicio_soldadura' => null,
-                            'fecha_finalizacion_soldadura' => null,
-                            'operario1_id' => null,
-                            'operario2_id' => null,
-                            'soldador1_id' => null,
-                            'soldador2_id' => null,
-                            'ensamblador1_id' => null,
-                            'ensamblador2_id' => null,
-                            'paquete_id' => null,
-                        ]);
-                });
+            // 2. Resetear etiquetas en chunks
+            $resultado['etiquetas_reseteadas'] = count($etiquetaIds);
+            foreach (array_chunk($etiquetaIds, 200) as $chunk) {
+                \App\Models\Etiqueta::whereIn('id', $chunk)
+                    ->update([
+                        'estado' => 'pendiente',
+                        'fecha_inicio' => null,
+                        'fecha_finalizacion' => null,
+                        'fecha_inicio_ensamblado' => null,
+                        'fecha_finalizacion_ensamblado' => null,
+                        'fecha_inicio_soldadura' => null,
+                        'fecha_finalizacion_soldadura' => null,
+                        'operario1_id' => null,
+                        'operario2_id' => null,
+                        'soldador1_id' => null,
+                        'soldador2_id' => null,
+                        'ensamblador1_id' => null,
+                        'ensamblador2_id' => null,
+                        'paquete_id' => null,
+                    ]);
+            }
 
-            // 3. Eliminar orden_planillas existente (esto también limpia orden_planilla_id de elementos)
+            // 3. Eliminar orden_planillas
+            $ordenPlanillaService = new \App\Services\OrdenPlanillaService();
             $ordenPlanillaService->eliminarOrdenDePlanilla($planilla->id);
 
-            // 4. Resetear elementos en lotes (incluyendo maquina_id para que el servicio los reasigne)
-            // Nota: elementos NO tiene fecha_inicio/fecha_finalizacion ni operarios - eso está en etiquetas
-            // Nota: etiqueta_id NO se resetea porque es la relación estructural con la etiqueta padre
-            $elementosReseteados = $planilla->elementos()->count();
-            $planilla->elementos()
-                ->select('id')
-                ->chunkById(500, function ($elementos) {
-                    \App\Models\Elemento::whereIn('id', $elementos->pluck('id'))
-                        ->update([
-                            'estado' => 'pendiente',
-                            'paquete_id' => null,
-                            'producto_id' => null,
-                            'producto_id_2' => null,
-                            'maquina_id' => null,
-                            'orden_planilla_id' => null,
-                        ]);
-                });
+            // 4. Resetear elementos en chunks
+            $resultado['elementos_reseteados'] = count($elementoIds);
+            foreach (array_chunk($elementoIds, 200) as $chunk) {
+                \App\Models\Elemento::whereIn('id', $chunk)
+                    ->update([
+                        'estado' => 'pendiente',
+                        'paquete_id' => null,
+                        'producto_id' => null,
+                        'producto_id_2' => null,
+                        'maquina_id' => null,
+                        'orden_planilla_id' => null,
+                    ]);
+            }
 
             // 5. Resetear la planilla
             $planilla->update([
@@ -1428,59 +1521,30 @@ class PlanillaController extends Controller
                 'revisada_por_id' => null,
                 'revisada_at' => null,
             ]);
+        }, 3); // 3 reintentos automáticos en deadlock
 
-            // 6. Reasignar máquinas a los elementos usando AsignarMaquinaService
+        // FASE 2: Reasignar máquinas y crear órdenes (transacción separada)
+        DB::transaction(function () use ($planilla, &$resultado) {
+            $asignarMaquinaService = new \App\Services\AsignarMaquinaService();
+            $ordenPlanillaService = new \App\Services\OrdenPlanillaService();
+
+            // Reasignar máquinas
             $asignarMaquinaService->repartirPlanilla($planilla->id);
 
-            // 7. Crear orden_planillas y asignar orden_planilla_id a elementos
-            $ordenesCreadas = $ordenPlanillaService->crearOrdenParaPlanilla($planilla->id);
+            // Crear órdenes
+            $ordenPlanillaService->crearOrdenParaPlanilla($planilla->id);
 
-            // Obtener las máquinas asignadas para el resumen
-            $maquinasAsignadas = OrdenPlanilla::where('planilla_id', $planilla->id)
+            // Obtener máquinas asignadas
+            $resultado['maquinas_asignadas'] = OrdenPlanilla::where('planilla_id', $planilla->id)
                 ->with('maquina:id,codigo')
                 ->get()
                 ->pluck('maquina.codigo')
                 ->filter()
+                ->values()
                 ->toArray();
+        }, 3);
 
-            DB::commit();
-
-            Log::info('Planilla reseteada', [
-                'planilla_id' => $planilla->id,
-                'codigo' => $planilla->codigo,
-                'paquetes_eliminados' => $paquetesEliminados,
-                'etiquetas_reseteadas' => $etiquetasReseteadas,
-                'elementos_reseteados' => $elementosReseteados,
-                'ordenes_creadas' => $ordenesCreadas,
-                'maquinas_asignadas' => $maquinasAsignadas,
-                'user_id' => auth()->id(),
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => "Planilla {$planilla->codigo} reseteada correctamente",
-                'detalles' => [
-                    'paquetes_eliminados' => $paquetesEliminados,
-                    'etiquetas_reseteadas' => $etiquetasReseteadas,
-                    'elementos_reseteados' => $elementosReseteados,
-                    'maquinas_asignadas' => $maquinasAsignadas,
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            Log::error('Error al resetear planilla', [
-                'planilla_id' => $id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al resetear la planilla: ' . $e->getMessage()
-            ], 500);
-        }
+        return $resultado;
     }
 
     /**
