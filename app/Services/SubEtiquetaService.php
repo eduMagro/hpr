@@ -22,19 +22,29 @@ class SubEtiquetaService
         $subIdOriginal = $elemento->getOriginal('etiqueta_sub_id') ?? $elemento->etiqueta_sub_id;
 
         // Buscar etiqueta padre: primero por etiqueta_id, si no existe por etiqueta_sub_id
+        $padre = null;
         if ($elemento->etiqueta_id) {
-            $padre = Etiqueta::lockForUpdate()->findOrFail($elemento->etiqueta_id);
-        } else {
-            // Extraer código padre del etiqueta_sub_id (ej: "ETQ123.01" -> "ETQ123")
+            $padre = Etiqueta::lockForUpdate()->find($elemento->etiqueta_id);
+        }
+
+        // Si no se encontró por etiqueta_id, buscar por código padre
+        if (!$padre && $subIdOriginal) {
             $codigoPadre = Str::before($subIdOriginal, '.');
             $padre = Etiqueta::lockForUpdate()
                 ->where('planilla_id', $elemento->planilla_id)
                 ->where('codigo', $codigoPadre)
-                ->firstOrFail();
+                ->first();
 
             // Actualizar el etiqueta_id del elemento para futuras operaciones
-            $elemento->etiqueta_id = $padre->id;
-            $elemento->save();
+            if ($padre) {
+                $elemento->etiqueta_id = $padre->id;
+                $elemento->save();
+            }
+        }
+
+        // Si no se encontró ninguna etiqueta padre, devolver el subIdOriginal sin cambios
+        if (!$padre) {
+            return [$subIdOriginal, $subIdOriginal];
         }
 
         $codigoPadre   = (string) $padre->codigo;
@@ -68,19 +78,29 @@ class SubEtiquetaService
         $subIdOriginal = $elemento->getOriginal('etiqueta_sub_id');
 
         // Buscar etiqueta padre: primero por etiqueta_id, si no existe por etiqueta_sub_id
+        $padre = null;
         if ($elemento->etiqueta_id) {
-            $padre = Etiqueta::lockForUpdate()->findOrFail($elemento->etiqueta_id);
-        } else {
-            // Extraer código padre del etiqueta_sub_id (ej: "ETQ123.01" -> "ETQ123")
+            $padre = Etiqueta::lockForUpdate()->find($elemento->etiqueta_id);
+        }
+
+        // Si no se encontró por etiqueta_id, buscar por código padre
+        if (!$padre && $subIdOriginal) {
             $codigoPadreSub = Str::before($subIdOriginal, '.');
             $padre = Etiqueta::lockForUpdate()
                 ->where('planilla_id', $elemento->planilla_id)
                 ->where('codigo', $codigoPadreSub)
-                ->firstOrFail();
+                ->first();
 
             // Actualizar el etiqueta_id del elemento para futuras operaciones
-            $elemento->etiqueta_id = $padre->id;
-            $elemento->save();
+            if ($padre) {
+                $elemento->etiqueta_id = $padre->id;
+                $elemento->save();
+            }
+        }
+
+        // Si no se encontró ninguna etiqueta padre, devolver el subIdOriginal sin cambios
+        if (!$padre) {
+            return [$subIdOriginal, $subIdOriginal];
         }
 
         $codigoPadre   = (string) $padre->codigo;
