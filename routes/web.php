@@ -85,6 +85,7 @@ Route::post('/albaranes/scan/procesar-ajax', [AlbaranesScanController::class, 'p
 Route::post('/albaranes/scan/buscar-pedido', [AlbaranesScanController::class, 'buscarPedido'])->name('albaranes.scan.pedido.lookup');
 Route::post('/albaranes/scan/simular', [AlbaranesScanController::class, 'simular'])->name('albaranes.scan.simular');
 Route::post('/albaranes/scan/guardar-aprendizaje', [AlbaranesScanController::class, 'guardarAprendizaje'])->name('albaranes.scan.aprendizaje.guardar');
+Route::post('/albaranes/scan/activar', [AlbaranesScanController::class, 'activar'])->name('albaranes.scan.activar');
 
 // Alias legacy (compatibilidad)
 Route::get('/pruebasScanAlbaran', [AlbaranesScanController::class, 'index'])->name('albaranes.scan.legacy.index');
@@ -165,7 +166,7 @@ Route::middleware(['auth', 'puede.asistente', 'throttle:60,1'])
         // Ruta de envío de mensajes con rate limiting más estricto
         Route::post('/mensaje', [AsistenteVirtualController::class, 'enviarMensaje'])
             ->middleware('throttle:15,1'); // Solo 15 mensajes por minuto
-
+    
         // === SISTEMA EXPERTO: INFORMES ===
         Route::get('/informes', [\App\Http\Controllers\Api\AsistenteReportController::class, 'index'])
             ->name('asistente.informes.index');

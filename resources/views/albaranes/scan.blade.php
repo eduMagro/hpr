@@ -1,5 +1,16 @@
 <x-app-layout>
     <style>
+        html,
+        body {
+            overflow-x: hidden;
+        }
+
+        #stepWrapper {
+            overflow-x: hidden;
+            touch-action: pan-y;
+            overscroll-behavior-x: none;
+        }
+
         .ia-spinner {
             width: 16px;
             height: 16px;
@@ -335,6 +346,12 @@
                             </span>
                         </button>
 
+                        <!-- Botón: continuar manualmente (sin OCR) -->
+                        <button type="button" id="mobile-step1-manual-btn" onclick="iniciarRellenoManualMobile()"
+                            class="w-full px-4 py-3 bg-white text-gray-900 rounded-lg font-semibold border border-gray-300 shadow-sm hover:bg-gray-50 transition">
+                            Rellenar manualmente (sin procesar)
+                        </button>
+
                         <!-- Botón continuar (solo si ya tenemos datos) -->
                         <button type="button" id="mobile-step1-continue-btn" data-mobile-next
                             class="hidden w-full px-4 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium border border-gray-300 transition">
@@ -424,15 +441,15 @@
                             </label>
                         </div>
 
-                        <label class="block hidden">
+                        <label class="hidden">
                             <span class="text-sm font-medium text-gray-700">Albarán</span>
                             <input type="text" id="edit-albaran" class="mt-1 w-full rounded-lg border-gray-300">
                         </label>
-                        <label class="block hidden">
+                        <label class="hidden">
                             <span class="text-sm font-medium text-gray-700">Fecha</span>
                             <input type="date" id="edit-fecha" class="mt-1 w-full rounded-lg border-gray-300">
                         </label>
-                        <label class="block hidden">
+                        <label class="hidden">
                             <span class="text-sm font-medium text-gray-700">Pedido HPR</span>
                             <input type="text" id="edit-pedido-cliente"
                                 class="mt-1 w-full rounded-lg border-gray-300">
@@ -495,13 +512,14 @@
                     <p class="text-gray-500">Cargando...</p>
                 </div>
 
+                <div class="h-4"></div>
+
                 <!-- Botón para ver otros pedidos -->
                 <button type="button" id="mobile-ver-otros-pedidos"
-                    class="w-full px-4 py-3 bg-gray-600 text-white rounded-lg shadow-lg hover:shadow-xl hover:bg-gray-700 transition">
+                    class="w-full px-4 py-3 bg-gray-600 text-white rounded-lg shadow-lg hover:shadows-xl hover:bg-gray-700 transition">
                     Ver otros pedidos compatibles
                 </button>
 
-                <div class="h-4"></div>
 
                 <!-- Botón de Activación Final -->
                 <button type="button" id="mobile-btn-activar" onclick="activarAlbaranMobile()"
@@ -529,7 +547,8 @@
         <div class="mobile-modal-overlay" onclick="cerrarModalPedidosMobile()"></div>
         <div class="mobile-edit-modal-content border-t border-gray-200">
             <!-- Header -->
-            <div class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+            <div
+                class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between inset-shadow-sm">
                 <div class="min-w-0">
                     <h3 class="text-lg font-semibold text-gray-900">Seleccionar Pedido</h3>
                     <div id="mobilePedidosModalScanned" class="text-xs text-gray-500 truncate"></div>
@@ -557,6 +576,7 @@
             </div>
         </div>
     </div>
+
 
 
 
@@ -616,6 +636,30 @@
             });
 
             window.openPreviewModal = openPreview;
+
+            // Evitar scroll horizontal (swipe) dentro del wizard: obliga a usar Volver/Continuar
+            const stepWrapper = document.getElementById('stepWrapper');
+            if (stepWrapper) {
+                let touchStartX = 0;
+                let touchStartY = 0;
+
+                stepWrapper.addEventListener('touchstart', (e) => {
+                    const t = e.touches?.[0];
+                    if (!t) return;
+                    touchStartX = t.clientX;
+                    touchStartY = t.clientY;
+                }, { passive: true });
+
+                stepWrapper.addEventListener('touchmove', (e) => {
+                    const t = e.touches?.[0];
+                    if (!t) return;
+                    const dx = t.clientX - touchStartX;
+                    const dy = t.clientY - touchStartY;
+                    if (Math.abs(dx) > Math.abs(dy) + 5) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+            }
         });
 
         // ========================================
@@ -873,8 +917,7 @@
                 // Event listener para botón de activación
                 const btnActivar = document.getElementById('mobile-btn-activar');
                 if (btnActivar) {
-                    btnActivar.addEventListener('click', confirmarActivacionMobile);
-                    // console.log('Event listener de activación añadido');
+                    // Listener removido para evitar conflictos. Se usa onclick en HTML.
                 }
             } else if (!isMobile) {
                 // console.log('Vista desktop detectada - sistema móvil no inicializado');
@@ -1223,6 +1266,61 @@
         }
 
         /**
+         * Saltar OCR y continuar a Step 2 para rellenar manualmente.
+         */
+        function iniciarRellenoManualMobile() {
+            if (!window.mobileStepManager) return;
+
+            const proveedorStep1 = document.getElementById('proveedor-mobile') || document.getElementById('proveedor');
+            const proveedorCodigo = proveedorStep1?.value || '';
+            const proveedorTexto = proveedorStep1?.options?.[proveedorStep1.selectedIndex]?.text || proveedorCodigo || '';
+
+            if (!proveedorCodigo) {
+                toastMobile('warning', 'Por favor selecciona un proveedor');
+                return;
+            }
+
+            const cleaned = (proveedorTexto || '').toString().replace(/\([^)]*\)/g, '').trim();
+
+            const parsed = {
+                tipo_compra: 'directo',
+                proveedor: proveedorCodigo,
+                proveedor_texto: cleaned || proveedorTexto || null,
+                distribuidor_recomendado: null,
+                albaran: null,
+                fecha: null,
+                pedido_cliente: null,
+                pedido_codigo: null,
+                peso_total: null,
+                bultos_total: 0,
+                productos: [],
+            };
+
+            const resultadoParaVista = {
+                parsed,
+                simulacion: {},
+                status_messages: [],
+                ocr_log_id: null,
+                preview: null,
+            };
+
+            window.mobileStepManager.dataCache = {
+                ...(window.mobileStepManager.dataCache || {}),
+                resultado: resultadoParaVista,
+                parsed,
+                simulacion: {},
+                ocr_log_id: null,
+            };
+
+            document.getElementById('mobile-preview-container')?.classList.add('hidden');
+            document.getElementById('mobile-status-banner')?.classList.add('hidden');
+
+            poblarVista2ConDatos(resultadoParaVista);
+            window.mobileStepManager.next(true);
+            localStorage.setItem('lastScanMobileCache', JSON.stringify(window.mobileStepManager.dataCache));
+        }
+
+        /**
          * Poblar Vista 2 con datos recibidos (Modo Edición Directa)
          */
         /**
@@ -1296,41 +1394,19 @@
             // Inicializar Select de Fabricante (Solo si no estuviéramos en modo distribuidor, pero inicializamos todo)
             const selectProv = document.getElementById('edit-proveedor-select');
             const inputProv = document.getElementById('edit-proveedor');
+            const proveedorCodigoStep1 = proveedorStep1?.value || '';
             const currentProv = proveedorSeleccionado || provTexto || '';
 
-            if (selectProv && currentProv) {
-                // Intentar match exacto o aproximado
-                let found = false;
-                // 1. Exacto
-                for (let i = 0; i < selectProv.options.length; i++) {
-                    if (selectProv.options[i].value === currentProv) {
-                        selectProv.selectedIndex = i;
-                        found = true;
-                        break;
-                    }
-                }
-                // 2. Texto aproximado
-                if (!found) {
-                    const lower = currentProv.toLowerCase();
-                    for (let i = 0; i < selectProv.options.length; i++) {
-                        if (selectProv.options[i].text.toLowerCase() === lower || selectProv.options[i].text.toLowerCase()
-                            .includes(lower)) {
-                            selectProv.selectedIndex = i;
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-
-                // Lógica 'otro'
-                if (!found) {
-                    selectProv.value = 'otro';
-                    if (inputProv) inputProv.value = currentProv; // Guardar valor original
+            if (selectProv) {
+                const idx = findSelectOptionIndex(selectProv, currentProv, proveedorCodigoStep1);
+                if (idx >= 0) {
+                    selectProv.selectedIndex = idx;
+                    if (inputProv) inputProv.value = selectProv.options[idx].value;
                 } else {
-                    if (inputProv) inputProv.value = selectProv.value;
+                    selectProv.value = 'otro';
+                    const cleaned = (currentProv || '').toString().replace(/\([^)]*\)/g, '').trim();
+                    if (inputProv) inputProv.value = cleaned || currentProv || '';
                 }
-            } else if (selectProv) {
-                selectProv.value = '';
             }
 
             // Inicializar Select Distribuidor
@@ -1448,32 +1524,28 @@
                         ${badgeText}
                     </span>
 
-                    <div class="space-y-2 text-sm">
-                        <div>
-                            <span class="text-gray-500">Linea pedido (BD):</span>
-                            <span class="font-semibold text-gray-900">${lineaPropuesta.codigo || '—'}</span>
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center gap-2 text-sm">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
+                            <span class="font-bold text-gray-900 text-base">${lineaPropuesta.codigo || '—'}</span>
                         </div>
-                        ${lineaPropuesta.fabricante ? `<div>
-                                                                                                                                                                                                                                                            <span class="text-gray-500">Fabricante:</span>
-                                                                                                                                                                                                                                                            <span class="font-medium text-gray-900">${lineaPropuesta.fabricante || '—'}</span>
-                                                                                                                                                                                                                                                        </div>` : ''}
-                        ${lineaPropuesta.distribuidor ? `<div>
-                                                                                                                                                                                                                                                                <span class="text-gray-500">Distribuidor:</span>
-                                                                                                                                                                                                                                                                <span class="font-medium text-gray-900">${lineaPropuesta.distribuidor || '—'}</span>
-
-                                                                    <div>
-                                                                <span class="text-gray-500">Fecha Entrega:</span>
-                                                                       <span class="font-semibold text-gray-900">${formatFechaEntrega(lineaPropuesta.fecha_entrega)}</span>
-                                                                    </div>                                                                                                                                                                                                                    </div>` : ''}
+                        ${lineaPropuesta.fabricante ? `
+                                                                                            <div class="flex items-center gap-2 text-sm">
+                                                                                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                                                                                                <span class="font-medium text-gray-700">${lineaPropuesta.fabricante}</span>
+                                                                                            </div>` : ''}
+                        ${lineaPropuesta.distribuidor ? `
+                                                                                            <div class="flex items-center gap-2 text-sm">
+                                                                                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" /></svg>
+                                                                                                <span class="font-medium text-gray-700">${lineaPropuesta.distribuidor}</span>
+                                                                                            </div>` : ''}
                         
-                        <div class="flex justify-around gap-2 text-xs font-semibold text-center">
-                        <div class="py-1 px-3 bg-gray-200 rounded-full w-full">
-                            ${lineaPropuesta.producto_base.tipo == 'barra' ? 'B' : lineaPropuesta.producto_base.tipo == 'encarretado' ? 'E' : '-'}: ${'Ø' + lineaPropuesta.producto_base.diametro || ''} ${lineaPropuesta.producto_base.longitud + 'm' || ''}
+                        <div class="flex items-center gap-2 text-sm">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            <span class="font-semibold text-gray-900">${formatFechaEntrega(lineaPropuesta.fecha_entrega)}</span>
                         </div>
-                        <div class="py-1 px-3 ${lineaPropuesta.obra == 'Nave A' ? 'bg-violet-100 text-violet-700' : 'bg-yellow-200 text-yellow-900'} rounded-full w-full">
-                            ${lineaPropuesta.obra}
-                        </div>
-                        </div>
+
+                        ${renderProductChips(lineaPropuesta)}
                         ${renderScoreRow(lineaPropuesta)}
                     </div>
                 </div>
@@ -1984,6 +2056,62 @@
             return !isNaN(str) && !isNaN(parseFloat(str));
         }
 
+        function normalizeEmpresaName(value) {
+            const raw = (value || '').toString();
+            const normalized = raw.normalize ? raw.normalize('NFD') : raw;
+            return normalized
+                .replace(/\([^)]*\)/g, ' ') // quitar "(...)" como "(SISE)"
+                .replace(/[\u0300-\u036f]/g, '') // quitar tildes
+                .replace(/[^a-zA-Z0-9]+/g, ' ')
+                .trim()
+                .toLowerCase();
+        }
+
+        function findSelectOptionIndex(selectEl, desiredText, proveedorCodigo) {
+            if (!selectEl) return -1;
+
+            const desiredNorm = normalizeEmpresaName(desiredText);
+            const code = (proveedorCodigo || '').toString().trim().toLowerCase();
+            const codeKeywords = {
+                siderurgica: ['siderurgica', 'sevill', 'sise'],
+                megasa: ['megasa'],
+                balboa: ['balboa'],
+            };
+
+            // 1) Match directo (value)
+            for (let i = 0; i < selectEl.options.length; i++) {
+                if (selectEl.options[i].value === desiredText) return i;
+            }
+
+            // 2) Match por normalización (value/text)
+            if (desiredNorm) {
+                for (let i = 0; i < selectEl.options.length; i++) {
+                    const opt = selectEl.options[i];
+                    const optNorm = normalizeEmpresaName(opt.value || opt.text);
+                    if (optNorm && optNorm === desiredNorm) return i;
+                }
+
+                // 3) Match por inclusión en ambos sentidos (para casos con "(SISE)")
+                for (let i = 0; i < selectEl.options.length; i++) {
+                    const opt = selectEl.options[i];
+                    const optNorm = normalizeEmpresaName(opt.text);
+                    if (!optNorm) continue;
+                    if (optNorm.includes(desiredNorm) || desiredNorm.includes(optNorm)) return i;
+                }
+            }
+
+            // 4) Match por proveedor del paso 1 (siderurgica/megasa/balboa)
+            if (code && codeKeywords[code]) {
+                for (let i = 0; i < selectEl.options.length; i++) {
+                    const opt = selectEl.options[i];
+                    const optNorm = normalizeEmpresaName(opt.text);
+                    if (codeKeywords[code].some((k) => optNorm.includes(k))) return i;
+                }
+            }
+
+            return -1;
+        }
+
         // Función simplificada para manejo de cambio de tipo
         window.setMobileTipoCompra = function(tipo) {
             const input = document.getElementById('edit-tipo-compra');
@@ -2019,31 +2147,21 @@
                 // Sincronizar Fabricante desde Step 1
                 const proveedorStep1 = document.getElementById('proveedor-mobile') || document.getElementById(
                     'proveedor');
-                if (proveedorStep1 && selectProv) {
-                    const selectedText = proveedorStep1.options[proveedorStep1.selectedIndex]?.text;
-                    const selectedVal = proveedorStep1.value;
+                const selectedText = proveedorStep1?.options?.[proveedorStep1.selectedIndex]?.text || proveedorStep1
+                    ?.value || '';
+                const selectedVal = proveedorStep1?.value || '';
 
-                    // Intentar encontrar valor exacto en el select
-                    let found = false;
-                    // 1. Verificar si el value coincide (ej. 'megasa')
-                    for (let i = 0; i < selectProv.options.length; i++) {
-                        if (selectProv.options[i].value === selectedVal || selectProv.options[i].text ===
-                            selectedText) {
-                            selectProv.selectedIndex = i;
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        // Si no encuentra, marcar como 'otro' y asignar valor al hidden input
-                        selectProv.value = 'otro';
-                        if (inputProv) inputProv.value = selectedText; // Guardar el texto original aunque sea 'otro'
+                if (selectProv) {
+                    const idx = findSelectOptionIndex(selectProv, selectedText, selectedVal);
+                    if (idx >= 0) {
+                        selectProv.selectedIndex = idx;
+                        if (inputProv) inputProv.value = selectProv.options[idx].value;
                     } else {
-                        // Si encuentra, sincronizar input hidden
-                        if (inputProv) inputProv.value = selectProv.value;
+                        selectProv.value = 'otro';
+                        const cleaned = (selectedText || '').toString().replace(/\([^)]*\)/g, '').trim();
+                        if (inputProv) inputProv.value = cleaned || selectedText || '';
                     }
                 } else if (inputProv && selectProv) {
-                    // Sync general si no hay step 1 (raro)
                     inputProv.value = selectProv.value;
                 }
 
@@ -2204,7 +2322,7 @@
                     <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${pillBg}">${pillText}</span>
                 </div>
                 <div class="mt-1 text-xs opacity-90">
-                    Pedido: <span class="font-mono">${pedido.codigo || inputTrim}</span> · Línea: <span class="font-mono">${linea.codigo_linea || '—'}</span> · Ø${diam || '—'} · ${empresa}
+                    Pedido: <span class="font-mono">${pedido.codigo || inputTrim}</span> · Línea: <span class="font-mono">${linea.codigo || '—'}</span> · Ø${diam || '—'} · ${empresa}
                 </div>
                 <div class="mt-1 text-xs opacity-90">
                     Cant. línea: ${formatearKg(cantidad)} · Recep.: ${formatearKg(recep)} · Total pedido: ${formatearKg(pedido.peso_total)}
@@ -2576,6 +2694,37 @@
             }
         }
 
+        function renderProductChips(linea) {
+            const base = linea.producto_base || {};
+            const tipo = base.tipo === 'barra' ? 'B' : (base.tipo === 'encarretado' ? 'E' : '-');
+            const dim = (base.diametro || '');
+            const len = base.longitud ? base.longitud + 'm' : '';
+            const obra = linea.obra || '';
+
+            // Icons
+            const iBox =
+                `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`;
+            const iMap =
+                `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
+
+            const obraClass = obra === 'Nave A' ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                'bg-orange-50 text-orange-700 border-orange-100';
+
+            return `
+                <div class="flex flex-wrap gap-2 mt-3 mb-2">
+                    <div class="group flex items-center gap-1.5 py-1.5 px-3 bg-blue-50 text-blue-700 rounded-xl text-xs font-semibold border border-blue-100 shadow-sm transition-all hover:shadow-md hover:bg-blue-100 cursor-default">
+                        ${iBox}
+                        <span>${tipo}: Ø${dim} ${len}</span>
+                    </div>
+                    ${obra ? `
+                                                                                        <div class="group flex items-center gap-1.5 py-1.5 px-3 ${obraClass} rounded-xl text-xs font-semibold border shadow-sm transition-all hover:shadow-md hover:bg-opacity-80 cursor-default">
+                                                                                            ${iMap}
+                                                                                            <span class="truncate max-w-[120px]">${obra}</span>
+                                                                                        </div>` : ''}
+                </div>
+            `;
+        }
+
         function filtrarLineasPorDiametro(lineas = [], diamSet) {
             if (!diamSet || diamSet.size === 0) {
                 return lineas;
@@ -2656,51 +2805,43 @@
                 }
 
                 return `
-                    <div class="bg-white border-2 ${isSelected ? 'border-indigo-600' : 'border-gray-200'} rounded-lg p-4 cursor-pointer hover:border-indigo-400 transition"
+                    <div class="bg-white border ${isSelected ? 'border-indigo-500 ring-4 ring-indigo-50' : 'border-gray-100'} rounded-xl p-4 cursor-pointer hover:shadow-md transition-all duration-200"
                          onclick="seleccionarPedidoMobile(${index})">
-                        ${badges.length ? `<div class="flex items-center gap-2 mb-2">${badges.join('')}</div>` : ''}
+                        ${badges.length ? `<div class="flex items-center gap-2 mb-3">${badges.join('')}</div>` : ''}
 
-                    <div class="space-y-2 text-sm">
-                        <div>
-                            <span class="text-gray-500">Linea pedido (BD):</span>
-                            <span class="ml-2 font-semibold text-gray-900">${linea.codigo || '—'}</span>
-                        </div>
-                        <div class="hidden">
-                            <span class="text-gray-500">Pedido (BD):</span>
-                            <span class="ml-2 text-gray-900">${linea.pedido_codigo || '—'}</span>
-                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
+                                <span class="font-bold text-gray-900">${linea.codigo || '—'}</span>
+                            </div>
+                            
+                            <!-- Hidden Fields -->
+                            <div class="hidden"><span class="text-gray-500">Pedido (BD):</span><span class="ml-2 text-gray-900">${linea.pedido_codigo || '—'}</span></div>
+
                             ${fabricanteNombre ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <span class="text-gray-500">Fabricante:</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ` : ''}
+                                                                                                <div class="flex items-center gap-2">
+                                                                                                    <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                                                                                                    <span class="text-gray-700">${fabricanteNombre}</span>
+                                                                                                </div>` : ''}
+
                             ${distribuidorNombre ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <span class="text-gray-500">Distribuidor:</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ` : ''}
-                            <div>
-                                <span class="text-gray-500">Producto:</span>
-                                <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
+                                                                                                <div class="flex items-center gap-2">
+                                                                                                    <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" /></svg>
+                                                                                                    <span class="text-gray-700">${distribuidorNombre}</span>
+                                                                                                </div>` : ''}
+
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                <span class="text-gray-900 font-medium">${formatFechaEntrega(linea.fecha_entrega)}</span>
                             </div>
-                            <div>
-                                <span class="text-gray-500">F. Entrega:</span>
-                                <span class="ml-2 text-gray-900">${formatFechaEntrega(linea.fecha_entrega)}</span>
-                            </div>
-                            ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
-                            <div class="flex items-center justify-between pt-2 border-t border-gray-100">
-                                <div>
-                                    <span class="text-gray-500">Pendiente:</span>
-                                    <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
+
+                            ${renderProductChips(linea)}
+
+                            <div class="flex items-center justify-between pt-3 border-t border-gray-50 mt-2">
+                                <div class="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wide font-bold">
+                                    <span>Pendiente</span>
                                 </div>
-                                    
+                                <span class="text-base font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                             </div>
                         </div>
                     </div>
@@ -2719,23 +2860,6 @@
             if (index < 0 || index >= lineasPendientes.length) return;
 
             const lineaSeleccionada = lineasPendientes[index];
-            const recommendedId = cache.recommendedId || cache.simulacion?.linea_propuesta?.id || null;
-
-            // Si hay discrepancia, pediremos el motivo al confirmar (Step 3 a 4) 
-            // o podrías pedirlo aquí mismo en un modal.
-            // Para una experiencia fluida, lo pediremos en un modal si NO es el recomendado.
-            if (recommendedId && lineaSeleccionada.id != recommendedId) {
-                // Preparamos los datos para el modal de motivo
-                document.getElementById('motivo-pedido-actual').textContent = lineaSeleccionada.pedido_codigo ||
-                    'Pedido ID: ' + lineaSeleccionada.id;
-                document.getElementById('motivo-cambio-modal').classList.remove('hidden');
-                document.getElementById('motivo-cambio-modal').classList.add('flex');
-
-                // Guardamos temporalmente el ID seleccionado para usarlo al confirmar el motivo
-                window._tempPendingSelectionIndex = index;
-                return; // Pausamos selección hasta que dé el motivo
-            }
-
             confirmarSeleccionPedidoMobile(lineaSeleccionada);
         }
 
@@ -2753,32 +2877,7 @@
             cerrarModalPedidosMobile();
         }
 
-        function aceptarMotivoCambio() {
-            const motivo = document.getElementById('motivo-text-area').value;
-            if (!motivo || motivo.trim().length < 5) {
-                alert('Por favor, indica un motivo breve (mínimo 5 caracteres) para ayudar a la IA a aprender.');
-                return;
-            }
 
-            window._lastUserReason = motivo;
-            const index = window._tempPendingSelectionIndex;
-            const cache = window.mobileStepManager.dataCache;
-            const lineasPendientes = cache.lineasFiltradas || cache.simulacion?.lineas_pendientes || [];
-            const linea = lineasPendientes[index];
-
-            document.getElementById('motivo-cambio-modal').classList.add('hidden');
-            document.getElementById('motivo-cambio-modal').classList.remove('flex');
-            document.getElementById('motivo-text-area').value = '';
-
-            confirmarSeleccionPedidoMobile(linea);
-        }
-
-        function cancelarMotivoCambio() {
-            document.getElementById('motivo-cambio-modal').classList.add('hidden');
-            document.getElementById('motivo-cambio-modal').classList.remove('flex');
-            document.getElementById('motivo-text-area').value = '';
-            window._tempPendingSelectionIndex = null;
-        }
 
         /**
          * Actualizar Vista 3 con línea seleccionada
@@ -2822,44 +2921,35 @@
                     <div class="space-y-2 text-sm">
                         <div class>
                             <span class="text-gray-500">Linea pedido (BD):</span>
-                            <span class="ml-2 font-semibold text-gray-900">${linea.codigo_linea || '—'}</span>
+                            <span class="ml-2 font-semibold text-gray-900">${linea.codigo || '—'}</span>
                         </div>
                         ${pedidoHprEscaneado ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="hidden">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Pedido HPR (escaneado):</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <span class="ml-2 font-semibold text-gray-900">${pedidoHprEscaneado}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="hidden">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Pedido HPR (escaneado):</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="ml-2 font-semibold text-gray-900">${pedidoHprEscaneado}</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
                         <div class="hidden">
                             <span class="text-gray-500">Pedido (BD):</span>
                             <span class="ml-2 font-semibold text-gray-900">${linea.pedido_codigo || '—'}</span>
                         </div>
                         ${fabricanteNombre ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Fabricante:</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Fabricante:</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
                         ${distribuidorNombre ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Distribuidor:</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ` : ''}
-                        <div>
-                            <span class="text-gray-500">Producto:</span>
-                            <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
-                        </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Distribuidor:</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
                         <div>
                             <span class="text-gray-500">F. Entrega:</span>
                             <span class="ml-2 text-gray-900">${formatFechaEntrega(linea.fecha_entrega)}</span>
                         </div>
-                        ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ` : ''}
+                        ${renderProductChips(linea)}
                         <div class="pt-2 border-t border-gray-100">
                             <span class="text-gray-500">Cantidad Pendiente:</span>
                             <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
@@ -2877,6 +2967,142 @@
                 btnVerOtrosPedidos.addEventListener('click', abrirModalPedidosMobile);
             }
         });
+
+        function activarAlbaranMobile() {
+            if (!window.mobileStepManager || !window.mobileStepManager.dataCache || !window.mobileStepManager.dataCache
+                .lineaSeleccionada) {
+                Swal.fire('Error', 'No se ha seleccionado ningún pedido válido.', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('mobile-btn-activar');
+            let originalText = btn ? btn.innerHTML : 'Confirmar y Activar';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="mr-2">⌛</span> Procesando...';
+            }
+
+            // Sync coladas seleccionadas back to parsed if present
+            const cache = window.mobileStepManager.dataCache;
+            const coladasSel = cache.coladasSeleccionadas;
+
+            if (coladasSel && cache.parsed && cache.parsed.productos) {
+                // Set of selected colada codes
+                const selectedSet = new Set(coladasSel.map(c => c.colada));
+
+                cache.parsed.productos.forEach(prod => {
+                    const items = prod.line_items || prod.lineItems || [];
+                    items.forEach(item => {
+                        // If it's in the selected set, descargar=true. Else false.
+                        const coladaCode = item.colada;
+                        if (coladaCode && selectedSet.has(coladaCode)) {
+                            item.descargar = true;
+                        } else {
+                            item.descargar = false;
+                        }
+                    });
+                });
+            }
+
+            // Asegurar que el ocr_log_id viaja dentro de parsed (lo usa el backend)
+            const ocrLogId = cache?.ocr_log_id ?? cache?.resultado?.ocr_log_id ?? null;
+            if (cache.parsed) {
+                if (!cache.parsed.ocr_log_id && ocrLogId) cache.parsed.ocr_log_id = ocrLogId;
+                if (cache.parsed.data && typeof cache.parsed.data === 'object') {
+                    if (!cache.parsed.data.ocr_log_id && ocrLogId) cache.parsed.data.ocr_log_id = ocrLogId;
+                }
+            }
+
+            // Coladas/bultos para asignación al gruista (como /pedidos/.../activar-con-coladas)
+            const coladas = (cache.coladasSeleccionadas || [])
+                .map((c) => ({
+                    colada: c.colada || null,
+                    bulto: Number(c.bultos ?? 0),
+                }))
+                .filter((c) => c.colada !== null || (c.bulto !== null && c.bulto !== 0));
+
+            const payload = {
+                parsed: cache.parsed,
+                linea_seleccionada: cache.lineaSeleccionada,
+                simulacion: cache.simulacion,
+                coladas,
+            };
+
+            const pedidoId = cache.lineaSeleccionada?.pedido_id || cache.lineaSeleccionada?.pedidoId || cache.lineaSeleccionada
+                ?.pedido?.id;
+            const lineaId = cache.lineaSeleccionada?.id;
+
+            if (!pedidoId || !lineaId) {
+                Swal.fire('Error', 'No se ha podido determinar el pedido/línea a activar.', 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+                return;
+            }
+
+            const url = `{{ url('/pedidos') }}/${pedidoId}/lineas/${lineaId}/activar-con-coladas`;
+
+            fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(res => {
+                    if (!res.ok) {
+                        return res.text().then(text => {
+                            try {
+                                const json = JSON.parse(text);
+                                throw new Error(json.message || text);
+                            } catch (e) {
+                                throw new Error(text || res.statusText);
+                            }
+                        });
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        enviarAprendizajeIA(cache); // Send feedback on success
+
+                        // Toast success top-center 2s
+                        Swal.fire({
+                            toast: true,
+                            position: 'top',
+                            icon: 'success',
+                            title: '¡Albarán Activado!',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+
+                        // Reset wizard to Step 1 via Reload
+                        setTimeout(() => {
+                            localStorage.removeItem('lastScanMobileCache');
+                            window.location.reload();
+                        }, 2000);
+
+                    } else {
+                        throw new Error(data.message || 'Error desconocido');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error activation:', err);
+                    let msg = err.message;
+                    try {
+                        const jsonErr = JSON.parse(msg);
+                        if (jsonErr.message) msg = jsonErr.message;
+                    } catch (e) {}
+
+                    Swal.fire('Error', 'No se pudo activar: ' + msg, 'error');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                    }
+                });
+        }
     </script>
 
     <script>

@@ -4,7 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Distribuidor;
 use App\Models\PedidoProducto;
+use App\Models\PedidoProductoColada;
 use App\Models\IAAprendizajePrioridad;
+use App\Models\Entrada;
+use App\Models\Producto;
+use App\Models\Movimiento;
+use App\Models\Colada;
+use App\Models\EntradaImportLog;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use App\Services\AlbaranOcrService;
 use App\Services\PrioridadIAService;
 use Illuminate\Http\Request;
@@ -779,5 +787,317 @@ class AlbaranesScanController extends Controller
         ]);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Activa el albarán escaneado creando la Entrada y los Productos correspondientes.
+     */
+    public function activar(Request $request)
+    {
+        $request->validate([
+            'parsed' => 'required|array',
+            'linea_seleccionada' => 'required|array',
+            'simulacion' => 'nullable|array',
+            'coladas' => 'nullable|array',
+            'coladas.*.colada' => 'nullable|string|max:255',
+            'coladas.*.bulto' => 'nullable|numeric|min:0',
+            'coladas.*.bultos' => 'nullable|numeric|min:0',
+        ]);
+
+        $parsed = $request->input('parsed');
+        $lineaData = $request->input('linea_seleccionada');
+        // $simulacion = $request->input('simulacion');
+
+        DB::beginTransaction();
+
+        try {
+            $albaranCodigo = $parsed['albaran'] ?? ('ALB-' . time());
+            $pedidoProductoId = $lineaData['id'];
+
+            // Buscar la línea real para asegurar consistencia
+            $pedidoProducto = PedidoProducto::with(['pedido.fabricante', 'pedido.distribuidor', 'productoBase'])->findOrFail($pedidoProductoId);
+            $pedidoId = $pedidoProducto->pedido_id;
+
+            // Datos generales
+            $pesoTotal = 0;
+            $productosData = $parsed['productos'] ?? [];
+
+            // Calcular peso total
+            foreach ($productosData as $prod) {
+                foreach (($prod['line_items'] ?? []) as $item) {
+                    // Solo contar si no se ha desmarcado
+                    if (isset($item['descargar']) && $item['descargar'] === false)
+                        continue;
+
+                    $peso = (float) ($item['peso_kg'] ?? ($item['pesoNeto'] ?? 0));
+                    $pesoTotal += $peso;
+                }
+            }
+
+            $debeCrearEntrada = $pesoTotal > 0;
+
+            // Crear asignación de coladas/bultos y movimiento de entrada para el gruista (como en /pedidos)
+            $productoBaseId = $pedidoProducto->producto_base_id;
+            $fabricanteId = $pedidoProducto->pedido?->fabricante_id;
+
+            $coladasPayload = (array) $request->input('coladas', []);
+            if (empty($coladasPayload)) {
+                foreach ($productosData as $prod) {
+                    foreach (($prod['line_items'] ?? $prod['lineItems'] ?? []) as $item) {
+                        if (isset($item['descargar']) && $item['descargar'] === false) {
+                            continue;
+                        }
+                        $coladasPayload[] = [
+                            'colada' => $item['colada'] ?? null,
+                            'bulto' => $item['bultos'] ?? ($item['bulto'] ?? null),
+                        ];
+                    }
+                }
+            }
+
+            $coladasPayload = collect($coladasPayload)
+                ->map(function ($fila) {
+                    $colada = isset($fila['colada']) ? trim((string) $fila['colada']) : null;
+                    $bultoRaw = $fila['bulto'] ?? ($fila['bultos'] ?? null);
+                    $bulto = is_null($bultoRaw) ? null : (float) $bultoRaw;
+                    if ($colada === '') {
+                        $colada = null;
+                    }
+                    return ['colada' => $colada, 'bulto' => $bulto];
+                })
+                ->filter(function ($fila) {
+                    $hasColada = !is_null($fila['colada']);
+                    $hasBulto = !is_null($fila['bulto']) && (float) $fila['bulto'] > 0;
+                    return $hasColada || $hasBulto;
+                })
+                ->values()
+                ->all();
+
+            PedidoProductoColada::where('pedido_producto_id', $pedidoProducto->id)->delete();
+            foreach ($coladasPayload as $fila) {
+                $numeroColada = $fila['colada'] ?? null;
+                $bulto = $fila['bulto'] ?? null;
+
+                $coladaId = null;
+                if (!is_null($numeroColada) && $numeroColada !== '') {
+                    $coladaRegistro = Colada::firstOrCreate(
+                        [
+                            'numero_colada' => $numeroColada,
+                            'producto_base_id' => $productoBaseId,
+                        ],
+                        [
+                            'fabricante_id' => $fabricanteId,
+                        ]
+                    );
+                    $coladaId = $coladaRegistro->id;
+
+                    if ($fabricanteId && !$coladaRegistro->fabricante_id) {
+                        $coladaRegistro->update(['fabricante_id' => $fabricanteId]);
+                    }
+                }
+
+                PedidoProductoColada::create([
+                    'pedido_producto_id' => $pedidoProducto->id,
+                    'colada_id' => $coladaId,
+                    'colada' => $numeroColada,
+                    'bulto' => $bulto,
+                    'user_id' => Auth::id(),
+                ]);
+            }
+
+            $pedido = $pedidoProducto->pedido;
+            $productoBase = $pedidoProducto->productoBase;
+            $proveedorNombre = $pedido?->fabricante?->nombre
+                ?? $pedido?->distribuidor?->nombre
+                ?? 'No especificado';
+
+            $fechaEntregaFmt = $pedidoProducto->fecha_estimada_entrega
+                ? Carbon::parse($pedidoProducto->fecha_estimada_entrega)->format('d/m/Y')
+                : '—';
+
+            $partes = [];
+            if ($productoBase) {
+                $partes[] = sprintf(
+                    'Se solicita descarga para producto %s Ø%s%s',
+                    $productoBase->tipo,
+                    (string) $productoBase->diametro,
+                    $productoBase->tipo === 'barra' ? (' de ' . (string) $productoBase->longitud . ' m') : ''
+                );
+            } else {
+                $partes[] = 'Se solicita descarga para albarán escaneado';
+            }
+            $partes[] = sprintf('Pedido %s', $pedido?->codigo ?? $pedidoId);
+            $partes[] = sprintf('Proveedor: %s', $proveedorNombre);
+            $partes[] = sprintf('Línea: %s', $pedidoProducto->codigo ?? $pedidoProducto->id);
+            if (!is_null($pedidoProducto->cantidad)) {
+                $partes[] = sprintf(
+                    'Cantidad solicitada: %s kg',
+                    rtrim(rtrim(number_format((float) $pedidoProducto->cantidad, 3, ',', '.'), '0'), ',')
+                );
+            }
+            $partes[] = sprintf('Fecha prevista: %s', $fechaEntregaFmt);
+            $partes[] = sprintf('Albarán: %s', $albaranCodigo);
+
+            $descripcionMovimiento = implode(' | ', $partes);
+
+            $ocrLogId = $parsed['ocr_log_id'] ?? null;
+            $movimiento = Movimiento::query()
+                ->where('tipo', 'entrada')
+                ->where('estado', 'pendiente')
+                ->where('pedido_producto_id', $pedidoProducto->id)
+                ->first();
+
+            if ($movimiento) {
+                $movimiento->update([
+                    'descripcion' => $descripcionMovimiento,
+                    'ocr_log_id' => $ocrLogId,
+                    'pedido_id' => $pedidoId,
+                    'producto_base_id' => $productoBaseId,
+                    'nave_id' => $pedidoProducto->obra_id,
+                ]);
+            } else {
+                $movimiento = Movimiento::create([
+                    'tipo' => 'entrada',
+                    'estado' => 'pendiente',
+                    'descripcion' => $descripcionMovimiento,
+                    'fecha_solicitud' => now(),
+                    'solicitado_por' => Auth::id(),
+                    'pedido_id' => $pedidoId,
+                    'producto_base_id' => $productoBaseId,
+                    'pedido_producto_id' => $pedidoProducto->id,
+                    'ocr_log_id' => $ocrLogId,
+                    'prioridad' => 2,
+                    'nave_id' => $pedidoProducto->obra_id,
+                ]);
+            }
+
+            // Si no hay peso (p.ej. modo manual), solo creamos la solicitud de descarga (movimiento + coladas).
+            // El peso real se introducirá/cerrará más adelante desde la grúa / cierre de albarán.
+            if (!$debeCrearEntrada) {
+                DB::commit();
+                return response()->json([
+                    'success' => true,
+                    'entrada_id' => null,
+                    'movimiento_id' => $movimiento?->id,
+                    'message' => 'Solicitud creada. El peso se introducirá más adelante desde la grúa.',
+                ]);
+            }
+
+            // Crear ENTRADA
+            $entrada = Entrada::create([
+                'albaran' => $albaranCodigo,
+                'usuario_id' => Auth::id(),
+                'peso_total' => $pesoTotal,
+                'estado' => 'cerrado',
+                'otros' => 'Escaneo Móvil Albarán ' . $albaranCodigo,
+                'pedido_id' => $pedidoId,
+                'pedido_producto_id' => $pedidoProductoId,
+            ]);
+
+            // Generar Códigos MP
+            $ultimoCodigo = Producto::where('codigo', 'like', 'MP%')
+                ->whereRaw('LENGTH(codigo) <= 12') // Evitar códigos raros largos
+                ->orderByRaw('LENGTH(codigo) DESC')
+                ->orderBy('codigo', 'desc')
+                ->value('codigo');
+
+            $numeroSecuencia = 1;
+
+            if ($ultimoCodigo) {
+                // Intentar extraer números al final
+                if (preg_match('/MP-?(\d+)/i', $ultimoCodigo, $matches)) {
+                    $numeroSecuencia = intval($matches[1]) + 1;
+                }
+            }
+
+            $count = 0;
+
+            foreach ($productosData as $prod) {
+                $lineItems = $prod['line_items'] ?? [];
+
+                foreach ($lineItems as $item) {
+                    if (isset($item['descargar']) && $item['descargar'] === false)
+                        continue;
+
+                    $peso = (float) ($item['peso_kg'] ?? ($item['pesoNeto'] ?? 0));
+                    $colada = $item['colada'] ?? '';
+                    $paqueteMain = $item['paquete'] ?? '';
+                    if (!$paqueteMain) {
+                        // Generar un código de paquete
+                        $paqueteMain = 'PAQ-' . date('ymd') . '-' . ($count + 1);
+                    }
+
+                    // Generar código
+                    $codigoMP = 'MP' . str_pad($numeroSecuencia + $count, 6, '0', STR_PAD_LEFT);
+                    $count++;
+
+                    Producto::create([
+                        'codigo' => $codigoMP,
+                        'producto_base_id' => $productoBaseId,
+                        'fabricante_id' => $pedidoProducto->pedido->fabricante_id,
+                        'entrada_id' => $entrada->id,
+                        'n_colada' => $colada,
+                        'n_paquete' => $paqueteMain,
+                        'peso_inicial' => $peso,
+                        'peso_stock' => $peso,
+                        'estado' => 'almacenado',
+                        'obra_id' => $pedidoProducto->obra_id ?? 0,
+                        'ubicacion_id' => null, // Pendiente de asignación
+                        'maquina_id' => null,
+                        'otros' => 'Scan Móvil',
+                    ]);
+                }
+            }
+
+            // Actualizar OCR Log
+            if (!empty($parsed['ocr_log_id'])) {
+                $log = EntradaImportLog::find($parsed['ocr_log_id']);
+                if ($log) {
+                    $log->update([
+                        'entrada_id' => $entrada->id,
+                        'status' => 'applied',
+                        'reviewed_at' => now(),
+                        'applied_payload' => $parsed
+                    ]);
+
+                    // Copiar PDF
+                    try {
+                        if ($log->file_path && Storage::disk('private')->exists($log->file_path)) {
+                            $ext = pathinfo($log->file_path, PATHINFO_EXTENSION) ?: 'pdf';
+                            $destName = 'albaran_' . $entrada->id . '_' . time() . '.' . $ext;
+                            $destPath = 'albaranes_entrada/' . $destName;
+
+                            Storage::disk('private')->copy($log->file_path, $destPath);
+                            $entrada->pdf_albaran = $destName;
+                            $entrada->save();
+                        }
+                    } catch (\Throwable $e2) {
+                        Log::warning("No se pudo copiar archivo albarán: " . $e2->getMessage());
+                    }
+                }
+            }
+
+            // IMPORTANTE:
+            // No cambiamos el estado de la línea aquí (pendiente/parcial/completado).
+            // Este endpoint se usa para solicitar la descarga (movimiento + coladas/bultos).
+            // El estado de recepción de la línea se recalcula en el flujo de cierre (p.ej. EntradaController@cerrarAlbaranPorMovimiento).
+            Log::info("Albaran scan activado. Entrada: {$entrada->id}. PedidoProducto ID: {$pedidoProducto->id}. Estado línea sin cambios: {$pedidoProducto->estado}");
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'entrada_id' => $entrada->id,
+                'message' => 'Albarán activado correctamente'
+            ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error activando albaran:', ['msg' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al activar: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
