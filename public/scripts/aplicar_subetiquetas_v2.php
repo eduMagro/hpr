@@ -143,12 +143,17 @@ foreach ($planillaIds as $index => $planillaId) {
             $subIdAntes = $elemento->etiqueta_sub_id;
             $maquinaReal = $elemento->maquina_id ?? $elemento->maquina_id_2 ?? $elemento->maquina_id_3;
 
-            // Buscar etiqueta padre
-            $padre = Etiqueta::find($elemento->etiqueta_id);
+            // Buscar etiqueta padre (incluyendo soft-deleted)
+            $padre = Etiqueta::withTrashed()->find($elemento->etiqueta_id);
 
             if (!$padre) {
                 $sinPadre++;
                 continue;
+            }
+
+            // Si la etiqueta padre está eliminada, restaurarla
+            if ($padre->trashed()) {
+                $padre->restore();
             }
 
             if (!$maquinaReal) {
@@ -240,18 +245,16 @@ echo "\nElementos pendientes: {$pendientes}\n";
 // Debug: verificar datos
 echo "\n--- DEBUG ---\n";
 
-// Verificar si hay elementos donde etiqueta_id no apunta a una etiqueta válida
-$elementosSinEtiquetaValida = DB::table('elementos')
-    ->whereNull('etiqueta_sub_id')
-    ->whereNotNull('etiqueta_id')
-    ->whereNotExists(function ($q) {
-        $q->select(DB::raw(1))
-            ->from('etiquetas')
-            ->whereColumn('etiquetas.id', 'elementos.etiqueta_id');
-    })
-    ->count();
+// Contar etiquetas soft-deleted que tienen elementos pendientes
+$etiquetasSoftDeleted = DB::table('elementos')
+    ->join('etiquetas', 'elementos.etiqueta_id', '=', 'etiquetas.id')
+    ->whereNull('elementos.etiqueta_sub_id')
+    ->whereNotNull('elementos.etiqueta_id')
+    ->whereNotNull('etiquetas.deleted_at')
+    ->distinct()
+    ->count('etiquetas.id');
 
-echo "Elementos con etiqueta_id inválido: {$elementosSinEtiquetaValida}\n";
+echo "Etiquetas soft-deleted restauradas en este lote: (ver subs creadas)\n";
 
 // Ver un ejemplo de elemento pendiente
 $ejemploElemento = Elemento::whereNull('etiqueta_sub_id')
@@ -262,16 +265,14 @@ if ($ejemploElemento) {
     echo "Ejemplo elemento pendiente:\n";
     echo "  - Elemento ID: {$ejemploElemento->id}\n";
     echo "  - etiqueta_id: " . ($ejemploElemento->etiqueta_id ?? 'NULL') . "\n";
-    echo "  - etiqueta_sub_id: " . ($ejemploElemento->etiqueta_sub_id ?? 'NULL') . "\n";
-    echo "  - maquina_id: " . ($ejemploElemento->maquina_id ?? 'NULL') . "\n";
-    echo "  - planilla_id: " . ($ejemploElemento->planilla_id ?? 'NULL') . "\n";
 
-    // Verificar si su etiqueta existe
-    $etiqueta = Etiqueta::find($ejemploElemento->etiqueta_id);
+    // Verificar con withTrashed
+    $etiqueta = Etiqueta::withTrashed()->find($ejemploElemento->etiqueta_id);
     if ($etiqueta) {
-        echo "  - Etiqueta encontrada: codigo={$etiqueta->codigo}, sub_id=" . ($etiqueta->etiqueta_sub_id ?? 'NULL') . "\n";
+        $estado = $etiqueta->trashed() ? '(SOFT-DELETED)' : '(activa)';
+        echo "  - Etiqueta: codigo={$etiqueta->codigo} {$estado}\n";
     } else {
-        echo "  - ❌ Etiqueta NO encontrada con ID: {$ejemploElemento->etiqueta_id}\n";
+        echo "  - ❌ Etiqueta NO existe ni siquiera con soft-delete\n";
     }
 }
 
