@@ -201,9 +201,14 @@ class AplicarSubetiquetasCommand extends Command
 
     /**
      * Procesar TODAS las planillas con elementos sin subetiqueta
+     * Optimizado para evitar timeouts y manejar grandes volúmenes
      */
     protected function procesarTodas(bool $dryRun, ?int $limit): int
     {
+        // Configurar para larga ejecución
+        set_time_limit(0);
+        ini_set('memory_limit', '512M');
+
         $this->info('=== PROCESAR TODAS LAS PLANILLAS PENDIENTES ===');
         $this->newLine();
 
@@ -220,7 +225,7 @@ class AplicarSubetiquetasCommand extends Command
             ->whereNotNull('etiqueta_id')
             ->count();
 
-        $this->info("Planillas afectadas: {$totalPlanillas}");
+        $this->info("Planillas pendientes: {$totalPlanillas}");
         $this->info("Elementos sin subetiqueta: {$totalElementosSinSub}");
         $this->newLine();
 
@@ -229,116 +234,136 @@ class AplicarSubetiquetasCommand extends Command
             return 0;
         }
 
-        // Obtener IDs de planillas afectadas
-        $query = DB::table('elementos')
-            ->whereNull('etiqueta_sub_id')
-            ->whereNotNull('etiqueta_id')
-            ->whereNotNull('planilla_id')
-            ->distinct()
-            ->orderBy('planilla_id');
-
-        if ($limit) {
-            $this->warn("⚠️ Limitando a {$limit} planillas");
-            $query->limit($limit);
-        }
-
-        $planillaIds = $query->pluck('planilla_id')->toArray();
-        $totalAProcesar = count($planillaIds);
-
-        $this->info("Planillas a procesar: {$totalAProcesar}");
+        // Usar limit por defecto de 500 si no se especifica (para evitar timeouts)
+        $batchSize = $limit ?? 500;
+        $this->info("Procesando en lotes de {$batchSize} planillas");
         $this->newLine();
-
-        $bar = $this->output->createProgressBar($totalAProcesar);
-        $bar->setFormat(' %current%/%max% [%bar%] %percent:3s%% - %message%');
-        $bar->start();
 
         $totalElementos = 0;
         $totalSubsCreadas = 0;
         $totalErrores = 0;
+        $planillasProcesadas = 0;
+        $startTime = microtime(true);
 
-        foreach ($planillaIds as $planillaId) {
-            $planilla = Planilla::find($planillaId);
-            if (!$planilla) {
-                $bar->advance();
-                continue;
-            }
-
-            $bar->setMessage($planilla->codigo);
-
-            // Obtener elementos sin subetiqueta de esta planilla
-            $elementosSinSub = Elemento::where('planilla_id', $planillaId)
+        // Procesar en lotes para evitar cargar todo en memoria
+        while (true) {
+            // Obtener siguiente lote de planillas pendientes
+            $planillaIds = DB::table('elementos')
                 ->whereNull('etiqueta_sub_id')
                 ->whereNotNull('etiqueta_id')
-                ->get();
+                ->whereNotNull('planilla_id')
+                ->distinct()
+                ->orderBy('planilla_id')
+                ->limit($batchSize)
+                ->pluck('planilla_id')
+                ->toArray();
 
-            if ($elementosSinSub->isEmpty()) {
-                $bar->advance();
-                continue;
+            if (empty($planillaIds)) {
+                break; // No hay más planillas pendientes
             }
 
-            if ($dryRun) {
-                $totalElementos += $elementosSinSub->count();
-                $bar->advance();
-                continue;
-            }
+            $loteActual = count($planillaIds);
+            $this->line("📦 Procesando lote de {$loteActual} planillas...");
 
-            // Procesar elementos
-            $subsCreadas = 0;
-            $errores = 0;
+            foreach ($planillaIds as $index => $planillaId) {
+                $planilla = Planilla::find($planillaId);
+                if (!$planilla) {
+                    continue;
+                }
 
-            DB::beginTransaction();
-            try {
-                foreach ($elementosSinSub as $elemento) {
-                    $maquinaReal = $elemento->maquina_id ?? $elemento->maquina_id_2 ?? $elemento->maquina_id_3;
+                // Mostrar progreso cada 10 planillas
+                if ($index % 10 === 0) {
+                    $memoria = round(memory_get_usage() / 1024 / 1024, 1);
+                    $this->line("   [{$index}/{$loteActual}] {$planilla->codigo} (Mem: {$memoria}MB)");
+                }
 
-                    if (!$maquinaReal) {
-                        $padre = Etiqueta::find($elemento->etiqueta_id);
-                        if ($padre) {
-                            $subId = Etiqueta::generarCodigoSubEtiqueta($padre->codigo);
-                            $subRowId = $this->asegurarFilaSub($subId, $padre);
+                // Procesar elementos en chunks de 50 para evitar memory issues
+                $chunkSize = 50;
+                $offset = 0;
 
-                            $elemento->update([
-                                'etiqueta_sub_id' => $subId,
-                                'etiqueta_id' => $subRowId,
-                            ]);
-                            $subsCreadas++;
-                        }
+                while (true) {
+                    $elementosChunk = Elemento::where('planilla_id', $planillaId)
+                        ->whereNull('etiqueta_sub_id')
+                        ->whereNotNull('etiqueta_id')
+                        ->skip($offset)
+                        ->take($chunkSize)
+                        ->get();
+
+                    if ($elementosChunk->isEmpty()) {
+                        break;
+                    }
+
+                    if ($dryRun) {
+                        $totalElementos += $elementosChunk->count();
+                        $offset += $chunkSize;
                         continue;
                     }
 
+                    // Procesar chunk con transacción
+                    DB::beginTransaction();
                     try {
-                        [$subDestino, $subOriginal] = $this->subEtiquetaService->reubicarSegunTipoMaterial($elemento, $maquinaReal);
-
-                        if ($subDestino) {
-                            $subsCreadas++;
+                        foreach ($elementosChunk as $elemento) {
+                            $this->procesarElemento($elemento, $totalSubsCreadas, $totalErrores);
                         }
+                        DB::commit();
+                        $totalElementos += $elementosChunk->count();
                     } catch (\Exception $e) {
-                        $errores++;
+                        DB::rollBack();
+                        $totalErrores++;
+                        $this->error("   ❌ Error en planilla {$planilla->codigo}: " . substr($e->getMessage(), 0, 50));
                     }
+
+                    $offset += $chunkSize;
+
+                    // Liberar memoria
+                    unset($elementosChunk);
                 }
 
-                DB::commit();
+                $planillasProcesadas++;
 
-                $totalElementos += $elementosSinSub->count();
-                $totalSubsCreadas += $subsCreadas;
-                $totalErrores += $errores;
-
-            } catch (\Exception $e) {
-                DB::rollBack();
-                $totalErrores++;
+                // Liberar memoria cada 20 planillas
+                if ($planillasProcesadas % 20 === 0) {
+                    gc_collect_cycles();
+                    DB::connection()->getPdo()->setAttribute(\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
+                }
             }
 
-            $bar->advance();
+            // Liberar memoria entre lotes
+            unset($planillaIds);
+            gc_collect_cycles();
+
+            // Si se especificó --limit, solo procesar un lote
+            if ($limit) {
+                break;
+            }
+
+            // Recalcular pendientes
+            $pendientes = DB::table('elementos')
+                ->whereNull('etiqueta_sub_id')
+                ->whereNotNull('etiqueta_id')
+                ->whereNotNull('planilla_id')
+                ->distinct()
+                ->count('planilla_id');
+
+            if ($pendientes > 0) {
+                $this->newLine();
+                $this->info("✓ Lote completado. Quedan {$pendientes} planillas pendientes.");
+                $this->newLine();
+            }
         }
 
-        $bar->finish();
-        $this->newLine(2);
-
+        $elapsed = round(microtime(true) - $startTime, 1);
+        $this->newLine();
+        $this->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         $this->info('=== RESUMEN FINAL ===');
         $this->newLine();
 
+        $this->info("Tiempo total: {$elapsed} segundos");
+        $this->info("Planillas procesadas: {$planillasProcesadas}");
+
         if ($dryRun) {
             $this->info("Elementos a procesar: {$totalElementos}");
+            $this->newLine();
             $this->warn('🔍 Ejecuta sin --dry-run para aplicar cambios');
         } else {
             $this->info("Elementos procesados: {$totalElementos}");
@@ -348,6 +373,54 @@ class AplicarSubetiquetasCommand extends Command
             }
         }
 
+        // Verificar si quedan pendientes
+        $pendientesFinales = DB::table('elementos')
+            ->whereNull('etiqueta_sub_id')
+            ->whereNotNull('etiqueta_id')
+            ->count();
+
+        if ($pendientesFinales > 0 && !$dryRun) {
+            $this->newLine();
+            $this->warn("⚠️ Quedan {$pendientesFinales} elementos pendientes. Ejecuta el comando de nuevo.");
+        } elseif ($pendientesFinales === 0 && !$dryRun) {
+            $this->newLine();
+            $this->info('✅ ¡Todos los elementos tienen subetiqueta asignada!');
+        }
+
         return 0;
+    }
+
+    /**
+     * Procesa un elemento individual asignándole subetiqueta
+     */
+    protected function procesarElemento(Elemento $elemento, int &$subsCreadas, int &$errores): void
+    {
+        $maquinaReal = $elemento->maquina_id ?? $elemento->maquina_id_2 ?? $elemento->maquina_id_3;
+
+        if (!$maquinaReal) {
+            // Sin máquina: crear subetiqueta individual
+            $padre = Etiqueta::find($elemento->etiqueta_id);
+            if ($padre) {
+                $subId = Etiqueta::generarCodigoSubEtiqueta($padre->codigo);
+                $subRowId = $this->asegurarFilaSub($subId, $padre);
+
+                $elemento->update([
+                    'etiqueta_sub_id' => $subId,
+                    'etiqueta_id' => $subRowId,
+                ]);
+                $subsCreadas++;
+            }
+            return;
+        }
+
+        try {
+            [$subDestino, $subOriginal] = $this->subEtiquetaService->reubicarSegunTipoMaterial($elemento, $maquinaReal);
+
+            if ($subDestino) {
+                $subsCreadas++;
+            }
+        } catch (\Exception $e) {
+            $errores++;
+        }
     }
 }
