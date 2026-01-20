@@ -712,8 +712,14 @@ class AsignarMaquinasExcelCommand extends Command
                 $cambios = true;
             }
 
+            // Actualizar fecha_inicio si hay fecha_inicio en Excel
+            if ($datos['fecha_inicio']) {
+                $planilla->fecha_inicio = $datos['fecha_inicio'];
+                $cambios = true;
+            }
+
             // Actualizar fecha_finalizacion si hay fecha_fin en Excel
-            if ($datos['fecha_fin'] && !$planilla->fecha_finalizacion) {
+            if ($datos['fecha_fin']) {
                 $planilla->fecha_finalizacion = $datos['fecha_fin'];
                 $cambios = true;
             }
@@ -847,8 +853,9 @@ class AsignarMaquinasExcelCommand extends Command
                 ->where('estado', '!=', 'completado')
                 ->update(['estado' => 'completado']);
 
-            // Marcar planilla como completada
+            // Marcar planilla como completada y revisada
             $planilla->estado = 'completada';
+            $planilla->revisada = true;
             $planilla->save();
 
             // Eliminar de las colas de producción y reindexar posiciones
