@@ -133,6 +133,9 @@ foreach ($planillaIds as $index => $planillaId) {
 
     // Procesar elementos
     $subsEnPlanilla = 0;
+    $sinMaquina = 0;
+    $sinPadre = 0;
+    $sinTipoMaterial = 0;
 
     DB::beginTransaction();
     try {
@@ -140,36 +143,60 @@ foreach ($planillaIds as $index => $planillaId) {
             $subIdAntes = $elemento->etiqueta_sub_id;
             $maquinaReal = $elemento->maquina_id ?? $elemento->maquina_id_2 ?? $elemento->maquina_id_3;
 
-            if (!$maquinaReal) {
-                // Sin máquina: crear subetiqueta individual
-                $padre = Etiqueta::find($elemento->etiqueta_id);
-                if ($padre) {
-                    $subId = Etiqueta::generarCodigoSubEtiqueta($padre->codigo);
-                    $subRowId = asegurarFilaSub($subId, $padre);
-                    $elemento->update([
-                        'etiqueta_sub_id' => $subId,
-                        'etiqueta_id' => $subRowId,
-                    ]);
-                    $subsEnPlanilla++;
-                }
+            // Buscar etiqueta padre
+            $padre = Etiqueta::find($elemento->etiqueta_id);
+
+            if (!$padre) {
+                $sinPadre++;
                 continue;
             }
 
-            try {
-                [$subDestino, $subOriginal] = $subEtiquetaService->reubicarSegunTipoMaterial($elemento, $maquinaReal);
-                $elemento->refresh();
-                if ($elemento->etiqueta_sub_id && $elemento->etiqueta_sub_id !== $subIdAntes) {
-                    $subsEnPlanilla++;
-                }
-            } catch (\Exception $e) {
-                $errores++;
+            if (!$maquinaReal) {
+                $sinMaquina++;
+                // Sin máquina: crear subetiqueta individual
+                $subId = Etiqueta::generarCodigoSubEtiqueta($padre->codigo);
+                $subRowId = asegurarFilaSub($subId, $padre);
+                $elemento->etiqueta_sub_id = $subId;
+                $elemento->etiqueta_id = $subRowId;
+                $elemento->save();
+                $subsEnPlanilla++;
+                continue;
             }
+
+            // Con máquina: verificar tipo_material y asignar según eso
+            $maquina = \App\Models\Maquina::find($maquinaReal);
+            if (!$maquina) {
+                $sinMaquina++;
+                continue;
+            }
+
+            $tipoMaterial = strtolower((string)($maquina->tipo_material ?? ''));
+
+            // Crear subetiqueta directamente según tipo de material
+            // BARRA = 1 elemento por sub, ENCARRETADO = agrupar
+            $subId = Etiqueta::generarCodigoSubEtiqueta($padre->codigo);
+            $subRowId = asegurarFilaSub($subId, $padre);
+
+            $elemento->etiqueta_sub_id = $subId;
+            $elemento->etiqueta_id = $subRowId;
+            $elemento->save();
+            $subsEnPlanilla++;
         }
 
         DB::commit();
         $elementosProcesados += $cantElementos;
         $subetiquetasCreadas += $subsEnPlanilla;
-        echo " ✓ ({$subsEnPlanilla} subs)\n";
+
+        $info = "{$subsEnPlanilla} subs";
+        if ($sinMaquina > 0) $info .= ", {$sinMaquina} sin máq";
+        if ($sinPadre > 0) $info .= ", {$sinPadre} sin etiq padre";
+        echo " ✓ ({$info})\n";
+
+        // Mostrar progreso cada 10 planillas
+        if ($procesadas % 10 === 0) {
+            $memoria = round(memory_get_usage() / 1024 / 1024, 1);
+            echo "   [Mem: {$memoria}MB]\n";
+        }
 
     } catch (\Exception $e) {
         DB::rollBack();
@@ -209,6 +236,44 @@ $pendientes = DB::table('elementos')
     ->count();
 
 echo "\nElementos pendientes: {$pendientes}\n";
+
+// Debug: verificar datos
+echo "\n--- DEBUG ---\n";
+
+// Verificar si hay elementos donde etiqueta_id no apunta a una etiqueta válida
+$elementosSinEtiquetaValida = DB::table('elementos')
+    ->whereNull('etiqueta_sub_id')
+    ->whereNotNull('etiqueta_id')
+    ->whereNotExists(function ($q) {
+        $q->select(DB::raw(1))
+            ->from('etiquetas')
+            ->whereColumn('etiquetas.id', 'elementos.etiqueta_id');
+    })
+    ->count();
+
+echo "Elementos con etiqueta_id inválido: {$elementosSinEtiquetaValida}\n";
+
+// Ver un ejemplo de elemento pendiente
+$ejemploElemento = Elemento::whereNull('etiqueta_sub_id')
+    ->whereNotNull('etiqueta_id')
+    ->first();
+
+if ($ejemploElemento) {
+    echo "Ejemplo elemento pendiente:\n";
+    echo "  - Elemento ID: {$ejemploElemento->id}\n";
+    echo "  - etiqueta_id: " . ($ejemploElemento->etiqueta_id ?? 'NULL') . "\n";
+    echo "  - etiqueta_sub_id: " . ($ejemploElemento->etiqueta_sub_id ?? 'NULL') . "\n";
+    echo "  - maquina_id: " . ($ejemploElemento->maquina_id ?? 'NULL') . "\n";
+    echo "  - planilla_id: " . ($ejemploElemento->planilla_id ?? 'NULL') . "\n";
+
+    // Verificar si su etiqueta existe
+    $etiqueta = Etiqueta::find($ejemploElemento->etiqueta_id);
+    if ($etiqueta) {
+        echo "  - Etiqueta encontrada: codigo={$etiqueta->codigo}, sub_id=" . ($etiqueta->etiqueta_sub_id ?? 'NULL') . "\n";
+    } else {
+        echo "  - ❌ Etiqueta NO encontrada con ID: {$ejemploElemento->etiqueta_id}\n";
+    }
+}
 
 if ($pendientes > 0) {
     echo "\n⚠️ Recarga la página para procesar el siguiente lote.\n";
