@@ -555,19 +555,8 @@ class AlbaranesScanController extends Controller
                 $score = 100;
                 $linea->razones = [];
 
-                // Score Código
-                if ($pedidoCodigo && $linea->pedido && str_contains(mb_strtolower($linea->pedido->codigo), mb_strtolower(str_replace(' ', '', $pedidoCodigo)))) {
-                    $score += 1000;
-                    $linea->razones[] = 'Coincidencia exacta código pedido';
-                }
-
-                // Score Cantidad
+                // Score calculation removed - using Date Sorting
                 $pendiente = $linea->cantidad - $linea->cantidad_recepcionada;
-                if ($pesoTotal > 0) {
-                    $diff = abs($pendiente - $pesoTotal);
-                    if ($diff < 100)
-                        $score += 100;
-                }
 
                 // Formatear para frontend
                 $lineaFmt = $linea->toArray();
@@ -576,6 +565,12 @@ class AlbaranesScanController extends Controller
                 $lineaFmt['fabricante'] = $linea->pedido->fabricante->nombre ?? null;
                 $lineaFmt['distribuidor'] = $linea->pedido->distribuidor->nombre ?? null;
                 $lineaFmt['obra'] = $linea->obra?->obra ?? ($linea->obra_manual ?? '—');
+
+                // Fecha de entrega para ordenamiento
+                $fechaEntrega = $linea->fecha_estimada_entrega ?? $linea->pedido->fecha_estimada_entrega ?? null;
+                $lineaFmt['fecha_estimada_entrega'] = $fechaEntrega;
+                $lineaFmt['fecha_entrega'] = $fechaEntrega;
+
                 $lineaFmt['score'] = $score;
                 $lineaFmt['cantidad_pendiente'] = $pendiente;
 
@@ -583,8 +578,10 @@ class AlbaranesScanController extends Controller
             }
         }
 
-        // 4. SELECCIÓN MEJOR CANDIDATO
-        $candidatosSorted = $candidatos->sortByDesc('score')->values();
+        // 4. SELECCIÓN MEJOR CANDIDATO (Por Fecha Entrega Ascendente)
+        $candidatosSorted = $candidatos->sortBy(function ($v) {
+            return $v['fecha_estimada_entrega'] ?? '9999-12-31';
+        })->values();
         $mejorCandidato = $candidatosSorted->first();
 
         $datosLinea = $mejorCandidato;
