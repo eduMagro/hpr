@@ -13,6 +13,7 @@
 
     let items = [];
     let isInitialized = false;
+    let delegationInitialized = false; // Flag separado para event delegation
     let lastFocusedInput = null; // Trackear el último input de etiqueta que tuvo focus
 
     // ============================================================================
@@ -450,14 +451,25 @@
     // ============================================================================
 
     function inicializar() {
-        if (isInitialized) return;
-        isInitialized = true;
-
         // console.log("🚀 Inicializando TrabajoPaquete...");
 
-        // Inicializar input QR
+        // Inicializar input QR (siempre intentar, puede haber nuevo input después de AJAX)
+        inicializarInputQR();
+
+        // Inicializar botón crear paquete con event delegation (solo una vez)
+        if (!delegationInitialized) {
+            inicializarEventDelegation();
+            delegationInitialized = true;
+        }
+
+        isInitialized = true;
+    }
+
+    // Función para inicializar el input QR
+    function inicializarInputQR() {
         const inputQR = document.getElementById("qrItem");
-        if (inputQR) {
+        if (inputQR && !inputQR.dataset.initialized) {
+            inputQR.dataset.initialized = "true";
             inputQR.addEventListener("change", () =>
                 inputQR.dispatchEvent(new Event("input"))
             );
@@ -501,12 +513,19 @@
                 }
             });
         }
+    }
 
-        // Inicializar botón crear paquete
-        const btnCrear = document.getElementById("crearPaqueteBtn");
-        if (btnCrear) {
-            btnCrear.addEventListener("click", crearPaquete);
-        }
+    // Función para inicializar event delegation (solo se llama una vez)
+    function inicializarEventDelegation() {
+        // 🎯 Event delegation para el botón crear paquete - funciona sin importar cuándo se renderice
+        document.addEventListener("click", async function (e) {
+            // Botón crear paquete
+            if (e.target.id === "crearPaqueteBtn" || e.target.closest("#crearPaqueteBtn")) {
+                e.preventDefault();
+                await crearPaquete();
+                return;
+            }
+        });
 
         // 🎯 Trackear focus en inputs de añadir etiqueta en gestión de paquetes
         document.addEventListener("focus", function (e) {

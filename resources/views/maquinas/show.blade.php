@@ -321,11 +321,9 @@
                                         window.updateGridClasses(showLeft, showRight);
                                     }
 
-                                    // Re-inicializar event listeners
-                                    const btnCrear = document.getElementById("crearPaqueteBtn");
-                                    if (btnCrear && window.TrabajoPaquete?.crearPaquete) {
-                                        btnCrear.removeEventListener("click", window.TrabajoPaquete.crearPaquete);
-                                        btnCrear.addEventListener("click", window.TrabajoPaquete.crearPaquete);
+                                    // Re-inicializar input QR si existe (el botón crear usa event delegation)
+                                    if (window.TrabajoPaquete?.inicializar) {
+                                        window.TrabajoPaquete.inicializar();
                                     }
 
                                     console.log('✅ Planillas cambiadas correctamente (inline)');
@@ -748,14 +746,10 @@
                         });
                     }
 
-                    // Re-inicializar event listeners del botón crear paquete
-                    const btnCrear = document.getElementById("crearPaqueteBtn");
-                    if (btnCrear && window.TrabajoPaquete && window.TrabajoPaquete.crearPaquete) {
-                        // Remover listener anterior si existe
-                        btnCrear.replaceWith(btnCrear.cloneNode(true));
-                        const btnCrearNuevo = document.getElementById("crearPaqueteBtn");
-                        btnCrearNuevo.addEventListener("click", window.TrabajoPaquete.crearPaquete);
-                        console.log('✅ Event listener del botón crear paquete re-inicializado');
+                    // Re-inicializar input QR si existe (el botón crear usa event delegation global)
+                    if (window.TrabajoPaquete && window.TrabajoPaquete.inicializar) {
+                        window.TrabajoPaquete.inicializar();
+                        console.log('✅ TrabajoPaquete re-inicializado');
                     }
 
                     // Animación de entrada y re-renderizado de SVGs

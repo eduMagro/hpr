@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app.DmwstQNi.css",
+    "file": "assets/app.BaXpJFEX.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
@@ -52,7 +52,7 @@
     "isEntry": true
   },
   "resources/js/maquinaJS/maquina-bundle.js": {
-    "file": "assets/maquina-bundle.UkuZRPkO.js",
+    "file": "assets/maquina-bundle.BsJbC42O.js",
     "name": "maquina-bundle",
     "src": "resources/js/maquinaJS/maquina-bundle.js",
     "isEntry": true
