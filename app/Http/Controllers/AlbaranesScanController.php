@@ -73,18 +73,7 @@ class AlbaranesScanController extends Controller
                     $parsed['tipo_compra'] = isset($parsed['tipo_compra']) ? mb_strtolower($parsed['tipo_compra']) : null;
 
                     // IA Inteligente para Distribuidor
-                    $distribuidorRecomendado = null;
-                    if ($parsed['tipo_compra'] === 'distribuidor') {
-                        try {
-                            /** @var PrioridadIAService $aiService */
-                            $aiService = app(PrioridadIAService::class);
-                            $contexto = $parsed;
-                            $contexto['raw_text'] = $log->raw_text ?? '';
-                            $distribuidorRecomendado = $aiService->recomendarDistribuidor($contexto, $distribuidores);
-                        } catch (\Throwable $e) {
-                            Log::warning('Fallo al recomendar distribuidor con IA: ' . $e->getMessage());
-                        }
-                    }
+                    $distribuidorRecomendado = $this->obtenerDistribuidorIA($parsed, $log->raw_text ?? '', $distribuidores);
 
                     // Fallback
                     if (!$distribuidorRecomendado) {
@@ -178,18 +167,7 @@ class AlbaranesScanController extends Controller
                     $parsed['tipo_compra'] = isset($parsed['tipo_compra']) ? mb_strtolower($parsed['tipo_compra']) : null;
 
                     // IA Inteligente para Distribuidor
-                    $distribuidorRecomendado = null;
-                    if ($parsed['tipo_compra'] === 'distribuidor') {
-                        try {
-                            /** @var PrioridadIAService $aiService */
-                            $aiService = app(PrioridadIAService::class);
-                            $contexto = $parsed;
-                            $contexto['raw_text'] = $log->raw_text ?? '';
-                            $distribuidorRecomendado = $aiService->recomendarDistribuidor($contexto, $distribuidores);
-                        } catch (\Throwable $e) {
-                            Log::warning('Fallo al recomendar distribuidor con IA (Ajax): ' . $e->getMessage());
-                        }
-                    }
+                    $distribuidorRecomendado = $this->obtenerDistribuidorIA($parsed, $log->raw_text ?? '', $distribuidores);
 
                     // Fallback
                     if (!$distribuidorRecomendado) {
@@ -882,6 +860,28 @@ class AlbaranesScanController extends Controller
             'balboa' => 'Balboa',
             default => 'Otro / No identificado',
         };
+    }
+
+    /**
+     * Helper para obtener la recomendación de distribuidor por IA (usado en procesar y procesarAjax).
+     * Evita duplicación de código.
+     */
+    protected function obtenerDistribuidorIA(array $parsed, ?string $rawText, array $distribuidores): ?string
+    {
+        if (($parsed['tipo_compra'] ?? '') !== 'distribuidor') {
+            return null;
+        }
+
+        try {
+            /** @var PrioridadIAService $aiService */
+            $aiService = app(PrioridadIAService::class);
+            $contexto = $parsed;
+            $contexto['raw_text'] = $rawText ?? '';
+            return $aiService->recomendarDistribuidor($contexto, $distribuidores);
+        } catch (\Throwable $e) {
+            Log::warning('Fallo al recomendar distribuidor con IA: ' . $e->getMessage());
+            return null;
+        }
     }
 
     /**
