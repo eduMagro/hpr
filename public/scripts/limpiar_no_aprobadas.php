@@ -6,6 +6,15 @@
  * Ejecutar via: https://tudominio.com/scripts/limpiar_no_aprobadas.php
  */
 
+// Aumentar límites para evitar timeout
+set_time_limit(600); // 10 minutos
+ini_set('max_execution_time', 600);
+ini_set('memory_limit', '512M');
+
+// Deshabilitar buffer para ver progreso en tiempo real
+ob_implicit_flush(true);
+ob_end_flush();
+
 require_once __DIR__ . '/../../vendor/autoload.php';
 
 $app = require_once __DIR__ . '/../../bootstrap/app.php';
@@ -16,6 +25,7 @@ use App\Models\Maquina;
 use Illuminate\Support\Facades\DB;
 
 header('Content-Type: text/plain; charset=utf-8');
+header('X-Accel-Buffering: no'); // Nginx
 
 echo "=== LIMPIAR PLANILLAS NO APROBADAS DE ORDEN_PLANILLAS ===\n\n";
 
@@ -38,16 +48,18 @@ if ($noAprobadas == 0) {
 
 // 2. Eliminar no aprobadas en lotes
 echo "Eliminando $noAprobadas registros...\n";
+flush();
 
 $idsEliminar = OrdenPlanilla::join('planillas', 'orden_planillas.planilla_id', '=', 'planillas.id')
     ->where('planillas.aprobada', false)
     ->pluck('orden_planillas.id');
 
 $eliminados = 0;
-foreach ($idsEliminar->chunk(500) as $chunk) {
+foreach ($idsEliminar->chunk(200) as $chunk) {
     $deleted = OrdenPlanilla::whereIn('id', $chunk)->delete();
     $eliminados += $deleted;
-    echo "  Eliminados: $eliminados\n";
+    echo "  Eliminados: $eliminados / $noAprobadas\n";
+    flush();
 }
 
 echo "\nTotal eliminados: $eliminados\n\n";
