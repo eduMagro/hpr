@@ -164,8 +164,13 @@
         }
 
         @keyframes navigation-spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
@@ -199,7 +204,7 @@
 
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto bg-slate-100 dark:bg-gray-900 transition-colors">
-                <div class="py-4 md:px-6 h-full">
+                <div id="mainlayout" class="py-4 md:px-6 h-full">
                     <!-- Breadcrumbs -->
                     <x-breadcrumbs />
 

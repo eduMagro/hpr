@@ -1,5 +1,16 @@
 <x-app-layout>
     <style>
+        html,
+        body {
+            overflow-x: hidden;
+        }
+
+        #stepWrapper {
+            overflow-x: hidden;
+            touch-action: pan-y;
+            overscroll-behavior-x: none;
+        }
+
         .ia-spinner {
             width: 16px;
             height: 16px;
@@ -112,15 +123,15 @@
         /* Container de pasos móvil */
         #stepWrapper {
             display: flex;
-            width: 500%;
-            /* 5 vistas x 100% */
+            width: 400%;
+            /* 4 vistas x 100% */
             transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Cada vista ocupa 20% del wrapper (100% del viewport) */
+        /* Cada vista ocupa 25% del wrapper (100% del viewport) */
         #stepWrapper>div {
-            width: 20%;
-            /* Relativo al wrapper de 500% */
+            width: 25%;
+            /* Relativo al wrapper de 400% */
             flex-shrink: 0;
         }
 
@@ -190,1470 +201,338 @@
     </style>
     <x-slot name="title">Revisión asistida de albaranes</x-slot>
 
-    <!-- Vista Desktop (OCULTADA - ahora siempre se usa la vista móvil con wizard) -->
-    <div id="desktopView" class="hidden">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-            <div class="bg-white shadow rounded-xl p-6 border border-gray-100">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                        <h1 class="text-2xl font-semibold text-gray-900">Revisión asistida de albaranes</h1>
-                        <p class="text-sm text-gray-600 mt-1">Sube una imagen del albarán para ver qué línea de pedido se
-                            activaría y qué bultos se crearían</p>
-                    </div>
-                </div>
+    <!-- Vista Desktop Eliminada - Solo versión Móvil activa -->
 
-                <form action="{{ route('albaranes.scan.procesar') }}" method="POST" enctype="multipart/form-data"
-                    id="ocrForm" class="mt-6 space-y-4">
+
+    <!-- Header superior -->
+    <div class="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
+        <div class="flex items-center justify-between px-4 py-3">
+            <!-- Botón retroceder -->
+            <button id="mobile-back-btn" type="button"
+                class="hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+
+            <!-- Título del paso actual -->
+            <h2 id="mobile-step-title" class="text-lg font-semibold text-gray-900">
+                Subir Albarán
+            </h2>
+
+            <!-- Indicador de paso (1/3, 2/3, etc) -->
+            <span class="text-sm text-gray-500">
+                <span id="mobile-current-step">1</span>/3
+            </span>
+        </div>
+
+        <!-- Barra de progreso -->
+        <div class="h-1 bg-gray-200">
+            <div id="mobile-progress-bar"
+                class="h-full bg-gradient-to-tr from-indigo-600 to-indigo-700 transition-all duration-300"
+                style="width: 33.33%"></div>
+        </div>
+    </div>
+
+    <!-- Step wrapper con 3 vistas -->
+    <div id="stepWrapper"
+        class="flex transition-transform duration-300 ease-in-out h-[calc(100vh-162px)] overflow-y-auto"
+        style="width: 300%; transform: translateX(0%)">
+
+        <!-- ===== VISTA 1: SUBIR FOTO ===== -->
+        <div id="step-1" class="flex-shrink-0 px-4 py-6" style="width: 33.33%;">
+            <!-- (Contenido de VISTA 1 sin cambios) -->
+            <div class="max-w-lg mx-auto space-y-3">
+                <p class="text-sm text-gray-600">Selecciona el proveedor y sube una foto del albarán</p>
+
+                <!-- Formulario móvil -->
+                <form id="ocrForm-mobile" class="space-y-4">
                     @csrf
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <label class="text-sm text-gray-700">Fabricante
-                            <select name="proveedor" id="proveedor" required
-                                class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                <option value="">Selecciona fabricante</option>
-                                <option value="siderurgica">Siderúrgica Sevillana (SISE)</option>
-                                <option value="megasa">Megasa</option>
-                                <option value="balboa">Balboa</option>
-                                <option value="otro">Otro / No listado</option>
-                            </select>
+                    <!-- Selector de proveedor -->
+                    <label class="block">
+                        <span class="text-sm font-medium text-gray-700">Proveedor</span>
+                        <select name="proveedor" id="proveedor-mobile" required
+                            class="mt-1 w-full rounded-lg border-gray-300 shadow-sm">
+                            <option value="">Selecciona fabricante</option>
+                            <option value="siderurgica">Siderúrgica Sevillana (SISE)</option>
+                            <option value="megasa">Megasa</option>
+                            <option value="balboa">Balboa</option>
+                            <option value="otro">Otro / No listado</option>
+                        </select>
+                    </label>
+
+                    <!-- Input de archivo (Dual: Cámara o Galería) -->
+                    <label class="block mb-2 text-sm font-medium text-gray-700">Foto del albarán</label>
+                    <div class="grid grid-cols-2 gap-3 mb-2">
+                        <!-- Opción Cámara -->
+                        <label
+                            class="relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-indigo-200 rounded-xl bg-indigo-50/50 hover:bg-indigo-50 transition cursor-pointer text-center group">
+                            <div class="p-2 bg-indigo-100 rounded-full mb-2 group-hover:scale-110 transition-transform">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </div>
+                            <span class="text-xs font-semibold text-indigo-900">Usar Cámara</span>
+                            <input type="file" name="imagenes[]" id="camera-mobile" accept="image/*"
+                                capture="environment" class="hidden" onchange="handleMobileFileSelection(this)">
+                        </label>
+
+                        <!-- Opción Galería -->
+                        <label
+                            class="relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 hover:bg-gray-100 transition cursor-pointer text-center group">
+                            <div class="p-2 bg-gray-200 rounded-full mb-2 group-hover:scale-110 transition-transform">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 8l-3-3m3 3l3-3" />
+                                </svg>
+                            </div>
+                            <span class="text-xs font-semibold text-gray-700">Subir Archivo</span>
+                            <input type="file" name="imagenes[]" id="imagenes-mobile"
+                                accept="image/*,application/pdf" class="hidden"
+                                onchange="handleMobileFileSelection(this)">
                         </label>
                     </div>
-                    <div id="dropZone"
-                        class="border-2 border-dashed border-indigo-200 bg-indigo-50/40 rounded-xl p-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50">
-                        <div class="flex flex-col items-center gap-3">
-                            <div class="relative">
-                                <input type="file" name="imagenes[]" id="imagenes" accept="image/*,application/pdf"
-                                    multiple class="hidden" onchange="handleFileSelect(event)">
-                                <label for="imagenes"
-                                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white text-sm font-semibold shadow hover:bg-indigo-700 cursor-pointer transition">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 8l-3-3m3 3l3-3" />
-                                    </svg>
-                                    Seleccionar archivos
-                                </label>
-                            </div>
-                            <p class="text-sm text-gray-600">o arrastra aquí tus archivos</p>
-                            <div id="fileList" class="w-full text-left text-sm text-gray-700 space-y-1"></div>
+
+                    <!-- Feedback de selección -->
+                    <div id="mobile-file-feedback"
+                        class="hidden p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+                        <div class="flex items-center gap-2 overflow-hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 flex-shrink-0"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span class="text-sm text-green-800 font-medium truncate"
+                                id="mobile-file-name">NombreArchivo.jpg</span>
                         </div>
+                        <button type="button" onclick="clearMobileSelection()"
+                            class="text-gray-400 hover:text-red-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
 
-                    <div class="flex items-center gap-3">
-                        <button type="submit" id="processBtn" disabled
-                            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold shadow hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
-                            Procesar albarán
+                    <!-- Botón procesar -->
+                    <div class="space-y-3">
+                        <button type="button" id="processBtn-mobile" onclick="procesarAlbaranMobile()"
+                            class="relative w-full px-4 py-3 bg-indigo-600 text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition overflow-hidden flex items-center justify-center">
+                            <span id="processBtnLabel-mobile">Procesar albarán</span>
+                            <span id="processing-mobile" class="processing-overlay hidden">
+                                <svg class="processing-circle" width="60" height="60" viewBox="0 0 50 50">
+                                    <g fill="none" stroke="#ffffff" stroke-width="2">
+                                        <path d="M15 10h15l5 5v20H15V10">
+                                            <animate attributeName="stroke-dasharray" values="0,100;100,0"
+                                                dur="2s" repeatCount="indefinite"></animate>
+                                        </path>
+                                        <path d="M30 10v5h5">
+                                            <animate attributeName="opacity" values="0;1;0" dur="2s"
+                                                repeatCount="indefinite"></animate>
+                                        </path>
+                                        <path d="M20 20h10M20 25h10M20 30h10">
+                                            <animate attributeName="stroke-dasharray" values="0,60;60,0"
+                                                dur="2s" repeatCount="indefinite"></animate>
+                                        </path>
+                                    </g>
+                                </svg>
+                                <span>Procesando</span>
+                            </span>
                         </button>
-                        <div id="loading" class="hidden flex items-center gap-2 text-sm text-indigo-600">
-                            <div class="ia-spinner"></div>
-                            Procesando...
-                        </div>
+
+                        <!-- Botón: continuar manualmente (sin OCR) -->
+                        <button type="button" id="mobile-step1-manual-btn" onclick="iniciarRellenoManualMobile()"
+                            class="w-full px-4 py-3 bg-white text-gray-900 rounded-lg font-semibold border border-gray-300 shadow-sm hover:bg-gray-50 transition">
+                            Rellenar manualmente (sin procesar)
+                        </button>
+
+                        <!-- Botón continuar (solo si ya tenemos datos) -->
+                        <button type="button" id="mobile-step1-continue-btn" data-mobile-next
+                            class="hidden w-full px-4 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium border border-gray-300 transition">
+                            Continuar con datos actuales
+                        </button>
                     </div>
                 </form>
             </div>
-
-            @if (isset($resultados) && count($resultados) > 0)
-                @foreach ($resultados as $idx => $resultado)
-                    <div class="bg-white shadow rounded-xl border border-gray-100 overflow-hidden">
-                        <!-- Header -->
-                        <div class="bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-4 border-b border-gray-200">
-                            <div class="flex items-start justify-between gap-4">
-                                <div class="flex-1">
-                                    <h2 class="text-lg font-semibold text-gray-900">{{ $resultado['nombre_archivo'] }}
-                                    </h2>
-                                    @php
-                                        $sim = $resultado['simulacion'] ?? [];
-                                        if (!isset($sim['linea_propuesta'])) {
-                                            $sim['linea_propuesta'] = [];
-                                        }
-                                        $parsed = $resultado['parsed'] ?? [];
-                                        $tipoCompraRaw = $parsed['tipo_compra'] ?? null;
-                                        $tipoCompra = $tipoCompraRaw ? mb_strtolower($tipoCompraRaw) : null;
-                                        $tipoCompraValid = in_array($tipoCompra, ['directo', 'proveedor']);
-                                        $proveedorTexto = $parsed['proveedor_texto'] ?? null;
-                                        $distribuidorRecomendado = $parsed['distribuidor_recomendado'] ?? null;
-                                        $distribuidoresList = $distribuidores ?? [];
-                                    @endphp
-                                    @if ($resultado['error'])
-                                        <p class="text-sm text-red-600 mt-1">{{ $resultado['error'] }}</p>
-                                    @else
-                                        <script>
-                                            // console.log('resultado', {!! json_encode($resultado, JSON_UNESCAPED_UNICODE) !!});
-                                            // console.log('sim', {!! json_encode($sim, JSON_UNESCAPED_UNICODE) !!});
-                                        </script>
-                                        <div class="flex flex-wrap gap-2 mt-2">
-                                            <span class="simulacion-badge badge-info">
-                                                🏭 {{ $sim['fabricante'] ?? 'Fabricante desconocido' }}
-                                            </span>
-                                            <span class="simulacion-badge badge-warning">
-                                                📦 {{ $sim['bultos_albaran'] ?? 0 }} bultos
-                                            </span>
-                                            <span class="simulacion-badge badge-info">
-                                                🏷️ {{ count($sim['bultos_simulados'] ?? []) }} coladas
-                                            </span>
-                                            @if ($sim['peso_total'])
-                                                <span class="simulacion-badge badge-info">
-                                                    ⚖️ {{ number_format($sim['peso_total'], 0, ',', '.') }} kg
-                                                </span>
-                                            @endif
-                                        </div>
-                                    @endif
-                                </div>
-                                @if ($resultado['preview'])
-                                    <div class="flex-shrink-0">
-                                        <div class="preview-zoom group relative w-32 h-32 sm:w-36 sm:h-36 rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
-                                            data-preview="{{ $resultado['preview'] }}">
-                                            <img src="{{ $resultado['preview'] }}"
-                                                alt="{{ $resultado['nombre_archivo'] }}"
-                                                class="w-full h-full object-cover">
-                                            <div
-                                                class="preview-overlay absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white"
-                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                    stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endif
-                            </div>
-                            @php
-                                $lineaInfoText = $sim['linea_propuesta']
-                                    ? trim(
-                                        ($sim['linea_propuesta']['pedido_codigo']
-                                            ? "Pedido {$sim['linea_propuesta']['pedido_codigo']}"
-                                            : 'Línea propuesta') .
-                                            ' • ' .
-                                            ($sim['linea_propuesta']['producto'] ?? '') .
-                                            ' ' .
-                                            ($sim['linea_propuesta']['diametro']
-                                                ? "Ø{$sim['linea_propuesta']['diametro']}"
-                                                : '') .
-                                            ($sim['linea_propuesta']['cantidad']
-                                                ? ' (' .
-                                                    number_format($sim['linea_propuesta']['cantidad'], 0, ',', '.') .
-                                                    ' kg)'
-                                                : ''),
-                                    )
-                                    : 'No se encontró pedido coincidente.';
-                                $lineaInfoAttr = e($lineaInfoText);
-                            @endphp
-                            <div class="mt-3 text-xs text-gray-600" id="linea-info-{{ $idx }}"
-                                data-linea-info="{{ $lineaInfoAttr }}">
-                                {{ $lineaInfoText }}
-                            </div>
-                        </div>
-
-                        @if (!$resultado['error'] && isset($sim))
-                            <div id="confirmationPrompt-{{ $idx }}" class="px-6 pt-6 pb-4 space-y-4">
-                                <div class="bg-white border border-gray-200 rounded-lg p-4">
-                                    <div class="flex items-center justify-between mb-3">
-                                        <div>
-                                            <h3 class="text-sm font-semibold text-gray-900">Datos extraídos</h3>
-                                            <p class="text-xs text-gray-500">Revisa la información escaneada del
-                                                albarán.
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <!-- Vista de datos (modo lectura) -->
-                                    <div id="viewMode-{{ $idx }}" class="space-y-3">
-                                        <!-- Datos generales del albarán -->
-                                        <div class="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3 text-sm text-gray-700">
-                                            <div class="flex flex-col">
-                                                <span class="text-xs text-gray-500">Albarán</span>
-                                                <span class="font-semibold extracted-value"
-                                                    data-field="albaran">{{ $resultado['parsed']['albaran'] ?? '—' }}</span>
-                                            </div>
-                                            <div class="flex flex-col">
-                                                <span class="text-xs text-gray-500">Fecha</span>
-                                                <span class="font-semibold extracted-value"
-                                                    data-field="fecha">{{ $resultado['parsed']['fecha'] ?? '—' }}</span>
-                                            </div>
-                                            <div class="flex flex-col">
-                                                <span class="text-xs text-gray-500">Pedido cliente</span>
-                                                <span class="font-semibold extracted-value"
-                                                    data-field="pedido_cliente">{{ $resultado['parsed']['pedido_cliente'] ?? '—' }}</span>
-                                            </div>
-                                            <div class="flex flex-col">
-                                                <span class="text-xs text-gray-500">Pedido código</span>
-                                                <span class="font-semibold extracted-value"
-                                                    data-field="pedido_codigo">{{ $resultado['parsed']['pedido_codigo'] ?? '—' }}</span>
-                                            </div>
-                                            <div class="flex flex-col">
-                                                <span class="text-xs text-gray-500">Peso total (kg)</span>
-                                                <span class="font-semibold extracted-value"
-                                                    data-field="peso_total">{{ isset($resultado['parsed']['peso_total']) ? number_format($resultado['parsed']['peso_total'], 2, ',', '.') : '—' }}</span>
-                                            </div>
-                                            <div class="flex flex-col">
-                                                <span class="text-xs text-gray-500">Bultos total</span>
-                                                <span class="font-semibold extracted-value"
-                                                    data-field="bultos_total">{{ $resultado['parsed']['bultos_total'] ?? '—' }}</span>
-                                            </div>
-                                            <div class="flex flex-col">
-                                                <span class="text-xs text-gray-500">Tipo de compra</span>
-                                                <div class="flex items-center gap-2">
-                                                    <span class="font-semibold extracted-value"
-                                                        data-field="tipo_compra">{{ $tipoCompra ? ucfirst($tipoCompra) : '—' }}</span>
-                                                    @if ($tipoCompra === 'directo')
-                                                        <span class="text-xs text-gray-500">(Hierros Paco Reyes)</span>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                            @if ($tipoCompra !== 'directo')
-                                                <div class="flex flex-col md:col-span-2">
-                                                    <span class="text-xs text-gray-500">Proveedor detectado</span>
-                                                    <span class="font-semibold extracted-value flex items-center gap-1"
-                                                        data-field="proveedor_texto">
-                                                        {{ $proveedorTexto ?? '—' }}
-                                                        <span class="text-xs text-gray-500">
-                                                            ({{ $distribuidorRecomendado ?? 'Sin sugerencia' }})
-                                                        </span>
-                                                    </span>
-                                                </div>
-                                            @endif
-                                        </div>
-
-                                        <div class="flex justify-end mt-2">
-                                            <button type="button"
-                                                class="toggle-json-btn inline-flex items-center gap-1 px-3 py-1 text-[11px] font-semibold text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition"
-                                                data-result="{{ $idx }}" data-show-label="Ver JSON"
-                                                data-hide-label="Ocultar JSON">
-                                                Ver JSON
-                                            </button>
-                                        </div>
-                                        <div id="jsonPayload-{{ $idx }}"
-                                            class="hidden bg-slate-950 text-slate-100 rounded-lg p-3 text-[11px] leading-tight overflow-auto max-h-64 mt-2 whitespace-pre-wrap">
-                                            <pre class="whitespace-pre-wrap break-words text-[11px]">{{ json_encode($resultado['parsed'] ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
-                                        </div>
-
-                                        <!-- Productos -->
-                                        @php
-                                            $productos = $resultado['parsed']['productos'] ?? [];
-                                        @endphp
-                                        @if (count($productos) > 0)
-                                            <div class="mt-4">
-                                                <h4 class="text-xs font-semibold text-gray-700 mb-2">Productos
-                                                    escaneados:
-                                                </h4>
-                                                <div class="space-y-2">
-                                                    @foreach ($productos as $prodIdx => $producto)
-                                                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                                                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                                                                <div>
-                                                                    <span class="text-gray-500">Descripción:</span>
-                                                                    <span
-                                                                        class="font-semibold ml-1">{{ $producto['descripcion'] ?? '—' }}</span>
-                                                                </div>
-                                                                <div>
-                                                                    <span class="text-gray-500">Diámetro:</span>
-                                                                    <span
-                                                                        class="font-semibold ml-1">{{ $producto['diametro'] ?? '—' }}</span>
-                                                                </div>
-                                                                <div>
-                                                                    <span class="text-gray-500">Longitud:</span>
-                                                                    <span
-                                                                        class="font-semibold ml-1">{{ $producto['longitud'] ?? '—' }}</span>
-                                                                </div>
-                                                                <div>
-                                                                    <span class="text-gray-500">Calidad:</span>
-                                                                    <span
-                                                                        class="font-semibold ml-1">{{ $producto['calidad'] ?? '—' }}</span>
-                                                                </div>
-                                                            </div>
-                                                            @if (isset($producto['line_items']) && count($producto['line_items']) > 0)
-                                                                <div class="mt-2 text-xs">
-                                                                    <span class="text-gray-500">Coladas:</span>
-                                                                    <div class="mt-1 flex flex-wrap gap-1">
-                                                                        @foreach ($producto['line_items'] as $item)
-                                                                            <span
-                                                                                class="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-700">
-                                                                                {{ $item['colada'] ?? '?' }}
-                                                                                <span
-                                                                                    class="ml-1 text-blue-600">({{ $item['bultos'] ?? 1 }})</span>
-                                                                            </span>
-                                                                        @endforeach
-                                                                    </div>
-                                                                </div>
-                                                            @endif
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            </div>
-                                        @endif
-                                        <!-- Botones de acción -->
-                                        <div class="flex gap-3 mt-4 pt-4 border-t border-gray-200">
-                                            <button type="button"
-                                                class="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold text-sm hover:bg-emerald-700 transition confirm-scanned"
-                                                data-result="{{ $idx }}">
-                                                ✓ Continuar con lo escaneado
-                                            </button>
-                                            <button type="button"
-                                                class="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold text-sm hover:bg-amber-700 transition modify-scanned"
-                                                data-result="{{ $idx }}">
-                                                ✎ Modificar lo escaneado
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Vista de edición (modo edición) -->
-                                    <div id="editMode-{{ $idx }}" class="hidden space-y-4">
-                                        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                                            <p class="text-xs text-amber-800">
-                                                <strong>Modo edición:</strong> Modifica, agrega o elimina datos según
-                                                sea
-                                                necesario.
-                                            </p>
-                                        </div>
-
-                                        <!-- Datos generales editables -->
-                                        <div>
-                                            <h5 class="text-xs font-semibold text-gray-700 mb-2">Datos generales del
-                                                albarán</h5>
-                                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                                <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
-                                                    Albarán
-                                                    <input type="text"
-                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                        data-field="albaran"
-                                                        value="{{ $resultado['parsed']['albaran'] ?? '' }}">
-                                                </label>
-                                                <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
-                                                    Fecha
-                                                    <input type="date"
-                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                        data-field="fecha"
-                                                        value="{{ $resultado['parsed']['fecha'] ?? '' }}">
-                                                </label>
-                                                <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
-                                                    Pedido cliente
-                                                    <input type="text"
-                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                        data-field="pedido_cliente"
-                                                        value="{{ $resultado['parsed']['pedido_cliente'] ?? '' }}">
-                                                </label>
-                                                <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
-                                                    Pedido código
-                                                    <input type="text"
-                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                        data-field="pedido_codigo"
-                                                        value="{{ $resultado['parsed']['pedido_codigo'] ?? '' }}">
-                                                </label>
-                                                <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
-                                                    Peso total (kg)
-                                                    <input type="number" step="0.01"
-                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                        data-field="peso_total"
-                                                        value="{{ $resultado['parsed']['peso_total'] ?? '' }}">
-                                                </label>
-                                                <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
-                                                    Bultos total
-                                                    <input type="number"
-                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                        data-field="bultos_total"
-                                                        value="{{ $resultado['parsed']['bultos_total'] ?? '' }}">
-                                                </label>
-                                                <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
-                                                    Tipo de compra
-                                                    <select
-                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                        data-field="tipo_compra">
-                                                        <option value="" {{ $tipoCompra ? '' : 'selected' }}>Sin
-                                                            clasificar</option>
-                                                        <option value="directo"
-                                                            {{ $tipoCompra === 'directo' ? 'selected' : '' }}>Directo
-                                                        </option>
-                                                        <option value="proveedor"
-                                                            {{ $tipoCompra === 'proveedor' ? 'selected' : '' }}>
-                                                            Proveedor
-                                                        </option>
-                                                    </select>
-                                                </label>
-                                                @if ($tipoCompra !== 'directo')
-                                                    <label
-                                                        class="text-xs text-gray-700 font-medium flex flex-col gap-1 md:col-span-2">
-                                                        Texto proveedor detectado
-                                                        <input type="text"
-                                                            class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                            data-field="proveedor_texto"
-                                                            value="{{ $proveedorTexto ?? '' }}">
-                                                    </label>
-                                                    <label
-                                                        class="text-xs text-gray-700 font-medium flex flex-col gap-1">
-                                                        Proveedor sugerido
-                                                        <select
-                                                            class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                            data-field="distribuidor_recomendado">
-                                                            <option value="">Sin seleccionar</option>
-                                                            @foreach ($distribuidoresList as $distribuidor)
-                                                                <option value="{{ $distribuidor }}"
-                                                                    {{ $distribuidorRecomendado === $distribuidor ? 'selected' : '' }}>
-                                                                    {{ $distribuidor }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                    </label>
-                                                @endif
-                                            </div>
-                                        </div>
-
-                                        <!-- Productos editables -->
-                                        <div>
-                                            <div class="flex items-center justify-between mb-2">
-                                                <h5 class="text-xs font-semibold text-gray-700">Productos</h5>
-                                                <button type="button"
-                                                    class="add-producto-btn text-xs px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition"
-                                                    data-result="{{ $idx }}">
-                                                    + Agregar producto
-                                                </button>
-                                            </div>
-                                            <div id="productosContainer-{{ $idx }}" class="space-y-3">
-                                                @foreach ($resultado['parsed']['productos'] ?? [] as $prodIdx => $producto)
-                                                    <div class="producto-edit-block bg-gray-50 border border-gray-300 rounded-lg p-3"
-                                                        data-producto-index="{{ $prodIdx }}">
-                                                        <div class="flex items-center justify-between mb-2">
-                                                            <span class="text-xs font-semibold text-gray-700">Producto
-                                                                {{ $prodIdx + 1 }}</span>
-                                                            <button type="button"
-                                                                class="remove-producto-btn text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition">
-                                                                Eliminar
-                                                            </button>
-                                                        </div>
-                                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-                                                            <label class="text-xs text-gray-600 flex flex-col gap-1">
-                                                                Descripción
-                                                                <select
-                                                                    class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                                                                    data-field="descripcion">
-                                                                    <option value="">Seleccionar tipo</option>
-                                                                    <option value="ENCARRETADO"
-                                                                        {{ ($producto['descripcion'] ?? '') === 'ENCARRETADO' ? 'selected' : '' }}>
-                                                                        Encarretado
-                                                                    </option>
-                                                                    <option value="BARRA"
-                                                                        {{ ($producto['descripcion'] ?? '') === 'BARRA' ? 'selected' : '' }}>
-                                                                        Barra
-                                                                    </option>
-                                                                </select>
-                                                            </label>
-                                                            <label class="text-xs text-gray-600 flex flex-col gap-1">
-                                                                Diámetro
-                                                                <input type="text"
-                                                                    class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                                                                    data-field="diametro"
-                                                                    value="{{ $producto['diametro'] ?? '' }}">
-                                                            </label>
-                                                            <label class="text-xs text-gray-600 flex flex-col gap-1">
-                                                                Longitud
-                                                                <input type="text"
-                                                                    class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                                                                    data-field="longitud"
-                                                                    value="{{ $producto['longitud'] ?? '' }}">
-                                                            </label>
-                                                            <label class="text-xs text-gray-600 flex flex-col gap-1">
-                                                                Calidad
-                                                                <input type="text"
-                                                                    class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                                                                    data-field="calidad"
-                                                                    value="{{ $producto['calidad'] ?? '' }}">
-                                                            </label>
-                                                        </div>
-
-                                                        <!-- Coladas del producto -->
-                                                        <div>
-                                                            <div class="flex items-center justify-between mb-1">
-                                                                <span
-                                                                    class="text-xs font-medium text-gray-600">Coladas</span>
-                                                                <button type="button"
-                                                                    class="add-colada-btn text-xs px-2 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
-                                                                    + Agregar colada
-                                                                </button>
-                                                            </div>
-                                                            <div class="coladas-container space-y-1">
-                                                                @foreach ($producto['line_items'] ?? [] as $coladaIdx => $colada)
-                                                                    <div class="colada-edit-row flex gap-2 items-center"
-                                                                        data-colada-index="{{ $coladaIdx }}">
-                                                                        <input type="text" placeholder="Colada"
-                                                                            class="colada-field flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                                                                            data-field="colada"
-                                                                            value="{{ $colada['colada'] ?? '' }}">
-                                                                        <input type="number" placeholder="Bultos"
-                                                                            class="colada-field w-20 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                                                                            data-field="bultos"
-                                                                            value="{{ $colada['bultos'] ?? '' }}">
-                                                                        <input type="number" step="0.01"
-                                                                            placeholder="Peso (kg)"
-                                                                            class="colada-field w-24 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                                                                            data-field="peso_kg"
-                                                                            value="{{ $colada['peso_kg'] ?? '' }}">
-                                                                        <button type="button"
-                                                                            class="remove-colada-btn text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition">
-                                                                            ✕
-                                                                        </button>
-                                                                    </div>
-                                                                @endforeach
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        </div>
-
-                                        <div class="flex justify-end pt-3 border-t border-gray-300">
-                                            <button type="button"
-                                                class="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition confirm-edit"
-                                                data-result="{{ $idx }}">
-                                                Confirmar y seguir
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div id="simulationSection-{{ $idx }}" class="p-6 space-y-4 hidden">
-                                <!-- Simulación: Líneas Pendientes -->
-                                <div>
-                                    <h3 class="text-base font-semibold text-gray-900 mb-3">
-                                        📋 Líneas de pedido pendientes para este proveedor
-                                    </h3>
-                                    @if ($sim['hay_coincidencias'])
-                                        @if ($sim['linea_propuesta'])
-                                            @php
-                                                $tipoRec = $sim['linea_propuesta']['tipo_recomendacion'] ?? 'por_score';
-                                                $bgColor =
-                                                    $tipoRec === 'exacta'
-                                                        ? 'bg-green-50 border-green-200'
-                                                        : 'bg-blue-50 border-blue-200';
-                                                $textColor = $tipoRec === 'exacta' ? 'text-green-900' : 'text-blue-900';
-                                                $labelColor =
-                                                    $tipoRec === 'exacta'
-                                                        ? 'bg-green-600 text-white'
-                                                        : 'bg-blue-600 text-white';
-                                                $labelText =
-                                                    $tipoRec === 'exacta'
-                                                        ? 'COINCIDENCIA EXACTA'
-                                                        : ($tipoRec === 'parcial'
-                                                            ? 'COINCIDENCIA PARCIAL'
-                                                            : 'MEJOR COMPATIBILIDAD');
-                                            @endphp
-                                            <div class="mt-3 p-4 {{ $bgColor }} border rounded-lg">
-                                                <div class="flex items-start justify-between mb-2">
-                                                    <div class="flex-1">
-                                                        <div class="flex items-center gap-2 mb-1">
-                                                            <p class="text-sm font-semibold {{ $textColor }}">
-                                                                {{ $tipoRec === 'exacta' ? '✓' : '⚠' }} Línea
-                                                                propuesta:
-                                                                {{ $sim['linea_propuesta']['pedido_codigo'] }}
-                                                            </p>
-                                                            <span
-                                                                class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-semibold {{ $labelColor }}">
-                                                                {{ $labelText }}
-                                                            </span>
-                                                        </div>
-                                                        <p class="text-xs {{ $textColor }} mt-1">
-                                                            <strong>Fabricante:</strong>
-                                                            {{ $sim['linea_propuesta']['fabricante'] }}
-                                                        </p>
-                                                        <p class="text-xs {{ $textColor }}">
-                                                            <strong>Producto:</strong>
-                                                            {{ $sim['linea_propuesta']['producto'] }} |
-                                                            <strong>Obra:</strong>
-                                                            {{ $sim['linea_propuesta']['obra'] }}
-                                                        </p>
-                                                    </div>
-                                                    <div class="text-right">
-                                                        @php
-                                                            $propScore = $sim['linea_propuesta']['score'];
-                                                            $propColor =
-                                                                $propScore >= 150
-                                                                    ? 'bg-emerald-600'
-                                                                    : ($propScore >= 50
-                                                                        ? 'bg-green-500'
-                                                                        : ($propScore >= 0
-                                                                            ? 'bg-yellow-400'
-                                                                            : 'bg-red-500'));
-                                                        @endphp
-                                                    </div>
-                                                </div>
-                                                @if (count($sim['linea_propuesta']['razones']) > 0)
-                                                    <div class="mt-2 pt-2 border-t border-green-200">
-                                                        <p class="text-xs font-semibold text-green-800 mb-1">Razones:
-                                                        </p>
-                                                        <ul class="text-xs text-green-700 space-y-1 pl-4">
-                                                            @foreach ($sim['linea_propuesta']['razones'] as $razon)
-                                                                <li>{{ $razon }}</li>
-                                                            @endforeach
-                                                        </ul>
-                                                    </div>
-                                                @endif
-                                                @if (count($sim['linea_propuesta']['incompatibilidades']) > 0)
-                                                    <div class="mt-2 pt-2 border-t border-green-200">
-                                                        <p class="text-xs font-semibold text-red-700 mb-1">
-                                                            Advertencias:
-                                                        </p>
-                                                        <ul class="text-xs text-red-700 space-y-1 pl-4">
-                                                            @foreach ($sim['linea_propuesta']['incompatibilidades'] as $incomp)
-                                                                <li>{{ $incomp }}</li>
-                                                            @endforeach
-                                                        </ul>
-                                                    </div>
-                                                @endif
-                                            </div>
-                                        @endif
-                                    @else
-                                        <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                            <p class="text-sm text-yellow-800">
-                                                ⚠️ No se encontraron líneas de pedido pendientes para este
-                                                proveedor/producto
-                                            </p>
-                                        </div>
-                                    @endif
-                                </div>
-
-                                <!-- Listado completo de TODOS los pedidos pendientes -->
-                                @if (isset($sim['todas_las_lineas']) && count($sim['todas_las_lineas']) > 0)
-                                    <div class="pb-4 border-b border-gray-200">
-                                        <!-- Listado completo de TODOS los pedidos pendientes (MODAL) -->
-                                        @if (isset($sim['todas_las_lineas']) && count($sim['todas_las_lineas']) > 0)
-                                            <div class="">
-                                                <button type="button"
-                                                    onclick="openPendingOrdersModal('{{ $idx }}')"
-                                                    class="flex items-center justify-between w-full p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition text-left">
-                                                    <span class="text-sm font-semibold text-gray-900">
-                                                        > Ver todos los pedidos pendientes
-                                                        ({{ count($sim['todas_las_lineas']) }})
-                                                    </span>
-                                                </button>
-
-                                                <!-- Selected Order Display -->
-                                                <div id="selectedOrderContainer-{{ $idx }}"
-                                                    class="hidden mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg relative">
-                                                    <div class="flex items-start justify-between mb-2">
-                                                        <div>
-                                                            <p class="text-sm font-semibold text-blue-900">
-                                                                ✓ Pedido seleccionado manualmente: <span
-                                                                    id="selectedOrderCode-{{ $idx }}"></span>
-                                                            </p>
-                                                            <p class="text-xs text-blue-700 mt-1"
-                                                                id="selectedOrderDetails-{{ $idx }}">
-                                                                <!-- Details populated by JS -->
-                                                            </p>
-                                                        </div>
-                                                        <button type="button"
-                                                            onclick="resetToRecommended('{{ $idx }}')"
-                                                            class="text-xs text-blue-600 underline hover:text-blue-800">
-                                                            Restaurar recomendado
-                                                        </button>
-                                                    </div>
-                                                    <div class="mt-3">
-                                                        <!-- Enunciado dinámico -->
-                                                        <div id="changeStatement-{{ $idx }}"
-                                                            class="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900">
-                                                            <strong>Selección manual:</strong>
-                                                            <span id="statementText-{{ $idx }}">Has cambiado
-                                                                la
-                                                                recomendación del sistema.</span>
-                                                        </div>
-
-                                                        <label class="block text-xs font-medium text-blue-800 mb-1">
-                                                            Indica el motivo (opcional - ayudará al sistema a aprender):
-                                                        </label>
-                                                        <input type="text" id="changeReason-{{ $idx }}"
-                                                            class="w-full text-sm rounded-md border-blue-300 focus:border-blue-500 focus:ring-blue-500"
-                                                            placeholder="Ej: Mejor calidad, entrega más urgente, etc.">
-                                                    </div>
-                                                </div>
-
-                                                <!-- Modal Structure -->
-                                                @php
-                                                    $recommendedId = $sim['linea_propuesta']['id'] ?? null;
-                                                    $recommendedCode = $sim['linea_propuesta']['pedido_codigo'] ?? null;
-                                                @endphp
-                                                <div id="pendingOrdersModal-{{ $idx }}"
-                                                    class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title"
-                                                    role="dialog" aria-modal="true"
-                                                    @if ($recommendedId) data-recommended-id="{{ $recommendedId }}" @endif
-                                                    @if ($recommendedCode) data-recommended-code="{{ $recommendedCode }}" @endif>
-                                                    <!-- Backdrop -->
-                                                    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                                                        onclick="closePendingOrdersModal('{{ $idx }}')">
-                                                    </div>
-
-                                                    <div class="fixed inset-0 z-10 overflow-y-auto">
-                                                        <div
-                                                            class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                                                            <div
-                                                                class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-7xl">
-                                                                <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-                                                                    <div class="sm:flex sm:items-start">
-                                                                        <div
-                                                                            class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
-                                                                            <h3 class="text-lg font-semibold leading-6 text-gray-900"
-                                                                                id="modal-title">
-                                                                                Pedidos Pendientes
-                                                                            </h3>
-                                                                            <div
-                                                                                class="mt-4 max-h-[60vh] overflow-y-auto">
-                                                                                <table class="min-w-full text-sm">
-                                                                                    <thead
-                                                                                        class="bg-gray-100 text-gray-700 sticky top-0 z-10">
-                                                                                        <tr>
-                                                                                            <th
-                                                                                                class="px-4 py-2 text-center font-medium">
-                                                                                                Pedido</th>
-                                                                                            <th
-                                                                                                class="px-4 py-2 text-center font-medium">
-                                                                                                Cód. Línea</th>
-                                                                                            <th
-                                                                                                class="px-4 py-2 text-left font-medium">
-                                                                                                Fabricante</th>
-                                                                                            <th
-                                                                                                class="px-4 py-2 text-left font-medium">
-                                                                                                Distribuidor</th>
-                                                                                            <th
-                                                                                                class="px-4 py-2 text-left font-medium">
-                                                                                                Producto</th>
-                                                                                            <th
-                                                                                                class="px-4 py-2 text-left font-medium">
-                                                                                                Obra</th>
-                                                                                            <th
-                                                                                                class="px-4 py-2 text-center font-medium">
-                                                                                                F. Entrega</th>
-                                                                                            <th
-                                                                                                class="px-4 py-2 text-center font-medium">
-                                                                                                Pendiente</th>
-                                                                                            <th
-                                                                                                class="px-4 py-2 text-center font-medium">
-                                                                                                Recomendación</th>
-                                                                                            <th
-                                                                                                class="px-4 py-2 text-center font-medium">
-                                                                                                Estado</th>
-                                                                                            <th
-                                                                                                class="px-4 py-2 text-center font-medium">
-                                                                                                Acción</th>
-                                                                                        </tr>
-                                                                                    </thead>
-                                                                                    <tbody
-                                                                                        class="divide-y divide-gray-200">
-                                                                                        @foreach ($sim['todas_las_lineas'] as $linea)
-                                                                                            <tr
-                                                                                                class="hover:bg-gray-50 {{ $linea['coincide_diametro'] ? 'bg-green-50' : '' }}">
-                                                                                                <td
-                                                                                                    class="px-4 py-3 font-medium text-center text-gray-900">
-                                                                                                    {{ $linea['pedido_codigo'] }}
-                                                                                                    @if (isset($sim['linea_propuesta']) && $linea['id'] == $sim['linea_propuesta']['id'])
-                                                                                                        <span
-                                                                                                            class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Recomendado</span>
-                                                                                                    @endif
-                                                                                                </td>
-                                                                                                <td
-                                                                                                    class="px-4 py-3 text-center text-gray-700">
-                                                                                                    {{ $linea['codigo_linea'] ?? '-' }}
-                                                                                                </td>
-                                                                                                <td
-                                                                                                    class="px-4 py-3 text-gray-600 text-xs">
-                                                                                                    {{ $linea['fabricante'] ?? '—' }}
-                                                                                                </td>
-                                                                                                <td
-                                                                                                    class="px-4 py-3 text-gray-600 text-xs">
-                                                                                                    {{ $linea['distribuidor'] ?? '—' }}
-                                                                                                </td>
-                                                                                                <td
-                                                                                                    class="px-4 py-3 text-gray-700">
-                                                                                                    @if ($linea['coincide_diametro'])
-                                                                                                        <span
-                                                                                                            class="ml-1 text-xs text-green-600">✓</span>
-                                                                                                    @endif
-                                                                                                    {{ $linea['producto'] }}
-                                                                                                </td>
-                                                                                                <td
-                                                                                                    class="px-4 py-3 text-gray-700">
-                                                                                                    {{ $linea['obra'] }}
-                                                                                                </td>
-                                                                                                <td
-                                                                                                    class="px-4 py-3 text-center text-gray-700">
-                                                                                                    {{ $linea['fecha_entrega_fmt'] ?? '—' }}
-                                                                                                </td>
-                                                                                                <td
-                                                                                                    class="px-4 py-3 text-center font-semibold text-gray-900">
-                                                                                                    {{ number_format($linea['cantidad_pendiente'], 0, ',', '.') }}
-                                                                                                    /
-                                                                                                    {{ number_format($linea['cantidad'], 0, ',', '.') }}
-                                                                                                    kg
-                                                                                                </td>
-                                                                                                <td
-                                                                                                    class="px-4 py-3 text-center">
-                                                                                                    @php
-                                                                                                        $scoreColor =
-                                                                                                            $linea[
-                                                                                                                'score'
-                                                                                                            ] >= 150
-                                                                                                                ? 'bg-emerald-600'
-                                                                                                                : ($linea[
-                                                                                                                    'score'
-                                                                                                                ] >= 50
-                                                                                                                    ? 'bg-green-500'
-                                                                                                                    : ($linea[
-                                                                                                                        'score'
-                                                                                                                    ] >=
-                                                                                                                    0
-                                                                                                                        ? 'bg-yellow-400'
-                                                                                                                        : 'bg-red-500'));
-                                                                                                    @endphp
-                                                                                                    <div
-                                                                                                        class="flex items-center justify-center group relative">
-                                                                                                        <div class="w-4 h-4 rounded-full {{ $scoreColor }} shadow-sm cursor-help"
-                                                                                                            title="Score: {{ $linea['score'] }}">
-                                                                                                        </div>
-                                                                                                    </div>
-                                                                                                </td>
-                                                                                                <td class="px-4 py-3">
-                                                                                                    <span
-                                                                                                        class="text-xs px-2 py-1 rounded-full {{ $linea['estado'] === 'pendiente' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700' }}">
-                                                                                                        {{ ucfirst($linea['estado']) }}
-                                                                                                    </span>
-                                                                                                </td>
-                                                                                                <td
-                                                                                                    class="px-4 py-3 text-center">
-                                                                                                    @php
-                                                                                                        $isProposed =
-                                                                                                            isset(
-                                                                                                                $sim[
-                                                                                                                    'linea_propuesta'
-                                                                                                                ],
-                                                                                                            ) &&
-                                                                                                            $linea[
-                                                                                                                'id'
-                                                                                                            ] ==
-                                                                                                                $sim[
-                                                                                                                    'linea_propuesta'
-                                                                                                                ]['id'];
-                                                                                                    @endphp
-                                                                                                    <button
-                                                                                                        type="button"
-                                                                                                        id="btn-select-{{ $idx }}-{{ $linea['id'] }}"
-                                                                                                        class="selection-btn-{{ $idx }} text-xs px-3 py-1 rounded transition {{ $isProposed ? 'bg-green-600 text-white cursor-default' : 'bg-blue-600 text-white hover:bg-blue-700' }}"
-                                                                                                        {{ $isProposed ? 'disabled' : '' }}
-                                                                                                        onclick="seleccionarLineaManual({{ json_encode($linea) }}, '{{ $idx }}')">
-                                                                                                        {{ $isProposed ? 'Seleccionado' : 'Seleccionar' }}
-                                                                                                    </button>
-                                                                                                </td>
-                                                                                            </tr>
-                                                                                        @endforeach
-                                                                                    </tbody>
-                                                                                </table>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                <div
-                                                                    class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                                                                    <button type="button"
-                                                                        class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
-                                                                        onclick="closePendingOrdersModal('{{ $idx }}')">
-                                                                        Cerrar
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endif
-                                    </div>
-                                @endif
-
-                                <!-- Simulación: Productos a Crear -->
-                                <div>
-                                    <h3 class="text-base font-semibold text-gray-900 mb-3">
-                                        📦 Coladas a recepcionar
-                                    </h3>
-                                    <p class="text-xs text-gray-600 mb-2">
-                                        Selecciona las coladas que deseas recepcionar ahora. Puedes desmarcar las que NO
-                                        quieras procesar en este momento.
-                                    </p>
-                                    @if (count($sim['bultos_simulados']) > 0)
-                                        <div class="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
-                                            <div class="overflow-x-auto">
-                                                <table class="min-w-full text-sm">
-                                                    <thead class="bg-gray-100 text-gray-700">
-                                                        <tr>
-                                                            <th class="px-4 py-2 text-center font-medium">
-                                                                <input type="checkbox"
-                                                                    id="checkAll-{{ $idx }}"
-                                                                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                                    checked>
-                                                            </th>
-                                                            <th class="px-4 py-2 text-left font-medium">Colada</th>
-                                                            <th class="px-4 py-2 text-center font-medium">Bultos</th>
-                                                            <th class="px-4 py-2 text-right font-medium">Peso (kg)</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody class="divide-y divide-gray-200">
-                                                        @foreach ($sim['bultos_simulados'] as $bultoIdx => $bulto)
-                                                            <tr class="hover:bg-gray-50">
-                                                                <td class="px-4 py-3 text-center">
-                                                                    <input type="checkbox"
-                                                                        name="coladas_seleccionadas[{{ $idx }}][]"
-                                                                        value="{{ $bultoIdx }}"
-                                                                        class="colada-checkbox-{{ $idx }} rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                                        data-colada="{{ $bulto['colada'] }}"
-                                                                        data-bultos="{{ $bulto['bultos'] ?? 1 }}"
-                                                                        data-peso="{{ $bulto['peso_kg'] ?? 0 }}"
-                                                                        checked>
-                                                                </td>
-                                                                <td
-                                                                    class="px-4 py-3 text-gray-700 font-mono font-semibold">
-                                                                    {{ $bulto['colada'] }}
-                                                                </td>
-                                                                <td
-                                                                    class="px-4 py-3 text-center font-semibold text-gray-900">
-                                                                    {{ $bulto['bultos'] ?? 1 }}
-                                                                </td>
-                                                                <td
-                                                                    class="px-4 py-3 text-right font-semibold text-gray-900">
-                                                                    {{ $bulto['peso_kg'] ? number_format($bulto['peso_kg'], 0, ',', '.') : '—' }}
-                                                                    kg
-                                                                </td>
-                                                            </tr>
-                                                        @endforeach
-                                                    </tbody>
-                                                    <tfoot class="bg-gray-50 border-t-2 border-gray-300">
-                                                        <tr>
-                                                            <td colspan="2"
-                                                                class="px-4 py-3 text-sm font-semibold text-gray-700 text-right">
-                                                                TOTALES SELECCIONADOS:
-                                                            </td>
-                                                            <td class="px-4 py-3 text-center text-sm font-bold text-blue-700"
-                                                                id="totalBultos-{{ $idx }}">
-                                                                {{ collect($sim['bultos_simulados'])->sum('bultos') }}
-                                                            </td>
-                                                            <td class="px-4 py-3 text-right text-sm font-bold text-blue-700"
-                                                                id="totalPeso-{{ $idx }}">
-                                                                {{ number_format(collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }}
-                                                                kg
-                                                            </td>
-                                                        </tr>
-                                                    </tfoot>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    @else
-                                        <p class="text-sm text-gray-600">No se detectaron productos en el albarán</p>
-                                    @endif
-                                </div>
-
-                                <!-- Simulación: Estado Final -->
-                                @if ($sim['linea_propuesta'])
-                                    <div id="estadoFinalSection-{{ $idx }}"
-                                        data-cantidad-inicial="{{ $sim['linea_propuesta']['cantidad_recepcionada'] }}"
-                                        data-cantidad-total="{{ $sim['linea_propuesta']['cantidad'] }}">
-                                        <h3
-                                            class="text-base font-semibold text-gray-900 mb-3 flex items-center justify-between">
-                                            <span class="flex items-center gap-2">
-                                                📊 Estado final de la línea
-                                                <span id="applyingLabel-{{ $idx }}"
-                                                    class="text-xs font-normal px-2 py-1 rounded-full bg-green-100 text-green-700">Recomendado</span>
-                                            </span>
-                                        </h3>
-                                        <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                                <div>
-                                                    <p class="text-xs text-indigo-600 font-medium">Cantidad pendiente
-                                                        actual
-                                                    </p>
-                                                    <p class="text-2xl font-bold text-indigo-900"
-                                                        id="cantidadPendienteActual-{{ $idx }}">
-                                                        {{ number_format($sim['linea_propuesta']['cantidad_pendiente'], 0, ',', '.') }}
-                                                        kg
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p class="text-xs text-indigo-600 font-medium">Kg a recepcionar
-                                                    </p>
-                                                    <p class="text-2xl font-bold text-indigo-900"
-                                                        id="kgRecepcionar-{{ $idx }}">
-                                                        {{ number_format(collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }}
-                                                        kg
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p class="text-xs text-indigo-600 font-medium">Kg pendientes
-                                                        después
-                                                    </p>
-                                                    <p class="text-2xl font-bold text-indigo-900"
-                                                        id="kgPendientesDespues-{{ $idx }}">
-                                                        {{ number_format($sim['linea_propuesta']['cantidad_pendiente'] - collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }}
-                                                        kg
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p class="text-xs text-indigo-600 font-medium">Nuevo estado</p>
-                                                    <p id="nuevoEstado-{{ $idx }}"
-                                                        class="text-lg font-bold {{ $sim['linea_propuesta']['cantidad_recepcionada'] + collect($sim['bultos_simulados'])->sum('peso_kg') >= $sim['linea_propuesta']['cantidad'] ? 'text-green-600' : 'text-blue-600' }}">
-                                                        {{ $sim['linea_propuesta']['cantidad_recepcionada'] + collect($sim['bultos_simulados'])->sum('peso_kg') >= $sim['linea_propuesta']['cantidad'] ? 'Completado' : 'Parcial' }}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="mt-4 flex justify-end">
-                                            <button type="button"
-                                                class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-tr from-indigo-600 to-indigo-700 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 shadow transition"
-                                                onclick="activarLineaSeleccionada({{ $idx }})">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
-                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                                    stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M12 4v16m8-8H4" />
-                                                </svg>
-                                                Activar línea seleccionada
-                                            </button>
-                                        </div>
-                                    </div>
-                                @endif
-
-                                <!-- Selector de línea alternativa -->
-                                @if ($sim['hay_coincidencias'] && count($sim['lineas_pendientes']) > 1)
-                                    <div class="border-t border-gray-200 pt-4">
-                                        <label class="text-sm font-medium text-gray-700">
-                                            ¿Prefieres activar otra línea?
-                                            <select class="mt-2 w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                                @foreach ($sim['lineas_pendientes'] as $linea)
-                                                    <option value="{{ $linea['id'] }}"
-                                                        {{ $loop->first ? 'selected' : '' }}>
-                                                        Línea #{{ $linea['id'] }} - {{ $linea['producto'] }}
-                                                        (Entrega: {{ $linea['fecha_entrega_fmt'] ?? '—' }} -
-                                                        {{ $linea['cantidad_pendiente'] }} kg pendientes - Score:
-                                                        {{ $linea['score'] }})
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </label>
-                                    </div>
-                                @endif
-
-                            </div>
-                        @endif
-                    </div>
-                @endforeach
-            @endif
         </div>
-    </div> <!-- Fin desktopView -->
 
-    <!-- ========================================== -->
-    <!-- VISTA WIZARD DE 5 PASOS (para todas las resoluciones) -->
-    <!-- ========================================== -->
-    <div id="mobileStepContainer" class="block relative overflow-hidden min-h-[calc(100vh-56px)] pb-4 bg-gray-100">
-        <!-- Header superior -->
-        <div class="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
-            <div class="flex items-center justify-between px-4 py-3">
-                <!-- Botón retroceder -->
-                <button id="mobile-back-btn" type="button"
-                    class="hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        <!-- ===== VISTA 2: CONFIRMAR DATOS (EDICIÓN DIRECTA) ===== -->
+        <div id="step-2" class="flex-shrink-0 px-4 py-6" style="width: 33.33%;">
+            <!-- (Contenido de VISTA 2 sin cambios) -->
+            <div class="max-w-lg mx-auto space-y-4">
+                <h3 class="text-xl font-semibold text-gray-900">Revisar y Confirmar Datos</h3>
+
+                {{-- <!-- Preview de imagen --> --}}
+
+                <!-- Estado de las IA -->
+                <div id="mobile-status-banner"
+                    class="hidden items-center gap-2 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-2 text-sm text-indigo-900">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-500" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M12 18a9 9 0 110-18 9 9 0 010 18z" />
                     </svg>
-                </button>
-
-                <!-- Título del paso actual -->
-                <h2 id="mobile-step-title" class="text-lg font-semibold text-gray-900">
-                    Subir Albarán
-                </h2>
-
-                <!-- Indicador de paso (1/5, 2/5, etc) -->
-                <span class="text-sm text-gray-500">
-                    <span id="mobile-current-step">1</span>/5
-                </span>
-            </div>
-
-            <!-- Barra de progreso -->
-            <div class="h-1 bg-gray-200">
-                <div id="mobile-progress-bar"
-                    class="h-full bg-gradient-to-tr from-indigo-600 to-indigo-700 transition-all duration-300"
-                    style="width: 20%"></div>
-            </div>
-        </div>
-
-        <!-- Step wrapper con 5 vistas -->
-        <div id="stepWrapper"
-            class="flex transition-transform duration-300 ease-in-out h-[calc(100vh-162px)] overflow-y-auto"
-            style="width: 500%; transform: translateX(0%)">
-
-            <!-- ===== VISTA 1: SUBIR FOTO ===== -->
-            <div id="step-1" class="w-full flex-shrink-0 px-4 py-6">
-                <div class="max-w-lg mx-auto space-y-3">
-                    <p class="text-sm text-gray-600">Selecciona el proveedor y sube una foto del albarán</p>
-
-                    <!-- Formulario móvil -->
-                    <form id="ocrForm-mobile" class="space-y-4">
-                        @csrf
-                        <!-- Selector de proveedor -->
-                        <label class="block">
-                            <span class="text-sm font-medium text-gray-700">Proveedor</span>
-                            <select name="proveedor" id="proveedor-mobile" required
-                                class="mt-1 w-full rounded-lg border-gray-300 shadow-sm">
-                                <option value="">Selecciona proveedor</option>
-                                <option value="siderurgica">Siderúrgica Sevillana (SISE)</option>
-                                <option value="megasa">Megasa</option>
-                                <option value="balboa">Balboa</option>
-                                <option value="otro">Otro / No listado</option>
-                            </select>
-                        </label>
-
-                        <!-- Input de archivo (Dual: Cámara o Galería) -->
-                        <label class="block mb-2 text-sm font-medium text-gray-700">Foto del albarán</label>
-                        <div class="grid grid-cols-2 gap-3 mb-2">
-                            <!-- Opción Cámara -->
-                            <label
-                                class="relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-indigo-200 rounded-xl bg-indigo-50/50 hover:bg-indigo-50 transition cursor-pointer text-center group">
-                                <div
-                                    class="p-2 bg-indigo-100 rounded-full mb-2 group-hover:scale-110 transition-transform">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600"
-                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                </div>
-                                <span class="text-xs font-semibold text-indigo-900">Usar Cámara</span>
-                                <input type="file" name="imagenes[]" id="camera-mobile" accept="image/*"
-                                    capture="environment" class="hidden" onchange="handleMobileFileSelection(this)">
-                            </label>
-
-                            <!-- Opción Galería -->
-                            <label
-                                class="relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 hover:bg-gray-100 transition cursor-pointer text-center group">
-                                <div
-                                    class="p-2 bg-gray-200 rounded-full mb-2 group-hover:scale-110 transition-transform">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600"
-                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 8l-3-3m3 3l3-3" />
-                                    </svg>
-                                </div>
-                                <span class="text-xs font-semibold text-gray-700">Subir Archivo</span>
-                                <input type="file" name="imagenes[]" id="imagenes-mobile"
-                                    accept="image/*,application/pdf" class="hidden"
-                                    onchange="handleMobileFileSelection(this)">
-                            </label>
-                        </div>
-
-                        <!-- Feedback de selección -->
-                        <div id="mobile-file-feedback"
-                            class="hidden p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
-                            <div class="flex items-center gap-2 overflow-hidden">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 flex-shrink-0"
-                                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M5 13l4 4L19 7" />
-                                </svg>
-                                <span class="text-sm text-green-800 font-medium truncate"
-                                    id="mobile-file-name">NombreArchivo.jpg</span>
-                            </div>
-                            <button type="button" onclick="clearMobileSelection()"
-                                class="text-gray-400 hover:text-red-500">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <!-- Botón procesar -->
-                        <div class="space-y-3">
-                            <button type="button" id="processBtn-mobile" onclick="procesarAlbaranMobile()"
-                                class="relative w-full px-4 py-3 bg-indigo-600 text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition overflow-hidden flex items-center justify-center">
-                                <span id="processBtnLabel-mobile">Procesar albarán</span>
-                                <span id="processing-mobile" class="processing-overlay hidden">
-                                    <svg class="processing-circle" width="60" height="60"
-                                        viewBox="0 0 50 50">
-                                        <g fill="none" stroke="#ffffff" stroke-width="2">
-                                            <path d="M15 10h15l5 5v20H15V10">
-                                                <animate attributeName="stroke-dasharray" values="0,100;100,0"
-                                                    dur="2s" repeatCount="indefinite"></animate>
-                                            </path>
-                                            <path d="M30 10v5h5">
-                                                <animate attributeName="opacity" values="0;1;0" dur="2s"
-                                                    repeatCount="indefinite"></animate>
-                                            </path>
-                                            <path d="M20 20h10M20 25h10M20 30h10">
-                                                <animate attributeName="stroke-dasharray" values="0,60;60,0"
-                                                    dur="2s" repeatCount="indefinite"></animate>
-                                            </path>
-                                        </g>
-                                    </svg>
-                                    <span>Procesando</span>
-                                </span>
-                            </button>
-
-                            <!-- Botón continuar (solo si ya tenemos datos) -->
-                            <button type="button" id="mobile-step1-continue-btn" data-mobile-next
-                                class="hidden w-full px-4 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium border border-gray-300 transition">
-                                Continuar con datos actuales
-                            </button>
-                        </div>
-                    </form>
+                    <span id="mobile-status-text" class="font-medium"></span>
                 </div>
-            </div>
 
-            <!-- ===== VISTA 2: CONFIRMAR DATOS (EDICIÓN DIRECTA) ===== -->
-            <div id="step-2" class="w-full flex-shrink-0 px-4 py-6">
-                <div class="max-w-lg mx-auto space-y-4">
-                    <h3 class="text-xl font-semibold text-gray-900">Revisar y Confirmar Datos</h3>
-
-                    <!-- Preview de imagen -->
-                    <div id="mobile-preview-container"
-                        class="flex hidden items-center justify-start gap-4 max-h-16 bg-gradient-to-tr from-indigo-600 to-indigo-700 rounded-lg p-4 cursor-pointer shadow-md">
-                        <div class="overflow-hidden w-16 h-12 rounded-lg border-2 border-white">
-                            <img id="mobile-preview-img" src="" alt="Preview"
-                                class="w-full h-full object-cover">
-                        </div>
-                        <p class="text-md text-white">Toca para ver la imagen</p>
-                    </div>
-
-                    <!-- Estado de las IA -->
-                    <div id="mobile-status-banner"
-                        class="hidden items-center gap-2 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-2 text-sm text-indigo-900">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-500" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M13 16h-1v-4h-1m1-4h.01M12 18a9 9 0 110-18 9 9 0 010 18z" />
-                        </svg>
-                        <span id="mobile-status-text" class="font-medium"></span>
-                    </div>
-
-                    <!-- Formulario de Edición (Integrado) -->
-                    <form id="mobile-step2-form" class="space-y-4">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <label class="block">
-                                <span class="text-sm font-medium text-gray-700">Tipo de compra</span>
-                                <select id="edit-tipo-compra" class="mt-1 w-full rounded-lg border-gray-300">
-                                    <option value="">Selecciona tipo</option>
-                                    <option value="directo">Directo</option>
-                                    <option value="distribuidor">Distribuidor</option>
-                                </select>
-                            </label>
-                            <label class="block">
-                                <span class="text-sm font-medium text-gray-700">Fabricante</span>
-                                <input type="text" id="edit-proveedor"
-                                    class="mt-1 w-full rounded-lg border-gray-300">
-                            </label>
-
-                            <!-- Distribuidor: Input text OR Select depending on logic -->
-                            <div class="block" id="container-distribuidor-mobile">
-                                <span class="text-sm font-medium text-gray-700">Distribuidor</span>
-
-                                <!-- Select para cuando es "proveedor" -->
-                                <select id="edit-distribuidor-select"
-                                    class="mt-1 w-full rounded-lg border-gray-300 hidden">
-                                    <option value="">Seleccionar distribuidor</option>
-                                    @foreach ($distribuidores as $dist)
-                                        <option value="{{ $dist }}">{{ $dist }}</option>
-                                    @endforeach
-                                </select>
-
-                                <!-- Input para cuando es "otro" o fallback -->
-                                <input type="text" id="edit-distribuidor-input"
-                                    class="mt-1 w-full rounded-lg border-gray-300">
-                            </div>
-
-                            <label class="block hidden">
-                                <span class="text-sm font-medium text-gray-700">Albarán</span>
-                                <input type="text" id="edit-albaran"
-                                    class="mt-1 w-full rounded-lg border-gray-300">
-                            </label>
-                            <label class="block">
-                                <span class="text-sm font-medium text-gray-700">Fecha</span>
-                                <input type="date" id="edit-fecha" class="mt-1 w-full rounded-lg border-gray-300">
-                            </label>
-                            <label class="block">
-                                <span class="text-sm font-medium text-gray-700">Pedido HPR</span>
-                                <input type="text" id="edit-pedido-cliente"
-                                    class="mt-1 w-full rounded-lg border-gray-300">
-                            </label>
-                            <label class="block hidden">
-                                <span class="text-sm font-medium text-gray-700">Pedido Código</span>
-                                <input type="text" id="edit-pedido-codigo"
-                                    class="mt-1 w-full rounded-lg border-gray-300">
-                            </label>
-                            <div class="grid grid-cols-2 gap-3">
-                                <label class="block">
-                                    <span class="text-sm font-medium text-gray-700">Peso (kg)</span>
-                                    <input type="number" id="edit-peso-total" step="0.01"
-                                        class="mt-1 w-full rounded-lg border-gray-300">
-                                </label>
-                                <label class="block">
-                                    <span class="text-sm font-medium text-gray-700">Bultos</span>
-                                    <input type="number" id="edit-bultos-total"
-                                        class="mt-1 w-full rounded-lg border-gray-300 bg-gray-50 cursor-not-allowed"
-                                        readonly>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="space-y-3 pt-2">
-                            <div class="flex items-center justify-between">
-                                <h4 class="text-base font-semibold text-gray-900">Productos escaneados</h4>
-                                <button type="button" onclick="agregarProductoMobile()"
-                                    class="px-3 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-semibold hover:bg-indigo-200">
-                                    + Añadir producto
+                <!-- Formulario de Edición (Integrado) -->
+                <form id="mobile-step2-form" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label class="block">
+                            <span class="text-sm font-medium text-gray-700">Tipo de compra</span>
+                            <input type="hidden" id="edit-tipo-compra">
+                            <div class="mt-1 flex rounded-lg border border-gray-300 overflow-hidden shadow-sm">
+                                <button type="button" id="btn-tipo-directo"
+                                    class="flex-1 py-2 text-sm font-bold transition-colors bg-white text-gray-600 hover:bg-gray-50"
+                                    onclick="setMobileTipoCompra('directo')">
+                                    DIRECTO
+                                </button>
+                                <div class="w-px bg-gray-300"></div>
+                                <button type="button" id="btn-tipo-distribuidor"
+                                    class="flex-1 py-2 text-sm font-bold transition-colors bg-white text-gray-600 hover:bg-gray-50"
+                                    onclick="setMobileTipoCompra('distribuidor')">
+                                    DISTRIBUIDOR
                                 </button>
                             </div>
-                            <div id="mobile-edit-products" class="space-y-4"></div>
+                        </label>
+                        </label>
+
+                        <!-- Contenedor Fabricante (Solo visible en DIRECTO) -->
+                        <label class="block" id="container-fabricante-mobile">
+                            <span class="text-sm font-medium text-gray-700">Fabricante</span>
+
+                            <!-- Select de fabricantes -->
+                            <select id="edit-proveedor-select" class="mt-1 w-full rounded-lg border-gray-300">
+                                <option value="">Selecciona fabricante</option>
+                                @if (isset($fabricantes))
+                                    @foreach ($fabricantes as $fab)
+                                        <option value="{{ $fab }}">{{ $fab }}</option>
+                                    @endforeach
+                                @endif
+                                <option value="otro">Otro / No listado</option>
+                            </select>
+
+                            <!-- Hidden input para compatibilidad -->
+                            <input type="hidden" id="edit-proveedor">
+                        </label>
+
+                        <!-- Contenedor Distribuidor (Solo visible en DISTRIBUIDOR) -->
+                        <div id="container-distribuidor-mobile" class="hidden">
+                            <label class="block">
+                                <span class="text-sm font-medium text-gray-700">Distribuidor</span>
+                                <!-- Select de Distribuidores -->
+                                <select id="edit-distribuidor-select" class="mt-1 w-full rounded-lg border-gray-300">
+                                    <option value="">Selecciona distribuidor</option>
+                                    @if (isset($distribuidores))
+                                        @foreach ($distribuidores as $dist)
+                                            <option value="{{ $dist }}">{{ $dist }}</option>
+                                        @endforeach
+                                    @endif
+                                    <option value="otro">Otro / No listado</option>
+                                </select>
+                                <!-- Hidden input si fuera necesario -->
+                                <input type="hidden" id="edit-distribuidor-input">
+                            </label>
                         </div>
 
-                        <!-- Botón de acción -->
-                        <div class="pt-4">
-                            <button type="button" id="mobile-step2-confirm-btn" onclick="guardarYContinuarStep2()"
-                                class="w-full px-4 py-3 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white rounded-lg font-bold text-lg shadow-md hover:shadow-lg transition">
-                                <span id="mobile-step2-confirm-label">Confirmar y Continuar</span>
-                                <span id="mobile-step2-confirm-loading" class="hidden ml-2 align-middle">
-                                    <span class="ia-spinner inline-block align-middle"></span>
-                                </span>
+                        <label class="hidden">
+                            <span class="text-sm font-medium text-gray-700">Albarán</span>
+                            <input type="text" id="edit-albaran" class="mt-1 w-full rounded-lg border-gray-300">
+                        </label>
+                        <label class="hidden">
+                            <span class="text-sm font-medium text-gray-700">Fecha</span>
+                            <input type="date" id="edit-fecha" class="mt-1 w-full rounded-lg border-gray-300">
+                        </label>
+                        <label class="hidden">
+                            <span class="text-sm font-medium text-gray-700">Pedido HPR</span>
+                            <input type="text" id="edit-pedido-cliente"
+                                class="mt-1 w-full rounded-lg border-gray-300">
+                        </label>
+                        <label class="block hidden">
+                            <span class="text-sm font-medium text-gray-700">Pedido Código</span>
+                            <input type="text" id="edit-pedido-codigo"
+                                class="mt-1 w-full rounded-lg border-gray-300">
+                        </label>
+                        <div class="grid grid-cols-2 gap-3 hidden">
+                            <label class="block">
+                                <span class="text-sm font-medium text-gray-700">Peso (kg)</span>
+                                <input type="number" id="edit-peso-total" step="0.01"
+                                    class="mt-1 w-full rounded-lg border-gray-300">
+                            </label>
+                            <label class="block">
+                                <span class="text-sm font-medium text-gray-700">Bultos</span>
+                                <input type="number" id="edit-bultos-total"
+                                    class="mt-1 w-full rounded-lg border-gray-300 bg-gray-50 cursor-not-allowed"
+                                    readonly>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-base font-semibold text-gray-900">Productos escaneados</h4>
+                            <button type="button" onclick="agregarProductoMobile()"
+                                class="px-3 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-semibold hover:bg-indigo-200">
+                                + Añadir producto
                             </button>
                         </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- ===== VISTA 3: PEDIDO SELECCIONADO ===== -->
-            <div id="step-3" class="w-full flex-shrink-0 px-4 py-6">
-                <div class="max-w-md mx-auto space-y-3">
-                    <h3 class="text-xl font-semibold text-gray-900">Pedido Seleccionado</h3>
-                    <div id="mobile-pedido-db-banner" class="hidden rounded-lg border px-3 py-2 text-sm"></div>
-                    <p class="text-sm text-gray-600">Verifica el pedido propuesto o selecciona otro</p>
-
-                    <!-- Card del pedido será añadido dinámicamente -->
-                    <div id="mobile-pedido-card" class="bg-white rounded-lg p-4">
-                        <p class="text-gray-500">Cargando...</p>
+                        <!-- Aquí se inyectarán las coladas con sus checks en Step 2 -->
+                        <div id="mobile-edit-products" class="space-y-4"></div>
                     </div>
 
-                    <!-- Botón para ver otros pedidos -->
-                    <button type="button" id="mobile-ver-otros-pedidos"
-                        class="w-full px-4 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium">
-                        Ver otros pedidos
-                    </button>
-
-                    <!-- Navegación -->
-                    <button type="button" data-mobile-next
-                        class="w-full px-4 py-3 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white rounded-lg font-medium">
-                        Continuar
-                    </button>
-                </div>
-            </div>
-
-            <!-- ===== VISTA 4: COLADAS A RECEPCIONAR ===== -->
-            <div id="step-4" class="w-full flex-shrink-0 px-4 py-6">
-                <div class="max-w-md mx-auto space-y-3">
-                    <h3 class="text-xl font-semibold text-gray-900">Coladas a Recepcionar</h3>
-                    <p class="text-sm text-gray-600">Selecciona las coladas que deseas recepcionar</p>
-
-                    <!-- Lista de coladas -->
-                    <div id="mobile-coladas-container" class="bg-white rounded-lg divide-y">
-                        <p class="p-4 text-gray-500">Cargando...</p>
+                    <!-- Botón de acción -->
+                    <div class="pt-4">
+                        <button type="button" id="mobile-step2-confirm-btn" onclick="guardarYContinuarStep2()"
+                            class="w-full px-4 py-3 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white rounded-lg font-bold text-lg shadow-md hover:shadow-lg transition">
+                            <span id="mobile-step2-confirm-label">Confirmar y Continuar</span>
+                            <span id="mobile-step2-confirm-loading" class="hidden ml-2 align-middle">
+                                <span class="ia-spinner inline-block align-middle"></span>
+                            </span>
+                        </button>
                     </div>
-
-                    <!-- Estado final simulado -->
-                    <div id="mobile-estado-final" class="bg-blue-50 rounded-lg p-4 space-y-3">
-                        <h4 class="font-semibold text-gray-900">Estado Final</h4>
-                        <div class="grid grid-cols-3 gap-3 text-sm text-gray-600">
-                            <div class="text-center">
-                                <span class="text-gray-600 text-[7px] uppercase tracking-wide">Kg
-                                    seleccionados</span>
-                                <p id="mobile-peso-seleccionado" class="font-bold text-gray-900 text-lg">0 kg</p>
-                            </div>
-                            <div class="text-center">
-                                <span class="text-gray-600 text-[7px] uppercase tracking-wide">Kg restantes</span>
-                                <p id="mobile-kg-restantes" class="font-bold text-gray-900 text-lg">0 kg</p>
-                            </div>
-                            <div class="text-center">
-                                <span class="text-gray-600 text-[7px] uppercase tracking-wide">Estado pedido</span>
-                                <p id="mobile-estado-pedido" class="font-bold text-gray-900 text-lg">Parcial</p>
-                            </div>
-                        </div>
-                        <div class="flex gap-2 text-sm text-gray-600">
-                            <div class="w-full flex flex-col items-center">
-                                <span class="text-gray-600">Bultos seleccionados:</span>
-                                <span id="mobile-bultos-seleccionados" class="block font-bold text-gray-900">0</span>
-                            </div>
-                            <div class="w-full flex flex-col items-center">
-                                <span class="text-gray-600">Peso pendiente:</span>
-                                <span id="mobile-peso-pendiente" class="block font-bold text-gray-900">0 kg</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Navegación -->
-                    <button type="button" data-mobile-next
-                        class="w-full px-4 py-3 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white rounded-lg font-medium">
-                        Continuar
-                    </button>
-                </div>
+                </form>
             </div>
+        </div>
 
-            <!-- ===== VISTA 5: ACTIVACIÓN ===== -->
-            <div id="step-5" class="w-full flex-shrink-0 px-4 py-6">
-                <div class="max-w-md mx-auto space-y-3">
-                    <h3 class="text-xl font-semibold text-gray-900">Confirmar Activación</h3>
-                    <p class="text-sm text-gray-600">Revisa el resumen y confirma la activación</p>
+        <!-- ===== VISTA 3: PEDIDO SELECCIONADO Y ACTIVACIÓN ===== -->
+        <div id="step-3" class="flex-shrink-0 px-4 py-6" style="width: 33.33%;">
+            <div class="max-w-md mx-auto space-y-3">
+                <h3 class="text-xl font-semibold text-gray-900">Confirmar Pedido y Activar</h3>
+                <div id="mobile-pedido-db-banner" class="hidden rounded-lg border px-3 py-2 text-sm"></div>
+                <p class="text-sm text-gray-600">Verifica el pedido y confirma la activación</p>
 
-                    <!-- Resumen -->
-                    <div id="mobile-resumen-container" class="bg-white rounded-lg p-4 space-y-4">
-                        <div>
-                            <h4 class="font-semibold text-gray-900 mb-2">Datos del Albarán</h4>
-                            <div class="text-sm space-y-1">
-                                <p><span class="text-gray-600">Albarán:</span> <span
-                                        id="mobile-resumen-albaran">—</span></p>
-                                <p><span class="text-gray-600">Pedido:</span> <span
-                                        id="mobile-resumen-pedido">—</span></p>
-                            </div>
-                        </div>
-                        <div>
-                            <h4 class="font-semibold text-gray-900 mb-2">Coladas Seleccionadas</h4>
-                            <p id="mobile-resumen-coladas" class="text-sm text-gray-600">—</p>
-                        </div>
-                        <div>
-                            <div class="grid grid-cols-3 gap-3 text-sm text-gray-600">
-                                <div class="text-center">
-                                    <span class="text-xs uppercase tracking-wide text-gray-500">Kg
-                                        seleccionados</span>
-                                    <p id="mobile-resumen-kg-seleccionados" class="font-bold text-gray-900 text-lg">0
-                                        kg</p>
-                                </div>
-                                <div class="text-center">
-                                    <span class="text-xs uppercase tracking-wide text-gray-500">Kg restantes</span>
-                                    <p id="mobile-resumen-kg-restantes" class="font-bold text-gray-900 text-lg">0
-                                        kg
-                                    </p>
-                                </div>
-                                <div class="text-center">
-                                    <span class="text-xs uppercase tracking-wide text-gray-500">Estado
-                                        pedido</span>
-                                    <p id="mobile-resumen-estado" class="font-bold text-gray-900 text-lg">
-                                        Pendiente
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Botón de activación -->
-                    <button type="button" id="mobile-btn-activar"
-                        class="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg font-bold text-lg">
-                        <span id="mobile-activar-label">Confirmar y Activar</span>
-                        <span id="mobile-activar-loading" class="hidden ml-2 align-middle">
-                            <span class="ia-spinner inline-block align-middle"></span>
-                        </span>
-                    </button>
+                <!-- Card del pedido -->
+                <div id="mobile-pedido-card" class="bg-white rounded-lg p-4">
+                    <p class="text-gray-500">Cargando...</p>
                 </div>
-            </div>
 
-        </div> <!-- Fin stepWrapper -->
+                <div class="h-4"></div>
+
+                <!-- Botón para ver otros pedidos -->
+                <button type="button" id="mobile-ver-otros-pedidos"
+                    class="w-full px-4 py-3 bg-gray-600 text-white rounded-lg shadow-lg hover:shadows-xl hover:bg-gray-700 transition">
+                    Ver otros pedidos compatibles
+                </button>
+
+
+                <!-- Botón de Activación Final -->
+                <button type="button" id="mobile-btn-activar" onclick="activarAlbaranMobile()"
+                    class="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg font-bold text-lg shadow-lg hover:shadow-xl hover:bg-emerald-700 transition">
+                    <span id="mobile-activar-label">Confirmar y Activar Albarán</span>
+                    <span id="mobile-activar-loading" class="hidden ml-2 align-middle">
+                        <span class="ia-spinner inline-block align-middle"></span>
+                    </span>
+                </button>
+            </div>
+        </div>
+
+    </div> <!-- Fin stepWrapper -->
     </div> <!-- Fin mobileStepContainer -->
 
     <!-- ========================================== -->
@@ -1668,7 +547,8 @@
         <div class="mobile-modal-overlay" onclick="cerrarModalPedidosMobile()"></div>
         <div class="mobile-edit-modal-content border-t border-gray-200">
             <!-- Header -->
-            <div class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+            <div
+                class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between inset-shadow-sm">
                 <div class="min-w-0">
                     <h3 class="text-lg font-semibold text-gray-900">Seleccionar Pedido</h3>
                     <div id="mobilePedidosModalScanned" class="text-xs text-gray-500 truncate"></div>
@@ -1697,764 +577,10 @@
         </div>
     </div>
 
-    <!-- MODAL MOTIVO CAMBIO (IA LEARNING) -->
-    <div id="motivo-cambio-modal"
-        class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm hidden items-center justify-center z-[60] p-4">
-        <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden animate-slid-up">
-            <div class="bg-amber-500 p-4 text-white">
-                <h3 class="text-lg font-bold flex items-center gap-2">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    Decisión manual
-                </h3>
-            </div>
-            <div class="p-5 space-y-4">
-                <p class="text-sm text-gray-600">
-                    Has elegido <span id="motivo-pedido-actual" class="font-bold text-gray-900"></span> en lugar
-                    de la
-                    recomendación de la IA.
-                </p>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">¿Por qué este pedido es el
-                        correcto?</label>
-                    <textarea id="motivo-text-area" rows="3"
-                        class="w-full rounded-xl border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm"
-                        placeholder="Ej: El pedido recomendado es para otra obra o ya fue recibido parcialmente..."></textarea>
-                </div>
-                <div class="flex flex-col gap-2 pt-2">
-                    <button type="button" onclick="aceptarMotivoCambio()"
-                        class="w-full py-3 bg-amber-500 text-white rounded-xl font-bold shadow-lg hover:bg-amber-600 transition">
-                        Confirmar y ayudar a la IA
-                    </button>
-                    <button type="button" onclick="cancelarMotivoCambio()"
-                        class="w-full py-2 text-gray-500 font-medium hover:text-gray-700">
-                        Volver a la lista
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <script>
-        let selectedFiles = [];
 
-        function handleFileSelect(event) {
-            const files = Array.from(event.target.files);
-            selectedFiles = files;
-            displayFileList();
-        }
 
-        function displayFileList() {
-            const fileList = document.getElementById('fileList');
-            const processBtn = document.getElementById('processBtn');
-
-            if (selectedFiles.length === 0) {
-                fileList.innerHTML = '';
-                processBtn.disabled = true;
-                return;
-            }
-
-            processBtn.disabled = false;
-
-            let html = '<div class="text-sm text-gray-700 font-semibold mb-1">Archivos seleccionados:</div>';
-            selectedFiles.forEach((file) => {
-                const sizeKB = (file.size / 1024).toFixed(1);
-                html += `
-                    <div class="flex items-center justify-between bg-white border border-gray-200 rounded-md px-3 py-2">
-                        <span>${file.name}</span>
-                        <span class="text-xs text-gray-500">${sizeKB} KB</span>
-                    </div>
-                `;
-            });
-            fileList.innerHTML = html;
-        }
-
-        const dropZone = document.getElementById('dropZone');
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, preventDefaults, false);
-        });
-
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => dropZone.classList.add('ring-2', 'ring-indigo-300'), false);
-        });
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => dropZone.classList.remove('ring-2', 'ring-indigo-300'),
-                false);
-        });
-        dropZone.addEventListener('drop', (e) => {
-            const dt = e.dataTransfer;
-            document.getElementById('imagenes').files = dt.files;
-            selectedFiles = Array.from(dt.files);
-            displayFileList();
-        }, false);
-
-        document.getElementById('ocrForm').addEventListener('submit', (e) => {
-            const proveedor = document.getElementById('proveedor').value;
-            if (!proveedor) {
-                e.preventDefault();
-                alert('Selecciona un proveedor antes de procesar.');
-                return;
-            }
-            document.getElementById('loading').classList.remove('hidden');
-            document.getElementById('processBtn').disabled = true;
-        });
-
-        // Botón "Continuar con lo escaneado"
-        document.querySelectorAll('.confirm-scanned').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const idx = btn.dataset.result;
-                document.getElementById(`confirmationPrompt-${idx}`).classList.add('hidden');
-                document.getElementById(`simulationSection-${idx}`).classList.remove('hidden');
-            });
-        });
-
-        // Botón "Modificar lo escaneado"
-        document.querySelectorAll('.modify-scanned').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const idx = btn.dataset.result;
-                document.getElementById(`viewMode-${idx}`).classList.add('hidden');
-                document.getElementById(`editMode-${idx}`).classList.remove('hidden');
-            });
-        });
-
-        document.querySelectorAll('.toggle-json-btn').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const idx = btn.dataset.result;
-                const payload = document.getElementById(`jsonPayload-${idx}`);
-                if (!payload) {
-                    return;
-                }
-
-                const isHidden = payload.classList.toggle('hidden');
-                const showLabel = btn.dataset.showLabel || 'Ver JSON';
-                const hideLabel = btn.dataset.hideLabel || 'Ocultar JSON';
-                btn.textContent = isHidden ? showLabel : hideLabel;
-            });
-        });
-
-        // Agregar producto
-        document.querySelectorAll('.add-producto-btn').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const idx = btn.dataset.result;
-                const container = document.getElementById(`productosContainer-${idx}`);
-                const numProductos = container.querySelectorAll('.producto-edit-block').length;
-
-                const newProductoHTML = `
-                    <div class="producto-edit-block bg-gray-50 border border-gray-300 rounded-lg p-3" data-producto-index="${numProductos}">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-xs font-semibold text-gray-700">Producto ${numProductos + 1}</span>
-                            <button type="button" class="remove-producto-btn text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition">
-                                Eliminar
-                            </button>
-                        </div>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-                            <label class="text-xs text-gray-600 flex flex-col gap-1">
-                                Descripción
-                                <select class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="descripcion">
-                                    <option value="">Seleccionar tipo</option>
-                                    <option value="ENCARRETADO">Encarretado</option>
-                                    <option value="BARRA">Barra</option>
-                                </select>
-                            </label>
-                            <label class="text-xs text-gray-600 flex flex-col gap-1">
-                                Diámetro
-                                <input type="text" class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="diametro" value="">
-                            </label>
-                            <label class="text-xs text-gray-600 flex flex-col gap-1">
-                                Longitud
-                                <input type="text" class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="longitud" value="">
-                            </label>
-                            <label class="text-xs text-gray-600 flex flex-col gap-1">
-                                Calidad
-                                <input type="text" class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="calidad" value="">
-                            </label>
-                        </div>
-                        <div>
-                            <div class="flex items-center justify-between mb-1">
-                                <span class="text-xs font-medium text-gray-600">Coladas</span>
-                                <button type="button" class="add-colada-btn text-xs px-2 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
-                                    + Agregar colada
-                                </button>
-                            </div>
-                            <div class="coladas-container space-y-1"></div>
-                        </div>
-                    </div>
-                `;
-                container.insertAdjacentHTML('beforeend', newProductoHTML);
-                attachProductoListeners();
-            });
-        });
-
-        // Agregar colada
-        function attachProductoListeners() {
-            document.querySelectorAll('.add-colada-btn').forEach((btn) => {
-                btn.replaceWith(btn.cloneNode(true));
-            });
-
-            document.querySelectorAll('.add-colada-btn').forEach((btn) => {
-                btn.addEventListener('click', (e) => {
-                    const container = e.target.closest('.producto-edit-block').querySelector(
-                        '.coladas-container');
-                    const numColadas = container.querySelectorAll('.colada-edit-row').length;
-
-                    const newColadaHTML = `
-                        <div class="colada-edit-row flex gap-2 items-center" data-colada-index="${numColadas}">
-                            <input type="text" placeholder="Colada" class="colada-field flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="colada" value="">
-                            <input type="number" placeholder="Bultos" class="colada-field w-20 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="bultos" value="">
-                            <input type="number" step="0.01" placeholder="Peso (kg)" class="colada-field w-24 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="peso_kg" value="">
-                            <button type="button" class="remove-colada-btn text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition">
-                                ✕
-                            </button>
-                        </div>
-                    `;
-                    container.insertAdjacentHTML('beforeend', newColadaHTML);
-                    attachRemoveListeners();
-                });
-            });
-
-            document.querySelectorAll('.remove-producto-btn').forEach((btn) => {
-                btn.replaceWith(btn.cloneNode(true));
-            });
-
-            document.querySelectorAll('.remove-producto-btn').forEach((btn) => {
-                btn.addEventListener('click', (e) => {
-                    e.target.closest('.producto-edit-block').remove();
-                });
-            });
-        }
-
-        function attachRemoveListeners() {
-            document.querySelectorAll('.remove-colada-btn').forEach((btn) => {
-                btn.replaceWith(btn.cloneNode(true));
-            });
-
-            document.querySelectorAll('.remove-colada-btn').forEach((btn) => {
-                btn.addEventListener('click', (e) => {
-                    e.target.closest('.colada-edit-row').remove();
-                });
-            });
-        }
-
-        // Inicializar listeners
-        attachProductoListeners();
-        attachRemoveListeners();
-
-        // Función para actualizar totales de coladas seleccionadas y estado final
-        function updateColadaTotals(idx) {
-            const checkboxes = document.querySelectorAll(`.colada-checkbox-${idx}:checked`);
-            let totalBultos = 0;
-            let totalPeso = 0;
-
-            checkboxes.forEach(cb => {
-                totalBultos += parseInt(cb.dataset.bultos) || 0;
-                totalPeso += parseFloat(cb.dataset.peso) || 0;
-            });
-
-            // Actualizar totales de bultos y peso
-            document.getElementById(`totalBultos-${idx}`).textContent = totalBultos;
-            document.getElementById(`totalPeso-${idx}`).textContent = new Intl.NumberFormat('es-ES').format(totalPeso) +
-                ' kg';
-
-            // Actualizar estado final simulado
-            const estadoFinalSection = document.getElementById(`estadoFinalSection-${idx}`);
-            if (estadoFinalSection) {
-                const cantidadInicial = parseFloat(estadoFinalSection.dataset.cantidadInicial) || 0;
-                const cantidadTotal = parseFloat(estadoFinalSection.dataset.cantidadTotal) || 0;
-                const cantidadPendienteActual = cantidadTotal - cantidadInicial;
-
-                // Calcular nuevos valores
-                const kgRecepcionar = totalPeso;
-                const kgPendientesDespues = cantidadPendienteActual - kgRecepcionar;
-                const cantidadRecepcionadaNueva = cantidadInicial + kgRecepcionar;
-                const nuevoEstado = cantidadRecepcionadaNueva >= cantidadTotal ? 'Completado' : 'Parcial';
-
-                // Actualizar UI
-                document.getElementById(`cantidadPendienteActual-${idx}`).textContent =
-                    new Intl.NumberFormat('es-ES').format(cantidadPendienteActual) + ' kg';
-                document.getElementById(`kgRecepcionar-${idx}`).textContent =
-                    new Intl.NumberFormat('es-ES').format(kgRecepcionar) + ' kg';
-                document.getElementById(`kgPendientesDespues-${idx}`).textContent =
-                    new Intl.NumberFormat('es-ES').format(kgPendientesDespues) + ' kg';
-
-                const nuevoEstadoElement = document.getElementById(`nuevoEstado-${idx}`);
-                nuevoEstadoElement.textContent = nuevoEstado;
-
-                // Actualizar colores según estado
-                if (nuevoEstado === 'Completado') {
-                    nuevoEstadoElement.className = 'text-lg font-bold text-green-600';
-                } else {
-                    nuevoEstadoElement.className = 'text-lg font-bold text-blue-600';
-                }
-            }
-        }
-
-        // Añadir listeners a checkboxes "marcar/desmarcar todos"
-        document.querySelectorAll('[id^="checkAll-"]').forEach(checkAllBox => {
-            checkAllBox.addEventListener('change', function() {
-                const idx = this.id.replace('checkAll-', '');
-                const checkboxes = document.querySelectorAll(`.colada-checkbox-${idx}`);
-                checkboxes.forEach(cb => cb.checked = this.checked);
-                updateColadaTotals(idx);
-            });
-        });
-
-        // Añadir listeners a todos los checkboxes de coladas
-        document.querySelectorAll('[class*="colada-checkbox-"]').forEach(cb => {
-            cb.addEventListener('change', function() {
-                const idx = this.className.match(/colada-checkbox-(\d+)/)[1];
-                updateColadaTotals(idx);
-
-                // Actualizar estado del checkbox "marcar todos"
-                const allCheckboxes = document.querySelectorAll(`.colada-checkbox-${idx}`);
-                const checkedCheckboxes = document.querySelectorAll(`.colada-checkbox-${idx}:checked`);
-                const checkAllBox = document.getElementById(`checkAll-${idx}`);
-                if (checkAllBox) {
-                    checkAllBox.checked = allCheckboxes.length === checkedCheckboxes.length;
-                }
-            });
-        });
-
-        // Función para abrir/cerrar modal
-        window.openPendingOrdersModal = function(idx) {
-            document.getElementById(`pendingOrdersModal-${idx}`).classList.remove('hidden');
-        };
-
-        window.closePendingOrdersModal = function(idx) {
-            document.getElementById(`pendingOrdersModal-${idx}`).classList.add('hidden');
-        };
-
-        // Variables globales para almacenar el estado original (recomendado) por cada resultado
-        // Se inicializan en el DOM o lazy loaded
-        const originalRecommendations = {};
-
-        // Función auxiliar para actualizar estado visual de botones
-        window.updateSelectionButtons = function(idx, selectedId) {
-            document.querySelectorAll(`.selection-btn-${idx}`).forEach(btn => {
-                // Reset (blue state)
-                btn.disabled = false;
-                btn.textContent = 'Seleccionar';
-                btn.classList.remove('bg-green-600', 'cursor-default');
-                btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
-
-                // Set Selected (green state)
-                if (btn.id === `btn-select-${idx}-${selectedId}`) {
-                    btn.disabled = true;
-                    btn.textContent = 'Seleccionado';
-                    btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-                    btn.classList.add('bg-green-600', 'cursor-default');
-                }
-            });
-        };
-
-        const formatLineaInfoText = (linea) => {
-            if (!linea) {
-                return '';
-            }
-            const parts = [];
-            if (linea.pedido_codigo) {
-                parts.push(`Pedido ${linea.pedido_codigo}`);
-            }
-            if (linea.producto) {
-                parts.push(linea.producto);
-            }
-            if (linea.diametro) {
-                parts.push(`Ø${linea.diametro}`);
-            }
-            if (linea.cantidad_pendiente) {
-                parts.push(`${Number(linea.cantidad_pendiente).toLocaleString('es-ES')} kg`);
-            }
-            return parts.filter(Boolean).join(' • ');
-        };
-
-        // Función para seleccionar manualmente una línea de pedido
-        window.seleccionarLineaManual = function(linea, resultadoIdx) {
-            // Verificar si la línea seleccionada es la recomendada
-            const modal = document.getElementById(`pendingOrdersModal-${resultadoIdx}`);
-            const recommendedId = modal?.getAttribute('data-recommended-id') ?? null;
-
-            // Actualizar botones visualmente
-            updateSelectionButtons(resultadoIdx, linea.id);
-
-            // Si se selecciona la recomendada, restaurar y salir
-            if (linea.id == recommendedId) {
-                resetToRecommended(resultadoIdx);
-                // No cerramos el modal aquí para que el usuario vea el cambio a "Seleccionado", 
-                // o si prefiere cerrar, puede hacerlo. Pero la lógica original decía "restaurar y salir".
-                // El usuario pidió "cambia el boton seleccionar por seleccionado". 
-                // Si el usuario elige el recomendado, visualmente se marca.
-                // Reset data logic:
-                // resetToRecommended(resultadoIdx); 
-                // BUT resetToRecommended might hide the manual selection UI which is correct.
-                // We should probably allow the user to see it. 
-                // Let's stick to closing it for usability unless they want to keep exploring.
-                // Actually, if I update the button state, maybe I shouldn't close it instantly? 
-                // Let's close it as per previous flow to avoid confusion, but updating buttons ensures consistency if reopened.
-                closePendingOrdersModal(resultadoIdx);
-                return;
-            }
-
-            // Guardar estado original si no existe
-            const finalSection = document.getElementById(`estadoFinalSection-${resultadoIdx}`);
-            if (finalSection && !originalRecommendations[resultadoIdx]) {
-                originalRecommendations[resultadoIdx] = {
-                    cantidadPendiente: parseFloat(finalSection.dataset.cantidadInicial) || 0,
-                    cantidadTotal: parseFloat(finalSection.dataset.cantidadTotal) || 0,
-                    pedidoCodigo: '{{-- This would be hard to capture effectively without passing it, but we can assume we resort to text --}}'
-                };
-            }
-
-            // Actualizar vista de selección manual (solo si existen los elementos)
-            const container = document.getElementById(`selectedOrderContainer-${resultadoIdx}`);
-            const codeSpan = document.getElementById(`selectedOrderCode-${resultadoIdx}`);
-            const detailsP = document.getElementById(`selectedOrderDetails-${resultadoIdx}`);
-
-            if (container) {
-                container.classList.remove('hidden');
-            }
-            if (codeSpan) {
-                codeSpan.textContent = linea.pedido_codigo;
-            }
-            if (detailsP) {
-                detailsP.innerHTML =
-                    `<strong>Producto:</strong> ${linea.producto} | <strong>Obra:</strong> ${linea.obra} | <strong>Pendiente:</strong> ${new Intl.NumberFormat('es-ES').format(linea.cantidad_pendiente)} kg`;
-            }
-
-            const infoElement = document.getElementById(`linea-info-${resultadoIdx}`);
-            if (infoElement) {
-                const text = formatLineaInfoText(linea);
-                if (text) {
-                    infoElement.textContent = text;
-                    infoElement.dataset.lineaInfo = text;
-                }
-            }
-
-            // Actualizar Label (solo si existe)
-            const applyingLabel = document.getElementById(`applyingLabel-${resultadoIdx}`);
-            if (applyingLabel) {
-                applyingLabel.textContent = "Selección Manual";
-                applyingLabel.className = "text-xs font-normal px-2 py-1 rounded-full bg-blue-100 text-blue-700";
-            }
-
-            // Actualizar enunciado del cambio (solo si existe)
-            const statementText = document.getElementById(`statementText-${resultadoIdx}`);
-            if (statementText && recommendedId) {
-                // Obtener código del pedido recomendado desde el modal
-                const recommendedCode = modal?.getAttribute('data-recommended-code') || 'el recomendado';
-                const selectedCode = linea.pedido_codigo || 'otro pedido';
-
-                // Actualizar enunciado
-                statementText.innerHTML =
-                    `El sistema recomendó <strong>${recommendedCode}</strong> pero preferiste <strong>${selectedCode}</strong>.`;
-            }
-
-            // Enfocar el input para que escriba el motivo
-            const changeReasonInput = document.getElementById(`changeReason-${resultadoIdx}`);
-            if (changeReasonInput) {
-                changeReasonInput.focus();
-            }
-
-            // Actualizar datos de simulación final
-            if (finalSection) {
-                finalSection.dataset.cantidadInicial = linea.cantidad_recepcionada || (linea.cantidad - linea
-                    .cantidad_pendiente);
-                finalSection.dataset.cantidadTotal = linea.cantidad;
-
-                updateColadaTotals(resultadoIdx);
-            }
-
-            // Cerrar modal
-            closePendingOrdersModal(resultadoIdx);
-        };
-
-        window.resetToRecommended = function(idx) {
-            // Restaurar botones visualmente al recomendado
-            const modal = document.getElementById(`pendingOrdersModal-${idx}`);
-            const recommendedId = modal.getAttribute('data-recommended-id');
-            updateSelectionButtons(idx, recommendedId);
-
-            // Ocultar contenedor de selección manual (solo si existe)
-            const selectedContainer = document.getElementById(`selectedOrderContainer-${idx}`);
-            if (selectedContainer) {
-                selectedContainer.classList.add('hidden');
-            }
-            const changeReasonInput = document.getElementById(`changeReason-${idx}`);
-            if (changeReasonInput) {
-                changeReasonInput.value = ''; // Limpiar razón
-            }
-
-            // Restaurar Label (solo si existe)
-            const applyingLabel = document.getElementById(`applyingLabel-${idx}`);
-            if (applyingLabel) {
-                applyingLabel.textContent = "Recomendado";
-                applyingLabel.className = "text-xs font-normal px-2 py-1 rounded-full bg-green-100 text-green-700";
-            }
-
-            // Restaurar valores originales en Final Section
-            if (originalRecommendations[idx]) {
-                const finalSection = document.getElementById(`estadoFinalSection-${idx}`);
-                // NOTE: We need to restore the ORIGINAL PHP values. 
-                // Since I cannot easily read them back from JS variable if I didn't store them all, 
-                // I should have stored them in data-attributes of the reset button or similar.
-                // Or I can just reload them from the DOM if I hadn't overwritten them? 
-                // No, I overwrote the datasets.
-
-                // Better approach: Store original values in data attributes of the container ON LOAD (or first time)
-                // Actually, I can use a separate attribute 'data-original-cantidad-inicial' 
-            }
-
-            // To Fix Reset Logic:
-            // I will rely on `originalRecommendations` which I populated on first selection.
-            // However, that only populates IF I select something.
-            // Wait, `originalRecommendations[idx]` has what I need?
-
-            const finalSection = document.getElementById(`estadoFinalSection-${idx}`);
-            // Let's grab the originals from a backup attribute I should add in the view or handle here.
-
-            // Quick fix: I'll read the 'original' values from attributes I will add to the HTML in a moment.
-            // OR I can just reload the page... No, that's bad.
-
-            if (finalSection && finalSection.dataset.originalCantidadInicial !== undefined) {
-                finalSection.dataset.cantidadInicial = finalSection.dataset.originalCantidadInicial;
-                finalSection.dataset.cantidadTotal = finalSection.dataset.originalCantidadTotal;
-                updateColadaTotals(idx);
-            }
-        };
-
-        // Patch updateColadaTotals to store original values if not present
-        const originalUpdateColadaTotals = updateColadaTotals;
-        updateColadaTotals = function(idx) {
-            const finalSection = document.getElementById(`estadoFinalSection-${idx}`);
-            if (finalSection && finalSection.dataset.originalCantidadInicial === undefined) {
-                finalSection.dataset.originalCantidadInicial = finalSection.dataset.cantidadInicial;
-                finalSection.dataset.originalCantidadTotal = finalSection.dataset.cantidadTotal;
-            }
-            originalUpdateColadaTotals(idx);
-        }
-
-        // Botón "Confirmar y seguir" (después de editar)
-        document.querySelectorAll('.confirm-edit').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const idx = btn.dataset.result;
-                const editMode = document.getElementById(`editMode-${idx}`);
-
-                // Recopilar datos editados
-                const editedData = {
-                    albaran: '',
-                    fecha: '',
-                    pedido_cliente: '',
-                    pedido_codigo: '',
-                    tipo_compra: null,
-                    proveedor_texto: null,
-                    distribuidor_recomendado: null,
-                    peso_total: null,
-                    bultos_total: null,
-                    productos: []
-                };
-
-                // Datos generales
-                editMode.querySelectorAll('.general-edit-field').forEach((input) => {
-                    const field = input.dataset.field;
-                    editedData[field] = input.value || null;
-                });
-
-                // Productos
-                editMode.querySelectorAll('.producto-edit-block').forEach((productoBlock) => {
-                    const producto = {
-                        descripcion: '',
-                        diametro: null,
-                        longitud: null,
-                        calidad: '',
-                        line_items: []
-                    };
-
-                    productoBlock.querySelectorAll('.producto-field').forEach((input) => {
-                        const field = input.dataset.field;
-                        producto[field] = input.value || null;
-                    });
-
-                    productoBlock.querySelectorAll('.colada-edit-row').forEach((coladaRow) => {
-                        const colada = {};
-                        coladaRow.querySelectorAll('.colada-field').forEach((input) => {
-                            const field = input.dataset.field;
-                            colada[field] = input.value || null;
-                        });
-                        producto.line_items.push(colada);
-                    });
-
-                    editedData.productos.push(producto);
-                });
-
-                // Guardar datos editados (podrías enviarlos al servidor aquí)
-                // console.log('Datos editados:', editedData);
-
-                // Por ahora, solo ocultar y mostrar simulación
-                document.getElementById(`confirmationPrompt-${idx}`).classList.add('hidden');
-                document.getElementById(`simulationSection-${idx}`).classList.remove('hidden');
-            });
-        });
-    </script>
-    <div id="modal-coladas-activacion"
-        class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm hidden items-center justify-center z-50 transition-all duration-300">
-        <div
-            class="bg-white rounded-2xl w-full max-w-3xl shadow-2xl transform transition-all duration-300 overflow-hidden border border-gray-200">
-            <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-5 border-b border-slate-600">
-                <h3 class="text-xl font-bold text-white flex items-center gap-3">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    Confirmar activación de línea
-                </h3>
-                <p class="text-sm text-slate-300 mt-2">
-                    Registrar coladas y bultos asociados (opcional)
-                </p>
-                <p id="modal-linea-info" class="text-sm text-slate-200 mt-1">Selecciona las coladas deseadas antes
-                    de
-                    continuar.</p>
-            </div>
-            <div class="p-6">
-                <div class="border border-gray-300 rounded-xl mb-5 shadow-sm bg-white overflow-hidden">
-                    <table class="w-full text-sm table-fixed">
-                        <colgroup>
-                            <col style="width:45%">
-                            <col style="width:25%">
-                            <col style="width:30%">
-                        </colgroup>
-                        <thead class="bg-gradient-to-r from-gray-700 to-gray-800 text-white">
-                            <tr>
-                                <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
-                                    Colada</th>
-                                <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
-                                    Bultos</th>
-                                <th
-                                    class="px-4 py-3 text-start font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
-                                    Peso (kg)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-coladas-body-modal" class="divide-y divide-gray-200">
-                        </tbody>
-                    </table>
-                </div>
-                <div class="flex justify-between items-center mb-6 pt-2">
-                    <button type="button" id="btn-agregar-colada-modal"
-                        class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-medium px-4 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        Añadir colada / bulto
-                    </button>
-                </div>
-                <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                    <button type="button" id="btn-cancelar-coladas-modal"
-                        class="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 text-sm font-medium px-5 py-2.5 rounded-lg border border-gray-300 transition-all duration-200 shadow-sm hover:shadow">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                        Cancelar
-                    </button>
-                    <button type="button" id="btn-confirmar-activacion-coladas-modal"
-                        class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-semibold px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        Confirmar activación
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <script>
-        (function() {
-            const modal = document.getElementById('modal-coladas-activacion');
-            const cuerpoTabla = document.getElementById('tabla-coladas-body-modal');
-            const btnAgregar = document.getElementById('btn-agregar-colada-modal');
-            const btnCancelar = document.getElementById('btn-cancelar-coladas-modal');
-            const btnConfirmar = document.getElementById('btn-confirmar-activacion-coladas-modal');
-            const infoLinea = document.getElementById('modal-linea-info');
-
-            const abrirModal = (coladas, lineaInfoText = '') => {
-                cuerpoTabla.innerHTML = '';
-                coladas.forEach(colada => {
-                    cuerpoTabla.appendChild(crearFilaColada(colada));
-                });
-                if (infoLinea) {
-                    infoLinea.textContent = lineaInfoText ?
-                        lineaInfoText :
-                        coladas.length ?
-                        `Preparando ${coladas.length} colada(s) para activación.` :
-                        'No hay coladas seleccionadas.';
-                }
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-            };
-
-            const cerrarModal = () => {
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-            };
-
-            const crearFilaColada = (colada = {}) => {
-                const row = document.createElement('tr');
-                row.className = 'fila-colada hover:bg-gray-50 transition-colors duration-150';
-                const valueColada = colada.colada || '';
-                const valueBultos = colada.bultos || '';
-                const valuePeso = colada.peso || '';
-                row.innerHTML = `
-                    <td class="px-4 py-3">
-                        <input type="text" class="w-full border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-3 py-2 text-sm transition outline-none"
-                            placeholder="Ej: 12/3456" value="${valueColada}">
-                    </td>
-                    <td class="px-4 py-3">
-                        <input type="number" step="1" min="0" class="w-full text-start border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-3 py-2 text-sm transition outline-none"
-                            placeholder="0" value="${valueBultos}">
-                    </td>
-                    <td class="px-4 py-3">
-                        <input type="number" step="0.01" class="w-full text-start border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-3 py-2 text-sm transition outline-none"
-                            placeholder="Peso (kg)" value="${valuePeso}">
-                    </td>
-                `;
-                return row;
-            };
-
-            window.activarLineaSeleccionada = function(idx) {
-                const checkboxes = document.querySelectorAll(`.colada-checkbox-${idx}:checked`);
-                if (!checkboxes.length) {
-                    return alert('Selecciona al menos una colada antes de activar la línea.');
-                }
-                const coladas = Array.from(checkboxes).map(cb => ({
-                    colada: cb.dataset.colada || '',
-                    bultos: cb.dataset.bultos || '',
-                    peso: cb.dataset.peso || ''
-                }));
-                const infoElement = document.getElementById(`linea-info-${idx}`);
-                const lineaInfoText = infoElement?.dataset?.lineaInfo || infoElement?.textContent || '';
-                abrirModal(coladas, lineaInfoText);
-            };
-
-            if (btnAgregar) {
-                btnAgregar.addEventListener('click', () => {
-                    cuerpoTabla.appendChild(crearFilaColada());
-                });
-            }
-
-            btnCancelar?.addEventListener('click', () => {
-                cerrarModal();
-            });
-
-            btnConfirmar?.addEventListener('click', () => {
-                cerrarModal();
-            });
-        })();
-    </script>
+    <!-- Desktop Scripts and Modals Removed -->
     <div id="previewModal"
         class="fixed inset-0 z-50 items-center justify-center bg-black/70 opacity-0 pointer-events-none transition-opacity duration-200">
         <div class="preview-modal-content relative w-full max-w-3xl bg-black rounded-2xl shadow-2xl overflow-hidden">
@@ -2510,6 +636,30 @@
             });
 
             window.openPreviewModal = openPreview;
+
+            // Evitar scroll horizontal (swipe) dentro del wizard: obliga a usar Volver/Continuar
+            const stepWrapper = document.getElementById('stepWrapper');
+            if (stepWrapper) {
+                let touchStartX = 0;
+                let touchStartY = 0;
+
+                stepWrapper.addEventListener('touchstart', (e) => {
+                    const t = e.touches?.[0];
+                    if (!t) return;
+                    touchStartX = t.clientX;
+                    touchStartY = t.clientY;
+                }, { passive: true });
+
+                stepWrapper.addEventListener('touchmove', (e) => {
+                    const t = e.touches?.[0];
+                    if (!t) return;
+                    const dx = t.clientX - touchStartX;
+                    const dy = t.clientY - touchStartY;
+                    if (Math.abs(dx) > Math.abs(dy) + 5) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+            }
         });
 
         // ========================================
@@ -2518,7 +668,7 @@
         window.mobileStepManager = {
             currentStep: 1,
             maxStep: 1,
-            totalSteps: 5,
+            totalSteps: 3,
             dataCache: {},
             initialized: false,
 
@@ -2536,7 +686,7 @@
                             poblarVista2ConDatos(this.dataCache.resultado);
                             if (this.dataCache.simulacion) {
                                 poblarVista3ConPedido(this.dataCache.simulacion);
-                                poblarVista4ConColadas(this.dataCache.simulacion);
+                                // El paso 4 antiguo (coladas) ya no existe, saltamos esa poblacion
                                 if (this.dataCache.lineaSeleccionada) {
                                     actualizarVista3ConLineaSeleccionada(this.dataCache.lineaSeleccionada);
                                 }
@@ -2568,18 +718,14 @@
                 const canNavigate = isGoingBack || isNextStep || forceAdvance || stepNumber <= this.maxStep;
 
                 if (!canNavigate) {
-                    // console.log('Navegación bloqueada:', {
-                    //     stepNumber,
-                    //     currentStep: this.currentStep,
-                    //     maxStep: this.maxStep
-                    // });
                     return;
                 }
 
                 const wrapper = document.getElementById('stepWrapper');
                 if (!wrapper) return;
 
-                const translatePercentage = -(stepNumber - 1) * 20; // -0%, -20%, -40%, -60%, -80%
+                // El ancho de cada paso ahora es 33.33% (100/3)
+                const translatePercentage = -(stepNumber - 1) * 33.33;
 
                 wrapper.style.transform = `translateX(${translatePercentage}%)`;
                 window.requestAnimationFrame(() => {
@@ -2603,8 +749,6 @@
                     this.maxStep = stepNumber;
                 }
 
-                // console.log('Navegado a paso:', stepNumber, 'maxStep:', this.maxStep);
-
                 this.updateNavigation();
                 this.updateProgressBar();
 
@@ -2612,7 +756,6 @@
                 this.dataCache.lastStep = this.currentStep;
                 localStorage.setItem('lastScanMobileCache', JSON.stringify(this.dataCache));
 
-                // Mostrar botón continuar en paso 1 si ya hay datos
                 if (stepNumber === 1) {
                     const continueBtn = document.getElementById('mobile-step1-continue-btn');
                     if (continueBtn) {
@@ -2622,6 +765,12 @@
                             continueBtn.classList.add('hidden');
                         }
                     }
+                }
+
+                // Si vamos al paso 2, la sincronizacion de datos se maneja en 'poblarVista2ConDatos' y 'setMobileTipoCompra'
+                // No forzamos sobrescritura manual aquí para evitar conflictos con la lógica de select/input
+                if (stepNumber === 2) {
+                    // Logic moved to initialization to be smarter
                 }
             },
 
@@ -2658,7 +807,8 @@
                 }
 
                 // Actualizar título del header
-                const titles = ['Subir Albarán', 'Confirmar Datos', 'Pedido', 'Coladas', 'Activación'];
+                // Pasos: 1. Subir/OCR, 2. Revisar(incluye coladas), 3. Pedido/Activar
+                const titles = ['Subir Albarán', 'Revisar y Confirmar', 'Pedido / Activar'];
                 const titleElement = document.getElementById('mobile-step-title');
                 if (titleElement && titles[this.currentStep - 1]) {
                     titleElement.textContent = titles[this.currentStep - 1];
@@ -2731,21 +881,21 @@
                             return false;
                         }
                     }
+
+                    // Verificar coladas seleccionadas en step 2 ??
+                    // Realmente checkearemos esto al salir del paso o al guardar
+                    const totalCheckboxes = document.querySelectorAll('.mobile-colada-check:checked');
+                    if (totalCheckboxes.length === 0) {
+                        // Podríamos avisar, pero a veces quizá suben 0 coladas? No, deberían tener al menos una.
+                        // toastMobile('warning', 'Selecciona al menos una colada para descargar.');
+                        // return false; 
+                    }
                 }
 
                 // Paso 3: exigir linea seleccionada
                 if (this.currentStep === 3) {
                     if (!cache.lineaSeleccionada) {
                         toastMobile('warning', 'Selecciona un pedido para continuar');
-                        return false;
-                    }
-                }
-
-                // Paso 4: exigir al menos una colada seleccionada
-                if (this.currentStep === 4) {
-                    const coladas = cache.coladasSeleccionadas || [];
-                    if (!Array.isArray(coladas) || coladas.length === 0) {
-                        toastMobile('warning', 'Selecciona al menos una colada');
                         return false;
                     }
                 }
@@ -2767,8 +917,7 @@
                 // Event listener para botón de activación
                 const btnActivar = document.getElementById('mobile-btn-activar');
                 if (btnActivar) {
-                    btnActivar.addEventListener('click', confirmarActivacionMobile);
-                    // console.log('Event listener de activación añadido');
+                    // Listener removido para evitar conflictos. Se usa onclick en HTML.
                 }
             } else if (!isMobile) {
                 // console.log('Vista desktop detectada - sistema móvil no inicializado');
@@ -2790,27 +939,19 @@
          */
         function confirmarActivacionMobile() {
             const cache = window.mobileStepManager.dataCache;
+            const lineaId = cache.lineaSeleccionada?.id;
+
+            if (!lineaId) {
+                toastMobile('error', 'Error: No hay línea de pedido seleccionada.');
+                setMobileActionLoading('mobile-btn-activar', 'mobile-activar-loading', false);
+                return;
+            }
+
+            const url = `{{ url('/albaranes/scan/activar') }}/${lineaId}`;
+
+            // Preparar payload
+            // Las coladas seleccionadas vienen de Step 2 (guardadas en cache.coladasSeleccionadas)
             const coladas = cache.coladasSeleccionadas || [];
-            const linea = cache.lineaSeleccionada || {};
-            setMobileActionLoading('mobile-btn-activar', 'mobile-activar-loading', true);
-
-            if (coladas.length === 0) {
-                toastMobile('warning', 'Selecciona al menos una colada');
-                setMobileActionLoading('mobile-btn-activar', 'mobile-activar-loading', false);
-                return;
-            }
-
-            if (!linea.id || !linea.pedido_id) {
-                toastMobile('error', 'No se pudo determinar la línea/pedido');
-                setMobileActionLoading('mobile-btn-activar', 'mobile-activar-loading', false);
-                return;
-            }
-
-            const urlTemplate =
-                "{{ route('pedidos.lineas.activarConColadas', ['pedido' => '___PEDIDO___', 'linea' => '___LINEA___']) }}";
-            const url = urlTemplate
-                .replace('___PEDIDO___', encodeURIComponent(String(linea.pedido_id)))
-                .replace('___LINEA___', encodeURIComponent(String(linea.id)));
 
             const payload = {
                 coladas: coladas
@@ -2861,6 +1002,7 @@
                     window.mobileStepManager.currentStep = 1;
                     window.mobileStepManager.maxStep = 1;
                     window.mobileStepManager.goToStep(1, true);
+                    localStorage.removeItem('lastScanMobileCache');
 
                     // Limpiar inputs del paso 1
                     if (window.clearMobileSelection) {
@@ -3124,6 +1266,64 @@
         }
 
         /**
+         * Saltar OCR y continuar a Step 2 para rellenar manualmente.
+         */
+        function iniciarRellenoManualMobile() {
+            if (!window.mobileStepManager) return;
+
+            const proveedorStep1 = document.getElementById('proveedor-mobile') || document.getElementById('proveedor');
+            const proveedorCodigo = proveedorStep1?.value || '';
+            const proveedorTexto = proveedorStep1?.options?.[proveedorStep1.selectedIndex]?.text || proveedorCodigo || '';
+
+            if (!proveedorCodigo) {
+                toastMobile('warning', 'Por favor selecciona un proveedor');
+                return;
+            }
+
+            const cleaned = (proveedorTexto || '').toString().replace(/\([^)]*\)/g, '').trim();
+
+            const parsed = {
+                tipo_compra: 'directo',
+                proveedor: proveedorCodigo,
+                proveedor_texto: cleaned || proveedorTexto || null,
+                distribuidor_recomendado: null,
+                albaran: null,
+                fecha: null,
+                pedido_cliente: null,
+                pedido_codigo: null,
+                peso_total: null,
+                bultos_total: 0,
+                productos: [],
+            };
+
+            const resultadoParaVista = {
+                parsed,
+                simulacion: {},
+                status_messages: [],
+                ocr_log_id: null,
+                preview: null,
+            };
+
+            window.mobileStepManager.dataCache = {
+                ...(window.mobileStepManager.dataCache || {}),
+                resultado: resultadoParaVista,
+                parsed,
+                simulacion: {},
+                ocr_log_id: null,
+            };
+
+            document.getElementById('mobile-preview-container')?.classList.add('hidden');
+            document.getElementById('mobile-status-banner')?.classList.add('hidden');
+
+            poblarVista2ConDatos(resultadoParaVista);
+            window.mobileStepManager.next(true);
+            localStorage.setItem('lastScanMobileCache', JSON.stringify(window.mobileStepManager.dataCache));
+        }
+
+        /**
+         * Poblar Vista 2 con datos recibidos (Modo Edición Directa)
+         */
+        /**
          * Poblar Vista 2 con datos recibidos (Modo Edición Directa)
          */
         function poblarVista2ConDatos(resultado) {
@@ -3146,33 +1346,41 @@
             };
 
             const source = parsed.data ?? parsed;
-            const productosDetectados = source.productos ?? source.products ?? [];
+
+            // Función helper para leer propiedades anidadas o directas
+            const sourceValue = (prop) => {
+                let val = source[prop];
+                if (val === undefined || val === null) val = parsed[prop];
+                // Soporte camelCase si falla snake_case
+                if (val === undefined || val === null) {
+                    const camel = prop.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+                    val = source[camel] ?? parsed[camel];
+                }
+                return val ?? '';
+            };
+
+            // Normalización robusta de productos
+            const productosDetectados = source.productos ?? source.products ?? parsed.productos ?? [];
             if (productosDetectados.length) {
                 parsed.productos = productosDetectados.map(prod => ({
                     descripcion: prod.descripcion ?? '',
                     diametro: prod.diametro ?? '',
                     longitud: prod.longitud ?? '',
                     calidad: prod.calidad ?? '',
-                    line_items: Array.isArray(prod.line_items) ? prod.line_items.map(item => ({
-                        colada: item.colada ?? '',
-                        bultos: item.bultos ?? '',
-                        peso_kg: item.peso_kg ?? '',
-                    })) : [],
+                    line_items: Array.isArray(prod.line_items || prod.lineItems) ?
+                        (prod.line_items || prod.lineItems).map(item => ({
+                            colada: item.colada ?? '',
+                            bultos: item.bultos ?? '',
+                            peso_kg: item.peso_kg ?? item.pesoNeto ?? item.peso ?? '',
+                            descargar: true // Por defecto marcados
+                        })) : [],
                 }));
             }
 
-            actualizarBultosTotalesMobile();
+            // NOTA: No llamamos a actualizarBultosTotalesMobile() aquí porque calcularía 0
+            // al leer inputs que aún no existen. Confiamos en los datos del OCR primero.
 
             console.log('Datos para poblar vista 2:', source);
-            console.log('rellenando tipo de compra:', source.tipo_compra);
-            console.log('rellenando Albarán:', source.albaran);
-            console.log('rellenando fecha:', source.fecha);
-            console.log('rellenando pedido cliente:', source.pedido_cliente);
-            console.log('rellenando pedido código:', source.pedido_codigo);
-            console.log('rellenando peso total:', source.peso_total);
-            console.log('rellenando bultos total:', source.bultos_total);
-
-            const sourceValue = (prop) => source[prop] ?? parsed[prop] ?? '';
 
             setVal('edit-tipo-compra', sourceValue('tipo_compra'));
 
@@ -3180,84 +1388,70 @@
             const proveedorStep1 = document.getElementById('proveedor-mobile') || document.getElementById('proveedor');
             const proveedorSeleccionado = proveedorStep1?.options?.[proveedorStep1.selectedIndex]?.text || proveedorStep1
                 ?.value || '';
-            setVal('edit-proveedor', proveedorSeleccionado || sourceValue('proveedor_texto') || sourceValue('proveedor'));
+            const provTexto = sourceValue('proveedor_texto') || sourceValue('proveedorTexto') || sourceValue('proveedor');
+            setVal('edit-proveedor', proveedorSeleccionado || provTexto);
 
-            // Setear ambos por si acaso
-            setVal('edit-distribuidor-input', sourceValue('distribuidor_recomendado'));
-            // En móvil, forzar a que el usuario elija un distribuidor (no autoseleccionar)
-            setVal('edit-distribuidor-select', '');
+            // Inicializar Select de Fabricante (Solo si no estuviéramos en modo distribuidor, pero inicializamos todo)
+            const selectProv = document.getElementById('edit-proveedor-select');
+            const inputProv = document.getElementById('edit-proveedor');
+            const proveedorCodigoStep1 = proveedorStep1?.value || '';
+            const currentProv = proveedorSeleccionado || provTexto || '';
+
+            if (selectProv) {
+                const idx = findSelectOptionIndex(selectProv, currentProv, proveedorCodigoStep1);
+                if (idx >= 0) {
+                    selectProv.selectedIndex = idx;
+                    if (inputProv) inputProv.value = selectProv.options[idx].value;
+                } else {
+                    selectProv.value = 'otro';
+                    const cleaned = (currentProv || '').toString().replace(/\([^)]*\)/g, '').trim();
+                    if (inputProv) inputProv.value = cleaned || currentProv || '';
+                }
+            }
+
+            // Inicializar Select Distribuidor
+            const selectDist = document.getElementById('edit-distribuidor-select');
+            const distRecomendado = sourceValue('distribuidor_recomendado');
+
+            if (selectDist && distRecomendado) {
+                // Intentar seleccionar distribuidor recomendado si existe
+                // Si no, default
+                selectDist.value = distRecomendado;
+                // Si falla asignación directa (no está en la lista), ver si hay match
+                if (!selectDist.value) {
+                    // Buscar match
+                    for (let i = 0; i < selectDist.options.length; i++) {
+                        if (selectDist.options[i].text.toLowerCase().includes(distRecomendado.toLowerCase())) {
+                            selectDist.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Setear inputs auxiliares por si acaso
+            setVal('edit-distribuidor-input', distRecomendado);
+
+            // Determinar tipo inicial
+            let initialTipo = 'directo';
+            const rawTipo = sourceValue('tipo_compra');
+            if (rawTipo) {
+                initialTipo = rawTipo.toLowerCase();
+            } else if (distRecomendado) {
+                initialTipo = 'distribuidor';
+            }
+
+            // Inicializar botones y estados UI
+            setMobileTipoCompra(initialTipo);
 
             setVal('edit-albaran', sourceValue('albaran'));
             setVal('edit-fecha', sourceValue('fecha'));
-            setVal('edit-pedido-cliente', sourceValue('pedido_cliente'));
-            setVal('edit-pedido-codigo', sourceValue('pedido_codigo'));
-            setVal('edit-peso-total', sourceValue('peso_total'));
-            setVal('edit-bultos-total', sourceValue('bultos_total'));
+            setVal('edit-pedido-cliente', sourceValue('pedido_cliente') || sourceValue('pedidoCliente'));
+            setVal('edit-pedido-codigo', sourceValue('pedido_codigo') || sourceValue('pedidoCodigo'));
+            setVal('edit-peso-total', sourceValue('peso_total') || sourceValue('pesoTotal'));
+            setVal('edit-bultos-total', sourceValue('bultos_total') || sourceValue('bultosTotal') || '0');
 
-            // -------------------------------------------------------------
-            // Lógica de visualización dinámica según Tipo de Compra
-            // -------------------------------------------------------------
-            const tipoCompraSelect = document.getElementById('edit-tipo-compra');
 
-            // Función interna para manejar cambios de tipo
-            const handleMobileTipoChange = () => {
-                const tipo = tipoCompraSelect.value;
-                const containerDist = document.getElementById('container-distribuidor-mobile');
-                const inputDist = document.getElementById('edit-distribuidor-input');
-                const selectDist = document.getElementById('edit-distribuidor-select');
-                const inputProv = document.getElementById('edit-proveedor');
-                const proveedorStep1 = document.getElementById('proveedor-mobile') || document.getElementById(
-                    'proveedor'); // Intenta mobile, fallback desktop (aunque desktop id es 'proveedor')
-
-                if (tipo === 'directo') {
-                    // Ocultar distribuidor
-                    if (containerDist) containerDist.classList.add('hidden');
-
-                    // Forzar proveedor desde Step 1 (value del select)
-                    if (proveedorStep1 && inputProv) {
-                        // El usuario pide "el seleccionado antes de subir la foto"
-                        // Normalmente el value es 'siderurgica', 'megasa', etc.
-                        // Y en inputProv queremos mostrar eso mismo o el texto? 
-                        // Si inputProv era texto libre ("Aceros SA"), quizás 'siderurgica' queda feo.
-                        // Pero para "Directo", el proveedor ES el de la fábrica (Siderurgica, etc).
-                        // Asignaremos el texto de la opción seleccionada para que sea legible
-                        const selectedOption = proveedorStep1.options[proveedorStep1.selectedIndex];
-                        if (selectedOption) inputProv.value = selectedOption.text;
-                    }
-                    if (inputProv) {
-                        inputProv.readOnly = true;
-                        inputProv.classList.add('bg-gray-100', 'text-gray-500');
-                    }
-
-                } else if (tipo === 'distribuidor') {
-                    // Mostrar container
-                    if (containerDist) containerDist.classList.remove('hidden');
-                    // Mostrar SELECT, ocultar INPUT
-                    if (selectDist) selectDist.classList.remove('hidden');
-                    if (inputDist) inputDist.classList.add('hidden');
-                    if (selectDist && !selectDist.value) {
-                        selectDist.value = '';
-                    }
-
-                    if (inputProv) {
-                        inputProv.readOnly = false;
-                        inputProv.classList.remove('bg-gray-100', 'text-gray-500');
-                    }
-                }
-
-                // Guardar tipo en cache y refrescar el pedido mostrado (Paso 3)
-                if (window.mobileStepManager?.dataCache?.parsed) {
-                    window.mobileStepManager.dataCache.parsed.tipo_compra = tipo || null;
-                }
-                poblarVista3ConPedido(window.mobileStepManager?.dataCache?.simulacion || {});
-            };
-
-            // Attach listener
-            if (tipoCompraSelect) {
-                tipoCompraSelect.onchange = handleMobileTipoChange;
-                // Ejecutar una vez al inicio
-                handleMobileTipoChange();
-            }
 
             // Guardar en cache inicial
             window.mobileStepManager.dataCache.parsed = parsed;
@@ -3281,6 +1475,7 @@
             if (!container) return;
 
             const lineaPropuesta = simulacion.linea_propuesta;
+            console.log("🔍 [Mobile JS] Poblar Vista 3 con propuesta (Simulación):", lineaPropuesta);
             window.mobileStepManager.dataCache.recommendedId = lineaPropuesta?.id || null;
             const fabricanteNombre = (lineaPropuesta?.fabricante || '').toString().trim();
             const distribuidorNombre = (lineaPropuesta?.distribuidor || '').toString().trim();
@@ -3329,45 +1524,28 @@
                         ${badgeText}
                     </span>
 
-                    <div class="space-y-2 text-sm">
-                        <div>
-                            <span class="text-gray-500">Linea pedido (BD):</span>
-                            <span class="font-semibold text-gray-900">${lineaPropuesta.codigo_linea || '—'}</span>
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center gap-2 text-sm">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
+                            <span class="font-bold text-gray-900 text-base">${lineaPropuesta.codigo || '—'}</span>
                         </div>
-                        ${pedidoHprEscaneado ? `
-                                                                                                                                        <div class="hidden">
-                                                                                                                                            <span class="text-gray-500">Pedido HPR (escaneado):</span>
-                                                                                                                                            <span class="font-semibold text-gray-900">${pedidoHprEscaneado}</span>
-                                                                                                                                        </div>
-                                                                                                                                    ` : ''}
-                        <div class="hidden">
-                            <span class="text-gray-500">Pedido (BD):</span>
-                            <span class="font-semibold text-gray-900">${lineaPropuesta.pedido_codigo || '—'}</span>
+                        ${lineaPropuesta.fabricante ? `
+                                                                                            <div class="flex items-center gap-2 text-sm">
+                                                                                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                                                                                                <span class="font-medium text-gray-700">${lineaPropuesta.fabricante}</span>
+                                                                                            </div>` : ''}
+                        ${lineaPropuesta.distribuidor ? `
+                                                                                            <div class="flex items-center gap-2 text-sm">
+                                                                                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" /></svg>
+                                                                                                <span class="font-medium text-gray-700">${lineaPropuesta.distribuidor}</span>
+                                                                                            </div>` : ''}
+                        
+                        <div class="flex items-center gap-2 text-sm">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            <span class="font-semibold text-gray-900">${formatFechaEntrega(lineaPropuesta.fecha_entrega)}</span>
                         </div>
-                        ${fabricanteNombre ? `
-                                                                                                                                        <div>
-                                                                                                                                            <span class="text-gray-500">Fabricante:</span>
-                                                                                                                                            <span class="font-medium text-gray-900">${fabricanteNombre}</span>
-                                                                                                                                        </div>
-                                                                                                                                    ` : ''}
-                        ${distribuidorNombre ? `
-                                                                                                                                        <div>
-                                                                                                                                            <span class="text-gray-500">Distribuidor:</span>
-                                                                                                                                            <span class="font-medium text-gray-900">${distribuidorNombre}</span>
-                                                                                                                                        </div>
-                                                                                                                                    ` : ''}
-                        <div>
-                            <span class="text-gray-500">Producto:</span>
-                            <span class="font-medium text-gray-900">${lineaPropuesta.producto || '—'}</span>
-                        </div>
-                        <div>
-                            <span class="text-gray-500">Obra:</span>
-                            <span class="font-medium text-gray-900">${lineaPropuesta.obra || '—'}</span>
-                        </div>
-                        <div>
-                            <span class="text-gray-500">Cantidad pendiente:</span>
-                            <span class="font-medium text-gray-900">${lineaPropuesta.cantidad_pendiente || 0} kg</span>
-                        </div>
+
+                        ${renderProductChips(lineaPropuesta)}
                         ${renderScoreRow(lineaPropuesta)}
                     </div>
                 </div>
@@ -3654,18 +1832,20 @@
             const productos = [];
             document.querySelectorAll('.mobile-edit-product').forEach((productEl) => {
                 const producto = {
-                    descripcion: productEl.querySelector('[data-product-field="descripcion"]').value || '',
-                    diametro: productEl.querySelector('[data-product-field="diametro"]').value || null,
-                    longitud: productEl.querySelector('[data-product-field="longitud"]').value || null,
-                    calidad: productEl.querySelector('[data-product-field="calidad"]').value || '',
+                    descripcion: productEl.querySelector('[data-product-field="descripcion"]')?.value || '',
+                    diametro: productEl.querySelector('[data-product-field="diametro"]')?.value || null,
+                    longitud: productEl.querySelector('[data-product-field="longitud"]')?.value || null,
+                    calidad: productEl.querySelector('[data-product-field="calidad"]')?.value || '',
                     line_items: []
                 };
 
                 productEl.querySelectorAll('.mobile-edit-colada').forEach((coladaEl) => {
                     producto.line_items.push({
-                        colada: coladaEl.querySelector('[data-colada-field="colada"]').value || '',
-                        bultos: coladaEl.querySelector('[data-colada-field="bultos"]').value || '',
-                        peso_kg: coladaEl.querySelector('[data-colada-field="peso"]').value || ''
+                        colada: coladaEl.querySelector('[data-colada-field="colada"]')?.value || '',
+                        bultos: coladaEl.querySelector('[data-colada-field="bultos"]')?.value || '',
+                        peso_kg: coladaEl.querySelector('[data-colada-field="peso"]')?.value || '',
+                        descargar: coladaEl.querySelector('[data-colada-field="descargar"]')
+                            ?.checked || false
                     });
                 });
 
@@ -3692,11 +1872,73 @@
             if (input) {
                 input.value = total;
             }
-            const cache = window.mobileStepManager.dataCache;
-            if (cache.parsed) {
-                cache.parsed.bultos_total = total;
+            // Fix: Usar referencia correcta a dataCache
+            const currentCache = window.mobileStepManager?.dataCache;
+            if (currentCache && currentCache.parsed) {
+                currentCache.parsed.bultos_total = total;
             }
         }
+
+        // Sincronizar productos del DOM al Cache
+        function syncMobileProductsFromDOMToCache() {
+            const cache = window.mobileStepManager.dataCache;
+            if (!cache.parsed) return;
+
+            const productElements = document.querySelectorAll('.mobile-edit-product');
+            const newProducts = [];
+
+            productElements.forEach((prodEl) => {
+                const descripcion = prodEl.querySelector('[data-product-field="descripcion"]')?.value || '';
+                const diametro = prodEl.querySelector('[data-product-field="diametro"]')?.value || '';
+                const longitud = prodEl.querySelector('[data-product-field="longitud"]')?.value || '';
+                const calidad = prodEl.querySelector('[data-product-field="calidad"]')?.value || '';
+
+                // Coladas
+                const coladaElements = prodEl.querySelectorAll('.mobile-edit-colada');
+                const lineItems = [];
+                coladaElements.forEach(colEl => {
+                    lineItems.push({
+                        descargar: colEl.querySelector('[data-colada-field="descargar"]')
+                            ?.checked !== false,
+                        colada: colEl.querySelector('[data-colada-field="colada"]')?.value || '',
+                        bultos: colEl.querySelector('[data-colada-field="bultos"]')?.value || '',
+                        peso_kg: colEl.querySelector('[data-colada-field="peso"]')?.value || '',
+                    });
+                });
+
+                newProducts.push({
+                    descripcion,
+                    diametro,
+                    longitud,
+                    calidad,
+                    line_items: lineItems
+                });
+            });
+
+            // FIX: Actualizar en 'data' si existe, ya que poblarVista2 prioriza 'parsed.data'
+            const target = cache.parsed.data || cache.parsed;
+            target.productos = newProducts;
+
+            // Si existe data, también actualizamos el top level por seguridad
+            if (cache.parsed.data) {
+                cache.parsed.productos = newProducts;
+            }
+
+            // Asegurar que también se actualiza en el objeto resultado (que usa init())
+            if (cache.resultado) {
+                if (!cache.resultado.parsed) cache.resultado.parsed = {};
+                const resTarget = cache.resultado.parsed.data || cache.resultado.parsed;
+                resTarget.productos = newProducts;
+                // Sync top level too
+                if (cache.resultado.parsed.data) cache.resultado.parsed.productos = newProducts;
+            }
+
+            console.log('✅ [Sync] Productos sincronizados al caché:', newProducts.length);
+
+            // Persistir inmediatamente este cambio parcial
+            localStorage.setItem('lastScanMobileCache', JSON.stringify(cache));
+        }
+
 
 
         /**
@@ -3710,30 +1952,69 @@
                 // Actualizar cache con valores de inputs generales
                 if (!cache.parsed) cache.parsed = {};
 
-                cache.parsed.tipo_compra = document.getElementById('edit-tipo-compra').value || null;
-                cache.parsed.proveedor_texto = document.getElementById('edit-proveedor').value || null;
+                // FIX: Usar target para soportar .data wrapper si existe
+                const target = cache.parsed.data || cache.parsed;
+                const setP = (k, v) => {
+                    target[k] = v;
+                    if (cache.parsed.data) cache.parsed[k] = v;
+                };
+
+                setP('tipo_compra', document.getElementById('edit-tipo-compra').value || null);
+
+                // Capturar fabricante correctamente:
+                const selectProv = document.getElementById('edit-proveedor-select');
+                const inputProv = document.getElementById('edit-proveedor');
+                let proveedorFinal = '';
+
+                if (selectProv && selectProv.value && selectProv.value !== 'otro') {
+                    proveedorFinal = selectProv.value;
+                } else if (inputProv) {
+                    proveedorFinal = inputProv.value;
+                }
+                setP('proveedor_texto', proveedorFinal || null);
 
                 // Determinar cuál distribuidor tomar
-                const tipo = cache.parsed.tipo_compra;
+                const tipo = target.tipo_compra;
+                let distRecom = null;
                 if (tipo === 'distribuidor') {
-                    cache.parsed.distribuidor_recomendado = document.getElementById('edit-distribuidor-select')
-                        .value || null;
-                } else if (tipo === 'directo') {
-                    cache.parsed.distribuidor_recomendado = null; // Desaparece
-                } else {
-                    // Fallback o caso no contemplado, limpiamos
-                    cache.parsed.distribuidor_recomendado = null;
+                    distRecom = document.getElementById('edit-distribuidor-select').value || null;
                 }
+                setP('distribuidor_recomendado', distRecom);
 
-                cache.parsed.albaran = document.getElementById('edit-albaran').value;
-                cache.parsed.fecha = document.getElementById('edit-fecha').value;
-                cache.parsed.pedido_cliente = document.getElementById('edit-pedido-cliente').value;
-                cache.parsed.pedido_codigo = document.getElementById('edit-pedido-codigo').value;
-                cache.parsed.peso_total = document.getElementById('edit-peso-total').value;
-                cache.parsed.bultos_total = document.getElementById('edit-bultos-total').value;
+                setP('albaran', document.getElementById('edit-albaran').value);
+                setP('fecha', document.getElementById('edit-fecha').value);
+                setP('pedido_cliente', document.getElementById('edit-pedido-cliente').value);
+                setP('pedido_codigo', document.getElementById('edit-pedido-codigo').value);
+                setP('peso_total', document.getElementById('edit-peso-total').value);
+                setP('bultos_total', document.getElementById('edit-bultos-total').value);
 
                 // Sincronizar productos
                 syncMobileProductsFromDOMToCache();
+
+                // Generar lista de coladas seleccionadas para descarga (Step 4 necesita esto)
+                const todasLasColadas = [];
+                let totalBultos = 0;
+                let totalPeso = 0;
+                (cache.parsed.productos || []).forEach(prod => {
+                    (prod.line_items || []).forEach(item => {
+                        if (item.descargar !== false) {
+                            const b = Number(item.bultos || 0);
+                            const p = Number(item.peso_kg || 0);
+                            todasLasColadas.push({
+                                colada: item.colada,
+                                bultos: b,
+                                peso_kg: p
+                            });
+                            totalBultos += b;
+                            totalPeso += p;
+                        }
+                    });
+                });
+                cache.coladasSeleccionadas = todasLasColadas;
+                cache.totalesColadas = {
+                    bultos: totalBultos,
+                    peso: totalPeso
+                };
 
                 // Actualizar resultado con los cambios
                 if (cache.resultado) {
@@ -3747,8 +2028,10 @@
                 await recalcularSimulacionMobile();
                 if (cache.simulacion) {
                     poblarVista3ConPedido(cache.simulacion);
-                    poblarVista4ConColadas(cache.simulacion);
                 }
+
+                // Guardado final asegurado antes de avanzar
+                localStorage.setItem('lastScanMobileCache', JSON.stringify(cache));
 
                 // Recalcular cosas si fuera necesario, o simplemente avanzar
                 window.mobileStepManager.next();
@@ -3766,6 +2049,147 @@
             if (!Number.isFinite(numberValue)) return '—';
             return `${numberValue.toLocaleString('es-ES', { maximumFractionDigits: 2 })} kg`;
         }
+
+        // Validar si el texto actual es un numero decimal
+        function isNumeric(str) {
+            if (typeof str != "string") return false;
+            return !isNaN(str) && !isNaN(parseFloat(str));
+        }
+
+        function normalizeEmpresaName(value) {
+            const raw = (value || '').toString();
+            const normalized = raw.normalize ? raw.normalize('NFD') : raw;
+            return normalized
+                .replace(/\([^)]*\)/g, ' ') // quitar "(...)" como "(SISE)"
+                .replace(/[\u0300-\u036f]/g, '') // quitar tildes
+                .replace(/[^a-zA-Z0-9]+/g, ' ')
+                .trim()
+                .toLowerCase();
+        }
+
+        function findSelectOptionIndex(selectEl, desiredText, proveedorCodigo) {
+            if (!selectEl) return -1;
+
+            const desiredNorm = normalizeEmpresaName(desiredText);
+            const code = (proveedorCodigo || '').toString().trim().toLowerCase();
+            const codeKeywords = {
+                siderurgica: ['siderurgica', 'sevill', 'sise'],
+                megasa: ['megasa'],
+                balboa: ['balboa'],
+            };
+
+            // 1) Match directo (value)
+            for (let i = 0; i < selectEl.options.length; i++) {
+                if (selectEl.options[i].value === desiredText) return i;
+            }
+
+            // 2) Match por normalización (value/text)
+            if (desiredNorm) {
+                for (let i = 0; i < selectEl.options.length; i++) {
+                    const opt = selectEl.options[i];
+                    const optNorm = normalizeEmpresaName(opt.value || opt.text);
+                    if (optNorm && optNorm === desiredNorm) return i;
+                }
+
+                // 3) Match por inclusión en ambos sentidos (para casos con "(SISE)")
+                for (let i = 0; i < selectEl.options.length; i++) {
+                    const opt = selectEl.options[i];
+                    const optNorm = normalizeEmpresaName(opt.text);
+                    if (!optNorm) continue;
+                    if (optNorm.includes(desiredNorm) || desiredNorm.includes(optNorm)) return i;
+                }
+            }
+
+            // 4) Match por proveedor del paso 1 (siderurgica/megasa/balboa)
+            if (code && codeKeywords[code]) {
+                for (let i = 0; i < selectEl.options.length; i++) {
+                    const opt = selectEl.options[i];
+                    const optNorm = normalizeEmpresaName(opt.text);
+                    if (codeKeywords[code].some((k) => optNorm.includes(k))) return i;
+                }
+            }
+
+            return -1;
+        }
+
+        // Función simplificada para manejo de cambio de tipo
+        window.setMobileTipoCompra = function(tipo) {
+            const input = document.getElementById('edit-tipo-compra');
+            if (input) input.value = tipo;
+
+            // Actualizar botones UI
+            const btnDirecto = document.getElementById('btn-tipo-directo');
+            const btnDistribuidor = document.getElementById('btn-tipo-distribuidor');
+
+            const activeClass = "bg-indigo-600 text-white shadow-inner";
+            const inactiveClass = "bg-white text-gray-600 hover:bg-gray-50";
+
+            if (btnDirecto) btnDirecto.className =
+                `flex-1 py-2 text-sm font-bold transition-colors ${tipo === 'directo' ? activeClass : inactiveClass}`;
+            if (btnDistribuidor) btnDistribuidor.className =
+                `flex-1 py-2 text-sm font-bold transition-colors ${tipo === 'distribuidor' ? activeClass : inactiveClass}`;
+
+            // Contenedores
+            const containerDist = document.getElementById('container-distribuidor-mobile');
+            const containerFab = document.getElementById('container-fabricante-mobile');
+
+            // Inputs
+            const selectDist = document.getElementById('edit-distribuidor-select');
+            const inputDist = document.getElementById('edit-distribuidor-input'); // Backup hidden
+            const selectProv = document.getElementById('edit-proveedor-select');
+            const inputProv = document.getElementById('edit-proveedor'); // Hidden real value
+
+            if (tipo === 'directo') {
+                // MODO DIRECTO: Mostrar Fabricante, Ocultar Distribuidor
+                if (containerDist) containerDist.classList.add('hidden');
+                if (containerFab) containerFab.classList.remove('hidden');
+
+                // Sincronizar Fabricante desde Step 1
+                const proveedorStep1 = document.getElementById('proveedor-mobile') || document.getElementById(
+                    'proveedor');
+                const selectedText = proveedorStep1?.options?.[proveedorStep1.selectedIndex]?.text || proveedorStep1
+                    ?.value || '';
+                const selectedVal = proveedorStep1?.value || '';
+
+                if (selectProv) {
+                    const idx = findSelectOptionIndex(selectProv, selectedText, selectedVal);
+                    if (idx >= 0) {
+                        selectProv.selectedIndex = idx;
+                        if (inputProv) inputProv.value = selectProv.options[idx].value;
+                    } else {
+                        selectProv.value = 'otro';
+                        const cleaned = (selectedText || '').toString().replace(/\([^)]*\)/g, '').trim();
+                        if (inputProv) inputProv.value = cleaned || selectedText || '';
+                    }
+                } else if (inputProv && selectProv) {
+                    inputProv.value = selectProv.value;
+                }
+
+                if (inputDist) inputDist.value = ''; // Limpiar distribuidor
+
+            } else {
+                // MODO DISTRIBUIDOR: Ocultar Fabricante, Mostrar Distribuidor
+                if (containerDist) containerDist.classList.remove('hidden');
+                if (containerFab) containerFab.classList.add('hidden');
+
+                // Limpiar fabricante (backend lo ignorará o lo seteará null)
+                // Opcional: Podríamos dejarlo si el usuario quiere guardar esa info, pero lo pedido es que desaparezca.
+                if (inputProv) inputProv.value = '';
+            }
+
+            // Persistir cambios
+            if (window.mobileStepManager?.dataCache?.parsed) {
+                window.mobileStepManager.dataCache.parsed.tipo_compra = tipo;
+                // Guardar en localStorage para persistencia tras refresh
+                localStorage.setItem('lastScanMobileCache', JSON.stringify(window.mobileStepManager.dataCache));
+            }
+            // Recalcular simulación
+            if (window.mobileStepManager?.dataCache?.simulacion) {
+                recalcularSimulacionMobile().then(sim => {
+                    if (sim) poblarVista3ConPedido(sim);
+                });
+            }
+        };
 
         function formatScorePoints(score) {
             const n = Number(score);
@@ -3898,7 +2322,7 @@
                     <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${pillBg}">${pillText}</span>
                 </div>
                 <div class="mt-1 text-xs opacity-90">
-                    Pedido: <span class="font-mono">${pedido.codigo || inputTrim}</span> · Línea: <span class="font-mono">${linea.codigo_linea || '—'}</span> · Ø${diam || '—'} · ${empresa}
+                    Pedido: <span class="font-mono">${pedido.codigo || inputTrim}</span> · Línea: <span class="font-mono">${linea.codigo || '—'}</span> · Ø${diam || '—'} · ${empresa}
                 </div>
                 <div class="mt-1 text-xs opacity-90">
                     Cant. línea: ${formatearKg(cantidad)} · Recep.: ${formatearKg(recep)} · Total pedido: ${formatearKg(pedido.peso_total)}
@@ -3919,6 +2343,8 @@
             }
 
             try {
+                const diametrosCheck = (cache.parsed?.productos || []).map(p => p?.diametro).filter(Boolean);
+                console.log('🔍 [Mobile JS] Verificando Pedido Code:', codigo, 'Diametros:', diametrosCheck);
                 const response = await fetch("{{ route('albaranes.scan.pedido.lookup') }}", {
                     method: 'POST',
                     headers: {
@@ -3953,6 +2379,12 @@
             const proveedorStep1 = document.getElementById('proveedor-mobile') || document.getElementById('proveedor');
             const proveedor = proveedorStep1?.value || cache.parsed?.proveedor || null;
 
+            const payload = {
+                proveedor,
+                parsed: cache.parsed,
+            };
+            console.log("🔍 [Mobile JS] Recalculando Simulación. Enviando payload:", payload);
+
             try {
                 const response = await fetch("{{ route('albaranes.scan.simular') }}", {
                     method: 'POST',
@@ -3962,13 +2394,12 @@
                         'Accept': 'application/json',
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        proveedor,
-                        parsed: cache.parsed,
-                    }),
+                    body: JSON.stringify(payload),
                 });
                 const data = await response.json();
                 if (data?.success && data?.simulacion) {
+                    console.log("🔍 [Mobile JS] Candidatos recibidos del Backend (Todos):", data.simulacion
+                        .lineas_pendientes);
                     cache.simulacion = data.simulacion;
                     if (cache.resultado) {
                         cache.resultado.simulacion = data.simulacion;
@@ -3991,6 +2422,18 @@
                     actualizarBultosTotalesMobile();
                 }
             });
+        }
+
+        function setMobileDescription(index, val) {
+            syncMobileProductsFromDOMToCache();
+            const cache = window.mobileStepManager.dataCache;
+            if (cache.parsed && cache.parsed.productos && cache.parsed.productos[index]) {
+                cache.parsed.productos[index].descripcion = val;
+                if (val === 'ENCARRETADO') {
+                    cache.parsed.productos[index].longitud = '';
+                }
+                renderMobileEditProducts();
+            }
         }
 
         function renderMobileEditProducts() {
@@ -4026,43 +2469,75 @@
                 }
 
                 return lineItems.map((colada, colIndex) => `
-                    <div class="mobile-edit-colada grid grid-cols-12 gap-2 items-end" data-colada-index="${colIndex}">
-                        <div class="col-span-5">
-                            <span class="text-xs text-gray-500">Colada</span>
-                            <input type="text" class="mt-1 w-full rounded-lg border-gray-300" data-colada-field="colada" value="${colada.colada || ''}">
+                    <div class="mobile-edit-colada grid grid-cols-8 gap-2 items-center" data-colada-index="${colIndex}">
+                        <div class="col-span-1 flex flex-col items-center justify-end pb-2 h-full">
+                             <input type="checkbox" 
+                                class="w-5 h-5 text-indigo-600 rounded mobile-colada-check focus:ring-indigo-500 border-gray-300" 
+                                data-colada-field="descargar"
+                                ${colada.descargar !== false ? 'checked' : ''} 
+                             >
                         </div>
-                <div class="col-span-3">
-                    <span class="text-xs text-gray-500">Bultos</span>
-                    <input type="number" min="0" step="1" class="mt-1 w-full rounded-lg border-gray-300" data-colada-field="bultos" value="${colada.bultos || ''}">
-                </div>
-                        <div class="col-span-3">
-                            <span class="text-xs text-gray-500">Peso (kg)</span>
-                            <input type="number" step="0.01" class="mt-1 w-full rounded-lg border-gray-300" data-colada-field="peso" value="${colada.peso_kg || ''}">
+                        <div class="col-span-4">
+                            <span class="text-[0.65rem] text-gray-500">Colada</span>
+                            <input type="text" class="mt-1 w-full rounded-lg border-gray-300 text-sm px-2 py-1.5" data-colada-field="colada" value="${colada.colada || ''}">
                         </div>
-                        <div class="col-span-1 flex justify-end">
-                            <button type="button" class="text-red-500 text-sm font-semibold" onclick="eliminarColadaMobile(${productIndex}, ${colIndex})">✕</button>
+                        <div class="col-span-2">
+                            <span class="text-[0.65rem] text-gray-500">Bultos</span>
+                            <input type="number" min="0" step="1" class="mt-1 w-full rounded-lg border-gray-300 text-sm px-2 py-1.5" data-colada-field="bultos" value="${colada.bultos || ''}">
+                        </div>
+                        <div class="col-span-0 hidden">
+                            <span class="text-[0.65rem] text-gray-500">Peso (kg)</span>
+                            <input type="number" step="0.01" class="mt-1 w-full rounded-lg border-gray-300 text-sm px-2 py-1.5" data-colada-field="peso" value="${colada.peso_kg || ''}">
+                        </div>
+                        <div class="col-span-1 flex justify-center pt-6">
+                            <button type="button" class="text-red-500 text-lg font-bold hover:text-red-700" onclick="eliminarColadaMobile(${productIndex}, ${colIndex})">&times;</button>
                         </div>
                     </div>
                 `).join('');
             };
 
-            container.innerHTML = productos.map((producto, productIndex) => `
+            container.innerHTML = productos.map((producto, productIndex) => {
+                const descUpper = (producto.descripcion || '').toUpperCase();
+                const isEncarretado = descUpper.includes('ENCARRETADO') || descUpper.includes('ROLLO') || descUpper
+                    .includes('BOBINA');
+                const val = isEncarretado ? 'ENCARRETADO' : 'BARRAS';
+
+                return `
                 <div class="border border-gray-200 rounded-2xl p-4 bg-white space-y-3 mobile-edit-product" data-product-index="${productIndex}">
                     <div class="flex items-center justify-between">
                         <h5 class="text-sm font-semibold text-gray-900">Producto ${productIndex + 1}</h5>
                         <button type="button" class="text-xs text-red-500 font-bold" onclick="eliminarProductoMobile(${productIndex})">Eliminar</button>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <label class="text-[0.75rem] text-gray-500">Descripción
-                            <input type="text" class="mt-1 w-full rounded-lg border-gray-300" data-product-field="descripcion" value="${producto.descripcion || ''}">
-                        </label>
-                        <label class="text-[0.75rem] text-gray-500">Diámetro
+                    <div class="grid grid-cols-1 gap-3">
+                        <div>
+                             <span class="text-[0.75rem] text-gray-500 block mb-1">Descripción</span>
+                             <input type="hidden" data-product-field="descripcion" value="${val}">
+                             <div class="flex rounded-lg border border-gray-300 overflow-hidden">
+                                <button type="button" 
+                                    class="flex-1 py-2 text-xs font-bold transition-colors ${val === 'ENCARRETADO' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}"
+                                    onclick="setMobileDescription(${productIndex}, 'ENCARRETADO')">
+                                    ENCARRETADO
+                                </button>
+                                <div class="w-px bg-gray-300"></div>
+                                <button type="button" 
+                                    class="flex-1 py-2 text-xs font-bold transition-colors ${val === 'BARRAS' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}"
+                                    onclick="setMobileDescription(${productIndex}, 'BARRAS')">
+                                    BARRAS
+                                </button>
+                             </div>
+                        </div>
+
+                        <label class="text-[0.75rem] text-gray-500 block w-full">Diámetro
                             <input type="text" class="mt-1 w-full rounded-lg border-gray-300" data-product-field="diametro" value="${producto.diametro || ''}">
                         </label>
-                        <label class="text-[0.75rem] text-gray-500">Longitud
-                            <input type="text" class="mt-1 w-full rounded-lg border-gray-300" data-product-field="longitud" value="${producto.longitud || ''}">
-                        </label>
-                        <label class="text-[0.75rem] text-gray-500">Calidad
+                        
+                        <div class="${val === 'ENCARRETADO' ? 'hidden' : 'block'} w-full">
+                            <label class="text-[0.75rem] text-gray-500 block w-full">Longitud
+                                <input type="text" class="mt-1 w-full rounded-lg border-gray-300" data-product-field="longitud" value="${producto.longitud || ''}">
+                            </label>
+                        </div>
+
+                        <label class="text-[0.75rem] text-gray-500 hidden">Calidad
                             <input type="text" class="mt-1 w-full rounded-lg border-gray-300" data-product-field="calidad" value="${producto.calidad || ''}">
                         </label>
                     </div>
@@ -4076,7 +2551,8 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
             actualizarBultosTotalesMobile(productos);
             attachColadaInputListener(container);
@@ -4114,7 +2590,8 @@
             productos[productIndex].line_items.push({
                 colada: '',
                 bultos: '',
-                peso_kg: ''
+                peso_kg: '',
+                descargar: true
             });
             renderMobileEditProducts();
         }
@@ -4197,12 +2674,68 @@
             return set;
         }
 
+        function formatFechaEntrega(fecha) {
+            if (!fecha) return '—';
+            try {
+                let datePart = fecha;
+                if (fecha.includes('T')) {
+                    datePart = fecha.split('T')[0];
+                }
+                const parts = datePart.split('-');
+                if (parts.length === 3) {
+                    const year = parts[0];
+                    const month = parts[1];
+                    const day = parts[2];
+                    return `${day}-${month}-${year}`;
+                }
+                return fecha;
+            } catch (e) {
+                return fecha;
+            }
+        }
+
+        function renderProductChips(linea) {
+            const base = linea.producto_base || {};
+            const tipo = base.tipo === 'barra' ? 'B' : (base.tipo === 'encarretado' ? 'E' : '-');
+            const dim = (base.diametro || '');
+            const len = base.longitud ? base.longitud + 'm' : '';
+            const obra = linea.obra || '';
+
+            // Icons
+            const iBox =
+                `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`;
+            const iMap =
+                `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
+
+            const obraClass = obra === 'Nave A' ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                'bg-orange-50 text-orange-700 border-orange-100';
+
+            return `
+                <div class="flex flex-wrap gap-2 mt-3 mb-2">
+                    <div class="group flex items-center gap-1.5 py-1.5 px-3 bg-blue-50 text-blue-700 rounded-xl text-xs font-semibold border border-blue-100 shadow-sm transition-all hover:shadow-md hover:bg-blue-100 cursor-default">
+                        ${iBox}
+                        <span>${tipo}: Ø${dim} ${len}</span>
+                    </div>
+                    ${obra ? `
+                                                                                        <div class="group flex items-center gap-1.5 py-1.5 px-3 ${obraClass} rounded-xl text-xs font-semibold border shadow-sm transition-all hover:shadow-md hover:bg-opacity-80 cursor-default">
+                                                                                            ${iMap}
+                                                                                            <span class="truncate max-w-[120px]">${obra}</span>
+                                                                                        </div>` : ''}
+                </div>
+            `;
+        }
+
         function filtrarLineasPorDiametro(lineas = [], diamSet) {
             if (!diamSet || diamSet.size === 0) {
                 return lineas;
             }
             return lineas.filter(linea => {
-                const diam = normalizarDiametro(linea.diametro);
+                // Check diameter in various possible locations depending on source (Simulation vs Search)
+                const val = linea.diametro ||
+                    (linea.producto && typeof linea.producto === 'object' && linea.producto.diametro) ||
+                    (linea.producto_base && linea.producto_base.diametro);
+
+                const diam = normalizarDiametro(val);
                 return diam !== null && diamSet.has(diam);
             });
         }
@@ -4258,7 +2791,7 @@
                 if (isRecommended) {
                     badges.push(`
                         <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
-                             ✨ IA RECOMENDADO
+                            RECOMENDADO
                         </span>
                     `);
 
@@ -4272,55 +2805,43 @@
                 }
 
                 return `
-                    <div class="bg-white border-2 ${isSelected ? 'border-indigo-600' : 'border-gray-200'} rounded-lg p-4 cursor-pointer hover:border-indigo-400 transition"
+                    <div class="bg-white border ${isSelected ? 'border-indigo-500 ring-4 ring-indigo-50' : 'border-gray-100'} rounded-xl p-4 cursor-pointer hover:shadow-md transition-all duration-200"
                          onclick="seleccionarPedidoMobile(${index})">
-                        ${badges.length ? `<div class="flex items-center gap-2 mb-2">${badges.join('')}</div>` : ''}
+                        ${badges.length ? `<div class="flex items-center gap-2 mb-3">${badges.join('')}</div>` : ''}
 
-                    <div class="space-y-2 text-sm">
-                        <div>
-                            <span class="text-gray-500">Linea pedido (BD):</span>
-                            <span class="ml-2 font-semibold text-gray-900">${linea.codigo_linea || '—'}</span>
-                        </div>
-                        <div class="hidden">
-                            <span class="text-gray-500">Pedido (BD):</span>
-                            <span class="ml-2 text-gray-900">${linea.pedido_codigo || '—'}</span>
-                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
+                                <span class="font-bold text-gray-900">${linea.codigo || '—'}</span>
+                            </div>
+                            
+                            <!-- Hidden Fields -->
+                            <div class="hidden"><span class="text-gray-500">Pedido (BD):</span><span class="ml-2 text-gray-900">${linea.pedido_codigo || '—'}</span></div>
+
                             ${fabricanteNombre ? `
-                                                                                                                                            <div>
-                                                                                                                                                <span class="text-gray-500">Fabricante:</span>
-                                                                                                                                                <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
-                                                                                                                                            </div>
-                                                                                                                                        ` : ''}
+                                                                                                <div class="flex items-center gap-2">
+                                                                                                    <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                                                                                                    <span class="text-gray-700">${fabricanteNombre}</span>
+                                                                                                </div>` : ''}
+
                             ${distribuidorNombre ? `
-                                                                                                                                            <div>
-                                                                                                                                                <span class="text-gray-500">Distribuidor:</span>
-                                                                                                                                                <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
-                                                                                                                                            </div>
-                                                                                                                                        ` : ''}
-                            <div>
-                                <span class="text-gray-500">Producto:</span>
-                                <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
+                                                                                                <div class="flex items-center gap-2">
+                                                                                                    <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" /></svg>
+                                                                                                    <span class="text-gray-700">${distribuidorNombre}</span>
+                                                                                                </div>` : ''}
+
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                <span class="text-gray-900 font-medium">${formatFechaEntrega(linea.fecha_entrega)}</span>
                             </div>
-                            <div>
-                                <span class="text-gray-500">F. Entrega:</span>
-                                <span class="ml-2 text-gray-900">${linea.fecha_entrega_fmt || linea.fecha_entrega || '—'}</span>
-                            </div>
-                            ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
-                            <div class="flex items-center justify-between pt-2 border-t border-gray-100">
-                                <div>
-                                        <span class="text-gray-500">Pendiente:</span>
-                                        <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
-                                    </div>
-                                    ${linea.score ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 font-bold">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        Score: ${formatScorePoints(linea.score)} pts.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ` : ''}
+
+                            ${renderProductChips(linea)}
+
+                            <div class="flex items-center justify-between pt-3 border-t border-gray-50 mt-2">
+                                <div class="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wide font-bold">
+                                    <span>Pendiente</span>
+                                </div>
+                                <span class="text-base font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                             </div>
                         </div>
                     </div>
@@ -4339,23 +2860,6 @@
             if (index < 0 || index >= lineasPendientes.length) return;
 
             const lineaSeleccionada = lineasPendientes[index];
-            const recommendedId = cache.recommendedId || cache.simulacion?.linea_propuesta?.id || null;
-
-            // Si hay discrepancia, pediremos el motivo al confirmar (Step 3 a 4) 
-            // o podrías pedirlo aquí mismo en un modal.
-            // Para una experiencia fluida, lo pediremos en un modal si NO es el recomendado.
-            if (recommendedId && lineaSeleccionada.id != recommendedId) {
-                // Preparamos los datos para el modal de motivo
-                document.getElementById('motivo-pedido-actual').textContent = lineaSeleccionada.pedido_codigo ||
-                    'Pedido ID: ' + lineaSeleccionada.id;
-                document.getElementById('motivo-cambio-modal').classList.remove('hidden');
-                document.getElementById('motivo-cambio-modal').classList.add('flex');
-
-                // Guardamos temporalmente el ID seleccionado para usarlo al confirmar el motivo
-                window._tempPendingSelectionIndex = index;
-                return; // Pausamos selección hasta que dé el motivo
-            }
-
             confirmarSeleccionPedidoMobile(lineaSeleccionada);
         }
 
@@ -4373,37 +2877,14 @@
             cerrarModalPedidosMobile();
         }
 
-        function aceptarMotivoCambio() {
-            const motivo = document.getElementById('motivo-text-area').value;
-            if (!motivo || motivo.trim().length < 5) {
-                alert('Por favor, indica un motivo breve (mínimo 5 caracteres) para ayudar a la IA a aprender.');
-                return;
-            }
 
-            window._lastUserReason = motivo;
-            const index = window._tempPendingSelectionIndex;
-            const cache = window.mobileStepManager.dataCache;
-            const lineasPendientes = cache.lineasFiltradas || cache.simulacion?.lineas_pendientes || [];
-            const linea = lineasPendientes[index];
-
-            document.getElementById('motivo-cambio-modal').classList.add('hidden');
-            document.getElementById('motivo-cambio-modal').classList.remove('flex');
-            document.getElementById('motivo-text-area').value = '';
-
-            confirmarSeleccionPedidoMobile(linea);
-        }
-
-        function cancelarMotivoCambio() {
-            document.getElementById('motivo-cambio-modal').classList.add('hidden');
-            document.getElementById('motivo-cambio-modal').classList.remove('flex');
-            document.getElementById('motivo-text-area').value = '';
-            window._tempPendingSelectionIndex = null;
-        }
 
         /**
          * Actualizar Vista 3 con línea seleccionada
          */
         function actualizarVista3ConLineaSeleccionada(linea) {
+            console.log("🔍 [Mobile JS] actualizarVista3ConLineaSeleccionada called. Data:", linea,
+                "Source matches Cache?", window.mobileStepManager.dataCache.lineaSeleccionada === linea);
             const container = document.getElementById('mobile-pedido-card');
             if (!container) return;
 
@@ -4440,44 +2921,35 @@
                     <div class="space-y-2 text-sm">
                         <div class>
                             <span class="text-gray-500">Linea pedido (BD):</span>
-                            <span class="ml-2 font-semibold text-gray-900">${linea.codigo_linea || '—'}</span>
+                            <span class="ml-2 font-semibold text-gray-900">${linea.codigo || '—'}</span>
                         </div>
                         ${pedidoHprEscaneado ? `
-                                                                                                                                        <div class="hidden">
-                                                                                                                                            <span class="text-gray-500">Pedido HPR (escaneado):</span>
-                                                                                                                                            <span class="ml-2 font-semibold text-gray-900">${pedidoHprEscaneado}</span>
-                                                                                                                                        </div>
-                                                                                                                                    ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="hidden">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Pedido HPR (escaneado):</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="ml-2 font-semibold text-gray-900">${pedidoHprEscaneado}</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
                         <div class="hidden">
                             <span class="text-gray-500">Pedido (BD):</span>
                             <span class="ml-2 font-semibold text-gray-900">${linea.pedido_codigo || '—'}</span>
                         </div>
                         ${fabricanteNombre ? `
-                                                                                                                                        <div>
-                                                                                                                                            <span class="text-gray-500">Fabricante:</span>
-                                                                                                                                            <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
-                                                                                                                                        </div>
-                                                                                                                                    ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Fabricante:</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="ml-2 text-gray-900">${fabricanteNombre}</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
                         ${distribuidorNombre ? `
-                                                                                                                                        <div>
-                                                                                                                                            <span class="text-gray-500">Distribuidor:</span>
-                                                                                                                                            <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
-                                                                                                                                        </div>
-                                                                                                                                    ` : ''}
-                        <div>
-                            <span class="text-gray-500">Producto:</span>
-                            <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
-                        </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Distribuidor:</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="ml-2 text-gray-900">${distribuidorNombre}</span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
                         <div>
                             <span class="text-gray-500">F. Entrega:</span>
-                            <span class="ml-2 text-gray-900">${linea.fecha_entrega_fmt || linea.fecha_entrega || '—'}</span>
+                            <span class="ml-2 text-gray-900">${formatFechaEntrega(linea.fecha_entrega)}</span>
                         </div>
-                        ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
+                        ${renderProductChips(linea)}
                         <div class="pt-2 border-t border-gray-100">
                             <span class="text-gray-500">Cantidad Pendiente:</span>
                             <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
@@ -4495,6 +2967,142 @@
                 btnVerOtrosPedidos.addEventListener('click', abrirModalPedidosMobile);
             }
         });
+
+        function activarAlbaranMobile() {
+            if (!window.mobileStepManager || !window.mobileStepManager.dataCache || !window.mobileStepManager.dataCache
+                .lineaSeleccionada) {
+                Swal.fire('Error', 'No se ha seleccionado ningún pedido válido.', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('mobile-btn-activar');
+            let originalText = btn ? btn.innerHTML : 'Confirmar y Activar';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="mr-2">⌛</span> Procesando...';
+            }
+
+            // Sync coladas seleccionadas back to parsed if present
+            const cache = window.mobileStepManager.dataCache;
+            const coladasSel = cache.coladasSeleccionadas;
+
+            if (coladasSel && cache.parsed && cache.parsed.productos) {
+                // Set of selected colada codes
+                const selectedSet = new Set(coladasSel.map(c => c.colada));
+
+                cache.parsed.productos.forEach(prod => {
+                    const items = prod.line_items || prod.lineItems || [];
+                    items.forEach(item => {
+                        // If it's in the selected set, descargar=true. Else false.
+                        const coladaCode = item.colada;
+                        if (coladaCode && selectedSet.has(coladaCode)) {
+                            item.descargar = true;
+                        } else {
+                            item.descargar = false;
+                        }
+                    });
+                });
+            }
+
+            // Asegurar que el ocr_log_id viaja dentro de parsed (lo usa el backend)
+            const ocrLogId = cache?.ocr_log_id ?? cache?.resultado?.ocr_log_id ?? null;
+            if (cache.parsed) {
+                if (!cache.parsed.ocr_log_id && ocrLogId) cache.parsed.ocr_log_id = ocrLogId;
+                if (cache.parsed.data && typeof cache.parsed.data === 'object') {
+                    if (!cache.parsed.data.ocr_log_id && ocrLogId) cache.parsed.data.ocr_log_id = ocrLogId;
+                }
+            }
+
+            // Coladas/bultos para asignación al gruista (como /pedidos/.../activar-con-coladas)
+            const coladas = (cache.coladasSeleccionadas || [])
+                .map((c) => ({
+                    colada: c.colada || null,
+                    bulto: Number(c.bultos ?? 0),
+                }))
+                .filter((c) => c.colada !== null || (c.bulto !== null && c.bulto !== 0));
+
+            const payload = {
+                parsed: cache.parsed,
+                linea_seleccionada: cache.lineaSeleccionada,
+                simulacion: cache.simulacion,
+                coladas,
+            };
+
+            const pedidoId = cache.lineaSeleccionada?.pedido_id || cache.lineaSeleccionada?.pedidoId || cache.lineaSeleccionada
+                ?.pedido?.id;
+            const lineaId = cache.lineaSeleccionada?.id;
+
+            if (!pedidoId || !lineaId) {
+                Swal.fire('Error', 'No se ha podido determinar el pedido/línea a activar.', 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+                return;
+            }
+
+            const url = `{{ url('/pedidos') }}/${pedidoId}/lineas/${lineaId}/activar-con-coladas`;
+
+            fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(res => {
+                    if (!res.ok) {
+                        return res.text().then(text => {
+                            try {
+                                const json = JSON.parse(text);
+                                throw new Error(json.message || text);
+                            } catch (e) {
+                                throw new Error(text || res.statusText);
+                            }
+                        });
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        enviarAprendizajeIA(cache); // Send feedback on success
+
+                        // Toast success top-center 2s
+                        Swal.fire({
+                            toast: true,
+                            position: 'top',
+                            icon: 'success',
+                            title: '¡Albarán Activado!',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+
+                        // Reset wizard to Step 1 via Reload
+                        setTimeout(() => {
+                            localStorage.removeItem('lastScanMobileCache');
+                            window.location.reload();
+                        }, 2000);
+
+                    } else {
+                        throw new Error(data.message || 'Error desconocido');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error activation:', err);
+                    let msg = err.message;
+                    try {
+                        const jsonErr = JSON.parse(msg);
+                        if (jsonErr.message) msg = jsonErr.message;
+                    } catch (e) {}
+
+                    Swal.fire('Error', 'No se pudo activar: ' + msg, 'error');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                    }
+                });
+        }
     </script>
 
     <script>
@@ -4516,5 +3124,9 @@
             window.addEventListener('resize', syncAppContentPadding);
             document.addEventListener('DOMContentLoaded', syncAppContentPadding);
         })();
+    </script>
+
+    <script>
+        document.getElementById('mainlayout').classList.remove('py-4');
     </script>
 </x-app-layout>

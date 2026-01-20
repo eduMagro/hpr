@@ -114,6 +114,63 @@ class PrioridadIAService
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     }
 
+    /**
+     * Recomienda un distribuidor de la lista basándose en los datos del albarán usando IA.
+     */
+    public function recomendarDistribuidor(array $datosOCR, array $nombresDistribuidores): ?string
+    {
+        try {
+            $prompt = json_encode([
+                'instruccion' => 'Analiza los datos extraídos del albarán y la lista de distribuidores disponibles en el sistema. Tu tarea es identificar si el proveedor del albarán corresponde a alguno de los distribuidores de la lista. Devuelve el nombre exacto de la lista.',
+                'datos_albaran' => [
+                    'proveedor_detectado' => $datosOCR['proveedor_texto'] ?? null, // Texto crudo tal cual lo leyó el OCR
+                    'encabezados_detectados' => $datosOCR['albaran'] ?? null, // Contexto extra
+                    'texto_raw_fragmento' => substr($datosOCR['raw_text'] ?? '', 0, 1000), // Primeros 1000 chars por si acaso
+                ],
+                'lista_distribuidores_conocidos' => $nombresDistribuidores
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+            $response = Http::withToken(env('OPENAI_API_KEY'))
+                ->timeout(15) // Respuesta rápida
+                ->post('https://api.openai.com/v1/chat/completions', [
+                    'model' => 'gpt-4o-mini',
+                    'messages' => [
+                        [
+                            'role' => 'system',
+                            'content' => 'Eres un asistente administrativo experto. Debes normalizar el nombre del proveedor. Devuelve un JSON con la clave "distribuidor_encontrado" que contenga EL NOMBRE EXACTO de la lista proporcionada, o null si no coincide con ninguno.'
+                        ],
+                        [
+                            'role' => 'user',
+                            'content' => $prompt
+                        ]
+                    ],
+                    'response_format' => ['type' => 'json_object'],
+                    'temperature' => 0,
+                ]);
+
+            if (!$response->successful()) {
+                return null;
+            }
+
+            $resultado = $response->json();
+            $nombre = $resultado['choices'][0]['message']['content'] ?? '{}';
+            $json = json_decode($nombre, true);
+
+            $match = $json['distribuidor_encontrado'] ?? null;
+
+            // Validar que el match realmente existe en la lista original (seguridad)
+            if ($match && in_array($match, $nombresDistribuidores)) {
+                return $match;
+            }
+
+            return null;
+
+        } catch (\Exception $e) {
+            Log::error('Excepción en PrioridadIAService::recomendarDistribuidor: ' . $e->getMessage());
+            return null;
+        }
+    }
+
     protected function aplicarRanking(array $candidatos, array $rankingIds, string $razonamiento): array
     {
         $candidatosById = collect($candidatos)->keyBy('id');

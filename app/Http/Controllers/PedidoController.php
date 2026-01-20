@@ -1026,7 +1026,11 @@ class PedidoController extends Controller
         $data = $request->validate([
             'coladas' => ['array'],
             'coladas.*.colada' => ['nullable', 'string', 'max:255'],
+            'coladas.*.fabricante_id' => ['nullable', 'exists:fabricantes,id'],
             'coladas.*.bulto' => ['nullable', 'numeric', 'min:0'],
+            'ocr_log_id' => ['nullable', 'exists:entrada_import_logs,id'],
+            'json_resultante' => ['nullable', 'array'],
+            'id_pedido_productos_recomendado' => ['nullable'],
         ]);
 
         $productoBase = $linea->productoBase;
@@ -1076,7 +1080,7 @@ class PedidoController extends Controller
                 foreach ($data['coladas'] as $fila) {
                     $numeroColada = $fila['colada'] ?? null;
                     $bulto = $fila['bulto'] ?? null;
-                    $fabricanteId = $fila['fabricante_id'] ?? null;
+                    $fabricanteId = $fila['fabricante_id'] ?? ($pedido->fabricante_id ?? null);
 
                     if ($numeroColada === null && $bulto === null) {
                         continue;
