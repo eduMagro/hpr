@@ -1709,9 +1709,10 @@ class FinProgramadoService
     private bool $simularSabado = false;
     private ?array $turnoSabadoSimulado = null;
     private array $fechasSabadoSimuladas = []; // Fechas específicas de sábados a simular
+    private array $sabadosConTurnos = []; // Nuevo: sábados con múltiples turnos { "2026-01-25": [{hora_inicio, hora_fin}, ...] }
 
     /**
-     * Habilita la simulación de trabajo en sábado con un turno específico
+     * Habilita la simulación de trabajo en sábado con un turno específico (método legado)
      *
      * @param string $horaInicio Hora de inicio del turno (ej: "08:00")
      * @param string $horaFin Hora de fin del turno (ej: "14:00")
@@ -1725,12 +1726,23 @@ class FinProgramadoService
             'hora_fin' => $horaFin,
         ];
         $this->fechasSabadoSimuladas = $fechasEspecificas;
+        $this->sabadosConTurnos = [];
 
-        Log::info('[FinProgramadoService] Simulación de sábado habilitada', [
-            'hora_inicio' => $horaInicio,
-            'hora_fin' => $horaFin,
-            'fechas_especificas' => count($fechasEspecificas),
-        ]);
+        return $this;
+    }
+
+    /**
+     * Habilita la simulación de sábados con múltiples turnos por fecha
+     * Nuevo formato más flexible que permite seleccionar turnos específicos por sábado
+     *
+     * @param array $sabadosConTurnos Array asociativo { "2026-01-25": [{hora_inicio, hora_fin, nombre}, ...], ... }
+     */
+    public function habilitarSimulacionSabadoConTurnos(array $sabadosConTurnos): self
+    {
+        $this->simularSabado = true;
+        $this->turnoSabadoSimulado = null; // No usar turno único
+        $this->fechasSabadoSimuladas = [];
+        $this->sabadosConTurnos = $sabadosConTurnos;
 
         return $this;
     }
@@ -1743,6 +1755,7 @@ class FinProgramadoService
         $this->simularSabado = false;
         $this->turnoSabadoSimulado = null;
         $this->fechasSabadoSimuladas = [];
+        $this->sabadosConTurnos = [];
         return $this;
     }
 
@@ -1759,13 +1772,19 @@ class FinProgramadoService
             return false;
         }
 
-        // Si no hay fechas específicas, todos los sábados están simulados
+        $fechaStr = $dia->toDateString();
+
+        // Si hay sabadosConTurnos definidos, verificar si esta fecha está en la lista
+        if (!empty($this->sabadosConTurnos)) {
+            return isset($this->sabadosConTurnos[$fechaStr]);
+        }
+
+        // Método legado: Si no hay fechas específicas, todos los sábados están simulados
         if (empty($this->fechasSabadoSimuladas)) {
             return true;
         }
 
-        // Verificar si esta fecha está en la lista
-        $fechaStr = $dia->toDateString();
+        // Verificar si esta fecha está en la lista de fechas específicas
         foreach ($this->fechasSabadoSimuladas as $fechaSimulada) {
             if ($fechaSimulada->toDateString() === $fechaStr) {
                 return true;
@@ -1773,6 +1792,27 @@ class FinProgramadoService
         }
 
         return false;
+    }
+
+    /**
+     * Obtiene los turnos simulados para un sábado específico
+     * @return array Array de turnos [{hora_inicio, hora_fin, nombre}, ...]
+     */
+    private function obtenerTurnosSimuladosSabado(Carbon $dia): array
+    {
+        $fechaStr = $dia->toDateString();
+
+        // Si hay sabadosConTurnos, usar esos
+        if (!empty($this->sabadosConTurnos) && isset($this->sabadosConTurnos[$fechaStr])) {
+            return $this->sabadosConTurnos[$fechaStr];
+        }
+
+        // Método legado: devolver turno único si está definido
+        if ($this->turnoSabadoSimulado) {
+            return [$this->turnoSabadoSimulado];
+        }
+
+        return [];
     }
 
     /**
@@ -1789,47 +1829,35 @@ class FinProgramadoService
         // Es un sábado simulado - obtener segmentos normales primero
         $segmentosNormales = $this->obtenerSegmentosLaborablesDia($dia);
 
-        // SIEMPRE crear el segmento simulado para sábado (incluso si hay otros turnos)
-        // porque el usuario quiere AÑADIR un turno de sábado
-        if ($this->turnoSabadoSimulado) {
-            $horaInicio = Carbon::parse($this->turnoSabadoSimulado['hora_inicio']);
-            $horaFin = Carbon::parse($this->turnoSabadoSimulado['hora_fin']);
+        // Obtener los turnos simulados para este sábado
+        $turnosSimulados = $this->obtenerTurnosSimuladosSabado($dia);
+
+        if (empty($turnosSimulados)) {
+            return $segmentosNormales;
+        }
+
+        // Crear segmentos para cada turno simulado
+        foreach ($turnosSimulados as $turno) {
+            $horaInicio = Carbon::parse($turno['hora_inicio']);
+            $horaFin = Carbon::parse($turno['hora_fin']);
 
             $inicio = $dia->copy()->setTime($horaInicio->hour, $horaInicio->minute, 0);
             $fin = $dia->copy()->setTime($horaFin->hour, $horaFin->minute, 0);
 
-            $segmentoSimulado = [
+            // Manejar turnos nocturnos (ej: 22:00 a 06:00)
+            if ($horaFin->lt($horaInicio)) {
+                $fin->addDay();
+            }
+
+            $segmentosNormales[] = [
                 'inicio' => $inicio,
                 'fin' => $fin,
                 'turno' => null, // Turno simulado
             ];
-
-            // DEBUG: Log del sábado simulado (solo una vez por día único)
-            static $sabadosLogueados = [];
-            $diaKey = $dia->toDateString();
-            if (!isset($sabadosLogueados[$diaKey])) {
-                Log::debug('[SimSabado] Segmento simulado creado', [
-                    'fecha' => $diaKey,
-                    'inicio' => $inicio->format('H:i'),
-                    'fin' => $fin->format('H:i'),
-                    'segmentos_normales' => count($segmentosNormales),
-                ]);
-                $sabadosLogueados[$diaKey] = true;
-            }
-
-            // Si no hay segmentos normales, devolver solo el simulado
-            if (empty($segmentosNormales)) {
-                return [$segmentoSimulado];
-            }
-
-            // Si hay segmentos normales, añadir el simulado y reordenar
-            $segmentosNormales[] = $segmentoSimulado;
-
-            // Ordenar por hora de inicio
-            usort($segmentosNormales, fn($a, $b) => $a['inicio']->timestamp <=> $b['inicio']->timestamp);
-
-            return $segmentosNormales;
         }
+
+        // Ordenar por hora de inicio
+        usort($segmentosNormales, fn($a, $b) => $a['inicio']->timestamp <=> $b['inicio']->timestamp);
 
         return $segmentosNormales;
     }

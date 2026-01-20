@@ -225,7 +225,15 @@ class PlanillasTable extends Component
         }
 
         // Aprobada (filtro especial)
-        if ($this->aprobada !== '') {
+        // Por defecto (vacío) solo muestra aprobadas, excepto si se filtra explícitamente
+        if ($this->aprobada === '') {
+            // Por defecto: solo aprobadas
+            $query->where('aprobada', true);
+        } elseif ($this->aprobada === 'todas') {
+            // Mostrar todas (aprobadas y no aprobadas)
+            // No aplicar filtro
+        } else {
+            // Filtro explícito: 1 = aprobadas, 0 = no aprobadas
             $query->where('aprobada', (bool) $this->aprobada);
         }
 
@@ -414,9 +422,12 @@ class PlanillasTable extends Component
         if ($this->revisada !== '') {
             $filtros[] = "<strong>Revisada:</strong> " . ($this->revisada ? 'Sí' : 'No');
         }
-        if ($this->aprobada !== '') {
-            $filtros[] = "<strong>Aprobada:</strong> " . ($this->aprobada ? 'Sí' : 'No');
+        if ($this->aprobada === 'todas') {
+            $filtros[] = "<strong>Aprobada:</strong> Todas";
+        } elseif ($this->aprobada === '0') {
+            $filtros[] = "<strong>Aprobada:</strong> No";
         }
+        // No mostrar filtro cuando es '' porque es el estado por defecto (solo aprobadas)
 
         // Añadir ordenamiento
         if (!empty($this->sort)) {

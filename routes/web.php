@@ -529,7 +529,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/api/produccion/planillas-con-retraso', [ProduccionController::class, 'planillasConRetraso'])->name('api.produccion.planillas-con-retraso');
 
     // Endpoint para simular turno de sábado
-    Route::get('/api/produccion/simular-turno-sabado', [ProduccionController::class, 'simularTurnoSabado'])->name('api.produccion.simular-turno-sabado');
+    Route::post('/api/produccion/simular-turno-sabado', [ProduccionController::class, 'simularTurnoSabado'])->name('api.produccion.simular-turno-sabado');
 
     //MSR20 BVBS
     Route::get('/maquinas/{maquina}/exportar-bvbs', [MaquinaController::class, 'exportarBVBS'])

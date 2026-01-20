@@ -989,7 +989,7 @@
         <!-- Modal Simulación Turno Sábado -->
         <div id="modalSimularSabado" onclick="if(event.target === this) cerrarModalSimularSabado()"
             class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-            <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl mx-4 max-h-[90vh] flex flex-col">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-6xl mx-4 max-h-[90vh] flex flex-col">
                 <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-6 py-4 rounded-t-xl flex justify-between items-center">
                     <h3 class="text-lg font-semibold flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1005,55 +1005,51 @@
                         </svg>
                     </button>
                 </div>
+
+                <!-- Panel de selección de sábados y turnos -->
                 <div class="p-4 bg-amber-50 border-b border-amber-100">
-                    <div class="space-y-3">
-                        <div class="flex flex-wrap items-center gap-4">
-                            <!-- Modo de simulación -->
+                    <div class="flex flex-col gap-3">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-sm font-semibold text-gray-700">Selecciona los sábados y turnos a simular:</h4>
                             <div class="flex items-center gap-2">
-                                <label class="text-sm font-medium text-gray-700">Simular:</label>
-                                <select id="sabado-modo" onchange="toggleRangoFechas()" class="px-3 py-1.5 border rounded text-sm bg-white">
-                                    <option value="todos">Todos los sábados</option>
-                                    <option value="rango">Rango de fechas</option>
-                                </select>
+                                <button onclick="seleccionarTodosSabados(true)"
+                                    class="px-3 py-1 text-xs bg-amber-100 text-amber-700 rounded hover:bg-amber-200 transition">
+                                    Seleccionar todos
+                                </button>
+                                <button onclick="seleccionarTodosSabados(false)"
+                                    class="px-3 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition">
+                                    Deseleccionar todos
+                                </button>
                             </div>
+                        </div>
 
-                            <!-- Rango de fechas (oculto por defecto) -->
-                            <div id="sabado-rango-container" class="hidden flex items-center gap-2">
-                                <label class="text-sm text-gray-600">Desde:</label>
-                                <input type="date" id="sabado-fecha-desde" class="px-2 py-1 border rounded text-sm">
-                                <label class="text-sm text-gray-600">Hasta:</label>
-                                <input type="date" id="sabado-fecha-hasta" class="px-2 py-1 border rounded text-sm">
-                            </div>
+                        <!-- Grid de sábados -->
+                        <div id="sabados-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-48 overflow-y-auto p-2 bg-white rounded border">
+                            <!-- Se llena dinámicamente -->
+                        </div>
 
-                            <!-- Horario del turno -->
-                            <div class="flex items-center gap-2">
-                                <label class="text-sm text-gray-600">Turno:</label>
-                                <input type="time" id="sabado-hora-inicio" value="08:00" class="px-2 py-1 border rounded text-sm">
-                                <span class="text-gray-400">a</span>
-                                <input type="time" id="sabado-hora-fin" value="14:00" class="px-2 py-1 border rounded text-sm">
-                            </div>
-
+                        <div class="flex items-center justify-between">
+                            <p class="text-xs text-gray-500">
+                                <span id="sabados-seleccionados-count">0</span> sábado(s) seleccionado(s) con turnos
+                            </p>
                             <button onclick="ejecutarSimulacionSabado()"
-                                class="px-4 py-1.5 bg-amber-500 text-white rounded hover:bg-amber-600 text-sm font-medium flex items-center gap-1">
+                                class="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 text-sm font-medium flex items-center gap-2 shadow-sm">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                                 </svg>
-                                Simular
+                                Ejecutar Simulación
                             </button>
                         </div>
-                        <p class="text-xs text-gray-500">
-                            <strong>Todos los sábados:</strong> Simula trabajar cada sábado hasta completar las planillas.
-                            <strong>Rango de fechas:</strong> Solo simula los sábados dentro del rango especificado.
-                        </p>
                     </div>
                 </div>
+
                 <div id="simulacion-contenido" class="flex-1 overflow-y-auto p-4">
-                    <div class="flex items-center justify-center py-12">
-                        <svg class="animate-spin h-8 w-8 text-amber-600" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <div class="flex flex-col items-center justify-center py-12 text-gray-400">
+                        <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                         </svg>
-                        <span class="ml-3 text-gray-600">Simulando...</span>
+                        <p class="text-lg font-medium">Selecciona sábados y turnos</p>
+                        <p class="text-sm">Luego pulsa "Ejecutar Simulación" para ver los resultados</p>
                     </div>
                 </div>
                 <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
@@ -6921,22 +6917,30 @@
             // SIMULACIÓN TURNO SÁBADO
             // ============================================================
 
-            function toggleRangoFechas() {
-                const modo = document.getElementById('sabado-modo').value;
-                const rangoContainer = document.getElementById('sabado-rango-container');
+            // Turnos disponibles para sábado
+            const turnosDisponibles = [
+                { id: 'manana', nombre: 'Mañana', horaInicio: '05:00', horaFin: '14:00', color: 'amber' },
+                { id: 'tarde', nombre: 'Tarde', horaInicio: '14:00', horaFin: '22:00', color: 'orange' },
+                { id: 'noche', nombre: 'Noche', horaInicio: '22:00', horaFin: '06:00', color: 'indigo' }
+            ];
 
-                if (modo === 'rango') {
-                    rangoContainer.classList.remove('hidden');
-                    // Establecer fechas por defecto: hoy hasta 3 meses después
-                    const hoy = new Date();
-                    const tresMeses = new Date();
-                    tresMeses.setMonth(tresMeses.getMonth() + 3);
+            // Generar próximos sábados (12 semanas)
+            function generarProximosSabados(semanas = 12) {
+                const sabados = [];
+                const hoy = new Date();
+                let cursor = new Date(hoy);
 
-                    document.getElementById('sabado-fecha-desde').value = hoy.toISOString().split('T')[0];
-                    document.getElementById('sabado-fecha-hasta').value = tresMeses.toISOString().split('T')[0];
-                } else {
-                    rangoContainer.classList.add('hidden');
+                // Avanzar al próximo sábado
+                while (cursor.getDay() !== 6) {
+                    cursor.setDate(cursor.getDate() + 1);
                 }
+
+                for (let i = 0; i < semanas; i++) {
+                    sabados.push(new Date(cursor));
+                    cursor.setDate(cursor.getDate() + 7);
+                }
+
+                return sabados;
             }
 
             function simularTurnoSabado() {
@@ -6944,28 +6948,121 @@
                 modalSabado.classList.remove('hidden');
                 modalSabado.classList.add('flex');
 
-                // Inicializar con modo "todos" seleccionado
-                document.getElementById('sabado-modo').value = 'todos';
-                document.getElementById('sabado-rango-container').classList.add('hidden');
+                // Generar grid de sábados
+                renderizarGridSabados();
 
-                ejecutarSimulacionSabado();
+                // Resetear contenido
+                document.getElementById('simulacion-contenido').innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-12 text-gray-400">
+                        <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <p class="text-lg font-medium">Selecciona sábados y turnos</p>
+                        <p class="text-sm">Luego pulsa "Ejecutar Simulación" para ver los resultados</p>
+                    </div>
+                `;
+            }
+
+            function renderizarGridSabados() {
+                const grid = document.getElementById('sabados-grid');
+                const sabados = generarProximosSabados(12);
+
+                let html = '';
+                sabados.forEach((fecha, index) => {
+                    const fechaStr = fecha.toISOString().split('T')[0];
+                    const dia = fecha.getDate();
+                    const mes = fecha.toLocaleDateString('es-ES', { month: 'short' });
+
+                    html += `
+                        <div class="sabado-card border rounded-lg p-2 bg-gray-50 hover:bg-amber-50 transition" data-fecha="${fechaStr}">
+                            <div class="text-center mb-2">
+                                <div class="text-xs text-gray-500 uppercase">${mes}</div>
+                                <div class="text-lg font-bold text-gray-800">${dia}</div>
+                                <div class="text-xs text-gray-400">Sábado</div>
+                            </div>
+                            <div class="space-y-1">
+                                ${turnosDisponibles.map(turno => `
+                                    <label class="flex items-center gap-1 cursor-pointer text-xs hover:bg-${turno.color}-100 rounded px-1 py-0.5">
+                                        <input type="checkbox"
+                                            class="turno-checkbox w-3 h-3 rounded text-${turno.color}-500 focus:ring-${turno.color}-400"
+                                            data-fecha="${fechaStr}"
+                                            data-turno="${turno.id}"
+                                            data-hora-inicio="${turno.horaInicio}"
+                                            data-hora-fin="${turno.horaFin}"
+                                            onchange="actualizarContadorSabados()">
+                                        <span class="truncate">${turno.nombre}</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                grid.innerHTML = html;
+                actualizarContadorSabados();
+            }
+
+            function actualizarContadorSabados() {
+                const checkboxes = document.querySelectorAll('.turno-checkbox:checked');
+                const fechasUnicas = new Set();
+                checkboxes.forEach(cb => fechasUnicas.add(cb.dataset.fecha));
+
+                document.getElementById('sabados-seleccionados-count').textContent = fechasUnicas.size;
+
+                // Actualizar el turno span en el header
+                const turnoSpan = document.getElementById('simulacion-turno');
+                turnoSpan.textContent = checkboxes.length > 0 ? `${checkboxes.length} turno(s)` : '';
+            }
+
+            function seleccionarTodosSabados(seleccionar) {
+                const checkboxes = document.querySelectorAll('.turno-checkbox');
+                checkboxes.forEach(cb => {
+                    // Por defecto solo seleccionar turno de mañana
+                    if (seleccionar && cb.dataset.turno === 'manana') {
+                        cb.checked = true;
+                    } else if (!seleccionar) {
+                        cb.checked = false;
+                    }
+                });
+                actualizarContadorSabados();
+            }
+
+            function obtenerSabadosSeleccionados() {
+                const checkboxes = document.querySelectorAll('.turno-checkbox:checked');
+                const sabadosMap = {};
+
+                checkboxes.forEach(cb => {
+                    const fecha = cb.dataset.fecha;
+                    if (!sabadosMap[fecha]) {
+                        sabadosMap[fecha] = [];
+                    }
+                    sabadosMap[fecha].push({
+                        turno: cb.dataset.turno,
+                        horaInicio: cb.dataset.horaInicio,
+                        horaFin: cb.dataset.horaFin
+                    });
+                });
+
+                return sabadosMap;
             }
 
             async function ejecutarSimulacionSabado() {
                 const contenido = document.getElementById('simulacion-contenido');
-                const turnoSpan = document.getElementById('simulacion-turno');
-                const horaInicio = document.getElementById('sabado-hora-inicio').value || '08:00';
-                const horaFin = document.getElementById('sabado-hora-fin').value || '14:00';
-                const modo = document.getElementById('sabado-modo').value;
-                const fechaDesde = document.getElementById('sabado-fecha-desde')?.value || '';
-                const fechaHasta = document.getElementById('sabado-fecha-hasta')?.value || '';
+                const sabadosSeleccionados = obtenerSabadosSeleccionados();
 
-                turnoSpan.textContent = `${horaInicio} - ${horaFin}`;
+                if (Object.keys(sabadosSeleccionados).length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Selección vacía',
+                        text: 'Debes seleccionar al menos un sábado con un turno para simular.',
+                        confirmButtonColor: '#f59e0b'
+                    });
+                    return;
+                }
 
-                // Construir descripción del loading
-                let descripcionLoading = modo === 'todos'
-                    ? 'todos los sábados'
-                    : `sábados del ${fechaDesde} al ${fechaHasta}`;
+                // Contar turnos seleccionados
+                let totalTurnos = 0;
+                Object.values(sabadosSeleccionados).forEach(turnos => totalTurnos += turnos.length);
 
                 // Mostrar loading
                 contenido.innerHTML = `
@@ -6974,23 +7071,20 @@
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        <span class="ml-3 text-gray-600">Simulando ${descripcionLoading} (${horaInicio} - ${horaFin})...</span>
+                        <span class="ml-3 text-gray-600">Simulando ${Object.keys(sabadosSeleccionados).length} sábado(s) con ${totalTurnos} turno(s)...</span>
                     </div>
                 `;
 
-                // Construir URL con parámetros
-                let url = `/api/produccion/simular-turno-sabado?hora_inicio=${horaInicio}&hora_fin=${horaFin}&modo=${modo}`;
-                if (modo === 'rango' && fechaDesde && fechaHasta) {
-                    url += `&fecha_desde=${fechaDesde}&fecha_hasta=${fechaHasta}`;
-                }
-
                 try {
-                    const response = await fetch(url, {
-                        method: 'GET',
+                    const response = await fetch('/api/produccion/simular-turno-sabado', {
+                        method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        }
+                        },
+                        body: JSON.stringify({
+                            sabados: sabadosSeleccionados
+                        })
                     });
 
                     if (!response.ok) {

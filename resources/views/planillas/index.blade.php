@@ -101,7 +101,7 @@
 
             <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-3">
                 <form method="GET" action="{{ route('planillas.index') }}" class="space-y-2">
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-3 gap-2">
                         <div class="flex flex-col gap-1">
                             <label class="text-[10px] font-semibold text-gray-700">Código</label>
                             <input type="text" name="codigo" value="{{ request('codigo') }}" placeholder="Buscar..."
@@ -116,6 +116,15 @@
                                 <option value="fabricando" @selected(request('estado') === 'fabricando')>Fabricando</option>
                                 <option value="completada" @selected(request('estado') === 'completada')>Completada</option>
                                 <option value="montaje" @selected(request('estado') === 'montaje')>Montaje</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[10px] font-semibold text-gray-700">Aprobada</label>
+                            <select name="aprobada"
+                                class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700">
+                                <option value="" @selected(request('aprobada', '') === '')>Aprobadas</option>
+                                <option value="todas" @selected(request('aprobada') === 'todas')>Todas</option>
+                                <option value="0" @selected(request('aprobada') === '0')>No aprobadas</option>
                             </select>
                         </div>
                     </div>
@@ -145,6 +154,15 @@
                 if (request('estado')) {
                     $query->where('estado', request('estado'));
                 }
+
+                // Filtro de aprobada: por defecto solo muestra aprobadas
+                $aprobadaFilter = request('aprobada', '');
+                if ($aprobadaFilter === '') {
+                    $query->where('aprobada', true);
+                } elseif ($aprobadaFilter === '0') {
+                    $query->where('aprobada', false);
+                }
+                // Si es 'todas' no aplicamos filtro
 
                 // Obtener planillas
                 $planillasMobile = $query

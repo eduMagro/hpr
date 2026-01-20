@@ -84,7 +84,9 @@
       "Bash(composer install:*)",
       "Bash(C:xamppmysqlbinmysql -u root manager_pruebas -e \"SELECT ruta, descripcion FROM departamento_ruta;\")",
       "Bash(git checkout:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(C:xamppmysqlbinmysql -u root sync_temp -e \"SHOW COLUMNS FROM planillas LIKE ''%fecha%'';\")",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

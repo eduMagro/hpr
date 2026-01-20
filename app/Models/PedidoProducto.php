@@ -129,4 +129,113 @@ class PedidoProducto extends Model
     {
         return $this->hasMany(PedidoProductoColada::class, 'pedido_producto_id');
     }
+
+    // ===================================================
+    // CÁLCULO DE COSTE ESTIMADO
+    // ===================================================
+
+    /**
+     * Calcula el coste estimado de esta línea de pedido.
+     * Fórmula: (precio_referencia + incremento_diametro + incremento_formato) × toneladas
+     */
+    public function getCosteEstimadoAttribute(): ?float
+    {
+        // Obtener precio de referencia del PedidoGlobal
+        $precioReferencia = $this->pedidoGlobal?->precio_referencia;
+        if ($precioReferencia === null) {
+            return null;
+        }
+
+        // Obtener diámetro del producto
+        $diametro = (int) ($this->productoBase?->diametro ?? 0);
+
+        // Obtener incremento por diámetro
+        $incrementoDiametro = PrecioMaterialDiametro::getIncremento($diametro);
+
+        // Determinar si es encarretado y obtener incremento por formato
+        $esEncarretado = strtolower($this->productoBase?->tipo ?? '') === 'encarretado';
+        $formatoCodigo = $esEncarretado ? 'encarretado' : 'estandar_12m';
+
+        // Buscar excepción o usar formato base
+        $fabricanteId = $this->pedido?->fabricante_id;
+        $distribuidorId = $this->pedido?->distribuidor_id;
+
+        $incrementoFormato = 0;
+        $excepcion = PrecioMaterialExcepcion::buscar($distribuidorId, $fabricanteId, $formatoCodigo);
+
+        if ($excepcion) {
+            $incrementoFormato = (float) $excepcion->incremento;
+        } else {
+            $formato = PrecioMaterialFormato::where('codigo', $formatoCodigo)->first();
+            $incrementoFormato = (float) ($formato?->incremento ?? 0);
+        }
+
+        // Calcular toneladas
+        $toneladas = ($this->cantidad ?? 0) / 1000;
+
+        // Calcular coste
+        $precioTonelada = $precioReferencia + $incrementoDiametro + $incrementoFormato;
+        $coste = $precioTonelada * $toneladas;
+
+        return round($coste, 2);
+    }
+
+    /**
+     * Devuelve el coste formateado en euros.
+     */
+    public function getCosteEstimadoFormateadoAttribute(): string
+    {
+        $coste = $this->coste_estimado;
+        if ($coste === null) {
+            return '—';
+        }
+        return number_format($coste, 2, ',', '.') . ' €';
+    }
+
+    /**
+     * Devuelve el desglose del cálculo del coste.
+     */
+    public function getCosteDesglose(): array
+    {
+        $precioReferencia = $this->pedidoGlobal?->precio_referencia;
+        if ($precioReferencia === null) {
+            return ['error' => 'Sin precio de referencia'];
+        }
+
+        $diametro = (int) ($this->productoBase?->diametro ?? 0);
+        $incrementoDiametro = PrecioMaterialDiametro::getIncremento($diametro);
+
+        $esEncarretado = strtolower($this->productoBase?->tipo ?? '') === 'encarretado';
+        $formatoCodigo = $esEncarretado ? 'encarretado' : 'estandar_12m';
+
+        $fabricanteId = $this->pedido?->fabricante_id;
+        $distribuidorId = $this->pedido?->distribuidor_id;
+
+        $incrementoFormato = 0;
+        $origenFormato = 'base';
+        $excepcion = PrecioMaterialExcepcion::buscar($distribuidorId, $fabricanteId, $formatoCodigo);
+
+        if ($excepcion) {
+            $incrementoFormato = (float) $excepcion->incremento;
+            $origenFormato = $excepcion->distribuidor_id ? 'excepcion_especifica' : 'excepcion_fabricante';
+        } else {
+            $formato = PrecioMaterialFormato::where('codigo', $formatoCodigo)->first();
+            $incrementoFormato = (float) ($formato?->incremento ?? 0);
+        }
+
+        $toneladas = ($this->cantidad ?? 0) / 1000;
+        $precioTonelada = $precioReferencia + $incrementoDiametro + $incrementoFormato;
+
+        return [
+            'precio_referencia' => $precioReferencia,
+            'incremento_diametro' => $incrementoDiametro,
+            'incremento_formato' => $incrementoFormato,
+            'precio_tonelada' => round($precioTonelada, 2),
+            'toneladas' => round($toneladas, 4),
+            'coste_total' => round($precioTonelada * $toneladas, 2),
+            'diametro' => $diametro,
+            'formato' => $formatoCodigo,
+            'origen_formato' => $origenFormato,
+        ];
+    }
 }

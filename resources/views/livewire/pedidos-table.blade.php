@@ -18,6 +18,7 @@
                     <th class="px-2 py-2 border">Producto</th>
                     <th class="p-2 border">Cant. Pedida</th>
                     <th class="p-2 border">Cant. Recep.</th>
+                    <th class="p-2 border">Coste</th>
                     <th class="p-2 border cursor-pointer" wire:click="sortBy('fecha_pedido')">
                         F. Pedido @if ($sort === 'fecha_pedido')
                             {{ $order === 'asc' ? '↑' : '↓' }}
@@ -96,6 +97,7 @@
                     </th>
                     <th class="p-1 border"></th>
                     <th class="p-1 border"></th>
+                    <th class="p-1 border"></th>
                     <th class="p-1 border">
                         <input type="date" wire:model.live="fecha_pedido"
                             class="w-full text-xs px-1 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
@@ -141,8 +143,12 @@
                     @endphp
 
                     {{-- CABECERA DEL PEDIDO --}}
+                    @php
+                        // Calcular coste total del pedido
+                        $costeTotalPedido = $lineasDelPedido->sum(fn($l) => $l->coste_estimado ?? 0);
+                    @endphp
                     <tr wire:key="pedido-header-{{ $pedidoId }}" class="bg-gray-200 border-t-2 border-gray-400">
-                        <td colspan="14" class="px-3 py-2">
+                        <td colspan="15" class="px-3 py-2">
                             <div class="flex items-center justify-between flex-wrap gap-2">
                                 <div class="flex items-center gap-4 text-sm">
                                     <span class="font-bold text-gray-800">
@@ -157,6 +163,11 @@
                                     <span class="text-gray-600">
                                         <strong>Fecha:</strong> {{ $pedido?->fecha_pedido_formateada ?? '—' }}
                                     </span>
+                                    @if ($costeTotalPedido > 0)
+                                        <span class="text-emerald-700 font-semibold">
+                                            <strong>Coste:</strong> {{ number_format($costeTotalPedido, 2, ',', '.') }} €
+                                        </span>
+                                    @endif
                                     <span
                                         class="px-2 py-0.5 rounded text-xs font-semibold
                                         {{ $pedidoCancelado ? 'bg-gray-400 text-white' : '' }}
@@ -348,6 +359,17 @@
                                 </span>
                             </td>
 
+                            {{-- CELDA DE COSTE ESTIMADO --}}
+                            <td class="border px-2 py-1 text-center">
+                                @if ($linea->coste_estimado !== null)
+                                    <span class="font-semibold text-emerald-700" title="Coste estimado basado en precio de referencia + incrementos">
+                                        {{ $linea->coste_estimado_formateado }}
+                                    </span>
+                                @else
+                                    <span class="text-gray-400 text-xs" title="Sin precio de referencia en el pedido global">—</span>
+                                @endif
+                            </td>
+
                             {{-- FECHA PEDIDO --}}
                             <td class="border px-2 py-1 text-center">
                                 {{ $pedido?->fecha_pedido_formateada ?? '—' }}
@@ -515,7 +537,7 @@
                     @endforeach
                 @empty
                     <tr>
-                        <td colspan="14" class="text-center py-4 text-gray-500">No hay líneas de pedido registradas
+                        <td colspan="15" class="text-center py-4 text-gray-500">No hay líneas de pedido registradas
                         </td>
                     </tr>
                 @endforelse

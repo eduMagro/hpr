@@ -1,23 +1,22 @@
 <?php
 /**
- * PASO 3: Ejecutar en LOCAL después del comando artisan
- * URL: http://localhost/manager/scripts/exportar_despues_sync.php
- *
- * Exporta solo los DATOS (sin estructura) para importar en producción
+ * Exportar datos después del sync para importar en producción
  */
 
-require __DIR__ . '/../../vendor/autoload.php';
-$app = require_once __DIR__ . '/../../bootstrap/app.php';
-$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('memory_limit', '1G');
+ini_set('max_execution_time', 600);
 
+// Conexión directa sin Laravel (evita problemas con sessions)
 $config = [
-    'host' => config('database.connections.mysql.host'),
-    'database' => config('database.connections.mysql.database'),
-    'username' => config('database.connections.mysql.username'),
-    'password' => config('database.connections.mysql.password'),
+    'host' => '127.0.0.1',
+    'database' => 'sync_temp',
+    'username' => 'root',
+    'password' => '',
 ];
 
-// Tablas a exportar (en orden para evitar problemas de FK)
+// Tablas a exportar
 $tablas = ['planillas', 'elementos', 'etiquetas', 'paquetes', 'orden_planillas'];
 
 try {
@@ -28,14 +27,16 @@ try {
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
     );
 
+    echo "<h2>Exportando datos de sync_temp</h2><pre>";
+
     $sql = "-- Datos actualizados después del sync\n";
     $sql .= "-- Fecha: " . date('Y-m-d H:i:s') . "\n";
-    $sql .= "-- IMPORTANTE: Ejecutar en producción después de truncar las tablas\n\n";
+    $sql .= "-- Base de datos origen: sync_temp\n\n";
     $sql .= "SET FOREIGN_KEY_CHECKS=0;\n";
     $sql .= "SET NAMES utf8mb4;\n\n";
 
-    // Primero los TRUNCATE
-    $sql .= "-- Limpiar tablas (orden inverso por FK)\n";
+    // TRUNCATE
+    $sql .= "-- Limpiar tablas\n";
     $sql .= "TRUNCATE TABLE `orden_planillas`;\n";
     $sql .= "TRUNCATE TABLE `paquetes`;\n";
     $sql .= "TRUNCATE TABLE `etiquetas`;\n";
@@ -43,51 +44,67 @@ try {
     $sql .= "TRUNCATE TABLE `planillas`;\n\n";
 
     foreach ($tablas as $tabla) {
-        echo "Exportando tabla: $tabla<br>";
+        echo "Exportando: $tabla... ";
         flush();
 
-        $stmt = $pdo->query("SELECT * FROM `$tabla`");
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Contar registros
+        $countStmt = $pdo->query("SELECT COUNT(*) FROM `$tabla`");
+        $totalRows = $countStmt->fetchColumn();
+        echo "$totalRows registros\n";
+        flush();
 
-        if (count($rows) > 0) {
-            $columns = array_keys($rows[0]);
+        if ($totalRows > 0) {
+            // Obtener columnas
+            $stmt = $pdo->query("SELECT * FROM `$tabla` LIMIT 1");
+            $sample = $stmt->fetch(PDO::FETCH_ASSOC);
+            $columns = array_keys($sample);
             $columnList = '`' . implode('`, `', $columns) . '`';
 
-            $sql .= "-- Tabla: $tabla (" . count($rows) . " registros)\n";
+            $sql .= "-- Tabla: $tabla ($totalRows registros)\n";
 
-            // Insertar en lotes de 500
-            $chunks = array_chunk($rows, 500);
-            foreach ($chunks as $chunk) {
-                $values = [];
-                foreach ($chunk as $row) {
-                    $rowValues = [];
-                    foreach ($row as $value) {
-                        if ($value === null) {
-                            $rowValues[] = 'NULL';
-                        } else {
-                            $rowValues[] = $pdo->quote($value);
+            // Exportar en lotes
+            $batchSize = 1000;
+            $offset = 0;
+
+            while ($offset < $totalRows) {
+                $stmt = $pdo->query("SELECT * FROM `$tabla` LIMIT $batchSize OFFSET $offset");
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                if (count($rows) > 0) {
+                    $values = [];
+                    foreach ($rows as $row) {
+                        $rowValues = [];
+                        foreach ($row as $value) {
+                            if ($value === null) {
+                                $rowValues[] = 'NULL';
+                            } else {
+                                $rowValues[] = $pdo->quote($value);
+                            }
                         }
+                        $values[] = '(' . implode(', ', $rowValues) . ')';
                     }
-                    $values[] = '(' . implode(', ', $rowValues) . ')';
+                    $sql .= "INSERT INTO `$tabla` ($columnList) VALUES\n" . implode(",\n", $values) . ";\n";
                 }
-                $sql .= "INSERT INTO `$tabla` ($columnList) VALUES\n" . implode(",\n", $values) . ";\n";
+
+                $offset += $batchSize;
             }
             $sql .= "\n";
         }
-
-        echo "- $tabla: " . count($rows) . " registros<br>";
-        flush();
     }
 
     $sql .= "SET FOREIGN_KEY_CHECKS=1;\n";
 
-    // Descargar archivo
+    // Guardar archivo
     $filename = 'datos_sync_' . date('Y-m-d_His') . '.sql';
-    header('Content-Type: application/sql');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    header('Content-Length: ' . strlen($sql));
-    echo $sql;
+    $filepath = __DIR__ . '/' . $filename;
+    file_put_contents($filepath, $sql);
+
+    echo "\n<b>Archivo generado:</b> $filename\n";
+    echo "<b>Tamaño:</b> " . round(strlen($sql) / 1024 / 1024, 2) . " MB\n";
+    echo "\n<a href='/manager/public/scripts/$filename' download>Descargar archivo SQL</a>\n";
+    echo "</pre>";
 
 } catch (Exception $e) {
-    echo "Error: " . $e->getMessage();
+    echo "<h2>Error</h2>";
+    echo "<pre>" . $e->getMessage() . "\n\n" . $e->getTraceAsString() . "</pre>";
 }

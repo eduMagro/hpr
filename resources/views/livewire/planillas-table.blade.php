@@ -291,9 +291,9 @@
                         <th class="p-1 border">
                             <select wire:model.live="aprobada"
                                 class="w-full text-xs px-1 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
-                                <option value="">Todas</option>
-                                <option value="1">Sí</option>
-                                <option value="0">No</option>
+                                <option value="">Aprobadas</option>
+                                <option value="todas">Todas</option>
+                                <option value="0">No aprobadas</option>
                             </select>
                         </th>
                         <th class="p-1 border"></th>

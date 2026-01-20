@@ -29,3 +29,5 @@ readme*.tmp
 tmpclaude-*
 compose.yaml
 readme
+public/scripts/*.sql
+*.sql
