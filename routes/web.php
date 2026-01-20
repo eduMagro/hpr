@@ -470,6 +470,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/asignaciones-turno/mover-eventos', [AsignacionTurnoController::class, 'moverEventosAObra'])->name('asignaciones-turnos.moverEventos');
     Route::post('/asignaciones-turno/{id}/actualizar-horas', [AsignacionTurnoController::class, 'actualizarHoras'])->name('asignaciones-turnos.actualizar-horas');
     Route::get('/asignaciones-turno/exportar', [AsignacionTurnoController::class, 'export'])->name('asignaciones-turnos.verExportar');
+    Route::get('/asignaciones-turno/{asignacion}/justificante', [AsignacionTurnoController::class, 'descargarJustificante'])->name('asignaciones-turnos.justificante');
 
     // === MAQUINAS Y PRODUCCIÓN ===
     Route::resource('maquinas', MaquinaController::class);

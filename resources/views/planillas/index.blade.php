@@ -614,9 +614,19 @@
                     title: 'Completar planillas',
                     html: `
                         <p class="text-sm text-gray-600 mb-4">
-                            Se completarán las planillas con <b>fecha estimada de entrega</b>
-                            anterior o igual a la fecha de corte seleccionada.
+                            Selecciona una planilla específica o deja en blanco para completar todas
+                            con fecha de entrega anterior o igual a la fecha de corte.
                         </p>
+                        <div class="text-left mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Planilla específica (opcional):</label>
+                            <div class="relative">
+                                <input type="text" id="swal-planilla-search" placeholder="Buscar por código, obra o cliente..."
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    autocomplete="off">
+                                <input type="hidden" id="swal-planilla-id">
+                                <div id="swal-planilla-results" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-48 overflow-y-auto hidden shadow-lg"></div>
+                            </div>
+                        </div>
                         <div class="text-left">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de corte:</label>
                             <input type="date" id="swal-fecha-corte" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" value="${hoy}">
@@ -627,13 +637,74 @@
                     confirmButtonText: 'Completar',
                     cancelButtonText: 'Cancelar',
                     confirmButtonColor: '#3085d6',
+                    didOpen: () => {
+                        const searchInput = document.getElementById('swal-planilla-search');
+                        const resultsDiv = document.getElementById('swal-planilla-results');
+                        const hiddenInput = document.getElementById('swal-planilla-id');
+                        let debounceTimer;
+
+                        searchInput.addEventListener('input', function() {
+                            clearTimeout(debounceTimer);
+                            const query = this.value.trim();
+
+                            if (query.length < 2) {
+                                resultsDiv.classList.add('hidden');
+                                hiddenInput.value = '';
+                                return;
+                            }
+
+                            debounceTimer = setTimeout(async () => {
+                                try {
+                                    const response = await fetch(`/api/planillas/buscar?q=${encodeURIComponent(query)}`);
+                                    const data = await response.json();
+
+                                    if (data.planillas && data.planillas.length > 0) {
+                                        resultsDiv.innerHTML = data.planillas.map(p => `
+                                            <div class="planilla-option px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100"
+                                                data-id="${p.id}" data-codigo="${p.codigo}">
+                                                <div class="font-semibold text-sm">${p.codigo}</div>
+                                                <div class="text-xs text-gray-500">${p.obra} - ${p.cliente}</div>
+                                                <div class="text-xs text-gray-400">${p.estado} | Entrega: ${p.fecha_entrega || 'Sin fecha'}</div>
+                                            </div>
+                                        `).join('');
+                                        resultsDiv.classList.remove('hidden');
+
+                                        resultsDiv.querySelectorAll('.planilla-option').forEach(opt => {
+                                            opt.addEventListener('click', function() {
+                                                hiddenInput.value = this.dataset.id;
+                                                searchInput.value = this.dataset.codigo;
+                                                resultsDiv.classList.add('hidden');
+                                            });
+                                        });
+                                    } else {
+                                        resultsDiv.innerHTML = '<div class="px-3 py-2 text-sm text-gray-500">No se encontraron planillas</div>';
+                                        resultsDiv.classList.remove('hidden');
+                                    }
+                                } catch (e) {
+                                    console.error('Error buscando planillas:', e);
+                                }
+                            }, 300);
+                        });
+
+                        // Cerrar resultados al hacer clic fuera
+                        document.addEventListener('click', function(e) {
+                            if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+                                resultsDiv.classList.add('hidden');
+                            }
+                        });
+                    },
                     preConfirm: () => {
                         const fechaCorte = document.getElementById('swal-fecha-corte').value;
+                        const planillaId = document.getElementById('swal-planilla-id').value;
+
                         if (!fechaCorte) {
                             Swal.showValidationMessage('Debes seleccionar una fecha de corte');
                             return false;
                         }
-                        return { fecha_corte: fechaCorte };
+                        return {
+                            fecha_corte: fechaCorte,
+                            planilla_id: planillaId || null
+                        };
                     }
                 });
             }
@@ -647,14 +718,18 @@
                     return;
                 }
 
-                // Obtener la fecha de corte del modal
+                // Obtener la fecha de corte y planilla_id del modal
                 const fechaCorte = confirmacion.value?.fecha_corte;
+                const planillaId = confirmacion.value?.planilla_id;
 
                 try {
                     if (typeof Swal !== 'undefined') {
+                        const textoLoading = planillaId
+                            ? 'Completando planilla seleccionada, por favor espera.'
+                            : 'Completando planillas elegibles, por favor espera.';
                         Swal.fire({
                             title: 'Procesando...',
-                            text: 'Completando planillas elegibles, por favor espera.',
+                            text: textoLoading,
                             allowOutsideClick: false,
                             didOpen: () => {
                                 Swal.showLoading();
@@ -669,7 +744,10 @@
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': csrf ?? '',
                         },
-                        body: JSON.stringify({ fecha_corte: fechaCorte }),
+                        body: JSON.stringify({
+                            fecha_corte: fechaCorte,
+                            planilla_id: planillaId
+                        }),
                     });
 
                     let data = null;

@@ -1047,7 +1047,11 @@ class PlanillaController extends Controller
         // Fecha de corte opcional (si no se proporciona, el servicio usa hoy)
         $fechaCorte = $request->input('fecha_corte');
 
-        $resultado = $svc->completarTodasPlanillas(null, $fechaCorte);
+        // Planilla específica opcional (si se proporciona, solo procesa esa)
+        $planillaId = $request->input('planilla_id');
+        $planillaIds = $planillaId ? [(int) $planillaId] : null;
+
+        $resultado = $svc->completarTodasPlanillas($planillaIds, $fechaCorte);
         $mensaje = "Procesadas OK: {$resultado['procesadas_ok']} | Omitidas por fecha: {$resultado['omitidas_fecha']} | Fallidas: {$resultado['fallidas']}";
 
         if ($request->expectsJson() || $request->wantsJson()) {
@@ -1062,6 +1066,42 @@ class PlanillaController extends Controller
             $resultado['success'] ? 'success' : 'error',
             $mensaje
         );
+    }
+
+    /**
+     * Buscar planillas para autocompletado (modal completar planillas)
+     */
+    public function buscarParaCompletar(Request $request)
+    {
+        $query = $request->input('q', '');
+
+        $planillas = Planilla::query()
+            ->whereIn('estado', ['pendiente', 'fabricando'])
+            ->where('aprobada', true)
+            ->where(function ($q) use ($query) {
+                $q->where('codigo', 'like', "%{$query}%")
+                    ->orWhereHas('obra', function ($q2) use ($query) {
+                        $q2->where('obra', 'like', "%{$query}%");
+                    })
+                    ->orWhereHas('cliente', function ($q2) use ($query) {
+                        $q2->where('empresa', 'like', "%{$query}%");
+                    });
+            })
+            ->with(['obra:id,obra', 'cliente:id,empresa'])
+            ->orderBy('fecha_estimada_entrega')
+            ->limit(20)
+            ->get(['id', 'codigo', 'obra_id', 'cliente_id', 'fecha_estimada_entrega', 'estado']);
+
+        return response()->json([
+            'planillas' => $planillas->map(fn($p) => [
+                'id' => $p->id,
+                'codigo' => $p->codigo,
+                'obra' => $p->obra->obra ?? '',
+                'cliente' => $p->cliente->empresa ?? '',
+                'fecha_entrega' => $p->fecha_estimada_entrega,
+                'estado' => $p->estado,
+            ])
+        ]);
     }
 
     public function informacionMasiva(Request $request)

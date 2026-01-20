@@ -450,7 +450,7 @@ class SubirJustificante extends Component
 
         // Crear mensaje de la alerta con enlace al justificante
         $fechaFormateada = $asignacion->fecha->format('d/m/Y');
-        $enlaceJustificante = asset('storage/' . $asignacion->justificante_ruta);
+        $enlaceJustificante = route('asignaciones-turnos.justificante', $asignacion->id);
         $mensaje = "{$usuario->name} ha subido un justificante para el día {$fechaFormateada} ({$this->horasDetectadas}h). <a href=\"{$enlaceJustificante}\" target=\"_blank\" class=\"text-blue-600 underline hover:text-blue-800\">Ver justificante</a>";
 
         // Enviar alerta a cada usuario

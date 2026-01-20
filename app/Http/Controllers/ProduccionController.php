@@ -1695,9 +1695,12 @@ class ProduccionController extends Controller
             'nueva_pos' => $posNueva,
         ]);
 
-        $this->reordenarPosicionEnMaquina($maquinaId, $planillaId, $posNueva);
+        // Usar transacción corta para evitar lock timeout
+        DB::transaction(function () use ($maquinaId, $planillaId, $posNueva) {
+            $this->reordenarPosicionEnMaquinaRapido($maquinaId, $planillaId, $posNueva);
+        }, 3); // 3 intentos en caso de deadlock
 
-        // Consolidar posiciones adyacentes de la misma planilla
+        // Consolidar fuera de la transacción principal
         $this->consolidarPosicionesAdyacentes($maquinaId);
 
         // 🔄 Obtener eventos actualizados de la máquina
@@ -2168,6 +2171,42 @@ class ProduccionController extends Controller
 
     //---------------------------------------------------------- REORDENAR PLANILLAS
     //---------------------------------------------------------- REORDENAR PLANILLAS
+
+    /** Versión rápida sin lockForUpdate para evitar lock timeout */
+    private function reordenarPosicionEnMaquinaRapido(int $maquinaId, int $planillaId, int $posNueva): void
+    {
+        $orden = OrdenPlanilla::where('maquina_id', $maquinaId)
+            ->where('planilla_id', $planillaId)
+            ->first();
+
+        if (!$orden) {
+            $maxPos = (int) (OrdenPlanilla::where('maquina_id', $maquinaId)->max('posicion') ?? 0);
+            $orden = OrdenPlanilla::create([
+                'maquina_id'  => $maquinaId,
+                'planilla_id' => $planillaId,
+                'posicion'    => $maxPos + 1,
+            ]);
+        }
+
+        $posActual = (int) $orden->posicion;
+        if ($posNueva === $posActual) return;
+
+        // Usar UPDATE directo en lugar de increment/decrement para mayor velocidad
+        if ($posNueva < $posActual) {
+            DB::statement(
+                'UPDATE orden_planillas SET posicion = posicion + 1 WHERE maquina_id = ? AND posicion >= ? AND posicion < ?',
+                [$maquinaId, $posNueva, $posActual]
+            );
+        } else {
+            DB::statement(
+                'UPDATE orden_planillas SET posicion = posicion - 1 WHERE maquina_id = ? AND posicion > ? AND posicion <= ?',
+                [$maquinaId, $posActual, $posNueva]
+            );
+        }
+
+        $orden->update(['posicion' => $posNueva]);
+    }
+
     /** Reordena la posición de la planilla en una máquina dada */
     private function reordenarPosicionEnMaquina(int $maquinaId, int $planillaId, int $posNueva): void
     {

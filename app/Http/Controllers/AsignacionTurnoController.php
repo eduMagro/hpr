@@ -2480,4 +2480,38 @@ class AsignacionTurnoController extends Controller
             'Registros entrada y salida.xlsx'
         );
     }
+
+    /**
+     * Descargar justificante de forma segura
+     */
+    public function descargarJustificante(AsignacionTurno $asignacion)
+    {
+        $user = auth()->user();
+
+        // Permisos: Oficina, RRHH, Producción, o el propio dueño
+        $tienePermiso = $user->rol === 'oficina'
+            || $user->id === $asignacion->user_id
+            || $user->departamentos()->whereIn('nombre', ['RRHH', 'Producción'])->exists();
+
+        if (!$tienePermiso) {
+            abort(403, 'No tienes permiso para ver este justificante.');
+        }
+
+        if (!$asignacion->justificante_ruta) {
+            abort(404, 'Este registro no tiene justificante.');
+        }
+
+        $rutaCompleta = storage_path('app/public/' . $asignacion->justificante_ruta);
+
+        if (!file_exists($rutaCompleta)) {
+            abort(404, 'El archivo no existe.');
+        }
+
+        $extension = pathinfo($rutaCompleta, PATHINFO_EXTENSION);
+        $nombreArchivo = 'justificante_' . $asignacion->fecha->format('Y-m-d') . '.' . $extension;
+
+        return response()->file($rutaCompleta, [
+            'Content-Disposition' => 'inline; filename="' . $nombreArchivo . '"'
+        ]);
+    }
 }

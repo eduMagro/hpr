@@ -19,6 +19,10 @@ Route::get('/productos/sugerencias', [ProductoController::class, 'sugerenciasPor
     ->name('api.productos.sugerencias');
 Route::get('/planillas/{planillaId}/paquetes', [PaqueteController::class, 'obtenerPaquetesPorPlanilla'])
     ->name('api.planillas.paquetes');
+
+// Buscar planillas para autocompletado (completar planillas)
+Route::get('/planillas/buscar', [PlanillaController::class, 'buscarParaCompletar'])
+    ->name('api.planillas.buscar');
 Route::post('/paquetes/{paqueteId}/añadir-etiqueta', [PaqueteController::class, 'añadirEtiquetaAPaquete'])
     ->name('api.paquetes.añadir-etiqueta');
 Route::delete('/paquetes/{paqueteId}/eliminar-etiqueta', [PaqueteController::class, 'eliminarEtiquetaDePaquete'])
