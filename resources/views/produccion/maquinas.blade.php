@@ -2168,6 +2168,57 @@
                         // failure: eliminado porque provoca warnings en FullCalendar
                     },
                     resourceOrder: false,
+                    resourceLabelContent: function(arg) {
+                        const resource = arg.resource;
+                        const estado = resource.extendedProps.estado;
+                        const count = resource.extendedProps.count || 0;
+                        const posiciones = resource.extendedProps.posiciones || [];
+
+                        // Emoji segun estado
+                        let emoji = '';
+                        switch(estado) {
+                            case 'activa': emoji = '🟢'; break;
+                            case 'averiada': emoji = '🔴'; break;
+                            case 'mantenimiento': emoji = '🛠️'; break;
+                            case 'pausa': emoji = '⏸️'; break;
+                            default: emoji = '⚪';
+                        }
+
+                        // Crear contenedor
+                        const container = document.createElement('div');
+                        container.className = 'flex flex-col gap-1 py-1';
+
+                        // Titulo con emoji y contador
+                        const titleDiv = document.createElement('div');
+                        titleDiv.className = 'font-semibold text-sm';
+                        titleDiv.textContent = `${emoji} ${resource.title} (${count})`;
+                        container.appendChild(titleDiv);
+
+                        // Select de posiciones (solo si hay posiciones)
+                        if (posiciones.length > 0) {
+                            const select = document.createElement('select');
+                            select.className = 'text-xs border rounded px-1 py-0.5 w-full bg-white cursor-pointer';
+                            select.innerHTML = `<option value="">Ir a pos...</option>`;
+
+                            posiciones.forEach(p => {
+                                const opt = document.createElement('option');
+                                opt.value = p.planilla_id;
+                                opt.textContent = `${p.pos}: ${p.codigo}`;
+                                select.appendChild(opt);
+                            });
+
+                            select.addEventListener('change', function() {
+                                if (this.value) {
+                                    saltarAPlanilla(this.value);
+                                    this.value = ''; // Reset select
+                                }
+                            });
+
+                            container.appendChild(select);
+                        }
+
+                        return { domNodes: [container] };
+                    },
                     events: {
                         url: '{{ route('api.produccion.eventos') }}',
                         failure: function(error) {
@@ -6569,6 +6620,43 @@
                         title: 'Error',
                         text: error.message || 'No se pudieron aplicar las prioridades'
                     });
+                }
+            }
+
+            // ============================================================
+            // SALTAR A PLANILLA DESDE SIDEBAR
+            // ============================================================
+
+            function saltarAPlanilla(planillaId) {
+                if (!calendar || !planillaId) return;
+
+                // Buscar el evento con esa planilla_id
+                const eventos = calendar.getEvents();
+                const evento = eventos.find(e => e.extendedProps?.planilla_id == planillaId);
+
+                if (evento) {
+                    // Scroll al evento
+                    const eventEl = document.querySelector(`[data-event-id="${evento.id}"]`) ||
+                                   document.querySelector(`.fc-event[data-planilla-id="${planillaId}"]`);
+
+                    if (eventEl) {
+                        eventEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        // Highlight temporal
+                        eventEl.style.outline = '3px solid #f59e0b';
+                        eventEl.style.outlineOffset = '2px';
+                        setTimeout(() => {
+                            eventEl.style.outline = '';
+                            eventEl.style.outlineOffset = '';
+                        }, 2000);
+                    }
+
+                    // Tambien intentar scrollear el calendario a la fecha del evento
+                    if (evento.start) {
+                        calendar.scrollToTime(evento.start.toTimeString().slice(0,5) + ':00');
+                    }
+                } else {
+                    // Si no encuentra el evento, puede estar fuera del rango visible
+                    console.log('Planilla no encontrada en el calendario visible:', planillaId);
                 }
             }
 

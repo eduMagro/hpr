@@ -813,6 +813,9 @@ class ProduccionController extends Controller
     {
         try {
             $maquinas = Maquina::whereNotIn('tipo', ['grua', 'soldadora', 'ensambladora'])
+                ->with(['ordenPlanillas' => function($q) {
+                    $q->orderBy('posicion')->with('planilla:id,codigo');
+                }])
                 ->orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')
                 ->orderBy('obra_id')
                 ->orderBy('tipo')
@@ -827,16 +830,23 @@ class ProduccionController extends Controller
 
             $resources = $maquinas->map(function ($m) use ($coloresPorObra) {
                 $color = $coloresPorObra[$m->obra_id] ?? '#6b7280';
+                $count = $m->ordenPlanillas->count();
+
+                // Preparar posiciones para el select
+                $posiciones = $m->ordenPlanillas->map(function($op) {
+                    return [
+                        'pos' => $op->posicion,
+                        'planilla_id' => $op->planilla_id,
+                        'codigo' => $op->planilla?->codigo ?? 'N/A',
+                    ];
+                })->values()->all();
 
                 return [
                     'id' => $m->id,
-                    'title' => match ($m->estado) {
-                        'activa' => '🟢 ' . $m->nombre,
-                        'averiada' => '🔴 ' . $m->nombre,
-                        'mantenimiento' => '🛠️ ' . $m->nombre,
-                        'pausa' => '⏸️ ' . $m->nombre,
-                        default => ' ' . $m->nombre,
-                    },
+                    'title' => $m->nombre,
+                    'estado' => $m->estado,
+                    'count' => $count,
+                    'posiciones' => $posiciones,
                     'eventBackgroundColor' => $color,
                     'eventBorderColor' => $color,
                     'eventTextColor' => '#ffffff',
