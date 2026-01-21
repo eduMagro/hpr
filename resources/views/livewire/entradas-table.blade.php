@@ -90,7 +90,7 @@
             </thead>
             <tbody>
                 @forelse ($registrosEntradas as $entrada)
-                    <tr tabindex="0" x-data="{
+                    <tr wire:key="entrada-{{ $entrada->id }}" tabindex="0" x-data="{
                         editando: false,
                         fila: {
                             id: {{ $entrada->id }},
