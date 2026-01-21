@@ -383,6 +383,24 @@
 
                 <!-- Formulario de Edición (Integrado) -->
                 <form id="mobile-step2-form" class="space-y-4">
+                    <label class="block">
+                        <span class="text-sm font-medium text-gray-700">Nave</span>
+                        <input type="hidden" id="edit-obra-id">
+                        <div class="mt-1 flex rounded-lg border border-gray-300 overflow-hidden shadow-sm">
+                            <button type="button" id="btn-nave-a"
+                                class="flex-1 py-2 text-sm font-bold transition-colors bg-white text-gray-600 hover:bg-gray-50"
+                                onclick="setMobileNave('{{ $naves['Nave A'] ?? '' }}')">
+                                Nave A
+                            </button>
+                            <div class="w-px bg-gray-300"></div>
+                            <button type="button" id="btn-nave-b"
+                                class="flex-1 py-2 text-sm font-bold transition-colors bg-white text-gray-600 hover:bg-gray-50"
+                                onclick="setMobileNave('{{ $naves['Nave B'] ?? '' }}')">
+                                Nave B
+                            </button>
+                        </div>
+                    </label>
+
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <label class="block">
                             <span class="text-sm font-medium text-gray-700">Tipo de compra</span>
@@ -1441,6 +1459,12 @@
                 initialTipo = 'distribuidor';
             }
 
+            // Determinar nave inicial (filtro para recomendación)
+            const navesMap = @json($naves ?? []);
+            const rawObraId = sourceValue('obra_id') || sourceValue('nave_id');
+            const defaultObraId = navesMap['Nave A'] || navesMap['Nave B'] || '';
+            setMobileNave(rawObraId || defaultObraId || '');
+
             // Inicializar botones y estados UI
             setMobileTipoCompra(initialTipo);
 
@@ -1456,6 +1480,7 @@
             // Guardar en cache inicial
             window.mobileStepManager.dataCache.parsed = parsed;
             window.mobileStepManager.dataCache.simulacion = sim;
+            window.mobileStepManager.dataCache.parsed.obra_id = document.getElementById('edit-obra-id')?.value || null;
 
             // Renderizar lista de productos editable
             renderMobileEditProducts();
@@ -1960,6 +1985,7 @@
                 };
 
                 setP('tipo_compra', document.getElementById('edit-tipo-compra').value || null);
+                setP('obra_id', document.getElementById('edit-obra-id')?.value || null);
 
                 // Capturar fabricante correctamente:
                 const selectProv = document.getElementById('edit-proveedor-select');
@@ -2111,6 +2137,36 @@
 
             return -1;
         }
+
+        window.setMobileNave = function(obraId) {
+            const value = (obraId || '').toString();
+            const input = document.getElementById('edit-obra-id');
+            if (input) input.value = value;
+
+            const btnA = document.getElementById('btn-nave-a');
+            const btnB = document.getElementById('btn-nave-b');
+            const activeClass = "bg-indigo-600 text-white shadow-inner";
+            const inactiveClass = "bg-white text-gray-600 hover:bg-gray-50";
+
+            const naveAId = "{{ $naves['Nave A'] ?? '' }}".toString();
+            const naveBId = "{{ $naves['Nave B'] ?? '' }}".toString();
+
+            if (btnA) btnA.className =
+                `flex-1 py-2 text-sm font-bold transition-colors ${value && value === naveAId ? activeClass : inactiveClass}`;
+            if (btnB) btnB.className =
+                `flex-1 py-2 text-sm font-bold transition-colors ${value && value === naveBId ? activeClass : inactiveClass}`;
+
+            if (window.mobileStepManager?.dataCache?.parsed) {
+                window.mobileStepManager.dataCache.parsed.obra_id = value || null;
+                localStorage.setItem('lastScanMobileCache', JSON.stringify(window.mobileStepManager.dataCache));
+            }
+
+            if (window.mobileStepManager?.dataCache?.simulacion) {
+                recalcularSimulacionMobile().then(sim => {
+                    if (sim) poblarVista3ConPedido(sim);
+                });
+            }
+        };
 
         // Función simplificada para manejo de cambio de tipo
         window.setMobileTipoCompra = function(tipo) {
