@@ -349,6 +349,12 @@
             this.open = !this.open;
             localStorage.setItem('sidebar_open', this.open);
 
+            // Si se cierra el sidebar, colapsar todas las secciones desplegadas (reinicio)
+            if (!this.open) {
+                this.activeSections = [];
+                localStorage.setItem('sidebar_active_sections', JSON.stringify(this.activeSections));
+            }
+
             // Disparar evento con el nuevo estado
             window.dispatchEvent(new CustomEvent('sidebar-toggled', {
                 detail: { isOpen: this.open }

@@ -1,3 +1,59 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔹 COLUMNA DE RECURSOS REDIMENSIONABLE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Divisor arrastrable para redimensionar columna de recursos */
+.fc-resource-area-resizer {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    background: transparent;
+    cursor: col-resize;
+    z-index: 100;
+    transition: background-color 0.2s ease;
+}
+
+.fc-resource-area-resizer:hover,
+.fc-resource-area-resizer.dragging {
+    background: linear-gradient(to right, transparent, rgba(59, 130, 246, 0.3), transparent);
+}
+
+.fc-resource-area-resizer::after {
+    content: '';
+    position: absolute;
+    right: 3px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 40px;
+    background: #cbd5e1;
+    border-radius: 2px;
+    transition: background-color 0.2s ease, height 0.2s ease;
+}
+
+.fc-resource-area-resizer:hover::after,
+.fc-resource-area-resizer.dragging::after {
+    background: #3b82f6;
+    height: 60px;
+}
+
+/* Contenedor del área de recursos con posición relativa */
+.fc .fc-resource-timeline .fc-datagrid {
+    position: relative;
+}
+
+/* Cursor de redimensionamiento durante drag */
+body.resizing-resource-area {
+    cursor: col-resize !important;
+    user-select: none;
+}
+
+body.resizing-resource-area * {
+    cursor: col-resize !important;
+}
+
 /* === SPINNER DE CARGA === */
 #calendario-loading {
     transition: opacity 0.3s ease-in-out;

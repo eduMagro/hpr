@@ -4,6 +4,66 @@ import { attachEventoContextMenu } from "./calendario-menu.js";
 let currentViewType = "resourceTimelineWeek";
 export let calendar = null;
 
+/* ▼ Funcionalidad de resize para columna de recursos */
+function inicializarResizeRecursos(calendar) {
+    // Esperar a que el DOM esté listo
+    setTimeout(() => {
+        const datagrid = document.querySelector('.fc-resource-timeline .fc-datagrid');
+        if (!datagrid) return;
+
+        // Verificar si ya existe el resizer
+        if (datagrid.querySelector('.fc-resource-area-resizer')) return;
+
+        // Crear el divisor arrastrable
+        const resizer = document.createElement('div');
+        resizer.className = 'fc-resource-area-resizer';
+        resizer.title = 'Arrastrar para redimensionar';
+        datagrid.appendChild(resizer);
+
+        let isResizing = false;
+        let startX = 0;
+        let startWidth = 0;
+
+        // Obtener ancho guardado de localStorage
+        const savedWidth = localStorage.getItem('fc-resource-area-width');
+        if (savedWidth) {
+            datagrid.style.width = savedWidth;
+            calendar.updateSize();
+        }
+
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            startX = e.clientX;
+            startWidth = datagrid.offsetWidth;
+            resizer.classList.add('dragging');
+            document.body.classList.add('resizing-resource-area');
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+
+            const diff = e.clientX - startX;
+            const newWidth = Math.max(100, Math.min(500, startWidth + diff));
+            datagrid.style.width = newWidth + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!isResizing) return;
+
+            isResizing = false;
+            resizer.classList.remove('dragging');
+            document.body.classList.remove('resizing-resource-area');
+
+            // Guardar ancho en localStorage
+            localStorage.setItem('fc-resource-area-width', datagrid.style.width);
+
+            // Actualizar tamaño del calendario
+            calendar.updateSize();
+        });
+    }, 100);
+}
+
 /* ▼ util: render cuando el elemento sea visible */
 function renderWhenVisible(el, renderFn) {
     // ya visible?
@@ -1122,11 +1182,7 @@ export function crearCalendario() {
             editable: true,
             eventDurationEditable: false, // Solo drag, no resize
             eventStartEditable: true,     // Permitir mover eventos
-            resourceAreaColumns: [
-                { field: "cod_obra", headerContent: "Código" },
-                { field: "title", headerContent: "Obra" },
-                { field: "cliente", headerContent: "Cliente" },
-            ],
+            resourceAreaWidth: "15%", // Ancho inicial, redimensionable via CSS
             resourceAreaHeaderContent: "Obras",
             resourceOrder: "orderIndex",
             resourceLabelContent: (arg) => {
@@ -1145,6 +1201,9 @@ export function crearCalendario() {
 
         calendar.render();
         safeUpdateSize();
+
+        // Inicializar el resize de la columna de recursos
+        inicializarResizeRecursos(calendar);
 
         // Ocultar spinner inicial después de un breve delay (por si no hay eventos que cargar)
         setTimeout(() => {

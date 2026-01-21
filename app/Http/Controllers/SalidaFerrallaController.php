@@ -2032,13 +2032,17 @@ class SalidaFerrallaController extends Controller
 
         // Obtener AMBOS conjuntos de paquetes para filtrado dinámico sin recarga
         // 1. Paquetes de las planillas seleccionadas (obra/cliente específico)
-        $paquetesFiltrados = Paquete::with(['planilla.obra', 'planilla.cliente', 'nave', 'etiquetas.elementos'])
+        // Nota: No cargamos etiquetas.elementos aquí para evitar problemas de memoria
+        $paquetesFiltrados = Paquete::with(['planilla.obra', 'planilla.cliente', 'nave'])
+            ->withCount('etiquetas')
             ->whereIn('planilla_id', $planillasIds)
             ->where('estado', 'pendiente')
             ->get();
 
         // 2. TODOS los paquetes pendientes disponibles
-        $paquetesTodos = Paquete::with(['planilla.obra', 'planilla.cliente', 'nave', 'etiquetas.elementos'])
+        // Optimizado: solo cargamos relaciones esenciales
+        $paquetesTodos = Paquete::with(['planilla.obra', 'planilla.cliente', 'nave'])
+            ->withCount('etiquetas')
             ->where('estado', 'pendiente')
             ->whereDoesntHave('salidas') // No asignados a ninguna salida
             ->get();
