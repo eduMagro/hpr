@@ -59,13 +59,13 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                <div
+                                {{-- <div
                                     class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M19 9l-7 7-7-7" />
                                     </svg>
-                                </div>
+                                </div> --}}
                             </div>
                         </form>
                     </div>
@@ -179,8 +179,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="12"
-                                        class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                    <td colspan="12" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                         <div class="flex flex-col items-center justify-center">
                                             <svg class="w-12 h-12 mb-4 text-gray-300" fill="none"
                                                 stroke="currentColor" viewBox="0 0 24 24">
@@ -272,18 +271,18 @@
             </div>
 
             <!-- MODAL -->
-            <div x-show="showModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;"
+            <div x-show="showModal" class="fixed inset-0 z-[999] overflow-y-auto" style="display: none;"
                 aria-labelledby="modal-title" role="dialog" aria-modal="true">
 
                 <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"
+                    <div class="fixed inset-0 bg-black bg-opacity-60 transition-opacity" aria-hidden="true"
                         @click="closeModal()"></div>
                     <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
                     <div
                         class="relative inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                         <div
-                            class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border-b border-gray-100 dark:border-gray-700">
+                            class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border-b border-gray-200 dark:border-gray-700">
                             <h3 class="text-2xl font-bold leading-6 text-gray-900 dark:text-white" id="modal-title">
                                 <span x-text="isEditing ? 'Editar Gasto' : 'Nuevo Gasto'"></span>
                             </h3>
@@ -299,144 +298,349 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                                 <!-- Fecha Pedido -->
+                                <!-- Fecha Pedido -->
                                 <div>
                                     <label for="fecha_pedido"
-                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha
+                                        class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Fecha
                                         Pedido</label>
-                                    <input type="date" name="fecha_pedido" id="fecha_pedido"
-                                        x-model="form.fecha_pedido"
-                                        class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
+                                    <div class="relative">
+                                        <div
+                                            class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="1.5"
+                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                                                </path>
+                                            </svg>
+                                        </div>
+                                        <input type="date" name="fecha_pedido" id="fecha_pedido"
+                                            x-model="form.fecha_pedido"
+                                            class="block w-full rounded-xl border-gray-300 py-3 pl-10 pr-4 shadow-sm focus:border-indigo-600 focus:ring-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm placeholder-gray-400">
+                                    </div>
                                 </div>
 
                                 <!-- Fecha Llegada -->
+                                <!-- Fecha Llegada -->
                                 <div>
                                     <label for="fecha_llegada"
-                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha
+                                        class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Fecha
                                         Llegada</label>
-                                    <input type="date" name="fecha_llegada" id="fecha_llegada"
-                                        x-model="form.fecha_llegada"
-                                        class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
+                                    <div class="relative">
+                                        <div
+                                            class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="1.5"
+                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                                                </path>
+                                            </svg>
+                                        </div>
+                                        <input type="date" name="fecha_llegada" id="fecha_llegada"
+                                            x-model="form.fecha_llegada"
+                                            class="block w-full rounded-xl border-gray-300 py-3 pl-10 pr-4 shadow-sm focus:border-indigo-600 focus:ring-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm placeholder-gray-400">
+                                    </div>
                                 </div>
 
                                 <!-- Nave -->
+                                <!-- Nave -->
                                 <div>
                                     <label for="nave_id"
-                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nave</label>
-                                    <select name="nave_id" id="nave_id" x-model="form.nave_id"
-                                        class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
-                                        <option value="">Seleccionar Nave</option>
-                                        @foreach ($naves as $nave)
-                                            <option value="{{ $nave->id }}">{{ $nave->obra }}</option>
-                                        @endforeach
-                                    </select>
+                                        class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Nave</label>
+                                    <div class="relative">
+                                        <div
+                                            class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="1.5"
+                                                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
+                                                </path>
+                                            </svg>
+                                        </div>
+                                        <select name="nave_id" id="nave_id" x-model="form.nave_id"
+                                            class="block w-full rounded-xl border-gray-300 py-3 pl-10 pr-10 shadow-sm focus:border-indigo-600 focus:ring-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
+                                            <option value="">Seleccionar Nave</option>
+                                            @foreach ($naves as $nave)
+                                                <option value="{{ $nave->id }}">{{ $nave->obra }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
 
                                 <!-- Obra -->
+                                <!-- Obra -->
                                 <div>
                                     <label for="obra_id"
-                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Obra</label>
-                                    <select name="obra_id" id="obra_id" x-model="form.obra_id"
-                                        class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
-                                        <option value="">Seleccionar Obra</option>
-                                        @foreach ($obras as $obra)
-                                            <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
-                                        @endforeach
-                                    </select>
+                                        class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Obra</label>
+                                    <div class="relative">
+                                        <div
+                                            class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="1.5"
+                                                    d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                                                </path>
+                                            </svg>
+                                        </div>
+                                        <select name="obra_id" id="obra_id" x-model="form.obra_id"
+                                            class="block w-full rounded-xl border-gray-300 py-3 pl-10 pr-10 shadow-sm focus:border-indigo-600 focus:ring-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
+                                            <option value="">Seleccionar Obra</option>
+                                            @foreach ($obras as $obra)
+                                                <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
 
                                 <!-- Proveedor -->
+                                <!-- Proveedor -->
                                 <div>
                                     <label for="proveedor_id"
-                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor</label>
+                                        class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor</label>
 
-                                    <!-- Select Mode -->
-                                    <div x-show="!showNewProveedorInput">
-                                        <select name="proveedor_id" id="proveedor_select" x-model="form.proveedor_id"
-                                            @change="toggleNewProveedor()"
-                                            class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
-                                            <option value="">Seleccionar Proveedor</option>
-                                            <template x-for="prov in proveedores" :key="prov.id">
-                                                <option :value="prov.id" x-text="prov.nombre"></option>
-                                            </template>
-                                            <option value="new"
-                                                class="font-bold text-indigo-600 dark:text-indigo-400">+ Nuevo
-                                                Proveedor</option>
-                                        </select>
-                                    </div>
+                                    <div class="relative">
+                                        <div
+                                            class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="1.5"
+                                                    d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="1.5"
+                                                    d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0">
+                                                </path>
+                                            </svg>
+                                        </div>
 
-                                    <!-- Input Mode -->
-                                    <div x-show="showNewProveedorInput" style="display: none;" class="relative">
-                                        <input type="text" id="new_proveedor_input" x-model="newProveedor"
-                                            class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm pr-20"
-                                            placeholder="Introduzca nuevo proveedor">
-                                        <button type="button" @click="cancelNewProveedor()"
-                                            class="absolute inset-y-0 right-0 px-3 flex items-center text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
-                                            Cancelar
-                                        </button>
+                                        <!-- Select Mode -->
+                                        <div x-show="!showNewProveedorInput">
+                                            <select name="proveedor_id" id="proveedor_select"
+                                                x-model="form.proveedor_id" @change="toggleNewProveedor()"
+                                                class="block w-full rounded-xl border-gray-300 py-3 pl-10 pr-10 shadow-sm focus:border-indigo-600 focus:ring-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
+                                                <option value="">Seleccionar Proveedor</option>
+                                                <template x-for="prov in proveedores" :key="prov.id">
+                                                    <option :value="prov.id" x-text="prov.nombre"></option>
+                                                </template>
+                                                <option value="new"
+                                                    class="font-bold text-indigo-600 dark:text-indigo-400">+ Nuevo
+                                                    Proveedor</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Input Mode -->
+                                        <div x-show="showNewProveedorInput" style="display: none;">
+                                            <input type="text" id="new_proveedor_input" x-model="newProveedor"
+                                                class="block w-full rounded-xl border-gray-300 py-3 pl-10 pr-24 shadow-sm focus:border-indigo-600 focus:ring-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                                                placeholder="Introduzca nuevo proveedor">
+                                            <button type="button" @click="cancelNewProveedor()"
+                                                class="absolute inset-y-0 right-0 px-4 flex items-center text-sm font-bold text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors">
+                                                Cancelar
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <!-- Maquina -->
-                                <div>
-                                    <label for="maquina_id"
-                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Máquina</label>
-                                    <select name="maquina_id" id="maquina_id" x-model="form.maquina_id"
-                                        class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
-                                        <option value="">Seleccionar Máquina</option>
-                                        @foreach ($maquinas as $maq)
-                                            <option value="{{ $maq->id }}">{{ $maq->nombre }}</option>
-                                        @endforeach
-                                    </select>
+                                <!-- Maquina Afectada (Custom Select) -->
+                                <div class="relative">
+                                    <label
+                                        class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Máquina</label>
+                                    <input type="hidden" name="maquina_id" x-model="form.maquina_id">
+
+                                    <div class="relative">
+                                        <!-- Search Input Trigger -->
+                                        <div class="relative">
+                                            <input type="text" x-model="machineSearch" @input="onSearchInput"
+                                                @click="openMachineDropdown = true"
+                                                @click.away="openMachineDropdown = false"
+                                                placeholder="Buscar y seleccionar máquina..."
+                                                class="w-full rounded-xl border border-gray-300 py-3 pl-12 pr-4 text-sm font-medium focus:border-indigo-600 focus:outline-none focus:ring-transparent shadow-sm placeholder-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                autocomplete="off">
+
+                                            <!-- Leading Icon (or Selected Image) -->
+                                            <div
+                                                class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                                <template x-if="selectedMachine && selectedMachine.image">
+                                                    <img :src="selectedMachine.image"
+                                                        class="h-6 w-6 rounded-full object-cover border border-gray-200">
+                                                </template>
+                                                <template x-if="!selectedMachine || !selectedMachine.image">
+                                                    <!-- Box/Machine Icon -->
+                                                    <svg class="h-6 w-6 text-gray-400"
+                                                        xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                                        fill="none" stroke="currentColor" stroke-width="1.5"
+                                                        stroke-linecap="round" stroke-linejoin="round">
+                                                        <path
+                                                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                                        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                                        <line x1="12" y1="22.08" x2="12"
+                                                            y2="12" />
+                                                    </svg>
+                                                </template>
+                                            </div>
+
+                                            <!-- Dropdown Chevron -->
+                                            <div
+                                                class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                                <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20"
+                                                    fill="currentColor">
+                                                    <path fill-rule="evenodd"
+                                                        d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                                                        clip-rule="evenodd" />
+                                                </svg>
+                                            </div>
+                                        </div>
+
+                                        <!-- Dropdown List -->
+                                        <div x-show="openMachineDropdown"
+                                            class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl bg-white dark:bg-gray-800 py-1 text-sm shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none"
+                                            style="display: none;">
+
+                                            @foreach ($maquinas as $maquina)
+                                                <div x-show="machineSearch === '' || '{{ strtolower($maquina->nombre . ' ' . ($maquina->codigo ?? '')) }}'.includes(machineSearch.toLowerCase())"
+                                                    @click="selectMachine('{{ $maquina->id }}', '{{ $maquina->codigo ?? '' }}', '{{ $maquina->nombre }}', '{{ $maquina->imagen ? asset($maquina->imagen) : '' }}')"
+                                                    class="relative cursor-pointer select-none py-3 pl-3 pr-9 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-200 border-b border-gray-50 dark:border-gray-700 last:border-0 transition-colors group">
+                                                    <div class="flex items-center">
+                                                        <!-- Icon/Image -->
+                                                        <div class="shrink-0 mr-3">
+                                                            @if ($maquina->imagen)
+                                                                <img src="{{ asset($maquina->imagen) }}"
+                                                                    alt=""
+                                                                    class="h-9 w-9 rounded-full object-cover border border-gray-200 dark:border-gray-600">
+                                                            @else
+                                                                <div
+                                                                    class="h-9 w-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                                                        width="18" height="18"
+                                                                        viewBox="0 0 24 24" fill="none"
+                                                                        stroke="currentColor" stroke-width="2"
+                                                                        stroke-linecap="round"
+                                                                        stroke-linejoin="round">
+                                                                        <path
+                                                                            d="m21.12 6.4-6.05-4.06a2 2 0 0 0-2.17-.05L2.95 8.41a2 2 0 0 0-.95 1.7v5.82a2 2 0 0 0 .88 1.66l6.05 4.07a2 2 0 0 0 2.17.05l9.95-6.12a2 2 0 0 0 .95-1.7V8.06a2 2 0 0 0-.88-1.66Z" />
+                                                                        <path d="M10 22v-8L2.25 9.15" />
+                                                                        <path d="m10 14 11.77-6.87" />
+                                                                    </svg>
+                                                                </div>
+                                                            @endif
+                                                        </div>
+                                                        <!-- Text Info -->
+                                                        <div class="flex flex-col">
+                                                            <div
+                                                                class="font-bold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                                                                {{ $maquina->nombre }}
+                                                            </div>
+                                                            <div
+                                                                class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                                                <svg class="w-3 h-3" fill="none"
+                                                                    stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round"
+                                                                        stroke-linejoin="round" stroke-width="2"
+                                                                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
+                                                                    </path>
+                                                                </svg>
+                                                                <span class="font-medium text-gray-400">|</span>
+                                                                <span>{{ $maquina->obra->obra ?? 'Sin obra asignada' }}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                            <!-- Empty state -->
+                                            <div x-show="machineSearch !== '' && $el.querySelectorAll('div[x-show]').length === 0"
+                                                class="p-3 text-center text-gray-500 text-sm">
+                                                No se encontraron máquinas
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <!-- Motivo -->
+                                <!-- Motivo -->
                                 <div class="col-span-1">
                                     <label for="motivo_id"
-                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Motivo</label>
+                                        class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Motivo</label>
 
-                                    <!-- Select Mode -->
-                                    <div x-show="!showNewMotivoInput">
-                                        <select name="motivo_id" id="motivo_select" x-model="form.motivo_id"
-                                            @change="toggleNewMotivo()"
-                                            class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
-                                            <option value="">Seleccionar Motivo</option>
-                                            <template x-for="mot in motivos" :key="mot.id">
-                                                <option :value="mot.id" x-text="mot.nombre"></option>
-                                            </template>
-                                            <option value="new"
-                                                class="font-bold text-indigo-600 dark:text-indigo-400">+ Nuevo Motivo
-                                            </option>
-                                        </select>
-                                    </div>
+                                    <div class="relative">
+                                        <div
+                                            class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="1.5"
+                                                    d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 8V3c0-1.105.895-2 2-2z">
+                                                </path>
+                                            </svg>
+                                        </div>
 
-                                    <!-- Input Mode -->
-                                    <div x-show="showNewMotivoInput" style="display: none;" class="relative">
-                                        <input type="text" id="new_motivo_input" x-model="newMotivo"
-                                            class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm pr-20"
-                                            placeholder="Introduzca nuevo motivo">
-                                        <button type="button" @click="cancelNewMotivo()"
-                                            class="absolute inset-y-0 right-0 px-3 flex items-center text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
-                                            Cancelar
-                                        </button>
+                                        <!-- Select Mode -->
+                                        <div x-show="!showNewMotivoInput">
+                                            <select name="motivo_id" id="motivo_select" x-model="form.motivo_id"
+                                                @change="toggleNewMotivo()"
+                                                class="block w-full rounded-xl border-gray-300 py-3 pl-10 pr-10 shadow-sm focus:border-indigo-600 focus:ring-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
+                                                <option value="">Seleccionar Motivo</option>
+                                                <template x-for="mot in motivos" :key="mot.id">
+                                                    <option :value="mot.id" x-text="mot.nombre"></option>
+                                                </template>
+                                                <option value="new"
+                                                    class="font-bold text-indigo-600 dark:text-indigo-400">+ Nuevo
+                                                    Motivo</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Input Mode -->
+                                        <div x-show="showNewMotivoInput" style="display: none;">
+                                            <input type="text" id="new_motivo_input" x-model="newMotivo"
+                                                class="block w-full rounded-xl border-gray-300 py-3 pl-10 pr-24 shadow-sm focus:border-indigo-600 focus:ring-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                                                placeholder="Introduzca nuevo motivo">
+                                            <button type="button" @click="cancelNewMotivo()"
+                                                class="absolute inset-y-0 right-0 px-4 flex items-center text-sm font-bold text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors">
+                                                Cancelar
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <!-- Coste -->
                                 <div>
                                     <label for="coste"
-                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Coste
+                                        class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Coste
                                         (€)</label>
-                                    <input type="number" step="0.01" name="coste" id="coste"
-                                        x-model="form.coste"
-                                        class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
+                                    <div class="relative">
+                                        <div
+                                            class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="1.5"
+                                                    d="M14.121 15.536c-1.171 1.952-3.07 1.952-4.242 0-1.172-1.953-1.172-5.119 0-7.072 1.171-1.952 3.07-1.952 4.242 0M8 10.5h4m-4 3h4">
+                                                </path>
+                                            </svg>
+                                        </div>
+                                        <input type="number" step="0.01" name="coste" id="coste"
+                                            x-model="form.coste"
+                                            class="block w-full rounded-xl border-gray-300 py-3 pl-10 pr-4 shadow-sm focus:border-indigo-600 focus:ring-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm placeholder-gray-400">
+                                    </div>
                                 </div>
 
                                 <!-- Observaciones -->
                                 <div class="col-span-2">
                                     <label for="observaciones"
-                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Observaciones</label>
-                                    <textarea name="observaciones" id="observaciones" rows="3" x-model="form.observaciones"
-                                        class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"></textarea>
+                                        class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Observaciones</label>
+                                    <div class="relative">
+                                        <div class="absolute top-3 left-3 pointer-events-none">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="1.5" d="M4 6h16M4 12h16M4 18h7"></path>
+                                            </svg>
+                                        </div>
+                                        <textarea name="observaciones" id="observaciones" rows="3" x-model="form.observaciones"
+                                            class="block w-full rounded-xl border-gray-300 py-3 pl-10 pr-4 shadow-sm focus:border-indigo-600 focus:ring-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm placeholder-gray-400"></textarea>
+                                    </div>
                                 </div>
 
                             </div>
@@ -475,6 +679,30 @@
                     coste: '',
                     observaciones: ''
                 },
+                // Machine Dropdown State
+                machineSearch: '',
+                selectedMachine: null,
+                openMachineDropdown: false,
+
+                selectMachine(id, code, name, image) {
+                    this.selectedMachine = {
+                        id,
+                        code,
+                        name,
+                        image
+                    };
+                    this.form.maquina_id = id;
+                    this.machineSearch = `${name}`;
+                    this.openMachineDropdown = false;
+                },
+
+                onSearchInput() {
+                    this.openMachineDropdown = true;
+                    if (this.machineSearch === '') {
+                        this.selectedMachine = null;
+                        this.form.maquina_id = '';
+                    }
+                },
 
                 // Fields for dynamic creation
                 showNewProveedorInput: false,
@@ -512,6 +740,21 @@
                         coste: gasto.coste,
                         observaciones: gasto.observaciones
                     };
+
+                    // Set selected machine if exists
+                    if (gasto.maquina) {
+                        this.selectedMachine = {
+                            id: gasto.maquina.id,
+                            code: gasto.maquina.codigo || '',
+                            name: gasto.maquina.nombre,
+                            image: gasto.maquina.imagen ? `/${gasto.maquina.imagen}` : null
+                        };
+                        this.machineSearch = gasto.maquina.nombre;
+                    } else {
+                        this.selectedMachine = null;
+                        this.machineSearch = '';
+                    }
+
                     this.isEditing = true;
                     this.formAction = `/gastos/${gasto.id}`;
                     this.showModal = true;
@@ -523,7 +766,7 @@
 
                 resetForm() {
                     this.form = {
-                        fecha_pedido: new Date().toISOString().split('T')[0],
+                        fecha_pedido: '',
                         fecha_llegada: '',
                         nave_id: '',
                         obra_id: '',
@@ -538,6 +781,9 @@
                     this.showNewMotivoInput = false;
                     this.newMotivo = '';
                     this.isEditing = false;
+                    this.machineSearch = '';
+                    this.selectedMachine = null;
+                    this.openMachineDropdown = false;
                 },
 
                 toggleNewProveedor() {
@@ -584,6 +830,8 @@
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
                                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
                                         .getAttribute('content')
                                 },
@@ -612,6 +860,8 @@
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
                                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
                                         .getAttribute('content')
                                 },
@@ -642,6 +892,7 @@
                             headers: {
                                 'Content-Type': 'application/json',
                                 'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
                                     'content')
                             },
@@ -674,7 +925,7 @@
 
                     } catch (e) {
                         console.error(e);
-                        alert('Ocurrió un error inesperado.');
+                        alert('Ocurrió un error inesperado: ' + e);
                     }
                 }
             }
