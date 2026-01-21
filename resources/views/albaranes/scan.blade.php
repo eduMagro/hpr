@@ -347,7 +347,7 @@
                         </button>
 
                         <!-- Botón: continuar manualmente (sin OCR) -->
-                        <button type="button" id="mobile-step1-manual-btn" onclick="iniciarRellenoManualMobile()"
+                        <button type="button" id="mobile-step1-manual-btn hidden" onclick="iniciarRellenoManualMobile()"
                             class="w-full px-4 py-3 bg-white text-gray-900 rounded-lg font-semibold border border-gray-300 shadow-sm hover:bg-gray-50 transition">
                             Rellenar manualmente (sin procesar)
                         </button>
