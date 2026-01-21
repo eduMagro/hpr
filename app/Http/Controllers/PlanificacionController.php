@@ -276,11 +276,24 @@ class PlanificacionController extends Controller
             ->orderBy('fecha_estimada_entrega', 'asc')
             ->limit(20)
             ->get()
-            ->map(fn($p) => [
-                'id' => $p->id,
-                'codigo' => $p->codigo,
-                'fecha' => $p->fecha_estimada_entrega?->format('d/m/Y') ?? 'S/F',
-            ]);
+            ->map(function($p) {
+                $fecha = 'S/F';
+                if ($p->fecha_estimada_entrega) {
+                    try {
+                        $fechaObj = $p->fecha_estimada_entrega instanceof Carbon
+                            ? $p->fecha_estimada_entrega
+                            : Carbon::parse($p->fecha_estimada_entrega);
+                        $fecha = $fechaObj->format('d/m/Y');
+                    } catch (\Exception $e) {
+                        $fecha = 'S/F';
+                    }
+                }
+                return [
+                    'id' => $p->id,
+                    'codigo' => $p->codigo,
+                    'fecha' => $fecha,
+                ];
+            });
 
         return response()->json($planillas);
     }
@@ -778,10 +791,14 @@ class PlanificacionController extends Controller
         $planillasIds = $planillas->pluck('id')->toArray();
         $planillasCodigos = $planillas->pluck('codigo')->filter()->toArray();
         // Mapa de código -> fecha de entrega para mostrar en filtro
-        $planillasConFecha = $planillas->filter(fn($p) => $p->codigo)->map(fn($p) => [
-            'codigo' => $p->codigo,
-            'fecha' => $p->fecha_estimada_entrega?->toDateString() ?? $fechaBase->toDateString(),
-        ])->values()->toArray();
+        $planillasConFecha = $planillas->filter(fn($p) => $p->codigo)->map(function($p) use ($fechaBase) {
+            $fechaRaw = $p->getRawOriginal('fecha_estimada_entrega');
+            $fecha = $fechaRaw ? Carbon::parse($fechaRaw)->toDateString() : $fechaBase->toDateString();
+            return [
+                'codigo' => $p->codigo,
+                'fecha' => $fecha,
+            ];
+        })->values()->toArray();
 
         // 👉 Diámetro medio
         $diametros = $planillas->flatMap->elementos->pluck('diametro')->filter();
