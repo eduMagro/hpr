@@ -804,8 +804,18 @@
         }
 
         async function completarLineaManual(pedidoId, lineaId) {
-            const confirmar = confirm('¿Estás seguro de que deseas completar esta línea?');
-            if (!confirmar) return;
+            const resultado = await Swal.fire({
+                title: '¿Completar línea?',
+                text: '¿Estás seguro de que deseas completar esta línea?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#16a34a',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sí, completar',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (!resultado.isConfirmed) return;
 
             const btnCompletar = document.querySelector(`.btn-completar-${lineaId}`);
             if (btnCompletar) {
