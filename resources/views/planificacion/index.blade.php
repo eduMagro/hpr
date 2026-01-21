@@ -311,55 +311,75 @@
 
     {{-- Búsqueda de planillas para mostrar badges informativos --}}
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const inputPlanilla = document.getElementById('filtro-cod-planilla');
-            const containerResultados = document.getElementById('planillas-encontradas');
-            const listaResultados = document.getElementById('planillas-encontradas-lista');
-            let debounceTimer = null;
+        (function() {
+            function initBuscadorPlanillas() {
+                const inputPlanilla = document.getElementById('filtro-cod-planilla');
+                const containerResultados = document.getElementById('planillas-encontradas');
+                const listaResultados = document.getElementById('planillas-encontradas-lista');
 
-            if (!inputPlanilla || !containerResultados || !listaResultados) return;
+                if (!inputPlanilla || !containerResultados || !listaResultados) return;
 
-            inputPlanilla.addEventListener('input', function() {
-                clearTimeout(debounceTimer);
-                const codigo = this.value.trim();
+                // Evitar doble inicialización
+                if (inputPlanilla.dataset.buscadorInit === 'true') return;
+                inputPlanilla.dataset.buscadorInit = 'true';
 
-                if (codigo.length < 2) {
+                let debounceTimer = null;
+
+                inputPlanilla.addEventListener('input', function() {
+                    clearTimeout(debounceTimer);
+                    const codigo = this.value.trim();
+
+                    if (codigo.length < 2) {
+                        containerResultados.classList.add('hidden');
+                        listaResultados.innerHTML = '';
+                        return;
+                    }
+
+                    debounceTimer = setTimeout(() => {
+                        fetch(`{{ route('planificacion.buscarPlanillas') }}?codigo=${encodeURIComponent(codigo)}`)
+                            .then(res => res.json())
+                            .then(planillas => {
+                                if (planillas.length === 0) {
+                                    containerResultados.classList.add('hidden');
+                                    listaResultados.innerHTML = '';
+                                    return;
+                                }
+
+                                listaResultados.innerHTML = planillas.map(p =>
+                                    `<span class="inline-flex items-center px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300">
+                                        <strong>${p.codigo}</strong>
+                                        <span class="ml-1 text-purple-600">(${p.fecha})</span>
+                                    </span>`
+                                ).join('');
+                                containerResultados.classList.remove('hidden');
+                            })
+                            .catch(err => {
+                                console.error('Error buscando planillas:', err);
+                                containerResultados.classList.add('hidden');
+                            });
+                    }, 300);
+                });
+
+                // Limpiar al resetear filtros
+                document.getElementById('btn-reset-filtros')?.addEventListener('click', () => {
                     containerResultados.classList.add('hidden');
                     listaResultados.innerHTML = '';
-                    return;
-                }
+                });
+            }
 
-                debounceTimer = setTimeout(() => {
-                    fetch(`{{ route('planificacion.buscarPlanillas') }}?codigo=${encodeURIComponent(codigo)}`)
-                        .then(res => res.json())
-                        .then(planillas => {
-                            if (planillas.length === 0) {
-                                containerResultados.classList.add('hidden');
-                                listaResultados.innerHTML = '';
-                                return;
-                            }
+            // Inicializar en DOMContentLoaded
+            document.addEventListener('DOMContentLoaded', initBuscadorPlanillas);
 
-                            listaResultados.innerHTML = planillas.map(p =>
-                                `<span class="inline-flex items-center px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300">
-                                    <strong>${p.codigo}</strong>
-                                    <span class="ml-1 text-purple-600">(${p.fecha})</span>
-                                </span>`
-                            ).join('');
-                            containerResultados.classList.remove('hidden');
-                        })
-                        .catch(err => {
-                            console.error('Error buscando planillas:', err);
-                            containerResultados.classList.add('hidden');
-                        });
-                }, 300);
-            });
+            // Inicializar en navegación Livewire
+            if (typeof Livewire !== 'undefined') {
+                document.addEventListener('livewire:navigated', initBuscadorPlanillas);
+            }
 
-            // Limpiar al resetear filtros
-            document.getElementById('btn-reset-filtros')?.addEventListener('click', () => {
-                containerResultados.classList.add('hidden');
-                listaResultados.innerHTML = '';
-            });
-        });
+            // Ejecutar inmediatamente si el DOM ya está listo
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                initBuscadorPlanillas();
+            }
+        })();
     </script>
 
     <!-- Componente Livewire para comentarios -->
