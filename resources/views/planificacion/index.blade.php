@@ -317,9 +317,26 @@
 
             if (window.calendar && typeof window.calendar.gotoDate === 'function') {
                 window.calendar.gotoDate(fechaISO);
+
                 setTimeout(() => {
-                    document.getElementById('calendario')?.scrollIntoView({behavior: 'smooth', block: 'start'});
-                }, 150);
+                    // Buscar la celda del día específico en el calendario
+                    const dayCell = document.querySelector(`[data-date="${fechaISO}"]`) ||
+                                   document.querySelector(`.fc-day[data-date="${fechaISO}"]`) ||
+                                   document.querySelector(`td[data-date="${fechaISO}"]`);
+
+                    if (dayCell) {
+                        dayCell.scrollIntoView({behavior: 'smooth', block: 'center'});
+                        // Resaltar brevemente la celda
+                        dayCell.style.transition = 'background-color 0.3s';
+                        dayCell.style.backgroundColor = '#c4b5fd';
+                        setTimeout(() => {
+                            dayCell.style.backgroundColor = '';
+                        }, 1500);
+                    } else {
+                        // Si no encuentra la celda, al menos scroll al calendario
+                        document.getElementById('calendario')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+                    }
+                }, 200);
             } else {
                 console.error('Calendario no disponible');
             }
