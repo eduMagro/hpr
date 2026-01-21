@@ -11,9 +11,9 @@ class Gasto extends Model
         'fecha_llegada',
         'nave_id',
         'obra_id',
-        'proveedor',
+        'proveedor_id',
         'maquina_id',
-        'motivo',
+        'motivo_id',
         'coste',
         'factura_id',
         'observaciones',
@@ -37,5 +37,15 @@ class Gasto extends Model
     public function factura()
     {
         return $this->belongsTo(Factura::class);
+    }
+
+    public function proveedor()
+    {
+        return $this->belongsTo(GastoProveedor::class, 'proveedor_id');
+    }
+
+    public function motivo()
+    {
+        return $this->belongsTo(GastoMotivo::class, 'motivo_id');
     }
 }

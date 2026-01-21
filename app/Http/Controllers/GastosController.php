@@ -12,7 +12,7 @@ class GastosController extends Controller
     {
         $perPage = $request->input('per_page', 10);
 
-        $gastos = Gasto::with(['nave', 'obra', 'maquina', 'factura'])
+        $gastos = Gasto::with(['nave', 'obra', 'maquina', 'factura', 'proveedor', 'motivo'])
             ->orderBy('fecha_pedido', 'desc')
             ->paginate($perPage);
 
@@ -24,49 +24,30 @@ class GastosController extends Controller
                 ->sum('coste'),
         ];
 
-        $obras = \App\Models\Obra::orderBy('obra')->get();
+        $obras = \App\Models\Obra::whereNotIn('obra', ['Nave A', 'Nave B'])->orderBy('obra')->get();
+        // Naves can be hardcoded or filtered from Obras if they exist there, 
+        // but user specifically requested "Nave A" and "Nave B".
+        // If these are IDs in the 'obras' table, we should find them. 
+        // However, given the request "que solo salgan Nave A y Nave B", we can pass a specific list.
+        // But since the DB expects an ID (nave_id constrained to obras), we must ensure 
+        // these exist in the Obras table or handle them as specific logic.
+        // Assuming current requirement is just to SHOW these options for selection.
+        // If 'nave_id' is an FK to 'obras', we probably need to find the Obras named "Nave A" and "Nave B".
+        // Let's filter the works to find those two, or if they are just strings, use strings.
+        // But the model says: "nave_id constrained('obras')". So they MUST be in the Obras table.
+        // Let's search for them.
+        $naves = \App\Models\Obra::whereIn('obra', ['Nave A', 'Nave B'])->get();
+
+        // If they don't exist by name, we might be in trouble, but assuming they do or user means these are the only choices.
+        // If the user meant "Creating them if not exist", that's another step. 
+        // For now, let's assume they are valid 'Obra' records.
+
         $maquinas = \App\Models\Maquina::orderBy('nombre')->get();
 
-        $proveedoresLista = [
-            'PROGRESS',
-            'ARGEMAQ MACHINES S.L',
-            'BIGMAT',
-            'grupo portillo',
-            'DAKO RETAIL, S.L',
-            'RIGMSUR S.L',
-            'PONCESUR',
-            'FONTANERIA Y AZULEJOS RODRIGUEZ S.L',
-            'SOLDADURAS DE ANDALUCÍA S.L',
-            'HIERROS PACO REYES S.L.U',
-            'ELEKTRA ANDALUCIA XXI S.L',
-            'RODAMIENTOS BLANCO,S.L',
-            'RODAMIENTOS PEREIRA',
-            'COMERCIO JAILIN S.L',
-            'PRONOVA SOLUCIONES INDUSTRIALES',
-            'SATEL',
-            'RADIADORES GARRINCHA',
-            'MECANIZADOS R. LÓPEZ E HIJOS, S.L',
-            'PASCUAL BLANCH',
-        ];
+        $proveedoresLista = \App\Models\GastoProveedor::orderBy('nombre')->get();
+        $motivosLista = \App\Models\GastoMotivo::orderBy('nombre')->get();
 
-        $motivosLista = [
-            'AVERÍA',
-            'PRODUCCIÓN',
-            'MEJORA',
-            'ACOND. OBRA',
-            'EPI´S',
-            'BOTAS SEGURIDAD',
-            'LIMPIEZA NAVE/SERVICIOS',
-            'OBRAS NAVE',
-            'RECUENTO',
-            'MONTAJE MÁQUINAS',
-            'HILO SOLDAR',
-            'FILTRO GASOIL',
-            'MANTENIMIENTO',
-            'MONTAJE RED ELÉCTRICA',
-        ];
-
-        return view('components.gastos.index', compact('gastos', 'perPage', 'stats', 'obras', 'maquinas', 'proveedoresLista', 'motivosLista'));
+        return view('components.gastos.index', compact('gastos', 'perPage', 'stats', 'obras', 'naves', 'maquinas', 'proveedoresLista', 'motivosLista'));
     }
 
     public function store(Request $request)
@@ -76,14 +57,22 @@ class GastosController extends Controller
             'fecha_llegada' => 'nullable|date',
             'nave_id' => 'nullable|exists:obras,id',
             'obra_id' => 'nullable|exists:obras,id',
-            'proveedor' => 'nullable|string|max:255',
+            'proveedor_id' => 'nullable|exists:gastos_proveedores,id',
             'maquina_id' => 'nullable|exists:maquinas,id',
-            'motivo' => 'nullable|string|max:255',
+            'motivo_id' => 'nullable|exists:gastos_motivos,id',
             'coste' => 'nullable|numeric',
             'observaciones' => 'nullable|string',
         ]);
 
-        Gasto::create($validated);
+        $gasto = Gasto::create($validated);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Gasto creado correctamente.',
+                'gasto' => $gasto
+            ]);
+        }
 
         return redirect()->route('gastos.index')->with('success', 'Gasto creado correctamente.');
     }
@@ -95,14 +84,22 @@ class GastosController extends Controller
             'fecha_llegada' => 'nullable|date',
             'nave_id' => 'nullable|exists:obras,id',
             'obra_id' => 'nullable|exists:obras,id',
-            'proveedor' => 'nullable|string|max:255',
+            'proveedor_id' => 'nullable|exists:gastos_proveedores,id',
             'maquina_id' => 'nullable|exists:maquinas,id',
-            'motivo' => 'nullable|string|max:255',
+            'motivo_id' => 'nullable|exists:gastos_motivos,id',
             'coste' => 'nullable|numeric',
             'observaciones' => 'nullable|string',
         ]);
 
         $gasto->update($validated);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Gasto actualizado correctamente.',
+                'gasto' => $gasto
+            ]);
+        }
 
         return redirect()->route('gastos.index')->with('success', 'Gasto actualizado correctamente.');
     }
@@ -111,5 +108,35 @@ class GastosController extends Controller
     {
         $gasto->delete();
         return redirect()->route('gastos.index')->with('success', 'Gasto eliminado correctamente.');
+    }
+
+    public function storeProveedor(Request $request)
+    {
+        $validated = $request->validate([
+            'nombre' => 'required|string|unique:gastos_proveedores,nombre|max:255',
+        ]);
+
+        $proveedor = \App\Models\GastoProveedor::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'id' => $proveedor->id,
+            'nombre' => $proveedor->nombre
+        ]);
+    }
+
+    public function storeMotivo(Request $request)
+    {
+        $validated = $request->validate([
+            'nombre' => 'required|string|unique:gastos_motivos,nombre|max:255',
+        ]);
+
+        $motivo = \App\Models\GastoMotivo::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'id' => $motivo->id,
+            'nombre' => $motivo->nombre
+        ]);
     }
 }

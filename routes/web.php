@@ -747,6 +747,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::resource('obras', ObraController::class);
 
     // === GASTOS ===
+    Route::post('/gastos/proveedores', [GastosController::class, 'storeProveedor'])->name('gastos.storeProveedor');
+    Route::post('/gastos/motivos', [GastosController::class, 'storeMotivo'])->name('gastos.storeMotivo');
     Route::resource('gastos', GastosController::class)->names('gastos');
     Route::post('/obras/actualizar-tipo', [ObraController::class, 'updateTipo'])->name('obras.updateTipo');
     Route::get('/asignaciones-turno/eventos-obra', [ProduccionController::class, 'eventosObra'])->name('asignaciones-turnos.verEventosObra');
