@@ -796,8 +796,19 @@
             }
         }
 
-        function confirmarCancelacionLinea(pedidoId, lineaId) {
-            if (confirm('¿Estás seguro de que deseas cancelar esta línea?')) {
+        async function confirmarCancelacionLinea(pedidoId, lineaId) {
+            const resultado = await Swal.fire({
+                title: '¿Cancelar línea?',
+                text: '¿Estás seguro de que deseas cancelar esta línea?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#6b7280',
+                cancelButtonColor: '#3b82f6',
+                confirmButtonText: 'Sí, cancelar',
+                cancelButtonText: 'No, volver'
+            });
+
+            if (resultado.isConfirmed) {
                 document.querySelector(`.form-cancelar-linea[data-pedido-id="${pedidoId}"][data-linea-id="${lineaId}"]`)
                     .submit();
             }
