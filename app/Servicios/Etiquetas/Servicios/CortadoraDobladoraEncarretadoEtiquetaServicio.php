@@ -26,6 +26,13 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
             /** @var Maquina $maquina */
             $maquina = Maquina::findOrFail($datos->maquinaId);
 
+            // Detectar si es MSR20 para fabricación en lote
+            $esMSR20 = strtoupper($maquina->codigo ?? '') === 'MSR20';
+
+            if ($esMSR20) {
+                return $this->actualizarConHermanas($datos, $maquina);
+            }
+
             // Bloqueo etiqueta + elementos
             $etiqueta = Etiqueta::with('planilla')
                 ->where('etiqueta_sub_id', $datos->etiquetaSubId)
@@ -499,5 +506,374 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
             }
             $elemento->save();
         }
+    }
+
+    // ================================================================================
+    // FABRICACIÓN EN LOTE PARA MSR20 (ETIQUETAS HERMANAS)
+    // ================================================================================
+
+    /**
+     * Procesa la etiqueta principal y todas sus hermanas en una sola transacción.
+     * Las hermanas comparten: código padre, planilla y máquina.
+     */
+    private function actualizarConHermanas(ActualizarEtiquetaDatos $datos, Maquina $maquina): ActualizarEtiquetaResultado
+    {
+        // 1) Obtener la etiqueta principal con bloqueo
+        $etiquetaPrincipal = Etiqueta::with('planilla')
+            ->where('etiqueta_sub_id', $datos->etiquetaSubId)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        // 2) Buscar todas las etiquetas hermanas
+        $hermanas = $this->buscarEtiquetasHermanas($etiquetaPrincipal, $maquina);
+
+        // 3) Variables acumulativas para todas las hermanas
+        $warnings = [];
+        $productosAfectados = [];
+        $etiquetasActualizadas = [];
+        $operario1Id = $datos->operario1Id;
+        $operario2Id = $datos->operario2Id;
+        $solicitarRecargaAuto = $datos->opciones['recarga_auto'] ?? true;
+
+        // 4) Determinar el estado objetivo basado en el estado de la etiqueta principal
+        $estadoObjetivo = $etiquetaPrincipal->estado;
+
+        // 5) Procesar cada hermana (incluida la principal)
+        foreach ($hermanas as $etiqueta) {
+            // Solo procesar etiquetas que estén en el mismo estado que la principal
+            // o en estado compatible (pendiente → fabricando, fabricando → fabricada)
+            if ($etiqueta->estado !== $estadoObjetivo) {
+                continue;
+            }
+
+            $resultado = $this->procesarEtiquetaIndividualMSR20(
+                etiqueta: $etiqueta,
+                maquina: $maquina,
+                operario1Id: $operario1Id,
+                operario2Id: $operario2Id,
+                solicitarRecargaAuto: $solicitarRecargaAuto,
+                warnings: $warnings,
+                productosAfectados: $productosAfectados
+            );
+
+            // Solo agregar si se procesó correctamente
+            if ($resultado) {
+                $etiquetasActualizadas[] = $etiqueta->etiqueta_sub_id;
+            }
+        }
+
+        // 6) Refrescar la etiqueta principal para retornar
+        $etiquetaPrincipal->refresh();
+
+        // 7) Agregar mensaje informativo sobre las hermanas procesadas
+        if (count($etiquetasActualizadas) > 1) {
+            $warnings[] = "MSR20: Procesadas " . count($etiquetasActualizadas) . " etiquetas hermanas del lote " . Str::before($datos->etiquetaSubId, '.');
+        }
+
+        return new ActualizarEtiquetaResultado(
+            etiqueta: $etiquetaPrincipal,
+            warnings: $warnings,
+            productosAfectados: array_values($productosAfectados),
+            metricas: [
+                'maquina_id' => $maquina->id,
+                'etiquetas_hermanas' => $etiquetasActualizadas,
+                'total_procesadas' => count($etiquetasActualizadas),
+            ]
+        );
+    }
+
+    /**
+     * Busca todas las etiquetas hermanas de una etiqueta dada.
+     * Hermanas: mismo código padre (antes del punto), misma planilla, misma máquina.
+     */
+    private function buscarEtiquetasHermanas(Etiqueta $etiquetaPrincipal, Maquina $maquina): \Illuminate\Database\Eloquent\Collection
+    {
+        // Extraer código padre (ETQ2512001.01 → ETQ2512001)
+        $codigoPadre = Str::before($etiquetaPrincipal->etiqueta_sub_id, '.');
+
+        // Si no tiene punto, solo procesar la etiqueta individual
+        if ($codigoPadre === $etiquetaPrincipal->etiqueta_sub_id) {
+            return Etiqueta::where('etiqueta_sub_id', $etiquetaPrincipal->etiqueta_sub_id)
+                ->lockForUpdate()
+                ->get();
+        }
+
+        // Si la etiqueta no tiene planilla, solo procesar la individual
+        // (evita agrupar etiquetas sin planilla que no están relacionadas)
+        if (!$etiquetaPrincipal->planilla_id) {
+            return Etiqueta::where('etiqueta_sub_id', $etiquetaPrincipal->etiqueta_sub_id)
+                ->lockForUpdate()
+                ->get();
+        }
+
+        // Buscar todas las hermanas
+        return Etiqueta::with('planilla')
+            ->where('etiqueta_sub_id', 'like', $codigoPadre . '.%')
+            ->where('planilla_id', $etiquetaPrincipal->planilla_id)
+            ->whereIn('estado', ['pendiente', 'fabricando']) // Solo las procesables
+            ->whereHas('elementos', function ($q) use ($maquina) {
+                $q->where('maquina_id', $maquina->id)
+                    ->orWhere('maquina_id_2', $maquina->id);
+            })
+            ->lockForUpdate()
+            ->orderBy('etiqueta_sub_id') // Procesar en orden
+            ->get();
+    }
+
+    /**
+     * Procesa una etiqueta individual en el contexto de MSR20.
+     * Contiene la lógica de transición de estados.
+     */
+    private function procesarEtiquetaIndividualMSR20(
+        Etiqueta $etiqueta,
+        Maquina $maquina,
+        ?int $operario1Id,
+        ?int $operario2Id,
+        bool $solicitarRecargaAuto,
+        array &$warnings,
+        array &$productosAfectados
+    ): bool {
+        $planilla = $etiqueta->planilla_id ? Planilla::find($etiqueta->planilla_id) : null;
+
+        // Elementos de la etiqueta en esta máquina
+        $elementosEnMaquina = $etiqueta->elementos()
+            ->where(function ($q) use ($maquina) {
+                $q->where('maquina_id', $maquina->id)
+                    ->orWhere('maquina_id_2', $maquina->id);
+            })
+            ->lockForUpdate()
+            ->get();
+
+        if ($elementosEnMaquina->isEmpty()) {
+            return false;
+        }
+
+        // Diámetros requeridos
+        $diametrosConPesos = $this->agruparPesosPorDiametro($elementosEnMaquina);
+        $diametrosRequeridos = $this->normalizarDiametros(array_keys($diametrosConPesos));
+
+        switch ($etiqueta->estado) {
+            case 'pendiente':
+                return $this->procesarPendienteMSR20(
+                    etiqueta: $etiqueta,
+                    maquina: $maquina,
+                    elementosEnMaquina: $elementosEnMaquina,
+                    diametrosRequeridos: $diametrosRequeridos,
+                    diametrosConPesos: $diametrosConPesos,
+                    operario1Id: $operario1Id,
+                    operario2Id: $operario2Id,
+                    solicitarRecargaAuto: $solicitarRecargaAuto,
+                    warnings: $warnings
+                );
+
+            case 'fabricando':
+                return $this->procesarFabricandoMSR20(
+                    etiqueta: $etiqueta,
+                    maquina: $maquina,
+                    elementosEnMaquina: $elementosEnMaquina,
+                    planilla: $planilla,
+                    operario1Id: $operario1Id,
+                    warnings: $warnings,
+                    productosAfectados: $productosAfectados
+                );
+
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Procesa una etiqueta pendiente → fabricando para MSR20
+     */
+    private function procesarPendienteMSR20(
+        Etiqueta $etiqueta,
+        Maquina $maquina,
+        $elementosEnMaquina,
+        array $diametrosRequeridos,
+        array $diametrosConPesos,
+        ?int $operario1Id,
+        ?int $operario2Id,
+        bool $solicitarRecargaAuto,
+        array &$warnings
+    ): bool {
+        // Obtener productos de la máquina para los diámetros requeridos
+        $productos = $maquina->productos()
+            ->whereHas('productoBase', function ($query) use ($diametrosRequeridos) {
+                $query->whereIn('diametro', $diametrosRequeridos);
+            })
+            ->with('productoBase')
+            ->orderBy('peso_stock')
+            ->get();
+
+        // Verificar si hay productos disponibles
+        if ($productos->isEmpty()) {
+            $warnings[] = "Etiqueta {$etiqueta->etiqueta_sub_id}: No se encontraron productos para los diámetros requeridos.";
+            return false;
+        }
+
+        // Agrupar por diámetro
+        $productosAgrupados = $productos->groupBy(fn($p) => (int) $p->productoBase->diametro);
+
+        // Verificar faltantes
+        $faltantes = [];
+        foreach ($diametrosRequeridos as $diametroReq) {
+            if (!$productosAgrupados->has((int)$diametroReq) || $productosAgrupados[(int)$diametroReq]->isEmpty()) {
+                $faltantes[] = (int) $diametroReq;
+            }
+        }
+
+        if (!empty($faltantes)) {
+            foreach ($faltantes as $diametroFaltante) {
+                $productoBaseFaltante = ProductoBase::where('diametro', $diametroFaltante)
+                    ->where('tipo', $maquina->tipo_material)
+                    ->first();
+
+                if ($productoBaseFaltante && $solicitarRecargaAuto) {
+                    $this->generarMovimientoRecargaMateriaPrima($productoBaseFaltante, $maquina, null);
+                }
+            }
+            $warnings[] = "Etiqueta {$etiqueta->etiqueta_sub_id}: Faltan materias primas para Ø" . implode(', Ø', $faltantes);
+            return false;
+        }
+
+        // Simulación de consumo para detectar insuficiencias
+        foreach ($diametrosConPesos as $diametro => $pesoNecesario) {
+            $productosPorDiametro = $productos
+                ->filter(fn($p) => (int)$p->productoBase->diametro === (int)$diametro)
+                ->sortBy('peso_stock');
+
+            $stockTotal = $productosPorDiametro->sum('peso_stock');
+
+            if ($stockTotal < $pesoNecesario && $solicitarRecargaAuto) {
+                $productoBase = ProductoBase::where('diametro', $diametro)
+                    ->where('tipo', $maquina->tipo_material)
+                    ->first();
+
+                if ($productoBase) {
+                    $this->generarMovimientoRecargaMateriaPrima($productoBase, $maquina, null);
+                    $warnings[] = "Etiqueta {$etiqueta->etiqueta_sub_id}: Stock bajo para Ø{$diametro}. Solicitada recarga.";
+                }
+            }
+        }
+
+        // Iniciar fabricación - actualizar planilla
+        if ($etiqueta->planilla) {
+            if ($etiqueta->planilla->estado !== 'fabricando') {
+                $etiqueta->planilla->estado = "fabricando";
+                $etiqueta->planilla->save();
+            }
+        }
+
+        // Asignar producto actual a los elementos
+        $diametroPrincipal = (int) $elementosEnMaquina->first()->diametro;
+        $productoActual = $productos
+            ->filter(fn($p) => (int)$p->productoBase->diametro === $diametroPrincipal)
+            ->sortBy('peso_stock')
+            ->first();
+
+        foreach ($elementosEnMaquina as $elemento) {
+            $elemento->estado = "fabricando";
+            if ($productoActual) {
+                $elemento->producto_id = $productoActual->id;
+            }
+            $elemento->save();
+        }
+
+        // Actualizar etiqueta
+        if ($productoActual) {
+            $etiqueta->producto_id = $productoActual->id;
+        }
+
+        $etiqueta->estado = "fabricando";
+        $etiqueta->operario1_id = $operario1Id;
+        $etiqueta->operario2_id = $operario2Id;
+        $etiqueta->fecha_inicio = now();
+        $etiqueta->save();
+
+        return true;
+    }
+
+    /**
+     * Procesa una etiqueta fabricando → fabricada para MSR20
+     */
+    private function procesarFabricandoMSR20(
+        Etiqueta $etiqueta,
+        Maquina $maquina,
+        $elementosEnMaquina,
+        ?Planilla $planilla,
+        ?int $operario1Id,
+        array &$warnings,
+        array &$productosAfectados
+    ): bool {
+        // Verificar que hay elementos pendientes
+        $quedanPendientes = $elementosEnMaquina->contains(function ($e) {
+            return !in_array($e->estado, ['fabricado', 'completado'], true);
+        });
+
+        if (!$quedanPendientes) {
+            return false; // Ya está completada
+        }
+
+        // Verificar si el producto cambió desde el primer clic
+        $diametroPrincipal = (int) $elementosEnMaquina->first()->diametro;
+        $productoActual = $maquina->productos()
+            ->whereHas('productoBase', fn($q) => $q->where('diametro', $diametroPrincipal))
+            ->orderBy('peso_stock')
+            ->first();
+
+        if ($productoActual) {
+            if ($etiqueta->producto_id && $etiqueta->producto_id != $productoActual->id) {
+                if (!$etiqueta->producto_id_2) {
+                    $etiqueta->producto_id_2 = $productoActual->id;
+                } elseif ($etiqueta->producto_id_2 != $productoActual->id && !$etiqueta->producto_id_3) {
+                    $etiqueta->producto_id_3 = $productoActual->id;
+                }
+            } elseif (!$etiqueta->producto_id) {
+                $etiqueta->producto_id = $productoActual->id;
+            }
+            $etiqueta->save();
+        }
+
+        // Ejecutar lógica de consumos
+        $this->actualizarElementosYConsumosCompleto(
+            elementosEnMaquina: $elementosEnMaquina,
+            maquina: $maquina,
+            etiqueta: $etiqueta,
+            warnings: $warnings,
+            productosAfectados: $productosAfectados,
+            planilla: $planilla,
+            solicitanteId: $operario1Id
+        );
+
+        // Verificar si la planilla ya no tiene pendientes en esta máquina
+        if ($planilla) {
+            $quedanPendientesEnEstaMaquina = Elemento::where('planilla_id', $planilla->id)
+                ->where(function ($q) use ($maquina) {
+                    $q->where('maquina_id', $maquina->id)
+                        ->orWhere('maquina_id_2', $maquina->id);
+                })
+                ->where(function ($q) {
+                    $q->whereNull('estado')->orWhere('estado', '!=', 'completado');
+                })
+                ->exists();
+
+            if (!$quedanPendientesEnEstaMaquina) {
+                DB::transaction(function () use ($planilla, $maquina) {
+                    $registro = OrdenPlanilla::where('planilla_id', $planilla->id)
+                        ->where('maquina_id', $maquina->id)
+                        ->lockForUpdate()
+                        ->first();
+                    if ($registro) {
+                        $pos = $registro->posicion;
+                        $registro->delete();
+                        OrdenPlanilla::where('maquina_id', $maquina->id)
+                            ->where('posicion', '>', $pos)
+                            ->decrement('posicion');
+                    }
+                });
+            }
+        }
+
+        return true;
     }
 }
