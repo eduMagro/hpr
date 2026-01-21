@@ -190,7 +190,7 @@
         <!-- Contenido -->
         <div>
             <h2 class="text-lg font-semibold text-gray-900">
-                {{ $planilla->obra->obra }} - {{ $planilla->cliente->empresa }}<br>
+                {{ $planilla->obra->obra ?? 'Sin obra' }} - {{ $planilla->cliente->empresa ?? 'Sin cliente' }}<br>
                 {{ $planilla->codigo_limpio }} - S:{{ $planilla->seccion }}
             </h2>
             <h3 class="text-lg font-semibold text-gray-900">
