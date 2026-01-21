@@ -433,7 +433,8 @@ class PaqueteController extends Controller
                 $ubicacion?->id ?? null, // ubicacion_id (null para grúa, se asigna después)
                 $pesoTotal,              // peso total del paquete
                 $codigo,                 // código generado
-                $maquina->obra_id        // nave/obra a la que pertenece
+                $maquina->obra_id,       // nave/obra a la que pertenece
+                $maquina->id             // maquina_id donde se creó el paquete
             );
 
             // 9) Reasignar etiquetas al NUEVO paquete
@@ -600,12 +601,13 @@ class PaqueteController extends Controller
     }
 
 
-    private function crearPaquete($planillaId, $ubicacionId, $pesoTotal, $codigo, $obraId)
+    private function crearPaquete($planillaId, $ubicacionId, $pesoTotal, $codigo, $obraId, $maquinaId = null)
     {
         try {
             return Paquete::create([
                 'planilla_id'   => $planillaId,
                 'ubicacion_id'  => $ubicacionId,
+                'maquina_id'    => $maquinaId,
                 'user_id'       => auth()->id(),
                 'peso'          => $pesoTotal ?? 0,
                 'codigo'        => $codigo,
@@ -851,8 +853,7 @@ class PaqueteController extends Controller
 
             // Filtrar por máquina si se proporciona el parámetro
             if ($request->has('maquina_id') && $request->maquina_id) {
-                $maquinaId = $request->maquina_id;
-                $query->where('ubicacion_id', $maquinaId);
+                $query->where('maquina_id', $request->maquina_id);
             }
 
             $paquetes = $query->orderBy('created_at', 'desc')->get();
