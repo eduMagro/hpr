@@ -320,6 +320,95 @@ class PlanificacionController extends Controller
     }
 
     /**
+     * Busca obras por código o nombre y devuelve sus planillas con fechas de entrega.
+     * Filtra desde hace 2 semanas hasta fin de año.
+     */
+    public function buscarObras(Request $request)
+    {
+        $codigo = $request->input('codigo', '');
+        $nombre = $request->input('nombre', '');
+
+        if (strlen($codigo) < 2 && strlen($nombre) < 2) {
+            return response()->json([]);
+        }
+
+        // Rango de fechas: desde hace 2 semanas hasta fin de año
+        $fechaInicio = Carbon::now()->subWeeks(2)->startOfDay();
+        $fechaFin = Carbon::now()->endOfYear();
+
+        $query = Obra::query();
+
+        if (strlen($codigo) >= 2) {
+            $query->where('codigo', 'LIKE', "%{$codigo}%");
+        }
+        if (strlen($nombre) >= 2) {
+            $query->where('obra', 'LIKE', "%{$nombre}%");
+        }
+
+        $obras = $query->with(['planillas' => function($q) use ($fechaInicio, $fechaFin) {
+                $q->whereNotNull('fecha_estimada_entrega')
+                  ->whereBetween('fecha_estimada_entrega', [$fechaInicio, $fechaFin])
+                  ->select('id', 'codigo', 'obra_id', 'fecha_estimada_entrega')
+                  ->orderBy('fecha_estimada_entrega', 'asc');
+            }])
+            ->select('id', 'codigo', 'obra')
+            ->limit(10)
+            ->get()
+            ->filter(fn($obra) => $obra->planillas->count() > 0)
+            ->map(function($obra) {
+                $planillasData = $obra->planillas->map(function($p) {
+                    $fechaObj = null;
+                    $fecha = 'S/F';
+                    $fechaISO = null;
+
+                    if ($p->fecha_estimada_entrega) {
+                        try {
+                            if ($p->fecha_estimada_entrega instanceof Carbon) {
+                                $fechaObj = $p->fecha_estimada_entrega;
+                            } else {
+                                foreach (['d/m/Y H:i', 'd/m/Y H:i:s', 'd/m/Y', 'Y-m-d H:i:s', 'Y-m-d'] as $formato) {
+                                    try {
+                                        $fechaObj = Carbon::createFromFormat($formato, $p->fecha_estimada_entrega);
+                                        if ($fechaObj !== false) break;
+                                    } catch (\Exception $e) {
+                                        continue;
+                                    }
+                                }
+                                if (!$fechaObj) {
+                                    $fechaObj = Carbon::parse($p->fecha_estimada_entrega);
+                                }
+                            }
+                            $fecha = $fechaObj->format('d/m/Y');
+                            $fechaISO = $fechaObj->format('Y-m-d');
+                        } catch (\Exception $e) {
+                            $fecha = 'S/F';
+                        }
+                    }
+
+                    return [
+                        'id' => $p->id,
+                        'codigo' => $p->codigo,
+                        'fecha' => $fecha,
+                        'fechaISO' => $fechaISO,
+                    ];
+                });
+
+                // Última fecha de entrega (la más reciente del futuro o la última en general)
+                $ultimaFechaISO = $planillasData->pluck('fechaISO')->filter()->last();
+
+                return [
+                    'id' => $obra->id,
+                    'codigo' => $obra->codigo,
+                    'nombre' => $obra->obra,
+                    'planillas' => $planillasData->values(),
+                    'ultimaFechaISO' => $ultimaFechaISO,
+                ];
+            })->values();
+
+        return response()->json($obras);
+    }
+
+    /**
      * Obtiene los eventos de resumen basados en los eventos de planillas generados.
      * @param \Illuminate\Support\Collection $eventosPlanillas - Eventos ya generados (con fechas de salida aplicadas)
      * @param string $viewType
@@ -1531,6 +1620,10 @@ class PlanificacionController extends Controller
 
         $paquetes = $paquetesQuery->get();
 
+        // Activar automatización en las planillas
+        Planilla::whereIn('id', $planillasIds)
+            ->update(['automatizacion_salidas_activa' => true]);
+
         if ($paquetes->isEmpty()) {
             return [
                 'success' => true,
@@ -1538,7 +1631,9 @@ class PlanificacionController extends Controller
                 'fecha' => $fecha,
                 'salidas_creadas' => [],
                 'paquetes_asociados' => 0,
-                'message' => 'No hay paquetes para asociar.',
+                'automatizacion_activada' => true,
+                'planillas_activadas' => count($planillasIds),
+                'message' => 'Automatización activada. Cuando se creen paquetes, se asociarán a salidas automáticamente.',
             ];
         }
 
@@ -1579,10 +1674,6 @@ class PlanificacionController extends Controller
             $pesoActual += $pesoPaquete;
             $paquetesAsociados++;
         }
-
-        // Activar automatización en las planillas
-        Planilla::whereIn('id', $planillasIds)
-            ->update(['automatizacion_salidas_activa' => true]);
 
         return [
             'success' => true,

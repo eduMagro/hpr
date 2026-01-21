@@ -31,6 +31,10 @@
                                 class="border-gray-300 rounded-md px-3 py-2 text-sm flex-1 min-w-[120px] focus:ring-purple-500 focus:border-purple-500"
                                 autocomplete="off" />
                         </div>
+                        <!-- Obras encontradas con planillas -->
+                        <div id="obras-encontradas" class="hidden mt-3 p-2 bg-green-50 border border-green-200 rounded-md max-h-48 overflow-y-auto">
+                            <div id="obras-encontradas-lista" class="space-y-2 text-xs"></div>
+                        </div>
                     </div>
 
                     <!-- Filtro por planilla y tipo -->
@@ -399,17 +403,97 @@
                 });
             }
 
+            function initBuscadorObras() {
+                const inputCodObra = document.getElementById('filtro-obra');
+                const inputNombreObra = document.getElementById('filtro-nombre-obra');
+                const containerResultados = document.getElementById('obras-encontradas');
+                const listaResultados = document.getElementById('obras-encontradas-lista');
+
+                if (!inputCodObra || !inputNombreObra || !containerResultados || !listaResultados) return;
+
+                // Evitar doble inicialización
+                if (inputCodObra.dataset.buscadorInit === 'true') return;
+                inputCodObra.dataset.buscadorInit = 'true';
+
+                let debounceTimer = null;
+
+                function buscarObras() {
+                    clearTimeout(debounceTimer);
+                    const codigo = inputCodObra.value.trim();
+                    const nombre = inputNombreObra.value.trim();
+
+                    if (codigo.length < 2 && nombre.length < 2) {
+                        containerResultados.classList.add('hidden');
+                        listaResultados.innerHTML = '';
+                        return;
+                    }
+
+                    debounceTimer = setTimeout(() => {
+                        const params = new URLSearchParams();
+                        if (codigo) params.append('codigo', codigo);
+                        if (nombre) params.append('nombre', nombre);
+
+                        fetch(`{{ route('planificacion.buscarObras') }}?${params.toString()}`)
+                            .then(res => res.json())
+                            .then(obras => {
+                                if (obras.length === 0) {
+                                    containerResultados.classList.add('hidden');
+                                    listaResultados.innerHTML = '';
+                                    return;
+                                }
+
+                                listaResultados.innerHTML = obras.map(obra => `
+                                    <div class="bg-white p-2 rounded border border-green-300">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <span class="font-semibold text-green-800">${obra.codigo} - ${obra.nombre}</span>
+                                            ${obra.ultimaFechaISO ? `<button type="button" onclick="window.irAFechaCalendario('${obra.ultimaFechaISO}')" class="px-2 py-0.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition" title="Ir a última fecha de entrega">Ir</button>` : ''}
+                                        </div>
+                                        <div class="flex flex-wrap gap-1">
+                                            ${obra.planillas.map(p => `
+                                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-100 text-green-700 border border-green-200">
+                                                    <span>${p.codigo}</span>
+                                                    <span class="text-green-600">(${p.fecha})</span>
+                                                    ${p.fechaISO ? `<button type="button" onclick="window.irAFechaCalendario('${p.fechaISO}')" class="px-1 bg-green-500 hover:bg-green-600 text-white rounded" title="Ir">▶</button>` : ''}
+                                                </span>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                `).join('');
+                                containerResultados.classList.remove('hidden');
+                            })
+                            .catch(err => {
+                                console.error('Error buscando obras:', err);
+                                containerResultados.classList.add('hidden');
+                            });
+                    }, 300);
+                }
+
+                inputCodObra.addEventListener('input', buscarObras);
+                inputNombreObra.addEventListener('input', buscarObras);
+
+                // Limpiar al resetear filtros
+                document.getElementById('btn-reset-filtros')?.addEventListener('click', () => {
+                    containerResultados.classList.add('hidden');
+                    listaResultados.innerHTML = '';
+                });
+            }
+
+            function initAll() {
+                initBuscadorPlanillas();
+                initBuscadorObras();
+            }
+
             // Inicializar en DOMContentLoaded
-            document.addEventListener('DOMContentLoaded', initBuscadorPlanillas);
+            document.addEventListener('DOMContentLoaded', initAll);
 
             // Inicializar en navegación Livewire
             if (typeof Livewire !== 'undefined') {
-                document.addEventListener('livewire:navigated', initBuscadorPlanillas);
+                document.addEventListener('livewire:navigated', initAll);
             }
 
             // Ejecutar inmediatamente si el DOM ya está listo
             if (document.readyState === 'complete' || document.readyState === 'interactive') {
-                initBuscadorPlanillas();
+                initAll();
             }
         })();
     </script>

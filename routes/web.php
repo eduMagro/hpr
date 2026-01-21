@@ -634,6 +634,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/planificacion/index', [PlanificacionController::class, 'index'])->name('planificacion.index');
     Route::get('/planificacion/totales', [PlanificacionController::class, 'getTotalesAjax']);
     Route::get('/planificacion/buscar-planillas', [PlanificacionController::class, 'buscarPlanillas'])->name('planificacion.buscarPlanillas');
+    Route::get('/planificacion/buscar-obras', [PlanificacionController::class, 'buscarObras'])->name('planificacion.buscarObras');
     Route::post('/planificacion/simular-adelanto', [PlanificacionController::class, 'simularAdelanto'])->name('planificacion.simularAdelanto');
     Route::post('/planificacion/ejecutar-adelanto', [PlanificacionController::class, 'ejecutarAdelanto'])->name('planificacion.ejecutarAdelanto');
     Route::post('/planificacion/ejecutar-adelanto-elementos', [PlanificacionController::class, 'ejecutarAdelantoElementos'])->name('planificacion.ejecutarAdelantoElementos');
