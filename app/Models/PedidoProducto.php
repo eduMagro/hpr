@@ -251,4 +251,27 @@ class PedidoProducto extends Model
             'origen_formato' => $origenFormato,
         ];
     }
+
+    /**
+     * Recalcula la cantidad recepcionada sumando el peso_inicial
+     * de todos los productos asociados a las entradas de esta línea.
+     */
+    public function recalcularCantidadRecepcionada(): void
+    {
+        // Sumar peso_inicial de todos los productos de las entradas de esta línea
+        $pesoTotal = Producto::whereHas('entrada', function ($query) {
+            $query->where('pedido_producto_id', $this->id);
+        })->sum('peso_inicial');
+
+        $this->cantidad_recepcionada = $pesoTotal;
+
+        // Actualizar estado según cantidad recepcionada
+        $this->estado = match (true) {
+            $pesoTotal >= $this->cantidad * 0.8 => 'completado',
+            $pesoTotal > 0 => 'parcial',
+            default => $this->estado === 'cancelado' ? 'cancelado' : 'pendiente',
+        };
+
+        $this->saveQuietly();
+    }
 }

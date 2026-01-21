@@ -831,13 +831,27 @@ class ProductoController extends Controller
 
 
     //------------------------------------------------------------------------------------ DESTROY
-    public function destroy(Producto $producto)
+    public function destroy(Request $request, Producto $producto)
     {
-        if (auth()->user()->rol !== 'oficina') {
+        // Permitir eliminar si:
+        // 1. El usuario es de oficina, O
+        // 2. El producto pertenece a una entrada abierta (en proceso de recepción)
+        $entradaAbierta = $producto->entrada && $producto->entrada->estado === 'abierto';
+        $esOficina = auth()->user()->rol === 'oficina';
+
+        if (!$esOficina && !$entradaAbierta) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Solo puedes eliminar productos de entradas abiertas.'], 403);
+            }
             return redirect()->route('productos.index')->with('abort', 'No tienes los permisos necesarios.');
         }
+
         Log::info('Borrando producto ' . ($producto->codigo ?? ('ID ' . $producto->id)) . ' por el usuario ' . (auth()->user()->nombre_completo ?? 'desconocido'));
         $producto->delete();
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Producto eliminado exitosamente.']);
+        }
 
         return redirect()->route('productos.index')->with('success', 'Producto eliminado exitosamente.');
     }

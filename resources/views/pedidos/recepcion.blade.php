@@ -52,19 +52,33 @@
 
                 <ul class="divide-y text-sm text-gray-800">
                     @foreach ($productosDeEstaEntrada as $prod)
-                        <li class="py-2 flex justify-between">
-                            <a href="javascript:void(0);" class="font-semibold uppercase text-blue-600 hover:underline"
-                                onclick='editarProducto(@json($prod))'>
-                                {{ $prod->codigo }}
-                            </a>
+                        <li class="py-2 flex justify-between items-center gap-2">
+                            <div class="flex items-center gap-2">
+                                {{-- Botón editar --}}
+                                <button type="button" onclick='editarProducto(@json($prod))'
+                                    class="text-blue-600 hover:text-blue-800 p-1" title="Editar">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                    </svg>
+                                </button>
+                                {{-- Botón eliminar --}}
+                                <button type="button" onclick="eliminarProducto({{ $prod->id }}, '{{ $prod->codigo }}')"
+                                    class="text-red-500 hover:text-red-700 p-1" title="Eliminar">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                                {{-- Código del producto --}}
+                                <span class="font-semibold uppercase text-gray-800">{{ $prod->codigo }}</span>
+                            </div>
 
-                            <span>
+                            <span class="text-gray-600">
                                 {{ ucfirst($prod->productoBase->tipo ?? '-') }} /
                                 Ø{{ $prod->productoBase->diametro ?? '-' }} mm
                                 @if(strtolower($prod->productoBase->tipo ?? '') === 'barra' && $prod->productoBase->longitud)
                                     / {{ number_format($prod->productoBase->longitud / 1000, 0) }}m
                                 @endif
-                                — {{ number_format($prod->peso_inicial, 2, ',', '.') }} kg
+                                — <strong>{{ number_format($prod->peso_inicial, 2, ',', '.') }} kg</strong>
                             </span>
                         </li>
                     @endforeach
@@ -1640,6 +1654,55 @@
                         console.error(err);
                         Swal.fire('Error', 'No se pudo guardar.', 'error');
                     });
+            }
+        }
+
+        // Función para eliminar producto
+        async function eliminarProducto(productoId, codigo) {
+            const result = await Swal.fire({
+                title: '¿Eliminar producto?',
+                html: `<p>Se eliminará el producto <strong>${codigo}</strong></p>
+                       <p class="text-sm text-gray-500 mt-2">La cantidad recepcionada de la línea se recalculará automáticamente.</p>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    const response = await fetch('/productos/' + productoId, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            _method: 'DELETE'
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'Error al eliminar');
+                    }
+
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Eliminado',
+                        text: 'El producto ha sido eliminado correctamente.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+
+                    location.reload();
+                } catch (error) {
+                    console.error('Error:', error);
+                    Swal.fire('Error', error.message || 'No se pudo eliminar el producto.', 'error');
+                }
             }
         }
     </script>
