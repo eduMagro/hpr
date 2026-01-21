@@ -280,9 +280,26 @@ class PlanificacionController extends Controller
                 $fecha = 'S/F';
                 if ($p->fecha_estimada_entrega) {
                     try {
-                        $fechaObj = $p->fecha_estimada_entrega instanceof Carbon
-                            ? $p->fecha_estimada_entrega
-                            : Carbon::parse($p->fecha_estimada_entrega);
+                        if ($p->fecha_estimada_entrega instanceof Carbon) {
+                            $fechaObj = $p->fecha_estimada_entrega;
+                        } else {
+                            $fechaStr = $p->fecha_estimada_entrega;
+                            $fechaObj = null;
+
+                            // Intentar formatos europeos comunes
+                            foreach (['d/m/Y H:i', 'd/m/Y H:i:s', 'd/m/Y', 'Y-m-d H:i:s', 'Y-m-d'] as $formato) {
+                                try {
+                                    $fechaObj = Carbon::createFromFormat($formato, $fechaStr);
+                                    if ($fechaObj !== false) break;
+                                } catch (\Exception $e) {
+                                    continue;
+                                }
+                            }
+
+                            if (!$fechaObj) {
+                                $fechaObj = Carbon::parse($fechaStr);
+                            }
+                        }
                         $fecha = $fechaObj->format('d/m/Y');
                     } catch (\Exception $e) {
                         $fecha = 'S/F';
