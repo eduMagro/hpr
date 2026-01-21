@@ -549,8 +549,8 @@
                                 <!-- Grid wrapper for smooth height animation -->
                                 <div class="col-span-2 grid transition-all duration-300 ease-out"
                                     :class="form.tipo_gasto === 'gasto' ? 'grid-rows-[1fr] opacity-100' :
-                                        'grid-rows-[0fr] opacity-0'">
-                                    <div class="overflow-hidden">
+                                        'grid-rows-[0fr] opacity-0 pointer-events-none'">
+                                    <div :class="form.tipo_gasto === 'gasto' ? '' : 'overflow-hidden'">
                                         <div class="relative pb-6">
                                             <label
                                                 class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Máquina</label>
@@ -603,7 +603,7 @@
 
                                                 <!-- Dropdown List -->
                                                 <div x-show="openMachineDropdown"
-                                                    class="absolute z-[999] bottom-full mb-1 max-h-60 w-full overflow-auto rounded-xl bg-white dark:bg-gray-800 py-1 text-sm shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none"
+                                                    class="absolute z-[999] mt-1 max-h-60 w-full overflow-auto rounded-xl bg-white dark:bg-gray-800 py-1 text-sm shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none"
                                                     style="display: none;">
 
                                                     @foreach ($maquinas as $maquina)
