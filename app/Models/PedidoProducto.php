@@ -18,6 +18,7 @@ class PedidoProducto extends Model
         'obra_manual',
         'producto_base_id',
         'cantidad',
+        'cantidad_recepcionada',
         'fecha_estimada_entrega',
         'estado',
         'observaciones',
@@ -171,8 +172,12 @@ class PedidoProducto extends Model
             $incrementoFormato = (float) $formato->incremento;
         }
 
-        // Calcular toneladas
-        $toneladas = ($this->cantidad ?? 0) / 1000;
+        // Calcular toneladas (basado en cantidad recepcionada)
+        $cantidadRecepcionada = $this->cantidad_recepcionada ?? 0;
+        if ($cantidadRecepcionada <= 0) {
+            return null; // Sin recepción, no hay coste
+        }
+        $toneladas = $cantidadRecepcionada / 1000;
 
         // Calcular coste
         $precioTonelada = $precioReferencia + $incrementoDiametro + $incrementoFormato;
@@ -227,7 +232,9 @@ class PedidoProducto extends Model
             $incrementoFormato = (float) $formato->incremento;
         }
 
-        $toneladas = ($this->cantidad ?? 0) / 1000;
+        // Usar cantidad recepcionada para el cálculo del coste
+        $cantidadRecepcionada = $this->cantidad_recepcionada ?? 0;
+        $toneladas = $cantidadRecepcionada / 1000;
         $precioTonelada = $precioReferencia + $incrementoDiametro + $incrementoFormato;
 
         return [
@@ -236,7 +243,8 @@ class PedidoProducto extends Model
             'incremento_formato' => $incrementoFormato,
             'precio_tonelada' => round($precioTonelada, 2),
             'toneladas' => round($toneladas, 4),
-            'coste_total' => round($precioTonelada * $toneladas, 2),
+            'coste_total' => $cantidadRecepcionada > 0 ? round($precioTonelada * $toneladas, 2) : null,
+            'cantidad_recepcionada' => $cantidadRecepcionada,
             'diametro' => $diametro,
             'longitud' => $longitud,
             'formato' => $formatoCodigo,

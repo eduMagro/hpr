@@ -18,7 +18,11 @@
                     <th class="px-2 py-2 border">Producto</th>
                     <th class="p-2 border">Cant. Pedida</th>
                     <th class="p-2 border">Cant. Recep.</th>
-                    <th class="p-2 border">Coste</th>
+                    <th class="p-2 border bg-blue-600">Precio Ref.</th>
+                    <th class="p-2 border bg-blue-600">Inc. Ø</th>
+                    <th class="p-2 border bg-blue-600">Inc. Formato</th>
+                    <th class="p-2 border bg-blue-600">€/Ton</th>
+                    <th class="p-2 border bg-blue-600">Coste Total</th>
                     <th class="p-2 border cursor-pointer" wire:click="sortBy('fecha_pedido')">
                         F. Pedido @if ($sort === 'fecha_pedido')
                             {{ $order === 'asc' ? '↑' : '↓' }}
@@ -97,7 +101,11 @@
                     </th>
                     <th class="p-1 border"></th>
                     <th class="p-1 border"></th>
-                    <th class="p-1 border"></th>
+                    <th class="p-1 border bg-blue-200"></th>
+                    <th class="p-1 border bg-blue-200"></th>
+                    <th class="p-1 border bg-blue-200"></th>
+                    <th class="p-1 border bg-blue-200"></th>
+                    <th class="p-1 border bg-blue-200"></th>
                     <th class="p-1 border">
                         <input type="date" wire:model.live="fecha_pedido"
                             class="w-full text-xs px-1 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
@@ -148,7 +156,7 @@
                         $costeTotalPedido = $lineasDelPedido->sum(fn($l) => $l->coste_estimado ?? 0);
                     @endphp
                     <tr wire:key="pedido-header-{{ $pedidoId }}" class="bg-gray-200 border-t-2 border-gray-400">
-                        <td colspan="15" class="px-3 py-2">
+                        <td colspan="19" class="px-3 py-2">
                             <div class="flex items-center justify-between flex-wrap gap-2">
                                 <div class="flex items-center gap-4 text-sm">
                                     <span class="font-bold text-gray-800">
@@ -359,12 +367,61 @@
                                 </span>
                             </td>
 
-                            {{-- CELDA DE COSTE ESTIMADO --}}
-                            <td class="border px-2 py-1 text-center">
-                                @if ($linea->coste_estimado !== null)
-                                    <span class="font-semibold text-emerald-700" title="Coste estimado basado en precio de referencia + incrementos">
-                                        {{ $linea->coste_estimado_formateado }}
+                            {{-- CELDAS DE DESGLOSE DE COSTE --}}
+                            @php
+                                $desglose = $linea->getCosteDesglose();
+                                $tieneDesglose = !isset($desglose['error']);
+                            @endphp
+
+                            {{-- Precio Referencia --}}
+                            <td class="border px-2 py-1 text-center text-xs bg-blue-50">
+                                @if ($tieneDesglose)
+                                    {{ number_format($desglose['precio_referencia'], 2, ',', '.') }}
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
+                            </td>
+
+                            {{-- Incremento Diámetro --}}
+                            <td class="border px-2 py-1 text-center text-xs bg-blue-50">
+                                @if ($tieneDesglose)
+                                    <span class="{{ $desglose['incremento_diametro'] > 0 ? 'text-orange-600' : 'text-gray-500' }}">
+                                        {{ $desglose['incremento_diametro'] > 0 ? '+' : '' }}{{ number_format($desglose['incremento_diametro'], 2, ',', '.') }}
                                     </span>
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
+                            </td>
+
+                            {{-- Incremento Formato --}}
+                            <td class="border px-2 py-1 text-center text-xs bg-blue-50">
+                                @if ($tieneDesglose)
+                                    <span class="{{ $desglose['incremento_formato'] > 0 ? 'text-orange-600' : 'text-gray-500' }}"
+                                          title="Formato: {{ $desglose['formato'] }} ({{ $desglose['origen_formato'] }})">
+                                        {{ $desglose['incremento_formato'] > 0 ? '+' : '' }}{{ number_format($desglose['incremento_formato'], 2, ',', '.') }}
+                                    </span>
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
+                            </td>
+
+                            {{-- Precio por Tonelada --}}
+                            <td class="border px-2 py-1 text-center text-xs font-semibold bg-blue-50">
+                                @if ($tieneDesglose)
+                                    {{ number_format($desglose['precio_tonelada'], 2, ',', '.') }}
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
+                            </td>
+
+                            {{-- Coste Total --}}
+                            <td class="border px-2 py-1 text-center bg-blue-50">
+                                @if ($tieneDesglose && $desglose['coste_total'] !== null)
+                                    <span class="font-semibold text-emerald-700" title="{{ number_format($desglose['toneladas'], 4, ',', '.') }} Tn × {{ number_format($desglose['precio_tonelada'], 2, ',', '.') }} €/Tn">
+                                        {{ number_format($desglose['coste_total'], 2, ',', '.') }} €
+                                    </span>
+                                @elseif ($tieneDesglose)
+                                    <span class="text-gray-400 text-xs" title="Pendiente de recepción">Pendiente</span>
                                 @else
                                     <span class="text-gray-400 text-xs" title="Sin precio de referencia en el pedido global">—</span>
                                 @endif
@@ -537,7 +594,7 @@
                     @endforeach
                 @empty
                     <tr>
-                        <td colspan="15" class="text-center py-4 text-gray-500">No hay líneas de pedido registradas
+                        <td colspan="19" class="text-center py-4 text-gray-500">No hay líneas de pedido registradas
                         </td>
                     </tr>
                 @endforelse
