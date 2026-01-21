@@ -102,19 +102,19 @@
                             <tr class="bg-gray-50/80 dark:bg-gray-700/80 border-b border-gray-100 dark:border-gray-600">
                                 <th class="px-3 py-2">
                                     <input type="text" x-model="filters.id" placeholder="#"
-                                        class="w-full text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
+                                        class="w-full  text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
                                 </th>
                                 <th class="px-3 py-2">
                                     <input type="date" x-model="filters.fecha_pedido"
-                                        class="w-full text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
+                                        class="w-full cursor-pointer text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
                                 </th>
                                 <th class="px-3 py-2">
                                     <input type="date" x-model="filters.fecha_llegada"
-                                        class="w-full text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
+                                        class="w-full cursor-pointer text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
                                 </th>
                                 <th class="px-3 py-2">
                                     <select x-model="filters.nave_id"
-                                        class="w-full text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
+                                        class="w-full cursor-pointer text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
                                         <option value="">Todas</option>
                                         @foreach ($naves as $nave)
                                             <option value="{{ $nave->id }}">{{ $nave->obra }}</option>
@@ -123,7 +123,7 @@
                                 </th>
                                 <th class="px-3 py-2">
                                     <select x-model="filters.obra_id"
-                                        class="w-full text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
+                                        class="w-full cursor-pointer text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
                                         <option value="">Todas</option>
                                         @foreach ($obras as $obra)
                                             <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
@@ -132,7 +132,7 @@
                                 </th>
                                 <th class="px-3 py-2">
                                     <select x-model="filters.proveedor_id"
-                                        class="w-full text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
+                                        class="w-full cursor-pointer text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
                                         <option value="">Todos</option>
                                         <template x-for="prov in proveedores" :key="prov.id">
                                             <option :value="prov.id" x-text="prov.nombre"></option>
@@ -145,7 +145,7 @@
                                 </th>
                                 <th class="px-3 py-2">
                                     <select x-model="filters.motivo_id"
-                                        class="w-full text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
+                                        class="w-full cursor-pointer text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
                                         <option value="">Todos</option>
                                         <template x-for="mot in motivos" :key="mot.id">
                                             <option :value="mot.id" x-text="mot.nombre"></option>
@@ -177,9 +177,10 @@
                                     class="bg-white dark:bg-gray-800 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors duration-200 group">
                                     <td class="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap"
                                         x-text="gasto.id"></td>
-                                    <td class="px-6 py-4" x-text="formatDate(gasto.fecha_pedido)"></td>
-                                    <td class="px-6 py-4" x-text="formatDate(gasto.fecha_llegada)"></td>
-                                    <td class="px-6 py-4">
+                                    <td class="px-6 py-4 cursor-default" x-text="formatDate(gasto.fecha_pedido)"></td>
+                                    <td class="px-6 py-4 cursor-default" x-text="formatDate(gasto.fecha_llegada)">
+                                    </td>
+                                    <td class="px-6 py-4 cursor-default">
                                         <template x-if="gasto.nave">
                                             <span
                                                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
@@ -189,19 +190,22 @@
                                             <span class="text-gray-400">-</span>
                                         </template>
                                     </td>
-                                    <td class="px-6 py-4">
+                                    <td class="px-6 py-4 min-w-0 cursor-default">
                                         <template x-if="gasto.obra">
                                             <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300"
-                                                x-text="gasto.obra.obra || ('Obra ' + gasto.obra_id)"></span>
+                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300 max-w-[16rem]"
+                                                :title="gasto.obra.obra || ('Obra ' + gasto.obra_id)">
+                                                <span class="truncate"
+                                                    x-text="truncateText(gasto.obra.obra, 10)"></span>
+                                            </span>
                                         </template>
                                         <template x-if="!gasto.obra">
                                             <span class="text-gray-400">-</span>
                                         </template>
                                     </td>
-                                    <td class="px-6 py-4 font-medium text-gray-700 dark:text-gray-200"
+                                    <td class="px-6 py-4 font-medium text-gray-700 dark:text-gray-200 cursor-default"
                                         x-text="gasto.proveedor?.nombre || '-'"></td>
-                                    <td class="px-6 py-4">
+                                    <td class="px-6 py-4 cursor-default">
                                         <template x-if="gasto.maquina">
                                             <div class="flex items-center gap-2">
                                                 <div class="h-2 w-2 rounded-full bg-green-500"></div>
@@ -213,10 +217,10 @@
                                             <span class="text-gray-400">-</span>
                                         </template>
                                     </td>
-                                    <td class="px-6 py-4" x-text="gasto.motivo?.nombre || '-'"></td>
-                                    <td class="px-6 py-4 text-right font-bold text-gray-900 dark:text-white"
+                                    <td class="px-6 py-4 cursor-default" x-text="gasto.motivo?.nombre || '-'"></td>
+                                    <td class="px-6 py-4 text-right font-bold text-gray-900 dark:text-white cursor-default"
                                         x-text="gasto.coste ? formatCurrency(gasto.coste) : '-'"></td>
-                                    <td class="px-6 py-4 text-center">
+                                    <td class="px-6 py-4 text-center cursor-default">
                                         <template x-if="gasto.factura">
                                             <a href="#"
                                                 class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 transition-colors">
@@ -233,8 +237,8 @@
                                             <span class="text-gray-300 dark:text-gray-600">-</span>
                                         </template>
                                     </td>
-                                    <td class="px-6 py-4 text-xs text-gray-500 dark:text-gray-400">
-                                        <div class="flex items-center gap-2 max-w-xs">
+                                    <td class="px-6 py-4 text-xs text-gray-500 dark:text-gray-400 cursor-default">
+                                        <div class="flex justify-center items-center gap-2 max-w-xs">
                                             <span class="truncate"
                                                 x-text="truncateText(gasto.observaciones, 30)"></span>
                                             <template x-if="gasto.observaciones && gasto.observaciones.length > 30">
@@ -254,10 +258,10 @@
                                             </template>
                                         </div>
                                     </td>
-                                    <td class="px-4 py-4 text-center">
+                                    <td class="px-4 py-4 pt-5 flex justify-center items-center">
                                         <button @click="editGasto(gasto)" title="Editar gasto"
                                             class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13"
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
                                                 viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
