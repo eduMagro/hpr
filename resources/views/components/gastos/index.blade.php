@@ -80,7 +80,7 @@
                         <thead
                             class="text-xs text-gray-700 uppercase bg-gray-50/50 dark:bg-gray-700/50 dark:text-gray-200 border-b border-gray-100 dark:border-gray-700">
                             <tr>
-                                <th scope="col" class="px-6 py-4 font-bold tracking-wider rounded-tl-2xl">ID</th>
+                                <th scope="col" class="px-6 py-4 font-bold tracking-wider rounded-tl-2xl">#</th>
                                 <th scope="col" class="px-6 py-4 font-semibold">Fecha Pedido</th>
                                 <th scope="col" class="px-6 py-4 font-semibold">Fecha Llegada</th>
                                 <th scope="col" class="px-6 py-4 font-semibold">Nave</th>
@@ -100,7 +100,7 @@
                                 <tr
                                     class="bg-white dark:bg-gray-800 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors duration-200 group">
                                     <td class="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">
-                                        #{{ $gasto->id }}
+                                        {{ $gasto->id }}
                                     </td>
                                     <td class="px-6 py-4">
                                         {{ $gasto->fecha_pedido ? \Carbon\Carbon::parse($gasto->fecha_pedido)->format('d/m/Y') : '-' }}
@@ -217,9 +217,14 @@
                 <div
                     class="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
                     <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <svg class="w-24 h-24 text-indigo-500" fill="currentColor" viewBox="0 0 24 24">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" class="text-indigo-700 w-24 h-24">
+                            <path d="M21.54 15H17a2 2 0 0 0-2 2v4.54" />
                             <path
-                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+                                d="M7 3.34V5a3 3 0 0 0 3 3a2 2 0 0 1 2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2c0-1.1.9-2 2-2h3.17" />
+                            <path d="M11 21.95V18a2 2 0 0 0-2-2a2 2 0 0 1-2-2v-1a2 2 0 0 0-2-2H2.05" />
+                            <circle cx="12" cy="12" r="10" />
                         </svg>
                     </div>
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
@@ -236,8 +241,8 @@
                     <!-- Graph Placeholder Box -->
                     <div
                         class="mt-6 h-48 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-700 dark:to-gray-800 rounded-2xl border border-dashed border-indigo-200 dark:border-gray-600 flex items-center justify-center">
-                        <span class="text-indigo-400 dark:text-gray-400 font-medium animate-pulse">Gráfica Global
-                            (Próximamente)</span>
+                        <span class="text-indigo-400 dark:text-gray-400 font-medium animate-pulse">Gráfica
+                            Global</span>
                     </div>
                 </div>
 
@@ -264,8 +269,8 @@
                     <!-- Graph Placeholder Box -->
                     <div
                         class="mt-6 h-48 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-700 dark:to-gray-800 rounded-2xl border border-dashed border-emerald-200 dark:border-gray-600 flex items-center justify-center">
-                        <span class="text-emerald-400 dark:text-gray-400 font-medium animate-pulse">Gráfica Mensual
-                            (Próximamente)</span>
+                        <span class="text-emerald-400 dark:text-gray-400 font-medium animate-pulse">Gráfica
+                            Mensual</span>
                     </div>
                 </div>
             </div>
@@ -280,9 +285,9 @@
                     <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
                     <div
-                        class="relative inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+                        class="relative inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-left shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                         <div
-                            class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border-b border-gray-200 dark:border-gray-700">
+                            class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl">
                             <h3 class="text-2xl font-bold leading-6 text-gray-900 dark:text-white" id="modal-title">
                                 <span x-text="isEditing ? 'Editar Gasto' : 'Nuevo Gasto'"></span>
                             </h3>
@@ -294,6 +299,32 @@
                         <form @submit.prevent="submitForm()" class="p-6">
                             @csrf
                             <input type="hidden" name="_method" :value="isEditing ? 'PUT' : 'POST'">
+
+                            <!-- Type Toggle -->
+                            <div class="flex justify-center mb-6">
+                                <div class="bg-gray-100 p-1 rounded-xl gap-2 inline-flex dark:bg-gray-700">
+                                    <button type="button" @click="form.tipo_gasto = 'gasto'"
+                                        :class="{
+                                            'bg-white text-gray-800 shadow-sm dark:bg-gray-600 dark:text-white': form
+                                                .tipo_gasto === 'gasto',
+                                            'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200': form
+                                                .tipo_gasto !== 'gasto'
+                                        }"
+                                        class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none">
+                                        Gasto
+                                    </button>
+                                    <button type="button" @click="form.tipo_gasto = 'obra'"
+                                        :class="{
+                                            'bg-white text-gray-800 shadow-sm dark:bg-gray-600 dark:text-white': form
+                                                .tipo_gasto === 'obra',
+                                            'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200': form
+                                                .tipo_gasto !== 'obra'
+                                        }"
+                                        class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none">
+                                        Obra
+                                    </button>
+                                </div>
+                            </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
@@ -345,7 +376,8 @@
 
                                 <!-- Nave -->
                                 <!-- Nave -->
-                                <div>
+                                <!-- Nave (Only for Gasto) -->
+                                <div x-show="form.tipo_gasto === 'gasto'">
                                     <label for="nave_id"
                                         class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Nave</label>
                                     <div class="relative">
@@ -371,7 +403,8 @@
 
                                 <!-- Obra -->
                                 <!-- Obra -->
-                                <div>
+                                <!-- Obra (Only for Obra) -->
+                                <div x-show="form.tipo_gasto === 'obra'">
                                     <label for="obra_id"
                                         class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Obra</label>
                                     <div class="relative">
@@ -444,120 +477,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Maquina Afectada (Custom Select) -->
-                                <div class="relative">
-                                    <label
-                                        class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Máquina</label>
-                                    <input type="hidden" name="maquina_id" x-model="form.maquina_id">
-
-                                    <div class="relative">
-                                        <!-- Search Input Trigger -->
-                                        <div class="relative">
-                                            <input type="text" x-model="machineSearch" @input="onSearchInput"
-                                                @click="openMachineDropdown = true"
-                                                @click.away="openMachineDropdown = false"
-                                                placeholder="Buscar y seleccionar máquina..."
-                                                class="w-full rounded-xl border border-gray-300 py-3 pl-12 pr-4 text-sm font-medium focus:border-indigo-600 focus:outline-none focus:ring-transparent shadow-sm placeholder-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                                autocomplete="off">
-
-                                            <!-- Leading Icon (or Selected Image) -->
-                                            <div
-                                                class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                                <template x-if="selectedMachine && selectedMachine.image">
-                                                    <img :src="selectedMachine.image"
-                                                        class="h-6 w-6 rounded-full object-cover border border-gray-200">
-                                                </template>
-                                                <template x-if="!selectedMachine || !selectedMachine.image">
-                                                    <!-- Box/Machine Icon -->
-                                                    <svg class="h-6 w-6 text-gray-400"
-                                                        xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-                                                        fill="none" stroke="currentColor" stroke-width="1.5"
-                                                        stroke-linecap="round" stroke-linejoin="round">
-                                                        <path
-                                                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                                                        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                                                        <line x1="12" y1="22.08" x2="12"
-                                                            y2="12" />
-                                                    </svg>
-                                                </template>
-                                            </div>
-
-                                            <!-- Dropdown Chevron -->
-                                            <div
-                                                class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                                <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20"
-                                                    fill="currentColor">
-                                                    <path fill-rule="evenodd"
-                                                        d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-                                                        clip-rule="evenodd" />
-                                                </svg>
-                                            </div>
-                                        </div>
-
-                                        <!-- Dropdown List -->
-                                        <div x-show="openMachineDropdown"
-                                            class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl bg-white dark:bg-gray-800 py-1 text-sm shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none"
-                                            style="display: none;">
-
-                                            @foreach ($maquinas as $maquina)
-                                                <div x-show="machineSearch === '' || '{{ strtolower($maquina->nombre . ' ' . ($maquina->codigo ?? '')) }}'.includes(machineSearch.toLowerCase())"
-                                                    @click="selectMachine('{{ $maquina->id }}', '{{ $maquina->codigo ?? '' }}', '{{ $maquina->nombre }}', '{{ $maquina->imagen ? asset($maquina->imagen) : '' }}')"
-                                                    class="relative cursor-pointer select-none py-3 pl-3 pr-9 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-200 border-b border-gray-50 dark:border-gray-700 last:border-0 transition-colors group">
-                                                    <div class="flex items-center">
-                                                        <!-- Icon/Image -->
-                                                        <div class="shrink-0 mr-3">
-                                                            @if ($maquina->imagen)
-                                                                <img src="{{ asset($maquina->imagen) }}"
-                                                                    alt=""
-                                                                    class="h-9 w-9 rounded-full object-cover border border-gray-200 dark:border-gray-600">
-                                                            @else
-                                                                <div
-                                                                    class="h-9 w-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg"
-                                                                        width="18" height="18"
-                                                                        viewBox="0 0 24 24" fill="none"
-                                                                        stroke="currentColor" stroke-width="2"
-                                                                        stroke-linecap="round"
-                                                                        stroke-linejoin="round">
-                                                                        <path
-                                                                            d="m21.12 6.4-6.05-4.06a2 2 0 0 0-2.17-.05L2.95 8.41a2 2 0 0 0-.95 1.7v5.82a2 2 0 0 0 .88 1.66l6.05 4.07a2 2 0 0 0 2.17.05l9.95-6.12a2 2 0 0 0 .95-1.7V8.06a2 2 0 0 0-.88-1.66Z" />
-                                                                        <path d="M10 22v-8L2.25 9.15" />
-                                                                        <path d="m10 14 11.77-6.87" />
-                                                                    </svg>
-                                                                </div>
-                                                            @endif
-                                                        </div>
-                                                        <!-- Text Info -->
-                                                        <div class="flex flex-col">
-                                                            <div
-                                                                class="font-bold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
-                                                                {{ $maquina->nombre }}
-                                                            </div>
-                                                            <div
-                                                                class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                                                <svg class="w-3 h-3" fill="none"
-                                                                    stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round"
-                                                                        stroke-linejoin="round" stroke-width="2"
-                                                                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
-                                                                    </path>
-                                                                </svg>
-                                                                <span class="font-medium text-gray-400">|</span>
-                                                                <span>{{ $maquina->obra->obra ?? 'Sin obra asignada' }}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                            <!-- Empty state -->
-                                            <div x-show="machineSearch !== '' && $el.querySelectorAll('div[x-show]').length === 0"
-                                                class="p-3 text-center text-gray-500 text-sm">
-                                                No se encontraron máquinas
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
                                 <!-- Motivo -->
                                 <!-- Motivo -->
                                 <div class="col-span-1">
@@ -626,6 +545,130 @@
                                     </div>
                                 </div>
 
+                                <!-- Maquina Afectada (Custom Select) - Only for Gasto -->
+                                <!-- Grid wrapper for smooth height animation -->
+                                <div class="col-span-2 grid transition-all duration-300 ease-out"
+                                    :class="form.tipo_gasto === 'gasto' ? 'grid-rows-[1fr] opacity-100' :
+                                        'grid-rows-[0fr] opacity-0'">
+                                    <div class="overflow-hidden">
+                                        <div class="relative pb-6">
+                                            <label
+                                                class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Máquina</label>
+                                            <input type="hidden" name="maquina_id" x-model="form.maquina_id">
+
+                                            <div class="relative">
+                                                <!-- Search Input Trigger -->
+                                                <div class="relative">
+                                                    <input type="text" x-model="machineSearch"
+                                                        @input="onSearchInput" @click="openMachineDropdown = true"
+                                                        @click.away="openMachineDropdown = false"
+                                                        placeholder="Buscar y seleccionar máquina..."
+                                                        class="w-full rounded-xl border border-gray-300 py-3 pl-12 pr-4 text-sm font-medium focus:border-indigo-600 focus:outline-none focus:ring-transparent shadow-sm placeholder-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                        autocomplete="off">
+
+                                                    <!-- Leading Icon (or Selected Image) -->
+                                                    <div
+                                                        class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                                        <template x-if="selectedMachine && selectedMachine.image">
+                                                            <img :src="selectedMachine.image"
+                                                                class="h-6 w-6 rounded-full object-cover border border-gray-200">
+                                                        </template>
+                                                        <template x-if="!selectedMachine || !selectedMachine.image">
+                                                            <!-- Box/Machine Icon -->
+                                                            <svg class="h-6 w-6 text-gray-400"
+                                                                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                                                fill="none" stroke="currentColor"
+                                                                stroke-width="1.5" stroke-linecap="round"
+                                                                stroke-linejoin="round">
+                                                                <path
+                                                                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                                                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                                                <line x1="12" y1="22.08" x2="12"
+                                                                    y2="12" />
+                                                            </svg>
+                                                        </template>
+                                                    </div>
+
+                                                    <!-- Dropdown Chevron -->
+                                                    <div
+                                                        class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                                        <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20"
+                                                            fill="currentColor">
+                                                            <path fill-rule="evenodd"
+                                                                d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                                                                clip-rule="evenodd" />
+                                                        </svg>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Dropdown List -->
+                                                <div x-show="openMachineDropdown"
+                                                    class="absolute z-[999] bottom-full mb-1 max-h-60 w-full overflow-auto rounded-xl bg-white dark:bg-gray-800 py-1 text-sm shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none"
+                                                    style="display: none;">
+
+                                                    @foreach ($maquinas as $maquina)
+                                                        <div x-show="machineSearch === '' || '{{ strtolower($maquina->nombre . ' ' . ($maquina->codigo ?? '')) }}'.includes(machineSearch.toLowerCase())"
+                                                            @click="selectMachine('{{ $maquina->id }}', '{{ $maquina->codigo ?? '' }}', '{{ $maquina->nombre }}', '{{ $maquina->imagen ? asset($maquina->imagen) : '' }}')"
+                                                            class="relative cursor-pointer select-none py-3 pl-3 pr-9 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-200 border-b border-gray-50 dark:border-gray-700 last:border-0 transition-colors group">
+                                                            <div class="flex items-center">
+                                                                <!-- Icon/Image -->
+                                                                <div class="shrink-0 mr-3">
+                                                                    @if ($maquina->imagen)
+                                                                        <img src="{{ asset($maquina->imagen) }}"
+                                                                            alt=""
+                                                                            class="h-9 w-9 rounded-full object-cover border border-gray-200 dark:border-gray-600">
+                                                                    @else
+                                                                        <div
+                                                                            class="h-9 w-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400">
+                                                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                                                width="18" height="18"
+                                                                                viewBox="0 0 24 24" fill="none"
+                                                                                stroke="currentColor" stroke-width="2"
+                                                                                stroke-linecap="round"
+                                                                                stroke-linejoin="round">
+                                                                                <path
+                                                                                    d="m21.12 6.4-6.05-4.06a2 2 0 0 0-2.17-.05L2.95 8.41a2 2 0 0 0-.95 1.7v5.82a2 2 0 0 0 .88 1.66l6.05 4.07a2 2 0 0 0 2.17.05l9.95-6.12a2 2 0 0 0 .95-1.7V8.06a2 2 0 0 0-.88-1.66Z" />
+                                                                                <path d="M10 22v-8L2.25 9.15" />
+                                                                                <path d="m10 14 11.77-6.87" />
+                                                                            </svg>
+                                                                        </div>
+                                                                    @endif
+                                                                </div>
+                                                                <!-- Text Info -->
+                                                                <div class="flex flex-col">
+                                                                    <div
+                                                                        class="font-bold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                                                                        {{ $maquina->nombre }}
+                                                                    </div>
+                                                                    <div
+                                                                        class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                                                        <svg class="w-3 h-3" fill="none"
+                                                                            stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round"
+                                                                                stroke-linejoin="round"
+                                                                                stroke-width="2"
+                                                                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
+                                                                            </path>
+                                                                        </svg>
+                                                                        <span
+                                                                            class="font-medium text-gray-400">|</span>
+                                                                        <span>{{ $maquina->obra->obra ?? 'Sin obra asignada' }}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    @endforeach
+                                                    <!-- Empty state -->
+                                                    <div x-show="machineSearch !== '' && $el.querySelectorAll('div[x-show]').length === 0"
+                                                        class="p-3 text-center text-gray-500 text-sm">
+                                                        No se encontraron máquinas
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- Observaciones -->
                                 <div class="col-span-2">
                                     <label for="observaciones"
@@ -677,7 +720,8 @@
                     maquina_id: '',
                     motivo_id: '',
                     coste: '',
-                    observaciones: ''
+                    observaciones: '',
+                    tipo_gasto: 'gasto'
                 },
                 // Machine Dropdown State
                 machineSearch: '',
@@ -738,7 +782,8 @@
                         maquina_id: gasto.maquina_id,
                         motivo_id: gasto.motivo_id,
                         coste: gasto.coste,
-                        observaciones: gasto.observaciones
+                        observaciones: gasto.observaciones,
+                        tipo_gasto: gasto.obra_id ? 'obra' : 'gasto'
                     };
 
                     // Set selected machine if exists
@@ -774,7 +819,8 @@
                         maquina_id: '',
                         motivo_id: '',
                         coste: '',
-                        observaciones: ''
+                        observaciones: '',
+                        tipo_gasto: 'gasto'
                     };
                     this.showNewProveedorInput = false;
                     this.newProveedor = '';
