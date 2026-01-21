@@ -10,6 +10,10 @@
         input[type=number] {
             -moz-appearance: textfield;
         }
+
+        [x-cloak] {
+            display: none !important;
+        }
     </style>
     <div x-data="gastosManager()" class="py-12 dark:bg-gray-900 min-h-screen">
         <div class="max-w-[95%] mx-auto sm:px-6 lg:px-8">
@@ -379,7 +383,7 @@
                     <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
                     <div
-                        class="relative inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-left shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+                        class="relative inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-left shadow-xl transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                         <div
                             class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl">
                             <h3 class="text-2xl font-bold leading-6 text-gray-900 dark:text-white" id="modal-title">
@@ -641,10 +645,10 @@
 
                                 <!-- Maquina Afectada (Custom Select) - Only for Gasto -->
                                 <!-- Grid wrapper for smooth height animation -->
-                                <div class="col-span-2 grid transition-all duration-300 ease-out"
+                                <div class="col-span-2 grid transition-all duration-300 ease-in-out"
                                     :class="form.tipo_gasto === 'gasto' ? 'grid-rows-[1fr] opacity-100' :
                                         'grid-rows-[0fr] opacity-0 pointer-events-none'">
-                                    <div :class="form.tipo_gasto === 'gasto' ? '' : 'overflow-hidden'">
+                                    <div class="overflow-hidden">
                                         <div class="relative pb-6">
                                             <label
                                                 class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Máquina</label>
@@ -652,9 +656,10 @@
 
                                             <div class="relative">
                                                 <!-- Search Input Trigger -->
-                                                <div class="relative">
+                                                <div class="relative" x-ref="machineInputWrapper">
                                                     <input type="text" x-model="machineSearch"
-                                                        @input="onSearchInput" @click="openMachineDropdown = true"
+                                                        @input="onSearchInput"
+                                                        @click="openMachineDropdown = true; $nextTick(() => positionDropdown())"
                                                         @click.away="openMachineDropdown = false"
                                                         placeholder="Buscar y seleccionar máquina..."
                                                         class="w-full rounded-xl border border-gray-300 py-3 pl-12 pr-4 text-sm font-medium focus:border-indigo-600 focus:outline-none focus:ring-transparent shadow-sm placeholder-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -695,10 +700,11 @@
                                                     </div>
                                                 </div>
 
-                                                <!-- Dropdown List -->
-                                                <div x-show="openMachineDropdown"
-                                                    class="absolute z-[999] mt-1 max-h-60 w-full overflow-auto rounded-xl bg-white dark:bg-gray-800 py-1 text-sm shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none"
-                                                    style="display: none;">
+                                                <!-- Dropdown List (positioned fixed to escape overflow-hidden) -->
+                                                <div x-show="openMachineDropdown" x-ref="machineDropdown" x-cloak
+                                                    x-effect="if(openMachineDropdown) { const w = $refs.machineInputWrapper; if(w){ const r = w.getBoundingClientRect(); dropdownStyle = `top: ${r.bottom + 4}px; left: ${r.left}px; width: ${r.width}px;`; } }"
+                                                    class="fixed z-[9999] max-h-60 overflow-auto rounded-xl bg-white dark:bg-gray-800 py-1 text-sm shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none"
+                                                    x-bind:style="dropdownStyle">
 
                                                     @foreach ($maquinas as $maquina)
                                                         <div x-show="machineSearch === '' || '{{ strtolower($maquina->nombre . ' ' . ($maquina->codigo ?? '')) }}'.includes(machineSearch.toLowerCase())"
@@ -877,6 +883,15 @@
                 machineSearch: '',
                 selectedMachine: null,
                 openMachineDropdown: false,
+                dropdownStyle: '',
+
+                positionDropdown() {
+                    const wrapper = this.$refs.machineInputWrapper;
+                    if (wrapper) {
+                        const rect = wrapper.getBoundingClientRect();
+                        this.dropdownStyle = `top: ${rect.bottom + 4}px; left: ${rect.left}px; width: ${rect.width}px;`;
+                    }
+                },
 
                 // Computed filtered gastos
                 get filteredGastos() {
