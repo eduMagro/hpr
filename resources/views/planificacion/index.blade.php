@@ -32,8 +32,9 @@
                                 autocomplete="off" />
                         </div>
                         <!-- Obras encontradas con planillas -->
-                        <div id="obras-encontradas" class="hidden mt-3 p-2 bg-green-50 border border-green-200 rounded-md max-h-48 overflow-y-auto">
-                            <div id="obras-encontradas-lista" class="space-y-2 text-xs"></div>
+                        <div id="obras-encontradas" class="hidden mt-3 p-2 bg-purple-50 border border-purple-200 rounded-md">
+                            <p class="text-xs font-semibold text-purple-700 mb-1">Obras encontradas:</p>
+                            <div id="obras-encontradas-lista" class="flex flex-wrap gap-1 text-xs"></div>
                         </div>
                     </div>
 
@@ -443,21 +444,11 @@
                                 }
 
                                 listaResultados.innerHTML = obras.map(obra => `
-                                    <div class="bg-white p-2 rounded border border-green-300">
-                                        <div class="flex items-center justify-between mb-1">
-                                            <span class="font-semibold text-green-800">${obra.codigo} - ${obra.nombre}</span>
-                                            ${obra.ultimaFechaISO ? `<button type="button" onclick="window.irAFechaCalendario('${obra.ultimaFechaISO}')" class="px-2 py-0.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition" title="Ir a última fecha de entrega">Ir</button>` : ''}
-                                        </div>
-                                        <div class="flex flex-wrap gap-1">
-                                            ${obra.planillas.map(p => `
-                                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-100 text-green-700 border border-green-200">
-                                                    <span>${p.codigo}</span>
-                                                    <span class="text-green-600">(${p.fecha})</span>
-                                                    ${p.fechaISO ? `<button type="button" onclick="window.irAFechaCalendario('${p.fechaISO}')" class="px-1 bg-green-500 hover:bg-green-600 text-white rounded" title="Ir">▶</button>` : ''}
-                                                </span>
-                                            `).join('')}
-                                        </div>
-                                    </div>
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300">
+                                        <strong>${obra.codigo}</strong>
+                                        <span class="text-purple-600">(${obra.planillas.length} planillas)</span>
+                                        ${obra.ultimaFechaISO ? `<button type="button" onclick="window.irAFechaCalendario('${obra.ultimaFechaISO}')" class="ml-1 px-1.5 py-0.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition" title="Ir a última fecha de entrega">Ir</button>` : ''}
+                                    </span>
                                 `).join('');
                                 containerResultados.classList.remove('hidden');
                             })
