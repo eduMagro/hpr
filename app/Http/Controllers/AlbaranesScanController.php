@@ -10,6 +10,7 @@ use App\Models\Entrada;
 use App\Models\Producto;
 use App\Models\Movimiento;
 use App\Models\Colada;
+use App\Models\Obra;
 use App\Models\EntradaImportLog;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -39,9 +40,15 @@ class AlbaranesScanController extends Controller
             ->values()
             ->toArray();
 
+        $naves = Obra::query()
+            ->whereIn('obra', ['Nave A', 'Nave B'])
+            ->pluck('id', 'obra')
+            ->toArray();
+
         return view('albaranes.scan', [
             'distribuidores' => $distribuidores,
             'fabricantes' => $fabricantes,
+            'naves' => $naves,
         ]);
     }
 
@@ -59,6 +66,11 @@ class AlbaranesScanController extends Controller
             ->filter()
             ->unique()
             ->values()
+            ->toArray();
+
+        $naves = Obra::query()
+            ->whereIn('obra', ['Nave A', 'Nave B'])
+            ->pluck('id', 'obra')
             ->toArray();
 
         $resultados = [];
@@ -132,6 +144,7 @@ class AlbaranesScanController extends Controller
             'resultados' => $resultados,
             'proveedor' => $proveedor,
             'distribuidores' => $distribuidores,
+            'naves' => $naves,
         ]);
     }
 
@@ -478,6 +491,13 @@ class AlbaranesScanController extends Controller
         $tipoCompra = mb_strtolower($source['tipo_compra'] ?? 'directo');
         $nombreFabricante = $source['proveedor_texto'] ?? null;
         $nombreDistribuidor = $source['distribuidor_seleccionado'] ?? ($source['distribuidor_recomendado'] ?? null);
+        $obraId = $source['obra_id'] ?? null;
+        if (is_string($obraId) && trim($obraId) === '') {
+            $obraId = null;
+        }
+        if (is_string($obraId) && is_numeric($obraId)) {
+            $obraId = (int) $obraId;
+        }
 
         // 2. RESOLVER IDs DE EMPRESA
         $fabricanteId = null;
@@ -548,6 +568,10 @@ class AlbaranesScanController extends Controller
                 ->whereIn('producto_base_id', $productoBasesIds)
                 ->whereIn('estado', ['pendiente', 'parcial'])
                 ->with(['pedido.fabricante', 'pedido.distribuidor', 'productoBase', 'obra']);
+
+            if ($obraId) {
+                $queryLineas->where('obra_id', $obraId);
+            }
 
             $queryLineas->whereHas('pedido', function ($q) use ($tipoCompra, $fabricanteId, $distribuidorId, $pedidoCodigo) {
                 if ($tipoCompra === 'directo' && $fabricanteId) {
