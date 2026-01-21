@@ -19,6 +19,8 @@ use App\Services\AlertaService;
 use App\Services\ActionLoggerService;
 use App\Services\FinProgramadoService;
 use App\Models\Departamento;
+use App\Models\SalidaCliente;
+use Illuminate\Support\Facades\DB;
 
 class PlanificacionController extends Controller
 {
@@ -257,6 +259,32 @@ class PlanificacionController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Busca planillas por código (contains) para mostrar en el filtro.
+     */
+    public function buscarPlanillas(Request $request)
+    {
+        $codigo = $request->input('codigo', '');
+
+        if (strlen($codigo) < 2) {
+            return response()->json([]);
+        }
+
+        $planillas = Planilla::where('codigo', 'LIKE', "%{$codigo}%")
+            ->select('id', 'codigo', 'fecha_estimada_entrega')
+            ->orderBy('fecha_estimada_entrega', 'asc')
+            ->limit(20)
+            ->get()
+            ->map(fn($p) => [
+                'id' => $p->id,
+                'codigo' => $p->codigo,
+                'fecha' => $p->fecha_estimada_entrega?->format('d/m/Y') ?? 'S/F',
+            ]);
+
+        return response()->json($planillas);
+    }
+
     /**
      * Obtiene los eventos de resumen basados en los eventos de planillas generados.
      * @param \Illuminate\Support\Collection $eventosPlanillas - Eventos ya generados (con fechas de salida aplicadas)
@@ -749,6 +777,11 @@ class PlanificacionController extends Controller
         $fechaInicio = $fechaBase->copy()->setTime((int)$hora, (int)$minuto, 0);
         $planillasIds = $planillas->pluck('id')->toArray();
         $planillasCodigos = $planillas->pluck('codigo')->filter()->toArray();
+        // Mapa de código -> fecha de entrega para mostrar en filtro
+        $planillasConFecha = $planillas->filter(fn($p) => $p->codigo)->map(fn($p) => [
+            'codigo' => $p->codigo,
+            'fecha' => $p->fecha_estimada_entrega?->toDateString() ?? $fechaBase->toDateString(),
+        ])->values()->toArray();
 
         // 👉 Diámetro medio
         $diametros = $planillas->flatMap->elementos->pluck('diametro')->filter();
@@ -807,6 +840,7 @@ class PlanificacionController extends Controller
                 'longitudTotal' => $planillas->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
                 'planillas_ids' => $planillasIds,
                 'planillas_codigos' => $planillasCodigos,
+                'planillas_con_fecha' => $planillasConFecha,
                 'elementos_ids' => $elementosIds,
                 'diametroMedio' => $diametroMedio,
                 'todasCompletadas' => $todasCompletadas,
@@ -1304,5 +1338,264 @@ class PlanificacionController extends Controller
         }
 
         return response()->json($resultado);
+    }
+
+    /**
+     * Automatiza la creación de salidas para las agrupaciones seleccionadas.
+     * Límite por defecto: 28 toneladas por salida.
+     */
+    public function automatizarSalidas(Request $request)
+    {
+        $request->validate([
+            'agrupaciones' => 'required|array|min:1',
+            'agrupaciones.*.obra_id' => 'required|integer',
+            'agrupaciones.*.fecha' => 'required|date',
+            'agrupaciones.*.planillas_ids' => 'required|array|min:1',
+            'accion_conflicto' => 'nullable|string|in:cambiar,omitir,cancelar',
+            'paquetes_conflicto_ids' => 'nullable|array',
+        ]);
+
+        $agrupaciones = $request->agrupaciones;
+        $accionConflicto = $request->accion_conflicto;
+        $paquetesConflictoIds = $request->paquetes_conflicto_ids ?? [];
+        $limitePeso = 28000; // 28 toneladas en kg
+
+        // Paso 1: Verificar conflictos si no se ha especificado acción
+        if (!$accionConflicto) {
+            $conflictos = $this->verificarConflictosPaquetes($agrupaciones);
+
+            if (!empty($conflictos)) {
+                return response()->json([
+                    'success' => false,
+                    'requiere_decision' => true,
+                    'conflictos' => $conflictos,
+                    'message' => 'Algunos paquetes ya están asignados a otras salidas.',
+                ]);
+            }
+        }
+
+        // Paso 2: Procesar cada agrupación
+        $resultados = [];
+        $errores = [];
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($agrupaciones as $agrupacion) {
+                $obraId = $agrupacion['obra_id'];
+                $fecha = $agrupacion['fecha'];
+                $planillasIds = $agrupacion['planillas_ids'];
+
+                $resultado = $this->procesarAgrupacion(
+                    $obraId,
+                    $fecha,
+                    $planillasIds,
+                    $limitePeso,
+                    $accionConflicto,
+                    $paquetesConflictoIds
+                );
+
+                if ($resultado['success']) {
+                    $resultados[] = $resultado;
+                } else {
+                    $errores[] = $resultado;
+                }
+            }
+
+            if (!empty($errores)) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hubo errores al procesar algunas agrupaciones.',
+                    'errores' => $errores,
+                ]);
+            }
+
+            DB::commit();
+
+            // Calcular totales
+            $totalSalidasCreadas = collect($resultados)->sum(fn($r) => count($r['salidas_creadas']));
+            $totalPaquetesAsociados = collect($resultados)->sum(fn($r) => $r['paquetes_asociados']);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Automatización completada: {$totalSalidasCreadas} salida(s) creada(s), {$totalPaquetesAsociados} paquete(s) asociado(s).",
+                'resultados' => $resultados,
+                'total_salidas' => $totalSalidasCreadas,
+                'total_paquetes' => $totalPaquetesAsociados,
+            ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error en automatizarSalidas: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al automatizar salidas: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Verifica si hay paquetes que ya pertenecen a otras salidas.
+     */
+    private function verificarConflictosPaquetes(array $agrupaciones): array
+    {
+        $conflictos = [];
+
+        foreach ($agrupaciones as $agrupacion) {
+            $planillasIds = $agrupacion['planillas_ids'];
+
+            // Obtener paquetes de estas planillas que ya tienen salida
+            $paquetesConSalida = Paquete::whereIn('planilla_id', $planillasIds)
+                ->whereHas('salidas')
+                ->with(['planilla:id,codigo', 'salidas:id,codigo_salida'])
+                ->get();
+
+            foreach ($paquetesConSalida as $paquete) {
+                $conflictos[] = [
+                    'paquete_id' => $paquete->id,
+                    'paquete_codigo' => $paquete->codigo,
+                    'planilla_codigo' => $paquete->planilla?->codigo ?? 'N/A',
+                    'salida_actual' => $paquete->salidas->first()?->codigo_salida ?? 'N/A',
+                    'obra_id' => $agrupacion['obra_id'],
+                    'fecha' => $agrupacion['fecha'],
+                ];
+            }
+        }
+
+        return $conflictos;
+    }
+
+    /**
+     * Procesa una agrupación de planillas para crear salidas automáticas.
+     */
+    private function procesarAgrupacion(
+        int $obraId,
+        string $fecha,
+        array $planillasIds,
+        float $limitePeso,
+        ?string $accionConflicto,
+        array $paquetesConflictoIds
+    ): array {
+        // Obtener paquetes de las planillas, ordenados por fecha de creación
+        $paquetesQuery = Paquete::whereIn('planilla_id', $planillasIds)
+            ->with('planilla')
+            ->orderBy('created_at', 'asc');
+
+        // Filtrar según la acción de conflicto
+        if ($accionConflicto === 'omitir' && !empty($paquetesConflictoIds)) {
+            $paquetesQuery->whereNotIn('id', $paquetesConflictoIds);
+        }
+
+        $paquetes = $paquetesQuery->get();
+
+        if ($paquetes->isEmpty()) {
+            return [
+                'success' => true,
+                'obra_id' => $obraId,
+                'fecha' => $fecha,
+                'salidas_creadas' => [],
+                'paquetes_asociados' => 0,
+                'message' => 'No hay paquetes para asociar.',
+            ];
+        }
+
+        // Si la acción es "cambiar", desasociar los paquetes de sus salidas actuales
+        if ($accionConflicto === 'cambiar' && !empty($paquetesConflictoIds)) {
+            Paquete::whereIn('id', $paquetesConflictoIds)->each(function ($paquete) {
+                $paquete->salidas()->detach();
+            });
+        }
+
+        // Crear salidas y asociar paquetes respetando el límite de peso
+        $salidasCreadas = [];
+        $salidaActual = null;
+        $pesoActual = 0;
+        $paquetesAsociados = 0;
+
+        foreach ($paquetes as $paquete) {
+            $pesoPaquete = $paquete->peso ?? 0;
+
+            // Si no hay salida actual o excedería el límite, crear nueva salida
+            if (!$salidaActual || ($pesoActual + $pesoPaquete) > $limitePeso) {
+                $salidaActual = $this->crearSalidaAutomatica($fecha);
+                $salidasCreadas[] = [
+                    'id' => $salidaActual->id,
+                    'codigo' => $salidaActual->codigo_salida,
+                ];
+                $pesoActual = 0;
+            }
+
+            // Asociar paquete a la salida
+            $paquete->salidas()->syncWithoutDetaching([$salidaActual->id]);
+            $paquete->estado = 'asignado_a_salida';
+            $paquete->saveQuietly();
+
+            // Asegurar registro en salida_cliente
+            $this->asegurarSalidaClienteEnController($salidaActual, $paquete->planilla);
+
+            $pesoActual += $pesoPaquete;
+            $paquetesAsociados++;
+        }
+
+        // Activar automatización en las planillas
+        Planilla::whereIn('id', $planillasIds)
+            ->update(['automatizacion_salidas_activa' => true]);
+
+        return [
+            'success' => true,
+            'obra_id' => $obraId,
+            'fecha' => $fecha,
+            'salidas_creadas' => $salidasCreadas,
+            'paquetes_asociados' => $paquetesAsociados,
+        ];
+    }
+
+    /**
+     * Crea una nueva salida para automatización.
+     */
+    private function crearSalidaAutomatica(string $fechaSalida): Salida
+    {
+        $salida = Salida::create([
+            'fecha_salida' => $fechaSalida,
+            'estado' => 'pendiente',
+            'user_id' => auth()->id(),
+        ]);
+
+        // Generar código de salida
+        $codigoSalida = 'AS' . substr(date('Y'), 2) . '/' . str_pad($salida->id, 4, '0', STR_PAD_LEFT);
+        $salida->codigo_salida = $codigoSalida;
+        $salida->save();
+
+        return $salida;
+    }
+
+    /**
+     * Asegura que existe un registro en salida_cliente.
+     */
+    private function asegurarSalidaClienteEnController(Salida $salida, $planilla): void
+    {
+        if (!$planilla) return;
+
+        $clienteId = $planilla->cliente_id;
+        $obraId = $planilla->obra_id;
+
+        if (!$clienteId || !$obraId) return;
+
+        SalidaCliente::firstOrCreate([
+            'salida_id' => $salida->id,
+            'cliente_id' => $clienteId,
+            'obra_id' => $obraId,
+        ], [
+            'horas_paralizacion' => 0,
+            'importe_paralizacion' => 0,
+            'horas_grua' => 0,
+            'importe_grua' => 0,
+            'horas_almacen' => 0,
+            'importe' => 0,
+        ]);
     }
 }

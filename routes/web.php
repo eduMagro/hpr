@@ -633,11 +633,13 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/planillas/completar', [PlanillaController::class, 'completar'])->name('planillas.completar');
     Route::get('/planificacion/index', [PlanificacionController::class, 'index'])->name('planificacion.index');
     Route::get('/planificacion/totales', [PlanificacionController::class, 'getTotalesAjax']);
+    Route::get('/planificacion/buscar-planillas', [PlanificacionController::class, 'buscarPlanillas'])->name('planificacion.buscarPlanillas');
     Route::post('/planificacion/simular-adelanto', [PlanificacionController::class, 'simularAdelanto'])->name('planificacion.simularAdelanto');
     Route::post('/planificacion/ejecutar-adelanto', [PlanificacionController::class, 'ejecutarAdelanto'])->name('planificacion.ejecutarAdelanto');
     Route::post('/planificacion/ejecutar-adelanto-elementos', [PlanificacionController::class, 'ejecutarAdelantoElementos'])->name('planificacion.ejecutarAdelantoElementos');
     Route::post('/planificacion/simular-retraso', [PlanificacionController::class, 'simularRetraso'])->name('planificacion.simularRetraso');
     Route::post('/planificacion/ejecutar-retraso', [PlanificacionController::class, 'ejecutarRetraso'])->name('planificacion.ejecutarRetraso');
+    Route::post('/planificacion/automatizar-salidas', [PlanificacionController::class, 'automatizarSalidas'])->name('planificacion.automatizarSalidas');
     Route::post('/planillas/completar-todas', [PlanillaController::class, 'completarTodas'])
         ->name('planillas.completarTodas');
 

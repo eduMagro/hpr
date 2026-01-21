@@ -6,8 +6,10 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Console\Scheduling\Schedule;
 use App\Models\User;
 use App\Models\Producto;
+use App\Models\Paquete;
 use App\Observers\UserObserver;
 use App\Observers\ProductoObserver;
+use App\Observers\PaqueteObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Http\Request;
@@ -30,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
         // 👀 Observadores de modelos
         User::observe(UserObserver::class);
         Producto::observe(ProductoObserver::class);
+        Paquete::observe(PaqueteObserver::class);
 
         // 🔐 Limitador de intentos de login
         RateLimiter::for('login', function (Request $request) {

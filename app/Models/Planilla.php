@@ -28,6 +28,7 @@ class Planilla extends Model
         'fecha_creacion_ferrawin' => 'datetime',
         'aprobada' => 'boolean',
         'aprobada_at' => 'datetime',
+        'automatizacion_salidas_activa' => 'boolean',
     ];
 
 
@@ -58,6 +59,7 @@ class Planilla extends Model
         'aprobada',
         'aprobada_por_id',
         'aprobada_at',
+        'automatizacion_salidas_activa',
     ];
 
     /**

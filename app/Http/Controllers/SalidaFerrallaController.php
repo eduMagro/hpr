@@ -2030,30 +2030,39 @@ class SalidaFerrallaController extends Controller
             'salidas' => $salidasExistentes->pluck('codigo_salida')->toArray(),
         ]);
 
-        // Obtener AMBOS conjuntos de paquetes para filtrado dinámico sin recarga
-        // 1. Paquetes de las planillas seleccionadas (obra/cliente específico)
-        // Nota: No cargamos etiquetas.elementos aquí para evitar problemas de memoria
-        $paquetesFiltrados = Paquete::with(['planilla.obra', 'planilla.cliente', 'nave'])
-            ->withCount('etiquetas')
+        // Solo cargar paquetes de las planillas seleccionadas (evitar cargar 60k+ registros)
+        $paquetesFiltrados = Paquete::with(['planilla.obra', 'planilla.cliente', 'nave', 'etiquetas.elementos'])
             ->whereIn('planilla_id', $planillasIds)
             ->where('estado', 'pendiente')
             ->get();
 
-        // 2. TODOS los paquetes pendientes disponibles
-        // Optimizado: solo cargamos relaciones esenciales
-        $paquetesTodos = Paquete::with(['planilla.obra', 'planilla.cliente', 'nave'])
-            ->withCount('etiquetas')
-            ->where('estado', 'pendiente')
-            ->whereDoesntHave('salidas') // No asignados a ninguna salida
-            ->get();
+        // Para "todos los paquetes", solo cargar los de las mismas obras/clientes (no TODOS)
+        $paquetesMismaObraCliente = collect();
+        if ($mostrarTodosPaquetes && ($obrasIds->isNotEmpty() || $clientesIds->isNotEmpty())) {
+            $paquetesMismaObraCliente = Paquete::with(['planilla.obra', 'planilla.cliente', 'nave', 'etiquetas.elementos'])
+                ->whereHas('planilla', function($q) use ($obrasIds, $clientesIds) {
+                    $q->where(function($q2) use ($obrasIds, $clientesIds) {
+                        if ($obrasIds->isNotEmpty()) {
+                            $q2->whereIn('obra_id', $obrasIds);
+                        }
+                        if ($clientesIds->isNotEmpty()) {
+                            $q2->orWhereIn('cliente_id', $clientesIds);
+                        }
+                    });
+                })
+                ->where('estado', 'pendiente')
+                ->whereDoesntHave('salidas')
+                ->get();
+        }
 
         Log::info('📦 Cargando paquetes para filtrado dinámico', [
             'paquetes_filtrados' => $paquetesFiltrados->count(),
-            'paquetes_todos' => $paquetesTodos->count(),
+            'paquetes_misma_obra_cliente' => $paquetesMismaObraCliente->count(),
         ]);
 
         // El conjunto inicial depende del toggle
-        $paquetesDisponibles = $mostrarTodosPaquetes ? $paquetesTodos : $paquetesFiltrados;
+        $paquetesDisponibles = $mostrarTodosPaquetes ? $paquetesMismaObraCliente : $paquetesFiltrados;
+        $paquetesTodos = $paquetesMismaObraCliente; // Para compatibilidad con la vista
 
         // Obtener empresas y camiones para los formularios
         $empresas = EmpresaTransporte::all();

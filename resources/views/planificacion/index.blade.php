@@ -62,6 +62,11 @@
                                 </svg>
                             </button>
                         </div>
+                        <!-- Planillas encontradas -->
+                        <div id="planillas-encontradas" class="hidden mt-3 p-2 bg-purple-50 border border-purple-200 rounded-md">
+                            <p class="text-xs font-semibold text-purple-700 mb-1">Planillas encontradas:</p>
+                            <div id="planillas-encontradas-lista" class="flex flex-wrap gap-1 text-xs"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -144,6 +149,7 @@
                 // 📅 nuevas rutas para cambiar fechas de entrega
                 'informacionPlanillas' => route('planillas.editarInformacionMasiva'), // GET ?ids=1,2,3
                 'actualizarFechasPlanillas' => route('planillas.editarActualizarFechasMasiva'), // PUT JSON
+                'automatizarSalidas' => route('planificacion.automatizarSalidas'), // POST JSON
             ],
             'camiones' => $camiones ?? [],
             'empresasTransporte' => $empresasTransporte ?? [],
@@ -301,6 +307,59 @@
         if (document.readyState === 'complete' || document.readyState === 'interactive') {
             window.initPlanificacionPage();
         }
+    </script>
+
+    {{-- Búsqueda de planillas para mostrar badges informativos --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputPlanilla = document.getElementById('filtro-cod-planilla');
+            const containerResultados = document.getElementById('planillas-encontradas');
+            const listaResultados = document.getElementById('planillas-encontradas-lista');
+            let debounceTimer = null;
+
+            if (!inputPlanilla || !containerResultados || !listaResultados) return;
+
+            inputPlanilla.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                const codigo = this.value.trim();
+
+                if (codigo.length < 2) {
+                    containerResultados.classList.add('hidden');
+                    listaResultados.innerHTML = '';
+                    return;
+                }
+
+                debounceTimer = setTimeout(() => {
+                    fetch(`{{ route('planificacion.buscarPlanillas') }}?codigo=${encodeURIComponent(codigo)}`)
+                        .then(res => res.json())
+                        .then(planillas => {
+                            if (planillas.length === 0) {
+                                containerResultados.classList.add('hidden');
+                                listaResultados.innerHTML = '';
+                                return;
+                            }
+
+                            listaResultados.innerHTML = planillas.map(p =>
+                                `<span class="inline-flex items-center px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300">
+                                    <strong>${p.codigo}</strong>
+                                    <span class="ml-1 text-purple-600">(${p.fecha})</span>
+                                </span>`
+                            ).join('');
+                            containerResultados.classList.remove('hidden');
+                        })
+                        .catch(err => {
+                            console.error('Error buscando planillas:', err);
+                            containerResultados.classList.add('hidden');
+                        });
+                }, 300);
+            });
+
+            // Limpiar al resetear filtros
+            document.getElementById('btn-reset-filtros')?.addEventListener('click', () => {
+                containerResultados.classList.add('hidden');
+                listaResultados.innerHTML = '';
+            });
+        });
     </script>
 
     <!-- Componente Livewire para comentarios -->
