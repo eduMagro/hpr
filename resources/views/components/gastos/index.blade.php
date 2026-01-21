@@ -95,11 +95,11 @@
                                 <th scope="col" class="px-4 py-4 font-semibold text-right w-24">Coste</th>
                                 <th scope="col" class="px-4 py-4 font-semibold text-center w-16">Factura</th>
                                 <th scope="col" class="px-4 py-4 font-semibold w-40">Observaciones</th>
-                                <th scope="col" class="px-4 py-4 font-semibold rounded-tr-2xl text-center w-20">
+                                <th scope="col" class="px-4 py-4 font-semibold rounded-tr-2xl w-20 text-center">
                                     Acciones</th>
                             </tr>
                             <!-- Filter Row -->
-                            <tr class="bg-gray-50/80 dark:bg-gray-700/80 border-b border-gray-100 dark:border-gray-600">
+                            <tr class="bg-gray-100 dark:bg-gray-700/80 border-b border-gray-100 dark:border-gray-600">
                                 <th class="px-3 py-2">
                                     <input type="text" x-model="filters.id" placeholder="#"
                                         class="w-full  text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
@@ -183,7 +183,7 @@
                                     <td class="px-6 py-4 cursor-default">
                                         <template x-if="gasto.nave">
                                             <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+                                                class="inline-flex whitespace-nowrap items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
                                                 x-text="gasto.nave.obra || ('Nave ' + gasto.nave_id)"></span>
                                         </template>
                                         <template x-if="!gasto.nave">
@@ -203,22 +203,24 @@
                                             <span class="text-gray-400">-</span>
                                         </template>
                                     </td>
-                                    <td class="px-6 py-4 font-medium text-gray-700 dark:text-gray-200 cursor-default"
-                                        x-text="gasto.proveedor?.nombre || '-'"></td>
+                                    <td class="px-6 py-4 font-medium text-gray-700 dark:text-gray-200 cursor-default whitespace-nowrap"
+                                        x-text="truncateText(gasto.proveedor?.nombre || '-', 10)"></td>
                                     <td class="px-6 py-4 cursor-default">
                                         <template x-if="gasto.maquina">
                                             <div class="flex items-center gap-2">
-                                                <div class="h-2 w-2 rounded-full bg-green-500"></div>
-                                                <span
-                                                    x-text="gasto.maquina.nombre || ('Maq. ' + gasto.maquina_id)"></span>
+                                                <div class="h-2 w-2 min-h-2 min-w-2 rounded-full bg-green-500"></div>
+                                                <span :title="gasto.maquina.nombre || ('Maq. ' + gasto.maquina_id)"
+                                                    x-text="truncateText(gasto.maquina.codigo || ('Maq. ' + gasto.maquina_id), 10)"></span>
                                             </div>
                                         </template>
                                         <template x-if="!gasto.maquina">
                                             <span class="text-gray-400">-</span>
                                         </template>
                                     </td>
-                                    <td class="px-6 py-4 cursor-default" x-text="gasto.motivo?.nombre || '-'"></td>
-                                    <td class="px-6 py-4 text-right font-bold text-gray-900 dark:text-white cursor-default"
+                                    <td class="px-6 py-4 whitespace-nowrap cursor-default"
+                                        :title="gasto.motivo?.nombre || '-'"
+                                        x-text="truncateText(gasto.motivo?.nombre || '-', 10)"></td>
+                                    <td class="px-6 py-4 text-right font-bold text-gray-900 dark:text-white cursor-default whitespace-nowrap"
                                         x-text="gasto.coste ? formatCurrency(gasto.coste) : '-'"></td>
                                     <td class="px-6 py-4 text-center cursor-default">
                                         <template x-if="gasto.factura">
@@ -238,7 +240,7 @@
                                         </template>
                                     </td>
                                     <td class="px-6 py-4 text-xs text-gray-500 dark:text-gray-400 cursor-default">
-                                        <div class="flex justify-center items-center gap-2 max-w-xs">
+                                        <div class="flex items-center gap-2 max-w-xs">
                                             <span class="truncate"
                                                 x-text="truncateText(gasto.observaciones, 30)"></span>
                                             <template x-if="gasto.observaciones && gasto.observaciones.length > 30">
@@ -258,7 +260,7 @@
                                             </template>
                                         </div>
                                     </td>
-                                    <td class="px-4 py-4 pt-5 flex justify-center items-center">
+                                    <td class="px-4 py-4 pt-[1.07rem] flex justify-center items-center">
                                         <button @click="editGasto(gasto)" title="Editar gasto"
                                             class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
