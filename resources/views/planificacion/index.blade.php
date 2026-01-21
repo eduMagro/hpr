@@ -311,6 +311,20 @@
 
     {{-- Búsqueda de planillas para mostrar badges informativos --}}
     <script>
+        // Función global para navegar a una fecha en el calendario
+        window.irAFechaCalendario = function(fechaISO) {
+            if (!fechaISO) return;
+
+            if (window.calendar && typeof window.calendar.gotoDate === 'function') {
+                window.calendar.gotoDate(fechaISO);
+                setTimeout(() => {
+                    document.getElementById('calendario')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+                }, 150);
+            } else {
+                console.error('Calendario no disponible');
+            }
+        };
+
         (function() {
             function initBuscadorPlanillas() {
                 const inputPlanilla = document.getElementById('filtro-cod-planilla');
@@ -349,7 +363,7 @@
                                     `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300">
                                         <strong>${p.codigo}</strong>
                                         <span class="text-purple-600">(${p.fecha})</span>
-                                        ${p.fechaISO ? `<button type="button" onclick="window.calendar?.gotoDate('${p.fechaISO}'); setTimeout(() => document.getElementById('calendario')?.scrollIntoView({behavior: 'smooth', block: 'start'}), 100);" class="ml-1 px-1.5 py-0.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition" title="Ir a esta fecha">Ir</button>` : ''}
+                                        ${p.fechaISO ? `<button type="button" onclick="window.irAFechaCalendario('${p.fechaISO}')" class="ml-1 px-1.5 py-0.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition" title="Ir a esta fecha">Ir</button>` : ''}
                                     </span>`
                                 ).join('');
                                 containerResultados.classList.remove('hidden');
