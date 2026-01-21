@@ -278,13 +278,15 @@ class PlanificacionController extends Controller
             ->get()
             ->map(function($p) {
                 $fecha = 'S/F';
+                $fechaISO = null;
+                $fechaObj = null;
+
                 if ($p->fecha_estimada_entrega) {
                     try {
                         if ($p->fecha_estimada_entrega instanceof Carbon) {
                             $fechaObj = $p->fecha_estimada_entrega;
                         } else {
                             $fechaStr = $p->fecha_estimada_entrega;
-                            $fechaObj = null;
 
                             // Intentar formatos europeos comunes
                             foreach (['d/m/Y H:i', 'd/m/Y H:i:s', 'd/m/Y', 'Y-m-d H:i:s', 'Y-m-d'] as $formato) {
@@ -301,6 +303,7 @@ class PlanificacionController extends Controller
                             }
                         }
                         $fecha = $fechaObj->format('d/m/Y');
+                        $fechaISO = $fechaObj->format('Y-m-d');
                     } catch (\Exception $e) {
                         $fecha = 'S/F';
                     }
@@ -309,6 +312,7 @@ class PlanificacionController extends Controller
                     'id' => $p->id,
                     'codigo' => $p->codigo,
                     'fecha' => $fecha,
+                    'fechaISO' => $fechaISO,
                 ];
             });
 
@@ -865,6 +869,7 @@ class PlanificacionController extends Controller
             'resourceId' => (string) $obraId,
             'extendedProps' => [
                 'tipo' => 'planilla',
+                'obra_id' => $obraId,
                 'cod_obra' => $codObra,
                 'nombre_obra' => $nombreObra,
                 'cliente' => $clienteNombre,

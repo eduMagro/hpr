@@ -346,9 +346,10 @@
                                 }
 
                                 listaResultados.innerHTML = planillas.map(p =>
-                                    `<span class="inline-flex items-center px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300">
+                                    `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300">
                                         <strong>${p.codigo}</strong>
-                                        <span class="ml-1 text-purple-600">(${p.fecha})</span>
+                                        <span class="text-purple-600">(${p.fecha})</span>
+                                        ${p.fechaISO ? `<button type="button" onclick="window.calendar?.gotoDate('${p.fechaISO}')" class="ml-1 px-1.5 py-0.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition" title="Ir a esta fecha">Ir</button>` : ''}
                                     </span>`
                                 ).join('');
                                 containerResultados.classList.remove('hidden');
