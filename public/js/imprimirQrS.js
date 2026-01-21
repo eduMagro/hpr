@@ -115,6 +115,18 @@ function generateAndPrintQR(id, nombre, tipo) {
 function generateAndPrintQRPaquete(data) {
     const { codigo, planilla, cliente, obra, descripcion, seccion, ensamblado, peso, etiquetas } = data;
 
+    // Mostrar loading mientras se genera el QR
+    Swal?.fire?.({
+        title: 'Generando QR...',
+        text: 'Por favor espera',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+            Swal?.showLoading?.();
+        }
+    });
+
     const qrContainerId = `qrContainer-paquete-${codigo}`;
     let qrContainer = document.getElementById(qrContainerId);
 
@@ -130,17 +142,24 @@ function generateAndPrintQRPaquete(data) {
     // QR tamaño ajustado para A6
     const qrSize = 120;
 
+    // Generar el QR
     const qrCode = new QRCode(qrContainer, {
         text: codigo.toString(),
         width: qrSize,
         height: qrSize,
     });
 
-    setTimeout(() => {
-        const qrImg = qrContainer.querySelector("img");
-        if (!qrImg) return;
+    // Función para abrir ventana de impresión
+    const abrirVentanaImpresion = (qrImgSrc) => {
+        // Cerrar el loading
+        Swal?.close?.();
 
         const printWindow = window.open("", "_blank");
+        if (!printWindow) {
+            Swal?.fire?.('Error', 'No se pudo abrir la ventana de impresión. Verifica que no esté bloqueada.', 'error');
+            return;
+        }
+
         printWindow.document.write(`
             <html>
                 <head>
@@ -250,7 +269,7 @@ function generateAndPrintQRPaquete(data) {
                         </div>
 
                         <div class="qr-codigo">
-                            <img src="${qrImg.src}" alt="QR">
+                            <img src="${qrImgSrc}" alt="QR">
                         </div>
 
                         <div class="codigo-section">
@@ -290,12 +309,75 @@ function generateAndPrintQRPaquete(data) {
                         </div>
                     </div>
                     <script>
-                        window.print();
-                        setTimeout(() => window.close(), 500);
+                        // Esperar a que la imagen cargue antes de imprimir
+                        const img = document.querySelector('.qr-codigo img');
+                        if (img) {
+                            if (img.complete) {
+                                window.print();
+                                setTimeout(() => window.close(), 500);
+                            } else {
+                                img.onload = function() {
+                                    window.print();
+                                    setTimeout(() => window.close(), 500);
+                                };
+                            }
+                        } else {
+                            window.print();
+                            setTimeout(() => window.close(), 500);
+                        }
                     <\/script>
                 </body>
             </html>
         `);
         printWindow.document.close();
-    }, 500);
+    };
+
+    // Función para obtener el data URL del QR (desde canvas o imagen)
+    const obtenerQRDataUrl = () => {
+        // Primero intentar con canvas (más confiable)
+        const canvas = qrContainer.querySelector("canvas");
+        if (canvas && canvas.width > 0 && canvas.height > 0) {
+            try {
+                const ctx = canvas.getContext('2d');
+                // Verificar que el canvas tenga contenido (no esté en blanco)
+                const imageData = ctx.getImageData(0, 0, 1, 1);
+                if (imageData.data[3] > 0) { // Alpha > 0 significa que hay contenido
+                    return canvas.toDataURL("image/png");
+                }
+            } catch (e) {
+                console.warn('No se pudo obtener dataURL del canvas:', e);
+            }
+        }
+
+        // Si no hay canvas válido, intentar con imagen
+        const img = qrContainer.querySelector("img");
+        if (img && img.src && img.src.startsWith('data:') && img.complete && img.naturalWidth > 0) {
+            return img.src;
+        }
+
+        return null;
+    };
+
+    // Esperar a que el QR se genere
+    const esperarQRYImprimir = (intentos = 0) => {
+        const maxIntentos = 30; // 30 intentos x 150ms = 4.5 segundos máximo
+
+        const dataUrl = obtenerQRDataUrl();
+
+        if (dataUrl) {
+            abrirVentanaImpresion(dataUrl);
+            return;
+        }
+
+        if (intentos < maxIntentos) {
+            setTimeout(() => esperarQRYImprimir(intentos + 1), 150);
+        } else {
+            Swal?.close?.();
+            console.error('Timeout: No se pudo generar el QR después de', maxIntentos, 'intentos');
+            Swal?.fire?.('Error', 'No se pudo generar el código QR. Intenta de nuevo.', 'error');
+        }
+    };
+
+    // Dar un delay inicial más largo para que la librería QRCode genere el canvas
+    setTimeout(() => esperarQRYImprimir(), 300);
 }
