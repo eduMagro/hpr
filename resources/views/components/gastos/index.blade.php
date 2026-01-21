@@ -1000,8 +1000,68 @@
                     // Watchers or init logic if needed
                 },
 
+                async submitFormFormData() {
+                    // Clear fields based on tipo_gasto
+                    if (this.form.tipo_gasto === 'gasto') {
+                        // Si es gasto, no debe tener obra
+                        this.form.obra_id = '';
+                    } else if (this.form.tipo_gasto === 'obra') {
+                        // Si es obra, no debe tener nave ni máquina
+                        this.form.nave_id = '';
+                        this.form.maquina_id = '';
+                        this.selectedMachine = null;
+                        this.machineSearch = '';
+                    }
+
+                    // Create form data
+                    const formData = new FormData();
+                    formData.append('_token', '{{ csrf_token() }}');
+
+                    if (this.isEditing) {
+                        formData.append('_method', 'PUT');
+                    }
+
+                    // Append form fields
+                    Object.keys(this.form).forEach(key => {
+                        if (key !== 'tipo_gasto') { // Don't send tipo_gasto to backend
+                            formData.append(key, this.form[key] || '');
+                        }
+                    });
+
+                    // If creating new proveedor
+                    if (this.showNewProveedorInput && this.newProveedor) {
+                        formData.append('new_proveedor', this.newProveedor);
+                    }
+
+                    // If creating new motivo
+                    if (this.showNewMotivoInput && this.newMotivo) {
+                        formData.append('new_motivo', this.newMotivo);
+                    }
+
+                    try {
+                        const response = await fetch(this.formAction, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                            }
+                        });
+
+                        if (response.ok) {
+                            window.location.reload();
+                        } else {
+                            const data = await response.json();
+                            alert(data.message || 'Error al guardar');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('Error al enviar el formulario');
+                    }
+                },
+
+
                 openCreateModal() {
-                    this.resetForm();
+                    this.resetForm(); // Reset dynamic inputs first
                     this.isEditing = false;
                     this.formAction = '{{ route('gastos.store') }}';
                     this.showModal = true;
@@ -1185,6 +1245,17 @@
                         }
 
                         // 3. Submit main form
+                        if (this.form.tipo_gasto === 'gasto') {
+                            this.form.obra_id = '';
+                        } else if (this.form.tipo_gasto === 'obra') {
+                            this.form.nave_id = '';
+                            this.form.maquina_id = '';
+                            this.selectedMachine = null;
+                            this.machineSearch = '';
+                            this.openMachineDropdown = false;
+                            this.dropdownStyle = '';
+                        }
+
                         const method = this.isEditing ? 'PUT' : 'POST';
                         const body = JSON.stringify(this.form);
 
