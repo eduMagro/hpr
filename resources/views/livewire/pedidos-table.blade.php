@@ -484,15 +484,11 @@
                                                 class="botones-estado-{{ $linea->id }} flex items-center gap-1 flex-nowrap">
                                                 {{-- BOTÓN COMPLETAR (Entrega directa) --}}
                                                 @if (($esEntregaDirecta || $esAlmacen) && !$pedidoCompletado && $pedido)
-                                                    <form method="POST"
-                                                        action="{{ route('pedidos.editarCompletarLineaManual', ['pedido' => $pedido->id, 'linea' => $linea->id]) }}"
-                                                        onsubmit="return confirmarCompletarLinea(this);">
-                                                        @csrf
-                                                        <button type="submit"
-                                                            class="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                            Completar
-                                                        </button>
-                                                    </form>
+                                                    <button type="button"
+                                                        onclick="completarLineaManual({{ $pedido->id }}, {{ $linea->id }})"
+                                                        class="btn-completar-{{ $linea->id }} bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                        Completar
+                                                    </button>
                                                 @endif
 
                                                 {{-- BOTÓN DESACTIVAR --}}
@@ -804,6 +800,114 @@
             if (confirm('¿Estás seguro de que deseas cancelar esta línea?')) {
                 document.querySelector(`.form-cancelar-linea[data-pedido-id="${pedidoId}"][data-linea-id="${lineaId}"]`)
                     .submit();
+            }
+        }
+
+        async function completarLineaManual(pedidoId, lineaId) {
+            const confirmar = confirm('¿Estás seguro de que deseas completar esta línea?');
+            if (!confirmar) return;
+
+            const btnCompletar = document.querySelector(`.btn-completar-${lineaId}`);
+            if (btnCompletar) {
+                btnCompletar.disabled = true;
+                btnCompletar.textContent = 'Completando...';
+            }
+
+            try {
+                const response = await fetch(`/pedidos/${pedidoId}/lineas/${lineaId}/completar`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Actualizar la fila de la línea
+                    const filaLinea = document.querySelector(`tr[wire\\:key="linea-${lineaId}"]`);
+                    if (filaLinea) {
+                        // Cambiar clase de fondo a completado
+                        filaLinea.className = filaLinea.className
+                            .replace(/bg-yellow-100|bg-gray-50|bg-white|even:bg-gray-50|odd:bg-white/g, '')
+                            .trim();
+                        filaLinea.classList.add('bg-green-100', 'text-xs');
+
+                        // Actualizar celda de estado
+                        const celdaEstado = filaLinea.querySelector('td:nth-child(17)');
+                        if (celdaEstado) {
+                            celdaEstado.textContent = 'completado';
+                        }
+
+                        // Ocultar botones de acción de la línea
+                        const botonesEstado = filaLinea.querySelector(`.botones-estado-${lineaId}`);
+                        if (botonesEstado) {
+                            botonesEstado.innerHTML = '';
+                        }
+                    }
+
+                    // Si el pedido cambió de estado, actualizar la cabecera
+                    if (data.data?.pedido_estado) {
+                        const cabeceraRow = document.querySelector(`tr[wire\\:key="pedido-header-${pedidoId}"]`);
+                        if (cabeceraRow) {
+                            const badgeEstado = cabeceraRow.querySelector('span.px-2.py-0\\.5.rounded');
+                            if (badgeEstado) {
+                                badgeEstado.textContent = data.data.pedido_estado.charAt(0).toUpperCase() + data.data.pedido_estado.slice(1);
+                                badgeEstado.className = 'px-2 py-0.5 rounded text-xs font-semibold ';
+                                if (data.data.pedido_estado === 'completado') {
+                                    badgeEstado.classList.add('bg-green-500', 'text-white');
+                                    // Ocultar botón "Cancelar Pedido" si existe
+                                    const formCancelar = cabeceraRow.querySelector('form[action*="cancelar"]');
+                                    if (formCancelar) formCancelar.style.display = 'none';
+                                } else {
+                                    badgeEstado.classList.add('bg-blue-500', 'text-white');
+                                }
+                            }
+                        }
+                    }
+
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Completado!',
+                            text: data.message || 'Línea completada correctamente',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    }
+                } else {
+                    if (btnCompletar) {
+                        btnCompletar.disabled = false;
+                        btnCompletar.textContent = 'Completar';
+                    }
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message || 'No se pudo completar la línea'
+                        });
+                    } else {
+                        alert(data.message || 'No se pudo completar la línea');
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                if (btnCompletar) {
+                    btnCompletar.disabled = false;
+                    btnCompletar.textContent = 'Completar';
+                }
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error de conexión',
+                        text: 'No se pudo conectar con el servidor'
+                    });
+                } else {
+                    alert('Error de conexión al servidor');
+                }
             }
         }
 

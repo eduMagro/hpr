@@ -1899,12 +1899,17 @@ class PedidoController extends Controller
     public function completarLineaManual(Request $request, Pedido $pedido, PedidoProducto $linea)
     {
         try {
-            // Verifica pertenencia: evita que “linea=120” (pedido) cuele
+            // Verifica pertenencia: evita que "linea=120" (pedido) cuele
             if ((int) $linea->pedido_id !== (int) $pedido->id) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => 'La línea no pertenece a este pedido.'], 404);
+                }
                 abort(404, 'La línea no pertenece a este pedido.');
             }
 
-            DB::transaction(function () use ($pedido, $linea) {
+            $nuevoEstadoPedido = null;
+
+            DB::transaction(function () use ($pedido, $linea, &$nuevoEstadoPedido) {
                 // Completar SOLO esta línea (si no está facturada)
                 if (strtolower((string) $linea->estado) !== 'facturado') {
                     $linea->estado = 'completado';
@@ -1917,7 +1922,22 @@ class PedidoController extends Controller
 
                 // Recalcular estado del pedido
                 $this->recalcularEstadoPedido($pedido);
+                $pedido->refresh();
+                $nuevoEstadoPedido = $pedido->estado;
             });
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Línea completada correctamente.',
+                    'data' => [
+                        'linea_id' => $linea->id,
+                        'linea_estado' => 'completado',
+                        'pedido_id' => $pedido->id,
+                        'pedido_estado' => $nuevoEstadoPedido,
+                    ]
+                ]);
+            }
 
             return back()->with('success', 'Línea completada y pedido recalculado.');
         } catch (\Throwable $e) {
@@ -1926,6 +1946,11 @@ class PedidoController extends Controller
                 'linea_id' => $linea->id ?? null,
                 'msg' => $e->getMessage(),
             ]);
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'No se pudo completar la línea.'], 500);
+            }
+
             return back()->with('error', 'No se pudo completar la línea.');
         }
     }
