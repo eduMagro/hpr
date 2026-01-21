@@ -16,6 +16,7 @@ class Salida extends Model
         'user_id',
         'camion_id',
         'empresa_id',
+        'obra_id',
         'horas_paralizacion',
         'importe_paralizacion',
         'horas_grua',
@@ -29,6 +30,15 @@ class Salida extends Model
     public function usuario()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Relación: Una salida pertenece a una obra prioritaria.
+     * Esta es la obra principal para la automatización de paquetes.
+     */
+    public function obra()
+    {
+        return $this->belongsTo(Obra::class, 'obra_id');
     }
 
     /**

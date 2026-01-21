@@ -640,7 +640,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/planificacion/ejecutar-adelanto-elementos', [PlanificacionController::class, 'ejecutarAdelantoElementos'])->name('planificacion.ejecutarAdelantoElementos');
     Route::post('/planificacion/simular-retraso', [PlanificacionController::class, 'simularRetraso'])->name('planificacion.simularRetraso');
     Route::post('/planificacion/ejecutar-retraso', [PlanificacionController::class, 'ejecutarRetraso'])->name('planificacion.ejecutarRetraso');
-    Route::post('/planificacion/automatizar-salidas', [PlanificacionController::class, 'automatizarSalidas'])->name('planificacion.automatizarSalidas');
+    // Ruta automatizarSalidas eliminada - la automatización ahora es via PaqueteObserver
     Route::post('/planillas/completar-todas', [PlanillaController::class, 'completarTodas'])
         ->name('planillas.completarTodas');
 

@@ -154,7 +154,7 @@
                 // 📅 nuevas rutas para cambiar fechas de entrega
                 'informacionPlanillas' => route('planillas.editarInformacionMasiva'), // GET ?ids=1,2,3
                 'actualizarFechasPlanillas' => route('planillas.editarActualizarFechasMasiva'), // PUT JSON
-                'automatizarSalidas' => route('planificacion.automatizarSalidas'), // POST JSON
+                // Ruta automatizarSalidas eliminada - ahora es automático via PaqueteObserver
             ],
             'camiones' => $camiones ?? [],
             'empresasTransporte' => $empresasTransporte ?? [],

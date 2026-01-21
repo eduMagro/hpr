@@ -60,3 +60,61 @@ php artisan planillas:aplicar-subetiquetas 2026-252 2026-253
 |---------|-------------|
 | `php artisan orden-planillas:reindexar` | Reindexar posiciones de orden_planillas |
 | `php artisan planillas:aplicar-subetiquetas` | Aplicar subetiquetas a planillas específicas |
+
+---
+
+## 2026-01-21 - Automatización de Salidas (COMPLETADO)
+
+### Descripción del Sistema
+Sistema automático para asociar paquetes a salidas basándose en `obra_id` + `fecha_salida`.
+
+### Sistema Implementado
+
+#### Concepto Simple
+- Cuando se crea un paquete, el `PaqueteObserver` busca automáticamente una salida con:
+  - `obra_id` = obra de la planilla del paquete
+  - `fecha_salida` = fecha de entrega (de elementos o de planilla)
+- Si existe una salida con espacio (< 28tn), asocia el paquete
+- Si no existe o está llena, crea una nueva salida automáticamente
+- Las salidas también se pueden crear manualmente desde gestionar-salidas
+
+#### Flujo
+```
+Operario crea paquete
+        ↓
+PaqueteObserver se activa
+        ↓
+Determina fecha (elemento.fecha_entrega o planilla.fecha_estimada_entrega)
+        ↓
+Busca salida: WHERE obra_id=X AND fecha_salida=Y AND estado!='completada'
+        ↓
+Si existe con espacio → Asocia paquete
+Si no existe/llena → Crea nueva salida con obra_id + fecha_salida
+```
+
+#### Archivos Clave
+
+**Observer:**
+- `app/Observers/PaqueteObserver.php` - Lógica de asociación automática
+
+**Base de datos:**
+- `salidas.obra_id` (nuevo campo) - Obra prioritaria de la salida
+
+**Modelo:**
+- `app/Models/Salida.php` - Nueva relación `obra()` y campo en fillable
+
+#### Migraciones
+- `2026_01_21_174726_add_obra_id_to_salidas_table` - Añade obra_id a salidas
+- `2026_01_21_174803_remove_automatizacion_salidas_activa_from_planillas_table` - Elimina campo obsoleto
+
+#### Código Eliminado
+Se eliminó el sistema manual de selección/automatización:
+- Ruta `POST /planificacion/automatizar-salidas`
+- Métodos en `PlanificacionController`: automatizarSalidas, verificarConflictosPaquetes, etc.
+- Funciones JS: toggleSeleccionEvento, automatizarSalidas, limpiarSeleccion
+- eventClick handler en calendar.js
+
+#### Notas Importantes
+- La salida puede tener paquetes de otras obras (añadidos manualmente)
+- El `obra_id` en salida indica la obra "prioritaria" para la automatización
+- Si se mueve una agrupación de fecha, se debe actualizar la `fecha_salida` de la salida correspondiente

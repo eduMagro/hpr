@@ -17,8 +17,8 @@ class PaqueteObserver
     const LIMITE_PESO_DEFAULT = 28000;
 
     /**
-     * Handle the Paquete "created" event.
-     * Si la planilla tiene automatización activa, asocia el paquete a una salida.
+     * Maneja el evento "created" del Paquete.
+     * Asocia automáticamente el paquete a una salida según obra_id + fecha.
      */
     public function created(Paquete $paquete): void
     {
@@ -26,28 +26,32 @@ class PaqueteObserver
     }
 
     /**
-     * Asocia el paquete a una salida automáticamente si corresponde.
+     * Asocia el paquete a una salida automáticamente.
+     * Busca una salida con la misma obra_id y fecha_salida.
+     * Si no existe o está llena, crea una nueva.
      */
     private function asociarASalidaAutomatica(Paquete $paquete): void
     {
-        // Cargar la planilla si no está cargada
+        // Cargar la planilla
         $planilla = $paquete->planilla;
 
         if (!$planilla) {
             return;
         }
 
-        // Verificar si la planilla tiene automatización activa
-        if (!$planilla->automatizacion_salidas_activa) {
+        // Obtener obra_id de la planilla
+        $obraId = $planilla->obra_id;
+
+        if (!$obraId) {
+            Log::warning("Paquete #{$paquete->id}: No se puede asociar, planilla #{$planilla->id} no tiene obra_id");
             return;
         }
 
-        // Obtener obra_id y fecha_estimada_entrega de la planilla
-        $obraId = $planilla->obra_id;
-        $fechaEntrega = $planilla->getRawOriginal('fecha_estimada_entrega');
+        // Determinar la fecha de entrega (de elementos o de planilla)
+        $fechaEntrega = $this->determinarFechaEntrega($paquete, $planilla);
 
-        if (!$obraId || !$fechaEntrega) {
-            Log::warning("Paquete #{$paquete->id}: No se puede asociar automáticamente, falta obra_id o fecha_estimada_entrega en planilla #{$planilla->id}");
+        if (!$fechaEntrega) {
+            Log::warning("Paquete #{$paquete->id}: No se puede asociar, no hay fecha de entrega");
             return;
         }
 
@@ -56,25 +60,13 @@ class PaqueteObserver
 
         try {
             DB::transaction(function () use ($paquete, $planilla, $obraId, $fechaEntregaDate, $pesoPaquete) {
-                // Buscar salidas candidatas que tengan paquetes de planillas con misma obra y fecha
-                $salidasCandidatas = $this->buscarSalidasCandidatas($obraId, $fechaEntregaDate);
+                // Buscar salida existente con misma obra_id y fecha_salida
+                $salidaAsignada = $this->buscarSalidaDisponible($obraId, $fechaEntregaDate, $pesoPaquete);
 
-                $salidaAsignada = null;
-
-                foreach ($salidasCandidatas as $salida) {
-                    $pesoActual = $this->calcularPesoSalida($salida);
-                    $limitePeso = $this->obtenerLimitePeso($salida);
-
-                    if (($pesoActual + $pesoPaquete) <= $limitePeso) {
-                        $salidaAsignada = $salida;
-                        break;
-                    }
-                }
-
-                // Si no hay salida con espacio, crear una nueva
+                // Si no hay salida disponible, crear una nueva
                 if (!$salidaAsignada) {
-                    $salidaAsignada = $this->crearNuevaSalida($fechaEntregaDate);
-                    Log::info("Paquete #{$paquete->id}: Creada nueva salida #{$salidaAsignada->id} por automatización");
+                    $salidaAsignada = $this->crearNuevaSalida($obraId, $fechaEntregaDate);
+                    Log::info("Paquete #{$paquete->id}: Creada nueva salida #{$salidaAsignada->id} para obra #{$obraId}, fecha {$fechaEntregaDate}");
                 }
 
                 // Asociar el paquete a la salida
@@ -87,25 +79,56 @@ class PaqueteObserver
                 // Asegurar que existe registro en salida_cliente
                 $this->asegurarSalidaCliente($salidaAsignada, $planilla);
 
-                Log::info("Paquete #{$paquete->id}: Asociado automáticamente a salida #{$salidaAsignada->id}");
+                Log::info("Paquete #{$paquete->id}: Asociado a salida #{$salidaAsignada->id}");
             });
         } catch (\Throwable $e) {
-            Log::error("Error al asociar paquete #{$paquete->id} a salida automática: " . $e->getMessage());
+            Log::error("Error al asociar paquete #{$paquete->id} a salida: " . $e->getMessage());
         }
     }
 
     /**
-     * Busca salidas que tengan paquetes de planillas con la misma obra y fecha.
+     * Determina la fecha de entrega para un paquete.
+     * Prioriza la fecha_entrega de los elementos; si no existe, usa la de la planilla.
      */
-    private function buscarSalidasCandidatas(int $obraId, string $fechaEntrega): \Illuminate\Support\Collection
+    private function determinarFechaEntrega(Paquete $paquete, $planilla): ?string
     {
-        return Salida::whereHas('paquetes.planilla', function ($query) use ($obraId, $fechaEntrega) {
-            $query->where('obra_id', $obraId)
-                  ->whereDate('fecha_estimada_entrega', $fechaEntrega);
-        })
-        ->where('estado', '!=', 'completada')
-        ->orderBy('created_at', 'asc')
-        ->get();
+        // Cargar etiquetas con sus elementos
+        $paquete->load('etiquetas.elementos');
+
+        // Buscar fecha_entrega en los elementos del paquete
+        foreach ($paquete->etiquetas as $etiqueta) {
+            foreach ($etiqueta->elementos as $elemento) {
+                if ($elemento->fecha_entrega) {
+                    return $elemento->getRawOriginal('fecha_entrega') ?? $elemento->fecha_entrega->toDateString();
+                }
+            }
+        }
+
+        // Si ningún elemento tiene fecha_entrega, usar la de la planilla
+        return $planilla->getRawOriginal('fecha_estimada_entrega');
+    }
+
+    /**
+     * Busca una salida disponible con la misma obra_id y fecha_salida que tenga espacio.
+     */
+    private function buscarSalidaDisponible(int $obraId, string $fechaEntrega, float $pesoPaquete): ?Salida
+    {
+        $salidas = Salida::where('obra_id', $obraId)
+            ->whereDate('fecha_salida', $fechaEntrega)
+            ->where('estado', '!=', 'completada')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        foreach ($salidas as $salida) {
+            $pesoActual = $this->calcularPesoSalida($salida);
+            $limitePeso = $this->obtenerLimitePeso($salida);
+
+            if (($pesoActual + $pesoPaquete) <= $limitePeso) {
+                return $salida;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -131,17 +154,18 @@ class PaqueteObserver
     }
 
     /**
-     * Crea una nueva salida para la fecha indicada.
+     * Crea una nueva salida para la obra y fecha indicadas.
      */
-    private function crearNuevaSalida(string $fechaSalida): Salida
+    private function crearNuevaSalida(int $obraId, string $fechaSalida): Salida
     {
         $salida = Salida::create([
+            'obra_id' => $obraId,
             'fecha_salida' => $fechaSalida,
             'estado' => 'pendiente',
             'user_id' => auth()->id(),
         ]);
 
-        // Generar código de salida
+        // Generar código de salida (AS = Automática Salida)
         $codigoSalida = 'AS' . substr(date('Y'), 2) . '/' . str_pad($salida->id, 4, '0', STR_PAD_LEFT);
         $salida->codigo_salida = $codigoSalida;
         $salida->save();

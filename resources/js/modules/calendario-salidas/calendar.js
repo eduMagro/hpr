@@ -775,21 +775,8 @@ export function crearCalendario() {
                 }
             },
 
-            // eventClick: (info) => {
-            //     const p = info.event.extendedProps || {};
-            //     if (p.tipo === "planilla") {
-            //         const ids = p.planillas_ids || [];
-            //         window.location.href = `{{ url('/salidas/create') }}?planillas=${ids.join(
-            //             ","
-            //         )}`;
-            //     }
-            //     if (p.tipo === "salida") {
-            //         window.open(
-            //             `{{ url('/salidas') }}/${info.event.id}`,
-            //             "_blank"
-            //         );
-            //     }
-            // },
+            // eventClick deshabilitado - la selección manual fue eliminada
+            // La automatización ahora es via PaqueteObserver
 
             eventAllow: (dropInfo, draggedEvent) => {
                 const tipo = draggedEvent.extendedProps?.tipo;
