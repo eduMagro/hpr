@@ -14,6 +14,53 @@
         [x-cloak] {
             display: none !important;
         }
+
+        /* Custom scrollbar for gastos table (keeps it scoped) */
+        .gastos-table-scroll {
+            scrollbar-width: thin;
+            /* Firefox */
+            scrollbar-color: #6366f1 rgba(0, 0, 0, 0.08);
+        }
+
+        .dark .gastos-table-scroll {
+            scrollbar-color: #6366f1 rgba(255, 255, 255, 0.10);
+        }
+
+        .gastos-table-scroll::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .gastos-table-scroll::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.06);
+            border-radius: 9999px;
+        }
+
+        .dark .gastos-table-scroll::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.10);
+        }
+
+        .gastos-table-scroll::-webkit-scrollbar-thumb {
+            background: #6366f1;
+            /* indigo-500 */
+            border-radius: 9999px;
+            border: 2px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .dark .gastos-table-scroll::-webkit-scrollbar-thumb {
+            border-color: rgba(255, 255, 255, 0.10);
+        }
+
+        .gastos-table-scroll::-webkit-scrollbar-thumb:hover {
+            background: #4f46e5;
+            /* indigo-600 */
+        }
+
+        .gastos-table-scroll::-webkit-scrollbar-button {
+            display: none;
+            width: 0;
+            height: 0;
+        }
     </style>
     <div x-data="gastosManager()" class="py-12 dark:bg-gray-900 min-h-screen">
         <div class="max-w-[95%] mx-auto sm:px-6 lg:px-8">
@@ -49,6 +96,17 @@
                         Añadir Gasto
                     </button>
 
+                    <button type="button" @click="showImportModal = true"
+                        class="inline-flex items-center p-3.5 group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl font-semibold text-sm text-gray-700 dark:text-gray-200 uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring ring-indigo-300 transition ease-in-out duration-150 shadow-sm hover:shadow-md">
+                        <svg class="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        Importar CSV
+                    </button>
+
                     <div
                         class="flex items-center gap-4 bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                         <form method="GET" action="{{ route('gastos.index') }}" class="flex items-center gap-3 px-2">
@@ -73,14 +131,54 @@
             <!-- Main Content Card -->
             <div
                 class="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden backdrop-blur-sm">
-                <div class="relative overflow-x-auto">
+                <div class="gastos-table-scroll relative overflow-x-auto overflow-y-auto max-h-[60vh]">
                     <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 table-fixed">
                         <thead
-                            class="text-xs text-gray-700 uppercase bg-gray-50/50 dark:bg-gray-700/50 dark:text-gray-200 border-b border-gray-100 dark:border-gray-700">
+                            class="sticky top-0 z-20 text-xs text-gray-700 uppercase bg-gray-50/95 dark:bg-gray-700/95 dark:text-gray-200 border-b border-gray-100 dark:border-gray-700">
                             <tr>
                                 <th scope="col" class="px-4 py-4 font-bold tracking-wider rounded-tl-2xl w-12">#</th>
-                                <th scope="col" class="px-4 py-4 font-semibold w-28">Fecha Pedido</th>
-                                <th scope="col" class="px-4 py-4 font-semibold w-28">Fecha Llegada</th>
+                                <th scope="col" class="px-4 py-4 font-semibold w-28">
+                                    <button type="button" @click="toggleSort('fecha_pedido')"
+                                        class="inline-flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-300">
+                                        Fecha Pedido
+                                        <template x-if="sort.field === 'fecha_pedido'">
+                                            <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 20 20" fill="currentColor">
+                                                <template x-if="sort.dir === 'asc'">
+                                                    <path fill-rule="evenodd"
+                                                        d="M10 4a.75.75 0 01.53.22l4 4a.75.75 0 11-1.06 1.06L10 5.81 6.53 9.28A.75.75 0 115.47 8.22l4-4A.75.75 0 0110 4z"
+                                                        clip-rule="evenodd" />
+                                                </template>
+                                                <template x-if="sort.dir === 'desc'">
+                                                    <path fill-rule="evenodd"
+                                                        d="M10 16a.75.75 0 01-.53-.22l-4-4a.75.75 0 111.06-1.06L10 14.19l3.47-3.47a.75.75 0 111.06 1.06l-4 4A.75.75 0 0110 16z"
+                                                        clip-rule="evenodd" />
+                                                </template>
+                                            </svg>
+                                        </template>
+                                    </button>
+                                </th>
+                                <th scope="col" class="px-4 py-4 font-semibold w-28">
+                                    <button type="button" @click="toggleSort('fecha_llegada')"
+                                        class="inline-flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-300">
+                                        Fecha Llegada
+                                        <template x-if="sort.field === 'fecha_llegada'">
+                                            <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 20 20" fill="currentColor">
+                                                <template x-if="sort.dir === 'asc'">
+                                                    <path fill-rule="evenodd"
+                                                        d="M10 4a.75.75 0 01.53.22l4 4a.75.75 0 11-1.06 1.06L10 5.81 6.53 9.28A.75.75 0 115.47 8.22l4-4A.75.75 0 0110 4z"
+                                                        clip-rule="evenodd" />
+                                                </template>
+                                                <template x-if="sort.dir === 'desc'">
+                                                    <path fill-rule="evenodd"
+                                                        d="M10 16a.75.75 0 01-.53-.22l-4-4a.75.75 0 111.06-1.06L10 14.19l3.47-3.47a.75.75 0 111.06 1.06l-4 4A.75.75 0 0110 16z"
+                                                        clip-rule="evenodd" />
+                                                </template>
+                                            </svg>
+                                        </template>
+                                    </button>
+                                </th>
                                 <th scope="col" class="px-4 py-4 font-semibold w-24">Nave</th>
                                 <th scope="col" class="px-4 py-4 font-semibold w-28">Obra</th>
                                 <th scope="col" class="px-4 py-4 font-semibold w-32">Proveedor</th>
@@ -150,8 +248,14 @@
                                     <input type="text" x-model="filters.coste" placeholder="€"
                                         class="w-full text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2 text-right">
                                 </th>
-                                <th class="px-3 py-2"></th>
-                                <th class="px-3 py-2"></th>
+                                <th class="px-3 py-2">
+                                    <input type="text" x-model="filters.factura" placeholder="Factura"
+                                        class="w-full text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
+                                </th>
+                                <th class="px-3 py-2">
+                                    <input type="text" x-model="filters.observaciones" placeholder="Observaciones"
+                                        class="w-full text-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-2">
+                                </th>
                                 <th class="px-3 py-2">
                                     <button type="button" @click="clearFilters()" title="Limpiar filtros"
                                         class="w-full flex items-center justify-center text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors py-1">
@@ -165,7 +269,7 @@
                                 </th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-50 dark:divide-gray-700">
+                        <tbody class="divide-y divide-gray-50 dark:divide-gray-700 max-h-20">
                             <template x-for="gasto in filteredGastos" :key="gasto.id">
                                 <tr
                                     class="bg-white dark:bg-gray-800 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors duration-200 group">
@@ -216,31 +320,35 @@
                                         x-text="truncateText(gasto.motivo?.nombre || '-', 10)"></td>
                                     <td class="px-6 py-4 text-right font-bold text-gray-900 dark:text-white cursor-default whitespace-nowrap"
                                         x-text="gasto.coste ? formatCurrency(gasto.coste) : '-'"></td>
-                                    <td class="px-6 py-4 text-center cursor-default">
-                                        <template x-if="gasto.factura">
-                                            <a href="#"
-                                                class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 transition-colors">
-                                                <svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z">
-                                                    </path>
+                                    <td class="px-6 py-4 text-center cursor-default whitespace-nowrap">
+                                        <template x-if="gasto.codigo_factura">
+                                            <button type="button" @click="copyToClipboard(gasto.codigo_factura)"
+                                                class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/40 dark:text-indigo-200 dark:hover:bg-indigo-900/60 border border-indigo-100 dark:border-indigo-800 transition-colors"
+                                                :title="gasto.codigo_factura">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                    class="lucide lucide-files-icon lucide-files">
+                                                    <path
+                                                        d="M15 2h-4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8" />
+                                                    <path
+                                                        d="M16.706 2.706A2.4 2.4 0 0 0 15 2v5a1 1 0 0 0 1 1h5a2.4 2.4 0 0 0-.706-1.706z" />
+                                                    <path d="M5 7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 1.732-1" />
                                                 </svg>
-                                            </a>
+                                            </button>
                                         </template>
-                                        <template x-if="!gasto.factura">
+                                        <template x-if="!gasto.codigo_factura">
                                             <span class="text-gray-300 dark:text-gray-600">-</span>
                                         </template>
                                     </td>
                                     <td class="px-6 py-4 text-xs text-gray-500 dark:text-gray-400 cursor-default">
                                         <div class="flex items-center gap-2 max-w-xs">
                                             <span class="truncate"
-                                                x-text="truncateText(gasto.observaciones, 30)"></span>
+                                                x-text="truncateText(gasto.observaciones, 20)"></span>
                                             <template x-if="gasto.observaciones && gasto.observaciones.length > 30">
                                                 <button type="button" @click="showObservaciones(gasto.observaciones)"
                                                     title="Ver observaciones"
-                                                    class="shrink-0 text-orange-500 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 transition-colors">
+                                                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 dark:bg-orange-900/40 dark:text-orange-200 dark:hover:bg-orange-900/60 border border-orange-100 dark:border-orange-800 transition-colors">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16"
                                                         height="16" viewBox="0 0 24 24" fill="none"
                                                         stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -256,7 +364,7 @@
                                     </td>
                                     <td class="px-4 py-4 pt-[1.07rem] flex justify-center items-center">
                                         <button @click="editGasto(gasto)" title="Editar gasto"
-                                            class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors">
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/40 dark:text-indigo-200 dark:hover:bg-indigo-900/60 border border-indigo-100 dark:border-indigo-800 transition-colors">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
                                                 viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -309,12 +417,163 @@
                 </div>
             </div>
 
-            <!-- Graphs Section (Placeholders) -->
+            <!-- Gráficas -->
             <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Charts Controls -->
+                <div
+                    class="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700">
+                    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Gráficas</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Filtra y cambia el tipo de gráfica.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" @click="resetChartFilters()"
+                                class="inline-flex items-center rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                Reset
+                            </button>
+                            <button type="button" @click="loadCharts()"
+                                class="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors">
+                                Actualizar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4">
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Agrupar</label>
+                            <select x-model="charts.groupBy" @change="onChartGroupByChange()"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3">
+                                <option value="day">Días</option>
+                                <option value="month">Meses</option>
+                                <option value="year">Años</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Desde</label>
+                            <div class="flex items-center gap-2">
+                                <input type="date" x-model="charts.from" @change="loadCharts()"
+                                    :disabled="charts.fromBeginning"
+                                    class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3 disabled:opacity-60" />
+                                <label
+                                    class="inline-flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                                    <input type="checkbox" class="rounded border-gray-300 dark:border-gray-600"
+                                        x-model="charts.fromBeginning" @change="onFromBeginningChange()"
+                                        :disabled="!oldestGastoDate">
+                                    Desde el principio
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Hasta</label>
+                            <input type="date" x-model="charts.to" @change="loadCharts()"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3" />
+                        </div>
+
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Tipo</label>
+                            <select x-model="charts.tipo" @change="loadCharts()"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3">
+                                <option value="all">Todos</option>
+                                <option value="gasto">Gasto</option>
+                                <option value="obra">Obra</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Obra</label>
+                            <select x-model="charts.obra_id" @change="loadCharts()"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3">
+                                <option value="">Todas</option>
+                                @foreach ($obras as $obra)
+                                    <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Proveedor</label>
+                            <select x-model="charts.proveedor_id" @change="loadCharts()"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3">
+                                <option value="">Todos</option>
+                                @foreach ($proveedoresLista as $prov)
+                                    <option value="{{ $prov->id }}">{{ $prov->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Máquina</label>
+                            <select x-model="charts.maquina_id" @change="loadCharts()"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3">
+                                <option value="">Todas</option>
+                                @foreach ($maquinas as $maq)
+                                    <option value="{{ $maq->id }}">{{ $maq->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Reparto
+                                por</label>
+                            <select x-model="charts.breakdownBy" @change="loadCharts()"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3">
+                                <option value="proveedor">Proveedores</option>
+                                <option value="obra">Obras</option>
+                                <option value="maquina">Máquinas</option>
+                                <option value="motivo">Motivos</option>
+                            </select>
+                        </div>
+
+                        <div class="md:col-span-3 xl:col-span-6 flex items-center gap-3">
+                            <div class="text-xs text-gray-500 dark:text-gray-400" x-show="chartsLoading" x-cloak>
+                                Cargando gráficas...
+                            </div>
+                            <div class="text-xs text-red-600 dark:text-red-400" x-show="chartsError"
+                                x-text="chartsError" x-cloak></div>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 pt-5 border-t border-gray-100 dark:border-gray-700">
+                        <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200">Estilo</h4>
+                        <div class="mt-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                            <div>
+                                <label
+                                    class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Serie</label>
+                                <select x-model="charts.seriesType" @change="loadCharts()"
+                                    class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3">
+                                    <option value="line">Líneas</option>
+                                    <option value="bar">Barras</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Tipo
+                                    reparto</label>
+                                <select x-model="charts.breakdownType" @change="loadCharts()"
+                                    class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3">
+                                    <option value="doughnut">Redonda</option>
+                                    <option value="pie">Tarta</option>
+                                    <option value="bar">Barras</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <!-- Global Stats -->
                 <div
                     class="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
-                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <div
+                        class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 translate-x-9 -translate-y-9 rotate-45 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:rotate-0 group-hover:scale-110  transition-all ease-in-out duration-500">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                             stroke-linejoin="round" class="text-indigo-700 w-24 h-24">
@@ -338,16 +597,16 @@
 
                     <!-- Graph Placeholder Box -->
                     <div
-                        class="mt-6 h-48 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-700 dark:to-gray-800 rounded-2xl border border-dashed border-indigo-200 dark:border-gray-600 flex items-center justify-center">
-                        <span class="text-indigo-400 dark:text-gray-400 font-medium animate-pulse">Gráfica
-                            Global</span>
+                        class="mt-6 h-48 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-700 dark:to-gray-800 rounded-2xl border border-indigo-100 dark:border-gray-600 p-3 relative">
+                        <canvas x-ref="seriesChart"></canvas>
                     </div>
                 </div>
 
                 <!-- Monthly Stats -->
                 <div
                     class="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
-                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <div
+                        class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 translate-x-9 -translate-y-9 rotate-45 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:rotate-0 group-hover:scale-110  transition-all ease-in-out duration-500">
                         <svg class="w-24 h-24 text-emerald-500" fill="currentColor" viewBox="0 0 24 24">
                             <path
                                 d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z" />
@@ -366,9 +625,8 @@
 
                     <!-- Graph Placeholder Box -->
                     <div
-                        class="mt-6 h-48 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-700 dark:to-gray-800 rounded-2xl border border-dashed border-emerald-200 dark:border-gray-600 flex items-center justify-center">
-                        <span class="text-emerald-400 dark:text-gray-400 font-medium animate-pulse">Gráfica
-                            Mensual</span>
+                        class="mt-6 h-48 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-700 dark:to-gray-800 rounded-2xl border border-emerald-100 dark:border-gray-600 p-3 relative">
+                        <canvas x-ref="breakdownChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -842,6 +1100,104 @@
                 </div>
             </div>
 
+            <!-- Import CSV Modal (Gastos) -->
+            <div x-show="showImportModal" class="fixed inset-0 z-[1000] overflow-y-auto" style="display: none;"
+                aria-labelledby="import-modal-title" role="dialog" aria-modal="true" x-cloak>
+                <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                    <div class="fixed inset-0 bg-black bg-opacity-60 transition-opacity" aria-hidden="true"
+                        @click="showImportModal = false"></div>
+                    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                    <div
+                        class="relative inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-left shadow-xl transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+                        <div
+                            class="bg-white dark:bg-gray-800 px-6 py-5 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-900 dark:text-white"
+                                        id="import-modal-title">
+                                        Importar CSV (Gastos)
+                                    </h3>
+                                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                        Sube un CSV con cabeceras como:
+                                        <span class="font-mono text-xs">Fecha del
+                                            pedido,Llegada,Nave,Máquina,Proveedor,Motivo,Coste,Factura,Fecha
+                                            factura,Observaciones,Periodo</span>.
+                                    </p>
+                                </div>
+                                <button type="button" @click="showImportModal = false"
+                                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <form method="POST" action="{{ route('gastos.importCsv') }}" enctype="multipart/form-data"
+                            class="p-6 space-y-4">
+                            @csrf
+                            <input type="hidden" name="tipo" value="gasto">
+
+                            <div
+                                class="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 p-4 bg-gray-50 dark:bg-gray-700/40">
+                                <div class="text-sm font-semibold text-gray-700 dark:text-gray-200">Columnas usadas
+                                </div>
+                                <ul
+                                    class="mt-2 text-sm text-gray-600 dark:text-gray-300 grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                                    <li><span class="font-mono text-xs">Fecha del pedido</span> → <span
+                                            class="font-mono text-xs">fecha_pedido</span></li>
+                                    <li><span class="font-mono text-xs">Llegada</span> → <span
+                                            class="font-mono text-xs">fecha_llegada</span></li>
+                                    <li><span class="font-mono text-xs">Proveedor</span> → <span
+                                            class="font-mono text-xs">proveedor_id</span></li>
+                                    <li><span class="font-mono text-xs">Motivo</span> → <span
+                                            class="font-mono text-xs">motivo_id</span></li>
+                                    <li><span class="font-mono text-xs">Coste</span> → <span
+                                            class="font-mono text-xs">coste</span></li>
+                                    <li><span class="font-mono text-xs">Observaciones</span> → <span
+                                            class="font-mono text-xs">observaciones</span></li>
+                                    <li><span class="font-mono text-xs">Factura</span> → <span
+                                            class="font-mono text-xs">codigo_factura</span></li>
+                                    <li class="text-gray-500 dark:text-gray-400"><span class="font-mono text-xs">Fecha
+                                            factura</span> → ignorar</li>
+                                    <li class="text-gray-500 dark:text-gray-400"><span
+                                            class="font-mono text-xs">Periodo</span> → ignorar</li>
+                                </ul>
+                                <div class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                                    Nota: si el CSV incluye <span class="font-mono">Nave</span> o <span
+                                        class="font-mono">Máquina</span>,
+                                    se intentan asociar por nombre si existen.
+                                </div>
+                            </div>
+
+                            <div>
+                                <label
+                                    class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Archivo
+                                    CSV</label>
+                                <input type="file" name="csv_file" accept=".csv,text/csv"
+                                    class="block w-full text-sm text-gray-700 dark:text-gray-200 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 dark:file:bg-indigo-600 dark:hover:file:bg-indigo-500">
+                                @error('csv_file')
+                                    <div class="mt-2 text-sm text-red-600">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div
+                                class="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 rounded-b-2xl -mx-6 -mb-6 flex justify-end gap-3">
+                                <button type="button" @click="showImportModal = false"
+                                    class="inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 dark:bg-gray-600 dark:text-white dark:border-gray-500 dark:hover:bg-gray-500 transition-colors">
+                                    Cancelar
+                                </button>
+                                <button type="submit"
+                                    class="inline-flex justify-center rounded-xl border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors">
+                                    Importar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -862,11 +1218,21 @@
                     proveedor_id: '',
                     maquina: '',
                     motivo_id: '',
-                    coste: ''
+                    coste: '',
+                    factura: '',
+                    observaciones: ''
+                },
+                // Table sort (client-side)
+                sort: {
+                    field: 'fecha_pedido',
+                    dir: 'desc'
                 },
                 // Observaciones Modal
                 showObservacionesModal: false,
                 observacionesText: '',
+                // Import CSV Modal (Gastos)
+                showImportModal: false,
+                importHadErrors: @json($errors->has('csv_file') || $errors->has('tipo')),
                 form: {
                     fecha_pedido: '',
                     fecha_llegada: '',
@@ -895,7 +1261,7 @@
 
                 // Computed filtered gastos
                 get filteredGastos() {
-                    return this.allGastos.filter(gasto => {
+                    const filtered = this.allGastos.filter(gasto => {
                         // Filter by ID
                         if (this.filters.id && !String(gasto.id).includes(this.filters.id)) return false;
 
@@ -935,8 +1301,51 @@
                             if (!costeStr.includes(this.filters.coste)) return false;
                         }
 
+                        // Filter by factura
+                        if (this.filters.factura) {
+                            const q = this.filters.factura.toLowerCase();
+                            const facturaStr = (gasto.codigo_factura || '').toLowerCase();
+                            if (!facturaStr.includes(q)) return false;
+                        }
+
+                        // Filter by observaciones
+                        if (this.filters.observaciones) {
+                            const q = this.filters.observaciones.toLowerCase();
+                            const obsStr = (gasto.observaciones || '').toLowerCase();
+                            if (!obsStr.includes(q)) return false;
+                        }
+
                         return true;
                     });
+
+                    const field = this.sort.field;
+                    const dir = this.sort.dir === 'asc' ? 1 : -1;
+
+                    const dateValue = (v) => {
+                        if (!v) return null;
+                        const t = Date.parse(v);
+                        return Number.isNaN(t) ? null : t;
+                    };
+
+                    return filtered.slice().sort((a, b) => {
+                        const av = dateValue(a?.[field]);
+                        const bv = dateValue(b?.[field]);
+
+                        if (av === null && bv === null) return 0;
+                        if (av === null) return 1;
+                        if (bv === null) return -1;
+                        if (av === bv) return 0;
+                        return av > bv ? dir : -dir;
+                    });
+                },
+
+                toggleSort(field) {
+                    if (this.sort.field === field) {
+                        this.sort.dir = this.sort.dir === 'asc' ? 'desc' : 'asc';
+                        return;
+                    }
+                    this.sort.field = field;
+                    this.sort.dir = 'asc';
                 },
 
                 // Helper functions
@@ -961,6 +1370,33 @@
                     if (!text) return '';
                     if (text.length <= length) return text;
                     return text.substring(0, length) + '...';
+                },
+
+                async copyToClipboard(text) {
+                    const value = (text || '').toString();
+                    if (!value) return;
+
+                    try {
+                        if (navigator.clipboard?.writeText) {
+                            await navigator.clipboard.writeText(value);
+                            return;
+                        }
+                    } catch (_) {
+                        // fallback below
+                    }
+
+                    const textarea = document.createElement('textarea');
+                    textarea.value = value;
+                    textarea.setAttribute('readonly', 'readonly');
+                    textarea.style.position = 'fixed';
+                    textarea.style.top = '-9999px';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand('copy');
+                    } finally {
+                        document.body.removeChild(textarea);
+                    }
                 },
 
 
@@ -995,9 +1431,341 @@
                 motivos: @json($motivosLista),
 
                 formAction: '{{ route('gastos.store') }}',
+                chartsEndpoint: '{{ route('gastos.charts') }}',
+                oldestGastoDate: @json($oldestGastoDate),
+
+                chartsLoading: false,
+                chartsError: '',
+                seriesChartInstance: null,
+                breakdownChartInstance: null,
+
+                charts: {
+                    groupBy: 'month',
+                    from: '',
+                    to: '',
+                    fromBeginning: false,
+                    tipo: 'all',
+                    obra_id: '',
+                    proveedor_id: '',
+                    maquina_id: '',
+                    seriesType: 'line',
+                    breakdownBy: 'proveedor',
+                    breakdownType: 'doughnut',
+                    limit: 8,
+                },
 
                 init() {
-                    // Watchers or init logic if needed
+                    this.setDefaultChartRange();
+                    this.$nextTick(() => this.loadCharts());
+                    if (this.importHadErrors) {
+                        this.showImportModal = true;
+                    }
+                },
+
+                resetChartFilters() {
+                    this.charts = {
+                        groupBy: 'month',
+                        from: '',
+                        to: '',
+                        fromBeginning: false,
+                        tipo: 'all',
+                        obra_id: '',
+                        proveedor_id: '',
+                        maquina_id: '',
+                        seriesType: 'line',
+                        breakdownBy: 'proveedor',
+                        breakdownType: 'doughnut',
+                        limit: 8,
+                    };
+                    this.setDefaultChartRange(true);
+                    this.loadCharts();
+                },
+
+                onFromBeginningChange() {
+                    if (this.charts.fromBeginning) {
+                        if (this.oldestGastoDate) {
+                            this.charts.from = this.oldestGastoDate;
+                        }
+                    } else {
+                        this.setDefaultChartRange(true);
+                    }
+                    this.loadCharts();
+                },
+
+                onChartGroupByChange() {
+                    this.setDefaultChartRange(true);
+                    this.loadCharts();
+                },
+
+                setDefaultChartRange(force = false) {
+                    if (!force && this.charts.from && this.charts.to) return;
+
+                    const today = new Date();
+                    let fromDate;
+                    let toDate;
+
+                    if (this.charts.groupBy === 'day') {
+                        toDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                        fromDate = new Date(toDate);
+                        fromDate.setDate(fromDate.getDate() - 29);
+                    } else if (this.charts.groupBy === 'year') {
+                        const startYear = today.getFullYear() - 4;
+                        fromDate = new Date(startYear, 0, 1);
+                        toDate = new Date(today.getFullYear(), 11, 31);
+                    } else {
+                        fromDate = new Date(today.getFullYear(), today.getMonth() - 11, 1);
+                        toDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                    }
+
+                    if (this.charts.fromBeginning && this.oldestGastoDate) {
+                        this.charts.from = this.oldestGastoDate;
+                    } else {
+                        this.charts.from = this.toDateInputValue(fromDate);
+                    }
+                    this.charts.to = this.toDateInputValue(toDate);
+                },
+
+                toDateInputValue(date) {
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                },
+
+                async ensureChartJsReady() {
+                    if (window.Chart) return true;
+
+                    const maxAttempts = 50;
+                    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        if (window.Chart) return true;
+                    }
+                    return false;
+                },
+
+                buildChartsUrl() {
+                    const params = new URLSearchParams();
+                    params.set('group_by', this.charts.groupBy);
+                    params.set('breakdown_by', this.charts.breakdownBy);
+                    params.set('tipo', this.charts.tipo);
+                    params.set('limit', String(this.charts.limit || 8));
+
+                    if (this.charts.from) params.set('from', this.charts.from);
+                    if (this.charts.to) params.set('to', this.charts.to);
+                    if (this.charts.obra_id) params.set('obra_id', this.charts.obra_id);
+                    if (this.charts.proveedor_id) params.set('proveedor_id', this.charts.proveedor_id);
+                    if (this.charts.maquina_id) params.set('maquina_id', this.charts.maquina_id);
+
+                    return `${this.chartsEndpoint}?${params.toString()}`;
+                },
+
+                destroyCharts() {
+                    if (this.seriesChartInstance) {
+                        this.seriesChartInstance.destroy();
+                        this.seriesChartInstance = null;
+                    }
+                    if (this.breakdownChartInstance) {
+                        this.breakdownChartInstance.destroy();
+                        this.breakdownChartInstance = null;
+                    }
+                },
+
+                async loadCharts() {
+                    this.chartsError = '';
+                    this.chartsLoading = true;
+
+                    try {
+                        const ready = await this.ensureChartJsReady();
+                        if (!ready) {
+                            this.chartsError = 'No se pudo cargar Chart.js.';
+                            this.destroyCharts();
+                            return;
+                        }
+
+                        const response = await fetch(this.buildChartsUrl(), {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                        });
+
+                        const payload = await response.json().catch(() => null);
+                        if (!response.ok || !payload || !payload.success) {
+                            this.chartsError = payload?.message || 'Error al cargar las gráficas.';
+                            this.destroyCharts();
+                            return;
+                        }
+
+                        if (payload.filters?.from) this.charts.from = payload.filters.from;
+                        if (payload.filters?.to) this.charts.to = payload.filters.to;
+
+                        this.renderCharts(payload);
+                    } catch (error) {
+                        console.error(error);
+                        this.chartsError = 'Error al cargar las gráficas.';
+                        this.destroyCharts();
+                    } finally {
+                        this.chartsLoading = false;
+                    }
+                },
+
+                renderCharts(payload) {
+                    const seriesLabels = payload?.series?.labels || [];
+                    const seriesData = payload?.series?.data || [];
+                    const breakdownLabels = payload?.breakdown?.labels || [];
+                    const breakdownData = payload?.breakdown?.data || [];
+
+                    if (!this.$refs.seriesChart || !this.$refs.breakdownChart) return;
+
+                    if (!seriesLabels.length && !breakdownLabels.length) {
+                        this.chartsError = 'Sin datos para ese filtro.';
+                        this.destroyCharts();
+                        return;
+                    }
+
+                    const isDark = document.documentElement.classList.contains('dark');
+                    const axisColor = isDark ? '#e5e7eb' : '#374151';
+                    const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+
+                    const palette = [
+                        '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6', '#f97316',
+                        '#14b8a6', '#3b82f6', '#22c55e', '#e879f9', '#a3e635'
+                    ];
+
+                    this.destroyCharts();
+
+                    // Series chart
+                    const seriesContext = this.$refs.seriesChart.getContext('2d');
+                    const seriesDataset = {
+                        label: 'Coste',
+                        data: seriesData,
+                        borderColor: '#6366f1',
+                        backgroundColor: this.charts.seriesType === 'bar' ? 'rgba(99,102,241,0.35)' :
+                            'rgba(99,102,241,0.12)',
+                        fill: this.charts.seriesType !== 'bar',
+                        tension: 0.35,
+                        pointRadius: this.charts.seriesType === 'line' ? 2 : 0,
+                        borderWidth: 2,
+                    };
+
+                    this.seriesChartInstance = new Chart(seriesContext, {
+                        type: this.charts.seriesType,
+                        data: {
+                            labels: seriesLabels,
+                            datasets: [seriesDataset],
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false,
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (context) => {
+                                            const value = typeof context.parsed === 'number' ? context.parsed :
+                                                (context.parsed?.y ?? 0);
+                                            return this.formatCurrency(value);
+                                        },
+                                    },
+                                },
+                            },
+                            scales: {
+                                x: {
+                                    ticks: {
+                                        color: axisColor,
+                                        maxRotation: 0,
+                                        autoSkip: true,
+                                    },
+                                    grid: {
+                                        color: gridColor,
+                                    },
+                                },
+                                y: {
+                                    ticks: {
+                                        color: axisColor,
+                                        /*
+                                                                               callback: (value) => this.formatCurrency(value).replace(' ƒ'ª', ''),
+                                                                               */
+                                        callback: (value) => new Intl.NumberFormat('es-ES', {
+                                            maximumFractionDigits: 2
+                                        }).format(value),
+                                    },
+                                    grid: {
+                                        color: gridColor,
+                                    },
+                                },
+                            },
+                        },
+                    });
+
+                    // Breakdown chart
+                    const breakdownContext = this.$refs.breakdownChart.getContext('2d');
+                    const breakdownColors = breakdownLabels.map((_, idx) => palette[idx % palette.length]);
+                    const isBreakdownBar = this.charts.breakdownType === 'bar';
+
+                    this.breakdownChartInstance = new Chart(breakdownContext, {
+                        type: this.charts.breakdownType,
+                        data: {
+                            labels: breakdownLabels,
+                            datasets: [{
+                                label: 'Coste',
+                                data: breakdownData,
+                                backgroundColor: isBreakdownBar ? 'rgba(16,185,129,0.35)' : breakdownColors,
+                                borderColor: isBreakdownBar ? '#10b981' : breakdownColors,
+                                borderWidth: isBreakdownBar ? 2 : 1,
+                            }],
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            indexAxis: isBreakdownBar ? 'y' : 'x',
+                            plugins: {
+                                legend: {
+                                    display: !isBreakdownBar,
+                                    position: 'bottom',
+                                    labels: {
+                                        color: axisColor,
+                                        boxWidth: 10,
+                                    },
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (context) => {
+                                            const value = typeof context.parsed === 'number' ? context.parsed :
+                                                (context.parsed?.x ?? context.parsed?.y ?? 0);
+                                            return this.formatCurrency(value);
+                                        },
+                                    },
+                                },
+                            },
+                            scales: isBreakdownBar ? {
+                                x: {
+                                    ticks: {
+                                        color: axisColor,
+                                        /*
+                                                                               callback: (value) => this.formatCurrency(value).replace(' ƒ'ª', ''),
+                                                                               */
+                                        callback: (value) => new Intl.NumberFormat('es-ES', {
+                                            maximumFractionDigits: 2
+                                        }).format(value),
+                                    },
+                                    grid: {
+                                        color: gridColor,
+                                    },
+                                },
+                                y: {
+                                    ticks: {
+                                        color: axisColor,
+                                    },
+                                    grid: {
+                                        color: gridColor,
+                                    },
+                                },
+                            } : {},
+                        },
+                    });
                 },
 
                 async submitFormFormData() {
@@ -1143,7 +1911,9 @@
                         proveedor_id: '',
                         maquina: '',
                         motivo_id: '',
-                        coste: ''
+                        coste: '',
+                        factura: '',
+                        observaciones: ''
                     };
                 },
 

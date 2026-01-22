@@ -15,7 +15,7 @@ class Gasto extends Model
         'maquina_id',
         'motivo_id',
         'coste',
-        'factura_id',
+        'codigo_factura',
         'observaciones',
     ];
 
@@ -32,11 +32,6 @@ class Gasto extends Model
     public function maquina()
     {
         return $this->belongsTo(Maquina::class);
-    }
-
-    public function factura()
-    {
-        return $this->belongsTo(Factura::class);
     }
 
     public function proveedor()
