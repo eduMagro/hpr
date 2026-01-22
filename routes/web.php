@@ -612,10 +612,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::put('/planillas/fechas', [PlanillaController::class, 'actualizarFechasMasiva'])->name('planillas.editarActualizarFechasMasiva');
 
-    // Rutas para reordenamiento automático de planillas
-    Route::post('/planillas/simular-reordenamiento', [PlanillaController::class, 'simularReordenamiento'])->name('planillas.simularReordenamiento');
-    Route::post('/planillas/aplicar-reordenamiento', [PlanillaController::class, 'aplicarReordenamiento'])->name('planillas.aplicarReordenamiento');
-
     Route::post('/paquetes/tamaño', [PaqueteController::class, 'tamaño'])
         ->name('paquetes.tamaño');
 
@@ -820,6 +816,21 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         Route::post('/aceptar-politicas', 'aceptar')->name('politicas.aceptar');
     });
     Route::get('/ayuda', [AyudaController::class, 'index'])->name('ayuda.index');
+
+    // Rutas del Centro de Ayuda RAG
+    Route::prefix('ayuda')->name('ayuda.')->group(function () {
+        Route::post('/preguntar', [AyudaController::class, 'preguntar'])->name('preguntar');
+        Route::get('/sugerencias', [AyudaController::class, 'sugerencias'])->name('sugerencias');
+
+        // CRUD documentos (panel admin)
+        Route::get('/documentos', [AyudaController::class, 'listarDocumentos'])->name('documentos.listar');
+        Route::post('/documentos', [AyudaController::class, 'crearDocumento'])->name('documentos.crear');
+        Route::put('/documentos/{id}', [AyudaController::class, 'actualizarDocumento'])->name('documentos.actualizar');
+        Route::delete('/documentos/{id}', [AyudaController::class, 'eliminarDocumento'])->name('documentos.eliminar');
+        Route::post('/documentos/{id}/toggle-activo', [AyudaController::class, 'toggleActivo'])->name('documentos.toggle');
+        Route::post('/documentos/{id}/regenerar-embedding', [AyudaController::class, 'regenerarEmbedding'])->name('documentos.regenerar');
+        Route::post('/documentos/regenerar-todos', [AyudaController::class, 'regenerarTodosEmbeddings'])->name('documentos.regenerar-todos');
+    });
 
     // === DEPARTAMENTOS Y SECCIONES ===
     Route::put('/departamentos/alertas', [DepartamentoController::class, 'updateAlertSettings'])->name('departamentos.updateAlertSettings')->middleware(['auth', 'verified']);

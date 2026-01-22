@@ -28,6 +28,7 @@ class FinProgramadoService
         if (empty($elementosIds)) {
             return [
                 'fin_programado' => null,
+                'fin_programado_str' => null,
                 'hay_retraso' => false,
                 'detalles' => [],
             ];
@@ -45,6 +46,7 @@ class FinProgramadoService
         if ($elementos->isEmpty()) {
             return [
                 'fin_programado' => null,
+                'fin_programado_str' => null,
                 'hay_retraso' => false,
                 'detalles' => [],
             ];

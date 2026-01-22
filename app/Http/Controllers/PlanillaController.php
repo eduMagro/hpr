@@ -1218,7 +1218,75 @@ class PlanillaController extends Controller
             Log::info('[Planillas actualizarFechasMasiva] payload=', $data['planillas']);
 
             $logsRegistrados = [];
+            $eventosAEliminar = [];
+            $fechasAfectadas = [];
+            $planillasIds = collect($data['planillas'])->pluck('id')->toArray();
 
+            // 1. Recopilar información ANTES de actualizar para saber qué eventos eliminar
+            $planillasAntes = Planilla::with([
+                    'obra:id,obra,cod_obra',
+                    'elementos:id,planilla_id,fecha_entrega',
+                    'paquetes:id,planilla_id',
+                    'paquetes.salidas:id,fecha_salida'
+                ])
+                ->whereIn('id', $planillasIds)
+                ->get();
+
+            // Crear un mapa de planilla_id -> obra_id para uso posterior
+            $planillaObraMap = [];
+            foreach ($planillasAntes as $planilla) {
+                $planillaObraMap[$planilla->id] = $planilla->obra_id;
+            }
+
+            foreach ($planillasAntes as $planilla) {
+                $fechaPlanillaAntes = $planilla->getRawOriginal('fecha_estimada_entrega');
+                $obraId = $planilla->obra_id;
+
+                // SIEMPRE añadir el evento de la planilla (sus valores pueden cambiar al mover elementos)
+                if ($fechaPlanillaAntes) {
+                    $fechaStr = Carbon::parse($fechaPlanillaAntes)->format('Y-m-d');
+                    $eventosAEliminar[] = "planillas-{$obraId}-{$fechaStr}-sin-salida";
+                    $fechasAfectadas[] = $fechaStr;
+
+                    // También añadir eventos con salida (si existen)
+                    foreach ($planilla->paquetes as $paquete) {
+                        foreach ($paquete->salidas as $salida) {
+                            $eventosAEliminar[] = "planillas-{$obraId}-{$fechaStr}-salida-{$salida->id}";
+                        }
+                    }
+                }
+
+                // Recopilar fechas de elementos con fecha_entrega propia (estado ACTUAL en BD)
+                foreach ($planilla->elementos->whereNotNull('fecha_entrega') as $elemento) {
+                    $fechaElStr = Carbon::parse($elemento->fecha_entrega)->format('Y-m-d');
+                    $eventosAEliminar[] = "planillas-{$obraId}-{$fechaElStr}-sin-salida";
+                    $fechasAfectadas[] = $fechaElStr;
+                }
+            }
+
+            // También añadir eventos basados en las fechas NUEVAS del payload (lo que el usuario está enviando)
+            foreach ($data['planillas'] as $fila) {
+                $obraId = $planillaObraMap[$fila['id']] ?? null;
+                if (!$obraId) continue;
+
+                // Fecha nueva de la planilla
+                if (!empty($fila['fecha_estimada_entrega'])) {
+                    $eventosAEliminar[] = "planillas-{$obraId}-{$fila['fecha_estimada_entrega']}-sin-salida";
+                    $fechasAfectadas[] = $fila['fecha_estimada_entrega'];
+                }
+
+                // Fechas nuevas de elementos
+                if (!empty($fila['elementos']) && is_array($fila['elementos'])) {
+                    foreach ($fila['elementos'] as $elementoData) {
+                        if (!empty($elementoData['fecha_entrega'])) {
+                            $eventosAEliminar[] = "planillas-{$obraId}-{$elementoData['fecha_entrega']}-sin-salida";
+                            $fechasAfectadas[] = $elementoData['fecha_entrega'];
+                        }
+                    }
+                }
+            }
+
+            // 2. Realizar las actualizaciones
             DB::transaction(function () use ($data, &$logsRegistrados) {
                 foreach ($data['planillas'] as $fila) {
                     // Actualizar fecha de la planilla (preservando la hora existente)
@@ -1255,13 +1323,33 @@ class PlanillaController extends Controller
                     // Actualizar fechas de elementos si se proporcionan
                     if (!empty($fila['elementos']) && is_array($fila['elementos'])) {
                         $elementosActualizados = 0;
+
+                        // Usar la fecha de la planilla (puede haber sido actualizada arriba en esta misma request)
+                        // Si se actualizó la planilla, usar la nueva fecha; sino, obtener la actual
+                        $fechaPlanillaStr = !empty($fila['fecha_estimada_entrega'])
+                            ? $fila['fecha_estimada_entrega']  // Fecha nueva del request
+                            : (Planilla::find($fila['id'])?->getRawOriginal('fecha_estimada_entrega')
+                                ? Carbon::parse(Planilla::find($fila['id'])->getRawOriginal('fecha_estimada_entrega'))->format('Y-m-d')
+                                : null);
+                        $planillaParaElementos = Planilla::find($fila['id']);
+
                         foreach ($fila['elementos'] as $elementoData) {
                             $elemento = Elemento::find($elementoData['id']);
                             if ($elemento) {
                                 $fechaAnteriorEl = $elemento->fecha_entrega;
-                                $elemento->fecha_entrega = !empty($elementoData['fecha_entrega'])
+
+                                // Determinar la nueva fecha
+                                $nuevaFechaElemento = !empty($elementoData['fecha_entrega'])
                                     ? Carbon::createFromFormat('Y-m-d', $elementoData['fecha_entrega'])->startOfDay()
                                     : null;
+
+                                // Si la fecha del elemento coincide con la de la planilla, fusionar (null)
+                                if ($nuevaFechaElemento && $fechaPlanillaStr && $nuevaFechaElemento->format('Y-m-d') === $fechaPlanillaStr) {
+                                    $elemento->fecha_entrega = null; // Fusionar con planilla
+                                } else {
+                                    $elemento->fecha_entrega = $nuevaFechaElemento;
+                                }
+
                                 $elemento->save();
 
                                 // Contar si hubo cambio
@@ -1274,10 +1362,9 @@ class PlanillaController extends Controller
                         }
 
                         if ($elementosActualizados > 0) {
-                            $planilla = Planilla::find($fila['id']);
                             $logsRegistrados[] = [
                                 'tipo' => 'elementos',
-                                'codigo_planilla' => $planilla?->codigo ?? 'N/A',
+                                'codigo_planilla' => $planillaParaElementos?->codigo ?? 'N/A',
                                 'cantidad' => $elementosActualizados,
                                 'planilla_id' => $fila['id'],
                             ];
@@ -1285,6 +1372,23 @@ class PlanillaController extends Controller
                     }
                 }
             });
+
+            // 3. Generar eventos nuevos DESPUÉS de actualizar
+            $eventosNuevos = $this->generarEventosPlanillas($planillasIds);
+
+            // Añadir las nuevas fechas a las afectadas
+            foreach ($eventosNuevos as $evento) {
+                $fechasAfectadas[] = Carbon::parse($evento['start'])->format('Y-m-d');
+            }
+
+            // 3.5 Reordenar colas de máquinas afectadas por el cambio de fechas
+            $ordenPlanillaService = app(\App\Services\OrdenPlanillaService::class);
+            $maquinasAfectadas = $ordenPlanillaService->obtenerMaquinasAfectadas($planillasIds);
+            $cambiosReorden = $ordenPlanillaService->reordenarColasDeMaquinas($maquinasAfectadas);
+
+            // 4. Calcular resúmenes de días afectados
+            $fechasAfectadas = array_unique($fechasAfectadas);
+            $resumenesDias = $this->calcularResumenesDias($fechasAfectadas);
 
             // Registrar logs después de la transacción exitosa
             foreach ($logsRegistrados as $log) {
@@ -1319,6 +1423,9 @@ class PlanillaController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Fechas de entrega actualizadas correctamente.',
+                'eventos_eliminar' => array_values(array_unique($eventosAEliminar)),
+                'eventos_nuevos' => $eventosNuevos,
+                'resumenes_dias' => $resumenesDias,
             ]);
         } catch (ValidationException $ve) {
             Log::warning('[Planillas actualizarFechasMasiva] validation:', $ve->errors());
@@ -1340,75 +1447,253 @@ class PlanillaController extends Controller
     }
 
     /**
-     * Simula el reordenamiento sin aplicar cambios
-     * POST /planillas/simular-reordenamiento
+     * Genera los eventos de calendario para un conjunto de planillas.
+     * Busca TODAS las planillas de las mismas obras en las fechas afectadas.
      */
-    public function simularReordenamiento(Request $request)
+    private function generarEventosPlanillas(array $planillasIds): array
     {
-        try {
-            $data = $request->validate([
-                'planillas' => ['required', 'array', 'min:1'],
-                'planillas.*.id' => ['required', 'integer', 'exists:planillas,id'],
-                'planillas.*.fecha_estimada_entrega' => ['nullable', 'date_format:Y-m-d'],
-                'planillas.*.hora_entrega' => ['nullable', 'date_format:H:i'],
-            ]);
+        // Primero obtener las planillas modificadas para saber obras y fechas afectadas
+        $planillasModificadas = Planilla::whereIn('id', $planillasIds)->get(['id', 'obra_id', 'fecha_estimada_entrega']);
 
-            $service = app(AutoReordenadorService::class);
-            $resultado = $service->simularReordenamiento($data['planillas']);
+        // Obtener obras y fechas únicas
+        $obrasIds = $planillasModificadas->pluck('obra_id')->unique()->toArray();
+        $fechas = $planillasModificadas
+            ->map(fn($p) => $p->getRawOriginal('fecha_estimada_entrega') ? Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->toDateString() : null)
+            ->filter()
+            ->unique()
+            ->toArray();
 
-            return response()->json($resultado);
-        } catch (ValidationException $ve) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validación fallida',
-                'errors' => $ve->errors(),
-            ], 422);
-        } catch (\Throwable $e) {
-            Log::error('[Planillas simularReordenamiento] error: ' . $e->getMessage(), [
-                'line' => $e->getLine(),
-                'file' => $e->getFile()
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al simular reordenamiento: ' . $e->getMessage(),
-            ], 500);
+        // También incluir fechas de elementos con fecha_entrega propia
+        $fechasElementos = Elemento::whereIn('planilla_id', $planillasIds)
+            ->whereNotNull('fecha_entrega')
+            ->pluck('fecha_entrega')
+            ->map(fn($f) => Carbon::parse($f)->toDateString())
+            ->unique()
+            ->toArray();
+
+        $todasFechas = array_unique(array_merge($fechas, $fechasElementos));
+
+        // Buscar TODAS las planillas de esas obras que tengan fechas en el rango
+        $planillas = Planilla::with([
+            'obra:id,obra,cod_obra,cliente_id',
+            'obra.cliente:id,empresa,codigo',
+            'elementos:id,planilla_id,peso,fecha_entrega,longitud,barras,diametro',
+        ])
+        ->whereIn('obra_id', $obrasIds)
+        ->where(function ($q) use ($todasFechas) {
+            // Planillas con fecha_estimada_entrega en las fechas afectadas
+            $q->whereIn(DB::raw('DATE(fecha_estimada_entrega)'), $todasFechas);
+            // O planillas con elementos que tienen fecha_entrega en esas fechas
+            $q->orWhereHas('elementos', function ($eq) use ($todasFechas) {
+                $eq->whereIn(DB::raw('DATE(fecha_entrega)'), $todasFechas);
+            });
+        })
+        ->get();
+
+        $eventosFinales = [];
+
+        // Agrupar planillas por obra y fecha_estimada_entrega
+        $grupos = $planillas->groupBy(function ($p) {
+            $fechaRaw = $p->getRawOriginal('fecha_estimada_entrega');
+            return $p->obra_id . '|' . ($fechaRaw ? Carbon::parse($fechaRaw)->toDateString() : 'sin-fecha');
+        });
+
+        foreach ($grupos as $key => $grupo) {
+            if (str_contains($key, 'sin-fecha')) continue;
+
+            $obraId = $grupo->first()->obra_id;
+            $obra = $grupo->first()->obra;
+            $nombreObra = $obra?->obra ?? 'Obra desconocida';
+            $codObra = $obra?->cod_obra ?? 'Código desconocido';
+            $clienteNombre = $obra?->cliente?->empresa ?? 'Sin cliente';
+            $codCliente = $obra?->cliente?->codigo ?? '';
+            $fechaBase = Carbon::parse($grupo->first()->getRawOriginal('fecha_estimada_entrega'));
+
+            $planillasIdsGrupo = $grupo->pluck('id')->toArray();
+            $planillasCodigos = $grupo->pluck('codigo')->filter()->toArray();
+
+            // Calcular datos de elementos SIN fecha_entrega propia
+            $elementosSinFecha = $grupo->flatMap(fn($p) => $p->elementos->whereNull('fecha_entrega'));
+            $pesoElementosSinFecha = $elementosSinFecha->sum('peso');
+            $longitudElementosSinFecha = $elementosSinFecha->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0));
+            $diametroElementosSinFecha = $elementosSinFecha->avg('diametro');
+            $elementosIdsSinFecha = $elementosSinFecha->pluck('id')->toArray();
+
+            // Solo crear evento si hay elementos sin fecha propia
+            if ($pesoElementosSinFecha > 0) {
+                $eventosFinales[] = $this->crearEventoCalendario(
+                    $grupo,
+                    $obraId,
+                    $codObra,
+                    $nombreObra,
+                    $clienteNombre,
+                    $codCliente,
+                    $fechaBase,
+                    $pesoElementosSinFecha,
+                    $longitudElementosSinFecha,
+                    $diametroElementosSinFecha,
+                    $elementosIdsSinFecha
+                );
+            }
+
+            // Crear eventos separados para elementos CON fecha_entrega propia
+            $elementosConFechaPropia = $grupo->flatMap(fn($p) => $p->elementos->whereNotNull('fecha_entrega'));
+            $elementosPorFecha = $elementosConFechaPropia->groupBy(fn($e) => Carbon::parse($e->fecha_entrega)->toDateString());
+
+            foreach ($elementosPorFecha as $fecha => $elementos) {
+                $pesoFecha = $elementos->sum('peso');
+                $longitudFecha = $elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0));
+                $diametroFecha = $elementos->avg('diametro');
+                $elementosIdsFecha = $elementos->pluck('id')->toArray();
+
+                $eventosFinales[] = $this->crearEventoCalendario(
+                    $grupo,
+                    $obraId,
+                    $codObra,
+                    $nombreObra,
+                    $clienteNombre,
+                    $codCliente,
+                    Carbon::parse($fecha),
+                    $pesoFecha,
+                    $longitudFecha,
+                    $diametroFecha,
+                    $elementosIdsFecha
+                );
+            }
         }
+
+        return $eventosFinales;
     }
 
     /**
-     * Aplica el reordenamiento tras confirmación
-     * POST /planillas/aplicar-reordenamiento
+     * Crea un evento de calendario para planillas.
      */
-    public function aplicarReordenamiento(Request $request)
-    {
-        try {
-            $data = $request->validate([
-                'planillas' => ['required', 'array', 'min:1'],
-                'planillas.*.id' => ['required', 'integer', 'exists:planillas,id'],
-                'planillas.*.fecha_estimada_entrega' => ['nullable', 'date_format:Y-m-d'],
-                'planillas.*.hora_entrega' => ['nullable', 'date_format:H:i'],
-            ]);
+    private function crearEventoCalendario(
+        $planillas,
+        int $obraId,
+        string $codObra,
+        string $nombreObra,
+        string $clienteNombre,
+        string $codCliente,
+        Carbon $fechaBase,
+        float $pesoTotal,
+        float $longitudTotal,
+        ?float $diametroMedio,
+        array $elementosIds
+    ): array {
+        // Usar la hora más temprana de las planillas del grupo (o 07:00 por defecto)
+        $horaMinima = $planillas
+            ->map(fn($p) => $p->getRawOriginal('fecha_estimada_entrega') ? Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->format('H:i') : '07:00')
+            ->filter(fn($h) => $h !== '00:00')
+            ->sort()
+            ->first() ?? '07:00';
 
-            $service = app(AutoReordenadorService::class);
-            $resultado = $service->aplicarReordenamiento($data['planillas']);
+        [$hora, $minuto] = explode(':', $horaMinima);
+        $fechaInicio = $fechaBase->copy()->setTime((int)$hora, (int)$minuto, 0);
+        $planillasIds = $planillas->pluck('id')->toArray();
+        $planillasCodigos = $planillas->pluck('codigo')->filter()->toArray();
 
-            return response()->json($resultado);
-        } catch (ValidationException $ve) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validación fallida',
-                'errors' => $ve->errors(),
-            ], 422);
-        } catch (\Throwable $e) {
-            Log::error('[Planillas aplicarReordenamiento] error: ' . $e->getMessage(), [
-                'line' => $e->getLine(),
-                'file' => $e->getFile()
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al aplicar reordenamiento: ' . $e->getMessage(),
-            ], 500);
+        // Formatear diámetro medio
+        $diametroMedioFormateado = $diametroMedio !== null
+            ? number_format($diametroMedio, 2, '.', '')
+            : null;
+
+        // Color según estado
+        $alMenosUnaFabricando = $planillas->contains(fn($p) => $p->estado === 'fabricando');
+        $todasCompletadas = $planillas->every(fn($p) => $p->estado === 'completada');
+
+        if ($todasCompletadas) {
+            $color = '#22c55e'; // verde
+        } elseif ($alMenosUnaFabricando) {
+            $color = '#facc15'; // amarillo
+        } else {
+            $color = '#9CA3AF'; // gris
         }
+
+        // Título compacto (para vista no diaria)
+        $titulo = $codObra . ' - ' . $nombreObra . " - " . number_format($pesoTotal, 0) . " kg";
+
+        // ID único del evento
+        $eventoId = 'planillas-' . $obraId . '-' . $fechaBase->format('Y-m-d') . '-sin-salida';
+
+        return [
+            'title' => $titulo,
+            'id' => $eventoId,
+            'start' => $fechaInicio->toIso8601String(),
+            'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
+            'backgroundColor' => $color,
+            'borderColor' => $color,
+            'tipo' => 'planilla',
+            'resourceId' => (string) $obraId,
+            'extendedProps' => [
+                'tipo' => 'planilla',
+                'obra_id' => $obraId,
+                'cod_obra' => $codObra,
+                'nombre_obra' => $nombreObra,
+                'cliente' => $clienteNombre,
+                'cod_cliente' => $codCliente,
+                'pesoTotal' => $pesoTotal,
+                'longitudTotal' => $longitudTotal,
+                'planillas_ids' => $planillasIds,
+                'planillas_codigos' => $planillasCodigos,
+                'elementos_ids' => $elementosIds,
+                'diametroMedio' => $diametroMedioFormateado,
+                'tieneSalidas' => false,
+                'salida_id' => null,
+                'salida_codigo' => null,
+                'hora_entrega' => $horaMinima,
+            ],
+        ];
+    }
+
+    /**
+     * Calcula los resúmenes diarios para fechas específicas.
+     */
+    private function calcularResumenesDias(array $fechas): array
+    {
+        $resumenes = [];
+
+        foreach ($fechas as $fechaStr) {
+            $datosPlanillas = Planilla::whereDate('fecha_estimada_entrega', $fechaStr)
+                ->selectRaw('COALESCE(SUM(peso_total), 0) as peso_total')
+                ->first();
+
+            $datosElementos = Elemento::whereHas('planilla', function ($q) use ($fechaStr) {
+                    $q->whereDate('fecha_estimada_entrega', $fechaStr);
+                })
+                ->selectRaw('COALESCE(SUM(longitud * barras), 0) as longitud_total, AVG(diametro) as diametro_medio')
+                ->first();
+
+            $datosElementosPropios = Elemento::whereDate('fecha_entrega', $fechaStr)
+                ->selectRaw('COALESCE(SUM(peso), 0) as peso_total, COALESCE(SUM(longitud * barras), 0) as longitud_total, AVG(diametro) as diametro_medio')
+                ->first();
+
+            $pesoTotal = ($datosPlanillas->peso_total ?? 0) + ($datosElementosPropios->peso_total ?? 0);
+            $longitudTotal = ($datosElementos->longitud_total ?? 0) + ($datosElementosPropios->longitud_total ?? 0);
+
+            $diametroMedio = 0;
+            $countDiametros = 0;
+            if ($datosElementos->diametro_medio) {
+                $diametroMedio += $datosElementos->diametro_medio;
+                $countDiametros++;
+            }
+            if ($datosElementosPropios->diametro_medio) {
+                $diametroMedio += $datosElementosPropios->diametro_medio;
+                $countDiametros++;
+            }
+            if ($countDiametros > 0) {
+                $diametroMedio = $diametroMedio / $countDiametros;
+            }
+
+            $resumenes[$fechaStr] = [
+                'fecha' => $fechaStr,
+                'pesoTotal' => round($pesoTotal, 2),
+                'longitudTotal' => round($longitudTotal, 2),
+                'diametroMedio' => round($diametroMedio, 2),
+            ];
+        }
+
+        return $resumenes;
     }
 
     public function importProgress(string $id)

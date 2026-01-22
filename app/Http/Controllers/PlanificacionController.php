@@ -19,7 +19,9 @@ use Illuminate\Support\Facades\Log;
 use App\Services\AlertaService;
 use App\Services\ActionLoggerService;
 use App\Services\FinProgramadoService;
+use App\Services\AutoReordenadorService;
 use App\Models\Departamento;
+use App\Models\OrdenPlanilla;
 use App\Models\SalidaCliente;
 use Illuminate\Support\Facades\DB;
 
@@ -661,6 +663,16 @@ class PlanificacionController extends Controller
         }
 
         return $resumenes;
+    }
+
+    /**
+     * Reordena la cola de una máquina por fecha de entrega.
+     * Se usa después de mover fechas de planillas.
+     * @deprecated Usar OrdenPlanillaService::reordenarColaDeMaquina()
+     */
+    private function reordenarColaMaquina(int $maquinaId): int
+    {
+        return app(\App\Services\OrdenPlanillaService::class)->reordenarColaDeMaquina($maquinaId);
     }
 
     private function getEventosSalidas(Carbon $startDate, Carbon $endDate, string $viewType = '')
@@ -1617,6 +1629,27 @@ class PlanificacionController extends Controller
                 $fecha->format('Y-m-d'),
             ]));
             $resumenesDias = $this->calcularResumenesDias($fechasAfectadas);
+
+            // 🔄 Reordenar colas de máquinas afectadas por el cambio de fecha
+            $planillasParaReordenar = !empty($elementosIds)
+                ? Elemento::whereIn('id', $elementosIds)->distinct()->pluck('planilla_id')->toArray()
+                : $planillasIds;
+
+            if (!empty($planillasParaReordenar)) {
+                $maquinasAfectadas = OrdenPlanilla::whereIn('planilla_id', $planillasParaReordenar)
+                    ->distinct()
+                    ->pluck('maquina_id')
+                    ->toArray();
+
+                $cambiosReorden = 0;
+                foreach ($maquinasAfectadas as $maquinaId) {
+                    $cambiosReorden += $this->reordenarColaMaquina($maquinaId);
+                }
+
+                if ($cambiosReorden > 0) {
+                    Log::info("🔄 Reordenadas {$cambiosReorden} posiciones en " . count($maquinasAfectadas) . " máquina(s)");
+                }
+            }
 
             return response()->json([
                 'success' => true,

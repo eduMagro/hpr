@@ -7,6 +7,7 @@ use App\Models\Elemento;
 use App\Models\Planilla;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 /**
  * Servicio para gestionar el orden de planillas por máquina.
@@ -336,6 +337,81 @@ class OrdenPlanillaService
         Log::channel('planilla_import')->info("[OrdenPlanilla] Recalculo multiple completado: {$totalActualizados} registros actualizados en total");
 
         return $resultados;
+    }
+
+    /**
+     * Reordena la cola de una máquina basándose en fecha_estimada_entrega.
+     * Ordena por: 1) fecha (solo día) ASC, 2) hora ASC, 3) peso DESC, 4) planilla_id ASC
+     *
+     * @param int $maquinaId
+     * @return int Número de posiciones cambiadas
+     */
+    public function reordenarColaDeMaquina(int $maquinaId): int
+    {
+        $ordenes = OrdenPlanilla::where('maquina_id', $maquinaId)
+            ->with(['planilla' => function($q) {
+                $q->select('id', 'fecha_estimada_entrega', 'peso_total');
+            }])
+            ->get();
+
+        if ($ordenes->isEmpty()) {
+            return 0;
+        }
+
+        // Ordenar por: fecha (día) ASC, hora ASC, peso DESC, ID ASC
+        $ordenesOrdenadas = $ordenes->sortBy([
+            // 1. Fecha (solo día) - más urgentes primero
+            fn($o) => $o->planilla->fecha_estimada_entrega
+                ? Carbon::parse($o->planilla->fecha_estimada_entrega)->startOfDay()
+                : Carbon::maxValue(),
+            // 2. Hora dentro del mismo día - entregas más tempranas primero
+            fn($o) => $o->planilla->fecha_estimada_entrega
+                ? Carbon::parse($o->planilla->fecha_estimada_entrega)->format('H:i:s')
+                : '23:59:59',
+            // 3. Peso (mayor peso primero para optimizar setup)
+            fn($o) => -($o->planilla->peso_total ?? 0),
+            // 4. FIFO (ID más bajo primero)
+            fn($o) => $o->planilla_id,
+        ])->values();
+
+        // Reasignar posiciones
+        $cambios = 0;
+        foreach ($ordenesOrdenadas as $index => $orden) {
+            $nuevaPosicion = $index + 1;
+            if ($orden->posicion !== $nuevaPosicion) {
+                $orden->posicion = $nuevaPosicion;
+                $orden->save();
+                $cambios++;
+            }
+        }
+
+        if ($cambios > 0) {
+            Log::info("[OrdenPlanilla] Maquina {$maquinaId}: reordenadas {$cambios} posiciones por fecha/hora");
+        }
+
+        return $cambios;
+    }
+
+    /**
+     * Reordena las colas de múltiples máquinas basándose en fechas.
+     *
+     * @param array $maquinaIds
+     * @return int Total de posiciones cambiadas
+     */
+    public function reordenarColasDeMaquinas(array $maquinaIds): int
+    {
+        $maquinaIds = array_values(array_unique(array_filter($maquinaIds, fn($x) => !is_null($x))));
+        $totalCambios = 0;
+
+        foreach ($maquinaIds as $maquinaId) {
+            $totalCambios += $this->reordenarColaDeMaquina((int)$maquinaId);
+        }
+
+        if ($totalCambios > 0) {
+            Log::info("[OrdenPlanilla] Reordenadas {$totalCambios} posiciones en " . count($maquinaIds) . " máquina(s)");
+        }
+
+        return $totalCambios;
     }
 
     /**

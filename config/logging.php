@@ -186,6 +186,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'ferrallin' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/ferrallin/preguntas.log'),
+            'level' => 'info',
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

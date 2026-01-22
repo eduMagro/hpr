@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\Log;
 class AutoReordenadorService
 {
     public function __construct(
-        private FinProgramadoService $finProgramadoService
+        private FinProgramadoService $finProgramadoService,
+        private OrdenPlanillaService $ordenPlanillaService
     ) {}
 
     /**
@@ -224,7 +225,7 @@ class AutoReordenadorService
 
             // 3. Reordenar cada máquina
             foreach ($maquinaIds as $maquinaId) {
-                $cambiosAplicados += $this->reordenarColaMaquina($maquinaId);
+                $cambiosAplicados += $this->ordenPlanillaService->reordenarColaDeMaquina($maquinaId);
             }
 
             Log::info('AutoReordenadorService: Reordenamiento aplicado', [
@@ -242,43 +243,4 @@ class AutoReordenadorService
         });
     }
 
-    /**
-     * Reordena la cola de una máquina por fecha y hora de entrega
-     * Ordena todas las planillas (revisadas y no revisadas)
-     */
-    private function reordenarColaMaquina(int $maquinaId): int
-    {
-        $ordenes = OrdenPlanilla::where('maquina_id', $maquinaId)
-            ->with(['planilla' => function($q) {
-                $q->select('id', 'fecha_estimada_entrega', 'estado', 'peso_total', 'revisada');
-            }])
-            ->get();
-
-        if ($ordenes->isEmpty()) {
-            return 0;
-        }
-
-        // Ordenar TODAS las planillas por criterios de prioridad
-        $ordenesOrdenadas = $ordenes->sortBy([
-            // 1. Fecha y hora de entrega (más urgentes primero)
-            fn($o) => $o->planilla->fecha_estimada_entrega ?? Carbon::maxValue(),
-            // 2. Peso (mayor peso primero para optimizar setup)
-            fn($o) => -($o->planilla->peso_total ?? 0),
-            // 3. FIFO (ID más bajo primero)
-            fn($o) => $o->planilla_id,
-        ])->values();
-
-        // Reasignar posiciones
-        $cambios = 0;
-        foreach ($ordenesOrdenadas as $index => $orden) {
-            $nuevaPosicion = $index + 1;
-            if ($orden->posicion !== $nuevaPosicion) {
-                $orden->posicion = $nuevaPosicion;
-                $orden->save();
-                $cambios++;
-            }
-        }
-
-        return $cambios;
     }
-}

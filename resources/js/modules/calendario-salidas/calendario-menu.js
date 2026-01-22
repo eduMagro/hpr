@@ -1,5 +1,6 @@
 // calendario-menu.js
 import { openActionsMenu, closeMenu } from "./menuContextual.js";
+import { invalidateCache } from "./eventos.js";
 /* ===================== Helpers de fecha (locales) ===================== */
 
 /**
@@ -1588,10 +1589,10 @@ function construirFormularioFechas(planillas) {
                     const codigoEscaped = codigoEl.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
                     return `
-                    <tr class="elemento-row elemento-planilla-${p.id} bg-gray-50 hidden">
+                    <tr class="elemento-row elemento-planilla-${p.id} bg-gray-50 hidden cursor-pointer hover:bg-purple-50" data-elemento-id="${el.id}" data-planilla-id="${p.id}">
                         <td class="px-2 py-1 text-xs text-gray-400 pl-4">
                             <div class="flex items-center gap-1">
-                                <input type="checkbox" class="elemento-checkbox rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-3.5 w-3.5"
+                                <input type="checkbox" class="elemento-checkbox rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-3.5 w-3.5 pointer-events-none"
                                        data-elemento-id="${el.id}"
                                        data-planilla-id="${p.id}">
                                 <span>↳</span>
@@ -1602,7 +1603,7 @@ function construirFormularioFechas(planillas) {
                                         data-elemento-id="${el.id}"
                                         data-elemento-codigo="${codigoEscaped}"
                                         data-dimensiones="${dimensionesEscaped}"
-                                        title="Click para seleccionar, hover para ver figura">
+                                        title="Ver figura">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
@@ -1627,9 +1628,9 @@ function construirFormularioFechas(planillas) {
             }
 
             return `
-<tr class="planilla-row hover:bg-blue-50 bg-blue-100 border-t border-blue-200" data-planilla-id="${p.id}" style="opacity:0; transform:translateY(4px); animation: swalRowIn .22s ease-out forwards; animation-delay:${i * 18}ms;">
+<tr class="planilla-row hover:bg-blue-50 bg-blue-100 border-t border-blue-200 ${tieneElementos ? 'cursor-pointer' : ''}" data-planilla-id="${p.id}" data-tiene-elementos="${tieneElementos}" style="opacity:0; transform:translateY(4px); animation: swalRowIn .22s ease-out forwards; animation-delay:${i * 18}ms;">
   <td class="px-2 py-2 text-xs font-semibold text-blue-800" colspan="2">
-    ${tieneElementos ? `<button type="button" class="toggle-elementos mr-1 text-blue-600 hover:text-blue-800" data-planilla-id="${p.id}">▶</button>` : ''}
+    ${tieneElementos ? `<span class="toggle-elementos mr-1 text-blue-600" data-planilla-id="${p.id}">▶</span>` : ''}
     📄 ${codigoPlanilla}
     ${tieneElementos ? `<span class="ml-1 text-xs text-blue-500 font-normal">(${numElementos} elem.)</span>` : ''}
   </td>
@@ -1653,40 +1654,36 @@ ${elementosHtml}`;
     <div class="text-left">
       <div class="text-sm text-gray-600 mb-2">
         Edita la <strong>fecha estimada de entrega</strong> de planillas y elementos.
-        <span class="text-blue-600">▶</span> = expandir elementos, <span class="text-purple-600">☑</span> = seleccionar para asignar fecha masiva
+        Clic en <span class="text-blue-600 font-medium">fila azul</span> = expandir, clic en <span class="text-gray-600 font-medium">fila gris</span> = seleccionar
       </div>
 
-      <!-- Barra de acciones masivas para elementos -->
-      <div id="barra-acciones-masivas" class="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-lg hidden">
-        <div class="flex flex-wrap items-center gap-3">
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-purple-800">
-              <span id="contador-seleccionados">0</span> elementos seleccionados
-            </span>
-          </div>
-          <div class="flex items-center gap-2">
-            <label class="text-sm text-purple-700">Asignar fecha:</label>
-            <input type="date" id="fecha-masiva" class="swal2-input !m-0 !w-auto !text-sm !bg-white !border-purple-300">
-            <button type="button" id="aplicar-fecha-masiva" class="text-sm bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded font-medium transition-colors">
-              Aplicar a seleccionados
-            </button>
-          </div>
-          <div class="flex items-center gap-2 ml-auto">
-            <button type="button" id="limpiar-fecha-seleccionados" class="text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded" title="Quitar fecha de los seleccionados">
-              Limpiar fecha
-            </button>
-            <button type="button" id="deseleccionar-todos" class="text-xs bg-gray-400 hover:bg-gray-500 text-white px-2 py-1 rounded">
-              Deseleccionar
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Sumatorio dinámico por fechas -->
+      <!-- Sumatorio dinámico por fechas con barra de acciones integrada -->
       <div id="sumatorio-fechas" class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-        <div class="text-sm font-medium text-blue-800 mb-2">📊 Resumen por fecha:</div>
-        <div id="resumen-contenido" class="text-xs text-blue-700">
-          Cambia las fechas para ver el resumen...
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div class="text-sm font-medium text-blue-800 mb-2">📊 Resumen por fecha:</div>
+            <div id="resumen-contenido" class="text-xs text-blue-700">
+              Cambia las fechas para ver el resumen...
+            </div>
+          </div>
+          <!-- Barra de acciones masivas para elementos -->
+          <div id="barra-acciones-masivas" class="hidden flex-shrink-0 p-2 bg-purple-50 border border-purple-200 rounded-lg">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs font-medium text-purple-800 whitespace-nowrap">
+                <span id="contador-seleccionados">0</span> sel.
+              </span>
+              <input type="date" id="fecha-masiva" class="swal2-input !m-0 !w-auto !text-xs !py-1 !px-2 !bg-white !border-purple-300">
+              <button type="button" id="aplicar-fecha-masiva" class="text-xs bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded font-medium transition-colors whitespace-nowrap">
+                Aplicar
+              </button>
+              <button type="button" id="limpiar-fecha-seleccionados" class="text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded whitespace-nowrap" title="Quitar fecha de los seleccionados">
+                Limpiar
+              </button>
+              <button type="button" id="deseleccionar-todos" class="text-xs bg-gray-400 hover:bg-gray-500 text-white px-2 py-1 rounded whitespace-nowrap">
+                ✕
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1832,6 +1829,50 @@ function actualizarSumatorio(planillas) {
     `;
 }
 
+/**
+ * Actualiza eventos inline en el calendario sin refetch completo.
+ * @param {Object} calendar - Instancia de FullCalendar
+ * @param {Object} resp - Respuesta del servidor con eventos_eliminar, eventos_nuevos y resumenes_dias
+ */
+function actualizarEventosInline(calendar, resp) {
+    // 1. Invalidar cache para que futuras navegaciones obtengan datos frescos
+    invalidateCache();
+
+    // 2. Eliminar TODOS los eventos afectados (tanto los viejos como los que van a ser reemplazados)
+    const eventosAEliminarIds = new Set(resp.eventos_eliminar || []);
+
+    // También añadir los IDs de eventos nuevos para asegurar que se eliminen los viejos
+    (resp.eventos_nuevos || []).forEach(e => eventosAEliminarIds.add(e.id));
+
+    // Eliminar eventos
+    eventosAEliminarIds.forEach(eventoId => {
+        const evento = calendar.getEventById(eventoId);
+        if (evento) {
+            evento.remove();
+        }
+    });
+
+    // 3. Añadir eventos nuevos
+    if (resp.eventos_nuevos && Array.isArray(resp.eventos_nuevos)) {
+        resp.eventos_nuevos.forEach(eventoData => {
+            // Verificar si ya existe (para evitar duplicados)
+            const existente = calendar.getEventById(eventoData.id);
+            if (existente) {
+                existente.remove();
+            }
+            calendar.addEvent(eventoData);
+        });
+    }
+
+    // 4. Actualizar resúmenes de días (si la función está disponible globalmente)
+    if (resp.resumenes_dias && typeof window.actualizarResumenesDias === 'function') {
+        window.actualizarResumenesDias(resp.resumenes_dias);
+    }
+
+    // 5. Forzar re-render del calendario
+    calendar.render();
+}
+
 async function guardarFechasPlanillas(payload) {
     const base = window.AppSalidas?.routes?.actualizarFechasPlanillas;
     if (!base)
@@ -1929,18 +1970,38 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
                 // 5) Event listeners para expandir/colapsar elementos
                 const container = Swal.getHtmlContainer();
 
-                // Toggle individual de elementos
-                container.querySelectorAll('.toggle-elementos').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const planillaId = btn.dataset.planillaId;
+                // Toggle elementos al hacer clic en la fila de planilla
+                container.querySelectorAll('.planilla-row').forEach(row => {
+                    row.addEventListener('click', (e) => {
+                        // No activar si se hizo clic en un input o botón
+                        if (e.target.closest('input, button')) return;
+
+                        const planillaId = row.dataset.planillaId;
+                        const tieneElementos = row.dataset.tieneElementos === 'true';
+                        if (!tieneElementos) return;
+
                         const elementos = container.querySelectorAll(`.elemento-planilla-${planillaId}`);
-                        const isExpanded = btn.textContent === '▼';
+                        const toggleIcon = row.querySelector('.toggle-elementos');
+                        const isExpanded = toggleIcon?.textContent === '▼';
 
                         elementos.forEach(el => {
                             el.classList.toggle('hidden', isExpanded);
                         });
-                        btn.textContent = isExpanded ? '▶' : '▼';
+                        if (toggleIcon) toggleIcon.textContent = isExpanded ? '▶' : '▼';
+                    });
+                });
+
+                // Seleccionar elemento al hacer clic en la fila
+                container.querySelectorAll('.elemento-row').forEach(row => {
+                    row.addEventListener('click', (e) => {
+                        // No activar si se hizo clic en un input, botón o el icono de ver figura
+                        if (e.target.closest('input, button, .ver-figura-elemento')) return;
+
+                        const checkbox = row.querySelector('.elemento-checkbox');
+                        if (checkbox) {
+                            checkbox.checked = !checkbox.checked;
+                            actualizarBarraSeleccion();
+                        }
                     });
                 });
 
@@ -2101,27 +2162,9 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
                         }, 100);
                     });
 
-                    // Click en el ojo marca/desmarca el checkbox del elemento
+                    // Evitar que el click en el ojo propague a la fila
                     btn.addEventListener('click', (e) => {
-                        e.preventDefault();
                         e.stopPropagation();
-                        const elementoId = btn.dataset.elementoId;
-                        const checkbox = container.querySelector(`.elemento-checkbox[data-elemento-id="${elementoId}"]`);
-                        if (checkbox) {
-                            checkbox.checked = !checkbox.checked;
-                            // Llamar directamente a la lógica de actualización
-                            const checkboxes = container.querySelectorAll('.elemento-checkbox:checked');
-                            const cantidad = checkboxes.length;
-                            const barra = container.querySelector('#barra-acciones-masivas');
-                            const contador = container.querySelector('#contador-seleccionados');
-
-                            if (cantidad > 0) {
-                                barra?.classList.remove('hidden');
-                                if (contador) contador.textContent = cantidad;
-                            } else {
-                                barra?.classList.add('hidden');
-                            }
-                        }
                     });
                 });
 
@@ -2156,18 +2199,17 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
         });
 
         const resp = await guardarFechasPlanillas(payload);
-        await Swal.fire(
-            resp.success ? "✅" : "⚠️",
-            resp.message ||
-                (resp.success
-                    ? "Fechas actualizadas"
-                    : "No se pudieron actualizar"),
-            resp.success ? "success" : "warning"
-        );
+        await Swal.fire({
+            title: resp.success ? "Guardado" : "Atención",
+            text: resp.message || (resp.success ? "Fechas actualizadas" : "No se pudieron actualizar"),
+            icon: resp.success ? "success" : "warning",
+            timer: resp.success ? 1500 : undefined,
+            showConfirmButton: !resp.success,
+        });
 
         if (resp.success && calendar) {
-            calendar.refetchEvents?.();
-            calendar.refetchResources?.();
+            // Actualizar eventos inline en lugar de refetch
+            actualizarEventosInline(calendar, resp);
         }
     } catch (err) {
         console.error("[CambiarFechasEntrega] error:", err);

@@ -111,10 +111,9 @@
                         <td class="px-6 py-4 text-center border">{{ ucfirst($movimiento->tipo ?? 'N/A') }}</td>
 
                         <td class="px-6 py-4 text-center border">
-                            @php $linea = $movimiento->pedido_producto_id; @endphp
-                            @if($linea)
-                                <a href="{{ route('pedidos.index', ['pedido_producto_id' => $linea]) }}" class="text-indigo-600 hover:underline">
-                                    #{{ $linea }}
+                            @if($movimiento->pedidoProducto)
+                                <a href="{{ route('pedidos.index', ['codigo_linea' => '=' . $movimiento->pedidoProducto->codigo]) }}" class="text-indigo-600 hover:underline">
+                                    {{ $movimiento->pedidoProducto->codigo }}
                                 </a>
                             @else
                                 <span class="text-gray-400">—</span>
