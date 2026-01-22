@@ -44,8 +44,7 @@ class ResumenEtiquetaService
                 $query->whereHas('elementos', function ($q) use ($maquinaId) {
                     $q->where(function ($subQ) use ($maquinaId) {
                         $subQ->where('maquina_id', $maquinaId)
-                            ->orWhere('maquina_id_2', $maquinaId)
-                            ->orWhere('maquina_id_3', $maquinaId);
+                            ->orWhere('maquina_id_2', $maquinaId);
                     });
                 });
             }
@@ -74,8 +73,7 @@ class ResumenEtiquetaService
                 if ($maquinaId) {
                     $elementos = $elementos->filter(function ($e) use ($maquinaId) {
                         return $e->maquina_id == $maquinaId
-                            || $e->maquina_id_2 == $maquinaId
-                            || $e->maquina_id_3 == $maquinaId;
+                            || $e->maquina_id_2 == $maquinaId;
                     });
                 }
 
@@ -174,8 +172,7 @@ class ResumenEtiquetaService
             $query->whereHas('elementos', function ($q) use ($maquinaId) {
                 $q->where(function ($subQ) use ($maquinaId) {
                     $subQ->where('maquina_id', $maquinaId)
-                        ->orWhere('maquina_id_2', $maquinaId)
-                        ->orWhere('maquina_id_3', $maquinaId);
+                        ->orWhere('maquina_id_2', $maquinaId);
                 });
             });
         }
@@ -193,8 +190,7 @@ class ResumenEtiquetaService
             if ($maquinaId) {
                 $elementos = $elementos->filter(function ($e) use ($maquinaId) {
                     return $e->maquina_id == $maquinaId
-                        || $e->maquina_id_2 == $maquinaId
-                        || $e->maquina_id_3 == $maquinaId;
+                        || $e->maquina_id_2 == $maquinaId;
                 });
             }
 
@@ -482,8 +478,7 @@ class ResumenEtiquetaService
             $elementosDelGrupo = Elemento::whereIn('etiqueta_sub_id', $etiquetas->pluck('etiqueta_sub_id'))
                 ->where(function ($q) use ($maquinaId) {
                     $q->where('maquina_id', $maquinaId)
-                        ->orWhere('maquina_id_2', $maquinaId)
-                        ->orWhere('maquina_id_3', $maquinaId);
+                        ->orWhere('maquina_id_2', $maquinaId);
                 })
                 ->get();
 
@@ -718,24 +713,24 @@ class ResumenEtiquetaService
                 ->whereHas('elementos', function ($q) use ($maquinaId) {
                     $q->where(function ($subQ) use ($maquinaId) {
                         $subQ->where('maquina_id', $maquinaId)
-                            ->orWhere('maquina_id_2', $maquinaId)
-                            ->orWhere('maquina_id_3', $maquinaId);
+                            ->orWhere('maquina_id_2', $maquinaId);
                     });
                 });
 
             Log::info('📦 resumirMultiplanilla - Ejecutando query OPTIMIZADA');
 
-            // Query optimizada: obtener planillas activas en la máquina (con elementos pendientes/fabricando)
+            // Query optimizada: obtener planillas REVISADAS activas en la máquina (con elementos pendientes/fabricando)
             $planillasActivas = DB::table('elementos')
+                ->join('planillas', 'elementos.planilla_id', '=', 'planillas.id')
+                ->where('planillas.revisada', true)
                 ->where(function ($q) use ($maquinaId) {
-                    $q->where('maquina_id', $maquinaId)
-                        ->orWhere('maquina_id_2', $maquinaId)
-                        ->orWhere('maquina_id_3', $maquinaId);
+                    $q->where('elementos.maquina_id', $maquinaId)
+                        ->orWhere('elementos.maquina_id_2', $maquinaId);
                 })
-                ->whereIn('estado', ['pendiente', 'fabricando'])
-                ->whereNotNull('planilla_id')
+                ->whereIn('elementos.estado', ['pendiente', 'fabricando'])
+                ->whereNotNull('elementos.planilla_id')
                 ->distinct()
-                ->pluck('planilla_id')
+                ->pluck('elementos.planilla_id')
                 ->toArray();
 
             Log::info('📦 resumirMultiplanilla - Planillas activas en máquina: ' . count($planillasActivas), ['ids' => $planillasActivas]);
@@ -754,8 +749,7 @@ class ResumenEtiquetaService
             $etiquetaIds = DB::table('elementos')
                 ->where(function ($q) use ($maquinaId) {
                     $q->where('maquina_id', $maquinaId)
-                        ->orWhere('maquina_id_2', $maquinaId)
-                        ->orWhere('maquina_id_3', $maquinaId);
+                        ->orWhere('maquina_id_2', $maquinaId);
                 })
                 ->whereIn('planilla_id', $planillasActivas)
                 ->whereNotNull('etiqueta_id')
@@ -802,8 +796,7 @@ class ResumenEtiquetaService
             foreach ($etiquetas as $etiqueta) {
                 $elementos = $etiqueta->elementos->filter(function ($e) use ($maquinaId) {
                     return $e->maquina_id == $maquinaId
-                        || $e->maquina_id_2 == $maquinaId
-                        || $e->maquina_id_3 == $maquinaId;
+                        || $e->maquina_id_2 == $maquinaId;
                 });
 
                 if ($elementos->isEmpty()) {
@@ -905,8 +898,7 @@ class ResumenEtiquetaService
             ->whereHas('elementos', function ($q) use ($maquinaId) {
                 $q->where(function ($subQ) use ($maquinaId) {
                     $subQ->where('maquina_id', $maquinaId)
-                        ->orWhere('maquina_id_2', $maquinaId)
-                        ->orWhere('maquina_id_3', $maquinaId);
+                        ->orWhere('maquina_id_2', $maquinaId);
                 });
             });
 
@@ -919,8 +911,7 @@ class ResumenEtiquetaService
         foreach ($etiquetas as $etiqueta) {
             $elementos = $etiqueta->elementos->filter(function ($e) use ($maquinaId) {
                 return $e->maquina_id == $maquinaId
-                    || $e->maquina_id_2 == $maquinaId
-                    || $e->maquina_id_3 == $maquinaId;
+                    || $e->maquina_id_2 == $maquinaId;
             });
 
             if ($elementos->isEmpty()) {
@@ -1070,8 +1061,7 @@ class ResumenEtiquetaService
             ->whereHas('elementos', function ($q) use ($maquinaId) {
                 $q->where(function ($subQ) use ($maquinaId) {
                     $subQ->where('maquina_id', $maquinaId)
-                        ->orWhere('maquina_id_2', $maquinaId)
-                        ->orWhere('maquina_id_3', $maquinaId);
+                        ->orWhere('maquina_id_2', $maquinaId);
                 });
             });
 

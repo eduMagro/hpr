@@ -38,8 +38,7 @@ class SoldadoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqueta
             $elementosEnMaquina = $etiqueta->elementos()
                 ->where(function ($q) use ($maquina) {
                     $q->where('maquina_id', $maquina->id)
-                        ->orWhere('maquina_id_2', $maquina->id)
-                        ->orWhere('maquina_id_3', $maquina->id);
+                        ->orWhere('maquina_id_2', $maquina->id);
                 })
                 ->get();
 
@@ -91,8 +90,7 @@ class SoldadoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqueta
                 $quedanPendientesEnEstaMaquina = Elemento::where('planilla_id', $planilla->id)
                     ->where(function ($q) use ($maquina) {
                         $q->where('maquina_id', $maquina->id)
-                            ->orWhere('maquina_id_2', $maquina->id)
-                            ->orWhere('maquina_id_3', $maquina->id);
+                            ->orWhere('maquina_id_2', $maquina->id);
                     })
                     ->where(function ($q) {
                         $q->whereNull('estado')->orWhere('estado', '!=', 'completado');

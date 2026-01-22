@@ -47,9 +47,6 @@ class ElementosTable extends Component
     public $maquina_2 = '';
 
     #[Url(keep: true)]
-    public $maquina3 = '';
-
-    #[Url(keep: true)]
     public $producto1 = '';
 
     #[Url(keep: true)]
@@ -163,12 +160,6 @@ class ElementosTable extends Component
             });
         }
 
-        if (!empty($this->maquina3)) {
-            $query->whereHas('maquina_3', function ($q) {
-                $q->where('nombre', 'like', "%{$this->maquina3}%");
-            });
-        }
-
         // Productos
         if (!empty($this->producto1)) {
             $query->whereHas('producto', function ($q) {
@@ -221,7 +212,6 @@ class ElementosTable extends Component
             'barras' => 'elementos.barras',
             'maquina' => 'maquinas.nombre',
             'maquina_2' => 'maquinas_2.nombre',
-            'maquina3' => 'maquinas_3.nombre',
             'producto1' => 'productos.codigo',
             'producto2' => 'productos_2.codigo',
             'producto3' => 'productos_3.codigo',
@@ -246,9 +236,6 @@ class ElementosTable extends Component
                     ->select('elementos.*');
             } elseif (str_starts_with($column, 'maquinas_2.')) {
                 $query->leftJoin('maquinas as maquinas_2', 'maquinas_2.id', '=', 'elementos.maquina_2_id')
-                    ->select('elementos.*');
-            } elseif (str_starts_with($column, 'maquinas_3.')) {
-                $query->leftJoin('maquinas as maquinas_3', 'maquinas_3.id', '=', 'elementos.maquina_3_id')
                     ->select('elementos.*');
             } elseif (str_starts_with($column, 'productos.')) {
                 $query->leftJoin('productos', 'productos.id', '=', 'elementos.producto_id')
@@ -284,7 +271,7 @@ class ElementosTable extends Component
         $this->reset([
             'elemento_id', 'codigo', 'codigo_planilla', 'etiqueta', 'subetiqueta',
             'dimensiones', 'diametro', 'barras', 'maquina', 'maquina_2',
-            'maquina3', 'producto1', 'producto2', 'producto3', 'figura',
+            'producto1', 'producto2', 'producto3', 'figura',
             'peso', 'longitud', 'estado', 'planilla_id', 'sort', 'order'
         ]);
         $this->resetPage();
@@ -324,9 +311,6 @@ class ElementosTable extends Component
         if (!empty($this->maquina_2)) {
             $filtros[] = "<strong>Máquina 2:</strong> {$this->maquina_2}";
         }
-        if (!empty($this->maquina3)) {
-            $filtros[] = "<strong>Máquina 3:</strong> {$this->maquina3}";
-        }
         if (!empty($this->producto1)) {
             $filtros[] = "<strong>Producto 1:</strong> {$this->producto1}";
         }
@@ -365,7 +349,6 @@ class ElementosTable extends Component
                 'barras' => 'Barras',
                 'maquina' => 'Máquina 1',
                 'maquina_2' => 'Máquina 2',
-                'maquina3' => 'Máquina 3',
                 'producto1' => 'M. Prima 1',
                 'producto2' => 'M. Prima 2',
                 'producto3' => 'M. Prima 3',
@@ -395,7 +378,6 @@ class ElementosTable extends Component
             'etiquetaRelacion',
             'maquina',
             'maquina_2',
-            'maquina_3',
             'producto',
             'producto2',
             'producto3',

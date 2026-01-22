@@ -42,10 +42,6 @@
             $filtrosActivos[] = 'Máquina 2: <strong>' . request('maquina_2') . '</strong>';
         }
 
-        if (request('maquina3')) {
-            $filtrosActivos[] = 'Máquina 3: <strong>' . request('maquina3') . '</strong>';
-        }
-
         if (request('producto1')) {
             $filtrosActivos[] = 'Materia Prima 1: <strong>' . request('producto1') . '</strong>';
         }

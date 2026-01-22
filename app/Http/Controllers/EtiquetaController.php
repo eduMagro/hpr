@@ -224,7 +224,6 @@ class EtiquetaController extends Controller
             'paquete_id'      => 'etiquetas.paquete_id',
             'maquina'         => 'etiquetas.maquina',
             'maquina_2'       => 'etiquetas.maquina_2',
-            'maquina3'        => 'etiquetas.maquina3',
             'producto1'       => 'etiquetas.producto1',
             'producto2'       => 'etiquetas.producto2',
             'producto3'       => 'etiquetas.producto3',
@@ -292,7 +291,6 @@ class EtiquetaController extends Controller
             'paquete' => $this->getOrdenamiento('paquete_id', 'Paquete'),
             'maquina' => $this->getOrdenamiento('maquina', 'Máquina 1'),
             'maquina_2' => $this->getOrdenamiento('maquina_2', 'Máquina 2'),
-            'maquina3' => $this->getOrdenamiento('maquina3', 'Máquina 3'),
             'producto1' => $this->getOrdenamiento('producto1', 'Materia Prima 1'),
             'producto2' => $this->getOrdenamiento('producto2', 'Materia Prima 2'),
             'producto3' => $this->getOrdenamiento('producto3', 'Materia Prima 3'),
@@ -2270,27 +2268,6 @@ class EtiquetaController extends Controller
                     }
 
                     $etiqueta->save();
-                }
-                // Buscar una máquina de soldar disponible
-                $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                    ->whereDoesntHave('elementos')
-                    ->first();
-
-                if (!$maquinaSoldarDisponible) {
-                    $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                        ->whereHas('elementos', function ($query) {
-                            $query->orderBy('created_at');
-                        })
-                        ->first();
-                }
-
-                if ($maquinaSoldarDisponible) {
-                    foreach ($elementosEnMaquina as $elemento) {
-                        $elemento->maquina_id_3 = $maquinaSoldarDisponible->id;
-                        $elemento->save();
-                    }
-                } else {
-                    throw new \Exception("No se encontró una máquina de soldar disponible para taller.");
                 }
             }
         } elseif (str_contains($ensambladoText, 'carcasas')) {

@@ -98,7 +98,7 @@ foreach ($codigos as $codigo) {
     if ($dryRun) {
         // Mostrar desglose por máquina
         $porMaquina = $elementosSinSub->groupBy(function ($e) {
-            return $e->maquina_id ?? $e->maquina_id_2 ?? $e->maquina_id_3 ?? 0;
+            return $e->maquina_id_2 ?? $e->maquina_id ?? 0;
         });
 
         foreach ($porMaquina as $maquinaId => $elementos) {
@@ -123,7 +123,7 @@ foreach ($codigos as $codigo) {
     DB::beginTransaction();
     try {
         foreach ($elementosSinSub as $elemento) {
-            $maquinaReal = $elemento->maquina_id ?? $elemento->maquina_id_2 ?? $elemento->maquina_id_3;
+            $maquinaReal = $elemento->maquina_id_2 ?? $elemento->maquina_id;
 
             if (!$maquinaReal) {
                 // Sin máquina: crear subetiqueta individual

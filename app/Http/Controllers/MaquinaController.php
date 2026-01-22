@@ -244,13 +244,12 @@ class MaquinaController extends Controller
             ->toArray();
 
         // 4) Cargar SOLO elementos de planillas revisadas en cola (no todos los 30k+)
-        // Buscar en cualquiera de los campos de máquina (maquina_id, maquina_id_2, maquina_id_3)
+        // Buscar en cualquiera de los campos de máquina (maquina_id, maquina_id_2)
         $t3 = microtime(true);
         $elementosMaquina = Elemento::with(['planilla', 'etiquetaRelacion', 'subetiquetas', 'maquina', 'maquina_2', 'producto', 'producto2', 'producto3'])
             ->where(function ($query) use ($maquina) {
                 $query->where('maquina_id', $maquina->id)
-                    ->orWhere('maquina_id_2', $maquina->id)
-                    ->orWhere('maquina_id_3', $maquina->id);
+                    ->orWhere('maquina_id_2', $maquina->id);
             })
             ->whereIn('planilla_id', $planillasRevisadasIds)
             ->get();
@@ -444,12 +443,9 @@ class MaquinaController extends Controller
             })
             ->toArray();
 
-        // 11) AUTO-RESUMEN: DESACTIVADO - causa error de memoria en producción
-        // TODO: Optimizar resumirMultiplanilla para no cargar todos los elementos
-        // if (strtoupper($maquina->nombre) !== 'MSR20') {
-        //     $resumenService = app(\App\Services\ResumenEtiquetaService::class);
-        //     $resumenService->resumirMultiplanilla($maquina->id, auth()->id());
-        // }
+        // 11) AUTO-RESUMEN: Reagrupa etiquetas automáticamente al entrar en la máquina
+        $resumenService = app(\App\Services\ResumenEtiquetaService::class);
+        $resumenService->resumirMultiplanilla($maquina->id, auth()->id());
 
         // 12) Grupos de resumen activos para esta máquina
         // Incluye tanto grupos de planilla individual como grupos multi-planilla (planilla_id = null)
@@ -472,8 +468,7 @@ class MaquinaController extends Controller
                 ->where(function ($query) use ($maquina) {
                     // CORREGIDO: Buscar en cualquier campo de máquina
                     $query->where('maquina_id', $maquina->id)
-                        ->orWhere('maquina_id_2', $maquina->id)
-                        ->orWhere('maquina_id_3', $maquina->id);
+                        ->orWhere('maquina_id_2', $maquina->id);
                 })
                 ->get()
                 ->groupBy('etiqueta_id')
@@ -2256,8 +2251,7 @@ class MaquinaController extends Controller
                     ->whereDoesntHave('paquete')
                     ->whereHas('elementos', function ($q) use ($maquina) {
                         $q->where('maquina_id', $maquina->id)
-                            ->orWhere('maquina_id_2', $maquina->id)
-                            ->orWhere('maquina_id_3', $maquina->id);
+                            ->orWhere('maquina_id_2', $maquina->id);
                     })
                     ->count();
 

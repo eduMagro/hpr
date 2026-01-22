@@ -166,7 +166,7 @@ foreach ($planillaIds as $planillaId) {
         DB::beginTransaction();
         try {
             foreach ($elementosLote as $elemento) {
-                $maquinaReal = $elemento->maquina_id ?? $elemento->maquina_id_2 ?? $elemento->maquina_id_3;
+                $maquinaReal = $elemento->maquina_id_2 ?? $elemento->maquina_id;
 
                 if (!$maquinaReal) {
                     // Sin máquina: crear subetiqueta individual

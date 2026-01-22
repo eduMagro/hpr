@@ -38,7 +38,6 @@ class Elemento extends Model
         'etiqueta_sub_id',
         'maquina_id',
         'maquina_id_2',
-        'maquina_id_3',
         'producto_id',
         'producto_id_2',
         'producto_id_3',
@@ -155,10 +154,6 @@ class Elemento extends Model
     {
         return $this->belongsTo(Maquina::class, 'maquina_id_2');
     }
-    public function maquina_3()
-    {
-        return $this->belongsTo(Maquina::class, 'maquina_id_3');
-    }
 
     // Relación con el modelo Producto (si existe)
     public function producto()
@@ -195,6 +190,27 @@ class Elemento extends Model
     public function getDiametroMmAttribute()
     {
         return $this->diametro ? number_format($this->diametro, 2) . ' mm' : 'No asignado';
+    }
+
+    /**
+     * Obtiene el ID de la máquina "real" del elemento.
+     * La máquina real es la más avanzada en el flujo de producción:
+     * maquina_id_2 > maquina_id
+     */
+    public function getMaquinaRealIdAttribute(): ?int
+    {
+        return $this->maquina_id_2 ?? $this->maquina_id;
+    }
+
+    /**
+     * Obtiene la relación con la máquina "real" del elemento.
+     */
+    public function maquinaReal()
+    {
+        if ($this->maquina_id_2) {
+            return $this->maquina_2();
+        }
+        return $this->maquina();
     }
 
     // Tiempos

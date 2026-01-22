@@ -417,20 +417,6 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                 $etiqueta->save();
             }
 
-            // Encolar a soldadora (maquina_id_3) si es posible
-            $soldadora = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                ->when($maquina->obra_id, fn($q) => $q->where('obra_id', $maquina->obra_id))
-                ->orderBy('id')
-                ->first();
-
-            if ($soldadora) {
-                foreach ($elementosEnMaquina as $el) {
-                    $el->maquina_id_3 = $soldadora->id;
-                    $el->save();
-                }
-            } else {
-                Log::warning('No se encontró soldadora disponible para taller.', ['etiqueta' => $etiqueta->etiqueta_sub_id]);
-            }
         } elseif (str_contains($textoEnsamblado, 'carcasas')) {
             // Completos todos excepto Ø5
             $completosSin5 = $etiqueta->elementos()

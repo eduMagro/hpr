@@ -348,10 +348,13 @@ class SubEtiquetaService
         return Str::of($s)->lower()->ascii()->replaceMatches('/\s+/', ' ')->trim()->__toString();
     }
 
-    /** Determina la máquina real de un elemento. */
+    /**
+     * Obtiene la máquina "real" del elemento.
+     * Usa el accessor del modelo: maquina_id_2 ?? maquina_id
+     */
     protected function obtenerMaquinaReal(Elemento $e): ?int
     {
-        return $e->maquina_id ?? $e->maquina_id_2 ?? $e->maquina_id_3 ?? null;
+        return $e->maquina_real_id;
     }
 
     /* ===============  COMPRIMIR / DESCOMPRIMIR ETIQUETAS  =============== */
@@ -392,8 +395,7 @@ class SubEtiquetaService
             // Solo elementos cuya etiqueta tenga estado 'pendiente'
             $query = Elemento::where(function ($q) use ($maquinaId) {
                 $q->where('maquina_id', $maquinaId)
-                    ->orWhere('maquina_id_2', $maquinaId)
-                    ->orWhere('maquina_id_3', $maquinaId);
+                    ->orWhere('maquina_id_2', $maquinaId);
             })
                 ->whereNotNull('etiqueta_sub_id')
                 ->whereHas('etiquetaRelacion', function ($q) {
@@ -567,8 +569,7 @@ class SubEtiquetaService
                 // Recalcular pesos
                 $elementosActualizados = Elemento::where(function ($q) use ($maquinaId) {
                     $q->where('maquina_id', $maquinaId)
-                        ->orWhere('maquina_id_2', $maquinaId)
-                        ->orWhere('maquina_id_3', $maquinaId);
+                        ->orWhere('maquina_id_2', $maquinaId);
                 })
                     ->where('etiqueta_sub_id', 'like', $codigoPadre . '.%')
                     ->pluck('etiqueta_sub_id')
@@ -582,8 +583,7 @@ class SubEtiquetaService
             // Contar subetiquetas únicas después (con el mismo filtro de planillas)
             $queryDespues = Elemento::where(function ($q) use ($maquinaId) {
                 $q->where('maquina_id', $maquinaId)
-                    ->orWhere('maquina_id_2', $maquinaId)
-                    ->orWhere('maquina_id_3', $maquinaId);
+                    ->orWhere('maquina_id_2', $maquinaId);
             })
                 ->whereNotNull('etiqueta_sub_id');
 
@@ -640,8 +640,7 @@ class SubEtiquetaService
             // Solo elementos cuya etiqueta tenga estado 'pendiente'
             $query = Elemento::where(function ($q) use ($maquinaId) {
                 $q->where('maquina_id', $maquinaId)
-                    ->orWhere('maquina_id_2', $maquinaId)
-                    ->orWhere('maquina_id_3', $maquinaId);
+                    ->orWhere('maquina_id_2', $maquinaId);
             })
                 ->whereNotNull('etiqueta_sub_id')
                 ->whereHas('etiquetaRelacion', function ($q) {
@@ -747,8 +746,7 @@ class SubEtiquetaService
                 // Recalcular pesos del padre - obtener todas las subs afectadas
                 $elementosActualizados = Elemento::where(function ($q) use ($maquinaId) {
                     $q->where('maquina_id', $maquinaId)
-                        ->orWhere('maquina_id_2', $maquinaId)
-                        ->orWhere('maquina_id_3', $maquinaId);
+                        ->orWhere('maquina_id_2', $maquinaId);
                 })
                     ->where('etiqueta_sub_id', 'like', $codigoPadre . '.%')
                     ->pluck('etiqueta_sub_id')
@@ -762,8 +760,7 @@ class SubEtiquetaService
             // Contar subetiquetas únicas después (con el mismo filtro de planillas)
             $queryDespues = Elemento::where(function ($q) use ($maquinaId) {
                 $q->where('maquina_id', $maquinaId)
-                    ->orWhere('maquina_id_2', $maquinaId)
-                    ->orWhere('maquina_id_3', $maquinaId);
+                    ->orWhere('maquina_id_2', $maquinaId);
             })
                 ->whereNotNull('etiqueta_sub_id');
 

@@ -528,7 +528,7 @@ class ProduccionController extends Controller
         }
 
         // Cargar elementos solo de esas planillas (sin etiquetaRelacion que no se usa aquí)
-        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2', 'maquina_3'])
+        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2'])
             ->whereIn('planilla_id', $planillasACargarIds)
             ->get();
 
@@ -548,33 +548,9 @@ class ProduccionController extends Controller
             'total' => $elementosCalendario4982->count(),
             'estados_planilla' => $elementosCalendario4982->map(fn($e) => $e->planilla?->estado)->unique()->values(),
         ]);
+        // Máquina real: la más avanzada en el flujo (maquina_id_2 ?? maquina_id)
         $maquinaReal = function ($e) {
-            $tipo1 = optional($e->maquina)->tipo;      // según maquina_id
-            $tipo2 = optional($e->maquina_2)->tipo;    // según maquina_id_2
-            $tipo3 = optional($e->maquina_3)->tipo;    // según maquina_id_3
-
-            // Ensambladora: planificamos en la maquina_id_2
-            if ($tipo1 === 'ensambladora') {
-                return $e->maquina_id_2;
-            }
-
-            // Soldadora: prioriza maquina_id_3 si existe
-            if ($tipo1 === 'soldadora') {
-                return $e->maquina_id_3 ?? $e->maquina_id;
-            }
-
-            // Dobladora manual en primaria
-            if ($tipo1 === 'dobladora_manual') {
-                return $e->maquina_id;
-            }
-
-            // Dobladora manual en secundaria (ej. etiquetas "pates" que derivamos a dobladora)
-            if ($tipo2 === 'dobladora_manual') {
-                return $e->maquina_id_2;
-            }
-
-            // Caso general
-            return $e->maquina_id;
+            return $e->maquina_id_2 ?? $e->maquina_id;
         };
 
         // Agrupar elementos por orden_planilla_id (si existe) o por planilla_id-maquina_id
@@ -937,21 +913,13 @@ class ProduccionController extends Controller
         $planillasACargar = array_unique(array_merge($planillasFabricando, $planillasEnCola));
 
         // 3. Elementos de las planillas seleccionadas
-        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2', 'maquina_3'])
+        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2'])
             ->whereIn('planilla_id', $planillasACargar)
             ->get();
 
+        // Máquina real: la más avanzada en el flujo (maquina_id_2 ?? maquina_id)
         $maquinaReal = function ($e) {
-            $tipo1 = optional($e->maquina)->tipo;
-            $tipo2 = optional($e->maquina_2)->tipo;
-            $tipo3 = optional($e->maquina_3)->tipo;
-
-            if ($tipo1 === 'ensambladora') return $e->maquina_id_2;
-            if ($tipo1 === 'soldadora') return $e->maquina_id_3 ?? $e->maquina_id;
-            if ($tipo1 === 'dobladora_manual') return $e->maquina_id;
-            if ($tipo2 === 'dobladora_manual') return $e->maquina_id_2;
-
-            return $e->maquina_id;
+            return $e->maquina_id_2 ?? $e->maquina_id;
         };
 
         $planillasAgrupadas = $elementos
@@ -1148,13 +1116,9 @@ class ProduccionController extends Controller
                 ->get();
         }
 
+        // Máquina real: la más avanzada en el flujo (maquina_id_2 ?? maquina_id)
         $resolverMaquinaElemento = function (Elemento $e) {
-            $tipo = optional($e->maquina)->tipo;
-            return match ($tipo) {
-                'ensambladora' => $e->maquina_id_2,
-                'soldadora'    => $e->maquina_id_3 ?? $e->maquina_id,
-                default        => $e->maquina_id,
-            };
+            return $e->maquina_id_2 ?? $e->maquina_id;
         };
 
         $estaEnTurno = function (string $horaHHmm, $turno) {
@@ -1169,7 +1133,7 @@ class ProduccionController extends Controller
 
         // OPTIMIZADO: Reutilizar elementos pre-cargados si están disponibles
         // Nota: Solo pendiente/fabricando para evitar too many placeholders con grandes volúmenes
-        $elementos = $elementosPreCargados ?? Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2', 'maquina_3', 'etiquetaRelacion'])
+        $elementos = $elementosPreCargados ?? Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2', 'etiquetaRelacion'])
             ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
             ->get();
 
@@ -1757,27 +1721,17 @@ class ProduccionController extends Controller
             ->where(fn($q) => $q->whereNull('estado')->orWhere('estado', '<>', 'fabricado'))
             ->where(function ($q) use ($maquinaIds) {
                 $q->whereIn('maquina_id', $maquinaIds)
-                    ->orWhereIn('maquina_id_2', $maquinaIds)
-                    ->orWhereIn('maquina_id_3', $maquinaIds);
+                    ->orWhereIn('maquina_id_2', $maquinaIds);
             })
             ->get();
 
+        // Máquina real: la más avanzada en el flujo (maquina_id_2 ?? maquina_id)
         $planillasAgrupadas = $elementos->groupBy(function ($e) {
-            $tipo = optional($e->maquina)->tipo;
-            $maquinaId = match ($tipo) {
-                'ensambladora' => $e->maquina_id_2,
-                'soldadora'    => $e->maquina_id_3 ?? $e->maquina_id,
-                default        => $e->maquina_id,
-            };
+            $maquinaId = $e->maquina_id_2 ?? $e->maquina_id;
             return $e->planilla_id . '-' . $maquinaId;
         })->map(function ($grupo) {
             $primerElemento = $grupo->first();
-            $tipo = optional($primerElemento->maquina)->tipo;
-            $maquinaId = match ($tipo) {
-                'ensambladora' => $primerElemento->maquina_id_2,
-                'soldadora'    => $primerElemento->maquina_id_3 ?? $primerElemento->maquina_id,
-                default        => $primerElemento->maquina_id,
-            };
+            $maquinaId = $primerElemento->maquina_id_2 ?? $primerElemento->maquina_id;
             return [
                 'planilla' => $primerElemento->planilla,
                 'elementos' => $grupo,
@@ -2529,22 +2483,13 @@ class ProduccionController extends Controller
                 ->where(fn($q) => $q->whereNull('estado')->orWhere('estado', '<>', 'fabricado'))
                 ->get();
 
+            // Máquina real: la más avanzada en el flujo (maquina_id_2 ?? maquina_id)
             $planillasAgrupadas = $elementos->groupBy(function ($e) {
-                $tipo = optional($e->maquina)->tipo;
-                $maquinaId = match ($tipo) {
-                    'ensambladora' => $e->maquina_id_2,
-                    'soldadora'    => $e->maquina_id_3 ?? $e->maquina_id,
-                    default        => $e->maquina_id,
-                };
+                $maquinaId = $e->maquina_id_2 ?? $e->maquina_id;
                 return $e->planilla_id . '-' . $maquinaId;
             })->map(function ($grupo) {
                 $primerElemento = $grupo->first();
-                $tipo = optional($primerElemento->maquina)->tipo;
-                $maquinaId = match ($tipo) {
-                    'ensambladora' => $primerElemento->maquina_id_2,
-                    'soldadora'    => $primerElemento->maquina_id_3 ?? $primerElemento->maquina_id,
-                    default        => $primerElemento->maquina_id,
-                };
+                $maquinaId = $primerElemento->maquina_id_2 ?? $primerElemento->maquina_id;
                 return [
                     'planilla' => $primerElemento->planilla,
                     'elementos' => $grupo,

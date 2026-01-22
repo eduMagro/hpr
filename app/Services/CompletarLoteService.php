@@ -262,27 +262,6 @@ class CompletarLoteService
 
                     $etiqueta->save();
                 }
-                // Buscar una máquina de soldar disponible
-                $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                    ->whereDoesntHave('elementos')
-                    ->first();
-
-                if (!$maquinaSoldarDisponible) {
-                    $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                        ->whereHas('elementos', function ($query) {
-                            $query->orderBy('created_at');
-                        })
-                        ->first();
-                }
-
-                if ($maquinaSoldarDisponible) {
-                    foreach ($elementosEnMaquina as $elemento) {
-                        $elemento->maquina_id_3 = $maquinaSoldarDisponible->id;
-                        $elemento->save();
-                    }
-                } else {
-                    throw new \Exception("No se encontró una máquina de soldar disponible para taller.");
-                }
             }
         } elseif (str_contains($ensambladoText, 'carcasas')) {
             $elementosEtiquetaCompletos = $etiqueta->elementos()

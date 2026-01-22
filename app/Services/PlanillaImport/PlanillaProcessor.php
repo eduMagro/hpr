@@ -522,9 +522,9 @@ class PlanillaProcessor
                 continue;
             }
 
-            // Agrupar por máquina
+            // Agrupar por máquina (la más avanzada en el flujo)
             $gruposPorMaquina = $elementos->groupBy(
-                fn($e) => $e->maquina_id ?? $e->maquina_id_2 ?? $e->maquina_id_3 ?? 0
+                fn($e) => $e->maquina_id_2 ?? $e->maquina_id ?? 0
             );
 
             Log::channel('planilla_import')->debug("      🔧 Agrupados en " . $gruposPorMaquina->count() . " máquinas: " . json_encode($gruposPorMaquina->keys()->toArray()));

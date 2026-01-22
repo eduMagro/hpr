@@ -636,26 +636,6 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
                     $etiqueta->save();
                 }
 
-                $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                    ->whereDoesntHave('elementos')
-                    ->first();
-
-                if (!$maquinaSoldarDisponible) {
-                    $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                        ->whereHas('elementos', function ($query) {
-                            $query->orderBy('created_at');
-                        })
-                        ->first();
-                }
-
-                if ($maquinaSoldarDisponible) {
-                    foreach ($elementosEnMaquina as $elemento) {
-                        $elemento->maquina_id_3 = $maquinaSoldarDisponible->id;
-                        $elemento->save();
-                    }
-                } else {
-                    throw new RuntimeException('No se encontró una máquina de soldar disponible para taller.');
-                }
             }
         } elseif ($ensambladoText->contains('carcasas')) {
             $elementosEtiquetaCompletos = $etiqueta->elementos()

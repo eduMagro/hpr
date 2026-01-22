@@ -445,32 +445,7 @@ abstract class ServicioEtiquetaBase
         // 3) Reglas por “ensamblado” en planilla
         $ensambladoText = strtolower($etiqueta->planilla->ensamblado ?? '');
 
-        if (str_contains($ensambladoText, 'taller')) {
-            // si el comentario NO contiene estas claves, aplicar flujo de soldadora
-            $coment = strtolower($planilla->comentario ?? '');
-            if (!str_contains($coment, 'amarrado') && !str_contains($coment, 'ensamblado amarrado')) {
-
-                // Mandar a soldadora (buscando disponible; si no, la menos ocupada)
-                $maquinaSoldar = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                    ->whereDoesntHave('elementos')
-                    ->first();
-
-                if (!$maquinaSoldar) {
-                    $maquinaSoldar = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                        ->orderBy('id') // o por carga real si tienes métrica
-                        ->first();
-                }
-
-                if ($maquinaSoldar) {
-                    foreach ($elementosEnMaquina as $elemento) {
-                        $elemento->maquina_id_3 = $maquinaSoldar->id;
-                        $elemento->save();
-                    }
-                } else {
-                    throw new ServicioEtiquetaException("No se encontró una máquina de soldar disponible para taller.");
-                }
-            }
-        } elseif (str_contains($ensambladoText, 'carcasas')) {
+        if (str_contains($ensambladoText, 'carcasas')) {
             // Todos los elementos de la etiqueta listos (excluye Ø5 si corresponde)
             $elementosEtiquetaCompletos = $etiqueta->elementos()
                 ->where('diametro', '!=', 5.00) // como en tu código original

@@ -268,19 +268,16 @@ class FabricacionEtiquetasTest extends TestCase
         $estadisticas = [
             'con_1_maquina' => 0,
             'con_2_maquinas' => 0,
-            'con_3_maquinas' => 0,
         ];
 
         foreach ($elementos->take(10) as $elemento) {
             $maquinas = collect([
                 $elemento->maquina_id,
                 $elemento->maquina_id_2,
-                $elemento->maquina_id_3
             ])->filter()->count();
 
             if ($maquinas == 1) $estadisticas['con_1_maquina']++;
             elseif ($maquinas == 2) $estadisticas['con_2_maquinas']++;
-            elseif ($maquinas == 3) $estadisticas['con_3_maquinas']++;
 
             echo "  • {$elemento->codigo} - {$maquinas} máquina(s)\n";
         }

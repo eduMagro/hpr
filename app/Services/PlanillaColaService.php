@@ -29,8 +29,7 @@ class PlanillaColaService
             })
             ->whereHas('elementos', fn($q) => $q->where(function ($qq) use ($maquinaId) {
                 $qq->where('maquina_id', $maquinaId)
-                    ->orWhere('maquina_id_2', $maquinaId)
-                    ->orWhere('maquina_id_3', $maquinaId);
+                    ->orWhere('maquina_id_2', $maquinaId);
             }))
             ->get(['id', 'etiqueta_sub_id', 'estado', 'paquete_id']);
 
@@ -111,8 +110,7 @@ class PlanillaColaService
             ->whereIn('estado', $estadosActivos)
             ->whereHas('elementos', fn($q) => $q->where(function ($qq) use ($maquinaId) {
                 $qq->where('maquina_id', $maquinaId)
-                    ->orWhere('maquina_id_2', $maquinaId)
-                    ->orWhere('maquina_id_3', $maquinaId);
+                    ->orWhere('maquina_id_2', $maquinaId);
             }))
             ->exists();
 

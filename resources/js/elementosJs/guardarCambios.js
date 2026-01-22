@@ -12,7 +12,6 @@ window.guardarCambios = function(elemento) {
         paquete_id: elemento.paquete_id ?? null,
         maquina_id: Number(elemento.maquina_id) || null,
         maquina_id_2: Number(elemento.maquina_id_2) || null,
-        maquina_id_3: Number(elemento.maquina_id_3) || null,
         producto_id: Number(elemento.producto_id) || null,
         producto_id_2: Number(elemento.producto_id_2) || null,
         producto_id_3: Number(elemento.producto_id_3) || null,

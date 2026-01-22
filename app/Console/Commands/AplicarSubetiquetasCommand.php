@@ -84,7 +84,7 @@ class AplicarSubetiquetasCommand extends Command
 
             if ($dryRun) {
                 $porMaquina = $elementosSinSub->groupBy(function ($e) {
-                    return $e->maquina_id ?? $e->maquina_id_2 ?? $e->maquina_id_3 ?? 0;
+                    return $e->maquina_id_2 ?? $e->maquina_id ?? 0;
                 });
 
                 foreach ($porMaquina as $maquinaId => $elementos) {
@@ -109,7 +109,7 @@ class AplicarSubetiquetasCommand extends Command
             DB::beginTransaction();
             try {
                 foreach ($elementosSinSub as $elemento) {
-                    $maquinaReal = $elemento->maquina_id ?? $elemento->maquina_id_2 ?? $elemento->maquina_id_3;
+                    $maquinaReal = $elemento->maquina_id_2 ?? $elemento->maquina_id;
 
                     if (!$maquinaReal) {
                         // Sin máquina: crear subetiqueta individual
@@ -402,7 +402,7 @@ class AplicarSubetiquetasCommand extends Command
     protected function procesarElemento(Elemento $elemento, int &$subsCreadas, int &$errores): void
     {
         $subIdAntes = $elemento->etiqueta_sub_id;
-        $maquinaReal = $elemento->maquina_id ?? $elemento->maquina_id_2 ?? $elemento->maquina_id_3;
+        $maquinaReal = $elemento->maquina_id_2 ?? $elemento->maquina_id;
 
         if (!$maquinaReal) {
             // Sin máquina: crear subetiqueta individual

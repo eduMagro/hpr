@@ -116,12 +116,6 @@ class ElementoController extends Controller
             });
         }
 
-        if ($request->has('maquina3') && $request->maquina3) {
-            $query->whereHas('maquina_3', function ($q) use ($request) {
-                $q->where('nombre', 'like', "%{$request->maquina3}%");
-            });
-        }
-
         // Productos
         if ($request->has('producto1') && $request->producto1) {
             $query->whereHas('producto', function ($q) use ($request) {
@@ -194,7 +188,6 @@ class ElementoController extends Controller
             'subetiqueta',
             'maquina',
             'maquina_2',
-            'maquina3',
             'producto1',
             'producto2',
             'producto3',
@@ -237,7 +230,7 @@ class ElementoController extends Controller
         }
 
 
-        $camposPermitidos = ['maquina_id', 'maquina_id_2', 'maquina_id_3'];
+        $camposPermitidos = ['maquina_id', 'maquina_id_2'];
         if (!in_array($campo, $camposPermitidos)) {
             Log::warning("Campo no permitido: {$campo}");
             return response()->json(['error' => 'Campo no permitido'], 403);
@@ -415,23 +408,13 @@ class ElementoController extends Controller
 
         return [true, null];
     }
-    private function obtenerMaquinaReal($e)
+    /**
+     * Obtiene la máquina "real" del elemento.
+     * Usa el accessor del modelo: maquina_id_2 ?? maquina_id
+     */
+    private function obtenerMaquinaReal($e): ?int
     {
-        // Asegurar que las relaciones estén cargadas
-        if (!$e->relationLoaded('maquina')) {
-            $e->load(['maquina', 'maquina_2', 'maquina_3']);
-        }
-
-        $tipo1 = optional($e->maquina)->tipo;
-        $tipo2 = optional($e->maquina_2)->tipo;
-        $tipo3 = optional($e->maquina_3)->tipo;
-
-        if ($tipo1 === 'ensambladora') return $e->maquina_id_2;
-        if ($tipo1 === 'soldadora')    return $e->maquina_id_3 ?? $e->maquina_id;
-        if ($tipo1 === 'dobladora_manual') return $e->maquina_id;
-        if ($tipo2 === 'dobladora_manual') return $e->maquina_id_2;
-
-        return $e->maquina_id;
+        return $e->maquina_real_id;
     }
     /**
      * Divide un elemento en N partes, repartiendo peso, barras y tiempo de fabricación.
@@ -1045,7 +1028,6 @@ class ElementoController extends Controller
                 'etiqueta_id'   => 'nullable|integer|exists:etiquetas,id',
                 'maquina_id'    => 'nullable|integer|exists:maquinas,id',
                 'maquina_id_2'  => 'nullable|integer|exists:maquinas,id',
-                'maquina_id_3'  => 'nullable|integer|exists:maquinas,id',
                 'producto_id'   => 'nullable|integer|exists:productos,id',
                 'producto_id_2' => 'nullable|integer|exists:productos,id',
                 'producto_id_3' => 'nullable|integer|exists:productos,id',
@@ -1067,8 +1049,6 @@ class ElementoController extends Controller
                 'maquina_id.exists'     => 'La máquina especificada en maquina_id no existe.',
                 'maquina_id_2.integer'  => 'El campo maquina_id_2 debe ser un número entero.',
                 'maquina_id_2.exists'   => 'La máquina especificada en maquina_id_2 no existe.',
-                'maquina_id_3.integer'  => 'El campo maquina_id_3 debe ser un número entero.',
-                'maquina_id_3.exists'   => 'La máquina especificada en maquina_id_3 no existe.',
                 'producto_id.integer'   => 'El campo producto_id debe ser un número entero.',
                 'producto_id.exists'    => 'El producto especificado en producto_id no existe.',
                 'producto_id_2.integer' => 'El campo producto_id_2 debe ser un número entero.',
