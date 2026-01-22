@@ -795,25 +795,30 @@ class FerrawinBulkImportService
             return [null, null];
         }
 
+        // Normalizar códigos: quitar ceros a la izquierda ("0042" -> "42")
+        // Esto evita duplicados cuando la importación manual ya normalizó el código
+        $codClienteNormalizado = ltrim($codCliente, '0') ?: '0';
+        $codObraNormalizado = ltrim($codObra, '0') ?: '0';
+
         // Usar cache
-        if (!isset($this->cacheClientes[$codCliente])) {
-            $this->cacheClientes[$codCliente] = Cliente::firstOrCreate(
-                ['codigo' => $codCliente],
+        if (!isset($this->cacheClientes[$codClienteNormalizado])) {
+            $this->cacheClientes[$codClienteNormalizado] = Cliente::firstOrCreate(
+                ['codigo' => $codClienteNormalizado],
                 ['empresa' => $nomCliente]
             );
         }
-        $cliente = $this->cacheClientes[$codCliente];
+        $cliente = $this->cacheClientes[$codClienteNormalizado];
 
-        if (!isset($this->cacheObras[$codObra])) {
-            $this->cacheObras[$codObra] = Obra::firstOrCreate(
-                ['cod_obra' => $codObra],
+        if (!isset($this->cacheObras[$codObraNormalizado])) {
+            $this->cacheObras[$codObraNormalizado] = Obra::firstOrCreate(
+                ['cod_obra' => $codObraNormalizado],
                 [
                     'cliente_id' => $cliente->id,
                     'obra' => $nomObra,
                 ]
             );
         }
-        $obra = $this->cacheObras[$codObra];
+        $obra = $this->cacheObras[$codObraNormalizado];
 
         return [$cliente, $obra];
     }
@@ -829,10 +834,14 @@ class FerrawinBulkImportService
         foreach ($planillasData as $planilla) {
             foreach ($planilla['elementos'] ?? [] as $elem) {
                 if (!empty($elem['codigo_cliente'])) {
-                    $codigosClientes[] = $elem['codigo_cliente'];
+                    // Normalizar: quitar ceros a la izquierda
+                    $codNormalizado = ltrim($elem['codigo_cliente'], '0') ?: '0';
+                    $codigosClientes[] = $codNormalizado;
                 }
                 if (!empty($elem['codigo_obra'])) {
-                    $codigosObras[] = $elem['codigo_obra'];
+                    // Normalizar: quitar ceros a la izquierda
+                    $codNormalizado = ltrim($elem['codigo_obra'], '0') ?: '0';
+                    $codigosObras[] = $codNormalizado;
                 }
             }
         }
