@@ -180,7 +180,7 @@
 </div>
 
 <script>
-    // Renderizar SVG del grupo cuando el DOM esté listo
+    // Renderizar SVG del grupo - compatible con carga dinámica (AJAX)
     (function() {
         const grupoData = {
             id: {{ $contenedorSvgId }},
@@ -188,30 +188,45 @@
             elementos: @json($grupo['elementos'] ?? [])
         };
 
-        console.log('🔍 DEBUG Grupo SVG:', {
-            grupoId: {{ $grupo['id'] }},
-            contenedorSvgId: {{ $contenedorSvgId }},
-            elementosCount: grupoData.elementos.length,
-            elementos: grupoData.elementos
-        });
+        const grupoId = {{ $grupo['id'] }};
+        const contenedorId = "contenedor-svg-{{ $contenedorSvgId }}";
 
         function renderizarGrupo() {
-            const contenedor = document.getElementById("contenedor-svg-{{ $contenedorSvgId }}");
-            console.log('🎨 Renderizando grupo SVG:', {
-                contenedorExists: !!contenedor,
-                funcionExists: typeof window.renderizarGrupoSVG === 'function'
-            });
+            const contenedor = document.getElementById(contenedorId);
+            if (!contenedor) return false;
 
             if (typeof window.renderizarGrupoSVG === 'function') {
-                window.renderizarGrupoSVG(grupoData, {{ $grupo['id'] }});
+                window.renderizarGrupoSVG(grupoData, grupoId);
+                return true;
             }
+            return false;
         }
 
-        if (document.readyState === 'complete') {
-            setTimeout(renderizarGrupo, 100);
-        } else {
-            window.addEventListener('load', () => setTimeout(renderizarGrupo, 100));
+        // Intentar renderizar inmediatamente
+        if (renderizarGrupo()) return;
+
+        // Si no se pudo, reintentar con diferentes estrategias
+        let intentos = 0;
+        const maxIntentos = 20;
+
+        const intervalo = setInterval(function() {
+            intentos++;
+            if (renderizarGrupo() || intentos >= maxIntentos) {
+                clearInterval(intervalo);
+            }
+        }, 100);
+
+        // También escuchar el evento load por si acaso
+        if (document.readyState !== 'complete') {
+            window.addEventListener('load', function() {
+                setTimeout(renderizarGrupo, 50);
+            });
         }
+
+        // Escuchar evento personalizado para re-renderizado (útil tras AJAX)
+        window.addEventListener('svg-ready', function() {
+            renderizarGrupo();
+        });
     })();
 
 </script>

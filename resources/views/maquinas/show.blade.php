@@ -844,10 +844,14 @@
                                             elementos: elementos
                                         };
                                         window.renderizarGrupoSVG(grupoData, parseInt(grupoId));
+                                        console.log('✅ SVG grupo resumen renderizado:', grupoId);
                                     }
                                 });
                             }
-                        }, 50); // Pequeño delay para asegurar que el DOM esté completamente actualizado
+
+                            // Disparar evento para indicar que los SVGs están listos
+                            window.dispatchEvent(new CustomEvent('svg-ready'));
+                        }, 150); // Delay aumentado para asegurar que el DOM esté completamente actualizado
                     });
 
                     console.log('✅ Etiquetas refrescadas correctamente');
