@@ -826,11 +826,25 @@ window.desagruparTodosMultiplanilla = async function(maquinaId) {
  * @param {number} maquinaId - ID de la máquina
  */
 window.reagruparEtiquetasManual = async function(maquinaId) {
+    console.log('🔄 reagruparEtiquetasManual llamada con maquinaId:', maquinaId);
+
     if (!maquinaId) {
         Swal.fire({
             icon: 'warning',
             title: 'Máquina requerida',
             text: 'Debes estar en una máquina para reagrupar etiquetas',
+        });
+        return;
+    }
+
+    // Verificar CSRF token
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    console.log('🔄 CSRF token meta:', csrfMeta ? 'encontrado' : 'NO ENCONTRADO');
+    if (!csrfMeta) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de configuración',
+            text: 'No se encontró el token CSRF en la página',
         });
         return;
     }
@@ -867,6 +881,7 @@ window.reagruparEtiquetasManual = async function(maquinaId) {
     });
 
     try {
+        console.log('🔄 Enviando petición a /api/etiquetas/resumir/multiplanilla/reagrupar');
         const response = await fetch('/api/etiquetas/resumir/multiplanilla/reagrupar', {
             method: 'POST',
             headers: {
@@ -877,6 +892,21 @@ window.reagruparEtiquetasManual = async function(maquinaId) {
                 maquina_id: maquinaId
             })
         });
+        console.log('🔄 Respuesta recibida:', response.status, response.statusText);
+
+        // Verificar si la respuesta HTTP es correcta
+        if (!response.ok) {
+            let errorMessage = `Error del servidor (${response.status})`;
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.message || errorMessage;
+            } catch (e) {
+                // Si no es JSON, usar el texto de la respuesta
+                const errorText = await response.text();
+                console.error('Respuesta del servidor:', errorText.substring(0, 500));
+            }
+            throw new Error(errorMessage);
+        }
 
         const resultado = await response.json();
 
@@ -913,8 +943,8 @@ window.reagruparEtiquetasManual = async function(maquinaId) {
         console.error('Error al reagrupar etiquetas:', error);
         Swal.fire({
             icon: 'error',
-            title: 'Error de conexión',
-            text: 'No se pudo conectar con el servidor',
+            title: 'Error',
+            text: error.message || 'No se pudo conectar con el servidor',
         });
     }
 };

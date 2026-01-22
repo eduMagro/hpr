@@ -1,29 +1,53 @@
-// eventos.js - Optimizado con cache unificado
+// eventos.js - Optimizado con cache multi-vista
 
-// Cache global para evitar múltiples peticiones
-let _dataCache = null;
-let _cacheKey = null;
-let _fetchPromise = null;
+// 🚀 Cache multi-entrada para evitar refetch al cambiar de vista
+const CACHE_MAX_ENTRIES = 8;
+const CACHE_TTL_MS = 60000; // 60 segundos
+
+// Cache en memoria con múltiples entradas
+let _multiCache = new Map();
+let _fetchPromises = new Map();
+
+function getCacheKey(viewType, info) {
+    return `${viewType}|${info.startStr}|${info.endStr}`;
+}
+
+function isExpired(entry) {
+    return Date.now() - entry.timestamp > CACHE_TTL_MS;
+}
+
+function pruneCache() {
+    // Si excede el límite, eliminar entradas más antiguas
+    if (_multiCache.size > CACHE_MAX_ENTRIES) {
+        const entries = Array.from(_multiCache.entries())
+            .sort((a, b) => a[1].timestamp - b[1].timestamp);
+
+        // Eliminar las más antiguas hasta llegar al límite
+        const toDelete = entries.slice(0, entries.length - CACHE_MAX_ENTRIES);
+        toDelete.forEach(([key]) => _multiCache.delete(key));
+    }
+}
 
 // Función unificada que trae eventos, recursos y totales en una sola petición
 async function fetchAllData(viewType, info) {
     const base = window.AppSalidas?.routes?.planificacion;
     if (!base) return { events: [], resources: [], totales: null };
 
-    const key = `${viewType}|${info.startStr}|${info.endStr}`;
+    const key = getCacheKey(viewType, info);
 
-    // Si ya tenemos datos en cache para este rango, devolverlos
-    if (_cacheKey === key && _dataCache) {
-        return _dataCache;
+    // Si ya tenemos datos válidos en cache, devolverlos
+    const cached = _multiCache.get(key);
+    if (cached && !isExpired(cached)) {
+        return cached.data;
     }
 
-    // Si ya hay una petición en curso para este rango, esperarla
-    if (_fetchPromise && _cacheKey === key) {
-        return _fetchPromise;
+    // Si ya hay una petición en curso para esta clave, esperarla
+    if (_fetchPromises.has(key)) {
+        return _fetchPromises.get(key);
     }
 
-    _cacheKey = key;
-    _fetchPromise = (async () => {
+    // Crear nueva petición
+    const fetchPromise = (async () => {
         try {
             const params = new URLSearchParams({
                 tipo: "all",
@@ -35,28 +59,43 @@ async function fetchAllData(viewType, info) {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             const data = await res.json();
-            _dataCache = {
+            const result = {
                 events: data.events || [],
                 resources: data.resources || [],
                 totales: data.totales || null,
             };
-            return _dataCache;
+
+            // Guardar en cache
+            _multiCache.set(key, {
+                data: result,
+                timestamp: Date.now()
+            });
+            pruneCache();
+
+            return result;
         } catch (err) {
             console.error("fetch all data falló:", err);
-            _dataCache = null;
             return { events: [], resources: [], totales: null };
         } finally {
-            _fetchPromise = null;
+            _fetchPromises.delete(key);
         }
     })();
 
-    return _fetchPromise;
+    _fetchPromises.set(key, fetchPromise);
+    return fetchPromise;
 }
 
-// Invalida el cache (llamar cuando se hacen cambios)
+// Invalida todo el cache (llamar cuando se hacen cambios que afectan los datos)
 export function invalidateCache() {
-    _dataCache = null;
-    _cacheKey = null;
+    _multiCache.clear();
+    _fetchPromises.clear();
+}
+
+// Invalida solo una clave específica
+export function invalidateCacheKey(viewType, info) {
+    const key = getCacheKey(viewType, info);
+    _multiCache.delete(key);
+    _fetchPromises.delete(key);
 }
 
 // Aplica filtros locales a los eventos (sin nueva petición)

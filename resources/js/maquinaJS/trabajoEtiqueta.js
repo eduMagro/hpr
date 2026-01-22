@@ -1024,6 +1024,14 @@ function initTrabajoEtiqueta() {
 
         // Procesar según el estado
         switch ((data.estado || "").toLowerCase()) {
+            case "pendiente":
+                showAlert(
+                    "info",
+                    "Pendiente",
+                    "La etiqueta está pendiente de fabricación."
+                );
+                break;
+
             case "cortando":
                 showAlert(
                     "info",

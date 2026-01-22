@@ -456,19 +456,11 @@ class CompletarLoteService
 
     public function empaquetarEtiqueta(Etiqueta $etiqueta): void
     {
-        $codigoPaquete = Paquete::generarCodigo();
-
-        $paquete = Paquete::create([
-            'codigo'      => $codigoPaquete,
+        $paquete = Paquete::crearConCodigoUnico([
             'planilla_id' => $etiqueta->planilla_id,
             'peso'        => $etiqueta->peso ?? 0,
             'estado'      => 'pendiente',
         ]);
-
-        if (!$paquete || !$paquete->exists) {
-            Log::error("No se pudo crear el paquete para la etiqueta {$etiqueta->codigo}");
-            throw new \Exception("No se pudo crear el paquete para la etiqueta {$etiqueta->codigo}");
-        }
 
         $etiqueta->paquete_id = $paquete->id;
 

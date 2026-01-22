@@ -231,16 +231,35 @@ class ResumenEtiquetaController extends Controller
      */
     public function reagruparManual(Request $request): JsonResponse
     {
+        \Log::info('🎯 reagruparManual CONTROLLER - Petición recibida', [
+            'maquina_id' => $request->input('maquina_id'),
+            'user_id' => auth()->id(),
+        ]);
+
         $request->validate([
             'maquina_id' => 'required|integer|exists:maquinas,id',
         ]);
 
-        $resultado = $this->resumenService->reagruparManual(
-            $request->integer('maquina_id'),
-            auth()->id()
-        );
+        \Log::info('🎯 reagruparManual CONTROLLER - Validación OK, llamando al servicio');
 
-        return response()->json($resultado);
+        try {
+            $resultado = $this->resumenService->reagruparManual(
+                $request->integer('maquina_id'),
+                auth()->id()
+            );
+
+            return response()->json($resultado);
+        } catch (\Throwable $e) {
+            \Log::error('Error en reagruparManual: ' . $e->getMessage(), [
+                'maquina_id' => $request->integer('maquina_id'),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al reagrupar: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**

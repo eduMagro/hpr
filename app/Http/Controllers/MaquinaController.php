@@ -181,8 +181,12 @@ class MaquinaController extends Controller
 
     public function show($id)
     {
+        $t0 = microtime(true);
+
         // 0) Primero cargar solo la máquina para verificar el tipo
         $maquina = Maquina::findOrFail($id);
+        \Log::info("⏱️ [SHOW] Cargar máquina: " . round((microtime(true) - $t0) * 1000) . "ms");
+
         // 1) Rama GRÚA: cargar contexto mínimo y devolver pronto
         if ($this->esGrua($maquina)) {
             $base = $this->cargarContextoBase($maquina);
@@ -219,15 +223,19 @@ class MaquinaController extends Controller
         }
 
         // 2) MÁQUINAS NORMALES: Cargar solo productos (no elementos - se cargan filtrados después)
+        $t1 = microtime(true);
         $maquina->load('productos');
         $base = $this->cargarContextoBase($maquina);
+        \Log::info("⏱️ [SHOW] Contexto base: " . round((microtime(true) - $t1) * 1000) . "ms");
 
         // 3) Cola de planillas - solo planillas revisadas
         // ⚠️ LÓGICA ESTRICTA: Solo planillas revisadas entran en planificación
+        $t2 = microtime(true);
         $ordenesPlanillas = OrdenPlanilla::where('maquina_id', $maquina->id)
             ->with('planilla')
             ->orderBy('posicion', 'asc')
             ->get();
+        \Log::info("⏱️ [SHOW] Ordenes planillas: " . round((microtime(true) - $t2) * 1000) . "ms");
 
         // Obtener IDs de planillas revisadas en la cola
         $planillasRevisadasIds = $ordenesPlanillas
@@ -237,6 +245,7 @@ class MaquinaController extends Controller
 
         // 4) Cargar SOLO elementos de planillas revisadas en cola (no todos los 30k+)
         // Buscar en cualquiera de los campos de máquina (maquina_id, maquina_id_2, maquina_id_3)
+        $t3 = microtime(true);
         $elementosMaquina = Elemento::with(['planilla', 'etiquetaRelacion', 'subetiquetas', 'maquina', 'maquina_2', 'producto', 'producto2', 'producto3'])
             ->where(function ($query) use ($maquina) {
                 $query->where('maquina_id', $maquina->id)
@@ -245,6 +254,7 @@ class MaquinaController extends Controller
             })
             ->whereIn('planilla_id', $planillasRevisadasIds)
             ->get();
+        \Log::info("⏱️ [SHOW] Elementos máquina (" . count($elementosMaquina) . "): " . round((microtime(true) - $t3) * 1000) . "ms");
 
         // Obtener posiciones del request o calcular automáticamente
         $posicion1 = request('posicion_1');
@@ -269,8 +279,10 @@ class MaquinaController extends Controller
 
         // Cola de planillas con posiciones específicas
         // OPTIMIZADO: Pasamos $ordenesPlanillas para evitar consultas duplicadas
+        $t4 = microtime(true);
         [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles, $codigosPorPosicion] =
             $this->aplicarColaPlanillasPorPosicion($maquina, $elementosMaquina, $posiciones, $ordenesPlanillas);
+        \Log::info("⏱️ [SHOW] aplicarColaPlanillasPorPosicion: " . round((microtime(true) - $t4) * 1000) . "ms");
 
         // 5) Datasets filtrados por planilla
         $elementosPorPlanilla = $elementosFiltrados->groupBy('planilla_id');
@@ -329,11 +341,13 @@ class MaquinaController extends Controller
                     'dimensiones' => $e->dimensiones,
                     'estado' => $e->estado,
                     'peso' => $e->peso_kg,
+                    'peso_numerico' => (float) $e->peso,
                     'diametro' => $e->diametro_mm,
                     'longitud' => $e->longitud_cm,
                     'barras' => $e->barras,
                     'figura' => $e->figura,
                     'paquete_id' => $e->paquete_id,
+                    'etiqueta_sub_id' => $e->etiqueta_sub_id,
                     // Incluimos las coladas para mostrarlas en la leyenda del SVG
                     'coladas' => [
                         'colada1' => $e->producto ? $e->producto->n_colada : null,
@@ -391,12 +405,14 @@ class MaquinaController extends Controller
             return $elementosFiltrados->whereIn('planilla_id', $ids)->values();
         };
 
+        $t5 = microtime(true);
         $sugeridor = app(\App\Services\SugeridorProductoBaseService::class);
         $sugerenciasPorElemento = [];
         foreach ($elementosFiltrados as $el) {
             $colegas = $colegasDe($el);
             $sugerenciasPorElemento[$el->id] = $sugeridor->sugerirParaElemento($el, $productosBarra, $colegas);
         }
+        \Log::info("⏱️ [SHOW] Sugerencias (" . count($elementosFiltrados) . " elementos): " . round((microtime(true) - $t5) * 1000) . "ms");
 
         // 9) Longitudes por diámetro (solo si la máquina es de barras)
         $esBarra = strcasecmp($maquina->tipo_material, 'barra') === 0;
@@ -437,6 +453,7 @@ class MaquinaController extends Controller
 
         // 12) Grupos de resumen activos para esta máquina
         // Incluye tanto grupos de planilla individual como grupos multi-planilla (planilla_id = null)
+        $t6 = microtime(true);
         $planillaIds = collect($planillasActivas)->pluck('id')->toArray();
         $gruposResumen = GrupoResumen::where('activo', true)
             ->where('maquina_id', $maquina->id)
@@ -461,6 +478,7 @@ class MaquinaController extends Controller
                 ->get()
                 ->groupBy('etiqueta_id')
             : collect();
+        \Log::info("⏱️ [SHOW] Grupos resumen: " . round((microtime(true) - $t6) * 1000) . "ms");
 
         // Preparar datos de grupos para la vista (con elementos de cada etiqueta)
         $gruposResumenData = $gruposResumen->map(function ($grupo) use ($elementosDeGrupos) {
@@ -508,6 +526,7 @@ class MaquinaController extends Controller
                     'dimensiones' => $e->dimensiones,
                     'estado' => $e->estado,
                     'peso' => $e->peso_kg,
+                    'peso_numerico' => (float) $e->peso,
                     'diametro' => $e->diametro_mm,
                     'longitud' => $e->longitud_cm,
                     'barras' => $e->barras,
@@ -546,11 +565,13 @@ class MaquinaController extends Controller
                     'dimensiones' => $e->dimensiones,
                     'estado' => $e->estado,
                     'peso' => $e->peso_kg,
+                    'peso_numerico' => (float) $e->peso,
                     'diametro' => $e->diametro_mm,
                     'longitud' => $e->longitud_cm,
                     'barras' => $e->barras,
                     'figura' => $e->figura,
                     'paquete_id' => $e->paquete_id,
+                    'etiqueta_sub_id' => $e->etiqueta_sub_id,
                     'coladas' => [
                         'colada1' => $e->producto ? $e->producto->n_colada : null,
                         'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
@@ -561,6 +582,7 @@ class MaquinaController extends Controller
         })->values();
 
         // 12) Devolver vista
+        \Log::info("⏱️ [SHOW] TOTAL: " . round((microtime(true) - $t0) * 1000) . "ms");
         return view('maquinas.show', array_merge($base, [
             // base
             'maquina' => $maquina,
@@ -1398,11 +1420,13 @@ class MaquinaController extends Controller
                     'dimensiones' => $e->dimensiones,
                     'estado' => $e->estado,
                     'peso' => $e->peso_kg,
+                    'peso_numerico' => (float) $e->peso,
                     'diametro' => $e->diametro_mm,
                     'longitud' => $e->longitud_cm,
                     'barras' => $e->barras,
                     'figura' => $e->figura,
                     'paquete_id' => $e->paquete_id,
+                    'etiqueta_sub_id' => $e->etiqueta_sub_id,
                     'coladas' => [
                         'colada1' => $e->producto ? $e->producto->n_colada : null,
                         'colada2' => $e->producto2 ? $e->producto2->n_colada : null,

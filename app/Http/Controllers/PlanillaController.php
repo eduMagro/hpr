@@ -1217,16 +1217,19 @@ class PlanillaController extends Controller
 
             Log::info('[Planillas actualizarFechasMasiva] payload=', $data['planillas']);
 
-            DB::transaction(function () use ($data) {
+            $logsRegistrados = [];
+
+            DB::transaction(function () use ($data, &$logsRegistrados) {
                 foreach ($data['planillas'] as $fila) {
                     // Actualizar fecha de la planilla (preservando la hora existente)
                     if (!empty($fila['fecha_estimada_entrega'])) {
                         $planilla = Planilla::find($fila['id']);
+                        $fechaAnterior = $planilla->getRawOriginal('fecha_estimada_entrega');
                         $fechaNueva = Carbon::createFromFormat('Y-m-d', $fila['fecha_estimada_entrega']);
 
                         // Preservar la hora existente de la planilla
-                        if ($planilla->getRawOriginal('fecha_estimada_entrega')) {
-                            $horaExistente = Carbon::parse($planilla->getRawOriginal('fecha_estimada_entrega'));
+                        if ($fechaAnterior) {
+                            $horaExistente = Carbon::parse($fechaAnterior);
                             $fechaNueva->setTime($horaExistente->hour, $horaExistente->minute, 0);
                         } else {
                             $fechaNueva->setTime(7, 0, 0); // Hora por defecto si no tenía
@@ -1234,22 +1237,84 @@ class PlanillaController extends Controller
 
                         $planilla->fecha_estimada_entrega = $fechaNueva;
                         $planilla->save();
+
+                        // Registrar log si la fecha cambió
+                        $fechaAnteriorStr = $fechaAnterior ? Carbon::parse($fechaAnterior)->format('d/m/Y') : 'S/F';
+                        $fechaNuevaStr = $fechaNueva->format('d/m/Y');
+                        if ($fechaAnteriorStr !== $fechaNuevaStr) {
+                            $logsRegistrados[] = [
+                                'tipo' => 'planilla',
+                                'codigo' => $planilla->codigo,
+                                'fecha_anterior' => $fechaAnteriorStr,
+                                'fecha_nueva' => $fechaNuevaStr,
+                                'planilla_id' => $planilla->id,
+                            ];
+                        }
                     }
 
                     // Actualizar fechas de elementos si se proporcionan
                     if (!empty($fila['elementos']) && is_array($fila['elementos'])) {
+                        $elementosActualizados = 0;
                         foreach ($fila['elementos'] as $elementoData) {
                             $elemento = Elemento::find($elementoData['id']);
                             if ($elemento) {
+                                $fechaAnteriorEl = $elemento->fecha_entrega;
                                 $elemento->fecha_entrega = !empty($elementoData['fecha_entrega'])
                                     ? Carbon::createFromFormat('Y-m-d', $elementoData['fecha_entrega'])->startOfDay()
                                     : null;
                                 $elemento->save();
+
+                                // Contar si hubo cambio
+                                $fechaAnteriorElStr = $fechaAnteriorEl ? Carbon::parse($fechaAnteriorEl)->format('Y-m-d') : null;
+                                $fechaNuevaElStr = $elemento->fecha_entrega ? $elemento->fecha_entrega->format('Y-m-d') : null;
+                                if ($fechaAnteriorElStr !== $fechaNuevaElStr) {
+                                    $elementosActualizados++;
+                                }
                             }
+                        }
+
+                        if ($elementosActualizados > 0) {
+                            $planilla = Planilla::find($fila['id']);
+                            $logsRegistrados[] = [
+                                'tipo' => 'elementos',
+                                'codigo_planilla' => $planilla?->codigo ?? 'N/A',
+                                'cantidad' => $elementosActualizados,
+                                'planilla_id' => $fila['id'],
+                            ];
                         }
                     }
                 }
             });
+
+            // Registrar logs después de la transacción exitosa
+            foreach ($logsRegistrados as $log) {
+                if ($log['tipo'] === 'planilla') {
+                    \App\Models\LogPlanificacionSalidas::registrar(
+                        'mover_planilla',
+                        "ha cambiado la fecha de la planilla {$log['codigo']} de {$log['fecha_anterior']} a {$log['fecha_nueva']} (modal)",
+                        [
+                            'planilla_id' => $log['planilla_id'],
+                            'codigo' => $log['codigo'],
+                            'fecha_anterior' => $log['fecha_anterior'],
+                            'fecha_nueva' => $log['fecha_nueva'],
+                            'origen' => 'modal_fechas',
+                        ],
+                        ['planilla_id' => $log['planilla_id']]
+                    );
+                } elseif ($log['tipo'] === 'elementos') {
+                    \App\Models\LogPlanificacionSalidas::registrar(
+                        'mover_planilla',
+                        "ha actualizado fechas de {$log['cantidad']} elemento(s) de la planilla {$log['codigo_planilla']} (modal)",
+                        [
+                            'planilla_id' => $log['planilla_id'],
+                            'codigo_planilla' => $log['codigo_planilla'],
+                            'elementos_actualizados' => $log['cantidad'],
+                            'origen' => 'modal_fechas',
+                        ],
+                        ['planilla_id' => $log['planilla_id']]
+                    );
+                }
+            }
 
             return response()->json([
                 'success' => true,

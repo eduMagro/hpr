@@ -1,77 +1,97 @@
 <div id="modalDividirElemento"
     class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center z-50">
 
-    <div class="bg-white p-6 rounded-lg shadow-lg w-96 max-h-[90vh] overflow-y-auto">
-        <h2 class="text-lg font-semibold text-gray-800 mb-4">Gestión de elemento</h2>
+    <div class="bg-white p-8 rounded-xl shadow-xl w-[520px] max-h-[90vh] overflow-y-auto">
+        <h2 class="text-xl font-bold text-gray-800 mb-5">Gestión de elemento</h2>
 
         <form id="formDividirElemento" method="POST">
             @csrf
             <input type="hidden" name="elemento_id" id="dividir_elemento_id">
             <input type="hidden" name="barras_totales" id="dividir_barras_totales">
+            <input type="hidden" name="peso_total" id="dividir_peso_total">
 
-            <label class="block text-sm font-medium text-gray-700 mb-2">¿Qué quieres hacer?</label>
-            <div class="flex flex-col gap-2 mb-4">
-                <label class="inline-flex items-center gap-2">
+            <label class="block text-base font-medium text-gray-700 mb-3">¿Qué quieres hacer?</label>
+            <div class="flex flex-col gap-3 mb-5">
+                <label class="inline-flex items-center gap-2 text-base cursor-pointer hover:bg-gray-50 p-2 rounded">
                     <input type="radio" name="accion_etiqueta" value="dividir" checked
-                        onchange="toggleCamposDivision()">
+                        onchange="toggleCamposDivision()" class="w-4 h-4">
                     <span>✂️ Dividir barras en otra etiqueta</span>
                 </label>
-                <label class="inline-flex items-center gap-2">
-                    <input type="radio" name="accion_etiqueta" value="mover" onchange="toggleCamposDivision()">
+                <label class="inline-flex items-center gap-2 text-base cursor-pointer hover:bg-gray-50 p-2 rounded">
+                    <input type="radio" name="accion_etiqueta" value="mover" onchange="toggleCamposDivision()" class="w-4 h-4">
                     <span>➡️ Pasar todo a una nueva etiqueta</span>
                 </label>
-                <label class="inline-flex items-center gap-2 transition-opacity duration-200" id="labelCambiarMaquina">
-                    <input type="radio" name="accion_etiqueta" value="cambiar_maquina" onchange="toggleCamposDivision()">
+                <label class="inline-flex items-center gap-2 text-base cursor-pointer hover:bg-gray-50 p-2 rounded transition-opacity duration-200" id="labelCambiarMaquina">
+                    <input type="radio" name="accion_etiqueta" value="cambiar_maquina" onchange="toggleCamposDivision()" class="w-4 h-4">
                     <span>🔄 Mandar a otra máquina</span>
                 </label>
-                <label class="inline-flex items-center gap-2">
-                    <input type="radio" name="accion_etiqueta" value="ver_dimensiones" onchange="toggleCamposDivision()">
+                <label class="inline-flex items-center gap-2 text-base cursor-pointer hover:bg-gray-50 p-2 rounded">
+                    <input type="radio" name="accion_etiqueta" value="ver_dimensiones" onchange="toggleCamposDivision()" class="w-4 h-4">
                     <span>📐 Ver dimensiones del elemento</span>
                 </label>
             </div>
 
             <div id="campoDivision" class="block">
-                <div id="infoBarrasActuales" class="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <p class="text-sm text-blue-800">
+                <div id="infoBarrasActuales" class="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <p class="text-base text-blue-800">
                         <span class="font-semibold">Barras actuales:</span>
-                        <span id="labelBarrasActuales" class="text-lg font-bold">-</span>
+                        <span id="labelBarrasActuales" class="text-2xl font-bold ml-2">-</span>
                     </p>
                 </div>
 
-                <label for="barras_a_mover" class="block text-sm font-medium text-gray-700 mb-1">
+                {{-- Badge de sugerencia para peso máximo de 1200kg --}}
+                <div id="badgeSugerenciaPeso" class="hidden mb-4 p-4 bg-amber-50 rounded-lg border-2 border-amber-400">
+                    <p class="text-base text-amber-800 mb-2">
+                        <span class="font-bold">⚖️ Sugerencia (máx 1200 kg/paquete):</span>
+                    </p>
+                    <p class="text-lg text-amber-700">
+                        Necesitas <span id="barrasSugeridas" class="text-2xl font-bold text-amber-900">-</span>
+                    </p>
+                    <p id="detalleSugerencia" class="text-sm text-amber-700 mt-2 leading-relaxed"></p>
+
+                    {{-- Botón para dividir automáticamente --}}
+                    <button type="button" id="btnDividirAuto" onclick="dividirAutomaticamente()"
+                        class="mt-4 w-full px-4 py-3 bg-amber-500 text-white text-base font-bold rounded-lg hover:bg-amber-600 transition flex items-center justify-center gap-2">
+                        <span>⚡</span>
+                        <span>Dividir automáticamente</span>
+                    </button>
+                    <input type="hidden" id="divisionAutoData" value="">
+                </div>
+
+                <label for="barras_a_mover" class="block text-base font-medium text-gray-700 mb-2">
                     ¿Cuántas barras quieres pasar a otra etiqueta?
                 </label>
-                <input type="number" name="barras_a_mover" id="barras_a_mover" class="w-full border rounded p-2" min="1"
+                <input type="number" name="barras_a_mover" id="barras_a_mover" class="w-full border-2 rounded-lg p-3 text-lg" min="1"
                     placeholder="Ej: 20">
-                <p id="previewDivision" class="text-xs text-gray-500 mt-2 hidden"></p>
+                <p id="previewDivision" class="text-sm text-gray-500 mt-3 hidden"></p>
             </div>
 
             {{-- Campo para seleccionar máquina destino --}}
             <div id="campoCambiarMaquina" class="hidden">
-                <div id="infoDiametroElemento" class="mb-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                    <p class="text-sm text-amber-800">
+                <div id="infoDiametroElemento" class="mb-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                    <p class="text-base text-amber-800">
                         <span class="font-semibold">Diámetro del elemento:</span>
-                        <span id="labelDiametroElemento" class="text-lg font-bold">-</span>
+                        <span id="labelDiametroElemento" class="text-2xl font-bold ml-2">-</span>
                     </p>
                 </div>
 
-                <label for="maquina_destino" class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="maquina_destino" class="block text-base font-medium text-gray-700 mb-2">
                     Selecciona la máquina destino:
                 </label>
                 <select name="maquina_destino" id="maquina_destino"
-                    class="w-full border rounded p-2 bg-white focus:ring-2 focus:ring-purple-500">
+                    class="w-full border-2 rounded-lg p-3 text-base bg-white focus:ring-2 focus:ring-purple-500">
                     <option value="">Cargando máquinas...</option>
                 </select>
-                <p id="infoMaquinaActual" class="text-xs text-gray-500 mt-2"></p>
+                <p id="infoMaquinaActual" class="text-sm text-gray-500 mt-3"></p>
             </div>
 
-            <div class="flex justify-end mt-6">
+            <div class="flex justify-end mt-8 gap-3">
                 <button type="button" onclick="document.getElementById('modalDividirElemento').classList.add('hidden')"
-                    class="mr-2 px-4 py-2 bg-gray-500 text-white rounded">
+                    class="px-6 py-3 bg-gray-500 text-white text-base font-medium rounded-lg hover:bg-gray-600 transition">
                     Cancelar
                 </button>
                 <button type="button" onclick="enviarAccionEtiqueta()"
-                    class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                    class="px-6 py-3 bg-purple-600 text-white text-base font-medium rounded-lg hover:bg-purple-700 transition">
                     Aceptar
                 </button>
             </div>
@@ -82,6 +102,127 @@
 <script>
     // Variable para almacenar las máquinas cargadas
     let maquinasDisponiblesCache = null;
+
+    // Función para dividir automáticamente en múltiples etiquetas
+    async function dividirAutomaticamente() {
+        const dataInput = document.getElementById('divisionAutoData');
+        if (!dataInput || !dataInput.value) {
+            if (window.Swal) {
+                Swal.fire('Error', 'No hay datos de división disponibles', 'error');
+            }
+            return;
+        }
+
+        const data = JSON.parse(dataInput.value);
+        const { elemento_id, num_etiquetas, barras_por_etiqueta, etiquetas_con_barra_extra, barras_totales } = data;
+
+        // Confirmar la acción
+        if (window.Swal) {
+            const confirmacion = await Swal.fire({
+                icon: 'question',
+                title: '¿Dividir automáticamente?',
+                html: `Se crearán <strong>${num_etiquetas - 1} nuevas etiquetas</strong> a partir de este elemento.<br><br>
+                       <small class="text-gray-500">El elemento original mantendrá ${etiquetas_con_barra_extra > 0 ? barras_por_etiqueta + 1 : barras_por_etiqueta} barras.</small>`,
+                showCancelButton: true,
+                confirmButtonText: 'Sí, dividir',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#f59e0b',
+            });
+
+            if (!confirmacion.isConfirmed) return;
+
+            // Mostrar loading
+            Swal.fire({
+                title: 'Dividiendo elemento...',
+                html: 'Creando etiquetas <b>0</b> de <b>' + (num_etiquetas - 1) + '</b>',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+        }
+
+        try {
+            const resp = await fetch('{{ route("elementos.dividir-auto") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('input[name=_token]').value,
+                },
+                body: JSON.stringify({
+                    elemento_id: elemento_id,
+                    num_etiquetas: num_etiquetas,
+                    barras_por_etiqueta: barras_por_etiqueta,
+                    etiquetas_con_barra_extra: etiquetas_con_barra_extra
+                })
+            });
+
+            const result = await resp.json();
+
+            if (!resp.ok || result.success === false) {
+                throw new Error(result.message || 'Error al dividir automáticamente');
+            }
+
+            // Cerrar modal
+            document.getElementById('modalDividirElemento').classList.add('hidden');
+
+            // Refrescar para que las etiquetas estén disponibles para imprimir
+            if (typeof window.refrescarEtiquetasMaquina === 'function') {
+                await window.refrescarEtiquetasMaquina();
+                // Esperar a que los SVGs se rendericen
+                await new Promise(resolve => setTimeout(resolve, 800));
+            }
+
+            // Preguntar si quiere imprimir todas las etiquetas
+            if (window.Swal && result.todas_las_etiquetas && result.todas_las_etiquetas.length > 0) {
+                const preguntaImprimir = await Swal.fire({
+                    icon: 'success',
+                    title: '¡División completada!',
+                    html: result.message + '<br><br><strong>¿Deseas imprimir todas las etiquetas?</strong>',
+                    showCancelButton: true,
+                    confirmButtonText: '🖨️ Sí, imprimir todas',
+                    cancelButtonText: 'No, gracias',
+                    confirmButtonColor: '#10b981',
+                });
+
+                if (preguntaImprimir.isConfirmed) {
+                    // Mostrar loading mientras se imprime
+                    Swal.fire({
+                        title: 'Preparando impresión...',
+                        html: `Imprimiendo ${result.todas_las_etiquetas.length} etiquetas`,
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+
+                    // Llamar a la función de impresión si existe
+                    if (typeof window.imprimirEtiquetas === 'function') {
+                        await window.imprimirEtiquetas(result.todas_las_etiquetas, 'etiqueta');
+                    }
+
+                    Swal.close();
+                }
+            } else if (window.Swal) {
+                // Mostrar solo el éxito si no hay etiquetas para imprimir
+                await Swal.fire({
+                    icon: 'success',
+                    title: '¡División completada!',
+                    html: result.message,
+                    timer: 3000,
+                    showConfirmButton: false
+                });
+            }
+
+            // Refrescar de nuevo si no se hizo antes
+            if (typeof window.refrescarEtiquetasMaquina !== 'function') {
+                window.location.reload();
+            }
+
+        } catch (e) {
+            if (window.Swal) {
+                Swal.fire('Error', e.message, 'error');
+            } else {
+                alert(e.message);
+            }
+        }
+    }
 
     function toggleCamposDivision() {
         const accion = document.querySelector('input[name="accion_etiqueta"]:checked').value;

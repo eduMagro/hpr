@@ -518,10 +518,10 @@
 
                     <div class="relative">
                         <select id="select-cambiar-maquina"
+                            onchange="cambiarMaquinaSelect(this, {{ $maquina->id }})"
                             class="appearance-none bg-white border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
                             @foreach ($maquinas as $m)
-                                <option value="{{ $m->id }}"
-                                    {{ $m->id == ($turnoHoy->maquina_id ?? $maquina->id) ? 'selected' : '' }}>
+                                <option value="{{ $m->id }}" {{ $m->id == $maquina->id ? 'selected' : '' }}>
                                     {{ $m->nombre }}
                                 </option>
                             @endforeach
@@ -535,6 +535,36 @@
                         </div>
                     </div>
                 </form>
+
+                <script>
+                    function cambiarMaquinaSelect(select, maquinaActualId) {
+                        const nuevaMaquinaId = select.value;
+
+                        // Evitar navegar a la misma máquina
+                        if (parseInt(nuevaMaquinaId) === parseInt(maquinaActualId)) {
+                            return;
+                        }
+
+                        const overlay = document.getElementById('overlay-cambiar-maquina');
+                        const nombreMaquina = document.getElementById('loader-maquina-nombre');
+                        const hiddenInput = document.getElementById('hidden-nueva-maquina-id');
+
+                        if (hiddenInput) hiddenInput.value = nuevaMaquinaId;
+
+                        const selectedOption = select.options[select.selectedIndex];
+                        if (nombreMaquina) nombreMaquina.textContent = selectedOption.text;
+
+                        if (overlay) overlay.classList.add('active');
+
+                        select.disabled = true;
+                        select.classList.add('opacity-50');
+
+                        setTimeout(() => {
+                            const form = document.getElementById('form-cambiar-maquina');
+                            if (form) form.submit();
+                        }, 300);
+                    }
+                </script>
 
                 {{-- Overlay de carga al cambiar máquina --}}
                 <style>
@@ -1593,41 +1623,10 @@
                 // 1. Inicializar Header
                 window.aplicarEstadoHeader();
 
-                // 2. Listener para selector de máquina
-                const selectCambiar = document.getElementById('select-cambiar-maquina');
-                const handleChangeMaquina = function() {
-                    const overlay = document.getElementById('overlay-cambiar-maquina');
-                    const nombreMaquina = document.getElementById('loader-maquina-nombre');
-                    const hiddenInput = document.getElementById('hidden-nueva-maquina-id');
-                    const select = this;
-
-                    if (hiddenInput) hiddenInput.value = select.value;
-
-                    const selectedOption = select.options[select.selectedIndex];
-                    if (nombreMaquina) nombreMaquina.textContent = selectedOption.text;
-
-                    if (overlay) overlay.classList.add('active');
-
-                    select.disabled = true;
-                    select.classList.add('opacity-50');
-
-                    setTimeout(() => {
-                        const form = document.getElementById('form-cambiar-maquina');
-                        if (form) form.submit();
-                    }, 300);
-                };
-
-                if (selectCambiar) {
-                    selectCambiar.addEventListener('change', handleChangeMaquina);
-                }
-
                 // --- Cleanup ---
                 document.body.dataset.maquinasShowPageInit = 'true';
 
                 const cleanup = () => {
-                    if (selectCambiar) {
-                        selectCambiar.removeEventListener('change', handleChangeMaquina);
-                    }
                     document.body.dataset.maquinasShowPageInit = 'false';
                 };
 

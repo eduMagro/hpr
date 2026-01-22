@@ -543,6 +543,169 @@ class ElementoController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Divide un elemento automáticamente en múltiples etiquetas para mantener el peso bajo 1200 kg.
+     * Recibe: elemento_id, num_etiquetas, barras_por_etiqueta, etiquetas_con_barra_extra
+     */
+    public function dividirAuto(Request $request)
+    {
+        $request->validate([
+            'elemento_id'              => 'required|exists:elementos,id',
+            'num_etiquetas'            => 'required|integer|min:2',
+            'barras_por_etiqueta'      => 'required|integer|min:1',
+            'etiquetas_con_barra_extra' => 'required|integer|min:0',
+        ]);
+
+        try {
+            return DB::transaction(function () use ($request) {
+                /** @var \App\Models\Elemento $elemento */
+                $elemento = Elemento::lockForUpdate()
+                    ->with('etiquetaRelacion')
+                    ->findOrFail($request->elemento_id);
+
+                $numEtiquetas           = (int) $request->num_etiquetas;
+                $barrasPorEtiqueta      = (int) $request->barras_por_etiqueta;
+                $etiquetasConBarraExtra = (int) $request->etiquetas_con_barra_extra;
+
+                $barrasTotales = (int) ($elemento->barras ?? 0);
+                $pesoTotal     = (float) ($elemento->peso ?? 0);
+                $tiempoTotal   = (int) ($elemento->tiempo_fabricacion ?? 0);
+
+                // Calcular totales esperados para validación
+                $barrasCalculadas = ($barrasPorEtiqueta * $numEtiquetas) + $etiquetasConBarraExtra;
+                if ($barrasCalculadas !== $barrasTotales) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "El cálculo de barras no coincide: esperadas {$barrasTotales}, calculadas {$barrasCalculadas}.",
+                    ], 422);
+                }
+
+                // Calcular proporciones
+                $pesoPorBarra   = $barrasTotales > 0 ? $pesoTotal / $barrasTotales : 0;
+                $tiempoPorBarra = $barrasTotales > 0 ? $tiempoTotal / $barrasTotales : 0;
+                $prec = 3;
+
+                // === Etiqueta base y sufijos por CODIGO ===
+                $etqOriginal = $elemento->etiquetaRelacion
+                    ?: Etiqueta::lockForUpdate()->findOrFail($elemento->etiqueta_id);
+
+                $baseCodigo = $etqOriginal->codigo ?: preg_replace('/[.\-]\d+$/', '', (string) $etqOriginal->etiqueta_sub_id);
+
+                // Obtener el sufijo máximo ya usado para ese código
+                $maxSufijo = (int) DB::table('etiquetas')
+                    ->where('codigo', $baseCodigo)
+                    ->lockForUpdate()
+                    ->selectRaw("COALESCE(MAX(CAST(SUBSTRING_INDEX(etiqueta_sub_id, '.', -1) AS UNSIGNED)), 0) AS max_suf")
+                    ->value('max_suf');
+
+                // Distribuir: primeras 'etiquetasConBarraExtra' etiquetas tienen barrasPorEtiqueta + 1 barras
+                // El resto tienen barrasPorEtiqueta barras
+                $etiquetasCreadas = [];
+                $barrasRestantes  = $barrasTotales;
+                $pesoRestante     = $pesoTotal;
+                $tiempoRestante   = $tiempoTotal;
+
+                // La primera etiqueta es la original
+                $barrasOriginal = $etiquetasConBarraExtra > 0 ? $barrasPorEtiqueta + 1 : $barrasPorEtiqueta;
+                $etiquetasConBarraExtraRestantes = $etiquetasConBarraExtra > 0 ? $etiquetasConBarraExtra - 1 : 0;
+
+                $pesoOriginal   = round($pesoPorBarra * $barrasOriginal, $prec);
+                $tiempoOriginal = (int) round($tiempoPorBarra * $barrasOriginal);
+
+                // Actualizar el elemento original
+                $elemento->peso               = $pesoOriginal;
+                $elemento->barras             = $barrasOriginal;
+                $elemento->tiempo_fabricacion = $tiempoOriginal;
+                $elemento->save();
+
+                $etqOriginal->peso = $pesoOriginal;
+                $etqOriginal->save();
+
+                $barrasRestantes -= $barrasOriginal;
+                $pesoRestante    -= $pesoOriginal;
+                $tiempoRestante  -= $tiempoOriginal;
+
+                // Crear las nuevas etiquetas (num_etiquetas - 1)
+                for ($i = 1; $i < $numEtiquetas; $i++) {
+                    $maxSufijo++;
+                    $nuevoSubId = sprintf('%s.%02d', $baseCodigo, $maxSufijo);
+
+                    // Asegurar que no exista
+                    while (DB::table('etiquetas')->where('etiqueta_sub_id', $nuevoSubId)->exists()) {
+                        $maxSufijo++;
+                        $nuevoSubId = sprintf('%s.%02d', $baseCodigo, $maxSufijo);
+                    }
+
+                    // Calcular barras para esta etiqueta
+                    $barrasNueva = $etiquetasConBarraExtraRestantes > 0 ? $barrasPorEtiqueta + 1 : $barrasPorEtiqueta;
+                    if ($etiquetasConBarraExtraRestantes > 0) {
+                        $etiquetasConBarraExtraRestantes--;
+                    }
+
+                    // Si es la última, asignar las barras restantes para evitar errores de redondeo
+                    if ($i === $numEtiquetas - 1) {
+                        $barrasNueva = $barrasRestantes;
+                    }
+
+                    $pesoNuevo   = round($pesoPorBarra * $barrasNueva, $prec);
+                    $tiempoNuevo = (int) round($tiempoPorBarra * $barrasNueva);
+
+                    // Si es la última, asignar peso y tiempo restantes para evitar errores de redondeo
+                    if ($i === $numEtiquetas - 1) {
+                        $pesoNuevo   = round($pesoRestante, $prec);
+                        $tiempoNuevo = $tiempoRestante;
+                    }
+
+                    // Clonar Etiqueta
+                    $nuevaEtiqueta = $etqOriginal->replicate();
+                    $nuevaEtiqueta->codigo          = $baseCodigo;
+                    $nuevaEtiqueta->etiqueta_sub_id = $nuevoSubId;
+                    $nuevaEtiqueta->peso            = $pesoNuevo;
+                    $nuevaEtiqueta->save();
+
+                    // Clonar Elemento
+                    $clon = $elemento->replicate();
+                    $clon->codigo              = Elemento::generarCodigo();
+                    $clon->peso                = $pesoNuevo;
+                    $clon->barras              = $barrasNueva;
+                    $clon->tiempo_fabricacion  = $tiempoNuevo;
+                    $clon->etiqueta_id         = $nuevaEtiqueta->id;
+                    $clon->etiqueta_sub_id     = $nuevaEtiqueta->etiqueta_sub_id;
+                    $clon->save();
+
+                    $etiquetasCreadas[] = $nuevoSubId;
+
+                    $barrasRestantes -= $barrasNueva;
+                    $pesoRestante    -= $pesoNuevo;
+                    $tiempoRestante  -= $tiempoNuevo;
+                }
+
+                $countCreadas = count($etiquetasCreadas);
+                $etiquetaOriginalSubId = $etqOriginal->etiqueta_sub_id;
+
+                // Array con todas las etiquetas (original + nuevas) para imprimir
+                $todasLasEtiquetas = array_merge([$etiquetaOriginalSubId], $etiquetasCreadas);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Se crearon <strong>{$countCreadas} nuevas etiquetas</strong>:<br><small>" .
+                                 implode(', ', $etiquetasCreadas) . "</small><br><br>" .
+                                 "Etiqueta original: {$barrasOriginal} barras ({$pesoOriginal} kg)",
+                    'etiquetas_creadas' => $etiquetasCreadas,
+                    'etiqueta_original' => $etiquetaOriginalSubId,
+                    'todas_las_etiquetas' => $todasLasEtiquetas,
+                ], 200);
+            });
+        } catch (\Throwable $e) {
+            Log::error('Error en dividirAuto: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al dividir automáticamente: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     /**
      * Almacena un nuevo elemento en la base de datos.
      *

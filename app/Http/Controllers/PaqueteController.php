@@ -426,13 +426,11 @@ class PaqueteController extends Controller
                 ->values()
                 ->all();
 
-            // 8) Crear paquete NUEVO (en la tabla paquetes)
-            $codigo  = Paquete::generarCodigo();
+            // 8) Crear paquete NUEVO (en la tabla paquetes) con código único
             $paquete = $this->crearPaquete(
                 $planilla->id,           // planilla_id
                 $ubicacion?->id ?? null, // ubicacion_id (null para grúa, se asigna después)
                 $pesoTotal,              // peso total del paquete
-                $codigo,                 // código generado
                 $maquina->obra_id,       // nave/obra a la que pertenece
                 $maquina->id             // maquina_id donde se creó el paquete
             );
@@ -524,7 +522,7 @@ class PaqueteController extends Controller
                 'success'         => true,
                 'message'         => 'Paquete creado correctamente.',
                 'paquete_id'      => $paquete->id,
-                'codigo_paquete'  => $codigo,
+                'codigo_paquete'  => $paquete->codigo,
                 'codigo_planilla' => $codigo_planilla,
             ], 201);
         } catch (Exception $e) {
@@ -542,9 +540,11 @@ class PaqueteController extends Controller
 
     public function validarParaPaquete(Request $request, string $etiquetaSubId): JsonResponse
     {
+        $t0 = microtime(true);
         $etiqueta = Etiqueta::with('elementos')
             ->where('etiqueta_sub_id', $etiquetaSubId)
             ->first();
+        \Log::info("⏱️ [validarParaPaquete] {$etiquetaSubId}: " . round((microtime(true) - $t0) * 1000) . "ms");
 
         if (!$etiqueta) {
             return response()->json([
@@ -583,9 +583,6 @@ class PaqueteController extends Controller
 
         $pesoEtiqueta = $etiqueta->peso ?? 0;
 
-        // Log para debug
-        \Log::info("validarParaPaquete - Etiqueta: {$etiquetaSubId}, Peso: {$pesoEtiqueta}");
-
         return response()->json([
             'success'       => $valida,
             'valida'        => $valida,
@@ -601,16 +598,15 @@ class PaqueteController extends Controller
     }
 
 
-    private function crearPaquete($planillaId, $ubicacionId, $pesoTotal, $codigo, $obraId, $maquinaId = null)
+    private function crearPaquete($planillaId, $ubicacionId, $pesoTotal, $obraId, $maquinaId = null)
     {
         try {
-            return Paquete::create([
+            return Paquete::crearConCodigoUnico([
                 'planilla_id'   => $planillaId,
                 'ubicacion_id'  => $ubicacionId,
                 'maquina_id'    => $maquinaId,
                 'user_id'       => auth()->id(),
                 'peso'          => $pesoTotal ?? 0,
-                'codigo'        => $codigo,
                 'nave_id'       => $obraId,
                 'estado'        => 'pendiente',
             ]);

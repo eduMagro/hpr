@@ -341,27 +341,28 @@ abstract class ServicioEtiquetaBase
             }
 
             // Si falta stock residual, dispara recarga (warning) y continúa
-            if ($pesoNecesarioTotal > 0) {
-
-                // 1) Solicitar recarga automáticamente
-                $pb = ProductoBase::where('diametro', (int)$diametro)
-                    ->where('tipo', $maquina->tipo_material)
-                    ->first();
-
-                if ($pb) {
-                    $this->generarMovimientoRecargaMateriaPrima($pb, $maquina, null, $solicitanteId);
-                }
-
-                // 2) Lanzar excepción y detener fabricación completa
-                throw new ServicioEtiquetaException(
-                    "Stock insuficiente para fabricar elementos de Ø{$diametro} en la máquina {$maquina->nombre}. Se ha solicitado recarga.",
-                    [
-                        'diametro'    => (int)$diametro,
-                        'maquina_id'  => $maquina->id,
-                        'peso_faltante' => $pesoNecesarioTotal
-                    ]
-                );
-            }
+            // DESACTIVADO: Validación de stock temporalmente deshabilitada
+            // if ($pesoNecesarioTotal > 0) {
+            //
+            //     // 1) Solicitar recarga automáticamente
+            //     $pb = ProductoBase::where('diametro', (int)$diametro)
+            //         ->where('tipo', $maquina->tipo_material)
+            //         ->first();
+            //
+            //     if ($pb) {
+            //         $this->generarMovimientoRecargaMateriaPrima($pb, $maquina, null, $solicitanteId);
+            //     }
+            //
+            //     // 2) Lanzar excepción y detener fabricación completa
+            //     throw new ServicioEtiquetaException(
+            //         "Stock insuficiente para fabricar elementos de Ø{$diametro} en la máquina {$maquina->nombre}. Se ha solicitado recarga.",
+            //         [
+            //             'diametro'    => (int)$diametro,
+            //             'maquina_id'  => $maquina->id,
+            //             'peso_faltante' => $pesoNecesarioTotal
+            //         ]
+            //     );
+            // }
         }
 
         // 2) Asignar productos a elementos (pool compartido por diámetro)

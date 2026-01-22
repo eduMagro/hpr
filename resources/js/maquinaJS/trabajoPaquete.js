@@ -43,13 +43,6 @@
 
             const data = await response.json();
 
-            // Log para debug - respuesta del endpoint
-            console.log("🔍 validarEtiqueta response:", {
-                status: response.status,
-                data: data,
-                peso_etiqueta: data.peso_etiqueta,
-            });
-
             if (!response.ok) {
                 throw new Error(
                     data?.message || data?.motivo || "Error al validar"
@@ -71,15 +64,6 @@
         if (items.some((i) => i.id === id)) return false;
 
         const peso = parseFloat(data.peso_etiqueta) || 0;
-
-        // Log para debug
-        console.log("🔍 agregarItemEtiqueta:", {
-            codigo,
-            id,
-            peso_etiqueta_recibido: data.peso_etiqueta,
-            peso_parseado: peso,
-            data_completa: data,
-        });
 
         const newItem = {
             id,

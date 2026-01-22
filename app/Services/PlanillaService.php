@@ -18,22 +18,19 @@ class PlanillaService
         try {
             DB::transaction(function () use ($planillaId) {
 
-                // ✅ Generar el código de paquete
-                $codigoPaquete = Paquete::generarCodigo();
-                Log::info("Entrando a completar planilla {$planillaId} con código {$codigoPaquete}");
+                Log::info("Entrando a completar planilla {$planillaId}");
+
                 // ✅ Calcular el peso total de las etiquetas de la planilla
                 $pesoTotal = Etiqueta::where('planilla_id', $planillaId)->sum('peso');
 
-                // ✅ Generar código del paquete
-                $codigoPaquete = Paquete::generarCodigo();
-
-                // ✅ Crear el paquete con el peso total
-                $paquete = Paquete::create([
-                    'codigo'      => $codigoPaquete,
+                // ✅ Crear el paquete con código único (evita duplicados)
+                $paquete = Paquete::crearConCodigoUnico([
                     'planilla_id' => $planillaId,
                     'peso'        => $pesoTotal,
                     'estado'      => 'pendiente',
                 ]);
+
+                Log::info("Paquete creado con código {$paquete->codigo}");
 
                 // ✅ Marcar planilla como completada
                 Planilla::where('id', $planillaId)->update(['estado' => 'completada']);
@@ -175,10 +172,7 @@ class PlanillaService
                 $planillaId = $etiquetas->first()->planilla_id;
                 $pesoTotal = $etiquetas->sum('peso');
 
-                $codigoPaquete = Paquete::generarCodigo();
-
-                $paquete = Paquete::create([
-                    'codigo'          => $codigoPaquete,
+                $paquete = Paquete::crearConCodigoUnico([
                     'planilla_id'     => $planillaId,
                     'etiqueta_sub_id' => $etiquetaSubId,
                     'peso'            => $pesoTotal,

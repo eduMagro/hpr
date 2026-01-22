@@ -902,165 +902,6 @@ class SalidaFerrallaController extends Controller
         }
     }
 
-    public function crearSalidaDesdeCalendario(Request $request)
-    {
-        // Log inicial para confirmar que el método se está ejecutando
-        Log::info('🚀 Iniciando crearSalidaDesdeCalendario', [
-            'request_all' => $request->all(),
-            'user_id' => auth()->id() ?? 'guest',
-            'url' => $request->fullUrl(),
-            'method' => $request->method(),
-            'ip' => $request->ip(),
-        ]);
-
-        try {
-            $request->validate([
-                'planillas_ids' => 'required|array|min:1',
-                'planillas_ids.*' => 'exists:planillas,id',
-                'camion_id' => 'nullable|exists:camiones,id',
-            ]);
-
-            // Buscar todos los paquetes asociados a las planillas dadas
-            $paqueteIds = Paquete::whereIn('planilla_id', $request->planillas_ids)
-                ->pluck('id')
-                ->toArray();
-
-            if (empty($paqueteIds)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se encontraron paquetes asociados a las planillas seleccionadas.'
-                ], 422);
-            }
-
-            // Paquetes repetidos por ID
-            $paquetesRepetidos = DB::table('salidas_paquetes')
-                ->whereIn('paquete_id', $paqueteIds)
-                ->whereNotNull('salida_id')
-                ->pluck('paquete_id')
-                ->toArray();
-
-            $repetidos = array_intersect($paqueteIds, $paquetesRepetidos);
-
-            if ($repetidos) {
-                // 🔎 Buscar los paquetes para obtener código y planilla
-                $paquetesInfo = Paquete::with('planilla')
-                    ->whereIn('id', $repetidos)
-                    ->get()
-                    ->map(function ($paquete) {
-                        $codigoPaquete = $paquete->codigo ?? 'Sin código';
-                        $codigoPlanilla = $paquete->planilla ? ($paquete->planilla->codigo ?? $paquete->planilla->id) : 'Sin planilla';
-                        return "{$codigoPaquete} (Planilla {$codigoPlanilla})";
-                    })
-                    ->toArray();
-
-                $mensaje = 'Los siguientes paquetes ya están asociados a una salida: ' . implode(', ', $paquetesInfo);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => $mensaje
-                ], 422);
-            }
-
-            // Obtener el camión y la empresa de transporte
-            // $camion = Camion::findOrFail($request->camion_id);
-            // $empresa = $camion->empresaTransporte;
-
-            // Obtener la primera planilla para la fecha
-            $primeraPlanilla = Planilla::whereIn('id', $request->planillas_ids)->first();
-            $fechaSalida = $primeraPlanilla
-                ? $primeraPlanilla->getRawOriginal('fecha_estimada_entrega')
-                : now();
-
-            // Crear la salida
-            $salida = Salida::create([
-                // 'empresa_id' => $empresa?->id,
-                // 'camion_id' => $camion->id,
-                'fecha_salida' => $fechaSalida,
-                'estado' => 'pendiente',
-            ]);
-
-            // Generar código salida
-            $codigo_salida = 'AS' . substr(date('Y'), 2) . '/' . str_pad($salida->id, 4, '0', STR_PAD_LEFT);
-            $salida->codigo_salida = $codigo_salida;
-            $salida->save();
-
-            // Asociar paquetes a la salida
-            $salida->paquetes()->attach($paqueteIds);
-
-            // Asociar cliente y obra en salida_cliente
-            $pivotData = [];
-            foreach ($paqueteIds as $paquete_id) {
-                $paquete = Paquete::with('planilla.obra')->find($paquete_id);
-                if ($paquete?->planilla && $paquete->planilla->cliente_id && $paquete->planilla->obra) {
-                    $clave = $paquete->planilla->cliente_id . '_' . $paquete->planilla->obra->id;
-                    if (!isset($pivotData[$clave])) {
-                        $pivotData[$clave] = [
-                            'salida_id' => $salida->id,
-                            'cliente_id' => $paquete->planilla->cliente_id,
-                            'obra_id' => $paquete->planilla->obra->id,
-                            'horas_paralizacion' => 0,
-                            'importe_paralizacion' => 0,
-                            'horas_grua' => 0,
-                            'importe_grua' => 0,
-                            'horas_almacen' => 0,
-                            'importe' => 0,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ];
-                    }
-                }
-            }
-            if (!empty($pivotData)) {
-                DB::table('salida_cliente')->insert(array_values($pivotData));
-            }
-
-            Log::info('✅ Salida creada desde calendario con éxito', [
-                'salida_id' => $salida->id,
-                'codigo_salida' => $codigo_salida,
-                'fecha_salida' => $fechaSalida,
-                'planillas_ids' => $request->planillas_ids,
-                'num_planillas' => count($request->planillas_ids),
-                'num_paquetes' => count($paqueteIds),
-                'paquetes_ids' => $paqueteIds,
-                'combinaciones_cliente_obra' => count($pivotData),
-                'camion_id' => $request->camion_id ?? 'sin camión',
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Salida creada con éxito',
-                'salida_id' => $salida->id,
-                'codigo_salida' => $codigo_salida
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            // Error de validación
-            Log::warning('⚠️ Validación fallida al crear salida desde calendario', [
-                'errors' => $e->errors(),
-                'request_data' => $request->all(),
-                'user_id' => auth()->id() ?? 'guest',
-            ]);
-            throw $e;
-        } catch (\Exception $e) {
-            Log::error('❌ Error al crear salida desde calendario', [
-                'error_message' => $e->getMessage(),
-                'error_file' => $e->getFile(),
-                'error_line' => $e->getLine(),
-                'stack_trace' => $e->getTraceAsString(),
-                'request_data' => [
-                    'planillas_ids' => $request->planillas_ids ?? [],
-                    'num_planillas' => is_array($request->planillas_ids) ? count($request->planillas_ids) : 0,
-                    'camion_id' => $request->camion_id ?? null,
-                ],
-                'user_id' => auth()->id() ?? 'guest',
-                'timestamp' => now()->toDateTimeString(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al crear la salida: ' . $e->getMessage()
-            ], 500);
-        }
-    }
 
     public function guardarAsignacionesPaquetes(Request $request, ActionLoggerService $logger)
     {
@@ -1529,8 +1370,8 @@ class SalidaFerrallaController extends Controller
             $obraId    = $request->input('obra_id');
 
             // Campos actualizables en 'salidas'
+            // NOTA: fecha_salida NO es editable desde aquí para mantener sincronía con agrupaciones
             $salidaFields = [
-                'fecha_salida',
                 'estado',
                 'codigo_sage',
                 'empresa_id',
@@ -1558,10 +1399,9 @@ class SalidaFerrallaController extends Controller
 
             // Reglas de validación campo a campo
             $rules = [
-                'fecha_salida'         => ['nullable', 'date'],
                 'estado'               => ['nullable', 'string', 'max:50'],
                 'codigo_sage'          => ['nullable', 'string', 'max:100'],
-                'empresa_id' => ['nullable', 'integer', 'exists:empresa_transportes,id'],
+                'empresa_id'           => ['nullable', 'integer', 'exists:empresa_transportes,id'],
                 'camion_id'            => ['nullable', 'integer', 'exists:camiones,id'],
 
                 'importe'              => ['nullable', 'numeric'],
@@ -1578,26 +1418,7 @@ class SalidaFerrallaController extends Controller
             }
 
             // Normalizaciones previas
-            // 1) Fecha con hora aceptando varios formatos
-            if ($field === 'fecha_salida' && filled($value)) {
-                try {
-                    // Acepta 'd/m/Y H:i' o cualquier parseable por Carbon
-                    $value = self::parseFechaHora($value)?->format('Y-m-d H:i:s');
-                    if (!$value) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Formato de fecha no válido. Usa DD/MM/YYYY HH:MM o YYYY-MM-DD HH:MM:SS.'
-                        ], 422);
-                    }
-                } catch (\Throwable $e) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Formato de fecha no válido.'
-                    ], 422);
-                }
-            }
-
-            // 2) Numéricos: null -> null, cadena vacía -> null
+            // Numéricos: null -> null, cadena vacía -> null
             if (in_array($field, $salidaClienteFields, true)) {
                 if ($value === '' || $value === null) {
                     $value = null;
@@ -2107,15 +1928,23 @@ class SalidaFerrallaController extends Controller
             // Obtener información de las planillas para construir el código de salida
             $planillas = Planilla::with('obra.cliente')->whereIn('id', $planillasIds)->get();
 
+            // Verificar que todas las planillas tienen obra válida
+            $planillasSinObra = $planillas->filter(fn($p) => !$p->obra_id || !$p->obra);
+            if ($planillasSinObra->isNotEmpty()) {
+                $codigosSinObra = $planillasSinObra->pluck('codigo')->implode(', ');
+                return response()->json([
+                    'success' => false,
+                    'message' => "No se pueden crear salidas: las siguientes planillas no tienen obra válida: {$codigosSinObra}"
+                ], 422);
+            }
+
             // Recopilar todas las obras y clientes únicos de las planillas
             $obrasClientesUnicos = collect();
             foreach ($planillas as $planilla) {
-                if ($planilla->obra_id) {
-                    $obrasClientesUnicos->push([
-                        'obra_id' => $planilla->obra_id,
-                        'cliente_id' => $planilla->cliente_id ?? $planilla->obra->cliente_id ?? null,
-                    ]);
-                }
+                $obrasClientesUnicos->push([
+                    'obra_id' => $planilla->obra_id,
+                    'cliente_id' => $planilla->cliente_id ?? $planilla->obra->cliente_id ?? null,
+                ]);
             }
             // Eliminar duplicados por obra_id
             $obrasClientesUnicos = $obrasClientesUnicos->unique('obra_id');
@@ -2221,7 +2050,8 @@ class SalidaFerrallaController extends Controller
 
         $obrasClientesUnicos = [];
         foreach ($paquetes as $paquete) {
-            if ($paquete->planilla && $paquete->planilla->obra_id && $paquete->planilla->cliente_id) {
+            // Verificar que la planilla existe, tiene obra_id, cliente_id Y que la obra realmente existe
+            if ($paquete->planilla && $paquete->planilla->obra_id && $paquete->planilla->cliente_id && $paquete->planilla->obra) {
                 $clave = $paquete->planilla->cliente_id . '-' . $paquete->planilla->obra_id;
                 if (!isset($obrasClientesUnicos[$clave])) {
                     $obrasClientesUnicos[$clave] = [

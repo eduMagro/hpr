@@ -118,3 +118,17 @@ Se eliminó el sistema manual de selección/automatización:
 - La salida puede tener paquetes de otras obras (añadidos manualmente)
 - El `obra_id` en salida indica la obra "prioritaria" para la automatización
 - Si se mueve una agrupación de fecha, se debe actualizar la `fecha_salida` de la salida correspondiente
+
+#### Sincronización de Salidas al Mover Agrupaciones
+Cuando se mueve una agrupación (planillas o elementos) en el calendario:
+1. Se actualiza la fecha de las planillas/elementos
+2. Se actualizan automáticamente las salidas con `obra_id + fecha_salida` correspondiente
+
+#### Fusión de Elementos con su Planilla
+Caso especial cuando elementos con `fecha_entrega` propia se mueven al día de su planilla:
+- Si la nueva fecha coincide con `fecha_estimada_entrega` de la planilla
+- Los elementos pierden su `fecha_entrega` (se pone a `null`)
+- Se fusionan en una sola agrupación con la planilla
+- Las salidas asociadas también se mueven a la fecha de la planilla
+
+Esto permite que elementos que tenían entregas separadas puedan consolidarse con su planilla original arrastrándolos al mismo día.

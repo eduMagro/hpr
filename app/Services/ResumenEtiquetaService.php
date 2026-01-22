@@ -703,7 +703,11 @@ class ResumenEtiquetaService
      */
     public function resumirMultiplanilla(int $maquinaId, ?int $usuarioId = null): array
     {
+        Log::info('📦 resumirMultiplanilla INICIO', ['maquina_id' => $maquinaId]);
+
         return DB::transaction(function () use ($maquinaId, $usuarioId) {
+            Log::info('📦 resumirMultiplanilla - Dentro de transacción');
+
             // 1. Obtener etiquetas elegibles de planillas REVISADAS (excluyendo las marcadas como no_agrupar)
             $query = Etiqueta::where('estado', 'pendiente')
                 ->whereNull('grupo_resumen_id')
@@ -719,7 +723,68 @@ class ResumenEtiquetaService
                     });
                 });
 
-            $etiquetas = $query->with(['elementos', 'planilla'])->get();
+            Log::info('📦 resumirMultiplanilla - Ejecutando query OPTIMIZADA');
+
+            // Query optimizada: obtener planillas activas en la máquina (con elementos pendientes/fabricando)
+            $planillasActivas = DB::table('elementos')
+                ->where(function ($q) use ($maquinaId) {
+                    $q->where('maquina_id', $maquinaId)
+                        ->orWhere('maquina_id_2', $maquinaId)
+                        ->orWhere('maquina_id_3', $maquinaId);
+                })
+                ->whereIn('estado', ['pendiente', 'fabricando'])
+                ->whereNotNull('planilla_id')
+                ->distinct()
+                ->pluck('planilla_id')
+                ->toArray();
+
+            Log::info('📦 resumirMultiplanilla - Planillas activas en máquina: ' . count($planillasActivas), ['ids' => $planillasActivas]);
+
+            if (empty($planillasActivas)) {
+                Log::info('📦 resumirMultiplanilla - No hay planillas activas');
+                return [
+                    'success' => true,
+                    'message' => 'No hay planillas con elementos pendientes en esta máquina',
+                    'grupos' => [],
+                    'stats' => ['grupos_creados' => 0, 'etiquetas_agrupadas' => 0, 'planillas_involucradas' => 0],
+                ];
+            }
+
+            // Obtener IDs de etiquetas de esas planillas activas
+            $etiquetaIds = DB::table('elementos')
+                ->where(function ($q) use ($maquinaId) {
+                    $q->where('maquina_id', $maquinaId)
+                        ->orWhere('maquina_id_2', $maquinaId)
+                        ->orWhere('maquina_id_3', $maquinaId);
+                })
+                ->whereIn('planilla_id', $planillasActivas)
+                ->whereNotNull('etiqueta_id')
+                ->distinct()
+                ->pluck('etiqueta_id')
+                ->toArray();
+
+            Log::info('📦 resumirMultiplanilla - IDs de etiquetas: ' . count($etiquetaIds));
+
+            if (empty($etiquetaIds)) {
+                return [
+                    'success' => true,
+                    'message' => 'No hay etiquetas para agrupar en las planillas activas',
+                    'grupos' => [],
+                    'stats' => ['grupos_creados' => 0, 'etiquetas_agrupadas' => 0, 'planillas_involucradas' => 0],
+                ];
+            }
+
+            // Ahora buscar etiquetas elegibles con esos IDs
+            $etiquetas = Etiqueta::whereIn('id', $etiquetaIds)
+                ->where('estado', 'pendiente')
+                ->whereNull('grupo_resumen_id')
+                ->where('no_agrupar', false)
+                ->whereHas('planilla', fn($q) => $q->where('revisada', true))
+                ->with(['elementos', 'planilla'])
+                ->limit(500)
+                ->get();
+
+            Log::info('📦 resumirMultiplanilla - Etiquetas encontradas: ' . $etiquetas->count());
 
             if ($etiquetas->isEmpty()) {
                 return [
@@ -994,6 +1059,8 @@ class ResumenEtiquetaService
      */
     public function habilitarReagrupacion(int $maquinaId, ?array $etiquetaIds = null): array
     {
+        Log::info('🔓 habilitarReagrupacion INICIO', ['maquina_id' => $maquinaId]);
+
         $query = Etiqueta::where('estado', 'pendiente')
             ->where('no_agrupar', true)
             ->whereNull('grupo_resumen_id')
@@ -1012,8 +1079,10 @@ class ResumenEtiquetaService
             $query->whereIn('id', $etiquetaIds);
         }
 
+        Log::info('🔓 habilitarReagrupacion - Ejecutando query');
         $etiquetas = $query->get();
         $total = $etiquetas->count();
+        Log::info('🔓 habilitarReagrupacion - Etiquetas encontradas: ' . $total);
 
         if ($total === 0) {
             return [
@@ -1047,11 +1116,19 @@ class ResumenEtiquetaService
      */
     public function reagruparManual(int $maquinaId, ?int $usuarioId = null): array
     {
+        Log::info('🔄 reagruparManual INICIO', ['maquina_id' => $maquinaId, 'usuario_id' => $usuarioId]);
+
         // Primero habilitar todas las etiquetas marcadas como no_agrupar
         $habilitacion = $this->habilitarReagrupacion($maquinaId);
+        Log::info('🔄 reagruparManual - habilitarReagrupacion completado', ['resultado' => $habilitacion]);
 
         // Luego ejecutar el resumen multi-planilla
+        Log::info('🔄 reagruparManual - ANTES de llamar a resumirMultiplanilla');
         $resumen = $this->resumirMultiplanilla($maquinaId, $usuarioId);
+        Log::info('🔄 reagruparManual - DESPUÉS de resumirMultiplanilla');
+        Log::info('🔄 reagruparManual - resumirMultiplanilla completado', ['stats' => $resumen['stats'] ?? 'sin stats']);
+
+        Log::info('🔄 reagruparManual FIN');
 
         return [
             'success' => true,

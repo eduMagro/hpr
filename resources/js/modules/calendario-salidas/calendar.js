@@ -946,6 +946,7 @@ export function crearCalendario() {
                     tipo: p.tipo,
                     planillas_ids: p.planillas_ids || [],
                     elementos_ids: p.elementos_ids || [],
+                    verificar_fabricacion: true,
                 };
                 const url = (
                     window.AppSalidas?.routes?.updateItem || ""
@@ -954,7 +955,6 @@ export function crearCalendario() {
                 // Mostrar spinner de carga
                 Swal.fire({
                     title: 'Actualizando fecha...',
-                    html: 'Verificando programación de fabricación',
                     allowOutsideClick: false,
                     allowEscapeKey: false,
                     showConfirmButton: false,
@@ -979,11 +979,15 @@ export function crearCalendario() {
                     .then(async (data) => {
                         // Cerrar spinner
                         Swal.close();
-                        // Invalidar cache y refetch
+                        // Invalidar cache para que próximas navegaciones traigan datos frescos
+                        // NO hacemos refetch para que el movimiento sea inline sin parpadeo
                         invalidateCache();
-                        calendar.refetchEvents();
-                        calendar.refetchResources();
                         safeUpdateSize();
+
+                        // Actualizar resúmenes diarios de los días afectados
+                        if (data.resumenes_dias) {
+                            actualizarResumenesDias(data.resumenes_dias);
+                        }
 
                         // Mostrar alerta si hay retraso en fabricación (fecha adelantada)
                         if (data.alerta_retraso) {
@@ -1504,6 +1508,82 @@ export function crearCalendario() {
 
     return calendar;
 }
+
+/**
+ * Actualiza los eventos de resumen diario para las fechas especificadas
+ * @param {Object} resumenesDias - Objeto con fechas como keys y datos de resumen como values
+ */
+function actualizarResumenesDias(resumenesDias) {
+    if (!window.calendar || !resumenesDias) return;
+
+    Object.entries(resumenesDias).forEach(([fechaStr, datos]) => {
+        // Buscar el evento de resumen existente para esta fecha
+        const eventoResumen = window.calendar.getEvents().find(ev =>
+            ev.extendedProps?.tipo === "resumen-dia" &&
+            ev.extendedProps?.fecha === fechaStr
+        );
+
+        if (eventoResumen) {
+            // Actualizar el evento existente
+            eventoResumen.setExtendedProp("pesoTotal", datos.pesoTotal);
+            eventoResumen.setExtendedProp("longitudTotal", datos.longitudTotal);
+            eventoResumen.setExtendedProp("diametroMedio", datos.diametroMedio);
+
+            // Forzar re-renderizado del evento actualizando una propiedad visible
+            const peso = Number(datos.pesoTotal || 0).toLocaleString(undefined, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+            });
+            const longitud = Number(datos.longitudTotal || 0).toLocaleString(undefined, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+            });
+            eventoResumen.setProp("title", `📊 ${peso} kg · ${longitud} m`);
+        } else if (datos.pesoTotal > 0 || datos.longitudTotal > 0) {
+            // Si no existe pero hay datos, crear un nuevo evento de resumen
+            const peso = Number(datos.pesoTotal || 0).toLocaleString(undefined, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+            });
+            const longitud = Number(datos.longitudTotal || 0).toLocaleString(undefined, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+            });
+
+            window.calendar.addEvent({
+                title: `📊 ${peso} kg · ${longitud} m`,
+                start: fechaStr,
+                allDay: true,
+                backgroundColor: "#fef3c7",
+                borderColor: "#fbbf24",
+                textColor: "#92400e",
+                classNames: ["evento-resumen-diario"],
+                editable: false,
+                extendedProps: {
+                    tipo: "resumen-dia",
+                    pesoTotal: datos.pesoTotal,
+                    longitudTotal: datos.longitudTotal,
+                    diametroMedio: datos.diametroMedio,
+                    fecha: fechaStr,
+                },
+            });
+        }
+
+        // Si el resumen existía pero ahora tiene 0 datos, eliminarlo
+        if (eventoResumen && datos.pesoTotal === 0 && datos.longitudTotal === 0) {
+            eventoResumen.remove();
+        }
+    });
+
+    // Actualizar también el resumen custom de vista diaria si estamos en esa vista
+    if (window.calendar.view.type === "resourceTimeGridDay" && window.mostrarResumenDiario) {
+        window.limpiarResumenesCustom?.();
+        window.mostrarResumenDiario();
+    }
+}
+
+// Exponer la función globalmente
+window.actualizarResumenesDias = actualizarResumenesDias;
 
 function calcularFechaCentral(info) {
     if (info.view.type === "dayGridMonth") {

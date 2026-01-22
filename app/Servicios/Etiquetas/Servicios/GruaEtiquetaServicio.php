@@ -231,8 +231,7 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
 
             if (!$paquete) {
                 // Crear nuevo paquete (sin ubicación, se asignará después en el mapa)
-                $paquete = Paquete::create([
-                    'codigo' => Paquete::generarCodigo(),
+                $paquete = Paquete::crearConCodigoUnico([
                     'nave_id' => $maquina->obra_id,
                     'planilla_id' => $etiqueta->planilla_id,
                     'ubicacion_id' => null, // Se asignará en el mapa

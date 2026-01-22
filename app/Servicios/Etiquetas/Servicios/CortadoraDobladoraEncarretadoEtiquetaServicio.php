@@ -707,8 +707,14 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
 
         // Verificar si hay productos disponibles
         if ($productos->isEmpty()) {
-            $warnings[] = "Etiqueta {$etiqueta->etiqueta_sub_id}: No se encontraron productos para los diámetros requeridos.";
-            return false;
+            throw new ServicioEtiquetaException(
+                "No hay materia prima en la máquina {$maquina->nombre} para los diámetros requeridos (Ø" . implode(', Ø', $diametrosRequeridos) . "). Cargue materia prima antes de fabricar.",
+                [
+                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                    'maquina_id' => $maquina->id,
+                    'diametros_requeridos' => $diametrosRequeridos,
+                ]
+            );
         }
 
         // Agrupar por diámetro
@@ -732,8 +738,14 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                     $this->generarMovimientoRecargaMateriaPrima($productoBaseFaltante, $maquina, null);
                 }
             }
-            $warnings[] = "Etiqueta {$etiqueta->etiqueta_sub_id}: Faltan materias primas para Ø" . implode(', Ø', $faltantes);
-            return false;
+            throw new ServicioEtiquetaException(
+                "Falta materia prima de Ø" . implode(', Ø', $faltantes) . " en la máquina {$maquina->nombre}. Se ha solicitado recarga automáticamente.",
+                [
+                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                    'maquina_id' => $maquina->id,
+                    'diametros_faltantes' => $faltantes,
+                ]
+            );
         }
 
         // Simulación de consumo para detectar insuficiencias

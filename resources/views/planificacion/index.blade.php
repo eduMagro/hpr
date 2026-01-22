@@ -18,6 +18,11 @@
                                 class="border-gray-300 rounded-md px-3 py-2 text-sm flex-1 min-w-[120px] focus:ring-purple-500 focus:border-purple-500"
                                 autocomplete="off" />
                         </div>
+                        <!-- Clientes encontrados con fechas de entrega -->
+                        <div id="clientes-encontrados" class="hidden mt-3 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                            <p class="text-xs font-semibold text-blue-700 mb-1">Clientes encontrados:</p>
+                            <div id="clientes-encontrados-lista" class="flex flex-col gap-2 text-xs"></div>
+                        </div>
                     </div>
 
                     <!-- Filtro por obra -->
@@ -115,9 +120,19 @@
                     </div>
                 </div>
 
-                <!-- Botón de pantalla completa en esquina superior derecha -->
-                <button onclick="toggleFullScreen()" id="fullscreen-btn" title="Pantalla completa"
-                    class="absolute top-4 right-4 z-10 p-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors shadow-lg">
+                <!-- Botones en esquina superior derecha -->
+                <div class="absolute top-4 right-4 z-10 flex gap-2">
+                    <!-- Botón de historial -->
+                    <button onclick="abrirVentanaLogsS()" id="logs-btn-salidas" title="Ver historial de cambios"
+                        class="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                        </svg>
+                    </button>
+                    <!-- Botón de pantalla completa -->
+                    <button onclick="toggleFullScreen()" id="fullscreen-btn" title="Pantalla completa"
+                        class="p-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors shadow-lg">
                     <svg id="fullscreen-icon-expand" class="w-5 h-5" fill="none" stroke="currentColor"
                         viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -130,7 +145,8 @@
                             d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25">
                         </path>
                     </svg>
-                </button>
+                    </button>
+                </div>
 
                 <div id="calendario" data-calendar-type="salidas" class="min-h-[80vh] w-full"></div>
             </div>
@@ -142,7 +158,6 @@
             'csrf' => csrf_token(),
             'routes' => [
                 'planificacion' => url('/planificacion'),
-                'crearSalidaDesdeCalendario' => route('planificacion.crearSalidaDesdeCalendario'),
                 'informacionPaquetesSalida' => route('planificacion.informacionPaquetesSalida'),
                 'guardarPaquetesSalida' => route('planificacion.guardarPaquetesSalida'),
                 'comentario' => url('/planificacion/comentario/__ID__'),
@@ -444,11 +459,21 @@
                                 }
 
                                 listaResultados.innerHTML = obras.map(obra => `
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300">
-                                        <strong>${obra.codigo}</strong>
-                                        <span class="text-purple-600">(${obra.planillas.length} planillas)</span>
-                                        ${obra.ultimaFechaISO ? `<button type="button" onclick="window.irAFechaCalendario('${obra.ultimaFechaISO}')" class="ml-1 px-1.5 py-0.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition" title="Ir a última fecha de entrega">Ir</button>` : ''}
-                                    </span>
+                                    <div class="mb-2 p-2 bg-white rounded border border-purple-200">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <strong class="text-purple-800">${obra.codigo}</strong>
+                                            <span class="text-purple-600 text-xs">${obra.nombre || ''}</span>
+                                        </div>
+                                        <div class="flex flex-wrap gap-1">
+                                            ${obra.planillas.map(p => `
+                                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200 text-xs">
+                                                    <span>${p.codigo}</span>
+                                                    <span class="text-purple-500">(${p.fecha})</span>
+                                                    ${p.fechaISO ? `<button type="button" onclick="window.irAFechaCalendario('${p.fechaISO}')" class="px-1 py-0.5 bg-purple-600 hover:bg-purple-700 text-white rounded transition" title="Ir a ${p.fecha}">Ir</button>` : ''}
+                                                </span>
+                                            `).join('')}
+                                        </div>
+                                    </div>
                                 `).join('');
                                 containerResultados.classList.remove('hidden');
                             })
@@ -469,9 +494,87 @@
                 });
             }
 
+            function initBuscadorClientes() {
+                const inputCodCliente = document.getElementById('filtro-cod-cliente');
+                const inputNombreCliente = document.getElementById('filtro-cliente');
+                const containerResultados = document.getElementById('clientes-encontrados');
+                const listaResultados = document.getElementById('clientes-encontrados-lista');
+
+                if (!inputCodCliente || !inputNombreCliente || !containerResultados || !listaResultados) return;
+
+                // Evitar doble inicialización
+                if (inputCodCliente.dataset.buscadorInit === 'true') return;
+                inputCodCliente.dataset.buscadorInit = 'true';
+
+                let debounceTimer = null;
+
+                function buscarClientes() {
+                    clearTimeout(debounceTimer);
+                    const codigo = inputCodCliente.value.trim();
+                    const nombre = inputNombreCliente.value.trim();
+
+                    if (codigo.length < 2 && nombre.length < 2) {
+                        containerResultados.classList.add('hidden');
+                        listaResultados.innerHTML = '';
+                        return;
+                    }
+
+                    debounceTimer = setTimeout(() => {
+                        const params = new URLSearchParams();
+                        if (codigo) params.append('codigo', codigo);
+                        if (nombre) params.append('nombre', nombre);
+
+                        fetch(`{{ route('planificacion.buscarClientes') }}?${params.toString()}`)
+                            .then(res => res.json())
+                            .then(clientes => {
+                                if (clientes.length === 0) {
+                                    containerResultados.classList.add('hidden');
+                                    listaResultados.innerHTML = '';
+                                    return;
+                                }
+
+                                listaResultados.innerHTML = clientes.map(cliente => `
+                                    <div class="mb-2 p-2 bg-white rounded border border-blue-200">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <strong class="text-blue-800">${cliente.codigo}</strong>
+                                            <span class="text-blue-600 text-xs">${cliente.nombre || ''}</span>
+                                            <span class="text-gray-500 text-xs">(${cliente.obrasCount} obras)</span>
+                                        </div>
+                                        <div class="flex flex-wrap gap-1">
+                                            ${cliente.planillas.map(p => `
+                                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-xs">
+                                                    <span class="font-medium">${p.planillaCodigo}</span>
+                                                    <span>${p.fecha}</span>
+                                                    <span class="text-blue-500" title="${p.obraNombre}">(${p.obraCodigo})</span>
+                                                    ${p.fechaISO ? `<button type="button" onclick="window.irAFechaCalendario('${p.fechaISO}')" class="px-1 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded transition" title="Ir a ${p.fecha}">Ir</button>` : ''}
+                                                </span>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                `).join('');
+                                containerResultados.classList.remove('hidden');
+                            })
+                            .catch(err => {
+                                console.error('Error buscando clientes:', err);
+                                containerResultados.classList.add('hidden');
+                            });
+                    }, 300);
+                }
+
+                inputCodCliente.addEventListener('input', buscarClientes);
+                inputNombreCliente.addEventListener('input', buscarClientes);
+
+                // Limpiar al resetear filtros
+                document.getElementById('btn-reset-filtros')?.addEventListener('click', () => {
+                    containerResultados.classList.add('hidden');
+                    listaResultados.innerHTML = '';
+                });
+            }
+
             function initAll() {
                 initBuscadorPlanillas();
                 initBuscadorObras();
+                initBuscadorClientes();
             }
 
             // Inicializar en DOMContentLoaded
@@ -548,5 +651,226 @@
             <div class="absolute -bottom-2 left-4 w-4 h-4 bg-gray-900 transform rotate-45"></div>
         </div>
     </div>
+
+    <!-- Modal Logs de Planificación Salidas -->
+    <div id="modalLogsS" onclick="if(event.target === this) cerrarVentanaLogsS()"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] flex flex-col">
+            <div class="bg-indigo-600 text-white px-6 py-4 rounded-t-lg flex justify-between items-center">
+                <h3 class="text-lg font-semibold flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                    </svg>
+                    Historial de Cambios
+                </h3>
+                <button onclick="cerrarVentanaLogsS()" class="text-white hover:text-gray-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="px-6 py-4 flex-1 overflow-y-auto" id="logs-container-s">
+                <div id="logs-loading-s" class="flex justify-center py-8">
+                    <svg class="animate-spin h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+                <div id="logs-list-s" class="space-y-3 hidden"></div>
+                <div id="logs-empty-s" class="hidden text-center py-8 text-gray-500">
+                    <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                    <p>No hay registros de cambios</p>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+                <span id="logs-total-s" class="text-sm text-gray-500"></span>
+                <div class="flex gap-3">
+                    <button onclick="cargarMasLogsS()" id="logs-cargar-mas-s" class="hidden px-4 py-2 text-sm bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors">
+                        Cargar más
+                    </button>
+                    <button onclick="cerrarVentanaLogsS()"
+                        class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition-colors">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // LOGS DE PLANIFICACIÓN SALIDAS
+        // ============================================================
+
+        let logsOffsetS = 0;
+        const logsLimitS = 20;
+        let logsTotalCountS = 0;
+
+        function abrirVentanaLogsS() {
+            const modal = document.getElementById('modalLogsS');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            logsOffsetS = 0;
+            cargarLogsS(true);
+        }
+
+        function cerrarVentanaLogsS() {
+            const modal = document.getElementById('modalLogsS');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function cargarLogsS(reset = false) {
+            if (reset) {
+                logsOffsetS = 0;
+                document.getElementById('logs-list-s').innerHTML = '';
+            }
+
+            document.getElementById('logs-loading-s').classList.remove('hidden');
+            document.getElementById('logs-list-s').classList.add('hidden');
+            document.getElementById('logs-empty-s').classList.add('hidden');
+
+            try {
+                const response = await fetch(`{{ route('planificacion.logs') }}?limit=${logsLimitS}&offset=${logsOffsetS}`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
+
+                const data = await response.json();
+
+                document.getElementById('logs-loading-s').classList.add('hidden');
+
+                if (data.success) {
+                    logsTotalCountS = data.total;
+                    document.getElementById('logs-total-s').textContent = `${data.total} registro(s) en total`;
+
+                    if (data.logs.length === 0 && logsOffsetS === 0) {
+                        document.getElementById('logs-empty-s').classList.remove('hidden');
+                    } else {
+                        document.getElementById('logs-list-s').classList.remove('hidden');
+                        renderizarLogsS(data.logs, reset);
+
+                        const cargarMasBtn = document.getElementById('logs-cargar-mas-s');
+                        if (data.has_more) {
+                            cargarMasBtn.classList.remove('hidden');
+                        } else {
+                            cargarMasBtn.classList.add('hidden');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error cargando logs:', error);
+                document.getElementById('logs-loading-s').classList.add('hidden');
+            }
+        }
+
+        function cargarMasLogsS() {
+            logsOffsetS += logsLimitS;
+            cargarLogsS(false);
+        }
+
+        function renderizarLogsS(logs, reset) {
+            const container = document.getElementById('logs-list-s');
+
+            if (reset) {
+                container.innerHTML = '';
+            }
+
+            logs.forEach(log => {
+                const iconos = {
+                    'mover_planilla': { icon: '📅', color: 'bg-purple-100 text-purple-700' },
+                    'mover_salida': { icon: '🚚', color: 'bg-green-100 text-green-700' },
+                    'crear_salida': { icon: '➕', color: 'bg-blue-100 text-blue-700' },
+                    'eliminar_salida': { icon: '🗑️', color: 'bg-red-100 text-red-700' },
+                    'actualizar_salida': { icon: '✏️', color: 'bg-yellow-100 text-yellow-700' },
+                    'revertir_accion': { icon: '↩️', color: 'bg-orange-100 text-orange-700' }
+                };
+
+                const config = iconos[log.accion] || { icon: '📝', color: 'bg-gray-100 text-gray-700' };
+
+                const detallesHtml = log.detalles ? `
+                    <button onclick="toggleDetallesLogS(${log.id})" class="text-xs text-indigo-600 hover:text-indigo-800 mt-1">
+                        Ver detalles
+                    </button>
+                    <pre id="detalles-log-s-${log.id}" class="hidden mt-2 text-xs bg-gray-50 p-2 rounded overflow-x-auto">${JSON.stringify(log.detalles, null, 2)}</pre>
+                ` : '';
+
+                let revertirHtml = '';
+                if (log.puede_revertirse) {
+                    revertirHtml = `
+                        <button onclick="revertirLogS(${log.id})" class="ml-2 px-2 py-1 text-xs bg-orange-500 hover:bg-orange-600 text-white rounded transition-colors" title="Deshacer esta acción">
+                            ↩️ Deshacer
+                        </button>
+                    `;
+                } else if (log.revertido) {
+                    revertirHtml = `<span class="ml-2 text-xs text-gray-400 italic">Revertido</span>`;
+                }
+
+                const html = `
+                    <div class="flex gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors ${log.revertido ? 'opacity-60' : ''}">
+                        <div class="flex-shrink-0">
+                            <span class="inline-flex items-center justify-center w-10 h-10 rounded-full ${config.color} text-lg">
+                                ${config.icon}
+                            </span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between">
+                                <p class="text-sm text-gray-900">
+                                    <span class="font-semibold text-indigo-700">${log.usuario}</span> ${log.descripcion}
+                                </p>
+                                ${revertirHtml}
+                            </div>
+                            <span class="text-xs text-gray-500" title="${log.fecha}">${log.fecha_relativa}</span>
+                            ${detallesHtml}
+                        </div>
+                    </div>
+                `;
+
+                container.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        async function revertirLogS(logId) {
+            if (!confirm('¿Estás seguro de que deseas deshacer esta acción?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('{{ route('planificacion.revertirLog') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ log_id: logId })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Acción revertida correctamente');
+                    cargarLogsS(true);
+                    if (window.calendar) {
+                        window.calendar.refetchEvents();
+                    }
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error al revertir:', error);
+                alert('Error al revertir la acción');
+            }
+        }
+
+        function toggleDetallesLogS(logId) {
+            const detalles = document.getElementById(`detalles-log-s-${logId}`);
+            detalles.classList.toggle('hidden');
+        }
+    </script>
 
 </x-app-layout>

@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Models\Obra;
 use App\Models\Paquete;
 use App\Models\Salida;
 use App\Models\SalidaCliente;
@@ -39,11 +40,18 @@ class PaqueteObserver
             return;
         }
 
-        // Obtener obra_id de la planilla
+        // Obtener obra_id de la planilla y verificar que existe
         $obraId = $planilla->obra_id;
 
         if (!$obraId) {
             Log::warning("Paquete #{$paquete->id}: No se puede asociar, planilla #{$planilla->id} no tiene obra_id");
+            return;
+        }
+
+        // Verificar que la obra existe en la base de datos
+        $obraExiste = Obra::where('id', $obraId)->exists();
+        if (!$obraExiste) {
+            Log::warning("Paquete #{$paquete->id}: No se puede asociar, obra #{$obraId} no existe en la base de datos");
             return;
         }
 

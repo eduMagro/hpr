@@ -4,7 +4,7 @@ import { gestionarPaquetesSalida } from "./calendario-menu.js";
 import { invalidateCache } from "./eventos.js";
 import "./recursos.js";
 import "./tooltips.js";
-import "./totales.js";
+// totales.js ya no se necesita - los totales vienen en la respuesta de eventos (tipo=all)
 
 // ---- helpers para etiquetas semana/mes
 function etiquetaMes(fechaISO) {
@@ -33,47 +33,13 @@ function etiquetaSemana(fechaISO) {
     )})`;
 }
 
-// ---- pintar resúmenes
-function actualizarTotales(fechaISO) {
+// ---- pintar etiquetas de fechas (semana/mes)
+// Los totales se actualizan automáticamente desde updateTotalesFromCache en eventos.js
+function actualizarEtiquetasFecha(fechaISO) {
     const semanalSpan = document.querySelector("#resumen-semanal-fecha");
     const mensualSpan = document.querySelector("#resumen-mensual-fecha");
     if (semanalSpan) semanalSpan.textContent = etiquetaSemana(fechaISO);
     if (mensualSpan) mensualSpan.textContent = etiquetaMes(fechaISO);
-
-    // Verificar que AppSalidas esté inicializado
-    const baseUrl = window.AppSalidas?.routes?.totales;
-    if (!baseUrl) return;
-
-    const url = `${baseUrl}?fecha=${encodeURIComponent(fechaISO)}`;
-    fetch(url)
-        .then((r) => r.json())
-        .then((data) => {
-            const s = data.semana || {};
-            const m = data.mes || {};
-
-            document.querySelector(
-                "#resumen-semanal-peso"
-            ).textContent = `📦 ${Number(s.peso || 0).toLocaleString()} kg`;
-            document.querySelector(
-                "#resumen-semanal-longitud"
-            ).textContent = `📏 ${Number(s.longitud || 0).toLocaleString()} m`;
-            document.querySelector("#resumen-semanal-diametro").textContent =
-                s.diametro != null
-                    ? `⌀ ${Number(s.diametro).toFixed(2)} mm`
-                    : "";
-
-            document.querySelector(
-                "#resumen-mensual-peso"
-            ).textContent = `📦 ${Number(m.peso || 0).toLocaleString()} kg`;
-            document.querySelector(
-                "#resumen-mensual-longitud"
-            ).textContent = `📏 ${Number(m.longitud || 0).toLocaleString()} m`;
-            document.querySelector("#resumen-mensual-diametro").textContent =
-                m.diametro != null
-                    ? `⌀ ${Number(m.diametro).toFixed(2)} mm`
-                    : "";
-        })
-        .catch((err) => console.error("❌ Totales:", err));
 }
 
 // ---- lógica principal
@@ -110,10 +76,10 @@ function inicializarCalendario() {
         cal.refetchEvents();
     });
 
-    // Totales iniciales
+    // Etiquetas de fecha iniciales (los totales se cargan con los eventos via updateTotalesFromCache)
     const saved = localStorage.getItem("fechaCalendario");
     const hoyISO = (saved || new Date().toISOString()).split("T")[0];
-    actualizarTotales(hoyISO);
+    actualizarEtiquetasFecha(hoyISO);
 
     // Restaurar estado de los checkboxes desde localStorage
     const soloSalidasGuardado = localStorage.getItem("soloSalidas") === "true";

@@ -35,28 +35,90 @@ class Paquete extends Model
      * - P = Prefijo para paquete
      * - YY = Año (2 dígitos)
      * - MM = Mes (2 dígitos)
-     * - nnnn = Número secuencial (4 dígitos con padding)
-     * 
+     * - nnnn = Número secuencial (mínimo 4 dígitos con padding)
+     *
+     * Usa bloqueo de base de datos para evitar condiciones de carrera.
+     *
      * @return string Código generado
      */
     public static function generarCodigo()
+    {
+        return \DB::transaction(function () {
+            $year = now()->format('y');
+            $month = now()->format('m');
+            $prefix = "P{$year}{$month}";
+
+            // Calcular el máximo directamente en SQL (evita cargar miles de registros)
+            $ultimoNumero = self::withTrashed()
+                ->where('codigo', 'LIKE', "{$prefix}%")
+                ->lockForUpdate()
+                ->selectRaw("MAX(CAST(SUBSTRING(codigo, 6) AS UNSIGNED)) as max_num")
+                ->value('max_num') ?? 0;
+
+            $nuevoNumero = $ultimoNumero + 1;
+
+            // Usar mínimo 4 dígitos, pero permitir más si es necesario
+            return $nuevoNumero < 10000
+                ? "{$prefix}" . str_pad($nuevoNumero, 4, '0', STR_PAD_LEFT)
+                : "{$prefix}{$nuevoNumero}";
+        });
+    }
+
+    /**
+     * Crea un paquete con código único generado automáticamente.
+     * Reintenta automáticamente en caso de conflicto de unicidad.
+     *
+     * @param array $datos Datos del paquete (sin 'codigo')
+     * @param int $maxReintentos Número máximo de reintentos
+     * @return Paquete
+     * @throws \Exception Si no se puede crear después de los reintentos
+     */
+    public static function crearConCodigoUnico(array $datos, int $maxReintentos = 5): self
+    {
+        $intento = 0;
+
+        while ($intento < $maxReintentos) {
+            try {
+                return \DB::transaction(function () use ($datos) {
+                    $codigo = self::generarCodigoInterno();
+                    $datos['codigo'] = $codigo;
+                    return self::create($datos);
+                });
+            } catch (\Illuminate\Database\QueryException $e) {
+                // Error 1062 = Duplicate entry
+                if ($e->errorInfo[1] === 1062 && str_contains($e->getMessage(), 'codigo')) {
+                    $intento++;
+                    usleep(50000); // Esperar 50ms antes de reintentar
+                    continue;
+                }
+                throw $e;
+            }
+        }
+
+        throw new \Exception("No se pudo generar un código único después de {$maxReintentos} intentos");
+    }
+
+    /**
+     * Genera código interno (sin transacción propia, para usar dentro de otra transacción)
+     */
+    private static function generarCodigoInterno(): string
     {
         $year = now()->format('y');
         $month = now()->format('m');
         $prefix = "P{$year}{$month}";
 
-        // Obtener todos los códigos con el prefijo y extraer el número más alto
-        $ultimoNumero = self::withTrashed()   // 👈 INCLUYE soft-deletes
+        // Calcular el máximo directamente en SQL (mucho más eficiente)
+        $ultimoNumero = self::withTrashed()
             ->where('codigo', 'LIKE', "{$prefix}%")
-            ->get()
-            ->map(function ($paquete) {
-                return intval(substr($paquete->codigo, 5));
-            })
-            ->max();
+            ->lockForUpdate()
+            ->selectRaw("MAX(CAST(SUBSTRING(codigo, 6) AS UNSIGNED)) as max_num")
+            ->value('max_num') ?? 0;
 
-        $nuevoNumero = $ultimoNumero ? str_pad($ultimoNumero + 1, 4, '0', STR_PAD_LEFT) : '0001';
+        $nuevoNumero = $ultimoNumero + 1;
 
-        return "{$prefix}{$nuevoNumero}";
+        return $nuevoNumero < 10000
+            ? "{$prefix}" . str_pad($nuevoNumero, 4, '0', STR_PAD_LEFT)
+            : "{$prefix}{$nuevoNumero}";
     }
 
     // ==================== RELACIONES ====================

@@ -2051,10 +2051,14 @@ window.abrirModalDividirElemento = function abrirModalDividirElemento(elementoId
     const modal = document.getElementById("modalDividirElemento");
     const input = document.getElementById("dividir_elemento_id");
     const inputBarrasTotales = document.getElementById("dividir_barras_totales");
+    const inputPesoTotal = document.getElementById("dividir_peso_total");
     const labelBarras = document.getElementById("labelBarrasActuales");
     const inputBarrasAMover = document.getElementById("barras_a_mover");
     const preview = document.getElementById("previewDivision");
     const form = document.getElementById("formDividirElemento");
+    const badgeSugerencia = document.getElementById("badgeSugerenciaPeso");
+    const barrasSugeridas = document.getElementById("barrasSugeridas");
+    const detalleSugerencia = document.getElementById("detalleSugerencia");
 
     if (!modal || !input || !form) return;
 
@@ -2135,6 +2139,71 @@ window.abrirModalDividirElemento = function abrirModalDividirElemento(elementoId
 
     if (inputBarrasTotales) inputBarrasTotales.value = barrasTotales;
     if (labelBarras) labelBarras.textContent = barrasTotales > 0 ? barrasTotales : '-';
+
+    // Obtener peso del elemento y calcular sugerencia para paquetes de máx 1200 kg
+    // Usar peso_numerico (valor numérico) en lugar de peso (cadena formateada)
+    const pesoTotal = elementoData ? parseFloat(elementoData.peso_numerico) || 0 : 0;
+    if (inputPesoTotal) inputPesoTotal.value = pesoTotal;
+
+    console.log('🔍 Debug badge sugerencia:', {
+        peso_numerico: elementoData?.peso_numerico,
+        pesoTotal,
+        barrasTotales
+    });
+
+    // Calcular barras sugeridas para mantener paquetes bajo 1200 kg
+    const PESO_MAXIMO_PAQUETE = 1200;
+    const divisionAutoData = document.getElementById('divisionAutoData');
+
+    if (badgeSugerencia && barrasSugeridas && barrasTotales > 0 && pesoTotal > 0) {
+        const pesoPorBarra = pesoTotal / barrasTotales;
+        const barrasMaxPorPaquete = Math.floor(PESO_MAXIMO_PAQUETE / pesoPorBarra);
+
+        if (pesoTotal > PESO_MAXIMO_PAQUETE && barrasMaxPorPaquete < barrasTotales) {
+            // Calcular cuántas etiquetas se necesitan
+            const numEtiquetas = Math.ceil(barrasTotales / barrasMaxPorPaquete);
+
+            // Calcular distribución equitativa de barras
+            const barrasPorEtiqueta = Math.floor(barrasTotales / numEtiquetas);
+            const etiquetasConBarraExtra = barrasTotales % numEtiquetas;
+
+            // Guardar datos para división automática
+            if (divisionAutoData) {
+                divisionAutoData.value = JSON.stringify({
+                    elemento_id: elementoId,
+                    etiqueta_sub_id: elementoData?.etiqueta_sub_id || null,
+                    num_etiquetas: numEtiquetas,
+                    barras_por_etiqueta: barrasPorEtiqueta,
+                    etiquetas_con_barra_extra: etiquetasConBarraExtra,
+                    barras_totales: barrasTotales,
+                    peso_por_barra: pesoPorBarra
+                });
+            }
+
+            // Construir mensaje descriptivo
+            let detalle = '';
+            if (etiquetasConBarraExtra === 0) {
+                // Todas las etiquetas tienen el mismo número de barras
+                detalle = `${numEtiquetas} etiquetas de ${barrasPorEtiqueta} barras cada una (~${(barrasPorEtiqueta * pesoPorBarra).toFixed(0)} kg)`;
+            } else {
+                // Algunas etiquetas tienen una barra más
+                const barrasGrande = barrasPorEtiqueta + 1;
+                const barrasPeque = barrasPorEtiqueta;
+                detalle = `${etiquetasConBarraExtra} etiqueta(s) de ${barrasGrande} barras + ${numEtiquetas - etiquetasConBarraExtra} etiqueta(s) de ${barrasPeque} barras`;
+            }
+
+            barrasSugeridas.textContent = `${numEtiquetas} etiquetas`;
+            detalleSugerencia.innerHTML = detalle + `<br><span class="text-xs text-amber-600">Barras máx por etiqueta: ${barrasMaxPorPaquete} (para no superar ${PESO_MAXIMO_PAQUETE} kg)</span>`;
+            badgeSugerencia.classList.remove('hidden');
+        } else {
+            // No necesita dividir, el peso ya es menor a 1200 kg
+            badgeSugerencia.classList.add('hidden');
+            if (divisionAutoData) divisionAutoData.value = '';
+        }
+    } else {
+        if (badgeSugerencia) badgeSugerencia.classList.add('hidden');
+        if (divisionAutoData) divisionAutoData.value = '';
+    }
 
     // Limpiar campo de barras a mover y preview
     if (inputBarrasAMover) inputBarrasAMover.value = '';

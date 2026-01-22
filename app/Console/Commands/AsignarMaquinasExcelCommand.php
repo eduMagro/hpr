@@ -830,8 +830,7 @@ class AsignarMaquinasExcelCommand extends Command
                 if (!$paquete) {
                     // Solo crear paquete si no existe
                     $pesoTotal = $etiquetas->sum('peso');
-                    $paquete = Paquete::create([
-                        'codigo'      => Paquete::generarCodigo(),
+                    $paquete = Paquete::crearConCodigoUnico([
                         'planilla_id' => $planilla->id,
                         'peso'        => $pesoTotal,
                         'estado'      => 'pendiente',

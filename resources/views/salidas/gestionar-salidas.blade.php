@@ -122,8 +122,8 @@
                                     {{ ucfirst($planilla->estado) }}
                                 </span>
                             </div>
-                            <p class="text-sm text-gray-600">Obra: {{ $planilla->obra->obra }}</p>
-                            <p class="text-sm text-gray-600">Cliente: {{ $planilla->cliente->empresa }}</p>
+                            <p class="text-sm text-gray-600">Obra: {{ $planilla->obra?->obra ?? 'Sin obra' }}</p>
+                            <p class="text-sm text-gray-600">Cliente: {{ $planilla->cliente?->empresa ?? 'Sin cliente' }}</p>
 
                             {{-- Resumen de pesos --}}
                             <div class="mt-2 p-2 bg-gray-50 rounded text-xs space-y-1">

@@ -552,6 +552,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === PAQUETES ETIQUETAS Y ELEMENTOS ===
 
     Route::post('/elementos/dividir', [ElementoController::class, 'dividirElemento'])->name('elementos.dividir');
+    Route::post('/elementos/dividir-auto', [ElementoController::class, 'dividirAuto'])->name('elementos.dividir-auto');
     Route::post('/elementos/{elementoId}/solicitar-cambio-maquina', [ElementoController::class, 'solicitarCambioMaquina']);
     Route::put('/elementos/{id}/cambio-maquina', [ElementoController::class, 'cambioMaquina'])->name('elementos.cambioMaquina');
     Route::post('/subetiquetas/crear', [ElementoController::class, 'crearSubEtiqueta'])->name('subetiquetas.crear');
@@ -635,6 +636,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/planificacion/totales', [PlanificacionController::class, 'getTotalesAjax']);
     Route::get('/planificacion/buscar-planillas', [PlanificacionController::class, 'buscarPlanillas'])->name('planificacion.buscarPlanillas');
     Route::get('/planificacion/buscar-obras', [PlanificacionController::class, 'buscarObras'])->name('planificacion.buscarObras');
+    Route::get('/planificacion/buscar-clientes', [PlanificacionController::class, 'buscarClientes'])->name('planificacion.buscarClientes');
+    Route::get('/planificacion/logs', [PlanificacionController::class, 'obtenerLogs'])->name('planificacion.logs');
+    Route::post('/planificacion/revertir-log', [PlanificacionController::class, 'revertirLog'])->name('planificacion.revertirLog');
     Route::post('/planificacion/simular-adelanto', [PlanificacionController::class, 'simularAdelanto'])->name('planificacion.simularAdelanto');
     Route::post('/planificacion/ejecutar-adelanto', [PlanificacionController::class, 'ejecutarAdelanto'])->name('planificacion.ejecutarAdelanto');
     Route::post('/planificacion/ejecutar-adelanto-elementos', [PlanificacionController::class, 'ejecutarAdelantoElementos'])->name('planificacion.ejecutarAdelantoElementos');
@@ -672,7 +676,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::put('/salidas/{salida}/actualizar-estado', [SalidaFerrallaController::class, 'editarActualizarEstado']);
     Route::post('/actualizar-fecha-salida', [SalidaFerrallaController::class, 'actualizarFechaSalida'])->name('salidas.actualizarFechaSalida');
     Route::post('/escaneo', [SalidaFerrallaController::class, 'marcarSubido'])->name('escaneo.marcarSubido');
-    Route::post('/planificacion/crear-salida-desde-calendario', [SalidaFerrallaController::class, 'crearSalidaDesdeCalendario'])->name('planificacion.crearSalidaDesdeCalendario');
     Route::post('/planificacion/guardar-asignaciones-paquetes', [SalidaFerrallaController::class, 'guardarAsignacionesPaquetes'])->name('planificacion.guardarAsignacionesPaquetes');
     Route::get('/planificacion/informacion-paquetes-salida', [SalidaFerrallaController::class, 'informacionPaquetesSalida'])->name('planificacion.informacionPaquetesSalida');
     Route::post('/planificacion/guardar-paquetes-salida', [SalidaFerrallaController::class, 'guardarPaquetesSalida'])->name('planificacion.guardarPaquetesSalida');
