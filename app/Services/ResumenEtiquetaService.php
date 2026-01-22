@@ -33,11 +33,10 @@ class ResumenEtiquetaService
     ): array {
         return DB::transaction(function () use ($planillaId, $maquinaId, $usuarioId) {
 
-            // 1. Obtener etiquetas elegibles (pendientes, no agrupadas ya, y que permitan agrupación)
+            // 1. Obtener etiquetas elegibles (pendientes, no agrupadas ya)
             $query = Etiqueta::where('planilla_id', $planillaId)
                 ->where('estado', 'pendiente')
-                ->whereNull('grupo_resumen_id')
-                ->where('no_agrupar', false);
+                ->whereNull('grupo_resumen_id');
 
             if ($maquinaId) {
                 // Filtrar etiquetas cuyos elementos estén en esta máquina
@@ -165,8 +164,7 @@ class ResumenEtiquetaService
     {
         $query = Etiqueta::where('planilla_id', $planillaId)
             ->where('estado', 'pendiente')
-            ->whereNull('grupo_resumen_id')
-            ->where('no_agrupar', false);
+            ->whereNull('grupo_resumen_id');
 
         if ($maquinaId) {
             $query->whereHas('elementos', function ($q) use ($maquinaId) {
@@ -277,21 +275,12 @@ class ResumenEtiquetaService
         $totalEtiquetas = $grupo->total_etiquetas;
         $codigo = $grupo->codigo;
 
-        // Marcar etiquetas para que no se reagrupen automáticamente
-        $etiquetaIds = $grupo->etiquetas()->pluck('id')->toArray();
-
         $grupo->desagrupar();
-
-        // Marcar etiquetas con no_agrupar = true para evitar reagrupación automática
-        if (!empty($etiquetaIds)) {
-            Etiqueta::whereIn('id', $etiquetaIds)->update(['no_agrupar' => true]);
-        }
 
         Log::info('Grupo de resumen desagrupado manualmente', [
             'grupo_id' => $grupoId,
             'codigo' => $codigo,
             'etiquetas_liberadas' => $totalEtiquetas,
-            'etiquetas_marcadas_no_agrupar' => count($etiquetaIds),
         ]);
 
         return [
@@ -703,10 +692,9 @@ class ResumenEtiquetaService
         return DB::transaction(function () use ($maquinaId, $usuarioId) {
             Log::info('📦 resumirMultiplanilla - Dentro de transacción');
 
-            // 1. Obtener etiquetas elegibles de planillas REVISADAS (excluyendo las marcadas como no_agrupar)
+            // 1. Obtener etiquetas elegibles de planillas REVISADAS
             $query = Etiqueta::where('estado', 'pendiente')
                 ->whereNull('grupo_resumen_id')
-                ->where('no_agrupar', false)
                 ->whereHas('planilla', function ($q) {
                     $q->where('revisada', true);
                 })
@@ -772,7 +760,6 @@ class ResumenEtiquetaService
             $etiquetas = Etiqueta::whereIn('id', $etiquetaIds)
                 ->where('estado', 'pendiente')
                 ->whereNull('grupo_resumen_id')
-                ->where('no_agrupar', false)
                 ->whereHas('planilla', fn($q) => $q->where('revisada', true))
                 ->with(['elementos', 'planilla'])
                 ->limit(500)
@@ -891,7 +878,6 @@ class ResumenEtiquetaService
     {
         $query = Etiqueta::where('estado', 'pendiente')
             ->whereNull('grupo_resumen_id')
-            ->where('no_agrupar', false)
             ->whereHas('planilla', function ($q) {
                 $q->where('revisada', true);
             })
@@ -1038,96 +1024,6 @@ class ResumenEtiquetaService
             ->orderBy('diametro')
             ->orderBy('dimensiones')
             ->get();
-    }
-
-    /**
-     * Habilita la reagrupación para etiquetas de una máquina que fueron previamente desagrupadas.
-     * Resetea el campo no_agrupar a false para las etiquetas pendientes de esta máquina.
-     *
-     * @param int $maquinaId ID de la máquina
-     * @param array|null $etiquetaIds IDs específicos de etiquetas a habilitar (opcional, si null habilita todas)
-     * @return array Resultado de la operación
-     */
-    public function habilitarReagrupacion(int $maquinaId, ?array $etiquetaIds = null): array
-    {
-        Log::info('🔓 habilitarReagrupacion INICIO', ['maquina_id' => $maquinaId]);
-
-        $query = Etiqueta::where('estado', 'pendiente')
-            ->where('no_agrupar', true)
-            ->whereNull('grupo_resumen_id')
-            ->whereHas('planilla', function ($q) {
-                $q->where('revisada', true);
-            })
-            ->whereHas('elementos', function ($q) use ($maquinaId) {
-                $q->where(function ($subQ) use ($maquinaId) {
-                    $subQ->where('maquina_id', $maquinaId)
-                        ->orWhere('maquina_id_2', $maquinaId);
-                });
-            });
-
-        if ($etiquetaIds) {
-            $query->whereIn('id', $etiquetaIds);
-        }
-
-        Log::info('🔓 habilitarReagrupacion - Ejecutando query');
-        $etiquetas = $query->get();
-        $total = $etiquetas->count();
-        Log::info('🔓 habilitarReagrupacion - Etiquetas encontradas: ' . $total);
-
-        if ($total === 0) {
-            return [
-                'success' => true,
-                'message' => 'No hay etiquetas marcadas como no-agrupar para habilitar',
-                'total' => 0,
-            ];
-        }
-
-        // Resetear el campo no_agrupar
-        $query->update(['no_agrupar' => false]);
-
-        Log::info('Etiquetas habilitadas para reagrupación', [
-            'maquina_id' => $maquinaId,
-            'etiquetas_habilitadas' => $total,
-        ]);
-
-        return [
-            'success' => true,
-            'message' => "{$total} etiquetas habilitadas para reagrupación",
-            'total' => $total,
-        ];
-    }
-
-    /**
-     * Habilita reagrupación y ejecuta el resumen multi-planilla en un solo paso.
-     *
-     * @param int $maquinaId ID de la máquina
-     * @param int|null $usuarioId ID del usuario que realiza la acción
-     * @return array Resultado de la operación
-     */
-    public function reagruparManual(int $maquinaId, ?int $usuarioId = null): array
-    {
-        Log::info('🔄 reagruparManual INICIO', ['maquina_id' => $maquinaId, 'usuario_id' => $usuarioId]);
-
-        // Primero habilitar todas las etiquetas marcadas como no_agrupar
-        $habilitacion = $this->habilitarReagrupacion($maquinaId);
-        Log::info('🔄 reagruparManual - habilitarReagrupacion completado', ['resultado' => $habilitacion]);
-
-        // Luego ejecutar el resumen multi-planilla
-        Log::info('🔄 reagruparManual - ANTES de llamar a resumirMultiplanilla');
-        $resumen = $this->resumirMultiplanilla($maquinaId, $usuarioId);
-        Log::info('🔄 reagruparManual - DESPUÉS de resumirMultiplanilla');
-        Log::info('🔄 reagruparManual - resumirMultiplanilla completado', ['stats' => $resumen['stats'] ?? 'sin stats']);
-
-        Log::info('🔄 reagruparManual FIN');
-
-        return [
-            'success' => true,
-            'message' => "Reagrupación manual completada: {$habilitacion['total']} etiquetas habilitadas, {$resumen['stats']['grupos_creados']} grupos creados",
-            'etiquetas_habilitadas' => $habilitacion['total'],
-            'grupos_creados' => $resumen['stats']['grupos_creados'],
-            'etiquetas_agrupadas' => $resumen['stats']['etiquetas_agrupadas'],
-            'grupos' => $resumen['grupos'] ?? [],
-        ];
     }
 
     /**

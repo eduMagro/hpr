@@ -100,14 +100,6 @@ Route::prefix('etiquetas/resumir')->group(function () {
     // Desagrupar todos los grupos multi-planilla de una máquina
     Route::post('/multiplanilla/desagrupar-todos', [ResumenEtiquetaController::class, 'desagruparTodosMultiplanilla'])
         ->name('api.etiquetas.resumir.multiplanilla.desagrupar-todos');
-
-    // Reagrupar manualmente (habilita etiquetas desagrupadas + ejecuta resumen)
-    Route::post('/multiplanilla/reagrupar', [ResumenEtiquetaController::class, 'reagruparManual'])
-        ->name('api.etiquetas.resumir.multiplanilla.reagrupar');
-
-    // Habilitar reagrupación para etiquetas específicas o todas de una máquina
-    Route::post('/multiplanilla/habilitar-reagrupacion', [ResumenEtiquetaController::class, 'habilitarReagrupacion'])
-        ->name('api.etiquetas.resumir.multiplanilla.habilitar-reagrupacion');
 });
 
 // =====================================================================

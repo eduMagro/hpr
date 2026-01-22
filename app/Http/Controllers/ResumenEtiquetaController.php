@@ -225,64 +225,6 @@ class ResumenEtiquetaController extends Controller
     }
 
     /**
-     * Reagrupa manualmente todas las etiquetas de una máquina.
-     * Habilita etiquetas previamente desagrupadas y ejecuta el resumen.
-     * POST /api/etiquetas/resumir/multiplanilla/reagrupar
-     */
-    public function reagruparManual(Request $request): JsonResponse
-    {
-        \Log::info('🎯 reagruparManual CONTROLLER - Petición recibida', [
-            'maquina_id' => $request->input('maquina_id'),
-            'user_id' => auth()->id(),
-        ]);
-
-        $request->validate([
-            'maquina_id' => 'required|integer|exists:maquinas,id',
-        ]);
-
-        \Log::info('🎯 reagruparManual CONTROLLER - Validación OK, llamando al servicio');
-
-        try {
-            $resultado = $this->resumenService->reagruparManual(
-                $request->integer('maquina_id'),
-                auth()->id()
-            );
-
-            return response()->json($resultado);
-        } catch (\Throwable $e) {
-            \Log::error('Error en reagruparManual: ' . $e->getMessage(), [
-                'maquina_id' => $request->integer('maquina_id'),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al reagrupar: ' . $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Habilita la reagrupación para etiquetas específicas o todas de una máquina.
-     * POST /api/etiquetas/resumir/multiplanilla/habilitar-reagrupacion
-     */
-    public function habilitarReagrupacion(Request $request): JsonResponse
-    {
-        $request->validate([
-            'maquina_id' => 'required|integer|exists:maquinas,id',
-            'etiqueta_ids' => 'nullable|array',
-            'etiqueta_ids.*' => 'integer|exists:etiquetas,id',
-        ]);
-
-        $resultado = $this->resumenService->habilitarReagrupacion(
-            $request->integer('maquina_id'),
-            $request->input('etiqueta_ids')
-        );
-
-        return response()->json($resultado);
-    }
-
-    /**
      * Deshace el último estado de un grupo de etiquetas.
      * Revierte: completada -> fabricando -> pendiente
      * POST /api/etiquetas/resumir/{grupo}/deshacer-estado
