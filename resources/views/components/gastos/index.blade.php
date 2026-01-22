@@ -128,8 +128,42 @@
                 </div>
             </div>
 
+            <!-- View Switcher -->
+            <div class="flex justify-center mb-8">
+                <div
+                    class="inline-flex p-1.5 bg-gray-100/80 backdrop-blur-md rounded-2xl border border-gray-200 shadow-inner dark:bg-gray-800/80 dark:border-gray-700">
+                    <button @click="activeView = 'list'"
+                        :class="activeView === 'list' ?
+                            'bg-white text-indigo-700 shadow-md ring-1 ring-black/5 dark:bg-gray-700 dark:text-indigo-300 dark:ring-white/10' :
+                            'text-gray-500 hover:text-gray-700 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700/50'"
+                        class="px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Tabla de Gastos
+                    </button>
+                    <button @click="activeView = 'charts'; $nextTick(() => { loadCharts() })"
+                        :class="activeView === 'charts' ?
+                            'bg-white text-indigo-700 shadow-md ring-1 ring-black/5 dark:bg-gray-700 dark:text-indigo-300 dark:ring-white/10' :
+                            'text-gray-500 hover:text-gray-700 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700/50'"
+                        class="px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                        </svg>
+                        Gráficas
+                    </button>
+                </div>
+            </div>
+
             <!-- Main Content Card -->
-            <div
+            <div x-show="activeView === 'list'" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
                 class="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden backdrop-blur-sm">
                 <div class="gastos-table-scroll relative overflow-x-auto overflow-y-auto max-h-[60vh]">
                     <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 table-fixed">
@@ -144,16 +178,12 @@
                                         <template x-if="sort.field === 'fecha_pedido'">
                                             <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg"
                                                 viewBox="0 0 20 20" fill="currentColor">
-                                                <template x-if="sort.dir === 'asc'">
-                                                    <path fill-rule="evenodd"
-                                                        d="M10 4a.75.75 0 01.53.22l4 4a.75.75 0 11-1.06 1.06L10 5.81 6.53 9.28A.75.75 0 115.47 8.22l4-4A.75.75 0 0110 4z"
-                                                        clip-rule="evenodd" />
-                                                </template>
-                                                <template x-if="sort.dir === 'desc'">
-                                                    <path fill-rule="evenodd"
-                                                        d="M10 16a.75.75 0 01-.53-.22l-4-4a.75.75 0 111.06-1.06L10 14.19l3.47-3.47a.75.75 0 111.06 1.06l-4 4A.75.75 0 0110 16z"
-                                                        clip-rule="evenodd" />
-                                                </template>
+                                                <path x-cloak x-show="sort.dir === 'asc'" fill-rule="evenodd"
+                                                    d="M10 4a.75.75 0 01.53.22l4 4a.75.75 0 11-1.06 1.06L10 5.81 6.53 9.28A.75.75 0 115.47 8.22l4-4A.75.75 0 0110 4z"
+                                                    clip-rule="evenodd" />
+                                                <path x-cloak x-show="sort.dir === 'desc'" fill-rule="evenodd"
+                                                    d="M10 16a.75.75 0 01-.53-.22l-4-4a.75.75 0 111.06-1.06L10 14.19l3.47-3.47a.75.75 0 111.06 1.06l-4 4A.75.75 0 0110 16z"
+                                                    clip-rule="evenodd" />
                                             </svg>
                                         </template>
                                     </button>
@@ -165,16 +195,12 @@
                                         <template x-if="sort.field === 'fecha_llegada'">
                                             <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg"
                                                 viewBox="0 0 20 20" fill="currentColor">
-                                                <template x-if="sort.dir === 'asc'">
-                                                    <path fill-rule="evenodd"
-                                                        d="M10 4a.75.75 0 01.53.22l4 4a.75.75 0 11-1.06 1.06L10 5.81 6.53 9.28A.75.75 0 115.47 8.22l4-4A.75.75 0 0110 4z"
-                                                        clip-rule="evenodd" />
-                                                </template>
-                                                <template x-if="sort.dir === 'desc'">
-                                                    <path fill-rule="evenodd"
-                                                        d="M10 16a.75.75 0 01-.53-.22l-4-4a.75.75 0 111.06-1.06L10 14.19l3.47-3.47a.75.75 0 111.06 1.06l-4 4A.75.75 0 0110 16z"
-                                                        clip-rule="evenodd" />
-                                                </template>
+                                                <path x-cloak x-show="sort.dir === 'asc'" fill-rule="evenodd"
+                                                    d="M10 4a.75.75 0 01.53.22l4 4a.75.75 0 11-1.06 1.06L10 5.81 6.53 9.28A.75.75 0 115.47 8.22l4-4A.75.75 0 0110 4z"
+                                                    clip-rule="evenodd" />
+                                                <path x-cloak x-show="sort.dir === 'desc'" fill-rule="evenodd"
+                                                    d="M10 16a.75.75 0 01-.53-.22l-4-4a.75.75 0 111.06-1.06L10 14.19l3.47-3.47a.75.75 0 111.06 1.06l-4 4A.75.75 0 0110 16z"
+                                                    clip-rule="evenodd" />
                                             </svg>
                                         </template>
                                     </button>
@@ -319,7 +345,7 @@
                                         :title="gasto.motivo?.nombre || '-'"
                                         x-text="truncateText(gasto.motivo?.nombre || '-', 10)"></td>
                                     <td class="px-6 py-4 text-right font-bold text-gray-900 dark:text-white cursor-default whitespace-nowrap"
-                                        x-text="gasto.coste ? formatEuro(gasto.coste) : '-'"></td>
+                                        x-text="gasto.coste ? formatCurrency(gasto.coste) : '-'"></td>
                                     <td class="px-6 py-4 text-center cursor-default whitespace-nowrap">
                                         <template x-if="gasto.codigo_factura">
                                             <button type="button" @click="copyToClipboard(gasto.codigo_factura)"
@@ -418,7 +444,9 @@
             </div>
 
             <!-- Gráficas -->
-            <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div x-show="activeView === 'charts'" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+                class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <!-- Charts Controls -->
                 <div
                     class="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700">
@@ -543,38 +571,13 @@
                         </div>
                     </div>
 
-                    <div class="mt-5 pt-5 border-t border-gray-100 dark:border-gray-700">
-                        <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200">Estilo</h4>
-                        <div class="mt-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                            <div>
-                                <label
-                                    class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Serie</label>
-                                <select x-model="charts.seriesType" @change="loadCharts()"
-                                    class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3">
-                                    <option value="line">Líneas</option>
-                                    <option value="bar">Barras</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Tipo
-                                    reparto</label>
-                                <select x-model="charts.breakdownType" @change="loadCharts()"
-                                    class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3">
-                                    <option value="doughnut">Redonda</option>
-                                    <option value="pie">Tarta</option>
-                                    <option value="bar">Barras</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
                 </div>
                 <!-- Global Stats -->
                 <div
                     class="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
                     <div
-                        class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 translate-x-9 -translate-y-9 rotate-45 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:rotate-0 group-hover:scale-110  transition-all ease-in-out duration-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        class="absolute top-0 right-10 p-4 opacity-10 group-hover:opacity-20 translate-x-9 -translate-y-9 rotate-45 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:rotate-0 group-hover:scale-110  transition-all ease-in-out duration-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24"
                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                             stroke-linejoin="round" class="text-indigo-700 w-24 h-24">
                             <path d="M21.54 15H17a2 2 0 0 0-2 2v4.54" />
@@ -584,12 +587,45 @@
                             <circle cx="12" cy="12" r="10" />
                         </svg>
                     </div>
-                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                        <span class="w-1 h-8 bg-indigo-500 rounded-full"></span>
-                        Resumen Global
-                    </h3>
+                    <div class="flex items-start justify-between gap-3">
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                            <span class="w-1 h-8 bg-indigo-500 rounded-full"></span>
+                            Resumen Global
+                        </h3>
+
+                        <div
+                            class="inline-flex items-center gap-1 rounded-2xl bg-white/70 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 p-1">
+                            <button type="button" @click="setSeriesType('line')" title="Líneas" aria-label="Líneas"
+                                :class="charts.seriesType === 'line' ?
+                                    'bg-indigo-600 text-white border-indigo-600' :
+                                    'bg-transparent text-gray-500 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/60 border-transparent'"
+                                class="w-9 h-9 inline-flex items-center justify-center rounded-xl border transition-colors">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 19V5" />
+                                    <path d="M4 19H20" />
+                                    <path d="M6 14l4-4 4 3 4-6" />
+                                </svg>
+                            </button>
+
+                            <button type="button" @click="setSeriesType('bar')" title="Barras" aria-label="Barras"
+                                :class="charts.seriesType === 'bar' ?
+                                    'bg-indigo-600 text-white border-indigo-600' :
+                                    'bg-transparent text-gray-500 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/60 border-transparent'"
+                                class="w-9 h-9 inline-flex items-center justify-center rounded-xl border transition-colors">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 19V5" />
+                                    <path d="M4 19H20" />
+                                    <path d="M7 16v-4" />
+                                    <path d="M12 16V8" />
+                                    <path d="M17 16v-7" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
                     <div class="mt-6 flex items-baseline gap-2">
-                        <span class="text-4xl font-extrabold text-gray-900 dark:text-white hidden">
+                        <span class="text-4xl font-extrabold text-gray-900 dark:text-white">
                             {{ number_format($stats['global'], 2, ',', '.') }} €
                         </span>
                         <span class="text-sm text-gray-500">Total Gastos</span>
@@ -597,7 +633,7 @@
 
                     <!-- Graph Placeholder Box -->
                     <div
-                        class="mt-6 h-48 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-700 dark:to-gray-800 rounded-2xl border border-indigo-100 dark:border-gray-600 p-3 relative">
+                        class="mt-6 h-max bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-700 dark:to-gray-800 rounded-2xl border border-indigo-100 dark:border-gray-600 p-3 relative">
                         <div class="h-full overflow-x-auto gastos-table-scroll">
                             <div class="h-full" :style="seriesCanvasWrapperStyle()">
                                 <canvas x-ref="seriesChart"></canvas>
@@ -616,16 +652,60 @@
                                 d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z" />
                         </svg>
                     </div>
-                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                        <span class="w-1 h-8 bg-emerald-500 rounded-full"></span>
-                        Resumen Mensual
-                    </h3>
+                    <div class="flex items-start justify-between gap-3">
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                            <span class="w-1 h-8 bg-emerald-500 rounded-full"></span>
+                            Resumen Mensual
+                        </h3>
+
+                        <div
+                            class="inline-flex items-center gap-1 rounded-2xl bg-white/70 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 p-1">
+                            <button type="button" @click="setBreakdownType('doughnut')" title="Dona"
+                                aria-label="Dona"
+                                :class="charts.breakdownType === 'doughnut' ?
+                                    'bg-emerald-600 text-white border-emerald-600' :
+                                    'bg-transparent text-gray-500 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/60 border-transparent'"
+                                class="w-9 h-9 inline-flex items-center justify-center rounded-xl border transition-colors">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="8" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                            </button>
+
+                            <button type="button" @click="setBreakdownType('pie')" title="Tarta"
+                                aria-label="Tarta"
+                                :class="charts.breakdownType === 'pie' ?
+                                    'bg-emerald-600 text-white border-emerald-600' :
+                                    'bg-transparent text-gray-500 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/60 border-transparent'"
+                                class="w-9 h-9 inline-flex items-center justify-center rounded-xl border transition-colors">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M11 3a9 9 0 1 0 10 10h-9V3z" />
+                                    <path d="M13 3a9 9 0 0 1 8 8h-8V3z" />
+                                </svg>
+                            </button>
+
+                            <button type="button" @click="setBreakdownType('bar')" title="Barras"
+                                aria-label="Barras"
+                                :class="charts.breakdownType === 'bar' ?
+                                    'bg-emerald-600 text-white border-emerald-600' :
+                                    'bg-transparent text-gray-500 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/60 border-transparent'"
+                                class="w-9 h-9 inline-flex items-center justify-center rounded-xl border transition-colors">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 19V5" />
+                                    <path d="M4 19H20" />
+                                    <path d="M7 16v-5" />
+                                    <path d="M12 16V7" />
+                                    <path d="M17 16v-9" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
                     <div class="mt-6 flex items-baseline gap-2">
-                        <span class="text-4xl font-extrabold text-gray-900 dark:text-white">
-                            {{ number_format($stats['mensual'], 2, ',', '.') }} €
-                        </span>
                         <span class="text-4xl font-extrabold text-gray-900 dark:text-white"
-                            x-text="formatEuro(chartsTotals.selectedTotal || 0)"></span>
+                            x-text="formatCurrency(chartsTotals.selectedTotal || 0)"></span>
                         <span class="text-sm text-gray-500" x-text="chartsTotals.label"></span>
                     </div>
 
@@ -643,8 +723,9 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
                             <template x-for="item in breakdownLegend" :key="item.label">
                                 <div class="flex items-center gap-2 min-w-0">
-                                    <span class="w-2 h-2 rounded-full shrink-0" :style="`background:${item.color}`"></span>
-                                    <span class="truncate" :title="`${item.label}: ${formatEuro(item.value)}`"
+                                    <span class="w-2 h-2 rounded-full shrink-0"
+                                        :style="`background:${item.color}`"></span>
+                                    <span class="truncate" :title="`${item.label}: ${formatCurrency(item.value)}`"
                                         x-text="item.label"></span>
                                 </div>
                             </template>
@@ -1122,7 +1203,7 @@
                 </div>
             </div>
 
-            <!-- Import CSV Modal -->
+            <!-- Import CSV Modal (Gastos) -->
             <div x-show="showImportModal" class="fixed inset-0 z-[1000] overflow-y-auto" style="display: none;"
                 aria-labelledby="import-modal-title" role="dialog" aria-modal="true" x-cloak>
                 <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -1137,31 +1218,14 @@
                                 <div>
                                     <h3 class="text-lg font-bold text-gray-900 dark:text-white"
                                         id="import-modal-title">
-                                        <span x-text="importTipo === 'obra' ? 'Importar CSV (Obras)' : 'Importar CSV (Gastos)'">Importar CSV (Gastos)</span>
+                                        Importar CSV (Gastos)
                                     </h3>
                                     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
                                         Sube un CSV con cabeceras como:
-                                        <span class="font-mono text-xs" x-show="importTipo === 'gasto'">Fecha del
+                                        <span class="font-mono text-xs">Fecha del
                                             pedido,Llegada,Nave,Máquina,Proveedor,Motivo,Coste,Factura,Fecha
-                                            factura,Observaciones,Periodo</span>
-                                        <span class="font-mono text-xs" x-show="importTipo === 'obra'"
-                                            style="display: none;">Fecha del
-                                            pedido,Llegada,Obra,Proveedor,Motivo,Coste,Factura,Fecha
                                             factura,Observaciones,Periodo</span>.
                                     </p>
-                                    <div
-                                        class="mt-3 inline-flex rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                                        <button type="button" @click="importTipo = 'gasto'"
-                                            class="px-3 py-1.5 text-sm font-semibold transition-colors"
-                                            :class="importTipo === 'gasto' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'">
-                                            Gastos
-                                        </button>
-                                        <button type="button" @click="importTipo = 'obra'"
-                                            class="px-3 py-1.5 text-sm font-semibold transition-colors"
-                                            :class="importTipo === 'obra' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'">
-                                            Obras
-                                        </button>
-                                    </div>
                                 </div>
                                 <button type="button" @click="showImportModal = false"
                                     class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
@@ -1176,13 +1240,13 @@
                         <form method="POST" action="{{ route('gastos.importCsv') }}" enctype="multipart/form-data"
                             class="p-6 space-y-4">
                             @csrf
-                            <input type="hidden" name="tipo" :value="importTipo">
+                            <input type="hidden" name="tipo" value="gasto">
 
                             <div
                                 class="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 p-4 bg-gray-50 dark:bg-gray-700/40">
                                 <div class="text-sm font-semibold text-gray-700 dark:text-gray-200">Columnas usadas
                                 </div>
-                                <ul x-show="importTipo === 'gasto'"
+                                <ul
                                     class="mt-2 text-sm text-gray-600 dark:text-gray-300 grid grid-cols-1 md:grid-cols-2 gap-x-6">
                                     <li><span class="font-mono text-xs">Fecha del pedido</span> → <span
                                             class="font-mono text-xs">fecha_pedido</span></li>
@@ -1203,40 +1267,10 @@
                                     <li class="text-gray-500 dark:text-gray-400"><span
                                             class="font-mono text-xs">Periodo</span> → ignorar</li>
                                 </ul>
-                                <ul x-show="importTipo === 'obra'" style="display: none;"
-                                    class="mt-2 text-sm text-gray-600 dark:text-gray-300 grid grid-cols-1 md:grid-cols-2 gap-x-6">
-                                    <li><span class="font-mono text-xs">Fecha del pedido</span> → <span
-                                            class="font-mono text-xs">fecha_pedido</span></li>
-                                    <li><span class="font-mono text-xs">Llegada</span> → <span
-                                            class="font-mono text-xs">fecha_llegada</span></li>
-                                    <li><span class="font-mono text-xs">Obra</span> → <span
-                                            class="font-mono text-xs">obra_id</span></li>
-                                    <li><span class="font-mono text-xs">Proveedor</span> → <span
-                                            class="font-mono text-xs">proveedor_id</span></li>
-                                    <li><span class="font-mono text-xs">Motivo</span> → <span
-                                            class="font-mono text-xs">motivo_id</span></li>
-                                    <li><span class="font-mono text-xs">Coste</span> → <span
-                                            class="font-mono text-xs">coste</span></li>
-                                    <li><span class="font-mono text-xs">Observaciones</span> → <span
-                                            class="font-mono text-xs">observaciones</span></li>
-                                    <li><span class="font-mono text-xs">Factura</span> → <span
-                                            class="font-mono text-xs">codigo_factura</span></li>
-                                    <li class="text-gray-500 dark:text-gray-400"><span class="font-mono text-xs">Fecha
-                                            factura</span> → ignorar</li>
-                                    <li class="text-gray-500 dark:text-gray-400"><span
-                                            class="font-mono text-xs">Periodo</span> → ignorar</li>
-                                </ul>
-                                <div class="mt-3 text-xs text-gray-500 dark:text-gray-400"
-                                    x-show="importTipo === 'gasto'">
-                                    Nota: Nave se intenta asociar por <span class="font-mono">obras.obra</span> y
-                                    Máquina por <span class="font-mono">maquinas.codigo</span>. Si no cuadra, se
-                                    añade a Observaciones.
-                                </div>
-                                <div class="mt-3 text-xs text-gray-500 dark:text-gray-400"
-                                    x-show="importTipo === 'obra'" style="display: none;">
-                                    Nota: Obra se busca por <span class="font-mono">obras.cod_obra</span> leyendo el
-                                    código de <span class="font-mono">OBRA-XXX</span>. Si no viene como <span
-                                        class="font-mono">OBRA-</span>, se añade a Observaciones.
+                                <div class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                                    Nota: si el CSV incluye <span class="font-mono">Nave</span> o <span
+                                        class="font-mono">Máquina</span>,
+                                    se intentan asociar por nombre si existen.
                                 </div>
                             </div>
 
@@ -1271,283 +1305,271 @@
     </div>
 
     <script>
-        function gastosManager() {
-            return {
-                showModal: false,
-                isEditing: false,
-                // All gastos data (from paginator)
-                allGastos: @json($gastos->items()),
-                // Filters
-                filters: {
-                    id: '',
-                    fecha_pedido: '',
-                    fecha_llegada: '',
-                    nave_id: '',
-                    obra_id: '',
-                    proveedor_id: '',
-                    maquina: '',
-                    motivo_id: '',
-                    coste: '',
-                    factura: '',
-                    observaciones: ''
-                },
-                // Table sort (client-side)
-                sort: {
-                    field: 'fecha_pedido',
-                    dir: 'desc'
-                },
-                // Observaciones Modal
-                showObservacionesModal: false,
-                observacionesText: '',
-                // Import CSV Modal (Gastos)
-                showImportModal: false,
-                importHadErrors: @json($errors->has('csv_file') || $errors->has('tipo')),
-                importTipo: @json(old('tipo') ?: 'gasto'),
-                form: {
-                    fecha_pedido: '',
-                    fecha_llegada: '',
-                    nave_id: '',
-                    obra_id: '',
-                    proveedor_id: '',
-                    maquina_id: '',
-                    motivo_id: '',
-                    coste: '',
-                    observaciones: '',
-                    tipo_gasto: 'gasto'
-                },
-                // Machine Dropdown State
-                machineSearch: '',
-                selectedMachine: null,
-                openMachineDropdown: false,
-                dropdownStyle: '',
+        const initGastosManager = () => {
+            window.gastosManager = function() {
+                return {
+                    activeView: 'list',
+                    showModal: false,
+                    isEditing: false,
+                    // All gastos data (from paginator)
+                    allGastos: @json($gastos->items()),
+                    // Filters
+                    filters: {
+                        id: '',
+                        fecha_pedido: '',
+                        fecha_llegada: '',
+                        nave_id: '',
+                        obra_id: '',
+                        proveedor_id: '',
+                        maquina: '',
+                        motivo_id: '',
+                        coste: '',
+                        factura: '',
+                        observaciones: ''
+                    },
+                    // Table sort (client-side)
+                    sort: {
+                        field: 'fecha_pedido',
+                        dir: 'desc'
+                    },
+                    // Observaciones Modal
+                    showObservacionesModal: false,
+                    observacionesText: '',
+                    // Import CSV Modal (Gastos)
+                    showImportModal: false,
+                    importHadErrors: @json($errors->has('csv_file') || $errors->has('tipo')),
+                    form: {
+                        fecha_pedido: '',
+                        fecha_llegada: '',
+                        nave_id: '',
+                        obra_id: '',
+                        proveedor_id: '',
+                        maquina_id: '',
+                        motivo_id: '',
+                        coste: '',
+                        observaciones: '',
+                        tipo_gasto: 'gasto'
+                    },
+                    // Machine Dropdown State
+                    machineSearch: '',
+                    selectedMachine: null,
+                    openMachineDropdown: false,
+                    dropdownStyle: '',
 
-                positionDropdown() {
-                    const wrapper = this.$refs.machineInputWrapper;
-                    if (wrapper) {
-                        const rect = wrapper.getBoundingClientRect();
-                        this.dropdownStyle = `top: ${rect.bottom + 4}px; left: ${rect.left}px; width: ${rect.width}px;`;
-                    }
-                },
-
-                // Computed filtered gastos
-                get filteredGastos() {
-                    const filtered = this.allGastos.filter(gasto => {
-                        // Filter by ID
-                        if (this.filters.id && !String(gasto.id).includes(this.filters.id)) return false;
-
-                        // Filter by fecha_pedido
-                        if (this.filters.fecha_pedido && gasto.fecha_pedido !== this.filters.fecha_pedido)
-                            return false;
-
-                        // Filter by fecha_llegada
-                        if (this.filters.fecha_llegada && gasto.fecha_llegada !== this.filters.fecha_llegada)
-                            return false;
-
-                        // Filter by nave_id
-                        if (this.filters.nave_id && String(gasto.nave_id) !== this.filters.nave_id)
-                            return false;
-
-                        // Filter by obra_id
-                        if (this.filters.obra_id && String(gasto.obra_id) !== this.filters.obra_id)
-                            return false;
-
-                        // Filter by proveedor_id
-                        if (this.filters.proveedor_id && String(gasto.proveedor_id) !== this.filters
-                            .proveedor_id) return false;
-
-                        // Filter by maquina (text search)
-                        if (this.filters.maquina) {
-                            const maquinaNombre = gasto.maquina?.nombre?.toLowerCase() || '';
-                            if (!maquinaNombre.includes(this.filters.maquina.toLowerCase())) return false;
+                    positionDropdown() {
+                        const wrapper = this.$refs.machineInputWrapper;
+                        if (wrapper) {
+                            const rect = wrapper.getBoundingClientRect();
+                            this.dropdownStyle =
+                                `top: ${rect.bottom + 4}px; left: ${rect.left}px; width: ${rect.width}px;`;
                         }
+                    },
 
-                        // Filter by motivo_id
-                        if (this.filters.motivo_id && String(gasto.motivo_id) !== this.filters.motivo_id)
-                            return false;
+                    // Computed filtered gastos
+                    get filteredGastos() {
+                        const filtered = this.allGastos.filter(gasto => {
+                            // Filter by ID
+                            if (this.filters.id && !String(gasto.id).includes(this.filters.id))
+                                return false;
 
-                        // Filter by coste
-                        if (this.filters.coste) {
-                            const costeStr = String(gasto.coste || '');
-                            if (!costeStr.includes(this.filters.coste)) return false;
-                        }
+                            // Filter by fecha_pedido
+                            if (this.filters.fecha_pedido && gasto.fecha_pedido !== this.filters
+                                .fecha_pedido)
+                                return false;
 
-                        // Filter by factura
-                        if (this.filters.factura) {
-                            const q = this.filters.factura.toLowerCase();
-                            const facturaStr = (gasto.codigo_factura || '').toLowerCase();
-                            if (!facturaStr.includes(q)) return false;
-                        }
+                            // Filter by fecha_llegada
+                            if (this.filters.fecha_llegada && gasto.fecha_llegada !== this.filters
+                                .fecha_llegada)
+                                return false;
 
-                        // Filter by observaciones
-                        if (this.filters.observaciones) {
-                            const q = this.filters.observaciones.toLowerCase();
-                            const obsStr = (gasto.observaciones || '').toLowerCase();
-                            if (!obsStr.includes(q)) return false;
-                        }
+                            // Filter by nave_id
+                            if (this.filters.nave_id && String(gasto.nave_id) !== this.filters
+                                .nave_id)
+                                return false;
 
-                        return true;
-                    });
+                            // Filter by obra_id
+                            if (this.filters.obra_id && String(gasto.obra_id) !== this.filters
+                                .obra_id)
+                                return false;
 
-                    const field = this.sort.field;
-                    const dir = this.sort.dir === 'asc' ? 1 : -1;
+                            // Filter by proveedor_id
+                            if (this.filters.proveedor_id && String(gasto.proveedor_id) !== this
+                                .filters
+                                .proveedor_id) return false;
 
-                    const dateValue = (v) => {
-                        if (!v) return null;
-                        const t = Date.parse(v);
-                        return Number.isNaN(t) ? null : t;
-                    };
+                            // Filter by maquina (text search)
+                            if (this.filters.maquina) {
+                                const maquinaNombre = gasto.maquina?.nombre?.toLowerCase() || '';
+                                if (!maquinaNombre.includes(this.filters.maquina.toLowerCase()))
+                                    return false;
+                            }
 
-                    return filtered.slice().sort((a, b) => {
-                        const av = dateValue(a?.[field]);
-                        const bv = dateValue(b?.[field]);
+                            // Filter by motivo_id
+                            if (this.filters.motivo_id && String(gasto.motivo_id) !== this.filters
+                                .motivo_id)
+                                return false;
 
-                        if (av === null && bv === null) return 0;
-                        if (av === null) return 1;
-                        if (bv === null) return -1;
-                        if (av === bv) return 0;
-                        return av > bv ? dir : -dir;
-                    });
-                },
+                            // Filter by coste
+                            if (this.filters.coste) {
+                                const costeStr = String(gasto.coste || '');
+                                if (!costeStr.includes(this.filters.coste)) return false;
+                            }
 
-                toggleSort(field) {
-                    if (this.sort.field === field) {
-                        this.sort.dir = this.sort.dir === 'asc' ? 'desc' : 'asc';
-                        return;
-                    }
-                    this.sort.field = field;
-                    this.sort.dir = 'asc';
-                },
+                            // Filter by factura
+                            if (this.filters.factura) {
+                                const q = this.filters.factura.toLowerCase();
+                                const facturaStr = (gasto.codigo_factura || '').toLowerCase();
+                                if (!facturaStr.includes(q)) return false;
+                            }
 
-                // Helper functions
-                formatDate(dateStr) {
-                    if (!dateStr) return '-';
-                    const date = new Date(dateStr);
-                    return date.toLocaleDateString('es-ES', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                    });
-                },
+                            // Filter by observaciones
+                            if (this.filters.observaciones) {
+                                const q = this.filters.observaciones.toLowerCase();
+                                const obsStr = (gasto.observaciones || '').toLowerCase();
+                                if (!obsStr.includes(q)) return false;
+                            }
 
-                formatCurrency(value) {
-                    return new Intl.NumberFormat('es-ES', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    }).format(value) + ' €';
-                },
+                            return true;
+                        });
 
-                truncateText(text, length) {
-                    if (!text) return '';
-                    if (text.length <= length) return text;
-                    return text.substring(0, length) + '...';
-                },
+                        const field = this.sort.field;
+                        const dir = this.sort.dir === 'asc' ? 1 : -1;
 
-                formatEuro(value) {
-                    return new Intl.NumberFormat('es-ES', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    }).format(value) + ' €';
-                },
+                        const dateValue = (v) => {
+                            if (!v) return null;
+                            const t = Date.parse(v);
+                            return Number.isNaN(t) ? null : t;
+                        };
 
-                async copyToClipboard(text) {
-                    const value = (text || '').toString();
-                    if (!value) return;
+                        return filtered.slice().sort((a, b) => {
+                            const av = dateValue(a?.[field]);
+                            const bv = dateValue(b?.[field]);
 
-                    try {
-                        if (navigator.clipboard?.writeText) {
-                            await navigator.clipboard.writeText(value);
+                            if (av === null && bv === null) return 0;
+                            if (av === null) return 1;
+                            if (bv === null) return -1;
+                            if (av === bv) return 0;
+                            return av > bv ? dir : -dir;
+                        });
+                    },
+
+                    toggleSort(field) {
+                        if (this.sort.field === field) {
+                            this.sort.dir = this.sort.dir === 'asc' ? 'desc' : 'asc';
                             return;
                         }
-                    } catch (_) {
-                        // fallback below
-                    }
+                        this.sort.field = field;
+                        this.sort.dir = 'asc';
+                    },
 
-                    const textarea = document.createElement('textarea');
-                    textarea.value = value;
-                    textarea.setAttribute('readonly', 'readonly');
-                    textarea.style.position = 'fixed';
-                    textarea.style.top = '-9999px';
-                    document.body.appendChild(textarea);
-                    textarea.select();
-                    try {
-                        document.execCommand('copy');
-                    } finally {
-                        document.body.removeChild(textarea);
-                    }
-                },
+                    // Helper functions
+                    formatDate(dateStr) {
+                        if (!dateStr) return '-';
+                        const date = new Date(dateStr);
+                        return date.toLocaleDateString('es-ES', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                        });
+                    },
+
+                    formatCurrency(value) {
+                        return new Intl.NumberFormat('es-ES', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        }).format(value) + ' €';
+                    },
+
+                    truncateText(text, length) {
+                        if (!text) return '';
+                        if (text.length <= length) return text;
+                        return text.substring(0, length) + '...';
+                    },
+
+                    formatEuro(value) {
+                        return new Intl.NumberFormat('es-ES', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        }).format(value) + ' €';
+                    },
+
+                    async copyToClipboard(text) {
+                        const value = (text || '').toString();
+                        if (!value) return;
+
+                        try {
+                            if (navigator.clipboard?.writeText) {
+                                await navigator.clipboard.writeText(value);
+                                return;
+                            }
+                        } catch (_) {
+                            // fallback below
+                        }
+
+                        const textarea = document.createElement('textarea');
+                        textarea.value = value;
+                        textarea.setAttribute('readonly', 'readonly');
+                        textarea.style.position = 'fixed';
+                        textarea.style.top = '-9999px';
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        try {
+                            document.execCommand('copy');
+                        } finally {
+                            document.body.removeChild(textarea);
+                        }
+                    },
 
 
-                selectMachine(id, code, name, image) {
-                    this.selectedMachine = {
-                        id,
-                        code,
-                        name,
-                        image
-                    };
-                    this.form.maquina_id = id;
-                    this.machineSearch = `${name}`;
-                    this.openMachineDropdown = false;
-                },
+                    selectMachine(id, code, name, image) {
+                        this.selectedMachine = {
+                            id,
+                            code,
+                            name,
+                            image
+                        };
+                        this.form.maquina_id = id;
+                        this.machineSearch = `${name}`;
+                        this.openMachineDropdown = false;
+                    },
 
-                onSearchInput() {
-                    this.openMachineDropdown = true;
-                    if (this.machineSearch === '') {
-                        this.selectedMachine = null;
-                        this.form.maquina_id = '';
-                    }
-                },
+                    onSearchInput() {
+                        this.openMachineDropdown = true;
+                        if (this.machineSearch === '') {
+                            this.selectedMachine = null;
+                            this.form.maquina_id = '';
+                        }
+                    },
 
-                // Fields for dynamic creation
-                showNewProveedorInput: false,
-                newProveedor: '',
-                showNewMotivoInput: false,
-                newMotivo: '',
+                    // Fields for dynamic creation
+                    showNewProveedorInput: false,
+                    newProveedor: '',
+                    showNewMotivoInput: false,
+                    newMotivo: '',
 
-                // Lists
-                proveedores: @json($proveedoresLista),
-                motivos: @json($motivosLista),
+                    // Lists
+                    proveedores: @json($proveedoresLista),
+                    motivos: @json($motivosLista),
 
-                formAction: '{{ route('gastos.store') }}',
-                chartsEndpoint: '{{ route('gastos.charts') }}',
-                oldestGastoDate: @json($oldestGastoDate),
+                    formAction: '{{ route('gastos.store') }}',
+                    chartsEndpoint: '{{ route('gastos.charts') }}',
+                    oldestGastoDate: @json($oldestGastoDate),
 
-                chartsLoading: false,
-                chartsError: '',
-                seriesChartInstance: null,
-                breakdownChartInstance: null,
-                chartsTotals: {
-                    selectedTotal: 0,
-                    label: 'Total (rango)',
-                },
-                seriesLabels: [],
-                breakdownLabels: [],
-                breakdownLegend: [],
+                    chartsLoading: false,
+                    chartsError: '',
+                    chartsAbortController: null,
+                    seriesChartInstance: null,
+                    breakdownChartInstance: null,
+                    chartsTotals: {
+                        selectedTotal: 0,
+                        label: 'Total (rango)',
+                    },
+                    seriesLabels: [],
+                    breakdownLabels: [],
+                    breakdownLegend: [],
+                    lastChartsPayload: null,
 
-                charts: {
-                    groupBy: 'month',
-                    from: '',
-                    to: '',
-                    fromBeginning: false,
-                    tipo: 'all',
-                    obra_id: '',
-                    proveedor_id: '',
-                    maquina_id: '',
-                    seriesType: 'line',
-                    breakdownBy: 'proveedor',
-                    breakdownType: 'doughnut',
-                    limit: 8,
-                },
-
-                init() {
-                    this.setDefaultChartRange();
-                    this.$nextTick(() => this.loadCharts());
-                    if (this.importHadErrors) {
-                        this.showImportModal = true;
-                    }
-                },
-
-                resetChartFilters() {
-                    this.charts = {
+                    charts: {
                         groupBy: 'month',
                         from: '',
                         to: '',
@@ -1560,649 +1582,779 @@
                         breakdownBy: 'proveedor',
                         breakdownType: 'doughnut',
                         limit: 8,
-                    };
-                    this.setDefaultChartRange(true);
-                    this.loadCharts();
-                },
+                    },
 
-                onFromBeginningChange() {
-                    if (this.charts.fromBeginning) {
-                        if (this.oldestGastoDate) {
-                            this.charts.from = this.oldestGastoDate;
+                    init() {
+                        this.setDefaultChartRange();
+                        if (this.importHadErrors) {
+                            this.showImportModal = true;
                         }
-                    } else {
-                        this.setDefaultChartRange(true);
-                    }
-                    this.loadCharts();
-                },
+                    },
 
-                onChartGroupByChange() {
-                    this.setDefaultChartRange(true);
-                    this.loadCharts();
-                },
-
-                setDefaultChartRange(force = false) {
-                    if (!force && this.charts.from && this.charts.to) return;
-
-                    const today = new Date();
-                    let fromDate;
-                    let toDate;
-
-                    if (this.charts.groupBy === 'day') {
-                        toDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                        fromDate = new Date(toDate);
-                        fromDate.setDate(fromDate.getDate() - 29);
-                    } else if (this.charts.groupBy === 'year') {
-                        const startYear = today.getFullYear() - 4;
-                        fromDate = new Date(startYear, 0, 1);
-                        toDate = new Date(today.getFullYear(), 11, 31);
-                    } else {
-                        fromDate = new Date(today.getFullYear(), today.getMonth() - 11, 1);
-                        toDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-                    }
-
-                    if (this.charts.fromBeginning && this.oldestGastoDate) {
-                        this.charts.from = this.oldestGastoDate;
-                    } else {
-                        this.charts.from = this.toDateInputValue(fromDate);
-                    }
-                    this.charts.to = this.toDateInputValue(toDate);
-                },
-
-                toDateInputValue(date) {
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    const day = String(date.getDate()).padStart(2, '0');
-                    return `${year}-${month}-${day}`;
-                },
-
-                seriesCanvasWrapperStyle() {
-                    const labelsCount = this.seriesLabels.length;
-                    if (labelsCount <= 12) return 'min-width: 100%;';
-                    const per = this.charts.groupBy === 'day' ? 28 : 54;
-                    const minWidth = Math.max(520, labelsCount * per);
-                    return `min-width:${minWidth}px;`;
-                },
-
-                breakdownCanvasWrapperStyle() {
-                    if (this.charts.breakdownType !== 'bar') return 'min-width: 100%;';
-                    const labelsCount = this.breakdownLabels.length;
-                    const minHeight = Math.max(180, labelsCount * 26);
-                    return `min-height:${minHeight}px;`;
-                },
-
-                async ensureChartJsReady() {
-                    if (window.Chart) return true;
-
-                    const maxAttempts = 50;
-                    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                        if (window.Chart) return true;
-                    }
-                    return false;
-                },
-
-                buildChartsUrl() {
-                    const params = new URLSearchParams();
-                    params.set('group_by', this.charts.groupBy);
-                    params.set('breakdown_by', this.charts.breakdownBy);
-                    params.set('tipo', this.charts.tipo);
-                    params.set('limit', String(this.charts.limit || 8));
-
-                    if (this.charts.from) params.set('from', this.charts.from);
-                    if (this.charts.to) params.set('to', this.charts.to);
-                    if (this.charts.obra_id) params.set('obra_id', this.charts.obra_id);
-                    if (this.charts.proveedor_id) params.set('proveedor_id', this.charts.proveedor_id);
-                    if (this.charts.maquina_id) params.set('maquina_id', this.charts.maquina_id);
-
-                    return `${this.chartsEndpoint}?${params.toString()}`;
-                },
-
-                destroyCharts() {
-                    if (this.seriesChartInstance) {
-                        this.seriesChartInstance.destroy();
-                        this.seriesChartInstance = null;
-                    }
-                    if (this.breakdownChartInstance) {
-                        this.breakdownChartInstance.destroy();
-                        this.breakdownChartInstance = null;
-                    }
-                },
-
-                async loadCharts() {
-                    this.chartsError = '';
-                    this.chartsLoading = true;
-
-                    try {
-                        const ready = await this.ensureChartJsReady();
-                        if (!ready) {
-                            this.chartsError = 'No se pudo cargar Chart.js.';
-                            this.destroyCharts();
-                            return;
-                        }
-
-                        const response = await fetch(this.buildChartsUrl(), {
-                            headers: {
-                                'Accept': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest',
-                            },
-                        });
-
-                        const payload = await response.json().catch(() => null);
-                        if (!response.ok || !payload || !payload.success) {
-                            this.chartsError = payload?.message || 'Error al cargar las gráficas.';
-                            this.destroyCharts();
-                            return;
-                        }
-
-                        if (payload.filters?.from) this.charts.from = payload.filters.from;
-                        if (payload.filters?.to) this.charts.to = payload.filters.to;
-
-                        this.renderCharts(payload);
-                    } catch (error) {
-                        console.error(error);
-                        this.chartsError = 'Error al cargar las gráficas.';
-                        this.destroyCharts();
-                    } finally {
-                        this.chartsLoading = false;
-                    }
-                },
-
-                renderCharts(payload) {
-                    const seriesLabels = payload?.series?.labels || [];
-                    const seriesData = payload?.series?.data || [];
-                    const breakdownLabels = payload?.breakdown?.labels || [];
-                    const breakdownData = payload?.breakdown?.data || [];
-
-                    if (!this.$refs.seriesChart || !this.$refs.breakdownChart) return;
-
-                    if (!seriesLabels.length && !breakdownLabels.length) {
-                        this.chartsError = 'Sin datos para ese filtro.';
-                        this.destroyCharts();
-                        return;
-                    }
-
-                    this.seriesLabels = seriesLabels;
-                    this.breakdownLabels = breakdownLabels;
-                    this.chartsTotals.selectedTotal = seriesData.reduce((sum, v) => sum + (Number(v) || 0), 0);
-                    this.chartsTotals.label = this.charts.groupBy === 'day' ? 'Total (días)' :
-                        (this.charts.groupBy === 'year' ? 'Total (años)' : 'Total (meses)');
-
-                    const isDark = document.documentElement.classList.contains('dark');
-                    const axisColor = isDark ? '#e5e7eb' : '#374151';
-                    const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-
-                    const palette = [
-                        '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6', '#f97316',
-                        '#14b8a6', '#3b82f6', '#22c55e', '#e879f9', '#a3e635'
-                    ];
-
-                    this.destroyCharts();
-
-                    // Series chart
-                    const seriesContext = this.$refs.seriesChart.getContext('2d');
-                    const seriesDataset = {
-                        label: 'Coste',
-                        data: seriesData,
-                        borderColor: '#6366f1',
-                        backgroundColor: this.charts.seriesType === 'bar' ? 'rgba(99,102,241,0.35)' :
-                            'rgba(99,102,241,0.12)',
-                        fill: this.charts.seriesType !== 'bar',
-                        tension: 0.35,
-                        pointRadius: this.charts.seriesType === 'line' ? 2 : 0,
-                        borderWidth: 2,
-                    };
-
-                    this.seriesChartInstance = new Chart(seriesContext, {
-                        type: this.charts.seriesType,
-                        data: {
-                            labels: seriesLabels,
-                            datasets: [seriesDataset],
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            layout: {
-                                padding: {
-                                    bottom: seriesLabels.length > 12 ? 8 : 0,
-                                },
-                            },
-                            plugins: {
-                                legend: {
-                                    display: false,
-                                },
-                                tooltip: {
-                                    callbacks: {
-                                        title: (items) => items?.[0]?.label || '',
-                                        label: (context) => {
-                                            const value = typeof context.parsed === 'number' ? context.parsed :
-                                                (context.parsed?.y ?? 0);
-                                            return this.formatEuro(value);
-                                        },
-                                    },
-                                },
-                            },
-                            scales: {
-                                x: {
-                                    ticks: {
-                                        color: axisColor,
-                                        maxRotation: seriesLabels.length > 12 ? 45 : 0,
-                                        minRotation: seriesLabels.length > 12 ? 45 : 0,
-                                        autoSkip: true,
-                                        maxTicksLimit: seriesLabels.length > 18 ? 10 : 12,
-                                        callback: (_, idx) => {
-                                            const label = seriesLabels[idx] || '';
-                                            if (this.charts.groupBy === 'day' && label.includes('-')) {
-                                                const parts = label.split('-');
-                                                return parts.length === 3 ? `${parts[2]}/${parts[1]}` : label;
-                                            }
-                                            if (this.charts.groupBy === 'month' && label.includes('-')) {
-                                                const parts = label.split('-');
-                                                return parts.length >= 2 ? `${parts[1]}/${parts[0]}` : label;
-                                            }
-                                            return label;
-                                        },
-                                    },
-                                    grid: {
-                                        color: gridColor,
-                                    },
-                                },
-                                y: {
-                                    ticks: {
-                                        color: axisColor,
-                                        /*
-                                                                               callback: (value) => this.formatCurrency(value).replace(' ƒ'ª', ''),
-                                                                               */
-                                        callback: (value) => new Intl.NumberFormat('es-ES', {
-                                            maximumFractionDigits: 2
-                                        }).format(value),
-                                    },
-                                    grid: {
-                                        color: gridColor,
-                                    },
-                                },
-                            },
-                        },
-                    });
-
-                    // Breakdown chart
-                    const breakdownContext = this.$refs.breakdownChart.getContext('2d');
-                    const breakdownColors = breakdownLabels.map((_, idx) => palette[idx % palette.length]);
-                    const isBreakdownBar = this.charts.breakdownType === 'bar';
-
-                    this.breakdownLegend = breakdownLabels.map((label, idx) => ({
-                        label,
-                        value: Number(breakdownData[idx]) || 0,
-                        color: breakdownColors[idx],
-                    }));
-
-                    this.breakdownChartInstance = new Chart(breakdownContext, {
-                        type: this.charts.breakdownType,
-                        data: {
-                            labels: breakdownLabels,
-                            datasets: [{
-                                label: 'Coste',
-                                data: breakdownData,
-                                backgroundColor: isBreakdownBar ? 'rgba(16,185,129,0.35)' : breakdownColors,
-                                borderColor: isBreakdownBar ? '#10b981' : breakdownColors,
-                                borderWidth: isBreakdownBar ? 2 : 1,
-                            }],
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            indexAxis: isBreakdownBar ? 'y' : 'x',
-                            plugins: {
-                                legend: {
-                                    display: false,
-                                },
-                                tooltip: {
-                                    callbacks: {
-                                        title: (items) => items?.[0]?.label || '',
-                                        label: (context) => {
-                                            const value = typeof context.parsed === 'number' ? context.parsed :
-                                                (context.parsed?.x ?? context.parsed?.y ?? 0);
-                                            return this.formatEuro(value);
-                                        },
-                                    },
-                                },
-                            },
-                            scales: isBreakdownBar ? {
-                                x: {
-                                    ticks: {
-                                        color: axisColor,
-                                        /*
-                                                                               callback: (value) => this.formatCurrency(value).replace(' ƒ'ª', ''),
-                                                                               */
-                                        callback: (value) => new Intl.NumberFormat('es-ES', {
-                                            maximumFractionDigits: 2
-                                        }).format(value),
-                                    },
-                                    grid: {
-                                        color: gridColor,
-                                    },
-                                },
-                                y: {
-                                    ticks: {
-                                        color: axisColor,
-                                        autoSkip: false,
-                                        callback: (_, idx) => {
-                                            const label = breakdownLabels[idx] || '';
-                                            return label.length > 18 ? (label.slice(0, 18) + '…') : label;
-                                        },
-                                    },
-                                    grid: {
-                                        color: gridColor,
-                                    },
-                                },
-                            } : {},
-                        },
-                    });
-                },
-
-                async submitFormFormData() {
-                    // Clear fields based on tipo_gasto
-                    if (this.form.tipo_gasto === 'gasto') {
-                        // Si es gasto, no debe tener obra
-                        this.form.obra_id = '';
-                    } else if (this.form.tipo_gasto === 'obra') {
-                        // Si es obra, no debe tener nave ni máquina
-                        this.form.nave_id = '';
-                        this.form.maquina_id = '';
-                        this.selectedMachine = null;
-                        this.machineSearch = '';
-                    }
-
-                    // Create form data
-                    const formData = new FormData();
-                    formData.append('_token', '{{ csrf_token() }}');
-
-                    if (this.isEditing) {
-                        formData.append('_method', 'PUT');
-                    }
-
-                    // Append form fields
-                    Object.keys(this.form).forEach(key => {
-                        if (key !== 'tipo_gasto') { // Don't send tipo_gasto to backend
-                            formData.append(key, this.form[key] || '');
-                        }
-                    });
-
-                    // If creating new proveedor
-                    if (this.showNewProveedorInput && this.newProveedor) {
-                        formData.append('new_proveedor', this.newProveedor);
-                    }
-
-                    // If creating new motivo
-                    if (this.showNewMotivoInput && this.newMotivo) {
-                        formData.append('new_motivo', this.newMotivo);
-                    }
-
-                    try {
-                        const response = await fetch(this.formAction, {
-                            method: 'POST',
-                            body: formData,
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                            }
-                        });
-
-                        if (response.ok) {
-                            window.location.reload();
-                        } else {
-                            const data = await response.json();
-                            alert(data.message || 'Error al guardar');
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        alert('Error al enviar el formulario');
-                    }
-                },
-
-
-                openCreateModal() {
-                    this.resetForm(); // Reset dynamic inputs first
-                    this.isEditing = false;
-                    this.formAction = '{{ route('gastos.store') }}';
-                    this.showModal = true;
-                },
-
-                editGasto(gasto) {
-                    this.resetForm(); // Reset dynamic inputs first
-                    this.form = {
-                        fecha_pedido: gasto.fecha_pedido,
-                        fecha_llegada: gasto.fecha_llegada,
-                        nave_id: gasto.nave_id,
-                        obra_id: gasto.obra_id,
-                        proveedor_id: gasto.proveedor_id,
-                        maquina_id: gasto.maquina_id,
-                        motivo_id: gasto.motivo_id,
-                        coste: gasto.coste,
-                        observaciones: gasto.observaciones,
-                        tipo_gasto: gasto.obra_id ? 'obra' : 'gasto'
-                    };
-
-                    // Set selected machine if exists
-                    if (gasto.maquina) {
-                        this.selectedMachine = {
-                            id: gasto.maquina.id,
-                            code: gasto.maquina.codigo || '',
-                            name: gasto.maquina.nombre,
-                            image: gasto.maquina.imagen ? `/${gasto.maquina.imagen}` : null
+                    resetChartFilters() {
+                        this.charts = {
+                            groupBy: 'month',
+                            from: '',
+                            to: '',
+                            fromBeginning: false,
+                            tipo: 'all',
+                            obra_id: '',
+                            proveedor_id: '',
+                            maquina_id: '',
+                            seriesType: 'line',
+                            breakdownBy: 'proveedor',
+                            breakdownType: 'doughnut',
+                            limit: 8,
                         };
-                        this.machineSearch = gasto.maquina.nombre;
-                    } else {
-                        this.selectedMachine = null;
-                        this.machineSearch = '';
-                    }
+                        this.setDefaultChartRange(true);
+                        this.loadCharts();
+                    },
 
-                    this.isEditing = true;
-                    this.formAction = `/gastos/${gasto.id}`;
-                    this.showModal = true;
-                },
+                    rerenderCharts() {
+                        if (this.lastChartsPayload) {
+                            this.$nextTick(() => this.renderCharts(this.lastChartsPayload));
+                            return;
+                        }
+                        this.loadCharts();
+                    },
 
-                closeModal() {
-                    this.showModal = false;
-                },
+                    setSeriesType(type) {
+                        if (this.charts.seriesType === type) return;
+                        this.charts.seriesType = type;
+                        this.rerenderCharts();
+                    },
 
-                resetForm() {
-                    this.form = {
-                        fecha_pedido: '',
-                        fecha_llegada: '',
-                        nave_id: '',
-                        obra_id: '',
-                        proveedor_id: '',
-                        maquina_id: '',
-                        motivo_id: '',
-                        coste: '',
-                        observaciones: '',
-                        tipo_gasto: 'gasto'
-                    };
-                    this.showNewProveedorInput = false;
-                    this.newProveedor = '';
-                    this.showNewMotivoInput = false;
-                    this.newMotivo = '';
-                    this.isEditing = false;
-                    this.machineSearch = '';
-                    this.selectedMachine = null;
-                    this.openMachineDropdown = false;
-                },
+                    setBreakdownType(type) {
+                        if (this.charts.breakdownType === type) return;
+                        this.charts.breakdownType = type;
+                        this.rerenderCharts();
+                    },
 
-                showObservaciones(text) {
-                    this.observacionesText = text;
-                    this.showObservacionesModal = true;
-                },
-
-                clearFilters() {
-                    this.filters = {
-                        id: '',
-                        fecha_pedido: '',
-                        fecha_llegada: '',
-                        nave_id: '',
-                        obra_id: '',
-                        proveedor_id: '',
-                        maquina: '',
-                        motivo_id: '',
-                        coste: '',
-                        factura: '',
-                        observaciones: ''
-                    };
-                },
-
-                toggleNewProveedor() {
-                    if (this.form.proveedor_id === 'new') {
-                        this.showNewProveedorInput = true;
-                        this.form.proveedor_id = ''; // Clear selection so validation doesn't get confused if we switch back
-                        this.$nextTick(() => {
-                            document.getElementById('new_proveedor_input').focus();
-                        });
-                    } else {
-                        this.showNewProveedorInput = false;
-                    }
-                },
-
-                cancelNewProveedor() {
-                    this.showNewProveedorInput = false;
-                    this.newProveedor = '';
-                    this.form.proveedor_id = '';
-                },
-
-                toggleNewMotivo() {
-                    if (this.form.motivo_id === 'new') {
-                        this.showNewMotivoInput = true;
-                        this.form.motivo_id = '';
-                        this.$nextTick(() => {
-                            document.getElementById('new_motivo_input').focus();
-                        });
-                    } else {
-                        this.showNewMotivoInput = false;
-                    }
-                },
-
-                cancelNewMotivo() {
-                    this.showNewMotivoInput = false;
-                    this.newMotivo = '';
-                    this.form.motivo_id = '';
-                },
-
-                async submitForm() {
-                    try {
-                        // 1. Create new provider if needed
-                        if (this.showNewProveedorInput && this.newProveedor) {
-                            const resp = await fetch('{{ route('gastos.storeProveedor') }}', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Accept': 'application/json',
-                                    'X-Requested-With': 'XMLHttpRequest',
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                        .getAttribute('content')
-                                },
-                                body: JSON.stringify({
-                                    nombre: this.newProveedor
-                                })
-                            });
-                            const data = await resp.json();
-                            if (data.success) {
-                                this.proveedores.push({
-                                    id: data.id,
-                                    nombre: data.nombre
-                                });
-                                // Sort alphabet (optional)
-                                this.proveedores.sort((a, b) => a.nombre.localeCompare(b.nombre));
-                                this.form.proveedor_id = data.id;
-                            } else {
-                                alert('Error al crear proveedor: ' + (data.message || 'Desconocido'));
-                                return;
+                    onFromBeginningChange() {
+                        if (this.charts.fromBeginning) {
+                            if (this.oldestGastoDate) {
+                                this.charts.from = this.oldestGastoDate;
                             }
+                        } else {
+                            this.setDefaultChartRange(true);
+                        }
+                        this.loadCharts();
+                    },
+
+                    onChartGroupByChange() {
+                        this.setDefaultChartRange(true);
+                        this.loadCharts();
+                    },
+
+                    setDefaultChartRange(force = false) {
+                        if (!force && this.charts.from && this.charts.to) return;
+
+                        const today = new Date();
+                        let fromDate;
+                        let toDate;
+
+                        if (this.charts.groupBy === 'day') {
+                            toDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                            fromDate = new Date(toDate);
+                            fromDate.setDate(fromDate.getDate() - 29);
+                        } else if (this.charts.groupBy === 'year') {
+                            const startYear = today.getFullYear() - 4;
+                            fromDate = new Date(startYear, 0, 1);
+                            toDate = new Date(today.getFullYear(), 11, 31);
+                        } else {
+                            fromDate = new Date(today.getFullYear(), today.getMonth() - 11, 1);
+                            toDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
                         }
 
-                        // 2. Create new reason if needed
-                        if (this.showNewMotivoInput && this.newMotivo) {
-                            const resp = await fetch('{{ route('gastos.storeMotivo') }}', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Accept': 'application/json',
-                                    'X-Requested-With': 'XMLHttpRequest',
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                        .getAttribute('content')
-                                },
-                                body: JSON.stringify({
-                                    nombre: this.newMotivo
-                                })
-                            });
-                            const data = await resp.json();
-                            if (data.success) {
-                                this.motivos.push({
-                                    id: data.id,
-                                    nombre: data.nombre
-                                });
-                                this.motivos.sort((a, b) => a.nombre.localeCompare(b.nombre));
-                                this.form.motivo_id = data.id;
-                            } else {
-                                alert('Error al crear motivo: ' + (data.message || 'Desconocido'));
+                        if (this.charts.fromBeginning && this.oldestGastoDate) {
+                            this.charts.from = this.oldestGastoDate;
+                        } else {
+                            this.charts.from = this.toDateInputValue(fromDate);
+                        }
+                        this.charts.to = this.toDateInputValue(toDate);
+                    },
+
+                    toDateInputValue(date) {
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        return `${year}-${month}-${day}`;
+                    },
+
+                    seriesCanvasWrapperStyle() {
+                        const labelsCount = this.seriesLabels.length;
+                        if (labelsCount <= 12) return 'min-width: 100%;';
+                        const per = this.charts.groupBy === 'day' ? 28 : 54;
+                        const minWidth = Math.max(520, labelsCount * per);
+                        return `min-width:${minWidth}px;`;
+                    },
+
+                    breakdownCanvasWrapperStyle() {
+                        if (this.charts.breakdownType !== 'bar') return 'min-width: 100%;';
+                        const labelsCount = this.breakdownLabels.length;
+                        const minHeight = Math.max(180, labelsCount * 26);
+                        return `min-height:${minHeight}px;`;
+                    },
+
+                    async ensureChartJsReady() {
+                        if (window.Chart) return true;
+
+                        const maxAttempts = 50;
+                        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            if (window.Chart) return true;
+                        }
+                        return false;
+                    },
+
+                    buildChartsUrl() {
+                        const params = new URLSearchParams();
+                        params.set('group_by', this.charts.groupBy);
+                        params.set('breakdown_by', this.charts.breakdownBy);
+                        params.set('tipo', this.charts.tipo);
+                        params.set('limit', String(this.charts.limit || 8));
+
+                        if (this.charts.from) params.set('from', this.charts.from);
+                        if (this.charts.to) params.set('to', this.charts.to);
+                        if (this.charts.obra_id) params.set('obra_id', this.charts.obra_id);
+                        if (this.charts.proveedor_id) params.set('proveedor_id', this.charts.proveedor_id);
+                        if (this.charts.maquina_id) params.set('maquina_id', this.charts.maquina_id);
+
+                        return `${this.chartsEndpoint}?${params.toString()}`;
+                    },
+
+                    destroyCharts() {
+                        if (this.seriesChartInstance) {
+                            this.seriesChartInstance.destroy();
+                            this.seriesChartInstance = null;
+                        }
+                        if (this.breakdownChartInstance) {
+                            this.breakdownChartInstance.destroy();
+                            this.breakdownChartInstance = null;
+                        }
+                    },
+
+                    async loadCharts() {
+                        this.chartsError = '';
+                        this.chartsLoading = true;
+
+                        try {
+                            const ready = await this.ensureChartJsReady();
+                            if (!ready) {
+                                this.chartsError = 'No se pudo cargar Chart.js.';
+                                this.destroyCharts();
                                 return;
                             }
+
+                            if (this.chartsAbortController) {
+                                this.chartsAbortController.abort();
+                            }
+                            this.chartsAbortController = new AbortController();
+
+                            const response = await fetch(this.buildChartsUrl(), {
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                                signal: this.chartsAbortController.signal,
+                            });
+
+                            const payload = await response.json().catch(() => null);
+                            if (!response.ok || !payload || !payload.success) {
+                                this.chartsError = payload?.message || 'Error al cargar las gráficas.';
+                                this.destroyCharts();
+                                return;
+                            }
+
+                            if (payload.filters?.from) this.charts.from = payload.filters.from;
+                            if (payload.filters?.to) this.charts.to = payload.filters.to;
+
+                            this.lastChartsPayload = payload;
+                            this.renderCharts(payload);
+                        } catch (error) {
+                            if (error?.name === 'AbortError') return;
+                            console.error(error);
+                            this.chartsError = 'Error al cargar las gráficas.';
+                            this.destroyCharts();
+                        } finally {
+                            this.chartsLoading = false;
+                        }
+                    },
+
+                    renderCharts(payload) {
+                        const seriesLabels = payload?.series?.labels || [];
+                        const seriesData = payload?.series?.data || [];
+                        const breakdownLabels = payload?.breakdown?.labels || [];
+                        const breakdownData = payload?.breakdown?.data || [];
+
+                        if (!this.$refs.seriesChart || !this.$refs.breakdownChart) return;
+
+                        if (!seriesLabels.length && !breakdownLabels.length) {
+                            this.chartsError = 'Sin datos para ese filtro.';
+                            this.destroyCharts();
+                            return;
                         }
 
-                        // 3. Submit main form
+                        this.seriesLabels = seriesLabels;
+                        this.breakdownLabels = breakdownLabels;
+                        this.chartsTotals.selectedTotal = seriesData.reduce((sum, v) => sum + (Number(v) || 0),
+                            0);
+                        this.chartsTotals.label = this.charts.groupBy === 'day' ? 'Total (días)' :
+                            (this.charts.groupBy === 'year' ? 'Total (años)' : 'Total (meses)');
+
+                        const isDark = document.documentElement.classList.contains('dark');
+                        const axisColor = isDark ? '#e5e7eb' : '#374151';
+                        const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+
+                        const palette = [
+                            '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6', '#f97316',
+                            '#14b8a6', '#3b82f6', '#22c55e', '#e879f9', '#a3e635'
+                        ];
+
+                        this.destroyCharts();
+
+                        // Series chart - verify refs exist
+                        if (!this.$refs.seriesChart || !this.$refs.breakdownChart) {
+                            console.warn('Chart canvas refs not ready yet');
+                            return;
+                        }
+
+                        const seriesContext = this.$refs.seriesChart?.getContext?.('2d');
+                        const breakdownContext = this.$refs.breakdownChart?.getContext?.('2d');
+                        if (!seriesContext || !breakdownContext) {
+                            this.chartsError = 'No se pudo inicializar el canvas del gráfico.';
+                            this.destroyCharts();
+                            return;
+                        }
+                        const seriesDataset = {
+                            label: 'Coste',
+                            data: seriesData,
+                            borderColor: '#6366f1',
+                            backgroundColor: this.charts.seriesType === 'bar' ? 'rgba(99,102,241,0.35)' :
+                                'rgba(99,102,241,0.12)',
+                            fill: this.charts.seriesType !== 'bar',
+                            tension: 0.35,
+                            pointRadius: this.charts.seriesType === 'line' ? 2 : 0,
+                            borderWidth: 2,
+                        };
+
+                        this.seriesChartInstance = new Chart(seriesContext, {
+                            type: this.charts.seriesType,
+                            data: {
+                                labels: seriesLabels,
+                                datasets: [seriesDataset],
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                layout: {
+                                    padding: {
+                                        bottom: seriesLabels.length > 12 ? 8 : 0,
+                                    },
+                                },
+                                plugins: {
+                                    legend: {
+                                        display: false,
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            title: (items) => items?.[0]?.label || '',
+                                            label: (context) => {
+                                                const value = typeof context.parsed === 'number' ?
+                                                    context.parsed :
+                                                    (context.parsed?.y ?? 0);
+                                                return this.formatCurrency(value);
+                                            },
+                                        },
+                                    },
+                                },
+                                scales: {
+                                    x: {
+                                        ticks: {
+                                            color: axisColor,
+                                            maxRotation: seriesLabels.length > 12 ? 45 : 0,
+                                            minRotation: seriesLabels.length > 12 ? 45 : 0,
+                                            autoSkip: true,
+                                            maxTicksLimit: seriesLabels.length > 18 ? 10 : 12,
+                                            callback: (_, idx) => {
+                                                const label = seriesLabels[idx] || '';
+                                                if (this.charts.groupBy === 'day' && label.includes(
+                                                        '-')) {
+                                                    const parts = label.split('-');
+                                                    return parts.length === 3 ?
+                                                        `${parts[2]}/${parts[1]}` : label;
+                                                }
+                                                if (this.charts.groupBy === 'month' && label
+                                                    .includes('-')) {
+                                                    const parts = label.split('-');
+                                                    return parts.length >= 2 ?
+                                                        `${parts[1]}/${parts[0]}` : label;
+                                                }
+                                                return label;
+                                            },
+                                        },
+                                        grid: {
+                                            color: gridColor,
+                                        },
+                                    },
+                                    y: {
+                                        ticks: {
+                                            color: axisColor,
+                                            /*
+                                                                                   callback: (value) => this.formatCurrency(value).replace(' €', ''),
+                                                                                   */
+                                            callback: (value) => new Intl.NumberFormat('es-ES', {
+                                                maximumFractionDigits: 2
+                                            }).format(value),
+                                        },
+                                        grid: {
+                                            color: gridColor,
+                                        },
+                                    },
+                                },
+                            },
+                        });
+
+                        // Breakdown chart
+                        const breakdownColors = breakdownLabels.map((_, idx) => palette[idx % palette.length]);
+                        const isBreakdownBar = this.charts.breakdownType === 'bar';
+
+                        this.breakdownLegend = breakdownLabels.map((label, idx) => ({
+                            label,
+                            value: Number(breakdownData[idx]) || 0,
+                            color: breakdownColors[idx],
+                        }));
+
+                        this.breakdownChartInstance = new Chart(breakdownContext, {
+                            type: this.charts.breakdownType,
+                            data: {
+                                labels: breakdownLabels,
+                                datasets: [{
+                                    label: 'Coste',
+                                    data: breakdownData,
+                                    backgroundColor: isBreakdownBar ? 'rgba(16,185,129,0.35)' :
+                                        breakdownColors,
+                                    borderColor: isBreakdownBar ? '#10b981' : breakdownColors,
+                                    borderWidth: isBreakdownBar ? 2 : 1,
+                                }],
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                indexAxis: isBreakdownBar ? 'y' : 'x',
+                                plugins: {
+                                    legend: {
+                                        display: false,
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            title: (items) => items?.[0]?.label || '',
+                                            label: (context) => {
+                                                const value = typeof context.parsed === 'number' ?
+                                                    context.parsed :
+                                                    (context.parsed?.x ?? context.parsed?.y ?? 0);
+                                                return this.formatCurrency(value);
+                                            },
+                                        },
+                                    },
+                                },
+                                scales: isBreakdownBar ? {
+                                    x: {
+                                        ticks: {
+                                            color: axisColor,
+                                            /*
+                                                                                   callback: (value) => this.formatCurrency(value).replace(' €', ''),
+                                                                                   */
+                                            callback: (value) => new Intl.NumberFormat('es-ES', {
+                                                maximumFractionDigits: 2
+                                            }).format(value),
+                                        },
+                                        grid: {
+                                            color: gridColor,
+                                        },
+                                    },
+                                    y: {
+                                        ticks: {
+                                            color: axisColor,
+                                            autoSkip: false,
+                                            callback: (_, idx) => {
+                                                const label = breakdownLabels[idx] || '';
+                                                return label.length > 18 ? (label.slice(0, 18) +
+                                                    '…') : label;
+                                            },
+                                        },
+                                        grid: {
+                                            color: gridColor,
+                                        },
+                                    },
+                                } : {},
+                            },
+                        });
+                    },
+
+                    async submitFormFormData() {
+                        // Clear fields based on tipo_gasto
                         if (this.form.tipo_gasto === 'gasto') {
+                            // Si es gasto, no debe tener obra
                             this.form.obra_id = '';
                         } else if (this.form.tipo_gasto === 'obra') {
+                            // Si es obra, no debe tener nave ni máquina
                             this.form.nave_id = '';
                             this.form.maquina_id = '';
                             this.selectedMachine = null;
                             this.machineSearch = '';
-                            this.openMachineDropdown = false;
-                            this.dropdownStyle = '';
                         }
 
-                        const method = this.isEditing ? 'PUT' : 'POST';
-                        const body = JSON.stringify(this.form);
+                        // Create form data
+                        const formData = new FormData();
+                        formData.append('_token', '{{ csrf_token() }}');
 
-                        const resp = await fetch(this.formAction, {
-                            method: method,
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
-                                    'content')
-                            },
-                            body: body
+                        if (this.isEditing) {
+                            formData.append('_method', 'PUT');
+                        }
+
+                        // Append form fields
+                        Object.keys(this.form).forEach(key => {
+                            if (key !== 'tipo_gasto') { // Don't send tipo_gasto to backend
+                                formData.append(key, this.form[key] || '');
+                            }
                         });
 
-                        const data = await resp.json();
-
-                        if (data.success) {
-                            // Show success message (simple version for now, ideally update list dynamically or reload)
-                            // The user requested no refresh, so we should update the list? 
-                            // Updating the list via JS entirely is complex because of server-side pagination/rendering.
-                            // For this task, reloading page is "simplest" valid way unless we do full SPA.
-                            // BUT user said "no quiero refrescos". 
-                            // So I will reload just the page content using Livewire or manual fetch.
-                            // Since we are not using Livewire here, a reload is the standard fallback unless we rewrite the whole table logic in JS.
-                            // However, let's try to reload.
-                            window.location.reload();
-                        } else {
-                            if (data.errors) {
-                                let msg = 'Errores de validación:\n';
-                                for (const [key, val] of Object.entries(data.errors)) {
-                                    msg += `- ${val}\n`;
-                                }
-                                alert(msg);
-                            } else {
-                                alert('Error al guardar: ' + (data.message || 'Desconocido'));
-                            }
+                        // If creating new proveedor
+                        if (this.showNewProveedorInput && this.newProveedor) {
+                            formData.append('new_proveedor', this.newProveedor);
                         }
 
-                    } catch (e) {
-                        console.error(e);
-                        alert('Ocurrió un error inesperado: ' + e);
+                        // If creating new motivo
+                        if (this.showNewMotivoInput && this.newMotivo) {
+                            formData.append('new_motivo', this.newMotivo);
+                        }
+
+                        try {
+                            const response = await fetch(this.formAction, {
+                                method: 'POST',
+                                body: formData,
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                }
+                            });
+
+                            if (response.ok) {
+                                window.location.reload();
+                            } else {
+                                const data = await response.json();
+                                alert(data.message || 'Error al guardar');
+                            }
+                        } catch (error) {
+                            console.error('Error:', error);
+                            alert('Error al enviar el formulario');
+                        }
+                    },
+
+
+                    openCreateModal() {
+                        this.resetForm(); // Reset dynamic inputs first
+                        this.isEditing = false;
+                        this.formAction = '{{ route('gastos.store') }}';
+                        this.showModal = true;
+                    },
+
+                    editGasto(gasto) {
+                        this.resetForm(); // Reset dynamic inputs first
+                        this.form = {
+                            fecha_pedido: gasto.fecha_pedido,
+                            fecha_llegada: gasto.fecha_llegada,
+                            nave_id: gasto.nave_id,
+                            obra_id: gasto.obra_id,
+                            proveedor_id: gasto.proveedor_id,
+                            maquina_id: gasto.maquina_id,
+                            motivo_id: gasto.motivo_id,
+                            coste: gasto.coste,
+                            observaciones: gasto.observaciones,
+                            tipo_gasto: gasto.obra_id ? 'obra' : 'gasto'
+                        };
+
+                        // Set selected machine if exists
+                        if (gasto.maquina) {
+                            this.selectedMachine = {
+                                id: gasto.maquina.id,
+                                code: gasto.maquina.codigo || '',
+                                name: gasto.maquina.nombre,
+                                image: gasto.maquina.imagen ? `/${gasto.maquina.imagen}` : null
+                            };
+                            this.machineSearch = gasto.maquina.nombre;
+                        } else {
+                            this.selectedMachine = null;
+                            this.machineSearch = '';
+                        }
+
+                        this.isEditing = true;
+                        this.formAction = `/gastos/${gasto.id}`;
+                        this.showModal = true;
+                    },
+
+                    closeModal() {
+                        this.showModal = false;
+                    },
+
+                    resetForm() {
+                        this.form = {
+                            fecha_pedido: '',
+                            fecha_llegada: '',
+                            nave_id: '',
+                            obra_id: '',
+                            proveedor_id: '',
+                            maquina_id: '',
+                            motivo_id: '',
+                            coste: '',
+                            observaciones: '',
+                            tipo_gasto: 'gasto'
+                        };
+                        this.showNewProveedorInput = false;
+                        this.newProveedor = '';
+                        this.showNewMotivoInput = false;
+                        this.newMotivo = '';
+                        this.isEditing = false;
+                        this.machineSearch = '';
+                        this.selectedMachine = null;
+                        this.openMachineDropdown = false;
+                    },
+
+                    showObservaciones(text) {
+                        this.observacionesText = text;
+                        this.showObservacionesModal = true;
+                    },
+
+                    clearFilters() {
+                        this.filters = {
+                            id: '',
+                            fecha_pedido: '',
+                            fecha_llegada: '',
+                            nave_id: '',
+                            obra_id: '',
+                            proveedor_id: '',
+                            maquina: '',
+                            motivo_id: '',
+                            coste: '',
+                            factura: '',
+                            observaciones: ''
+                        };
+                    },
+
+                    toggleNewProveedor() {
+                        if (this.form.proveedor_id === 'new') {
+                            this.showNewProveedorInput = true;
+                            this.form.proveedor_id =
+                                ''; // Clear selection so validation doesn't get confused if we switch back
+                            this.$nextTick(() => {
+                                document.getElementById('new_proveedor_input').focus();
+                            });
+                        } else {
+                            this.showNewProveedorInput = false;
+                        }
+                    },
+
+                    cancelNewProveedor() {
+                        this.showNewProveedorInput = false;
+                        this.newProveedor = '';
+                        this.form.proveedor_id = '';
+                    },
+
+                    toggleNewMotivo() {
+                        if (this.form.motivo_id === 'new') {
+                            this.showNewMotivoInput = true;
+                            this.form.motivo_id = '';
+                            this.$nextTick(() => {
+                                document.getElementById('new_motivo_input').focus();
+                            });
+                        } else {
+                            this.showNewMotivoInput = false;
+                        }
+                    },
+
+                    cancelNewMotivo() {
+                        this.showNewMotivoInput = false;
+                        this.newMotivo = '';
+                        this.form.motivo_id = '';
+                    },
+
+                    async submitForm() {
+                        try {
+                            // 1. Create new provider if needed
+                            if (this.showNewProveedorInput && this.newProveedor) {
+                                const resp = await fetch('{{ route('gastos.storeProveedor') }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                        'X-CSRF-TOKEN': document.querySelector(
+                                                'meta[name="csrf-token"]')
+                                            .getAttribute('content')
+                                    },
+                                    body: JSON.stringify({
+                                        nombre: this.newProveedor
+                                    })
+                                });
+                                const data = await resp.json();
+                                if (data.success) {
+                                    this.proveedores.push({
+                                        id: data.id,
+                                        nombre: data.nombre
+                                    });
+                                    // Sort alphabet (optional)
+                                    this.proveedores.sort((a, b) => a.nombre.localeCompare(b.nombre));
+                                    this.form.proveedor_id = data.id;
+                                } else {
+                                    alert('Error al crear proveedor: ' + (data.message || 'Desconocido'));
+                                    return;
+                                }
+                            }
+
+                            // 2. Create new reason if needed
+                            if (this.showNewMotivoInput && this.newMotivo) {
+                                const resp = await fetch('{{ route('gastos.storeMotivo') }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                        'X-CSRF-TOKEN': document.querySelector(
+                                                'meta[name="csrf-token"]')
+                                            .getAttribute('content')
+                                    },
+                                    body: JSON.stringify({
+                                        nombre: this.newMotivo
+                                    })
+                                });
+                                const data = await resp.json();
+                                if (data.success) {
+                                    this.motivos.push({
+                                        id: data.id,
+                                        nombre: data.nombre
+                                    });
+                                    this.motivos.sort((a, b) => a.nombre.localeCompare(b.nombre));
+                                    this.form.motivo_id = data.id;
+                                } else {
+                                    alert('Error al crear motivo: ' + (data.message || 'Desconocido'));
+                                    return;
+                                }
+                            }
+
+                            // 3. Submit main form
+                            if (this.form.tipo_gasto === 'gasto') {
+                                this.form.obra_id = '';
+                            } else if (this.form.tipo_gasto === 'obra') {
+                                this.form.nave_id = '';
+                                this.form.maquina_id = '';
+                                this.selectedMachine = null;
+                                this.machineSearch = '';
+                                this.openMachineDropdown = false;
+                                this.dropdownStyle = '';
+                            }
+
+                            const method = this.isEditing ? 'PUT' : 'POST';
+                            const body = JSON.stringify(this.form);
+
+                            const resp = await fetch(this.formAction, {
+                                method: method,
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRF-TOKEN': document.querySelector(
+                                        'meta[name="csrf-token"]').getAttribute(
+                                        'content')
+                                },
+                                body: body
+                            });
+
+                            const data = await resp.json();
+
+                            if (data.success) {
+                                // Show success message (simple version for now, ideally update list dynamically or reload)
+                                // The user requested no refresh, so we should update the list? 
+                                // Updating the list via JS entirely is complex because of server-side pagination/rendering.
+                                // For this task, reloading page is "simplest" valid way unless we do full SPA.
+                                // BUT user said "no quiero refrescos". 
+                                // So I will reload just the page content using Livewire or manual fetch.
+                                // Since we are not using Livewire here, a reload is the standard fallback unless we rewrite the whole table logic in JS.
+                                // However, let's try to reload.
+                                window.location.reload();
+                            } else {
+                                if (data.errors) {
+                                    let msg = 'Errores de validación:\n';
+                                    for (const [key, val] of Object.entries(data.errors)) {
+                                        msg += `- ${val}\n`;
+                                    }
+                                    alert(msg);
+                                } else {
+                                    alert('Error al guardar: ' + (data.message || 'Desconocido'));
+                                }
+                            }
+
+                        } catch (e) {
+                            console.error(e);
+                            alert('Ocurrió un error inesperado: ' + e);
+                        }
                     }
                 }
-            }
+            };
+        };
+
+        // Evitar listeners duplicados cuando se usa `wire:navigate`
+        if (window.initGastosManager) {
+            document.removeEventListener('livewire:navigated', window.initGastosManager);
         }
+        window.initGastosManager = initGastosManager;
+
+        // Cleanup de Chart.js y peticiones en navegaciones SPA (wire:navigate)
+        const cleanupGastosCharts = () => {
+            const root = document.querySelector('[x-data="gastosManager()"]');
+
+            try {
+                if (root && window.Alpine?.$data) {
+                    const data = window.Alpine.$data(root);
+                    data?.chartsAbortController?.abort?.();
+                    data?.destroyCharts?.();
+                }
+            } catch (_) {
+                // noop
+            }
+
+            try {
+                if (root && window.Chart?.getChart) {
+                    const canvases = root.querySelectorAll(
+                        'canvas[x-ref="seriesChart"], canvas[x-ref="breakdownChart"]');
+                    canvases.forEach((canvas) => {
+                        const chart = window.Chart.getChart(canvas);
+                        if (chart) chart.destroy();
+                    });
+                }
+            } catch (_) {
+                // noop
+            }
+        };
+
+        if (window.cleanupGastosCharts) {
+            document.removeEventListener('livewire:navigating', window.cleanupGastosCharts);
+        }
+        window.cleanupGastosCharts = cleanupGastosCharts;
+        document.addEventListener('livewire:navigating', cleanupGastosCharts);
+
+        // Ejecutar ya (por si la vista se inyecta tras navegar)
+        initGastosManager();
+
+        // Ejecutar al cargar y tras navegar con Livewire
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initGastosManager, {
+                once: true
+            });
+        }
+        document.addEventListener('livewire:navigated', initGastosManager);
+
+        // Cleanup global (ver `resources/views/layouts/app.blade.php`)
+        window.pageInitializers = window.pageInitializers || [];
+        window.pageInitializers.push(initGastosManager);
     </script>
 </x-app-layout>
