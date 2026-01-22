@@ -335,28 +335,71 @@ class PaqueteController extends Controller
                 ], 400);
             }
 
-            // 3.2) VALIDACIÓN: Todas las planillas deben tener la MISMA FECHA DE ENTREGA
-            $fechasEntrega = $etiquetasParaValidar
-                ->pluck('planilla.fecha_estimada_entrega')
-                ->filter()
-                ->map(fn($fecha) => $fecha instanceof \Carbon\Carbon ? $fecha->format('Y-m-d') : $fecha)
-                ->unique()
-                ->values();
+            // 3.2) VALIDACIÓN: Todos los elementos deben resolver a la MISMA FECHA DE ENTREGA
+            //      - Si todos los elementos tienen fecha_entrega = null → usa fecha_estimada_entrega de planilla
+            //      - Si todos los elementos tienen la misma fecha_entrega → usa esa fecha
+            //      - Si hay mezcla (null y fechas, o fechas diferentes) → ERROR (irían a salidas distintas)
 
-            if ($fechasEntrega->count() > 1) {
-                $fechasFormateadas = $etiquetasParaValidar
-                    ->pluck('planilla')
-                    ->filter()
-                    ->unique('id')
-                    ->map(fn($p) => $p->codigo_limpio . ' (' . ($p->fecha_estimada_entrega ? $p->fecha_estimada_entrega->format('d/m/Y') : 'sin fecha') . ')')
+            $fechasElementos = $todosElementos->map(function ($elemento) {
+                if ($elemento->fecha_entrega) {
+                    return $elemento->fecha_entrega instanceof \Carbon\Carbon
+                        ? $elemento->fecha_entrega->format('Y-m-d')
+                        : $elemento->fecha_entrega;
+                }
+                return null;
+            });
+
+            $elementosConFecha = $fechasElementos->filter()->unique()->values();
+            $elementosSinFecha = $fechasElementos->filter(fn($f) => $f === null)->count();
+            $totalElementos = $todosElementos->count();
+
+            // Caso 1: Mezcla de elementos con fecha y sin fecha
+            if ($elementosSinFecha > 0 && $elementosConFecha->count() > 0) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "No se puede crear el paquete: algunos elementos tienen fecha de entrega asignada y otros no. Los elementos sin fecha se rigen por la fecha de la planilla, lo que resultaría en salidas diferentes.",
+                ], 400);
+            }
+
+            // Caso 2: Todos tienen fecha pero son diferentes
+            if ($elementosConFecha->count() > 1) {
+                $fechasFormateadas = $elementosConFecha
+                    ->map(fn($f) => \Carbon\Carbon::parse($f)->format('d/m/Y'))
                     ->implode(', ');
 
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'message' => "No se puede crear el paquete: las planillas tienen diferentes fechas de entrega ({$fechasFormateadas}). Un paquete solo puede contener etiquetas con la misma fecha de entrega.",
+                    'message' => "No se puede crear el paquete: los elementos tienen diferentes fechas de entrega ({$fechasFormateadas}). Un paquete solo puede contener elementos con la misma fecha de entrega.",
                 ], 400);
             }
+
+            // Caso 3: Todos sin fecha → validar que las planillas tengan la misma fecha_estimada_entrega
+            if ($elementosSinFecha === $totalElementos) {
+                $fechasPlanillas = $etiquetasParaValidar
+                    ->pluck('planilla.fecha_estimada_entrega')
+                    ->filter()
+                    ->map(fn($fecha) => $fecha instanceof \Carbon\Carbon ? $fecha->format('Y-m-d') : $fecha)
+                    ->unique()
+                    ->values();
+
+                if ($fechasPlanillas->count() > 1) {
+                    $fechasFormateadas = $etiquetasParaValidar
+                        ->pluck('planilla')
+                        ->filter()
+                        ->unique('id')
+                        ->map(fn($p) => $p->codigo_limpio . ' (' . ($p->fecha_estimada_entrega ? $p->fecha_estimada_entrega->format('d/m/Y') : 'sin fecha') . ')')
+                        ->implode(', ');
+
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "No se puede crear el paquete: las planillas tienen diferentes fechas de entrega ({$fechasFormateadas}). Un paquete solo puede contener etiquetas con la misma fecha de entrega.",
+                    ], 400);
+                }
+            }
+            // Caso 4: Todos con la misma fecha → OK (ya validado implícitamente)
 
             // 3.3) VALIDACIÓN: El peso total no puede exceder 1350 kg
             $pesoMaximo = 1350;
