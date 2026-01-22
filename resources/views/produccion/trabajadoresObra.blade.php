@@ -557,7 +557,7 @@
                             if (todoOk) {
                                 Swal.fire({
                                     icon: 'success',
-                                    title: '✅ Eventos movidos',
+                                    title: 'Eventos movidos',
                                     timer: 2000,
                                     showConfirmButton: false
                                 });
@@ -1566,7 +1566,7 @@
                                 if (todoOk) {
                                     Swal.fire({
                                         icon: 'success',
-                                        title: '✅ Eventos movidos',
+                                        title: 'Eventos movidos',
                                         toast: true,
                                         position: 'top-end',
                                         timer: 2000,
@@ -1832,7 +1832,7 @@
                             .then(res => res.json())
                             .then(data => {
                                 if (data.success) {
-                                    Swal.fire('✅ Obra copiada correctamente', data.message || '',
+                                    Swal.fire('Obra copiada correctamente', data.message || '',
                                         'success');
                                     window.calendarioObras.refetchEvents();
                                     setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
@@ -1873,7 +1873,7 @@
                             .then(res => res.json())
                             .then(data => {
                                 if (data.success) {
-                                    Swal.fire('✅ Semana copiada correctamente');
+                                    Swal.fire('Semana copiada correctamente', '', 'success');
                                     window.calendarioObras.refetchEvents();
                                     setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
                                 } else {
@@ -2026,7 +2026,7 @@
                             document.getElementById('ficticio_nombre').value = '';
                             Swal.fire({
                                 icon: 'success',
-                                title: '✅ Trabajador ficticio creado',
+                                title: 'Trabajador ficticio creado',
                                 timer: 1500,
                                 showConfirmButton: false
                             });

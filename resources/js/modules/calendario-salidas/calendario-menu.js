@@ -1261,7 +1261,7 @@ async function guardarPaquetesSalida(salidaId, data, calendar) {
         if (responseData.success) {
             await Swal.fire({
                 icon: "success",
-                title: "✅ Cambios Guardados",
+                title: "Cambios Guardados",
                 text: "Los paquetes de la salida se han actualizado correctamente.",
                 timer: 2000,
             });

@@ -312,7 +312,7 @@
                     const data = await response.json();
                     if (response.ok && data.ok) {
                         Livewire.dispatch('refreshComponent');
-                        Swal.fire("✅ Guardado", "Horas actualizadas correctamente.", "success");
+                        Swal.fire("Guardado", "Horas actualizadas correctamente.", "success");
                     } else {
                         Swal.fire("❌ Error", data.message || "No se pudo actualizar.", "error");
                         Object.assign(asignacionData, JSON.parse(JSON.stringify(originalData)));

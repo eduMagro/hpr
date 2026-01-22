@@ -322,7 +322,7 @@ async function guardarAsignaciones() {
         if (data.success) {
             await Swal.fire({
                 icon: 'success',
-                title: '✅ Asignaciones Guardadas',
+                title: 'Asignaciones Guardadas',
                 text: 'Los paquetes han sido asignados correctamente a las salidas',
                 timer: 2000,
             });

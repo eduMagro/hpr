@@ -380,7 +380,7 @@
 
                     await Swal.fire({
                         icon: 'success',
-                        title: '✅ Etiqueta añadida',
+                        title: 'Etiqueta añadida',
                         text: data.message,
                         timer: 2000,
                         showConfirmButton: false
@@ -447,7 +447,7 @@
 
                     await Swal.fire({
                         icon: 'success',
-                        title: '✅ Etiqueta eliminada',
+                        title: 'Etiqueta eliminada',
                         text: data.message,
                         timer: 2000,
                         showConfirmButton: false
