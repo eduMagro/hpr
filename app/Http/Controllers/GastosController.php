@@ -215,9 +215,11 @@ class GastosController extends Controller
     public function importCsv(Request $request)
     {
         $validated = $request->validate([
-            'tipo' => 'required|in:gasto',
+            'tipo' => 'required|in:gasto,obra',
             'csv_file' => 'required|file|max:10240|mimes:csv,txt',
         ]);
+
+        $tipo = $validated['tipo'];
 
         $file = $request->file('csv_file');
         $path = $file->getRealPath();
@@ -263,7 +265,7 @@ class GastosController extends Controller
                 $fechaLlegada = $this->csvGet($row, $headerIndex, ['llegada']);
                 $naveNombre = $this->csvGet($row, $headerIndex, ['nave']);
                 $maquinaRaw = $this->csvGet($row, $headerIndex, ['máquina', 'maquina']);
-                $obraNombre = $this->csvGet($row, $headerIndex, ['obra']);
+                $obraRaw = $this->csvGet($row, $headerIndex, ['obra']);
                 $proveedorNombre = $this->csvGet($row, $headerIndex, ['proveedor']);
                 $motivoNombre = $this->csvGet($row, $headerIndex, ['motivo']);
                 $costeRaw = $this->csvGet($row, $headerIndex, ['coste']);
@@ -293,36 +295,41 @@ class GastosController extends Controller
                     $motivoId = $mot->id;
                 }
 
-                $naveId = null;
-                if ($naveNombre !== '') {
-                    $nave = \App\Models\Obra::where('obra', $naveNombre)->first();
-                    if ($nave) {
-                        $naveId = $nave->id;
-                    } else {
-                        $warnings[] = "Línea {$rowNumber}: Nave '{$naveNombre}' no encontrada, se importa sin nave.";
-                    }
-                }
-
-                $maquinaId = null;
-                $machine = $this->mapMaquinaCodigo($maquinaRaw);
-                if ($machine['codigo'] !== '') {
-                    $maquinaId = $this->findMaquinaIdByCodigo($machine['codigo']);
-                    if (!$maquinaId) {
-                        $note = $machine['changed']
-                            ? "Máquina: {$machine['raw']} → {$machine['codigo']}"
-                            : "Máquina: {$machine['codigo']}";
-                        $observaciones = $this->appendObservationNote($observaciones, $note);
-                        $warnings[] = "Línea {$rowNumber}: {$note}.";
-                    }
-                }
-
                 $obraId = null;
-                if ($obraNombre !== '') {
-                    $obra = \App\Models\Obra::where('obra', $obraNombre)->first();
-                    if ($obra) {
-                        $obraId = $obra->id;
-                    } else {
-                        $warnings[] = "Línea {$rowNumber}: Obra '{$obraNombre}' no encontrada, se importa sin obra.";
+                $naveId = null;
+                $maquinaId = null;
+
+                if ($tipo === 'obra') {
+                    $obraId = $this->resolveObraIdFromCsv($obraRaw, $rowNumber, $warnings, $observaciones);
+                } else {
+                    if ($naveNombre !== '') {
+                        $nave = \App\Models\Obra::where('obra', $naveNombre)->first();
+                        if ($nave) {
+                            $naveId = $nave->id;
+                        } else {
+                            $warnings[] = "Línea {$rowNumber}: Nave '{$naveNombre}' no encontrada, se importa sin nave.";
+                        }
+                    }
+
+                    $machine = $this->mapMaquinaCodigo($maquinaRaw);
+                    if ($machine['codigo'] !== '') {
+                        $maquinaId = $this->findMaquinaIdByCodigo($machine['codigo']);
+                        if (!$maquinaId) {
+                            $note = $machine['changed']
+                                ? "Máquina: {$machine['raw']} → {$machine['codigo']}"
+                                : "Máquina: {$machine['codigo']}";
+                            $observaciones = $this->appendObservationNote($observaciones, $note);
+                            $warnings[] = "Línea {$rowNumber}: {$note}.";
+                        }
+                    }
+
+                    if ($obraRaw !== '') {
+                        $obra = \App\Models\Obra::where('obra', $obraRaw)->first();
+                        if ($obra) {
+                            $obraId = $obra->id;
+                        } else {
+                            $warnings[] = "Línea {$rowNumber}: Obra '{$obraRaw}' no encontrada, se importa sin obra.";
+                        }
                     }
                 }
 
@@ -507,6 +514,35 @@ class GastosController extends Controller
         if ($base === '')
             return $note;
         return $base . ' | ' . $note;
+    }
+
+    private function resolveObraIdFromCsv(string $obraRaw, int $rowNumber, array &$warnings, string &$observaciones): ?int
+    {
+        $obraRaw = trim($obraRaw);
+        if ($obraRaw === '') {
+            return null;
+        }
+
+        if (!preg_match('/^OBRA\\s*-\\s*(.+)$/iu', $obraRaw, $m)) {
+            $observaciones = $this->appendObservationNote($observaciones, "Obra: {$obraRaw}");
+            return null;
+        }
+
+        $code = trim((string) ($m[1] ?? ''));
+        if ($code === '') {
+            $observaciones = $this->appendObservationNote($observaciones, "Obra: {$obraRaw}");
+            return null;
+        }
+
+        $obra = \App\Models\Obra::where('cod_obra', $code)->first();
+        if ($obra) {
+            return $obra->id;
+        }
+
+        $note = "Obra no encontrada (cod_obra={$code})";
+        $observaciones = $this->appendObservationNote($observaciones, $note);
+        $warnings[] = "Línea {$rowNumber}: {$note}.";
+        return null;
     }
 
     public function store(Request $request)

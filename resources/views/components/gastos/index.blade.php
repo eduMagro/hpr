@@ -319,7 +319,7 @@
                                         :title="gasto.motivo?.nombre || '-'"
                                         x-text="truncateText(gasto.motivo?.nombre || '-', 10)"></td>
                                     <td class="px-6 py-4 text-right font-bold text-gray-900 dark:text-white cursor-default whitespace-nowrap"
-                                        x-text="gasto.coste ? formatCurrency(gasto.coste) : '-'"></td>
+                                        x-text="gasto.coste ? formatEuro(gasto.coste) : '-'"></td>
                                     <td class="px-6 py-4 text-center cursor-default whitespace-nowrap">
                                         <template x-if="gasto.codigo_factura">
                                             <button type="button" @click="copyToClipboard(gasto.codigo_factura)"
@@ -585,11 +585,11 @@
                         </svg>
                     </div>
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                        <span class="w-2 h-8 bg-indigo-500 rounded-full"></span>
+                        <span class="w-1 h-8 bg-indigo-500 rounded-full"></span>
                         Resumen Global
                     </h3>
                     <div class="mt-6 flex items-baseline gap-2">
-                        <span class="text-4xl font-extrabold text-gray-900 dark:text-white">
+                        <span class="text-4xl font-extrabold text-gray-900 dark:text-white hidden">
                             {{ number_format($stats['global'], 2, ',', '.') }} €
                         </span>
                         <span class="text-sm text-gray-500">Total Gastos</span>
@@ -598,7 +598,11 @@
                     <!-- Graph Placeholder Box -->
                     <div
                         class="mt-6 h-48 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-700 dark:to-gray-800 rounded-2xl border border-indigo-100 dark:border-gray-600 p-3 relative">
-                        <canvas x-ref="seriesChart"></canvas>
+                        <div class="h-full overflow-x-auto gastos-table-scroll">
+                            <div class="h-full" :style="seriesCanvasWrapperStyle()">
+                                <canvas x-ref="seriesChart"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -613,20 +617,38 @@
                         </svg>
                     </div>
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                        <span class="w-2 h-8 bg-emerald-500 rounded-full"></span>
+                        <span class="w-1 h-8 bg-emerald-500 rounded-full"></span>
                         Resumen Mensual
                     </h3>
                     <div class="mt-6 flex items-baseline gap-2">
                         <span class="text-4xl font-extrabold text-gray-900 dark:text-white">
                             {{ number_format($stats['mensual'], 2, ',', '.') }} €
                         </span>
-                        <span class="text-sm text-gray-500">Este Mes</span>
+                        <span class="text-4xl font-extrabold text-gray-900 dark:text-white"
+                            x-text="formatEuro(chartsTotals.selectedTotal || 0)"></span>
+                        <span class="text-sm text-gray-500" x-text="chartsTotals.label"></span>
                     </div>
 
                     <!-- Graph Placeholder Box -->
                     <div
                         class="mt-6 h-48 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-700 dark:to-gray-800 rounded-2xl border border-emerald-100 dark:border-gray-600 p-3 relative">
-                        <canvas x-ref="breakdownChart"></canvas>
+                        <div class="h-full overflow-y-auto overflow-x-hidden gastos-table-scroll">
+                            <div class="h-full" :style="breakdownCanvasWrapperStyle()">
+                                <canvas x-ref="breakdownChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3 max-h-24 overflow-y-auto gastos-table-scroll text-xs text-gray-600 dark:text-gray-300"
+                        x-show="breakdownLegend.length" x-cloak>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                            <template x-for="item in breakdownLegend" :key="item.label">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span class="w-2 h-2 rounded-full shrink-0" :style="`background:${item.color}`"></span>
+                                    <span class="truncate" :title="`${item.label}: ${formatEuro(item.value)}`"
+                                        x-text="item.label"></span>
+                                </div>
+                            </template>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1100,7 +1122,7 @@
                 </div>
             </div>
 
-            <!-- Import CSV Modal (Gastos) -->
+            <!-- Import CSV Modal -->
             <div x-show="showImportModal" class="fixed inset-0 z-[1000] overflow-y-auto" style="display: none;"
                 aria-labelledby="import-modal-title" role="dialog" aria-modal="true" x-cloak>
                 <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -1115,14 +1137,31 @@
                                 <div>
                                     <h3 class="text-lg font-bold text-gray-900 dark:text-white"
                                         id="import-modal-title">
-                                        Importar CSV (Gastos)
+                                        <span x-text="importTipo === 'obra' ? 'Importar CSV (Obras)' : 'Importar CSV (Gastos)'">Importar CSV (Gastos)</span>
                                     </h3>
                                     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
                                         Sube un CSV con cabeceras como:
-                                        <span class="font-mono text-xs">Fecha del
+                                        <span class="font-mono text-xs" x-show="importTipo === 'gasto'">Fecha del
                                             pedido,Llegada,Nave,Máquina,Proveedor,Motivo,Coste,Factura,Fecha
+                                            factura,Observaciones,Periodo</span>
+                                        <span class="font-mono text-xs" x-show="importTipo === 'obra'"
+                                            style="display: none;">Fecha del
+                                            pedido,Llegada,Obra,Proveedor,Motivo,Coste,Factura,Fecha
                                             factura,Observaciones,Periodo</span>.
                                     </p>
+                                    <div
+                                        class="mt-3 inline-flex rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                        <button type="button" @click="importTipo = 'gasto'"
+                                            class="px-3 py-1.5 text-sm font-semibold transition-colors"
+                                            :class="importTipo === 'gasto' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'">
+                                            Gastos
+                                        </button>
+                                        <button type="button" @click="importTipo = 'obra'"
+                                            class="px-3 py-1.5 text-sm font-semibold transition-colors"
+                                            :class="importTipo === 'obra' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'">
+                                            Obras
+                                        </button>
+                                    </div>
                                 </div>
                                 <button type="button" @click="showImportModal = false"
                                     class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
@@ -1137,13 +1176,13 @@
                         <form method="POST" action="{{ route('gastos.importCsv') }}" enctype="multipart/form-data"
                             class="p-6 space-y-4">
                             @csrf
-                            <input type="hidden" name="tipo" value="gasto">
+                            <input type="hidden" name="tipo" :value="importTipo">
 
                             <div
                                 class="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 p-4 bg-gray-50 dark:bg-gray-700/40">
                                 <div class="text-sm font-semibold text-gray-700 dark:text-gray-200">Columnas usadas
                                 </div>
-                                <ul
+                                <ul x-show="importTipo === 'gasto'"
                                     class="mt-2 text-sm text-gray-600 dark:text-gray-300 grid grid-cols-1 md:grid-cols-2 gap-x-6">
                                     <li><span class="font-mono text-xs">Fecha del pedido</span> → <span
                                             class="font-mono text-xs">fecha_pedido</span></li>
@@ -1164,10 +1203,40 @@
                                     <li class="text-gray-500 dark:text-gray-400"><span
                                             class="font-mono text-xs">Periodo</span> → ignorar</li>
                                 </ul>
-                                <div class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                                    Nota: si el CSV incluye <span class="font-mono">Nave</span> o <span
-                                        class="font-mono">Máquina</span>,
-                                    se intentan asociar por nombre si existen.
+                                <ul x-show="importTipo === 'obra'" style="display: none;"
+                                    class="mt-2 text-sm text-gray-600 dark:text-gray-300 grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                                    <li><span class="font-mono text-xs">Fecha del pedido</span> → <span
+                                            class="font-mono text-xs">fecha_pedido</span></li>
+                                    <li><span class="font-mono text-xs">Llegada</span> → <span
+                                            class="font-mono text-xs">fecha_llegada</span></li>
+                                    <li><span class="font-mono text-xs">Obra</span> → <span
+                                            class="font-mono text-xs">obra_id</span></li>
+                                    <li><span class="font-mono text-xs">Proveedor</span> → <span
+                                            class="font-mono text-xs">proveedor_id</span></li>
+                                    <li><span class="font-mono text-xs">Motivo</span> → <span
+                                            class="font-mono text-xs">motivo_id</span></li>
+                                    <li><span class="font-mono text-xs">Coste</span> → <span
+                                            class="font-mono text-xs">coste</span></li>
+                                    <li><span class="font-mono text-xs">Observaciones</span> → <span
+                                            class="font-mono text-xs">observaciones</span></li>
+                                    <li><span class="font-mono text-xs">Factura</span> → <span
+                                            class="font-mono text-xs">codigo_factura</span></li>
+                                    <li class="text-gray-500 dark:text-gray-400"><span class="font-mono text-xs">Fecha
+                                            factura</span> → ignorar</li>
+                                    <li class="text-gray-500 dark:text-gray-400"><span
+                                            class="font-mono text-xs">Periodo</span> → ignorar</li>
+                                </ul>
+                                <div class="mt-3 text-xs text-gray-500 dark:text-gray-400"
+                                    x-show="importTipo === 'gasto'">
+                                    Nota: Nave se intenta asociar por <span class="font-mono">obras.obra</span> y
+                                    Máquina por <span class="font-mono">maquinas.codigo</span>. Si no cuadra, se
+                                    añade a Observaciones.
+                                </div>
+                                <div class="mt-3 text-xs text-gray-500 dark:text-gray-400"
+                                    x-show="importTipo === 'obra'" style="display: none;">
+                                    Nota: Obra se busca por <span class="font-mono">obras.cod_obra</span> leyendo el
+                                    código de <span class="font-mono">OBRA-XXX</span>. Si no viene como <span
+                                        class="font-mono">OBRA-</span>, se añade a Observaciones.
                                 </div>
                             </div>
 
@@ -1233,6 +1302,7 @@
                 // Import CSV Modal (Gastos)
                 showImportModal: false,
                 importHadErrors: @json($errors->has('csv_file') || $errors->has('tipo')),
+                importTipo: @json(old('tipo') ?: 'gasto'),
                 form: {
                     fecha_pedido: '',
                     fecha_llegada: '',
@@ -1372,6 +1442,13 @@
                     return text.substring(0, length) + '...';
                 },
 
+                formatEuro(value) {
+                    return new Intl.NumberFormat('es-ES', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }).format(value) + ' €';
+                },
+
                 async copyToClipboard(text) {
                     const value = (text || '').toString();
                     if (!value) return;
@@ -1438,6 +1515,13 @@
                 chartsError: '',
                 seriesChartInstance: null,
                 breakdownChartInstance: null,
+                chartsTotals: {
+                    selectedTotal: 0,
+                    label: 'Total (rango)',
+                },
+                seriesLabels: [],
+                breakdownLabels: [],
+                breakdownLegend: [],
 
                 charts: {
                     groupBy: 'month',
@@ -1532,6 +1616,21 @@
                     return `${year}-${month}-${day}`;
                 },
 
+                seriesCanvasWrapperStyle() {
+                    const labelsCount = this.seriesLabels.length;
+                    if (labelsCount <= 12) return 'min-width: 100%;';
+                    const per = this.charts.groupBy === 'day' ? 28 : 54;
+                    const minWidth = Math.max(520, labelsCount * per);
+                    return `min-width:${minWidth}px;`;
+                },
+
+                breakdownCanvasWrapperStyle() {
+                    if (this.charts.breakdownType !== 'bar') return 'min-width: 100%;';
+                    const labelsCount = this.breakdownLabels.length;
+                    const minHeight = Math.max(180, labelsCount * 26);
+                    return `min-height:${minHeight}px;`;
+                },
+
                 async ensureChartJsReady() {
                     if (window.Chart) return true;
 
@@ -1623,6 +1722,12 @@
                         return;
                     }
 
+                    this.seriesLabels = seriesLabels;
+                    this.breakdownLabels = breakdownLabels;
+                    this.chartsTotals.selectedTotal = seriesData.reduce((sum, v) => sum + (Number(v) || 0), 0);
+                    this.chartsTotals.label = this.charts.groupBy === 'day' ? 'Total (días)' :
+                        (this.charts.groupBy === 'year' ? 'Total (años)' : 'Total (meses)');
+
                     const isDark = document.documentElement.classList.contains('dark');
                     const axisColor = isDark ? '#e5e7eb' : '#374151';
                     const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
@@ -1657,16 +1762,22 @@
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
+                            layout: {
+                                padding: {
+                                    bottom: seriesLabels.length > 12 ? 8 : 0,
+                                },
+                            },
                             plugins: {
                                 legend: {
                                     display: false,
                                 },
                                 tooltip: {
                                     callbacks: {
+                                        title: (items) => items?.[0]?.label || '',
                                         label: (context) => {
                                             const value = typeof context.parsed === 'number' ? context.parsed :
                                                 (context.parsed?.y ?? 0);
-                                            return this.formatCurrency(value);
+                                            return this.formatEuro(value);
                                         },
                                     },
                                 },
@@ -1675,8 +1786,22 @@
                                 x: {
                                     ticks: {
                                         color: axisColor,
-                                        maxRotation: 0,
+                                        maxRotation: seriesLabels.length > 12 ? 45 : 0,
+                                        minRotation: seriesLabels.length > 12 ? 45 : 0,
                                         autoSkip: true,
+                                        maxTicksLimit: seriesLabels.length > 18 ? 10 : 12,
+                                        callback: (_, idx) => {
+                                            const label = seriesLabels[idx] || '';
+                                            if (this.charts.groupBy === 'day' && label.includes('-')) {
+                                                const parts = label.split('-');
+                                                return parts.length === 3 ? `${parts[2]}/${parts[1]}` : label;
+                                            }
+                                            if (this.charts.groupBy === 'month' && label.includes('-')) {
+                                                const parts = label.split('-');
+                                                return parts.length >= 2 ? `${parts[1]}/${parts[0]}` : label;
+                                            }
+                                            return label;
+                                        },
                                     },
                                     grid: {
                                         color: gridColor,
@@ -1705,6 +1830,12 @@
                     const breakdownColors = breakdownLabels.map((_, idx) => palette[idx % palette.length]);
                     const isBreakdownBar = this.charts.breakdownType === 'bar';
 
+                    this.breakdownLegend = breakdownLabels.map((label, idx) => ({
+                        label,
+                        value: Number(breakdownData[idx]) || 0,
+                        color: breakdownColors[idx],
+                    }));
+
                     this.breakdownChartInstance = new Chart(breakdownContext, {
                         type: this.charts.breakdownType,
                         data: {
@@ -1723,19 +1854,15 @@
                             indexAxis: isBreakdownBar ? 'y' : 'x',
                             plugins: {
                                 legend: {
-                                    display: !isBreakdownBar,
-                                    position: 'bottom',
-                                    labels: {
-                                        color: axisColor,
-                                        boxWidth: 10,
-                                    },
+                                    display: false,
                                 },
                                 tooltip: {
                                     callbacks: {
+                                        title: (items) => items?.[0]?.label || '',
                                         label: (context) => {
                                             const value = typeof context.parsed === 'number' ? context.parsed :
                                                 (context.parsed?.x ?? context.parsed?.y ?? 0);
-                                            return this.formatCurrency(value);
+                                            return this.formatEuro(value);
                                         },
                                     },
                                 },
@@ -1758,6 +1885,11 @@
                                 y: {
                                     ticks: {
                                         color: axisColor,
+                                        autoSkip: false,
+                                        callback: (_, idx) => {
+                                            const label = breakdownLabels[idx] || '';
+                                            return label.length > 18 ? (label.slice(0, 18) + '…') : label;
+                                        },
                                     },
                                     grid: {
                                         color: gridColor,
