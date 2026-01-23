@@ -1310,6 +1310,16 @@ PROMPT;
 - "atrasado/retrasado" → planillas WHERE fecha_estimada_entrega < CURDATE() AND estado != 'completada'
 - "qué hay para mañana/pasado" → fecha_estimada_entrega = mañana/pasado
 
+### COLA DE TRABAJO (IMPORTANTE)
+- "cola de trabajo/primera planilla/siguiente planilla" → Planillas con elementos pendientes de fabricar
+- REGLA: Una planilla está EN COLA si tiene elementos con estado 'pendiente' o 'fabricando'
+- REGLA: Una planilla está COMPLETADA si TODOS sus elementos están en estado 'fabricado' (ignorar aunque su estado diga 'fabricando')
+- REGLA: Diferenciar entre REVISADAS (revisada=1, listas para fabricar) y NO REVISADAS (revisada=0, aún en revisión)
+- CONSULTA CORRECTA para cola: SELECT p.* FROM planillas p WHERE p.revisada = 1 AND EXISTS (SELECT 1 FROM elementos e WHERE e.planilla_id = p.id AND e.estado IN ('pendiente', 'fabricando')) ORDER BY p.fecha_estimada_entrega ASC
+- "primera planilla" → La primera planilla REVISADA que tenga elementos pendientes/fabricando
+- "planillas sin revisar" → planillas WHERE revisada = 0
+- El estado de la planilla (pendiente/fabricando) NO es fiable, siempre verificar elementos
+
 ### ALMACÉN Y STOCK
 - "material/stock/existencias/inventario" → productos con peso_stock
 - "qué hay/qué tenemos" → productos WHERE peso_stock > 0
