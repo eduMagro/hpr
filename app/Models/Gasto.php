@@ -17,6 +17,7 @@ class Gasto extends Model
         'coste',
         'codigo_factura',
         'observaciones',
+        'incidencia_id',
     ];
 
     public function nave()
@@ -42,5 +43,10 @@ class Gasto extends Model
     public function motivo()
     {
         return $this->belongsTo(GastoMotivo::class, 'motivo_id');
+    }
+
+    public function incidencia()
+    {
+        return $this->belongsTo(Incidencia::class);
     }
 }

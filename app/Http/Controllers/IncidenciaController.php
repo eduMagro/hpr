@@ -195,26 +195,104 @@ class IncidenciaController extends Controller
 
     public function resolve(Request $request, $id)
     {
-        $incidencia = \App\Models\Incidencia::findOrFail($id);
+        $incidencia = \App\Models\Incidencia::with('maquina')->findOrFail($id);
+
+        $request->validate([
+            'resolucion' => 'required',
+            'coste' => 'nullable|numeric|min:0'
+        ]);
 
         $incidencia->update([
             'estado' => 'resuelta',
             'resolucion' => $request->resolucion,
             'fecha_resolucion' => now(),
-            'resuelto_por' => auth()->id()
+            'resuelto_por' => auth()->id(),
+            'coste' => $request->coste,
         ]);
+
+        $this->syncGasto($incidencia);
 
         // Check if machine has other active incidents, if not, set to 'activa'
         $activeIncidents = \App\Models\Incidencia::where('maquina_id', $incidencia->maquina_id)
             ->where('estado', '!=', 'resuelta')
             ->exists();
 
-        if (!$activeIncidents) {
+        if (!$activeIncidents && $incidencia->maquina) {
             $maquina = $incidencia->maquina;
             $maquina->estado = 'activa';
             $maquina->save();
         }
 
         return redirect()->back()->with('success', 'Incidencia marcada como resuelta');
+    }
+
+    private function syncGasto(\App\Models\Incidencia $incidencia)
+    {
+        if ($incidencia->coste && $incidencia->coste > 0) {
+            // Find or create motive based on description or title
+            $descripcion = $incidencia->descripcion ?: $incidencia->titulo;
+            $motivoNombre = \Illuminate\Support\Str::limit($descripcion, 190);
+
+            // Try to find existing motive by name or create
+            $motivo = \App\Models\GastoMotivo::firstOrCreate(
+                ['nombre' => $motivoNombre]
+            );
+
+            // Determine Nave/Obra. 
+            // If maquina->obra is "Nave A" or "Nave B" (or ID 1, 2 typically), set nave_id.
+            // Logic: If maquina has obra_id, check if that obra is a Nave.
+            $naveId = null;
+            $obraId = null;
+
+            if ($incidencia->maquina && $incidencia->maquina->obra_id) {
+                // Check if this obra is actually a specific "Nave" (often implicit in project logic)
+                // For now, assign to nave_id as requested ("nave_id -> maquina_id -> obra_id")
+                // Assuming maquina.obra_id points to the Nave.
+                $naveId = $incidencia->maquina->obra_id;
+            }
+
+            $gastoData = [
+                'fecha_pedido' => $incidencia->fecha_reporte,
+                'fecha_llegada' => $incidencia->fecha_resolucion,
+                'nave_id' => $naveId,
+                'obra_id' => null, // Enforced null if using nave_id, or logically distinct
+                'proveedor_id' => null,
+                'maquina_id' => $incidencia->maquina_id,
+                'motivo_id' => $motivo->id,
+                'coste' => $incidencia->coste,
+                'codigo_factura' => null,
+                'observaciones' => $incidencia->resolucion,
+                'incidencia_id' => $incidencia->id,
+            ];
+
+            \App\Models\Gasto::updateOrCreate(
+                ['incidencia_id' => $incidencia->id],
+                $gastoData
+            );
+        } else {
+            // If cost removed/zero, remove linked Gasto if exists
+            if ($incidencia->gasto) {
+                $incidencia->gasto->delete();
+            }
+        }
+    }
+
+    public function updateResolution(Request $request, $id)
+    {
+        $incidencia = \App\Models\Incidencia::with(['maquina', 'gasto'])->findOrFail($id);
+
+        $request->validate([
+            'resolucion' => 'required',
+            'coste' => 'nullable|numeric|min:0'
+        ]);
+
+        $incidencia->update([
+            'resolucion' => $request->resolucion,
+            'coste' => $request->coste,
+        ]);
+
+        $this->syncGasto($incidencia);
+
+        return redirect()->back()->with('success', 'Resolución actualizada correctamente');
     }
 }

@@ -17,13 +17,15 @@ class Incidencia extends Model
         'fecha_reporte',
         'fecha_resolucion',
         'resolucion',
-        'resuelto_por'
+        'resuelto_por',
+        'coste',
     ];
 
     protected $casts = [
         'fotos' => 'array',
         'fecha_reporte' => 'datetime',
         'fecha_resolucion' => 'datetime',
+        'coste' => 'decimal:2',
     ];
 
     public function maquina()
@@ -39,5 +41,10 @@ class Incidencia extends Model
     public function resolver()
     {
         return $this->belongsTo(User::class, 'resuelto_por');
+    }
+
+    public function gasto()
+    {
+        return $this->hasOne(Gasto::class);
     }
 }
