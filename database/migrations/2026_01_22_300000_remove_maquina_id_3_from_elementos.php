@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('elementos', function (Blueprint $table) {
-            // Eliminar índice si existe
-            $table->dropIndex('fk_elementos_maquina3');
+            // Primero eliminar la foreign key (esto también elimina el índice en MySQL)
+            $table->dropForeign(['maquina_id_3']);
 
             // Eliminar la columna
             $table->dropColumn('maquina_id_3');
