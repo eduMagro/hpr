@@ -307,206 +307,324 @@ class AsistenteVirtualService
     }
 
     /**
-     * Analiza la intención del usuario usando OpenAI
+     * Define las herramientas (tools) disponibles para Function Calling
+     */
+    private function definirHerramientas(bool $puedeModificar): array
+    {
+        $operacionesPermitidas = $puedeModificar
+            ? 'SELECT, INSERT, UPDATE, DELETE'
+            : 'Solo SELECT (lectura)';
+
+        return [
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'ejecutar_consulta_sql',
+                    'description' => "Ejecuta una consulta SQL para obtener o modificar datos. Operaciones permitidas: {$operacionesPermitidas}. Usa esta función cuando el usuario pide datos concretos como: cantidades, listados, búsquedas, estadísticas.",
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'sql' => [
+                                'type' => 'string',
+                                'description' => 'Consulta SQL válida. Para SELECT usar LIMIT máx 100. Búsquedas con LOWER(campo) LIKE \'%texto%\'. Estados entre comillas simples.',
+                            ],
+                            'explicacion' => [
+                                'type' => 'string',
+                                'description' => 'Breve explicación de qué hace la consulta (10-20 palabras).',
+                            ],
+                        ],
+                        'required' => ['sql', 'explicacion'],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'mostrar_guia',
+                    'description' => 'Muestra instrucciones paso a paso de cómo hacer algo en la aplicación. Usa esta función cuando el usuario pregunta "¿Cómo...?", "¿Dónde...?", "¿Qué pasos...?", "Explícame...".',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'titulo' => [
+                                'type' => 'string',
+                                'description' => 'Título corto con emoji (ej: "📍 Fichar Entrada", "🏖️ Solicitar Vacaciones").',
+                            ],
+                            'pasos' => [
+                                'type' => 'array',
+                                'items' => ['type' => 'string'],
+                                'description' => 'Lista de pasos numerados, claros y concisos.',
+                            ],
+                            'tips' => [
+                                'type' => 'array',
+                                'items' => ['type' => 'string'],
+                                'description' => 'Tips adicionales o requisitos importantes (opcional).',
+                            ],
+                            'ruta' => [
+                                'type' => 'string',
+                                'description' => 'Ruta en la aplicación (ej: "Logística → Pedidos → [Pedido]").',
+                            ],
+                        ],
+                        'required' => ['titulo', 'pasos'],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'pedir_clarificacion',
+                    'description' => 'Pide más información cuando la pregunta es ambigua sobre DATOS. NO usar para preguntas de "cómo hacer". Usar cuando: "los elementos" (¿cuáles?), "stock" (¿de qué?), "planillas" (¿qué estado?).',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'pregunta' => [
+                                'type' => 'string',
+                                'description' => 'Pregunta clara pidiendo especificación.',
+                            ],
+                            'opciones' => [
+                                'type' => 'array',
+                                'items' => [
+                                    'type' => 'object',
+                                    'properties' => [
+                                        'emoji' => ['type' => 'string'],
+                                        'label' => ['type' => 'string'],
+                                        'descripcion' => ['type' => 'string'],
+                                    ],
+                                    'required' => ['emoji', 'label'],
+                                ],
+                                'description' => 'Opciones con emoji y label para que el usuario elija.',
+                            ],
+                        ],
+                        'required' => ['pregunta', 'opciones'],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'responder_conversacional',
+                    'description' => 'Respuesta amigable para saludos, agradecimientos, despedidas o preguntas generales sobre el asistente.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'mensaje' => [
+                                'type' => 'string',
+                                'description' => 'Respuesta amigable con emojis. Mencionar que soy Ferrallin si es presentación.',
+                            ],
+                        ],
+                        'required' => ['mensaje'],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Analiza la intención del usuario usando OpenAI con Function Calling
      */
     private function analizarIntencion(string $mensaje, array $historial, $user): array
     {
         $schemaTablas = $this->obtenerSchemaTablas();
         $diccionarioNegocio = $this->obtenerDiccionarioNegocio();
-        $ejemplosConsultas = $this->obtenerEjemplosConsultas();
         $guiaFuncionalidades = $this->obtenerGuiaFuncionalidades();
 
         // Determinar permisos del usuario
         $puedeModificar = $user->puede_modificar_bd;
+        $herramientas = $this->definirHerramientas($puedeModificar);
+
         $permisosTexto = $puedeModificar
-            ? "Este usuario PUEDE ejecutar INSERT, UPDATE, DELETE, CREATE TABLE."
-            : "Este usuario SOLO puede ejecutar consultas SELECT de lectura.";
+            ? "Usuario con permisos COMPLETOS (SELECT, INSERT, UPDATE, DELETE)."
+            : "Usuario con permisos de SOLO LECTURA (SELECT).";
 
         $systemPrompt = <<<PROMPT
-FERRALLIN - Asistente EXPERTO e INTELIGENTE para ERP de FERRALLA.
-
-Eres el CENTRO DE CONTROL de toda la aplicación. Los usuarios confían en ti para:
-1. **CONSULTAR DATOS** - Ejecutar SQL para obtener información
-2. **EXPLICAR PROCESOS** - Cómo hacer las cosas en la aplicación
-3. **RESOLVER DUDAS** - Sobre cualquier aspecto del sistema
+Eres FERRALLIN, asistente experto del ERP de FERRALLA (fabricación de armaduras de acero).
 
 {$permisosTexto}
 
-## TU PERSONALIDAD
-- Eres EXPERTO: conoces TODA la aplicación y sus procesos
-- Eres PROACTIVO: si hay ambigüedad, PREGUNTAS antes de actuar
-- Eres INTELIGENTE: entiendes el contexto y el lenguaje coloquial
-- Eres ÚTIL: das instrucciones claras paso a paso cuando te preguntan cómo hacer algo
-- Eres PRECISO: nunca ejecutas SQL si no estás seguro de qué quiere el usuario
+## CONTEXTO DEL NEGOCIO
+- CLIENTES hacen PEDIDOS → Se crean PLANILLAS (órdenes) → Tienen ELEMENTOS (piezas)
+- ELEMENTOS se fabrican en MÁQUINAS → Se agrupan en ETIQUETAS → Se empaquetan en PAQUETES
+- PAQUETES salen en SALIDAS/PORTES → Materia prima llega como ENTRADAS
 
-## CONTEXTO DEL NEGOCIO - FERRALLA
-Empresa de fabricación de armaduras de acero para construcción:
-1. CLIENTES (constructoras) hacen PEDIDOS
-2. Se crean PLANILLAS (órdenes de fabricación) para cada OBRA
-3. Las planillas tienen ELEMENTOS (piezas: barras, estribos, mallas)
-4. Los elementos se fabrican en MÁQUINAS (MSR, cortadoras, dobladoras, ensambladoras)
-5. Los elementos se agrupan en ETIQUETAS
-6. Las etiquetas se empaquetan en PAQUETES
-7. Los paquetes salen en SALIDAS/PORTES hacia las obras
-8. La materia prima llega como ENTRADAS al almacén
-
-## ESTADOS IMPORTANTES
-- Planillas: pendiente → fabricando → completada
-- Elementos: pendiente → fabricando → fabricado
-- Etiquetas: pendiente → fabricando → completada
+## ESTADOS
+- Planillas/Elementos/Etiquetas: pendiente → fabricando → fabricado/completada
 - Paquetes: pendiente → preparado → despachado
 - Salidas: pendiente → en_transito → entregada
 
 ## BASE DE DATOS
 {$schemaTablas}
 
-## DICCIONARIO - LENGUAJE COLOQUIAL
+## DICCIONARIO COLOQUIAL
 {$diccionarioNegocio}
 
-## GUÍA DE LA APLICACIÓN - CÓMO HACER LAS COSAS
+## GUÍA DE LA APLICACIÓN
 {$guiaFuncionalidades}
 
-## TIPOS DE RESPUESTA - SOLO JSON
-
-### 1. CONSULTA SQL (pide datos):
-{"requiere_sql": true, "consulta_sql": "SELECT...", "explicacion": "qué hace"}
-
-### 2. EXPLICACIÓN DE PROCESO (cómo hacer algo):
-{"requiere_sql": false, "tipo": "guia", "respuesta": "Explicación paso a paso con formato markdown"}
-
-### 3. NECESITA CLARIFICACIÓN:
-{"requiere_sql": false, "necesita_clarificacion": true, "respuesta": "Pregunta con opciones"}
-
-### 4. CONVERSACIONAL:
-{"requiere_sql": false, "respuesta": "Respuesta amigable"}
-
-## DETECTAR TIPO DE PREGUNTA
-
-**PREGUNTAS DE "CÓMO HACER" (responder con guía):**
-- "¿Cómo ficho?" / "¿Cómo marco entrada?"
-- "¿Cómo solicito vacaciones?"
-- "¿Cómo recepciono un pedido?" / "¿Cómo doy entrada al material?"
-- "¿Cómo importo una planilla?"
-- "¿Cómo creo un paquete?"
-- "¿Cómo preparo una salida?" / "¿Cómo hago un porte?"
-- "¿Dónde veo el stock?" / "¿Dónde están las planillas?"
-- "¿Cuáles son los pasos para...?"
-- "Explícame cómo..."
-- "¿Qué tengo que hacer para...?"
-
-**PREGUNTAS DE DATOS (responder con SQL):**
-- "¿Cuántos kilos...?" / "¿Cuántas planillas...?"
-- "Dame los pedidos..." / "Muéstrame las salidas..."
-- "Stock del diámetro..."
-- "Planillas pendientes de..."
-- "¿Qué sale hoy?"
-
-## EJEMPLOS DE EXPLICACIONES (tipo guía)
-
-Usuario: "¿Cómo ficho entrada?"
-→ {"requiere_sql": false, "tipo": "guia", "respuesta": "## 📍 Fichar Entrada\\n\\n**Pasos:**\\n1. Haz clic en **tu nombre** (esquina superior derecha)\\n2. Selecciona **Mi Perfil**\\n3. Verás dos botones grandes:\\n   - 🟢 **Botón verde** = Fichar Entrada\\n   - 🔴 **Botón rojo** = Fichar Salida\\n4. Clic en el **botón verde**\\n5. Acepta los **permisos de ubicación** (GPS)\\n6. Confirma en el modal\\n\\n**Requisitos:**\\n- Debes estar dentro de la zona de la obra\\n- El sistema detecta tu turno automáticamente"}
-
-Usuario: "¿Cómo solicito vacaciones?"
-→ {"requiere_sql": false, "tipo": "guia", "respuesta": "## 🏖️ Solicitar Vacaciones\\n\\n**Pasos:**\\n1. Clic en **tu nombre** → **Mi Perfil**\\n2. Verás un **calendario** con tus turnos\\n3. Sistema **clic-clic**:\\n   - **Primer clic:** En el día de inicio (se pone azul)\\n   - **Segundo clic:** En el día final (o mismo día si es solo uno)\\n4. Aparece modal con las fechas seleccionadas\\n5. Clic en **Enviar solicitud**\\n\\n**Tips:**\\n- Presiona **ESC** para cancelar\\n- La solicitud queda pendiente hasta que RRHH apruebe"}
-
-Usuario: "¿Cómo recepciono material?" / "¿Cómo doy entrada a un pedido?"
-→ {"requiere_sql": false, "tipo": "guia", "respuesta": "## 📦 Recepcionar Material (3 pasos)\\n\\n**PASO 1 - Activar línea:**\\n1. Ve a **Logística → Pedidos**\\n2. Busca el pedido y haz clic\\n3. Clic en **Activar línea** (botón amarillo)\\n\\n**PASO 2 - Ir a máquina GRÚA:**\\n1. Ve a **Producción → Máquinas**\\n2. Selecciona una **máquina tipo GRÚA**\\n3. En 'Movimientos Pendientes' clic en **Entrada**\\n\\n**PASO 3 - Registrar material:**\\n1. Clic en **Registrar nuevo paquete**\\n2. Sigue el wizard:\\n   - Cantidad de paquetes\\n   - Código (empieza por MP)\\n   - Número de colada\\n   - Peso total\\n   - Ubicación\\n3. Cuando termines todo: **Cerrar Albarán**"}
-
-Usuario: "¿Cómo creo un paquete?"
-→ {"requiere_sql": false, "tipo": "guia", "respuesta": "## 📦 Crear Paquete\\n\\n**Pasos:**\\n1. Ve a **Producción → Máquinas → [Tu máquina]**\\n2. Cuando tengas etiquetas terminadas\\n3. Clic en **Crear Paquete**\\n4. Selecciona las **etiquetas** que van juntas\\n5. El sistema genera:\\n   - Código único\\n   - Código QR\\n6. Clic en **Imprimir Etiqueta**\\n7. Pega la etiqueta en el paquete físico\\n8. Asigna **ubicación** en el mapa"}
-
-Usuario: "¿Dónde veo el stock?"
-→ {"requiere_sql": false, "tipo": "guia", "respuesta": "## 📊 Ver Stock\\n\\n**3 opciones:**\\n\\n**1. Productos base:**\\n- **Logística → Productos**\\n- Filtra por diámetro, tipo, ubicación\\n\\n**2. Ver en mapa:**\\n- **Logística → Ubicaciones**\\n- Mapa visual de la nave\\n- Clic en ubicación para ver contenido\\n\\n**3. Paquetes fabricados:**\\n- **Producción → Paquetes**\\n- Filtra por planilla, obra, estado\\n\\n¿Quieres que te muestre el stock actual de algún diámetro?"}
-
-## EJEMPLOS DE SQL (cuando pide datos)
-
-Usuario: "Kilos pendientes de la MSR20"
-→ {"requiere_sql": true, "consulta_sql": "SELECT SUM(e.peso) as kilos_pendientes, COUNT(*) as elementos FROM elementos e JOIN maquinas m ON e.maquina_id = m.id WHERE (LOWER(m.nombre) LIKE '%msr20%' OR LOWER(m.codigo) LIKE '%msr20%') AND e.estado = 'pendiente'", "explicacion": "Kilos y elementos pendientes en MSR20"}
-
-Usuario: "¿Qué sale hoy?"
-→ {"requiere_sql": true, "consulta_sql": "SELECT sa.id, sa.codigo, sa.fecha, sa.estado, u.name as camionero FROM salidas_almacen sa LEFT JOIN users u ON sa.camionero_id = u.id WHERE DATE(sa.fecha) = CURDATE() ORDER BY sa.fecha LIMIT 50", "explicacion": "Salidas de hoy"}
-
-## CUÁNDO PREGUNTAR (CLARIFICACIÓN)
-
-Solo pregunta cuando hay ambigüedad en consultas de DATOS:
-- "Los elementos" → ¿Pendientes, fabricados, de qué máquina?
-- "Stock" → ¿Con existencias, por diámetro, todo?
-- "Planillas" → ¿Pendientes, en fabricación, de qué cliente?
-
-NO preguntes cuando es una pregunta de "cómo hacer" - responde directamente con la guía.
-
 ## REGLAS SQL
-1. SELECT con LIMIT (máx 100)
-2. Búsquedas: LOWER(campo) LIKE '%texto%'
-3. Fechas: CURDATE(), DATE_SUB(), YEARWEEK()
-4. Estados entre comillas: estado = 'pendiente'
+- SELECT con LIMIT máx 100
+- Búsquedas: LOWER(campo) LIKE '%texto%'
+- Fechas: CURDATE(), DATE_SUB(), YEARWEEK()
+- Estados con comillas: estado = 'pendiente'
 
-## CONVERSACIONAL
-
-Usuario: "Hola"
-→ {"requiere_sql": false, "respuesta": "¡Hola! 👋 Soy **Ferrallin**, tu asistente experto.\\n\\nPuedo ayudarte con:\\n- 📊 **Consultar datos** - kilos, planillas, stock, salidas...\\n- 📖 **Explicarte cómo hacer las cosas** - fichar, recepcionar, crear paquetes...\\n- ❓ **Resolver dudas** - sobre cualquier parte de la aplicación\\n\\n¿Qué necesitas?"}
-
-Usuario: "Gracias"
-→ {"requiere_sql": false, "respuesta": "¡De nada! 😊 Aquí estaré para lo que necesites."}
-
-SOLO JSON VÁLIDO. SIN texto adicional.
+## CUÁNDO USAR CADA HERRAMIENTA
+1. **ejecutar_consulta_sql**: Preguntas de DATOS (¿cuántos?, dame los..., muéstrame...)
+2. **mostrar_guia**: Preguntas de PROCESO (¿cómo...?, ¿dónde...?, ¿qué pasos...?)
+3. **pedir_clarificacion**: Solo si hay ambigüedad en consultas de DATOS
+4. **responder_conversacional**: Saludos, agradecimientos, preguntas sobre ti
 PROMPT;
 
-        // Construir mensajes para OpenAI (SIN historial para ahorrar tokens)
-        $claudeMessages = [
-            [
-                'role' => 'user',
-                'content' => $mensaje
-            ]
-        ];
-
         try {
-            // Llamar a la API de OpenAI
+            // Llamar a la API de OpenAI con Function Calling
             $response = OpenAI::chat()->create([
                 'model' => 'gpt-4o-mini',
                 'messages' => [
                     ['role' => 'system', 'content' => $systemPrompt],
-                    ...$claudeMessages
+                    ['role' => 'user', 'content' => $mensaje]
                 ],
-                'temperature' => 0.1, // Un poco de variabilidad para respuestas más naturales
-                'max_tokens' => 500, // Más tokens para clarificaciones detalladas
+                'tools' => $herramientas,
+                'tool_choice' => 'required', // Forzar que use una herramienta
+                'temperature' => 0.1,
+                'max_tokens' => 600,
             ]);
 
-            $contenido = $response->choices[0]->message->content ?? '';
+            $messageResponse = $response->choices[0]->message;
 
-            // Limpiar respuesta si tiene texto adicional
-            $contenido = trim($contenido);
-            if (strpos($contenido, '{') !== false) {
-                $contenido = substr($contenido, strpos($contenido, '{'));
-                $contenido = substr($contenido, 0, strrpos($contenido, '}') + 1);
+            // Procesar Function Calling
+            if (!empty($messageResponse->toolCalls)) {
+                $toolCall = $messageResponse->toolCalls[0];
+                $functionName = $toolCall->function->name;
+                $arguments = json_decode($toolCall->function->arguments, true);
+
+                Log::info("Function Calling: {$functionName}", $arguments);
+
+                return $this->procesarHerramienta($functionName, $arguments);
             }
 
-            $resultado = json_decode($contenido, true);
+            // Fallback si no hay tool calls (no debería pasar con tool_choice=required)
+            $contenido = $messageResponse->content ?? '';
+            Log::warning('Function Calling no activado, respuesta directa: ' . $contenido);
 
-            if (!$resultado) {
-                Log::error('No se pudo parsear respuesta de IA: ' . $contenido);
-                throw new \Exception('Respuesta inválida de la IA');
-            }
-
-            $salida = [
-                'requiere_sql' => $resultado['requiere_sql'] ?? false,
-                'consulta_sql' => $resultado['consulta_sql'] ?? null,
-                'respuesta' => $resultado['respuesta'] ?? 'No pude procesar tu solicitud.',
-                'explicacion' => $resultado['explicacion'] ?? '',
-                'necesita_clarificacion' => $resultado['necesita_clarificacion'] ?? false,
+            return [
+                'requiere_sql' => false,
+                'consulta_sql' => null,
+                'respuesta' => $contenido ?: 'No pude procesar tu solicitud.',
+                'explicacion' => '',
+                'necesita_clarificacion' => false,
             ];
 
-            // Log para debugging
-            if ($salida['requiere_sql'] && $salida['consulta_sql']) {
-                Log::info('SQL Generado por IA: ' . $salida['consulta_sql']);
-            }
-
-            return $salida;
-
         } catch (\Exception $e) {
-            Log::error('Error llamando a OpenAI: ' . $e->getMessage());
+            Log::error('Error en Function Calling: ' . $e->getMessage());
             throw $e;
         }
+    }
+
+    /**
+     * Procesa la herramienta seleccionada por el modelo
+     */
+    private function procesarHerramienta(string $functionName, array $arguments): array
+    {
+        switch ($functionName) {
+            case 'ejecutar_consulta_sql':
+                return [
+                    'requiere_sql' => true,
+                    'consulta_sql' => $arguments['sql'] ?? null,
+                    'explicacion' => $arguments['explicacion'] ?? '',
+                    'respuesta' => null,
+                    'necesita_clarificacion' => false,
+                ];
+
+            case 'mostrar_guia':
+                $respuesta = $this->formatearGuia($arguments);
+                return [
+                    'requiere_sql' => false,
+                    'consulta_sql' => null,
+                    'respuesta' => $respuesta,
+                    'explicacion' => '',
+                    'necesita_clarificacion' => false,
+                ];
+
+            case 'pedir_clarificacion':
+                $respuesta = $this->formatearClarificacion($arguments);
+                return [
+                    'requiere_sql' => false,
+                    'consulta_sql' => null,
+                    'respuesta' => $respuesta,
+                    'explicacion' => '',
+                    'necesita_clarificacion' => true,
+                ];
+
+            case 'responder_conversacional':
+                return [
+                    'requiere_sql' => false,
+                    'consulta_sql' => null,
+                    'respuesta' => $arguments['mensaje'] ?? '¡Hola! ¿En qué puedo ayudarte?',
+                    'explicacion' => '',
+                    'necesita_clarificacion' => false,
+                ];
+
+            default:
+                Log::warning("Herramienta desconocida: {$functionName}");
+                return [
+                    'requiere_sql' => false,
+                    'consulta_sql' => null,
+                    'respuesta' => 'No pude procesar tu solicitud correctamente.',
+                    'explicacion' => '',
+                    'necesita_clarificacion' => false,
+                ];
+        }
+    }
+
+    /**
+     * Formatea la respuesta de guía en Markdown
+     */
+    private function formatearGuia(array $args): string
+    {
+        $titulo = $args['titulo'] ?? 'Guía';
+        $pasos = $args['pasos'] ?? [];
+        $tips = $args['tips'] ?? [];
+        $ruta = $args['ruta'] ?? null;
+
+        $respuesta = "## {$titulo}\n\n";
+
+        if ($ruta) {
+            $respuesta .= "**Ruta:** {$ruta}\n\n";
+        }
+
+        $respuesta .= "**Pasos:**\n";
+        foreach ($pasos as $i => $paso) {
+            $num = $i + 1;
+            $respuesta .= "{$num}. {$paso}\n";
+        }
+
+        if (!empty($tips)) {
+            $respuesta .= "\n**Tips:**\n";
+            foreach ($tips as $tip) {
+                $respuesta .= "- {$tip}\n";
+            }
+        }
+
+        return $respuesta;
+    }
+
+    /**
+     * Formatea la respuesta de clarificación
+     */
+    private function formatearClarificacion(array $args): string
+    {
+        $pregunta = $args['pregunta'] ?? '¿Qué necesitas exactamente?';
+        $opciones = $args['opciones'] ?? [];
+
+        $respuesta = "{$pregunta}\n\n";
+
+        foreach ($opciones as $i => $opcion) {
+            $emoji = $opcion['emoji'] ?? ($i + 1) . '️⃣';
+            $label = $opcion['label'] ?? "Opción " . ($i + 1);
+            $desc = isset($opcion['descripcion']) ? " - {$opcion['descripcion']}" : '';
+            $respuesta .= "{$emoji} **{$label}**{$desc}\n";
+        }
+
+        $respuesta .= "\n¿Cuál prefieres?";
+
+        return $respuesta;
     }
 
     /**
