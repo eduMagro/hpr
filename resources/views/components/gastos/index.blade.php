@@ -1248,7 +1248,7 @@
                             <div class="flex items-start justify-between gap-4">
                                 <div>
                                     <h3 class="text-lg font-bold text-gray-900 dark:text-white" id="import-modal-title">
-                                        Importar CSV (Gastos)
+                                        Importar Gastos / Obras CSV
                                     </h3>
                                     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
                                         Sube un CSV con cabeceras como:
@@ -1256,6 +1256,19 @@
                                             pedido,Llegada,Nave,Máquina,Proveedor,Motivo,Coste,Factura,Fecha
                                             factura,Observaciones,Periodo</span>.
                                     </p>
+                                    <div
+                                        class="mt-3 inline-flex rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                        <button type="button" @click="importTipo = 'gasto'"
+                                            class="px-3 py-1.5 text-sm font-semibold transition-colors"
+                                            :class="importTipo === 'gasto' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'">
+                                            Gastos
+                                        </button>
+                                        <button type="button" @click="importTipo = 'obra'"
+                                            class="px-3 py-1.5 text-sm font-semibold transition-colors"
+                                            :class="importTipo === 'obra' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'">
+                                            Obras
+                                        </button>
+                                    </div>
                                 </div>
                                 <button type="button" @click="showImportModal = false"
                                     class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
@@ -1270,13 +1283,13 @@
                         <form method="POST" action="{{ route('gastos.importCsv') }}" enctype="multipart/form-data"
                             class="p-6 space-y-4">
                             @csrf
-                            <input type="hidden" name="tipo" value="gasto">
+                            <input type="hidden" name="tipo" :value="importTipo">
 
                             <div
                                 class="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 p-4 bg-gray-50 dark:bg-gray-700/40">
                                 <div class="text-sm font-semibold text-gray-700 dark:text-gray-200">Columnas usadas
                                 </div>
-                                <ul
+                                <ul x-show="importTipo === 'gasto'"
                                     class="mt-2 text-sm text-gray-600 dark:text-gray-300 grid grid-cols-1 md:grid-cols-2 gap-x-6">
                                     <li><span class="font-mono text-xs">Fecha del pedido</span> → <span
                                             class="font-mono text-xs">fecha_pedido</span></li>
@@ -1297,10 +1310,40 @@
                                     <li class="text-gray-500 dark:text-gray-400"><span
                                             class="font-mono text-xs">Periodo</span> → ignorar</li>
                                 </ul>
-                                <div class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                                    Nota: si el CSV incluye <span class="font-mono">Nave</span> o <span
-                                        class="font-mono">Máquina</span>,
-                                    se intentan asociar por nombre si existen.
+                                <ul x-show="importTipo === 'obra'" style="display: none;"
+                                    class="mt-2 text-sm text-gray-600 dark:text-gray-300 grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                                    <li><span class="font-mono text-xs">Fecha del pedido</span> → <span
+                                            class="font-mono text-xs">fecha_pedido</span></li>
+                                    <li><span class="font-mono text-xs">Llegada</span> → <span
+                                            class="font-mono text-xs">fecha_llegada</span></li>
+                                    <li><span class="font-mono text-xs">Obra</span> → <span
+                                            class="font-mono text-xs">obra_id</span></li>
+                                    <li><span class="font-mono text-xs">Proveedor</span> → <span
+                                            class="font-mono text-xs">proveedor_id</span></li>
+                                    <li><span class="font-mono text-xs">Motivo</span> → <span
+                                            class="font-mono text-xs">motivo_id</span></li>
+                                    <li><span class="font-mono text-xs">Coste</span> → <span
+                                            class="font-mono text-xs">coste</span></li>
+                                    <li><span class="font-mono text-xs">Observaciones</span> → <span
+                                            class="font-mono text-xs">observaciones</span></li>
+                                    <li><span class="font-mono text-xs">Factura</span> → <span
+                                            class="font-mono text-xs">codigo_factura</span></li>
+                                    <li class="text-gray-500 dark:text-gray-400"><span class="font-mono text-xs">Fecha
+                                            factura</span> → ignorar</li>
+                                    <li class="text-gray-500 dark:text-gray-400"><span
+                                            class="font-mono text-xs">Periodo</span> → ignorar</li>
+                                </ul>
+                                <div class="mt-3 text-xs text-gray-500 dark:text-gray-400"
+                                    x-show="importTipo === 'gasto'">
+                                    Nota: Nave se intenta asociar por <span class="font-mono">obras.obra</span> y
+                                    Máquina por <span class="font-mono">maquinas.codigo</span>. Si no cuadra, se
+                                    añade a Observaciones.
+                                </div>
+                                <div class="mt-3 text-xs text-gray-500 dark:text-gray-400"
+                                    x-show="importTipo === 'obra'" style="display: none;">
+                                    Nota: Obra se busca por <span class="font-mono">obras.cod_obra</span> leyendo el
+                                    código de <span class="font-mono">OBRA-XXX</span>. Si no viene como <span
+                                        class="font-mono">OBRA-</span>, se añade a Observaciones.
                                 </div>
                             </div>
 
@@ -1367,6 +1410,7 @@
                     // Import CSV Modal (Gastos)
                     showImportModal: false,
                     importHadErrors: @json($errors->has('csv_file') || $errors->has('tipo')),
+                    importTipo: @json(old('tipo') ?: 'gasto'),
                     form: {
                         fecha_pedido: '',
                         fecha_llegada: '',
