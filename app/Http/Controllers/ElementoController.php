@@ -670,6 +670,11 @@ class ElementoController extends Controller
                 // Array con todas las etiquetas (original + nuevas) para imprimir
                 $todasLasEtiquetas = array_merge([$etiquetaOriginalSubId], $etiquetasCreadas);
 
+                // Obtener los IDs de todas las etiquetas para crear paquetes
+                $etiquetasIds = Etiqueta::whereIn('etiqueta_sub_id', $todasLasEtiquetas)
+                    ->pluck('id')
+                    ->toArray();
+
                 return response()->json([
                     'success' => true,
                     'message' => "Se crearon <strong>{$countCreadas} nuevas etiquetas</strong>:<br><small>" .
@@ -678,6 +683,7 @@ class ElementoController extends Controller
                     'etiquetas_creadas' => $etiquetasCreadas,
                     'etiqueta_original' => $etiquetaOriginalSubId,
                     'todas_las_etiquetas' => $todasLasEtiquetas,
+                    'etiquetas_ids' => $etiquetasIds,
                 ], 200);
             });
         } catch (\Throwable $e) {

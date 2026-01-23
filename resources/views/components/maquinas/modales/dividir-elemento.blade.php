@@ -199,6 +199,21 @@
 
                     Swal.close();
                 }
+
+                // Preguntar si quiere crear un paquete con cada etiqueta
+                const preguntaPaquetes = await Swal.fire({
+                    icon: 'question',
+                    title: '¿Crear paquetes?',
+                    html: `¿Deseas crear <strong>un paquete por cada etiqueta</strong>?<br><small class="text-gray-500">(${result.todas_las_etiquetas.length} paquetes)</small>`,
+                    showCancelButton: true,
+                    confirmButtonText: '📦 Sí, crear paquetes',
+                    cancelButtonText: 'No',
+                    confirmButtonColor: '#8b5cf6',
+                });
+
+                if (preguntaPaquetes.isConfirmed) {
+                    await crearPaquetesPorEtiqueta(result.etiquetas_ids || []);
+                }
             } else if (window.Swal) {
                 // Mostrar solo el éxito si no hay etiquetas para imprimir
                 await Swal.fire({
@@ -221,6 +236,98 @@
             } else {
                 alert(e.message);
             }
+        }
+    }
+
+    // Función para crear un paquete por cada etiqueta
+    async function crearPaquetesPorEtiqueta(etiquetaIds) {
+        if (!etiquetaIds || etiquetaIds.length === 0) {
+            Swal.fire('Error', 'No hay etiquetas para crear paquetes', 'error');
+            return;
+        }
+
+        const maquinaId = Number(
+            document.getElementById('maquina-info')?.dataset?.maquinaId || window.maquinaId
+        );
+        const ubicacionId = Number(
+            document.getElementById('ubicacion-id')?.value || window.ubicacionId
+        );
+
+        if (!maquinaId || !ubicacionId) {
+            Swal.fire('Error', 'Falta información de máquina o ubicación', 'error');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Creando paquetes...',
+            html: `Paquete <b>0</b> de <b>${etiquetaIds.length}</b>`,
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        let creados = 0;
+        let errores = [];
+
+        for (let i = 0; i < etiquetaIds.length; i++) {
+            const etiquetaId = etiquetaIds[i];
+
+            // Actualizar progreso
+            Swal.update({
+                html: `Paquete <b>${i + 1}</b> de <b>${etiquetaIds.length}</b>`
+            });
+
+            try {
+                const resp = await fetch('/paquetes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                    },
+                    body: JSON.stringify({
+                        items: [{ id: etiquetaId, type: 'etiqueta' }],
+                        maquina_id: maquinaId,
+                        ubicacion_id: ubicacionId,
+                    })
+                });
+
+                const data = await resp.json();
+
+                if (resp.ok && data.success) {
+                    creados++;
+                } else {
+                    errores.push(data.message || `Error en etiqueta ${etiquetaId}`);
+                }
+            } catch (e) {
+                errores.push(`Error de conexión para etiqueta ${etiquetaId}`);
+            }
+        }
+
+        // Refrescar vista
+        if (typeof window.refrescarEtiquetasMaquina === 'function') {
+            await window.refrescarEtiquetasMaquina();
+        }
+
+        // Mostrar resultado
+        if (errores.length === 0) {
+            await Swal.fire({
+                icon: 'success',
+                title: '¡Paquetes creados!',
+                html: `Se crearon <strong>${creados}</strong> paquetes correctamente`,
+                confirmButtonColor: '#8b5cf6',
+            });
+        } else {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'Paquetes creados con errores',
+                html: `<p>Creados: <strong>${creados}</strong></p>
+                       <p>Errores: <strong>${errores.length}</strong></p>
+                       <details class="mt-2 text-left text-sm">
+                           <summary class="cursor-pointer text-gray-600">Ver errores</summary>
+                           <ul class="mt-1 text-red-600">${errores.map(e => `<li>• ${e}</li>`).join('')}</ul>
+                       </details>`,
+                confirmButtonColor: '#8b5cf6',
+            });
         }
     }
 
