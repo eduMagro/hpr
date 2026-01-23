@@ -165,6 +165,10 @@ Route::middleware(['auth', 'puede.asistente', 'throttle:60,1'])
         Route::post('/preguntar', [AsistenteVirtualController::class, 'preguntar'])->name('asistente.preguntar');
         Route::post('/permisos/{userId}', [AsistenteVirtualController::class, 'actualizarPermisos']);
 
+        // Configuración de personalidad del asistente
+        Route::get('/configuracion', [AsistenteVirtualController::class, 'obtenerConfiguracion']);
+        Route::post('/configuracion', [AsistenteVirtualController::class, 'guardarConfiguracion']);
+
         // Ruta de envío de mensajes con rate limiting más estricto
         Route::post('/mensaje', [AsistenteVirtualController::class, 'enviarMensaje'])
             ->middleware('throttle:15,1'); // Solo 15 mensajes por minuto

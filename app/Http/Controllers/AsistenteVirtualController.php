@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ChatConversacion;
+use App\Models\Configuracion;
 use App\Models\User;
 use App\Services\AsistenteVirtualService;
 use Illuminate\Http\JsonResponse;
@@ -822,6 +823,68 @@ El sistema te guiará paso a paso:
                 'puede_usar_asistente' => $user->puede_usar_asistente,
                 'puede_modificar_bd' => $user->puede_modificar_bd,
             ],
+        ]);
+    }
+
+    /**
+     * Obtiene la configuración de personalidad del asistente
+     */
+    public function obtenerConfiguracion(): JsonResponse
+    {
+        $config = Configuracion::get('asistente_personalidad', [
+            'modo' => 'amigable',
+            'usar_emojis' => true,
+            'mostrar_sql' => true,
+            'explicar_detalle' => false,
+            'instrucciones_adicionales' => ''
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'config' => $config
+        ]);
+    }
+
+    /**
+     * Guarda la configuración de personalidad del asistente
+     */
+    public function guardarConfiguracion(Request $request): JsonResponse
+    {
+        // Solo admins pueden cambiar la configuración
+        if (!Auth::user()->esAdminDepartamento()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'No tienes permisos para realizar esta acción',
+            ], 403);
+        }
+
+        $request->validate([
+            'modo' => 'required|string|in:amigable,profesional,tecnico,conciso,despota',
+            'usar_emojis' => 'boolean',
+            'mostrar_sql' => 'boolean',
+            'explicar_detalle' => 'boolean',
+            'instrucciones_adicionales' => 'nullable|string|max:500',
+        ]);
+
+        $config = [
+            'modo' => $request->modo,
+            'usar_emojis' => $request->usar_emojis ?? true,
+            'mostrar_sql' => $request->mostrar_sql ?? true,
+            'explicar_detalle' => $request->explicar_detalle ?? false,
+            'instrucciones_adicionales' => $request->instrucciones_adicionales ?? '',
+        ];
+
+        Configuracion::set('asistente_personalidad', $config, 'Configuración de personalidad del asistente virtual Ferrallin');
+
+        Log::info('Configuración de personalidad del asistente actualizada', [
+            'user_id' => Auth::id(),
+            'config' => $config
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Configuración guardada correctamente',
+            'config' => $config
         ]);
     }
 }

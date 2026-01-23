@@ -6,6 +6,7 @@ use App\Models\ChatConversacion;
 use App\Models\ChatMensaje;
 use App\Models\ChatConsultaSql;
 use App\Models\AsistenteInforme;
+use App\Models\Configuracion;
 use App\Models\User;
 use App\Services\Asistente\InformeService;
 use App\Services\Asistente\ReportePdfService;
@@ -307,6 +308,65 @@ class AsistenteVirtualService
     }
 
     /**
+     * Obtiene el prompt de personalidad según la configuración
+     */
+    private function obtenerPromptPersonalidad(): array
+    {
+        $config = Configuracion::get('asistente_personalidad', [
+            'modo' => 'amigable',
+            'usar_emojis' => true,
+            'mostrar_sql' => true,
+            'explicar_detalle' => false,
+            'instrucciones_adicionales' => ''
+        ]);
+
+        $modos = [
+            'amigable' => [
+                'descripcion' => 'Eres cercano, amable y paciente. Usas un tono conversacional.',
+                'estilo' => 'Responde de forma cálida y acogedora. Ofrece ayuda adicional.',
+            ],
+            'profesional' => [
+                'descripcion' => 'Eres formal, directo y eficiente. Usas un tono corporativo.',
+                'estilo' => 'Responde de forma concisa y profesional. Sin rodeos.',
+            ],
+            'tecnico' => [
+                'descripcion' => 'Eres detallado y técnico. Explicas el razonamiento detrás de las respuestas.',
+                'estilo' => 'Incluye detalles técnicos, muestra SQL cuando sea relevante, explica paso a paso.',
+            ],
+            'conciso' => [
+                'descripcion' => 'Eres extremadamente breve. Solo lo esencial.',
+                'estilo' => 'Respuestas mínimas. Sin explicaciones innecesarias. Ideal para móvil.',
+            ],
+            'despota' => [
+                'descripcion' => 'Eres seco, impaciente y directo. Respondes pero sin entusiasmo.',
+                'estilo' => 'Respuestas cortantes. Sin cortesías. Cumples pero dejas claro que tienes mejores cosas que hacer. Puedes ser sarcástico.',
+            ],
+        ];
+
+        $modo = $config['modo'] ?? 'amigable';
+        $modoConfig = $modos[$modo] ?? $modos['amigable'];
+
+        $personalidad = "## TU PERSONALIDAD\n";
+        $personalidad .= $modoConfig['descripcion'] . "\n";
+        $personalidad .= "Estilo: " . $modoConfig['estilo'] . "\n";
+
+        if (!($config['usar_emojis'] ?? true)) {
+            $personalidad .= "NO uses emojis en tus respuestas.\n";
+        } else if ($modo !== 'despota' && $modo !== 'profesional') {
+            $personalidad .= "Puedes usar emojis para hacer la conversación más amena.\n";
+        }
+
+        if (!empty($config['instrucciones_adicionales'])) {
+            $personalidad .= "\nInstrucciones adicionales: " . $config['instrucciones_adicionales'] . "\n";
+        }
+
+        return [
+            'prompt' => $personalidad,
+            'config' => $config
+        ];
+    }
+
+    /**
      * Define las herramientas (tools) disponibles para Function Calling
      */
     private function definirHerramientas(bool $puedeModificar): array
@@ -419,13 +479,28 @@ class AsistenteVirtualService
     }
 
     /**
-     * Analiza la intención del usuario usando OpenAI con Function Calling
+     * Analiza la intención del usuario usando IA con Function Calling
+     * Respeta el modelo seleccionado por el usuario (OpenAI, Anthropic o Local)
      */
     private function analizarIntencion(string $mensaje, array $historial, $user): array
     {
+        // Obtener el modelo preferido del usuario
+        $modeloUsuario = Asistente\IAService::obtenerPreferenciaUsuario($user);
+        $configModelo = config("asistente.modelos.{$modeloUsuario}", []);
+        $proveedor = $configModelo['proveedor'] ?? 'local';
+
+        // Si el modelo es LOCAL, usar análisis semántico sin llamar a APIs externas
+        if ($proveedor === 'local') {
+            return $this->analizarIntencionLocal($mensaje, $user);
+        }
+
         $schemaTablas = $this->obtenerSchemaTablas();
         $diccionarioNegocio = $this->obtenerDiccionarioNegocio();
         $guiaFuncionalidades = $this->obtenerGuiaFuncionalidades();
+
+        // Obtener configuración de personalidad
+        $personalidadData = $this->obtenerPromptPersonalidad();
+        $personalidadPrompt = $personalidadData['prompt'];
 
         // Determinar permisos del usuario
         $puedeModificar = $user->puede_modificar_bd;
@@ -437,6 +512,8 @@ class AsistenteVirtualService
 
         $systemPrompt = <<<PROMPT
 Eres FERRALLIN, asistente experto del ERP de FERRALLA (fabricación de armaduras de acero).
+
+{$personalidadPrompt}
 
 {$permisosTexto}
 
@@ -473,9 +550,17 @@ Eres FERRALLIN, asistente experto del ERP de FERRALLA (fabricación de armaduras
 PROMPT;
 
         try {
-            // Llamar a la API de OpenAI con Function Calling
+            // Usar el modelo configurado por el usuario
+            $modeloAPI = $configModelo['modelo_id'] ?? 'gpt-4o-mini';
+
+            // Llamar a la API correspondiente según el proveedor
+            if ($proveedor === 'anthropic') {
+                return $this->analizarIntencionAnthropic($mensaje, $systemPrompt, $herramientas, $modeloAPI);
+            }
+
+            // Por defecto, usar OpenAI
             $response = OpenAI::chat()->create([
-                'model' => 'gpt-4o-mini',
+                'model' => $modeloAPI,
                 'messages' => [
                     ['role' => 'system', 'content' => $systemPrompt],
                     ['role' => 'user', 'content' => $mensaje]
@@ -483,7 +568,7 @@ PROMPT;
                 'tools' => $herramientas,
                 'tool_choice' => 'required', // Forzar que use una herramienta
                 'temperature' => 0.1,
-                'max_tokens' => 600,
+                'max_tokens' => $configModelo['max_tokens'] ?? 600,
             ]);
 
             $messageResponse = $response->choices[0]->message;
@@ -515,6 +600,281 @@ PROMPT;
             Log::error('Error en Function Calling: ' . $e->getMessage());
             throw $e;
         }
+    }
+
+    /**
+     * Analiza la intención usando análisis semántico local (sin API externa)
+     * Esta función se usa cuando el usuario selecciona el modelo "local" (gratuito)
+     */
+    private function analizarIntencionLocal(string $mensaje, $user): array
+    {
+        $analizador = new Asistente\AnalizadorSemanticoService();
+        $analisis = $analizador->analizar($mensaje);
+
+        // Detectar tipo de consulta por patrones
+        $mensajeLower = mb_strtolower($mensaje);
+
+        // Detectar saludos y preguntas conversacionales
+        $patronesSaludo = ['hola', 'buenos días', 'buenas tardes', 'buenas noches', 'hey', 'qué tal', 'cómo estás'];
+        $patronesIdentidad = ['quién eres', 'qué eres', 'cómo te llamas', 'ferrallin'];
+
+        foreach ($patronesSaludo as $patron) {
+            if (str_contains($mensajeLower, $patron)) {
+                return [
+                    'requiere_sql' => false,
+                    'consulta_sql' => null,
+                    'respuesta' => "¡Hola! 👋 Soy **FERRALLIN**, tu asistente virtual del ERP de ferralla.\n\n" .
+                                   "Puedo ayudarte con:\n" .
+                                   "- 📊 Consultar datos (planillas, pedidos, stock, etc.)\n" .
+                                   "- 📋 Generar informes y reportes\n" .
+                                   "- ❓ Responder preguntas sobre el sistema\n\n" .
+                                   "⚠️ **Nota:** Estás usando el modo **Análisis Local** (gratuito). " .
+                                   "Para consultas más complejas, considera cambiar a un modelo de IA en el selector de modelos.",
+                    'explicacion' => '',
+                    'necesita_clarificacion' => false,
+                ];
+            }
+        }
+
+        foreach ($patronesIdentidad as $patron) {
+            if (str_contains($mensajeLower, $patron)) {
+                return [
+                    'requiere_sql' => false,
+                    'consulta_sql' => null,
+                    'respuesta' => "Soy **FERRALLIN** 🤖, el asistente virtual inteligente del ERP de ferralla.\n\n" .
+                                   "Mi trabajo es ayudarte a:\n" .
+                                   "- Consultar información de la base de datos\n" .
+                                   "- Generar informes y estadísticas\n" .
+                                   "- Guiarte en el uso del sistema\n\n" .
+                                   "Actualmente estás usando el modo **Análisis Local** que funciona sin conexión a servicios externos.",
+                    'explicacion' => '',
+                    'necesita_clarificacion' => false,
+                ];
+            }
+        }
+
+        // Detectar consultas sobre máquinas y planillas en fabricación
+        // Patrones: "qué planilla en la X", "fabricando en X", "qué se fabrica en X"
+        if (preg_match('/(qu[eé]\s+(planilla|se\s+fabrica|est[aá]\s+fabricando)|fabricando\s+en|planilla.*en\s+la)/i', $mensajeLower)) {
+            // Extraer nombre de máquina
+            $nombreMaquina = null;
+            // Lista de máquinas conocidas (nombres parciales)
+            $maquinasConocidas = ['syntax', 'robomaster', 'schnell', 'stema', 'alba', 'pedax', 'progress'];
+
+            foreach ($maquinasConocidas as $maq) {
+                if (str_contains($mensajeLower, $maq)) {
+                    // Extraer el nombre completo (ej: "syntax line 28")
+                    if (preg_match('/(' . $maq . '[^\.,\?]*)/i', $mensaje, $matches)) {
+                        $nombreMaquina = trim($matches[1]);
+                    } else {
+                        $nombreMaquina = $maq;
+                    }
+                    break;
+                }
+            }
+
+            if ($nombreMaquina && $this->agentService) {
+                // Usar AgentService para ejecutar la consulta
+                try {
+                    $resultado = $this->agentService->ejecutarHerramienta('produccion_maquina_planilla', [
+                        'maquina' => $nombreMaquina
+                    ]);
+
+                    return [
+                        'requiere_sql' => false,
+                        'consulta_sql' => null,
+                        'respuesta' => $resultado['contenido'] ?? 'No pude obtener la información.',
+                        'explicacion' => '',
+                        'necesita_clarificacion' => false,
+                    ];
+                } catch (\Exception $e) {
+                    Log::error('Error ejecutando produccion_maquina_planilla: ' . $e->getMessage());
+                }
+            }
+        }
+
+        // Detectar preguntas de "cómo" (guías de uso)
+        if (preg_match('/^(cómo|como|donde|dónde|qué pasos|que pasos)/i', $mensajeLower)) {
+            return [
+                'requiere_sql' => false,
+                'consulta_sql' => null,
+                'respuesta' => "📖 **Modo Local - Limitado**\n\n" .
+                               "Para preguntas sobre **cómo usar el sistema**, te recomiendo:\n\n" .
+                               "1. Consultar el menú de ayuda en la aplicación\n" .
+                               "2. Cambiar a un modelo de IA (GPT o Claude) para respuestas más detalladas\n\n" .
+                               "El análisis local solo puede responder consultas básicas de datos.",
+                'explicacion' => '',
+                'necesita_clarificacion' => false,
+            ];
+        }
+
+        // Detectar consultas de datos y generar SQL básico
+        $consultaSQL = $this->generarSQLLocal($mensaje, $analisis, $user);
+
+        if ($consultaSQL) {
+            return [
+                'requiere_sql' => true,
+                'consulta_sql' => $consultaSQL,
+                'explicacion' => 'Consulta generada por análisis local',
+                'respuesta' => null,
+                'necesita_clarificacion' => false,
+            ];
+        }
+
+        // Respuesta por defecto para modo local
+        return [
+            'requiere_sql' => false,
+            'consulta_sql' => null,
+            'respuesta' => "⚠️ **Modo Análisis Local**\n\n" .
+                           "No pude entender completamente tu solicitud.\n\n" .
+                           "**Sugerencias:**\n" .
+                           "- Intenta ser más específico (ej: \"muéstrame las planillas pendientes\")\n" .
+                           "- Para consultas complejas, cambia a un modelo de IA en el selector\n\n" .
+                           "El análisis local funciona mejor con consultas directas como:\n" .
+                           "- \"¿Cuántas planillas hay pendientes?\"\n" .
+                           "- \"Muéstrame los últimos pedidos\"\n" .
+                           "- \"¿Qué máquinas hay disponibles?\"",
+            'explicacion' => '',
+            'necesita_clarificacion' => false,
+        ];
+    }
+
+    /**
+     * Genera SQL básico para consultas locales usando patrones
+     */
+    private function generarSQLLocal(string $mensaje, array $analisis, $user): ?string
+    {
+        $mensajeLower = mb_strtolower($mensaje);
+
+        // Patrones para diferentes tipos de consultas
+        $patrones = [
+            // Planillas
+            '/planillas?\s+(pendientes?|en\s+espera)/i' => "SELECT id, codigo, estado, cliente_id, created_at FROM planillas WHERE estado = 'pendiente' ORDER BY created_at DESC LIMIT 20",
+            '/planillas?\s+(fabricando|en\s+producción)/i' => "SELECT id, codigo, estado, cliente_id, created_at FROM planillas WHERE estado = 'fabricando' ORDER BY created_at DESC LIMIT 20",
+            '/planillas?\s+(completadas?|terminadas?)/i' => "SELECT id, codigo, estado, cliente_id, created_at FROM planillas WHERE estado = 'completada' ORDER BY created_at DESC LIMIT 20",
+            '/(cuántas?|cuantas?|número|numero)\s+planillas/i' => "SELECT estado, COUNT(*) as cantidad FROM planillas GROUP BY estado",
+            '/(últimas?|ultimas?|recientes?)\s+planillas/i' => "SELECT id, codigo, estado, created_at FROM planillas ORDER BY created_at DESC LIMIT 10",
+
+            // Pedidos
+            '/(últimos?|ultimos?|recientes?)\s+pedidos/i' => "SELECT id, codigo, estado, proveedor_id, created_at FROM pedidos ORDER BY created_at DESC LIMIT 10",
+            '/pedidos?\s+pendientes/i' => "SELECT id, codigo, estado, proveedor_id, created_at FROM pedidos WHERE estado = 'pendiente' ORDER BY created_at DESC LIMIT 20",
+
+            // Máquinas
+            '/máquinas?\s+(disponibles?|activas?)/i' => "SELECT id, nombre, tipo, estado FROM maquinas WHERE activa = 1 ORDER BY nombre",
+            '/máquinas?|maquinas?/i' => "SELECT id, nombre, tipo, estado, activa FROM maquinas ORDER BY nombre",
+
+            // Usuarios
+            '/usuarios?\s+activos/i' => "SELECT id, name, email, departamento_id FROM users WHERE activo = 1 ORDER BY name LIMIT 50",
+            '/(cuántos?|cuantos?)\s+usuarios/i' => "SELECT COUNT(*) as total FROM users WHERE activo = 1",
+
+            // Stock/Productos
+            '/stock|inventario|productos/i' => "SELECT id, nombre, diametro, stock_actual FROM productos WHERE stock_actual > 0 ORDER BY diametro LIMIT 30",
+
+            // Clientes
+            '/(últimos?|ultimos?|recientes?)\s+clientes/i' => "SELECT id, nombre, email, created_at FROM clientes ORDER BY created_at DESC LIMIT 10",
+            '/clientes/i' => "SELECT id, nombre, email FROM clientes ORDER BY nombre LIMIT 30",
+        ];
+
+        foreach ($patrones as $patron => $sql) {
+            if (preg_match($patron, $mensaje)) {
+                return $sql;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Analiza la intención usando la API de Anthropic (Claude)
+     */
+    private function analizarIntencionAnthropic(string $mensaje, string $systemPrompt, array $herramientas, string $modelo): array
+    {
+        $apiKey = env('ANTHROPIC_API_KEY');
+
+        if (empty($apiKey)) {
+            Log::warning('API key de Anthropic no configurada, usando fallback local');
+            return $this->analizarIntencionLocal($mensaje, auth()->user());
+        }
+
+        try {
+            // Convertir herramientas de OpenAI a formato Anthropic
+            $toolsAnthropic = $this->convertirHerramientasAnthropic($herramientas);
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'x-api-key' => $apiKey,
+                'anthropic-version' => '2023-06-01',
+                'content-type' => 'application/json',
+            ])->timeout(30)->post('https://api.anthropic.com/v1/messages', [
+                'model' => $modelo,
+                'max_tokens' => 1024,
+                'system' => $systemPrompt,
+                'tools' => $toolsAnthropic,
+                'tool_choice' => ['type' => 'any'],
+                'messages' => [
+                    ['role' => 'user', 'content' => $mensaje]
+                ],
+            ]);
+
+            if (!$response->successful()) {
+                Log::error('Error Anthropic API: ' . $response->body());
+                throw new \Exception('Error en API Anthropic: ' . $response->status());
+            }
+
+            $data = $response->json();
+
+            // Procesar respuesta de Anthropic
+            foreach ($data['content'] ?? [] as $block) {
+                if ($block['type'] === 'tool_use') {
+                    $functionName = $block['name'];
+                    $arguments = $block['input'] ?? [];
+
+                    Log::info("Anthropic Tool Use: {$functionName}", $arguments);
+                    return $this->procesarHerramienta($functionName, $arguments);
+                }
+
+                if ($block['type'] === 'text') {
+                    return [
+                        'requiere_sql' => false,
+                        'consulta_sql' => null,
+                        'respuesta' => $block['text'],
+                        'explicacion' => '',
+                        'necesita_clarificacion' => false,
+                    ];
+                }
+            }
+
+            return [
+                'requiere_sql' => false,
+                'consulta_sql' => null,
+                'respuesta' => 'No pude procesar tu solicitud.',
+                'explicacion' => '',
+                'necesita_clarificacion' => false,
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Error en Anthropic: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Convierte herramientas del formato OpenAI al formato Anthropic
+     */
+    private function convertirHerramientasAnthropic(array $herramientasOpenAI): array
+    {
+        $herramientasAnthropic = [];
+
+        foreach ($herramientasOpenAI as $tool) {
+            if ($tool['type'] === 'function') {
+                $herramientasAnthropic[] = [
+                    'name' => $tool['function']['name'],
+                    'description' => $tool['function']['description'],
+                    'input_schema' => $tool['function']['parameters'],
+                ];
+            }
+        }
+
+        return $herramientasAnthropic;
     }
 
     /**
