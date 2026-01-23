@@ -14,6 +14,7 @@ use App\Services\Asistente\InteligenciaService;
 use App\Services\Asistente\AccionService;
 use App\Services\Asistente\DiagnosticoService;
 use App\Services\Asistente\AgentService;
+use App\Services\Asistente\InterpreteInteligente;
 use App\Services\Asistente as Asistente;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -204,6 +205,81 @@ class AsistenteVirtualService
                 'metadata' => $respuestaCache['metadata'] ?? null,
             ]);
         }
+
+        // ============================================================
+        // INTÉRPRETE INTELIGENTE: Primera capa de análisis (sin IA)
+        // Detecta intenciones comunes y genera SQL optimizado
+        // ============================================================
+        $interprete = new InterpreteInteligente();
+        $interpretacion = $interprete->interpretar($contenido);
+
+        if ($interpretacion['detectada']) {
+            Log::info('InterpreteInteligente: Intención detectada sin IA', $interpretacion);
+
+            // Manejar saludos directamente
+            if ($interpretacion['intencion'] === 'saludo') {
+                $respuesta = $interprete->respuestaSaludo();
+                return $conversacion->mensajes()->create([
+                    'role' => 'assistant',
+                    'contenido' => $respuesta,
+                    'metadata' => ['tipo' => 'conversacional', 'interprete' => true],
+                ]);
+            }
+
+            // Generar y ejecutar SQL predefinido
+            $sqlData = $interprete->generarSQL($interpretacion['intencion'], $interpretacion['entidades']);
+
+            if ($sqlData) {
+                try {
+                    $resultadosSQL = $this->ejecutarConsultaSegura(
+                        $mensajeUsuario,
+                        $contenido,
+                        $sqlData['sql']
+                    );
+
+                    // Formatear respuesta de forma inteligente
+                    $respuesta = $interprete->formatearRespuesta(
+                        $interpretacion['intencion'],
+                        $interpretacion['entidades'],
+                        $resultadosSQL['datos'] ?? []
+                    );
+
+                    $metadata = [
+                        'tipo' => 'sql',
+                        'sql' => $sqlData['sql'],
+                        'explicacion' => $sqlData['explicacion'],
+                        'interprete' => true,
+                        'intencion' => $interpretacion['intencion'],
+                        'entidades' => $interpretacion['entidades'],
+                        'filas' => $resultadosSQL['filas'] ?? 0,
+                    ];
+
+                    // Cachear la respuesta
+                    Cache::put($cacheKey, [
+                        'contenido' => $respuesta,
+                        'metadata' => $metadata,
+                    ], 1800);
+
+                    return $conversacion->mensajes()->create([
+                        'role' => 'assistant',
+                        'contenido' => $respuesta,
+                        'metadata' => $metadata,
+                    ]);
+
+                } catch (\Exception $e) {
+                    Log::error('InterpreteInteligente: Error ejecutando SQL', [
+                        'error' => $e->getMessage(),
+                        'sql' => $sqlData['sql'] ?? null
+                    ]);
+                    // Si falla, continuar con el flujo normal (OpenAI)
+                }
+            }
+        }
+
+        // ============================================================
+        // FLUJO NORMAL: Si el intérprete no detectó la intención,
+        // usar OpenAI con Function Calling
+        // ============================================================
 
         try {
             // Obtener contexto de la conversación
