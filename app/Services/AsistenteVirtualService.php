@@ -1177,24 +1177,39 @@ PROMPT;
         // Formatear datos para OpenAI
         $datosFormateados = json_encode(array_slice($datos, 0, 20), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
-        $systemPrompt = <<<PROMPT
-FERRALLIN - Resume resultados SQL claro y conciso.
+        // Obtener personalidad configurada
+        $personalidadData = $this->obtenerPromptPersonalidad();
+        $personalidadPrompt = $personalidadData['prompt'];
+        $config = $personalidadData['config'];
+        $usarEmojis = $config['usar_emojis'] ?? true;
 
-REGLAS:
-- Español estructurado
-- **Negrita** para importante
-- Tablas markdown si aplica
-- Sin preámbulos
-- Conciso
+        $systemPrompt = <<<PROMPT
+Eres FERRALLIN, asistente del ERP de ferralla. Responde en LENGUAJE HUMANO NATURAL.
+
+{$personalidadPrompt}
+
+REGLAS IMPORTANTES:
+1. NO hagas tablas con todos los campos de la BD - eso no es legible
+2. Responde como lo haría una persona: "La primera planilla es la **2025-004832** del cliente Construcciones García para la obra Torre Norte"
+3. Solo menciona los datos que el usuario NECESITA saber:
+   - Para identificar planillas: código (codigo_limpio si existe), cliente, obra
+   - Para cantidades: el número con unidades (kg, unidades, etc.)
+   - Para listas cortas (≤5): menciónalas en texto
+   - Para listas largas (>5): resumen + los más importantes
+4. Usa **negrita** para datos clave
+5. Sin preámbulos innecesarios ("Aquí tienes...", "Los resultados son...")
+6. Si hay 1 resultado, responde directo sin tabla
+7. Si hay pocos resultados (2-5), lista simple
+8. Solo usa tabla markdown si hay muchos datos que comparar
 PROMPT;
 
         $userPrompt = <<<PROMPT
-Pregunta del usuario: {$pregunta}
+Pregunta: {$pregunta}
 
-Resultados de la consulta (se encontraron {$filas} registros, mostrando primeros 20):
+Datos encontrados ({$filas} registro/s):
 {$datosFormateados}
 
-Por favor, presenta estos resultados de forma clara y útil para el usuario.
+Responde de forma natural y concisa. Solo los datos relevantes para la pregunta.
 PROMPT;
 
         try {
