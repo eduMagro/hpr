@@ -212,7 +212,7 @@
                 });
 
                 if (preguntaPaquetes.isConfirmed) {
-                    await crearPaquetesPorEtiqueta(result.etiquetas_ids || []);
+                    await crearPaquetesPorEtiqueta(result.todas_las_etiquetas || []);
                 }
             } else if (window.Swal) {
                 // Mostrar solo el éxito si no hay etiquetas para imprimir
@@ -239,28 +239,22 @@
         }
     }
 
-    // Función para crear un paquete por cada etiqueta
-    async function crearPaquetesPorEtiqueta(etiquetaIds) {
-        if (!etiquetaIds || etiquetaIds.length === 0) {
+    // Función para crear un paquete por cada etiqueta usando el método existente
+    async function crearPaquetesPorEtiqueta(etiquetaSubIds) {
+        if (!etiquetaSubIds || etiquetaSubIds.length === 0) {
             Swal.fire('Error', 'No hay etiquetas para crear paquetes', 'error');
             return;
         }
 
-        const maquinaId = Number(
-            document.getElementById('maquina-info')?.dataset?.maquinaId || window.maquinaId
-        );
-        const ubicacionId = Number(
-            document.getElementById('ubicacion-id')?.value || window.ubicacionId
-        );
-
-        if (!maquinaId || !ubicacionId) {
-            Swal.fire('Error', 'Falta información de máquina o ubicación', 'error');
+        // Verificar que TrabajoPaquete esté disponible
+        if (typeof window.TrabajoPaquete === 'undefined') {
+            Swal.fire('Error', 'El módulo de paquetes no está disponible', 'error');
             return;
         }
 
         Swal.fire({
             title: 'Creando paquetes...',
-            html: `Paquete <b>0</b> de <b>${etiquetaIds.length}</b>`,
+            html: `Paquete <b>0</b> de <b>${etiquetaSubIds.length}</b>`,
             allowOutsideClick: false,
             didOpen: () => Swal.showLoading()
         });
@@ -268,38 +262,33 @@
         let creados = 0;
         let errores = [];
 
-        for (let i = 0; i < etiquetaIds.length; i++) {
-            const etiquetaId = etiquetaIds[i];
+        for (let i = 0; i < etiquetaSubIds.length; i++) {
+            const subId = etiquetaSubIds[i];
 
             // Actualizar progreso
             Swal.update({
-                html: `Paquete <b>${i + 1}</b> de <b>${etiquetaIds.length}</b>`
+                html: `Paquete <b>${i + 1}</b> de <b>${etiquetaSubIds.length}</b><br><small>${subId}</small>`
             });
 
             try {
-                const resp = await fetch('/paquetes', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
-                    },
-                    body: JSON.stringify({
-                        items: [{ id: etiquetaId, type: 'etiqueta' }],
-                        maquina_id: maquinaId,
-                        ubicacion_id: ubicacionId,
-                    })
-                });
+                // 1. Validar etiqueta
+                const data = await window.TrabajoPaquete.validarEtiqueta(subId);
 
-                const data = await resp.json();
-
-                if (resp.ok && data.success) {
-                    creados++;
-                } else {
-                    errores.push(data.message || `Error en etiqueta ${etiquetaId}`);
+                if (!data.valida) {
+                    errores.push(`${subId}: ${data.motivo || 'No válida'}`);
+                    continue;
                 }
+
+                // 2. Limpiar carro y añadir solo esta etiqueta
+                window.TrabajoPaquete.limpiarCarro();
+                window.TrabajoPaquete.agregarItemEtiqueta(subId, data);
+
+                // 3. Crear paquete (esto también limpia el carro después)
+                await window.TrabajoPaquete.crearPaquete();
+                creados++;
+
             } catch (e) {
-                errores.push(`Error de conexión para etiqueta ${etiquetaId}`);
+                errores.push(`${subId}: ${e.message || 'Error desconocido'}`);
             }
         }
 
@@ -308,7 +297,7 @@
             await window.refrescarEtiquetasMaquina();
         }
 
-        // Mostrar resultado
+        // Mostrar resultado final
         if (errores.length === 0) {
             await Swal.fire({
                 icon: 'success',
@@ -316,13 +305,23 @@
                 html: `Se crearon <strong>${creados}</strong> paquetes correctamente`,
                 confirmButtonColor: '#8b5cf6',
             });
-        } else {
+        } else if (creados > 0) {
             await Swal.fire({
                 icon: 'warning',
                 title: 'Paquetes creados con errores',
                 html: `<p>Creados: <strong>${creados}</strong></p>
                        <p>Errores: <strong>${errores.length}</strong></p>
                        <details class="mt-2 text-left text-sm">
+                           <summary class="cursor-pointer text-gray-600">Ver errores</summary>
+                           <ul class="mt-1 text-red-600">${errores.map(e => `<li>• ${e}</li>`).join('')}</ul>
+                       </details>`,
+                confirmButtonColor: '#8b5cf6',
+            });
+        } else {
+            await Swal.fire({
+                icon: 'error',
+                title: 'No se pudieron crear paquetes',
+                html: `<details class="text-left text-sm">
                            <summary class="cursor-pointer text-gray-600">Ver errores</summary>
                            <ul class="mt-1 text-red-600">${errores.map(e => `<li>• ${e}</li>`).join('')}</ul>
                        </details>`,
