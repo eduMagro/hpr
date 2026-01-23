@@ -619,6 +619,21 @@ class GastosController extends Controller
 
         $gasto->update($validated);
 
+        // Sync Incidencia if linked
+        if ($gasto->incidencia_id) {
+            $incidencia = \App\Models\Incidencia::find($gasto->incidencia_id);
+            if ($incidencia) {
+                $incidencia->coste = $gasto->coste;
+                if ($gasto->fecha_llegada) {
+                    $incidencia->fecha_resolucion = $gasto->fecha_llegada;
+                }
+                if ($gasto->observaciones) {
+                    $incidencia->resolucion = $gasto->observaciones;
+                }
+                $incidencia->save();
+            }
+        }
+
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
@@ -632,6 +647,16 @@ class GastosController extends Controller
 
     public function destroy(Gasto $gasto)
     {
+        // Sync Incidencia if linked before deleting
+        if ($gasto->incidencia_id) {
+            $incidencia = \App\Models\Incidencia::find($gasto->incidencia_id);
+            if ($incidencia) {
+                // If the expense is deleted, we remove the cost from the incident
+                $incidencia->coste = null;
+                $incidencia->save();
+            }
+        }
+
         $gasto->delete();
         return redirect()->route('gastos.index')->with('success', 'Gasto eliminado correctamente.');
     }

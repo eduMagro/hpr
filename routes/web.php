@@ -75,6 +75,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/incidencias', [IncidenciaController::class, 'store'])->name('incidencias.store');
     Route::get('/incidencias/{id}', [IncidenciaController::class, 'show'])->name('incidencias.show');
     Route::put('/incidencias/{id}/resolver', [IncidenciaController::class, 'resolve'])->name('incidencias.resolve');
+    Route::put('/incidencias/{id}/actualizar-resolucion', [IncidenciaController::class, 'updateResolution'])->name('incidencias.update-resolution');
 });
 
 Route::get('/', [PageController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');

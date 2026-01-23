@@ -33,7 +33,8 @@
                         </div>
                         <div>
                             <h1 class="text-xl font-bold text-gray-900 leading-tight">
-                                {{ $incidencia->maquina->nombre ?? 'N/A' }}</h1>
+                                {{ $incidencia->maquina->nombre ?? 'N/A' }}
+                            </h1>
                             <div class="flex items-center gap-2 mt-1">
                                 <span
                                     class="inline-flex items-center gap-1 {{ $incidencia->maquina->estado == 'activa' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200' }} border text-xs font-bold px-2 py-0.5 rounded-full">
@@ -152,11 +153,10 @@
                                 </button>
 
                                 {{-- Resolve Modal --}}
-                                <div x-show="openResolve"
-                                    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                                <div x-show="openResolve" class="fixed inset-0 z-50 flex items-center justify-center p-4"
                                     style="display: none;">
-                                    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm"
-                                        @click="openResolve = false"></div>
+                                    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" @click="openResolve = false">
+                                    </div>
                                     <div
                                         class="bg-white rounded-2xl shadow-2xl w-full max-w-lg relative z-10 overflow-hidden">
                                         <div class="bg-green-600 px-6 py-4 text-white">
@@ -164,8 +164,8 @@
                                             <p class="text-green-100 text-sm opacity-90">Indica cómo se solucionó el
                                                 problema.</p>
                                         </div>
-                                        <form action="{{ route('incidencias.resolve', $incidencia->id) }}"
-                                            method="POST" class="p-6">
+                                        <form action="{{ route('incidencias.resolve', $incidencia->id) }}" method="POST"
+                                            class="p-6">
                                             @csrf
                                             @method('PUT')
                                             <div class="mb-4">
@@ -173,8 +173,33 @@
                                                     de la solución</label>
                                                 <textarea name="resolucion" rows="4"
                                                     class="w-full border-gray-300 rounded-xl focus:ring-green-500 focus:border-green-500 text-sm"
-                                                    placeholder="Se cambió la pieza X, se reinició el sistema, etc." required></textarea>
+                                                    placeholder="Se cambió la pieza X, se reinició el sistema, etc."
+                                                    required></textarea>
                                             </div>
+
+                                            <div class="mb-6">
+                                                <label class="block text-sm font-bold text-gray-700 mb-2">Coste de
+                                                    Reparación (Opcional)</label>
+                                                <div class="relative rounded-xl shadow-sm">
+                                                    <div
+                                                        class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <span class="text-gray-500 sm:text-sm">€</span>
+                                                    </div>
+                                                    <input type="number" name="coste" step="0.01" min="0" placeholder="0.00"
+                                                        class="focus:ring-green-500 focus:border-green-500 block w-full pl-7 sm:text-sm border-gray-300 rounded-xl">
+                                                </div>
+                                                <p class="mt-1.5 text-xs text-gray-500 flex items-center gap-1">
+                                                    <svg class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    Si se indica un coste, se generará un registro en Gastos
+                                                    automáticamente.
+                                                </p>
+                                            </div>
+
                                             <div class="flex justify-end gap-3">
                                                 <button type="button" @click="openResolve = false"
                                                     class="px-4 py-2 text-gray-500 hover:text-gray-700 font-medium">Cancelar</button>
@@ -198,7 +223,8 @@
                                         class="text-sm font-semibold text-gray-800">{{ $incidencia->resolver->name ?? 'Usuario' }}</span>
                                 </div>
                                 <div class="text-xs text-gray-400 mt-1">
-                                    {{ $incidencia->fecha_resolucion->format('d/m/Y H:i') }}</div>
+                                    {{ $incidencia->fecha_resolucion->format('d/m/Y H:i') }}
+                                </div>
                             </div>
                         @endif
                     </div>
@@ -217,12 +243,91 @@
                         </div>
 
                         {{-- Resolution if resolved --}}
+                        {{-- Resolution if resolved --}}
                         @if ($incidencia->estado == 'resuelta')
-                            <div class="mb-8">
-                                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Solución
-                                    Aplicada</h3>
+                            <div class="mb-8" x-data="{ openEdit: false }">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Solución
+                                        Aplicada</h3>
+                                    <button @click="openEdit = true"
+                                        class="text-xs text-blue-600 hover:text-blue-800 font-bold hover:underline flex items-center gap-1">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                            </path>
+                                        </svg>
+                                        Editar
+                                    </button>
+                                </div>
                                 <div class="bg-green-50 border border-green-200 rounded-xl p-5 shadow-sm">
                                     <p class="text-green-800 leading-relaxed">{{ $incidencia->resolucion }}</p>
+
+                                    @if($incidencia->coste > 0)
+                                        <div class="mt-4 pt-4 border-t border-green-200 flex items-center gap-2">
+                                            <span class="text-xs font-bold uppercase text-green-700/70">Coste de
+                                                reparación:</span>
+                                            <span
+                                                class="text-lg font-bold text-green-900">{{ number_format($incidencia->coste, 2, ',', '.') }}
+                                                €</span>
+                                        </div>
+                                    @endif
+                                </div>
+
+                                {{-- Edit Modal --}}
+                                <div x-show="openEdit" class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                                    style="display: none;">
+                                    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" @click="openEdit = false"></div>
+                                    <div
+                                        class="bg-white rounded-2xl shadow-2xl w-full max-w-lg relative z-10 overflow-hidden">
+                                        <div class="bg-blue-600 px-6 py-4 text-white">
+                                            <h3 class="font-bold text-lg">Editar Resolución</h3>
+                                            <p class="text-blue-100 text-sm opacity-90">Modificar detalles o coste.</p>
+                                        </div>
+                                        <form action="{{ route('incidencias.update-resolution', $incidencia->id) }}"
+                                            method="POST" class="p-6">
+                                            @csrf
+                                            @method('PUT')
+
+                                            <div class="mb-4">
+                                                <label class="block text-sm font-bold text-gray-700 mb-2">Descripción de la
+                                                    solución</label>
+                                                <textarea name="resolucion" rows="4"
+                                                    class="w-full border-gray-300 rounded-xl focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                                    required>{{ $incidencia->resolucion }}</textarea>
+                                            </div>
+
+                                            <div class="mb-6">
+                                                <label class="block text-sm font-bold text-gray-700 mb-2">Coste de
+                                                    Reparación (Opcional)</label>
+                                                <div class="relative rounded-xl shadow-sm">
+                                                    <div
+                                                        class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <span class="text-gray-500 sm:text-sm">€</span>
+                                                    </div>
+                                                    <input type="number" name="coste" step="0.01" min="0" placeholder="0.00"
+                                                        value="{{ $incidencia->coste }}"
+                                                        class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-7 sm:text-sm border-gray-300 rounded-xl">
+                                                </div>
+                                                <p class="mt-1.5 text-xs text-gray-500 flex items-center gap-1">
+                                                    <svg class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    Se actualizará el registro de Gastos vinculado si procede.
+                                                </p>
+                                            </div>
+
+                                            <div class="flex justify-end gap-3">
+                                                <button type="button" @click="openEdit = false"
+                                                    class="px-4 py-2 text-gray-500 hover:text-gray-700 font-medium">Cancelar</button>
+                                                <button type="submit"
+                                                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold shadow-lg shadow-blue-500/30">Guardar
+                                                    Cambios</button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         @endif
@@ -239,8 +344,7 @@
                                             <img src="{{ asset($foto) }}"
                                                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                 alt="Evidencia">
-                                            <div
-                                                class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors">
+                                            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors">
                                             </div>
                                         </div>
                                     @endforeach
@@ -252,8 +356,8 @@
                                 </h3>
                                 <div
                                     class="bg-gray-50 border border-dashed border-gray-300 rounded-xl p-8 text-center text-gray-400">
-                                    <svg class="w-10 h-10 mx-auto mb-2 text-gray-300" fill="none"
-                                        stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-10 h-10 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
