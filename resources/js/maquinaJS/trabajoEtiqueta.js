@@ -580,28 +580,10 @@ function initTrabajoEtiqueta() {
                     denyButtonColor: "#6c757d",
                 });
 
-                // Reagrupar en paralelo mientras el usuario decide o después de imprimir
-                const reagruparPlanillaId = data.planilla_id || planillaId;
-                const reagruparMaquinaId = data.maquina_id || maquinaId;
-                const reagruparPromise = (reagruparPlanillaId && reagruparMaquinaId)
-                    ? fetch('/api/etiquetas/resumir', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'Accept': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            planilla_id: reagruparPlanillaId,
-                            maquina_id: reagruparMaquinaId,
-                        }),
-                    }).catch(e => console.warn('No se pudieron reagrupar:', e))
-                    : Promise.resolve();
-
                 if (resultado.isConfirmed || resultado.isDenied) {
                     const modo = resultado.isConfirmed ? "a6" : "a4";
 
-                    // Refrescar y esperar renderizado en paralelo
+                    // Refrescar y esperar renderizado
                     if (typeof window.refrescarEtiquetasMaquina === "function") {
                         Swal.fire({
                             title: 'Preparando impresión...',
@@ -612,7 +594,7 @@ function initTrabajoEtiqueta() {
 
                         await window.refrescarEtiquetasMaquina();
 
-                        // Esperar mínimo para renderizado (reducido de 800ms a 200ms)
+                        // Esperar mínimo para renderizado
                         await new Promise(resolve => setTimeout(resolve, 200));
 
                         Swal.close();
@@ -624,8 +606,8 @@ function initTrabajoEtiqueta() {
                     }
                 }
 
-                // Esperar a que termine el reagrupamiento (ya inició en paralelo)
-                await reagruparPromise;
+                // NO reagrupar después de completar - las etiquetas completadas
+                // deben permanecer separadas para poder crear paquetes individuales
 
                 // Añadir etiquetas al carro
                 if (window.TrabajoPaquete && typeof window.TrabajoPaquete.validarEtiqueta === 'function') {
