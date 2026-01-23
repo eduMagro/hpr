@@ -159,22 +159,36 @@ class GastosController extends Controller
             DB::raw('COALESCE(SUM(coste), 0) as total'),
         ]);
 
+        $hideUnassigned = $request->boolean('hide_unassigned');
+
         if ($breakdownBy === 'obra') {
+            if ($hideUnassigned) {
+                $breakdownQuery->whereNotNull('gastos.obra_id');
+            }
             $breakdownQuery
                 ->leftJoin('obras as o', 'gastos.obra_id', '=', 'o.id')
                 ->addSelect(DB::raw("IFNULL(o.obra, 'Sin obra') as label"))
                 ->groupBy('label');
         } elseif ($breakdownBy === 'maquina') {
+            if ($hideUnassigned) {
+                $breakdownQuery->whereNotNull('gastos.maquina_id');
+            }
             $breakdownQuery
                 ->leftJoin('maquinas as m', 'gastos.maquina_id', '=', 'm.id')
                 ->addSelect(DB::raw("IFNULL(m.nombre, 'Sin máquina') as label"))
                 ->groupBy('label');
         } elseif ($breakdownBy === 'motivo') {
+            if ($hideUnassigned) {
+                $breakdownQuery->whereNotNull('gastos.motivo_id');
+            }
             $breakdownQuery
                 ->leftJoin('gastos_motivos as gm', 'gastos.motivo_id', '=', 'gm.id')
                 ->addSelect(DB::raw("IFNULL(gm.nombre, 'Sin motivo') as label"))
                 ->groupBy('label');
         } else { // proveedor
+            if ($hideUnassigned) {
+                $breakdownQuery->whereNotNull('gastos.proveedor_id');
+            }
             $breakdownQuery
                 ->leftJoin('gastos_proveedores as gp', 'gastos.proveedor_id', '=', 'gp.id')
                 ->addSelect(DB::raw("IFNULL(gp.nombre, 'Sin proveedor') as label"))

@@ -62,7 +62,7 @@
             height: 0;
         }
     </style>
-    <div x-data="gastosManager()" class="py-12 dark:bg-gray-900 min-h-screen">
+    <div x-data="gastosManager()" class="dark:bg-gray-900">
         <div class="max-w-[95%] mx-auto sm:px-6 lg:px-8">
 
             <!-- Success Message -->
@@ -571,8 +571,16 @@
                         </div>
 
                         <div class="col-span-1 md:col-span-3">
-                            <label class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Reparto
-                                por</label>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label class="text-xs font-semibold text-gray-600 dark:text-gray-300">Reparto
+                                    por</label>
+                                <label class="inline-flex items-center gap-1.5 cursor-pointer select-none">
+                                    <input type="checkbox" x-model="charts.hideUnassigned" @change="loadCharts()"
+                                        class="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Ocultar "Sin
+                                        ..."</span>
+                                </label>
+                            </div>
                             <div class="flex p-1 bg-gray-100 dark:bg-gray-700 rounded-xl w-full gap-1">
                                 <button type="button" @click="charts.breakdownBy = 'proveedor'; loadCharts()"
                                     :class="charts.breakdownBy === 'proveedor' ?
@@ -668,7 +676,7 @@
 
                     <!-- Graph Placeholder Box -->
                     <div
-                        class="mt-6 h-max bg-gradient-to-br from-indigo-50/70 to-blue-50/70 dark:from-gray-700 dark:to-gray-800 rounded-2xl border border-indigo-100 dark:border-gray-600 p-3 relative">
+                        class="mt-6 h-72 bg-gradient-to-br from-indigo-50/70 to-blue-50/70 dark:from-gray-700 dark:to-gray-800 rounded-2xl border border-indigo-100 dark:border-gray-600 p-3 relative">
                         <div class="h-full overflow-x-auto gastos-table-scroll">
                             <div class="h-full" :style="seriesCanvasWrapperStyle()">
                                 <canvas x-ref="seriesChart" class="w-full h-full"></canvas>
@@ -700,7 +708,7 @@
                     <div class="relative z-10 flex items-start justify-between gap-3">
                         <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                             <span class="w-1 h-8 bg-emerald-500 rounded-full"></span>
-                            Resumen Mensual
+                            Distribución de Gastos
                         </h3>
 
                         <div
@@ -1589,7 +1597,6 @@
                     breakdownChartInstance: null,
                     chartsTotals: {
                         selectedTotal: 0,
-                        label: 'Total (rango)',
                     },
                     seriesLabels: [],
                     breakdownLabels: [],
@@ -1608,6 +1615,7 @@
                         seriesType: 'line',
                         breakdownBy: 'proveedor',
                         breakdownType: 'doughnut',
+                        hideUnassigned: false,
                         limit: 8,
                     },
 
@@ -1631,6 +1639,7 @@
                             seriesType: 'line',
                             breakdownBy: 'proveedor',
                             breakdownType: 'doughnut',
+                            hideUnassigned: false,
                             limit: 8,
                         };
                         this.setDefaultChartRange(true);
@@ -1690,7 +1699,7 @@
                     onFromBeginningChange() {
                         if (this.charts.fromBeginning) {
                             if (this.oldestGastoDate) {
-                                this.charts.from = this.oldestGastoDate;
+                                this.charts.from = this.oldestGastoDate.substring(0, 7);
                             }
                         } else {
                             this.setDefaultChartRange(true);
@@ -1773,6 +1782,7 @@
                         params.set('breakdown_by', this.charts.breakdownBy);
                         params.set('tipo', this.charts.tipo);
                         params.set('limit', String(this.charts.limit || 8));
+                        if (this.charts.hideUnassigned) params.set('hide_unassigned', '1');
 
                         if (this.charts.from) params.set('from', this.charts.from);
                         if (this.charts.to) params.set('to', this.charts.to);
@@ -1887,8 +1897,6 @@
                         this.breakdownLabels = breakdownLabels;
                         this.chartsTotals.selectedTotal = seriesData.reduce((sum, v) => sum + (Number(v) || 0),
                             0);
-                        this.chartsTotals.label = this.charts.groupBy === 'day' ? 'Total (días)' :
-                            (this.charts.groupBy === 'year' ? 'Total (años)' : 'Total (meses)');
 
                         // Render seguro (evita carreras al alternar rápido)
                         this.renderSeriesChart(payload);
