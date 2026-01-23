@@ -286,8 +286,8 @@
                                     <button type="button" @click="clearFilters()" title="Limpiar filtros"
                                         class="w-full flex items-center justify-center text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors py-1">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                            viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M18 6 6 18" />
                                             <path d="m6 6 12 12" />
                                         </svg>
@@ -375,10 +375,9 @@
                                                 <button type="button" @click="showObservaciones(gasto.observaciones)"
                                                     title="Ver observaciones"
                                                     class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 dark:bg-orange-900/40 dark:text-orange-200 dark:hover:bg-orange-900/60 border border-orange-100 dark:border-orange-800 transition-colors">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16"
-                                                        height="16" viewBox="0 0 24 24" fill="none"
-                                                        stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                                        stroke-linejoin="round">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                         <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
                                                         <circle cx="12" cy="12" r="3" />
                                                     </svg>
@@ -392,8 +391,8 @@
                                         <button @click="editGasto(gasto)" title="Editar gasto"
                                             class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/40 dark:text-indigo-200 dark:hover:bg-indigo-900/60 border border-indigo-100 dark:border-indigo-800 transition-colors">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
                                                 <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                                                 <path
                                                     d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" />
@@ -406,11 +405,10 @@
                             <!-- Empty state -->
                             <template x-if="filteredGastos.length === 0">
                                 <tr>
-                                    <td colspan="12"
-                                        class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                    <td colspan="12" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                         <div class="flex flex-col items-center justify-center">
-                                            <svg class="w-12 h-12 mb-4 text-gray-300" fill="none"
-                                                stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg class="w-12 h-12 mb-4 text-gray-300" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
                                                 </path>
@@ -468,22 +466,33 @@
                     </div>
 
                     <div class="mt-5 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4">
-                        <div>
+                        <div class="col-span-1 md:col-span-2">
                             <label
                                 class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Agrupar</label>
-                            <select x-model="charts.groupBy" @change="onChartGroupByChange()"
-                                class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3">
-                                <option value="day">Días</option>
-                                <option value="month">Meses</option>
-                                <option value="year">Años</option>
-                            </select>
+                            <div class="flex p-1 bg-gray-100 dark:bg-gray-700 rounded-xl w-full">
+                                <button type="button" @click="charts.groupBy = 'day'; onChartGroupByChange()"
+                                    :class="charts.groupBy === 'day' ?
+                                        'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm' :
+                                        'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                                    class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all">Días</button>
+                                <button type="button" @click="charts.groupBy = 'month'; onChartGroupByChange()"
+                                    :class="charts.groupBy === 'month' ?
+                                        'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm' :
+                                        'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                                    class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all">Meses</button>
+                                <button type="button" @click="charts.groupBy = 'year'; onChartGroupByChange()"
+                                    :class="charts.groupBy === 'year' ?
+                                        'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm' :
+                                        'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                                    class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all">Años</button>
+                            </div>
                         </div>
 
                         <div>
                             <label
                                 class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Desde</label>
-                            <div class="flex items-center gap-2">
-                                <input type="date" x-model="charts.from" @change="loadCharts()"
+                            <div class="flex flex-col gap-2">
+                                <input type="month" x-model="charts.from" @change="loadCharts()"
                                     :disabled="charts.fromBeginning"
                                     class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3 disabled:opacity-60" />
                                 <label
@@ -499,19 +508,30 @@
                         <div>
                             <label
                                 class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Hasta</label>
-                            <input type="date" x-model="charts.to" @change="loadCharts()"
+                            <input type="month" x-model="charts.to" @change="loadCharts()"
                                 class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3" />
                         </div>
 
-                        <div>
+                        <div class="col-span-1 md:col-span-2">
                             <label
                                 class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Tipo</label>
-                            <select x-model="charts.tipo" @change="loadCharts()"
-                                class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3">
-                                <option value="all">Todos</option>
-                                <option value="gasto">Gasto</option>
-                                <option value="obra">Obra</option>
-                            </select>
+                            <div class="flex p-1 bg-gray-100 dark:bg-gray-700 rounded-xl w-full">
+                                <button type="button" @click="charts.tipo = 'all'; loadCharts()"
+                                    :class="charts.tipo === 'all' ?
+                                        'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm' :
+                                        'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                                    class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all">Todos</button>
+                                <button type="button" @click="charts.tipo = 'gasto'; loadCharts()"
+                                    :class="charts.tipo === 'gasto' ?
+                                        'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm' :
+                                        'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                                    class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all">Gasto</button>
+                                <button type="button" @click="charts.tipo = 'obra'; loadCharts()"
+                                    :class="charts.tipo === 'obra' ?
+                                        'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm' :
+                                        'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                                    class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all">Obra</button>
+                            </div>
                         </div>
 
                         <div>
@@ -550,16 +570,31 @@
                             </select>
                         </div>
 
-                        <div>
+                        <div class="col-span-1 md:col-span-3">
                             <label class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Reparto
                                 por</label>
-                            <select x-model="charts.breakdownBy" @change="loadCharts()"
-                                class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3">
-                                <option value="proveedor">Proveedores</option>
-                                <option value="obra">Obras</option>
-                                <option value="maquina">Máquinas</option>
-                                <option value="motivo">Motivos</option>
-                            </select>
+                            <div class="flex p-1 bg-gray-100 dark:bg-gray-700 rounded-xl w-full gap-1">
+                                <button type="button" @click="charts.breakdownBy = 'proveedor'; loadCharts()"
+                                    :class="charts.breakdownBy === 'proveedor' ?
+                                        'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm' :
+                                        'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                                    class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all">Proveedores</button>
+                                <button type="button" @click="charts.breakdownBy = 'obra'; loadCharts()"
+                                    :class="charts.breakdownBy === 'obra' ?
+                                        'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm' :
+                                        'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                                    class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all">Obras</button>
+                                <button type="button" @click="charts.breakdownBy = 'maquina'; loadCharts()"
+                                    :class="charts.breakdownBy === 'maquina' ?
+                                        'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm' :
+                                        'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                                    class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all">Máquinas</button>
+                                <button type="button" @click="charts.breakdownBy = 'motivo'; loadCharts()"
+                                    :class="charts.breakdownBy === 'motivo' ?
+                                        'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm' :
+                                        'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                                    class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all">Motivos</button>
+                            </div>
                         </div>
 
                         <div class="md:col-span-3 xl:col-span-6 flex items-center gap-3">
@@ -576,10 +611,10 @@
                 <div
                     class="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
                     <div
-                        class="absolute top-0 right-10 p-4 opacity-10 group-hover:opacity-20 translate-x-9 -translate-y-9 rotate-45 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:rotate-0 group-hover:scale-110  transition-all ease-in-out duration-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24"
-                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                            stroke-linejoin="round" class="text-indigo-700 w-24 h-24">
+                        class="pointer-events-none select-none absolute -top-24 -right-24 p-4 opacity-10 group-hover:opacity-20 translate-x-9 -translate-y-9 rotate-45 group-hover:translate-x-0 group-hover:translate-y-6 group-hover:-rotate-12 group-hover:scale-110  transition-all ease-in-out duration-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="text-indigo-700 w-96 h-96">
                             <path d="M21.54 15H17a2 2 0 0 0-2 2v4.54" />
                             <path
                                 d="M7 3.34V5a3 3 0 0 0 3 3a2 2 0 0 1 2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2c0-1.1.9-2 2-2h3.17" />
@@ -587,7 +622,7 @@
                             <circle cx="12" cy="12" r="10" />
                         </svg>
                     </div>
-                    <div class="flex items-start justify-between gap-3">
+                    <div class="relative z-10 flex items-start justify-between gap-3">
                         <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                             <span class="w-1 h-8 bg-indigo-500 rounded-full"></span>
                             Resumen Global
@@ -599,7 +634,7 @@
                                 :class="charts.seriesType === 'line' ?
                                     'bg-indigo-600 text-white border-indigo-600' :
                                     'bg-transparent text-gray-500 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/60 border-transparent'"
-                                class="w-9 h-9 inline-flex items-center justify-center rounded-xl border transition-colors">
+                                class="w-9 h-9 inline-flex items-center justify-center rounded-xl border transition-all hover:shadow-sm active:scale-[0.98]">
                                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M4 19V5" />
@@ -612,7 +647,7 @@
                                 :class="charts.seriesType === 'bar' ?
                                     'bg-indigo-600 text-white border-indigo-600' :
                                     'bg-transparent text-gray-500 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/60 border-transparent'"
-                                class="w-9 h-9 inline-flex items-center justify-center rounded-xl border transition-colors">
+                                class="w-9 h-9 inline-flex items-center justify-center rounded-xl border transition-all hover:shadow-sm active:scale-[0.98]">
                                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M4 19V5" />
@@ -633,10 +668,10 @@
 
                     <!-- Graph Placeholder Box -->
                     <div
-                        class="mt-6 h-max bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-700 dark:to-gray-800 rounded-2xl border border-indigo-100 dark:border-gray-600 p-3 relative">
+                        class="mt-6 h-max bg-gradient-to-br from-indigo-50/70 to-blue-50/70 dark:from-gray-700 dark:to-gray-800 rounded-2xl border border-indigo-100 dark:border-gray-600 p-3 relative">
                         <div class="h-full overflow-x-auto gastos-table-scroll">
                             <div class="h-full" :style="seriesCanvasWrapperStyle()">
-                                <canvas x-ref="seriesChart"></canvas>
+                                <canvas x-ref="seriesChart" class="w-full h-full"></canvas>
                             </div>
                         </div>
                     </div>
@@ -646,13 +681,23 @@
                 <div
                     class="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
                     <div
-                        class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 translate-x-9 -translate-y-9 rotate-45 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:rotate-0 group-hover:scale-110  transition-all ease-in-out duration-500">
-                        <svg class="w-24 h-24 text-emerald-500" fill="currentColor" viewBox="0 0 24 24">
-                            <path
-                                d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z" />
+                        class="pointer-events-none select-none absolute -top-24 -right-24 p-4 opacity-10 group-hover:opacity-20 translate-x-9 -translate-y-9 rotate-45 group-hover:translate-x-0 group-hover:translate-y-6 group-hover:-rotate-12 group-hover:scale-110  transition-all ease-in-out duration-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="w-96 h-96 text-emerald-500">
+                            <path d="M8 2v4" />
+                            <path d="M16 2v4" />
+                            <rect width="18" height="18" x="3" y="4" rx="2" />
+                            <path d="M3 10h18" />
+                            <path d="M8 14h.01" />
+                            <path d="M12 14h.01" />
+                            <path d="M16 14h.01" />
+                            <path d="M8 18h.01" />
+                            <path d="M12 18h.01" />
+                            <path d="M16 18h.01" />
                         </svg>
                     </div>
-                    <div class="flex items-start justify-between gap-3">
+                    <div class="relative z-10 flex items-start justify-between gap-3">
                         <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                             <span class="w-1 h-8 bg-emerald-500 rounded-full"></span>
                             Resumen Mensual
@@ -660,12 +705,11 @@
 
                         <div
                             class="inline-flex items-center gap-1 rounded-2xl bg-white/70 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 p-1">
-                            <button type="button" @click="setBreakdownType('doughnut')" title="Dona"
-                                aria-label="Dona"
+                            <button type="button" @click="setBreakdownType('doughnut')" title="Dona" aria-label="Dona"
                                 :class="charts.breakdownType === 'doughnut' ?
                                     'bg-emerald-600 text-white border-emerald-600' :
                                     'bg-transparent text-gray-500 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/60 border-transparent'"
-                                class="w-9 h-9 inline-flex items-center justify-center rounded-xl border transition-colors">
+                                class="w-9 h-9 inline-flex items-center justify-center rounded-xl border transition-all hover:shadow-sm active:scale-[0.98]">
                                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <circle cx="12" cy="12" r="8" />
@@ -673,12 +717,11 @@
                                 </svg>
                             </button>
 
-                            <button type="button" @click="setBreakdownType('pie')" title="Tarta"
-                                aria-label="Tarta"
+                            <button type="button" @click="setBreakdownType('pie')" title="Tarta" aria-label="Tarta"
                                 :class="charts.breakdownType === 'pie' ?
                                     'bg-emerald-600 text-white border-emerald-600' :
                                     'bg-transparent text-gray-500 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/60 border-transparent'"
-                                class="w-9 h-9 inline-flex items-center justify-center rounded-xl border transition-colors">
+                                class="w-9 h-9 inline-flex items-center justify-center rounded-xl border transition-all hover:shadow-sm active:scale-[0.98]">
                                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M11 3a9 9 0 1 0 10 10h-9V3z" />
@@ -686,12 +729,11 @@
                                 </svg>
                             </button>
 
-                            <button type="button" @click="setBreakdownType('bar')" title="Barras"
-                                aria-label="Barras"
+                            <button type="button" @click="setBreakdownType('bar')" title="Barras" aria-label="Barras"
                                 :class="charts.breakdownType === 'bar' ?
                                     'bg-emerald-600 text-white border-emerald-600' :
                                     'bg-transparent text-gray-500 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/60 border-transparent'"
-                                class="w-9 h-9 inline-flex items-center justify-center rounded-xl border transition-colors">
+                                class="w-9 h-9 inline-flex items-center justify-center rounded-xl border transition-all hover:shadow-sm active:scale-[0.98]">
                                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M4 19V5" />
@@ -711,10 +753,10 @@
 
                     <!-- Graph Placeholder Box -->
                     <div
-                        class="mt-6 h-48 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-700 dark:to-gray-800 rounded-2xl border border-emerald-100 dark:border-gray-600 p-3 relative">
+                        class="mt-6 h-48 bg-gradient-to-br from-emerald-50/70 to-teal-50/70 dark:from-gray-700/70 dark:to-gray-800/70 rounded-2xl border border-emerald-100 dark:border-gray-600 p-3 relative">
                         <div class="h-full overflow-y-auto overflow-x-hidden gastos-table-scroll">
-                            <div class="h-full" :style="breakdownCanvasWrapperStyle()">
-                                <canvas x-ref="breakdownChart"></canvas>
+                            <div class="relative" :style="breakdownCanvasWrapperStyle()">
+                                <canvas x-ref="breakdownChart" class="w-full h-full"></canvas>
                             </div>
                         </div>
                     </div>
@@ -762,8 +804,7 @@
                             <!-- Type Toggle -->
                             <div class="flex justify-center mb-6">
                                 <div class="bg-gray-100 p-1 rounded-xl gap-2 inline-flex dark:bg-gray-700">
-                                    <button type="button" @click="form.tipo_gasto = 'gasto'"
-                                        :class="{
+                                    <button type="button" @click="form.tipo_gasto = 'gasto'" :class="{
                                             'bg-white text-gray-800 shadow-sm dark:bg-gray-600 dark:text-white': form
                                                 .tipo_gasto === 'gasto',
                                             'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200': form
@@ -772,8 +813,7 @@
                                         class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none">
                                         Gasto
                                     </button>
-                                    <button type="button" @click="form.tipo_gasto = 'obra'"
-                                        :class="{
+                                    <button type="button" @click="form.tipo_gasto = 'obra'" :class="{
                                             'bg-white text-gray-800 shadow-sm dark:bg-gray-600 dark:text-white': form
                                                 .tipo_gasto === 'obra',
                                             'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200': form
@@ -798,8 +838,7 @@
                                             class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    stroke-width="1.5"
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                     d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
                                                 </path>
                                             </svg>
@@ -821,8 +860,7 @@
                                             class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    stroke-width="1.5"
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                     d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
                                                 </path>
                                             </svg>
@@ -844,8 +882,7 @@
                                             class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    stroke-width="1.5"
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                     d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
                                                 </path>
                                             </svg>
@@ -871,8 +908,7 @@
                                             class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    stroke-width="1.5"
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                     d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
                                                 </path>
                                             </svg>
@@ -898,11 +934,9 @@
                                             class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    stroke-width="1.5"
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                     d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    stroke-width="1.5"
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                     d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0">
                                                 </path>
                                             </svg>
@@ -947,8 +981,7 @@
                                             class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    stroke-width="1.5"
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                     d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 8V3c0-1.105.895-2 2-2z">
                                                 </path>
                                             </svg>
@@ -992,22 +1025,19 @@
                                             class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    stroke-width="1.5"
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                     d="M14.121 15.536c-1.171 1.952-3.07 1.952-4.242 0-1.172-1.953-1.172-5.119 0-7.072 1.171-1.952 3.07-1.952 4.242 0M8 10.5h4m-4 3h4">
                                                 </path>
                                             </svg>
                                         </div>
-                                        <input type="number" step="0.01" name="coste" id="coste"
-                                            x-model="form.coste"
+                                        <input type="number" step="0.01" name="coste" id="coste" x-model="form.coste"
                                             class="block w-full rounded-xl border-gray-300 py-3 pl-10 pr-4 shadow-sm focus:border-indigo-600 focus:ring-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm placeholder-gray-400">
                                     </div>
                                 </div>
 
                                 <!-- Maquina Afectada (Custom Select) - Only for Gasto -->
                                 <!-- Grid wrapper for smooth height animation -->
-                                <div class="col-span-2 grid transition-all duration-300 ease-in-out"
-                                    :class="form.tipo_gasto === 'gasto' ? 'grid-rows-[1fr] opacity-100' :
+                                <div class="col-span-2 grid transition-all duration-300 ease-in-out" :class="form.tipo_gasto === 'gasto' ? 'grid-rows-[1fr] opacity-100' :
                                         'grid-rows-[0fr] opacity-0 pointer-events-none'">
                                     <div class="overflow-hidden">
                                         <div class="relative pb-6">
@@ -1018,8 +1048,7 @@
                                             <div class="relative">
                                                 <!-- Search Input Trigger -->
                                                 <div class="relative" x-ref="machineInputWrapper">
-                                                    <input type="text" x-model="machineSearch"
-                                                        @input="onSearchInput"
+                                                    <input type="text" x-model="machineSearch" @input="onSearchInput"
                                                         @click="openMachineDropdown = true; $nextTick(() => positionDropdown())"
                                                         @click.away="openMachineDropdown = false"
                                                         placeholder="Buscar y seleccionar máquina..."
@@ -1037,14 +1066,12 @@
                                                             <!-- Box/Machine Icon -->
                                                             <svg class="h-6 w-6 text-gray-400"
                                                                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-                                                                fill="none" stroke="currentColor"
-                                                                stroke-width="1.5" stroke-linecap="round"
-                                                                stroke-linejoin="round">
+                                                                fill="none" stroke="currentColor" stroke-width="1.5"
+                                                                stroke-linecap="round" stroke-linejoin="round">
                                                                 <path
                                                                     d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                                                                 <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                                                                <line x1="12" y1="22.08" x2="12"
-                                                                    y2="12" />
+                                                                <line x1="12" y1="22.08" x2="12" y2="12" />
                                                             </svg>
                                                         </template>
                                                     </div>
@@ -1075,18 +1102,15 @@
                                                                 <!-- Icon/Image -->
                                                                 <div class="shrink-0 mr-3">
                                                                     @if ($maquina->imagen)
-                                                                        <img src="{{ asset($maquina->imagen) }}"
-                                                                            alt=""
+                                                                        <img src="{{ asset($maquina->imagen) }}" alt=""
                                                                             class="h-9 w-9 rounded-full object-cover border border-gray-200 dark:border-gray-600">
                                                                     @else
                                                                         <div
                                                                             class="h-9 w-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400">
-                                                                            <svg xmlns="http://www.w3.org/2000/svg"
-                                                                                width="18" height="18"
-                                                                                viewBox="0 0 24 24" fill="none"
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" width="18"
+                                                                                height="18" viewBox="0 0 24 24" fill="none"
                                                                                 stroke="currentColor" stroke-width="2"
-                                                                                stroke-linecap="round"
-                                                                                stroke-linejoin="round">
+                                                                                stroke-linecap="round" stroke-linejoin="round">
                                                                                 <path
                                                                                     d="m21.12 6.4-6.05-4.06a2 2 0 0 0-2.17-.05L2.95 8.41a2 2 0 0 0-.95 1.7v5.82a2 2 0 0 0 .88 1.66l6.05 4.07a2 2 0 0 0 2.17.05l9.95-6.12a2 2 0 0 0 .95-1.7V8.06a2 2 0 0 0-.88-1.66Z" />
                                                                                 <path d="M10 22v-8L2.25 9.15" />
@@ -1106,13 +1130,11 @@
                                                                         <svg class="w-3 h-3" fill="none"
                                                                             stroke="currentColor" viewBox="0 0 24 24">
                                                                             <path stroke-linecap="round"
-                                                                                stroke-linejoin="round"
-                                                                                stroke-width="2"
+                                                                                stroke-linejoin="round" stroke-width="2"
                                                                                 d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
                                                                             </path>
                                                                         </svg>
-                                                                        <span
-                                                                            class="font-medium text-gray-400">|</span>
+                                                                        <span class="font-medium text-gray-400">|</span>
                                                                         <span>{{ $maquina->obra->obra ?? 'Sin obra asignada' }}</span>
                                                                     </div>
                                                                 </div>
@@ -1138,11 +1160,12 @@
                                         <div class="absolute top-3 left-3 pointer-events-none">
                                             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    stroke-width="1.5" d="M4 6h16M4 12h16M4 18h7"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                    d="M4 6h16M4 12h16M4 18h7"></path>
                                             </svg>
                                         </div>
-                                        <textarea name="observaciones" id="observaciones" rows="3" x-model="form.observaciones"
+                                        <textarea name="observaciones" id="observaciones" rows="3"
+                                            x-model="form.observaciones"
                                             class="block w-full rounded-xl border-gray-300 py-3 pl-10 pr-4 shadow-sm focus:border-indigo-600 focus:ring-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm placeholder-gray-400"></textarea>
                                     </div>
                                 </div>
@@ -1165,8 +1188,8 @@
             </div>
 
             <!-- Observaciones Modal -->
-            <div x-show="showObservacionesModal" class="fixed inset-0 z-[1000] overflow-y-auto"
-                style="display: none;" aria-labelledby="observaciones-modal-title" role="dialog" aria-modal="true">
+            <div x-show="showObservacionesModal" class="fixed inset-0 z-[1000] overflow-y-auto" style="display: none;"
+                aria-labelledby="observaciones-modal-title" role="dialog" aria-modal="true">
                 <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                     <div class="fixed inset-0 bg-black bg-opacity-60 transition-opacity" aria-hidden="true"
                         @click="showObservacionesModal = false"></div>
@@ -1216,8 +1239,7 @@
                             class="bg-white dark:bg-gray-800 px-6 py-5 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl">
                             <div class="flex items-start justify-between gap-4">
                                 <div>
-                                    <h3 class="text-lg font-bold text-gray-900 dark:text-white"
-                                        id="import-modal-title">
+                                    <h3 class="text-lg font-bold text-gray-900 dark:text-white" id="import-modal-title">
                                         Importar CSV (Gastos)
                                     </h3>
                                     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
@@ -1275,8 +1297,7 @@
                             </div>
 
                             <div>
-                                <label
-                                    class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Archivo
+                                <label class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Archivo
                                     CSV</label>
                                 <input type="file" name="csv_file" accept=".csv,text/csv"
                                     class="block w-full text-sm text-gray-700 dark:text-gray-200 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 dark:file:bg-indigo-600 dark:hover:file:bg-indigo-500">
@@ -1306,7 +1327,7 @@
 
     <script>
         const initGastosManager = () => {
-            window.gastosManager = function() {
+            window.gastosManager = function () {
                 return {
                     activeView: 'list',
                     showModal: false,
@@ -1558,6 +1579,12 @@
                     chartsLoading: false,
                     chartsError: '',
                     chartsAbortController: null,
+                    seriesRerenderTimer: null,
+                    seriesRerenderToken: 0,
+                    seriesRenderRaf: null,
+                    breakdownRerenderTimer: null,
+                    breakdownRerenderToken: 0,
+                    breakdownRenderRaf: null,
                     seriesChartInstance: null,
                     breakdownChartInstance: null,
                     chartsTotals: {
@@ -1610,24 +1637,54 @@
                         this.loadCharts();
                     },
 
-                    rerenderCharts() {
-                        if (this.lastChartsPayload) {
-                            this.$nextTick(() => this.renderCharts(this.lastChartsPayload));
-                            return;
+                    rerenderSeriesChart() {
+                        if (this.seriesRerenderTimer) {
+                            clearTimeout(this.seriesRerenderTimer);
                         }
-                        this.loadCharts();
+
+                        const token = ++this.seriesRerenderToken;
+                        this.seriesRerenderTimer = setTimeout(() => {
+                            this.$nextTick(() => {
+                                if (token !== this.seriesRerenderToken) return;
+                                if (!this.lastChartsPayload) return this.loadCharts();
+
+                                const seriesContext = this.$refs.seriesChart?.getContext?.('2d');
+                                if (!seriesContext) return this.loadCharts();
+
+                                this.renderSeriesChart(this.lastChartsPayload);
+                            });
+                        }, 80);
+                    },
+
+                    rerenderBreakdownChart() {
+                        if (this.breakdownRerenderTimer) {
+                            clearTimeout(this.breakdownRerenderTimer);
+                        }
+
+                        const token = ++this.breakdownRerenderToken;
+                        this.breakdownRerenderTimer = setTimeout(() => {
+                            this.$nextTick(() => {
+                                if (token !== this.breakdownRerenderToken) return;
+                                if (!this.lastChartsPayload) return this.loadCharts();
+
+                                const breakdownContext = this.$refs.breakdownChart?.getContext?.('2d');
+                                if (!breakdownContext) return this.loadCharts();
+
+                                this.renderBreakdownChart(this.lastChartsPayload);
+                            });
+                        }, 80);
                     },
 
                     setSeriesType(type) {
                         if (this.charts.seriesType === type) return;
                         this.charts.seriesType = type;
-                        this.rerenderCharts();
+                        this.rerenderSeriesChart();
                     },
 
                     setBreakdownType(type) {
                         if (this.charts.breakdownType === type) return;
                         this.charts.breakdownType = type;
-                        this.rerenderCharts();
+                        this.rerenderBreakdownChart();
                     },
 
                     onFromBeginningChange() {
@@ -1653,21 +1710,25 @@
                         let fromDate;
                         let toDate;
 
+                        // Default behavior: last 12 months for month view, or some sensible default
+                        // Since we use input type="month", we work with YYYY-MM
+
                         if (this.charts.groupBy === 'day') {
-                            toDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                            fromDate = new Date(toDate);
-                            fromDate.setDate(fromDate.getDate() - 29);
+                            // Even if day grouping, we filter by Month range
+                            toDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                            fromDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
                         } else if (this.charts.groupBy === 'year') {
-                            const startYear = today.getFullYear() - 4;
-                            fromDate = new Date(startYear, 0, 1);
-                            toDate = new Date(today.getFullYear(), 11, 31);
+                            toDate = new Date(today.getFullYear(), 11, 1);
+                            fromDate = new Date(today.getFullYear() - 4, 0, 1);
                         } else {
+                            // Month grouping default
+                            toDate = new Date(today.getFullYear(), today.getMonth(), 1);
                             fromDate = new Date(today.getFullYear(), today.getMonth() - 11, 1);
-                            toDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
                         }
 
                         if (this.charts.fromBeginning && this.oldestGastoDate) {
-                            this.charts.from = this.oldestGastoDate;
+                            // Extract YYYY-MM from oldestGastoDate (which is YYYY-MM-DD or similar)
+                            this.charts.from = this.oldestGastoDate.substring(0, 7);
                         } else {
                             this.charts.from = this.toDateInputValue(fromDate);
                         }
@@ -1677,8 +1738,7 @@
                     toDateInputValue(date) {
                         const year = date.getFullYear();
                         const month = String(date.getMonth() + 1).padStart(2, '0');
-                        const day = String(date.getDate()).padStart(2, '0');
-                        return `${year}-${month}-${day}`;
+                        return `${year}-${month}`;
                     },
 
                     seriesCanvasWrapperStyle() {
@@ -1690,10 +1750,10 @@
                     },
 
                     breakdownCanvasWrapperStyle() {
-                        if (this.charts.breakdownType !== 'bar') return 'min-width: 100%;';
+                        if (this.charts.breakdownType !== 'bar') return 'min-width: 100%; height: 100%;';
                         const labelsCount = this.breakdownLabels.length;
                         const minHeight = Math.max(180, labelsCount * 26);
-                        return `min-height:${minHeight}px;`;
+                        return `min-width: 100%; height:${minHeight}px;`;
                     },
 
                     async ensureChartJsReady() {
@@ -1724,14 +1784,42 @@
                     },
 
                     destroyCharts() {
-                        if (this.seriesChartInstance) {
-                            this.seriesChartInstance.destroy();
-                            this.seriesChartInstance = null;
+                        if (this.seriesRerenderTimer) {
+                            clearTimeout(this.seriesRerenderTimer);
+                            this.seriesRerenderTimer = null;
                         }
-                        if (this.breakdownChartInstance) {
-                            this.breakdownChartInstance.destroy();
-                            this.breakdownChartInstance = null;
+                        if (this.breakdownRerenderTimer) {
+                            clearTimeout(this.breakdownRerenderTimer);
+                            this.breakdownRerenderTimer = null;
                         }
+                        if (this.seriesRenderRaf) {
+                            cancelAnimationFrame(this.seriesRenderRaf);
+                            this.seriesRenderRaf = null;
+                        }
+                        if (this.breakdownRenderRaf) {
+                            cancelAnimationFrame(this.breakdownRenderRaf);
+                            this.breakdownRenderRaf = null;
+                        }
+                        this.destroySeriesChart();
+                        this.destroyBreakdownChart();
+                    },
+
+                    destroySeriesChart() {
+                        if (!this.seriesChartInstance) return;
+                        if (typeof this.seriesChartInstance.stop === 'function') {
+                            this.seriesChartInstance.stop();
+                        }
+                        this.seriesChartInstance.destroy();
+                        this.seriesChartInstance = null;
+                    },
+
+                    destroyBreakdownChart() {
+                        if (!this.breakdownChartInstance) return;
+                        if (typeof this.breakdownChartInstance.stop === 'function') {
+                            this.breakdownChartInstance.stop();
+                        }
+                        this.breakdownChartInstance.destroy();
+                        this.breakdownChartInstance = null;
                     },
 
                     async loadCharts() {
@@ -1766,8 +1854,8 @@
                                 return;
                             }
 
-                            if (payload.filters?.from) this.charts.from = payload.filters.from;
-                            if (payload.filters?.to) this.charts.to = payload.filters.to;
+                            if (payload.filters?.from) this.charts.from = payload.filters.from.substring(0, 7);
+                            if (payload.filters?.to) this.charts.to = payload.filters.to.substring(0, 7);
 
                             this.lastChartsPayload = payload;
                             this.renderCharts(payload);
@@ -1801,6 +1889,11 @@
                             0);
                         this.chartsTotals.label = this.charts.groupBy === 'day' ? 'Total (días)' :
                             (this.charts.groupBy === 'year' ? 'Total (años)' : 'Total (meses)');
+
+                        // Render seguro (evita carreras al alternar rápido)
+                        this.renderSeriesChart(payload);
+                        this.renderBreakdownChart(payload);
+                        return;
 
                         const isDark = document.documentElement.classList.contains('dark');
                         const axisColor = isDark ? '#e5e7eb' : '#374151';
@@ -1879,7 +1972,7 @@
                                             callback: (_, idx) => {
                                                 const label = seriesLabels[idx] || '';
                                                 if (this.charts.groupBy === 'day' && label.includes(
-                                                        '-')) {
+                                                    '-')) {
                                                     const parts = label.split('-');
                                                     return parts.length === 3 ?
                                                         `${parts[2]}/${parts[1]}` : label;
@@ -1989,6 +2082,240 @@
                                     },
                                 } : {},
                             },
+                        });
+                    },
+
+                    renderSeriesChart(payload) {
+                        const seriesLabels = payload?.series?.labels || [];
+                        const seriesData = payload?.series?.data || [];
+
+                        const canvas = this.$refs.seriesChart;
+                        if (!canvas || !(canvas instanceof HTMLCanvasElement) || !canvas.isConnected) return;
+
+                        const isDark = document.documentElement.classList.contains('dark');
+                        const axisColor = isDark ? '#e5e7eb' : '#374151';
+                        const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+
+                        if (this.seriesRenderRaf) {
+                            cancelAnimationFrame(this.seriesRenderRaf);
+                        }
+
+                        const token = ++this.seriesRerenderToken;
+                        this.seriesRenderRaf = requestAnimationFrame(() => {
+                            this.seriesRenderRaf = null;
+                            if (token !== this.seriesRerenderToken) return;
+                            if (!canvas.isConnected) return;
+
+                            // Si existe otro chart asociado al canvas, destruirlo
+                            try {
+                                const existing = window.Chart?.getChart?.(canvas);
+                                if (existing) existing.destroy();
+                            } catch (_) {
+                                // noop
+                            }
+
+                            this.destroySeriesChart();
+
+                            const seriesDataset = {
+                                label: 'Coste',
+                                data: seriesData,
+                                borderColor: '#6366f1',
+                                backgroundColor: this.charts.seriesType === 'bar' ? 'rgba(99,102,241,0.35)' :
+                                    'rgba(99,102,241,0.12)',
+                                fill: this.charts.seriesType !== 'bar',
+                                tension: 0.35,
+                                pointRadius: this.charts.seriesType === 'line' ? 2 : 0,
+                                borderWidth: 2,
+                            };
+
+                            try {
+                                this.seriesChartInstance = new Chart(canvas, {
+                                    type: this.charts.seriesType,
+                                    data: {
+                                        labels: seriesLabels,
+                                        datasets: [seriesDataset],
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        animation: false,
+                                        layout: {
+                                            padding: {
+                                                bottom: seriesLabels.length > 12 ? 8 : 0,
+                                            },
+                                        },
+                                        plugins: {
+                                            legend: {
+                                                display: false,
+                                            },
+                                            tooltip: {
+                                                callbacks: {
+                                                    title: (items) => items?.[0]?.label || '',
+                                                    label: (context) => {
+                                                        const value = typeof context.parsed === 'number' ?
+                                                            context.parsed :
+                                                            (context.parsed?.y ?? 0);
+                                                        return this.formatCurrency(value);
+                                                    },
+                                                },
+                                            },
+                                        },
+                                        scales: {
+                                            x: {
+                                                ticks: {
+                                                    color: axisColor,
+                                                    maxRotation: seriesLabels.length > 12 ? 45 : 0,
+                                                    minRotation: seriesLabels.length > 12 ? 45 : 0,
+                                                    autoSkip: true,
+                                                    maxTicksLimit: seriesLabels.length > 18 ? 10 : 12,
+                                                    callback: (_, idx) => {
+                                                        const label = seriesLabels[idx] || '';
+                                                        if (this.charts.groupBy === 'day' && label.includes('-')) {
+                                                            const parts = label.split('-');
+                                                            return parts.length === 3 ? `${parts[2]}/${parts[1]}` : label;
+                                                        }
+                                                        if (this.charts.groupBy === 'month' && label.includes('-')) {
+                                                            const parts = label.split('-');
+                                                            return parts.length === 2 ? `${parts[1]}/${parts[0].slice(2)}` : label;
+                                                        }
+                                                        return label;
+                                                    },
+                                                },
+                                                grid: {
+                                                    color: gridColor,
+                                                },
+                                            },
+                                            y: {
+                                                ticks: {
+                                                    color: axisColor,
+                                                    callback: (value) => new Intl.NumberFormat('es-ES', {
+                                                        maximumFractionDigits: 2
+                                                    }).format(value),
+                                                },
+                                                grid: {
+                                                    color: gridColor,
+                                                },
+                                            },
+                                        },
+                                    },
+                                });
+                            } catch (_) {
+                                this.destroySeriesChart();
+                            }
+                        });
+                    },
+
+                    renderBreakdownChart(payload) {
+                        const breakdownLabels = payload?.breakdown?.labels || [];
+                        const breakdownData = payload?.breakdown?.data || [];
+
+                        const canvas = this.$refs.breakdownChart;
+                        if (!canvas || !(canvas instanceof HTMLCanvasElement) || !canvas.isConnected) return;
+
+                        const isDark = document.documentElement.classList.contains('dark');
+                        const axisColor = isDark ? '#e5e7eb' : '#374151';
+                        const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+
+                        const palette = [
+                            '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6', '#f97316',
+                            '#14b8a6', '#3b82f6', '#22c55e', '#e879f9', '#a3e635'
+                        ];
+
+                        if (this.breakdownRenderRaf) {
+                            cancelAnimationFrame(this.breakdownRenderRaf);
+                        }
+
+                        const token = ++this.breakdownRerenderToken;
+                        this.breakdownRenderRaf = requestAnimationFrame(() => {
+                            this.breakdownRenderRaf = null;
+                            if (token !== this.breakdownRerenderToken) return;
+                            if (!canvas.isConnected) return;
+
+                            // Si existe otro chart asociado al canvas, destruirlo
+                            try {
+                                const existing = window.Chart?.getChart?.(canvas);
+                                if (existing) existing.destroy();
+                            } catch (_) {
+                                // noop
+                            }
+
+                            this.destroyBreakdownChart();
+
+                            const breakdownColors = breakdownLabels.map((_, idx) => palette[idx % palette.length]);
+                            const isBreakdownBar = this.charts.breakdownType === 'bar';
+
+                            this.breakdownLegend = breakdownLabels.map((label, idx) => ({
+                                label,
+                                value: Number(breakdownData[idx]) || 0,
+                                color: breakdownColors[idx],
+                            }));
+
+                            try {
+                                this.breakdownChartInstance = new Chart(canvas, {
+                                    type: this.charts.breakdownType,
+                                    data: {
+                                        labels: breakdownLabels,
+                                        datasets: [{
+                                            label: 'Coste',
+                                            data: breakdownData,
+                                            backgroundColor: isBreakdownBar ? 'rgba(16,185,129,0.35)' : breakdownColors,
+                                            borderColor: isBreakdownBar ? '#10b981' : breakdownColors,
+                                            borderWidth: isBreakdownBar ? 2 : 1,
+                                        }],
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        animation: false,
+                                        resizeDelay: 150,
+                                        indexAxis: isBreakdownBar ? 'y' : 'x',
+                                        plugins: {
+                                            legend: {
+                                                display: false,
+                                            },
+                                            tooltip: {
+                                                callbacks: {
+                                                    title: (items) => items?.[0]?.label || '',
+                                                    label: (context) => {
+                                                        const value = typeof context.parsed === 'number' ?
+                                                            context.parsed :
+                                                            (context.parsed?.x ?? context.parsed?.y ?? 0);
+                                                        return this.formatCurrency(value);
+                                                    },
+                                                },
+                                            },
+                                        },
+                                        scales: isBreakdownBar ? {
+                                            x: {
+                                                ticks: {
+                                                    color: axisColor,
+                                                    callback: (value) => new Intl.NumberFormat('es-ES', {
+                                                        maximumFractionDigits: 2
+                                                    }).format(value),
+                                                },
+                                                grid: {
+                                                    color: gridColor,
+                                                },
+                                            },
+                                            y: {
+                                                ticks: {
+                                                    color: axisColor,
+                                                    autoSkip: false,
+                                                    callback: (_, idx) => {
+                                                        const label = breakdownLabels[idx] || '';
+                                                        return label.length > 18 ? (label.slice(0, 18) + '…') : label;
+                                                    },
+                                                },
+                                                grid: {
+                                                    color: gridColor,
+                                                },
+                                            },
+                                        } : {},
+                                    },
+                                });
+                            } catch (_) {
+                                this.destroyBreakdownChart();
+                            }
                         });
                     },
 
@@ -2189,7 +2516,7 @@
                                         'Accept': 'application/json',
                                         'X-Requested-With': 'XMLHttpRequest',
                                         'X-CSRF-TOKEN': document.querySelector(
-                                                'meta[name="csrf-token"]')
+                                            'meta[name="csrf-token"]')
                                             .getAttribute('content')
                                     },
                                     body: JSON.stringify({
@@ -2220,7 +2547,7 @@
                                         'Accept': 'application/json',
                                         'X-Requested-With': 'XMLHttpRequest',
                                         'X-CSRF-TOKEN': document.querySelector(
-                                                'meta[name="csrf-token"]')
+                                            'meta[name="csrf-token"]')
                                             .getAttribute('content')
                                     },
                                     body: JSON.stringify({
@@ -2264,7 +2591,7 @@
                                     'X-Requested-With': 'XMLHttpRequest',
                                     'X-CSRF-TOKEN': document.querySelector(
                                         'meta[name="csrf-token"]').getAttribute(
-                                        'content')
+                                            'content')
                                 },
                                 body: body
                             });

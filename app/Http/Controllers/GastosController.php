@@ -76,12 +76,21 @@ class GastosController extends Controller
 
         $now = now();
         try {
-            $fromDate = $from ? Carbon::parse($from)->startOfDay() : null;
+            if ($from && preg_match('/^\d{4}-\d{2}$/', $from)) {
+                $fromDate = Carbon::createFromFormat('Y-m', $from)->startOfMonth();
+            } else {
+                $fromDate = $from ? Carbon::parse($from)->startOfDay() : null;
+            }
         } catch (\Throwable) {
             $fromDate = null;
         }
+
         try {
-            $toDate = $to ? Carbon::parse($to)->endOfDay() : null;
+            if ($to && preg_match('/^\d{4}-\d{2}$/', $to)) {
+                $toDate = Carbon::createFromFormat('Y-m', $to)->endOfMonth();
+            } else {
+                $toDate = $to ? Carbon::parse($to)->endOfDay() : null;
+            }
         } catch (\Throwable) {
             $toDate = null;
         }
