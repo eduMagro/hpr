@@ -17,6 +17,7 @@ class Salida extends Model
         'camion_id',
         'empresa_id',
         'obra_id',
+        'nave_id',
         'horas_paralizacion',
         'importe_paralizacion',
         'horas_grua',
@@ -39,6 +40,15 @@ class Salida extends Model
     public function obra()
     {
         return $this->belongsTo(Obra::class, 'obra_id');
+    }
+
+    /**
+     * Relación: Una salida sale de una nave específica (Nave A = 1, Nave B = 2).
+     * Las planillas con ensamblado='taller' salen de Nave B, el resto de Nave A.
+     */
+    public function nave()
+    {
+        return $this->belongsTo(Obra::class, 'nave_id');
     }
 
     /**

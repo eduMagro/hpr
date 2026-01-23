@@ -18,6 +18,12 @@ class PaqueteObserver
     const LIMITE_PESO_DEFAULT = 28000;
 
     /**
+     * IDs de naves: Nave A = 1, Nave B = 2
+     */
+    const NAVE_A_ID = 1;
+    const NAVE_B_ID = 2;
+
+    /**
      * Maneja el evento "created" del Paquete.
      * Asocia automáticamente el paquete a una salida según obra_id + fecha.
      */
@@ -66,15 +72,19 @@ class PaqueteObserver
         $fechaEntregaDate = Carbon::parse($fechaEntrega)->toDateString();
         $pesoPaquete = $paquete->peso ?? 0;
 
+        // Determinar la nave según la máquina donde se creó el paquete
+        $naveId = $this->determinarNave($paquete);
+
         try {
-            DB::transaction(function () use ($paquete, $planilla, $obraId, $fechaEntregaDate, $pesoPaquete) {
-                // Buscar salida existente con misma obra_id y fecha_salida
-                $salidaAsignada = $this->buscarSalidaDisponible($obraId, $fechaEntregaDate, $pesoPaquete);
+            DB::transaction(function () use ($paquete, $planilla, $obraId, $fechaEntregaDate, $pesoPaquete, $naveId) {
+                // Buscar salida existente con misma obra_id, fecha_salida Y nave_id
+                $salidaAsignada = $this->buscarSalidaDisponible($obraId, $fechaEntregaDate, $pesoPaquete, $naveId);
 
                 // Si no hay salida disponible, crear una nueva
                 if (!$salidaAsignada) {
-                    $salidaAsignada = $this->crearNuevaSalida($obraId, $fechaEntregaDate);
-                    Log::info("Paquete #{$paquete->id}: Creada nueva salida #{$salidaAsignada->id} para obra #{$obraId}, fecha {$fechaEntregaDate}");
+                    $salidaAsignada = $this->crearNuevaSalida($obraId, $fechaEntregaDate, $naveId);
+                    $naveNombre = $naveId === self::NAVE_B_ID ? 'Nave B' : 'Nave A';
+                    Log::info("Paquete #{$paquete->id}: Creada nueva salida #{$salidaAsignada->id} para obra #{$obraId}, fecha {$fechaEntregaDate}, {$naveNombre}");
                 }
 
                 // Asociar el paquete a la salida
@@ -117,12 +127,36 @@ class PaqueteObserver
     }
 
     /**
-     * Busca una salida disponible con la misma obra_id y fecha_salida que tenga espacio.
+     * Determina la nave de origen según la máquina donde se creó el paquete.
+     * La máquina tiene obra_id que indica la nave (Nave A = 1, Nave B = 2).
      */
-    private function buscarSalidaDisponible(int $obraId, string $fechaEntrega, float $pesoPaquete): ?Salida
+    private function determinarNave(Paquete $paquete): int
+    {
+        // Si el paquete tiene máquina asignada, usar su obra_id como nave
+        if ($paquete->maquina_id) {
+            $maquina = \App\Models\Maquina::find($paquete->maquina_id);
+            if ($maquina && $maquina->obra_id) {
+                return (int) $maquina->obra_id;
+            }
+        }
+
+        // Fallback: usar nave_id del paquete si existe
+        if ($paquete->nave_id) {
+            return (int) $paquete->nave_id;
+        }
+
+        // Por defecto: Nave A
+        return self::NAVE_A_ID;
+    }
+
+    /**
+     * Busca una salida disponible con la misma obra_id, fecha_salida y nave_id que tenga espacio.
+     */
+    private function buscarSalidaDisponible(int $obraId, string $fechaEntrega, float $pesoPaquete, int $naveId): ?Salida
     {
         $salidas = Salida::where('obra_id', $obraId)
             ->whereDate('fecha_salida', $fechaEntrega)
+            ->where('nave_id', $naveId)
             ->where('estado', '!=', 'completada')
             ->orderBy('created_at', 'asc')
             ->get();
@@ -162,19 +196,22 @@ class PaqueteObserver
     }
 
     /**
-     * Crea una nueva salida para la obra y fecha indicadas.
+     * Crea una nueva salida para la obra, fecha y nave indicadas.
      */
-    private function crearNuevaSalida(int $obraId, string $fechaSalida): Salida
+    private function crearNuevaSalida(int $obraId, string $fechaSalida, int $naveId): Salida
     {
         $salida = Salida::create([
             'obra_id' => $obraId,
             'fecha_salida' => $fechaSalida,
+            'nave_id' => $naveId,
             'estado' => 'pendiente',
             'user_id' => auth()->id(),
         ]);
 
-        // Generar código de salida (AS = Automática Salida)
-        $codigoSalida = 'AS' . substr(date('Y'), 2) . '/' . str_pad($salida->id, 4, '0', STR_PAD_LEFT);
+        // Generar código de salida (AS = Automática Salida + sufijo de nave)
+        // Ejemplo: ASA26/0001 para Nave A, ASB26/0001 para Nave B
+        $sufNave = $naveId === self::NAVE_B_ID ? 'B' : 'A';
+        $codigoSalida = 'AS' . $sufNave . substr(date('Y'), 2) . '/' . str_pad($salida->id, 4, '0', STR_PAD_LEFT);
         $salida->codigo_salida = $codigoSalida;
         $salida->save();
 

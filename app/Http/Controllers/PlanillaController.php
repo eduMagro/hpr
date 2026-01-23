@@ -32,7 +32,6 @@ use App\Services\OrdenPlanillaService;
 use Illuminate\Support\Facades\Schema;
 use App\Services\PlanillaColaService;
 use App\Services\ImportProgress;
-use App\Services\AutoReordenadorService;
 
 class PlanillaController extends Controller
 {

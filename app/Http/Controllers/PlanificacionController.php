@@ -19,7 +19,6 @@ use Illuminate\Support\Facades\Log;
 use App\Services\AlertaService;
 use App\Services\ActionLoggerService;
 use App\Services\FinProgramadoService;
-use App\Services\AutoReordenadorService;
 use App\Models\Departamento;
 use App\Models\OrdenPlanilla;
 use App\Models\SalidaCliente;
