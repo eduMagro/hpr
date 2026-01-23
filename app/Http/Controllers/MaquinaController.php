@@ -493,6 +493,7 @@ class MaquinaController extends Controller
             if ($esMultiplanilla) {
                 $codigosPlanillas = $grupo->etiquetas
                     ->pluck('planilla')
+                    ->filter() // Filtrar nulls
                     ->unique('id')
                     ->map(fn($p) => $p->codigo_limpio ?? $p->codigo)
                     ->values()
@@ -516,7 +517,7 @@ class MaquinaController extends Controller
                     'id' => $et->id,
                     'etiqueta_sub_id' => $et->etiqueta_sub_id,
                     'estado' => $et->estado,
-                    'planilla_codigo' => $et->planilla->codigo_limpio ?? $et->planilla->codigo ?? '',
+                    'planilla_codigo' => $et->planilla?->codigo_limpio ?? $et->planilla?->codigo ?? '',
                 ])->values()->toArray(),
                 'elementos' => $elementosGrupo->map(fn($e) => [
                     'id' => $e->id,
