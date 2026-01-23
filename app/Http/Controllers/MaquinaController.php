@@ -243,6 +243,17 @@ class MaquinaController extends Controller
             ->pluck('planilla_id')
             ->toArray();
 
+        // Para dobladora manual: incluir también planillas con elementos donde maquina_id_2 = esta máquina
+        if ($this->esDobladoraManual($maquina)) {
+            $planillasConMaquina2 = Elemento::where('maquina_id_2', $maquina->id)
+                ->whereHas('planilla', fn($q) => $q->where('revisada', true))
+                ->distinct()
+                ->pluck('planilla_id')
+                ->toArray();
+
+            $planillasRevisadasIds = array_unique(array_merge($planillasRevisadasIds, $planillasConMaquina2));
+        }
+
         // 4) Cargar SOLO elementos de planillas revisadas en cola (no todos los 30k+)
         // Buscar en cualquiera de los campos de máquina (maquina_id, maquina_id_2)
         $t3 = microtime(true);
@@ -718,6 +729,12 @@ class MaquinaController extends Controller
     private function esEnsambladora(Maquina $m): bool
     {
         return stripos((string)$m->tipo, 'ensambladora') !== false || stripos((string)$m->nombre, 'ensambladora') !== false;
+    }
+
+    private function esDobladoraManual(Maquina $m): bool
+    {
+        return stripos((string)$m->tipo, 'dobladora_manual') !== false
+            || stripos((string)$m->tipo, 'dobladora manual') !== false;
     }
 
     // Si tienes un campo explícito para "segunda" úsalo aquí.
