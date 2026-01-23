@@ -139,6 +139,15 @@ return [
                     ]
                 ],
                 [
+                    'label' => 'Gastos',
+                    'route' => 'gastos.index',
+                    'icon' => '💸',
+                    'actions' => [
+                        ['label' => 'Ver todos', 'route' => 'gastos.index', 'permission' => 'ver'],
+                        ['label' => 'Nuevo gasto', 'route' => 'gastos.create', 'permission' => 'crear'],
+                    ]
+                ],
+                [
                     'label' => 'Trabajadores Obra',
                     'route' => 'produccion.verTrabajadoresObra',
                     'icon' => '🏗️',
@@ -589,6 +598,18 @@ return [
                 'colorBase' => 'purple',
                 'style' => 'tabs',
                 'mobileLabel' => 'Planificación Portes',
+            ]
+        ],
+
+        'gastos' => [
+            'items' => [
+                ['label' => 'Todos', 'route' => 'gastos.index', 'icon' => '💸'],
+                ['label' => 'Nuevo Gasto', 'route' => 'gastos.create', 'icon' => '➕'],
+            ],
+            'config' => [
+                'colorBase' => 'purple',
+                'style' => 'tabs',
+                'mobileLabel' => 'Gastos',
             ]
         ],
 

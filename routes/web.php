@@ -63,6 +63,7 @@ use App\Http\Controllers\AlbaranesScanController;
 use App\Http\Controllers\EtiquetaEnsamblajeController;
 use App\Http\Controllers\InventarioBackupController;
 use App\Http\Controllers\IncidenciaController;
+use App\Http\Controllers\GastosController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/incidencias', [IncidenciaController::class, 'index'])->name('incidencias.index');
@@ -746,6 +747,13 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     // === OBRAS ===
     Route::resource('obras', ObraController::class);
+
+    // === GASTOS ===
+    Route::post('/gastos/proveedores', [GastosController::class, 'storeProveedor'])->name('gastos.storeProveedor');
+    Route::post('/gastos/motivos', [GastosController::class, 'storeMotivo'])->name('gastos.storeMotivo');
+    Route::get('/gastos/charts', [GastosController::class, 'charts'])->name('gastos.charts');
+    Route::post('/gastos/import/csv', [GastosController::class, 'importCsv'])->name('gastos.importCsv');
+    Route::resource('gastos', GastosController::class)->names('gastos');
     Route::post('/obras/actualizar-tipo', [ObraController::class, 'updateTipo'])->name('obras.updateTipo');
     Route::get('/asignaciones-turno/eventos-obra', [ProduccionController::class, 'eventosObra'])->name('asignaciones-turnos.verEventosObra');
     Route::get('/asignaciones-turno/ocupacion-cruzada', [ProduccionController::class, 'verificarOcupacionCruzada'])->name('asignaciones-turnos.ocupacionCruzada');
