@@ -391,9 +391,9 @@ class PlanillaController extends Controller
                 ]);
             },
             'elementos.maquina:id,nombre,tipo',
-            'entidades:id,planilla_id,fila,descripcion_fila',
+            'entidades:id,planilla_id,linea,marca,situacion',
             'etiquetasEnsamblaje:id,planilla_id,planilla_entidad_id',
-            'etiquetasEnsamblaje.entidad:id,fila,descripcion_fila',
+            'etiquetasEnsamblaje.entidad:id,linea,marca,situacion',
         ])->findOrFail($id);
 
         // Generar etiquetas de ensamblaje automáticamente si hay entidades pero no etiquetas
