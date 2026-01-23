@@ -690,16 +690,16 @@ class ProduccionController extends Controller
         $planillaIdsEnCola = OrdenPlanilla::pluck('planilla_id')->unique()->toArray();
         $obrasConPlanillas = Obra::whereHas('planillas', function ($q) use ($planillaIdsEnCola) {
             $q->whereIn('id', $planillaIdsEnCola)
-              ->where('aprobada', true)
-              ->where('estado', '!=', 'completada')
-              ->where('fecha_estimada_entrega', '>=', now()->startOfDay());
+                ->where('aprobada', true)
+                ->where('estado', '!=', 'completada')
+                ->where('fecha_estimada_entrega', '>=', now()->startOfDay());
         })
             ->with(['planillas' => function ($q) use ($planillaIdsEnCola) {
                 $q->whereIn('id', $planillaIdsEnCola)
-                  ->where('aprobada', true)
-                  ->where('estado', '!=', 'completada')
-                  ->where('fecha_estimada_entrega', '>=', now()->startOfDay())
-                  ->orderBy('fecha_estimada_entrega');
+                    ->where('aprobada', true)
+                    ->where('estado', '!=', 'completada')
+                    ->where('fecha_estimada_entrega', '>=', now()->startOfDay())
+                    ->orderBy('fecha_estimada_entrega');
             }])
             ->orderBy('obra')
             ->get();
@@ -758,11 +758,11 @@ class ProduccionController extends Controller
 
         // 2. Obtener todas las órdenes de ensamblaje para estas máquinas
         $ordenes = OrdenPlanillaEnsamblaje::with([
-                'entidad.planilla.obra',
-                'entidad.planilla.cliente',
-                'entidad.elementos',
-                'asignadoPor'
-            ])
+            'entidad.planilla.obra',
+            'entidad.planilla.cliente',
+            'entidad.elementos',
+            'asignadoPor'
+        ])
             ->whereIn('maquina_id', $maquinaIds)
             ->orderBy('posicion')
             ->get();
@@ -1057,7 +1057,6 @@ class ProduccionController extends Controller
             }
 
             return $fechaBase->toIso8601String();
-
         } catch (\Exception $e) {
             Log::error('❌ Error en calcularInitialDate', [
                 'error' => $e->getMessage()
@@ -1267,7 +1266,7 @@ class ProduccionController extends Controller
             }
 
             // Sumar tiempo de fabricación + 20 minutos de amarrado por elemento
-            $tiempoSegundos = $elementos->sum(function($elemento) {
+            $tiempoSegundos = $elementos->sum(function ($elemento) {
                 $tiempoFabricacion = (float)($elemento->tiempo_fabricacion ?? 1200);
                 $tiempoAmarrado = 1200; // 20 minutos por elemento
                 return $tiempoFabricacion + $tiempoAmarrado;
@@ -1979,7 +1978,7 @@ class ProduccionController extends Controller
                     // Sub-agrupar elementos por orden_planilla_id para crear eventos independientes
                     $subGrupos = collect();
                     if ($grupo instanceof Collection) {
-                        $subGrupos = $grupo->groupBy(function($elem) {
+                        $subGrupos = $grupo->groupBy(function ($elem) {
                             return $elem->orden_planilla_id ?? 'sin_orden';
                         });
                     }
@@ -2009,7 +2008,7 @@ class ProduccionController extends Controller
                         }
 
                         // Calcular duración: tiempo_fabricacion del elemento + 20 min de amarrado por elemento
-                        $duracionSegundos = $subGrupo->sum(function($elemento) {
+                        $duracionSegundos = $subGrupo->sum(function ($elemento) {
                             $tiempoFabricacion = (float)($elemento->tiempo_fabricacion ?? 1200);
                             $tiempoAmarrado = 1200; // 20 minutos por elemento
                             return $tiempoFabricacion + $tiempoAmarrado;
@@ -2039,7 +2038,7 @@ class ProduccionController extends Controller
                             $fechaInicio = $fechaInicioMasAntigua;
 
                             // Duración de elementos pendientes (aún no fabricados)
-                            $duracionPendientes = $elementosPendientes->sum(function($elemento) {
+                            $duracionPendientes = $elementosPendientes->sum(function ($elemento) {
                                 $tiempoFabricacion = (float)($elemento->tiempo_fabricacion ?? 1200);
                                 $tiempoAmarrado = 1200;
                                 return $tiempoFabricacion + $tiempoAmarrado;
@@ -2049,7 +2048,6 @@ class ProduccionController extends Controller
                             $tiempoTranscurrido = $fechaInicio->diffInSeconds(Carbon::now());
                             $duracionSegundos = $tiempoTranscurrido + $duracionPendientes;
                             $duracionSegundos = max($duracionSegundos, 3600);
-
                         } else {
                             // Demás planillas: empiezan donde termina la anterior
                             $fechaInicio = $inicioCola->copy();
@@ -2727,7 +2725,7 @@ class ProduccionController extends Controller
         // Contar días únicos por trabajador y formatear fechas
         foreach ($ocupados as $userId => &$data) {
             // Convertir fechas a string formato Y-m-d
-            $data['dias'] = array_values(array_unique(array_map(function($fecha) {
+            $data['dias'] = array_values(array_unique(array_map(function ($fecha) {
                 return $fecha instanceof \Carbon\Carbon ? $fecha->format('Y-m-d') : (string)$fecha;
             }, $data['dias'])));
             $data['total_dias'] = count($data['dias']);
@@ -3224,8 +3222,8 @@ class ProduccionController extends Controller
         $ordenes = OrdenPlanilla::with(['planilla.obra.cliente', 'planilla.cliente'])
             ->whereHas('planilla', function ($q) {
                 $q->where('aprobada', true)
-                  ->where('estado', '!=', 'completada')
-                  ->where('fecha_estimada_entrega', '>=', now()->startOfDay());
+                    ->where('estado', '!=', 'completada')
+                    ->where('fecha_estimada_entrega', '>=', now()->startOfDay());
             })
             ->orderBy('posicion')
             ->get();
@@ -3251,16 +3249,16 @@ class ProduccionController extends Controller
         // Obras con sus planillas que están en órdenes (aprobadas, no completadas, fecha >= hoy)
         $obrasConPlanillas = Obra::whereHas('planillas', function ($q) use ($planillaIds) {
             $q->whereIn('id', $planillaIds)
-              ->where('aprobada', true)
-              ->where('estado', '!=', 'completada')
-              ->where('fecha_estimada_entrega', '>=', now()->startOfDay());
+                ->where('aprobada', true)
+                ->where('estado', '!=', 'completada')
+                ->where('fecha_estimada_entrega', '>=', now()->startOfDay());
         })
             ->with(['planillas' => function ($q) use ($planillaIds) {
                 $q->whereIn('id', $planillaIds)
-                  ->where('aprobada', true)
-                  ->where('estado', '!=', 'completada')
-                  ->where('fecha_estimada_entrega', '>=', now()->startOfDay())
-                  ->orderBy('fecha_estimada_entrega');
+                    ->where('aprobada', true)
+                    ->where('estado', '!=', 'completada')
+                    ->where('fecha_estimada_entrega', '>=', now()->startOfDay())
+                    ->orderBy('fecha_estimada_entrega');
             }])
             ->orderBy('obra')
             ->get();
@@ -3289,7 +3287,7 @@ class ProduccionController extends Controller
         ];
 
         // Función para agregar planilla a filtros
-        $agregarAFiltros = function($planilla) use (&$filtros) {
+        $agregarAFiltros = function ($planilla) use (&$filtros) {
             $obra = $planilla->obra;
             $cliente = $planilla->cliente ?? $obra?->cliente;
 
@@ -3331,7 +3329,7 @@ class ProduccionController extends Controller
         sort($filtros['empresas']);
 
         // Preparar datos de planillas sin orden para JS
-        $planillasSinOrdenJs = $planillasSinOrden->map(function($p) {
+        $planillasSinOrdenJs = $planillasSinOrden->map(function ($p) {
             $cliente = $p->cliente ?? $p->obra?->cliente;
             return [
                 'id' => $p->id,
@@ -3377,9 +3375,9 @@ class ProduccionController extends Controller
     public function planillasConRetraso(Request $request)
     {
         // Obtener planillas aprobadas y revisadas con orden de fabricación
-        $planillas = Planilla::with(['obra.cliente', 'cliente', 'elementos' => function($q) {
-                $q->where('estado', 'pendiente');
-            }])
+        $planillas = Planilla::with(['obra.cliente', 'cliente', 'elementos' => function ($q) {
+            $q->where('estado', 'pendiente');
+        }])
             ->where('aprobada', true)
             ->where('revisada', true)
             ->where('estado', '!=', 'completada')
@@ -3504,9 +3502,9 @@ class ProduccionController extends Controller
         $descripcionSimulacion = "{$numSabados} sábado(s) con {$totalTurnos} turno(s)";
 
         // Obtener planillas aprobadas y revisadas con orden de fabricación
-        $planillas = Planilla::with(['obra.cliente', 'cliente', 'elementos' => function($q) {
-                $q->where('estado', 'pendiente');
-            }])
+        $planillas = Planilla::with(['obra.cliente', 'cliente', 'elementos' => function ($q) {
+            $q->where('estado', 'pendiente');
+        }])
             ->where('aprobada', true)
             ->where('revisada', true)
             ->where('estado', '!=', 'completada')
@@ -3945,7 +3943,7 @@ class ProduccionController extends Controller
 
                     // Calcular tiempo total de TODOS los elementos de esta planilla en esta máquina
                     // Incluye tiempo de fabricación + 20 minutos de amarrado por elemento
-                    $tiempoSegundos = $elementos->sum(function($elemento) {
+                    $tiempoSegundos = $elementos->sum(function ($elemento) {
                         $tiempoFabricacion = (float)($elemento->tiempo_fabricacion ?? 1200);
                         $tiempoAmarrado = 1200; // 20 minutos por elemento
                         return $tiempoFabricacion + $tiempoAmarrado;
@@ -4051,7 +4049,6 @@ class ProduccionController extends Controller
                 'maquinas_disponibles' => $maquinasDisponibles,
                 'timestamp' => now()->toIso8601String(),
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error en optimizarAnalisis:', [
                 'message' => $e->getMessage(),
@@ -4097,8 +4094,10 @@ class ProduccionController extends Controller
             foreach ($maquinas as $maquina) {
                 // CARGA TOTAL: todos los elementos pendientes (para calcular balance)
                 $elementosTotales = Elemento::where('maquina_id', $maquina->id)
-                    ->whereHas('planilla', fn($q) => $q
-                        ->whereIn('estado', ['pendiente', 'fabricando', 'programada'])
+                    ->whereHas(
+                        'planilla',
+                        fn($q) => $q
+                            ->whereIn('estado', ['pendiente', 'fabricando', 'programada'])
                     )
                     ->where('estado', 'pendiente')
                     ->get();
@@ -4106,9 +4105,11 @@ class ProduccionController extends Controller
                 // ELEMENTOS MOVIBLES: solo de planillas NO revisadas
                 $elementosMovibles = Elemento::with(['planilla', 'maquina'])
                     ->where('maquina_id', $maquina->id)
-                    ->whereHas('planilla', fn($q) => $q
-                        ->whereIn('estado', ['pendiente', 'fabricando', 'programada'])
-                        ->where('revisada', false) // Solo no revisadas se pueden mover
+                    ->whereHas(
+                        'planilla',
+                        fn($q) => $q
+                            ->whereIn('estado', ['pendiente', 'fabricando', 'programada'])
+                            ->where('revisada', false) // Solo no revisadas se pueden mover
                     )
                     ->where('estado', 'pendiente')
                     ->get();
@@ -4236,7 +4237,7 @@ class ProduccionController extends Controller
             } // Fin del foreach de grupos
 
             // 6. Preparar resumen con métricas como planificacion/index
-            $resumenMaquinas = collect($cargasMaquinas)->map(function($carga) {
+            $resumenMaquinas = collect($cargasMaquinas)->map(function ($carga) {
                 return [
                     'id' => $carga['maquina']->id,
                     'nombre' => $carga['maquina']->nombre,
@@ -4268,7 +4269,6 @@ class ProduccionController extends Controller
                 'total_elementos' => count($elementosAMover),
                 'timestamp' => now()->toIso8601String(),
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error en balancearCargaAnalisis:', [
                 'message' => $e->getMessage(),
@@ -4531,7 +4531,6 @@ class ProduccionController extends Controller
                             $planillasAfectadas[] = $planillaId;
                         }
                     }
-
                 } catch (\Exception $e) {
                     $errores[] = "Error moviendo elemento {$mov['elemento_id']}: " . $e->getMessage();
                     Log::error('Error moviendo elemento', [
@@ -4591,7 +4590,6 @@ class ProduccionController extends Controller
                 'errores' => $errores,
                 'message' => $mensaje
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -4970,7 +4968,6 @@ class ProduccionController extends Controller
                 'planillas_actualizadas' => count($planillasAfectadas),
                 'message' => $mensaje
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -5214,7 +5211,6 @@ class ProduccionController extends Controller
                 'success' => true,
                 'message' => "Operación '{$tipoOperacion}' deshecha correctamente"
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -5376,7 +5372,7 @@ class ProduccionController extends Controller
             }
 
             // Registrar en log de planificación
-            $obrasNombres = Obra::whereIn('id', $obrasIds)->pluck('nombre')->toArray();
+            $obrasNombres = Obra::whereIn('id', $obrasIds)->pluck('obra')->toArray();
             $obrasTexto = count($obrasNombres) <= 3
                 ? implode(', ', $obrasNombres)
                 : implode(', ', array_slice($obrasNombres, 0, 3)) . ' (+' . (count($obrasNombres) - 3) . ' más)';
@@ -5397,7 +5393,6 @@ class ProduccionController extends Controller
                 'cambios' => $cambiosRealizados,
                 'omitidos' => $omitidos
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -5666,7 +5661,6 @@ class ProduccionController extends Controller
                 'clientes_con_retraso' => $clientesArray,
                 'maquinas' => $maquinasResumen,
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error al obtener resumen de producción', [
                 'error' => $e->getMessage(),

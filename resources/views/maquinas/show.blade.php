@@ -16,9 +16,12 @@
                     {{-- Selectores de posiciones de planillas --}}
                     <div class="contenedor-selectores-planilla">
                         <select id="posicion_1" name="posicion_1" onchange="cambiarPosicionesPlanillas()">
-                            <option value="0" {{ empty($posicion1) ? 'selected' : '' }}>0</option>
+                            <option value="0" data-planilla-id="" data-planilla-codigo="">0</option>
                             @foreach ($posicionesDisponibles as $pos)
-                                <option value="{{ $pos }}" {{ $posicion1 == $pos ? 'selected' : '' }}>
+                                <option value="{{ $pos }}"
+                                    data-planilla-id="{{ $planillaIdsPorPosicion[$pos] ?? '' }}"
+                                    data-planilla-codigo="{{ $codigosPorPosicion[$pos] ?? '' }}"
+                                    {{ $posicion1 == $pos ? 'selected' : '' }}>
                                     {{ $pos }} - {{ $codigosPorPosicion[$pos] ?? '' }}
                                 </option>
                             @endforeach
@@ -27,9 +30,12 @@
                         <span class="separador">+</span>
 
                         <select id="posicion_2" name="posicion_2" onchange="cambiarPosicionesPlanillas()">
-                            <option value="0" {{ empty($posicion2) ? 'selected' : '' }}>0</option>
+                            <option value="0" data-planilla-id="" data-planilla-codigo="">0</option>
                             @foreach ($posicionesDisponibles as $pos)
-                                <option value="{{ $pos }}" {{ $posicion2 == $pos ? 'selected' : '' }}>
+                                <option value="{{ $pos }}"
+                                    data-planilla-id="{{ $planillaIdsPorPosicion[$pos] ?? '' }}"
+                                    data-planilla-codigo="{{ $codigosPorPosicion[$pos] ?? '' }}"
+                                    {{ $posicion2 == $pos ? 'selected' : '' }}>
                                     {{ $pos }} - {{ $codigosPorPosicion[$pos] ?? '' }}
                                 </option>
                             @endforeach
@@ -1010,26 +1016,70 @@
 
             // Función para completar planilla actual
             function completarPlanillaActual() {
-                const pos1 = document.getElementById('posicion_1')?.value;
-                const pos2 = document.getElementById('posicion_2')?.value;
+                const select1 = document.getElementById('posicion_1');
+                const select2 = document.getElementById('posicion_2');
 
-                if (!pos1 && !pos2) {
+                const pos1 = select1?.value;
+                const pos2 = select2?.value;
+
+                // Obtener datos de la opción seleccionada
+                const option1 = select1?.selectedOptions[0];
+                const option2 = select2?.selectedOptions[0];
+
+                const planillaId1 = option1?.dataset.planillaId || '';
+                const planillaCodigo1 = option1?.dataset.planillaCodigo || '';
+                const planillaId2 = option2?.dataset.planillaId || '';
+                const planillaCodigo2 = option2?.dataset.planillaCodigo || '';
+
+                // Verificar cuántas posiciones válidas hay seleccionadas
+                const pos1Valida = pos1 && pos1 !== '0';
+                const pos2Valida = pos2 && pos2 !== '0';
+
+                if (!pos1Valida && !pos2Valida) {
                     Swal.fire({
                         icon: 'warning',
                         title: 'Sin planilla seleccionada',
-                        text: 'Debes seleccionar al menos una posición de planilla para completarla',
+                        text: 'Debes seleccionar una planilla (posición diferente de 0) para completarla',
                         confirmButtonColor: '#3085d6',
                     });
                     return;
                 }
 
-                // Confirmar acción
+                // NUEVA VALIDACIÓN: Solo se puede completar UNA planilla a la vez
+                if (pos1Valida && pos2Valida) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Selecciona solo una planilla',
+                        html: `
+                            <p class="mb-2">Para completar una planilla, debes tener <strong>solo una</strong> posición seleccionada.</p>
+                            <p class="text-sm text-gray-600">Actualmente tienes seleccionadas:</p>
+                            <ul class="text-sm text-left mt-2 ml-4">
+                                <li>Posición ${pos1}: <strong>${planillaCodigo1}</strong></li>
+                                <li>Posición ${pos2}: <strong>${planillaCodigo2}</strong></li>
+                            </ul>
+                            <p class="text-sm text-gray-600 mt-3">Cambia una de las posiciones a <strong>0</strong> y vuelve a intentar.</p>
+                        `,
+                        confirmButtonColor: '#3085d6',
+                    });
+                    return;
+                }
+
+                // Determinar cuál es la planilla a completar
+                const posicion = pos1Valida ? pos1 : pos2;
+                const planillaId = pos1Valida ? planillaId1 : planillaId2;
+                const planillaCodigo = pos1Valida ? planillaCodigo1 : planillaCodigo2;
+
+                // Confirmar acción mostrando el código de la planilla
                 Swal.fire({
                     icon: 'question',
                     title: '¿Completar planilla?',
                     html: `
-                        <p class="mb-3">Se verificará que todas las etiquetas estén en paquetes y se eliminará la planilla de la cola.</p>
-                        <p class="text-sm text-gray-600">Posición${pos2 ? 'es' : ''}: ${pos1}${pos2 ? ` y ${pos2}` : ''}</p>
+                        <div class="text-center">
+                            <p class="text-lg font-semibold text-purple-700 mb-3">${planillaCodigo}</p>
+                            <p class="text-sm text-gray-600 mb-2">Posición: ${posicion}</p>
+                            <hr class="my-3">
+                            <p class="text-sm">Se verificará que todas las etiquetas estén en paquetes y se eliminará la planilla de la cola.</p>
+                        </div>
                     `,
                     showCancelButton: true,
                     confirmButtonColor: '#9333ea',
@@ -1041,13 +1091,14 @@
                         // Mostrar loading
                         Swal.fire({
                             title: 'Completando planilla...',
+                            html: `<p class="text-sm text-gray-600">${planillaCodigo}</p>`,
                             allowOutsideClick: false,
                             didOpen: () => {
                                 Swal.showLoading();
                             }
                         });
 
-                        // Enviar solicitud
+                        // Enviar solicitud con planilla_id para verificación
                         fetch('{{ route('maquinas.completar-planilla', $maquina->id) }}', {
                                 method: 'POST',
                                 headers: {
@@ -1055,24 +1106,26 @@
                                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                                 },
                                 body: JSON.stringify({
-                                    posicion_1: pos1 || null,
-                                    posicion_2: pos2 || null
+                                    posicion: posicion,
+                                    planilla_id: planillaId,
+                                    planilla_codigo: planillaCodigo
                                 })
                             })
                             .then(response => response.json())
                             .then(data => {
                                 if (data.success) {
+                                    // Actualizar selects: eliminar planilla completada y reordenar posiciones
+                                    actualizarSelectsDespuesDeCompletar(posicion);
+
                                     Swal.fire({
                                         icon: 'success',
-                                        title: '¡Planilla completada!',
+                                        title: 'Planilla completada',
                                         text: data.message,
                                         confirmButtonColor: '#9333ea',
                                     }).then(() => {
-                                        // Refrescar contenido sin recargar página
+                                        // Refrescar contenido de etiquetas sin recargar página
                                         if (typeof window.refrescarEtiquetasMaquina === 'function') {
                                             window.refrescarEtiquetasMaquina();
-                                        } else {
-                                            window.location.reload();
                                         }
                                     });
                                 } else {
@@ -1095,6 +1148,52 @@
                             });
                     }
                 });
+            }
+
+            /**
+             * Actualiza los selects después de completar una planilla
+             * - Elimina la opción de la posición completada
+             * - Reordena las posiciones restantes (las mayores bajan 1)
+             * - Resetea el select que tenía esa posición a 0
+             */
+            function actualizarSelectsDespuesDeCompletar(posicionCompletada) {
+                const select1 = document.getElementById('posicion_1');
+                const select2 = document.getElementById('posicion_2');
+                const posNum = parseInt(posicionCompletada);
+
+                [select1, select2].forEach(select => {
+                    if (!select) return;
+
+                    const valorActual = select.value;
+
+                    // Recorrer opciones y actualizar
+                    Array.from(select.options).forEach(option => {
+                        const optPos = parseInt(option.value);
+
+                        if (isNaN(optPos) || optPos === 0) return;
+
+                        if (optPos === posNum) {
+                            // Eliminar la opción de la posición completada
+                            option.remove();
+                        } else if (optPos > posNum) {
+                            // Bajar posición en 1 para las posteriores
+                            const nuevaPos = optPos - 1;
+                            const codigo = option.dataset.planillaCodigo || '';
+                            option.value = nuevaPos;
+                            option.textContent = `${nuevaPos} - ${codigo}`;
+                        }
+                    });
+
+                    // Si este select tenía la posición completada, resetear a 0
+                    if (parseInt(valorActual) === posNum) {
+                        select.value = '0';
+                    }
+                });
+
+                // Disparar cambio para actualizar la vista si es necesario
+                if (typeof cambiarPosicionesPlanillas === 'function') {
+                    cambiarPosicionesPlanillas();
+                }
             }
 
             // Función para comprimir etiquetas (agrupar hermanos, máx 5 por etiqueta)

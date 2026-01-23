@@ -279,7 +279,7 @@ class MaquinaController extends Controller
         // Cola de planillas con posiciones específicas
         // OPTIMIZADO: Pasamos $ordenesPlanillas para evitar consultas duplicadas
         $t4 = microtime(true);
-        [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles, $codigosPorPosicion] =
+        [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles, $codigosPorPosicion, $planillaIdsPorPosicion] =
             $this->aplicarColaPlanillasPorPosicion($maquina, $elementosMaquina, $posiciones, $ordenesPlanillas);
         \Log::info("⏱️ [SHOW] aplicarColaPlanillasPorPosicion: " . round((microtime(true) - $t4) * 1000) . "ms");
 
@@ -588,6 +588,7 @@ class MaquinaController extends Controller
             'elementosPorPlanilla' => $elementosPorPlanilla,
             'posicionesDisponibles' => $posicionesDisponibles,
             'codigosPorPosicion' => $codigosPorPosicion,
+            'planillaIdsPorPosicion' => $planillaIdsPorPosicion,
             'posicion1' => $posicion1,
             'posicion2' => $posicion2,
             // datasets UI
@@ -666,6 +667,11 @@ class MaquinaController extends Controller
             ->mapWithKeys(fn($orden) => [$orden->posicion => $orden->planilla->codigo_limpio])
             ->toArray();
 
+        // 4c) Crear mapeo de posicion => planilla_id
+        $planillaIdsPorPosicion = $ordenesConPlanilla
+            ->mapWithKeys(fn($orden) => [$orden->posicion => $orden->planilla_id])
+            ->toArray();
+
         // 5) Seleccionar planillas según las posiciones solicitadas
         // ⚠️ SOLO planillas REVISADAS pueden ser mostradas
         $planillasActivas = [];
@@ -691,7 +697,7 @@ class MaquinaController extends Controller
             ? $elementos->whereIn('planilla_id', $idsActivos)->values()
             : collect();
 
-        return [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles, $codigosPorPosicion];
+        return [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles, $codigosPorPosicion, $planillaIdsPorPosicion];
     }
 
     public static function productosSolicitadosParaMaquina($maquinaId)
@@ -2213,82 +2219,108 @@ class MaquinaController extends Controller
         try {
             $maquina = Maquina::findOrFail($id);
 
-            $posicion1 = $request->input('posicion_1');
-            $posicion2 = $request->input('posicion_2');
+            // Compatibilidad: acepta formato nuevo (posicion) o viejo (posicion_1/posicion_2)
+            $posicion = $request->input('posicion');
+            $planillaIdEnviado = $request->input('planilla_id');
+            $planillaCodigoEnviado = $request->input('planilla_codigo');
 
-            if (!$posicion1 && !$posicion2) {
+            // Si viene formato viejo, convertir
+            if (!$posicion) {
+                $pos1 = $request->input('posicion_1');
+                $pos2 = $request->input('posicion_2');
+
+                // Determinar cuál es válida
+                $pos1Valida = $pos1 && $pos1 !== '0' && $pos1 !== 0;
+                $pos2Valida = $pos2 && $pos2 !== '0' && $pos2 !== 0;
+
+                if (!$pos1Valida && !$pos2Valida) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Debes seleccionar una planilla (posición diferente de 0)'
+                    ], 400);
+                }
+
+                if ($pos1Valida && $pos2Valida) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Para completar, debes tener solo UNA planilla seleccionada. Cambia una de las posiciones a 0 y recarga la página.'
+                    ], 400);
+                }
+
+                $posicion = $pos1Valida ? $pos1 : $pos2;
+            }
+
+            if (!$posicion || $posicion === '0' || $posicion === 0) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Debes seleccionar al menos una posición de planilla'
+                    'message' => 'Debes seleccionar una planilla (posición diferente de 0)'
                 ], 400);
             }
 
-            $posiciones = array_filter([$posicion1, $posicion2]);
-            $planillasCompletadas = [];
-
             DB::beginTransaction();
 
-            foreach ($posiciones as $posicion) {
-                // Buscar la planilla en esa posición para esta máquina
-                $ordenPlanilla = OrdenPlanilla::where('maquina_id', $maquina->id)
-                    ->where('posicion', $posicion)
-                    ->lockForUpdate()
-                    ->first();
+            // Buscar la planilla en esa posición para esta máquina
+            $ordenPlanilla = OrdenPlanilla::where('maquina_id', $maquina->id)
+                ->where('posicion', $posicion)
+                ->lockForUpdate()
+                ->first();
 
-                if (!$ordenPlanilla) {
-                    DB::rollBack();
-                    return response()->json([
-                        'success' => false,
-                        'message' => "No se encontró planilla en la posición {$posicion}"
-                    ], 400);
-                }
-
-                $planilla = $ordenPlanilla->planilla;
-
-                // Verificar que todas las etiquetas de esa planilla EN ESTA MÁQUINA tengan paquete asignado
-                // La máquina está en los elementos, no en las etiquetas
-                $etiquetasSinPaquete = $planilla->etiquetas()
-                    ->whereDoesntHave('paquete')
-                    ->whereHas('elementos', function ($q) use ($maquina) {
-                        $q->where('maquina_id', $maquina->id)
-                            ->orWhere('maquina_id_2', $maquina->id);
-                    })
-                    ->count();
-
-                if ($etiquetasSinPaquete > 0) {
-                    DB::rollBack();
-                    return response()->json([
-                        'success' => false,
-                        'message' => "La planilla {$planilla->codigo} (Pos. {$posicion}) aún tiene {$etiquetasSinPaquete} etiqueta(s) sin paquete asignado en esta máquina"
-                    ], 400);
-                }
-
-                // Guardar posición para reordenar
-                $posicionEliminada = $ordenPlanilla->posicion;
-
-                // Eliminar de la cola
-                $ordenPlanilla->delete();
-
-                // Reordenar posiciones posteriores
-                OrdenPlanilla::where('maquina_id', $maquina->id)
-                    ->where('posicion', '>', $posicionEliminada)
-                    ->decrement('posicion');
-
-                $planillasCompletadas[] = $planilla->codigo;
-
-                Log::info("Planilla {$planilla->codigo} completada manualmente en máquina {$maquina->nombre} (Pos. {$posicion})");
+            if (!$ordenPlanilla) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "No se encontró planilla en la posición {$posicion}"
+                ], 400);
             }
+
+            $planilla = $ordenPlanilla->planilla;
+
+            // VALIDACIÓN DE SEGURIDAD: Verificar que la planilla en esa posición coincide con la enviada
+            if ($planillaIdEnviado && (int)$planillaIdEnviado !== $planilla->id) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "Error de sincronización: La planilla en posición {$posicion} es '{$planilla->codigo}', pero se esperaba '{$planillaCodigoEnviado}'. Por favor, recarga la página."
+                ], 400);
+            }
+
+            // Verificar que todas las etiquetas de esa planilla EN ESTA MÁQUINA tengan paquete asignado
+            // Usamos elementosPorId para relacionar por etiqueta_id (FK directa)
+            $etiquetasSinPaquete = $planilla->etiquetas()
+                ->whereDoesntHave('paquete')
+                ->whereHas('elementosPorId', function ($q) use ($maquina) {
+                    $q->where('maquina_id', $maquina->id)
+                        ->orWhere('maquina_id_2', $maquina->id);
+                })
+                ->count();
+
+            if ($etiquetasSinPaquete > 0) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "La planilla {$planilla->codigo} (Pos. {$posicion}) aún tiene {$etiquetasSinPaquete} etiqueta(s) sin paquete asignado en esta máquina"
+                ], 400);
+            }
+
+            // Guardar posición para reordenar
+            $posicionEliminada = $ordenPlanilla->posicion;
+
+            // Eliminar de la cola
+            $ordenPlanilla->delete();
+
+            // Reordenar posiciones posteriores
+            OrdenPlanilla::where('maquina_id', $maquina->id)
+                ->where('posicion', '>', $posicionEliminada)
+                ->decrement('posicion');
 
             DB::commit();
 
-            $mensaje = count($planillasCompletadas) > 1
-                ? 'Planillas completadas: ' . implode(', ', $planillasCompletadas)
-                : 'Planilla completada: ' . $planillasCompletadas[0];
+            Log::info("Planilla {$planilla->codigo} completada manualmente en máquina {$maquina->nombre} (Pos. {$posicion})");
 
             return response()->json([
                 'success' => true,
-                'message' => $mensaje,
-                'planillas_completadas' => $planillasCompletadas
+                'message' => "Planilla {$planilla->codigo} completada correctamente",
+                'planilla_completada' => $planilla->codigo
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
