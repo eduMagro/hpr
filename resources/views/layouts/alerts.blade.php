@@ -8,6 +8,47 @@
     });
 </script>
 
+@php
+    // Parsear información del dispositivo usando Jenssegers\Agent
+    $agent = new \Jenssegers\Agent\Agent();
+    $userAgentRaw = request()->userAgent();
+
+    // Navegador
+    $browser = $agent->browser() ?: 'Navegador';
+    if ($browser === 'Webkit' || $browser === 'WebKit') {
+        if (str_contains($userAgentRaw, 'Edg/')) $browser = 'Edge';
+        elseif (str_contains($userAgentRaw, 'OPR/')) $browser = 'Opera';
+        elseif (str_contains($userAgentRaw, 'Chrome/')) $browser = 'Chrome';
+        elseif (str_contains($userAgentRaw, 'Firefox/')) $browser = 'Firefox';
+        elseif (str_contains($userAgentRaw, 'Safari/')) $browser = 'Safari';
+    }
+    $browserVersion = $agent->version($browser);
+    $navegador = $browser . ($browserVersion ? ' ' . explode('.', $browserVersion)[0] : '');
+
+    // Sistema operativo
+    $platform = $agent->platform() ?: 'Sistema';
+    if ($platform === 'AndroidOS') $platform = 'Android';
+    elseif ($platform === 'OS X') $platform = 'macOS';
+    $platformVersion = $agent->version($platform);
+    $sistema = $platform . ($platformVersion && !str_contains($platform, 'Windows') ? ' ' . explode('.', $platformVersion)[0] : '');
+
+    // Tipo de dispositivo
+    $tipoDispositivo = $agent->isPhone() ? 'Móvil' : ($agent->isTablet() ? 'Tablet' : 'Escritorio');
+
+    // Dispositivo específico (modelo)
+    $dispositivo = $agent->device();
+    if ($dispositivo === 'Webkit' || $dispositivo === 'WebKit' || !$dispositivo) {
+        $dispositivo = null;
+    }
+
+    $infoDispositivo = [
+        'navegador' => $navegador,
+        'sistema' => $sistema,
+        'tipo' => $tipoDispositivo,
+        'dispositivo' => $dispositivo,
+    ];
+@endphp
+
 @if (session('abort'))
     <script>
         Swal.fire({
@@ -105,10 +146,23 @@
 
 <!-- Función para notificar a programadores -->
 <script>
+    // Información del dispositivo parseada desde el servidor
+    window._infoDispositivo = @json($infoDispositivo);
+
     function notificarProgramador(mensaje, asunto = 'Error reportado por usuario') {
         const urlActual = window.location.href;
         const usuario = '{{ auth()->user()->name ?? 'Usuario desconocido' }}';
         const email = '{{ auth()->user()->email ?? 'Email no disponible' }}';
+        const dispositivo = window._infoDispositivo;
+
+        // Formatear información del dispositivo
+        let infoDispositivo = `${dispositivo.navegador} en ${dispositivo.sistema}`;
+        if (dispositivo.tipo !== 'Escritorio') {
+            infoDispositivo += ` (${dispositivo.tipo})`;
+        }
+        if (dispositivo.dispositivo) {
+            infoDispositivo += ` - ${dispositivo.dispositivo}`;
+        }
 
         // Mensaje completo con contexto mejorado (sin emojis para compatibilidad DB)
         const mensajeCompleto = `URL: ${urlActual}
@@ -122,7 +176,7 @@ Mensaje:
 ${mensaje}
 
 ---
-Navegador: ${navigator.userAgent}`;
+Dispositivo: ${infoDispositivo}`;
 
         fetch("{{ route('alertas.store') }}", {
                 method: 'POST',
