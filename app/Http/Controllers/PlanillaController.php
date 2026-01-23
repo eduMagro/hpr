@@ -380,11 +380,20 @@ class PlanillaController extends Controller
         $planilla = Planilla::with([
             'obra:id,obra',
             'cliente:id,empresa',
-            // No restringimos columnas de etiquetas/elementos para evitar problemas con accessors
-            'etiquetas',
+            // Limitar columnas de etiquetas para reducir memoria
+            'etiquetas:id,planilla_id,etiqueta_sub_id,estado,peso_kg',
+            // Limitar columnas de elementos (las esenciales para la vista)
+            'elementos' => function ($q) {
+                $q->select([
+                    'id', 'planilla_id', 'etiqueta_sub_id', 'maquina_id',
+                    'codigo', 'estado', 'peso', 'diametro', 'longitud',
+                    'barras', 'figura', 'dimensiones'
+                ]);
+            },
             'elementos.maquina:id,nombre,tipo',
-            'entidades',
-            'etiquetasEnsamblaje.entidad', // Etiquetas de ensamblaje con su entidad
+            'entidades:id,planilla_id,fila,descripcion_fila',
+            'etiquetasEnsamblaje:id,planilla_id,planilla_entidad_id',
+            'etiquetasEnsamblaje.entidad:id,fila,descripcion_fila',
         ])->findOrFail($id);
 
         // Generar etiquetas de ensamblaje automáticamente si hay entidades pero no etiquetas
@@ -486,22 +495,29 @@ class PlanillaController extends Controller
             ->groupBy('etiqueta_sub_id')
             ->sortBy($ordenSub);
 
-        // Payload “rico” para scripts (idéntico al de máquinas)
-        $elementosAgrupadosScript = $elementosAgrupados->map(fn($grupo) => [
-            'etiqueta'  => $planilla->etiquetas->firstWhere('etiqueta_sub_id', $grupo->first()?->etiqueta_sub_id),
-            'planilla'  => $planilla,
-            'elementos' => $grupo->map(fn($e) => [
-                'id'          => $e->id,
-                'codigo'      => $e->codigo ?? null,
-                'dimensiones' => $e->dimensiones ?? null,
-                'estado'      => $e->estado,
-                'peso'        => $e->peso_kg ?? $e->peso,       // usa accessor si existe
-                'diametro'    => $e->diametro_mm ?? $e->diametro,
-                'longitud'    => $e->longitud_cm ?? ($e->longitud ?? null),
-                'barras'      => $e->barras ?? null,
-                'figura'      => $e->figura ?? null,
-            ])->values(),
-        ])->values();
+        // Payload "rico" para scripts (sin incluir planilla completa para ahorrar memoria)
+        $elementosAgrupadosScript = $elementosAgrupados->map(function ($grupo) use ($planilla) {
+            $etiqueta = $planilla->etiquetas->firstWhere('etiqueta_sub_id', $grupo->first()?->etiqueta_sub_id);
+            return [
+                'etiqueta'  => $etiqueta ? [
+                    'id' => $etiqueta->id,
+                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                    'estado' => $etiqueta->estado,
+                    'peso_kg' => $etiqueta->peso_kg ?? null,
+                ] : null,
+                'elementos' => $grupo->map(fn($e) => [
+                    'id'          => $e->id,
+                    'codigo'      => $e->codigo ?? null,
+                    'dimensiones' => $e->dimensiones ?? null,
+                    'estado'      => $e->estado,
+                    'peso'        => $e->peso_kg ?? $e->peso,
+                    'diametro'    => $e->diametro_mm ?? $e->diametro,
+                    'longitud'    => $e->longitud_cm ?? ($e->longitud ?? null),
+                    'barras'      => $e->barras ?? null,
+                    'figura'      => $e->figura ?? null,
+                ])->values(),
+            ];
+        })->values();
 
         // Etiquetas de ensamblaje para la sección de ensamblajes
         $etiquetasEns = $planilla->etiquetasEnsamblaje;
