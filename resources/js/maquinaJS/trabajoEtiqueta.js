@@ -567,8 +567,6 @@ function initTrabajoEtiqueta() {
             if (nuevoEstado === "completada" && etiquetasParaImprimir.length > 0) {
                 const etSubIds = etiquetasParaImprimir.map(e => e.etiqueta_sub_id);
 
-                await new Promise(resolve => setTimeout(resolve, 300));
-
                 const resultado = await Swal.fire({
                     icon: "question",
                     title: "Imprimir etiquetas",
@@ -582,10 +580,28 @@ function initTrabajoEtiqueta() {
                     denyButtonColor: "#6c757d",
                 });
 
+                // Reagrupar en paralelo mientras el usuario decide o después de imprimir
+                const reagruparPlanillaId = data.planilla_id || planillaId;
+                const reagruparMaquinaId = data.maquina_id || maquinaId;
+                const reagruparPromise = (reagruparPlanillaId && reagruparMaquinaId)
+                    ? fetch('/api/etiquetas/resumir', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            planilla_id: reagruparPlanillaId,
+                            maquina_id: reagruparMaquinaId,
+                        }),
+                    }).catch(e => console.warn('No se pudieron reagrupar:', e))
+                    : Promise.resolve();
+
                 if (resultado.isConfirmed || resultado.isDenied) {
                     const modo = resultado.isConfirmed ? "a6" : "a4";
 
-                    // Refrescar la vista para que las etiquetas individuales se rendericen
+                    // Refrescar y esperar renderizado en paralelo
                     if (typeof window.refrescarEtiquetasMaquina === "function") {
                         Swal.fire({
                             title: 'Preparando impresión...',
@@ -596,44 +612,20 @@ function initTrabajoEtiqueta() {
 
                         await window.refrescarEtiquetasMaquina();
 
-                        // Esperar a que los SVGs se rendericen completamente
-                        await new Promise(resolve => setTimeout(resolve, 800));
+                        // Esperar mínimo para renderizado (reducido de 800ms a 200ms)
+                        await new Promise(resolve => setTimeout(resolve, 200));
 
                         Swal.close();
                     }
 
-                    // Ahora imprimir con los SVGs renderizados
+                    // Imprimir
                     if (typeof window.imprimirEtiquetas === "function") {
                         await window.imprimirEtiquetas(etSubIds, modo);
                     }
                 }
 
-                // Esperar después de imprimir
-                await new Promise(resolve => setTimeout(resolve, 500));
-
-                // Reagrupar las etiquetas
-                const reagruparPlanillaId = data.planilla_id || planillaId;
-                const reagruparMaquinaId = data.maquina_id || maquinaId;
-
-                if (reagruparPlanillaId && reagruparMaquinaId) {
-                    try {
-                        await fetch('/api/etiquetas/resumir', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken,
-                                'Accept': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                planilla_id: reagruparPlanillaId,
-                                maquina_id: reagruparMaquinaId,
-                            }),
-                        });
-                        console.log('Etiquetas reagrupadas después de completar');
-                    } catch (e) {
-                        console.warn('No se pudieron reagrupar las etiquetas:', e);
-                    }
-                }
+                // Esperar a que termine el reagrupamiento (ya inició en paralelo)
+                await reagruparPromise;
 
                 // Añadir etiquetas al carro
                 if (window.TrabajoPaquete && typeof window.TrabajoPaquete.validarEtiqueta === 'function') {

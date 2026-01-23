@@ -267,7 +267,7 @@
             if (typeof abrirModalMoverPaquete === 'function') {
                 abrirModalMoverPaquete();
 
-                // Pre-rellenar el código del paquete y saltar al mapa
+                // Pre-rellenar el código del paquete y saltar al mapa (delays reducidos)
                 setTimeout(async () => {
                     const inputCodigo = document.getElementById('codigo_paquete_mover');
                     if (inputCodigo) {
@@ -281,10 +281,10 @@
                                 if (typeof mostrarPasoMapa === 'function') {
                                     mostrarPasoMapa();
                                 }
-                            }, 300);
+                            }, 50);
                         }
                     }
-                }, 100);
+                }, 50);
             }
         } else {
             // Flujo normal para otras máquinas
@@ -652,27 +652,39 @@
                 let errores = 0;
                 let motivosErrores = [];
 
-                for (const et of etiquetas) {
-                    try {
-                        const data = await validarEtiqueta(et.id);
-
-                        if (!data.valida) {
-                            errores++;
-                            if (data.motivo && !motivosErrores.includes(data.motivo)) {
-                                motivosErrores.push(data.motivo);
-                            }
-                            continue;
+                // OPTIMIZACIÓN: Validar todas las etiquetas en paralelo
+                const validaciones = await Promise.all(
+                    etiquetas.map(async (et) => {
+                        try {
+                            const data = await validarEtiqueta(et.id);
+                            return { id: et.id, data, error: null };
+                        } catch (err) {
+                            return { id: et.id, data: null, error: err };
                         }
+                    })
+                );
 
-                        const ok = agregarItemEtiqueta(et.id, data);
-                        if (ok) {
-                            agregadas++;
-                        } else {
-                            duplicadas++;
-                        }
-                    } catch (err) {
+                // Procesar resultados
+                for (const { id, data, error } of validaciones) {
+                    if (error) {
                         errores++;
-                        console.error("Error validando etiqueta:", et.id, err);
+                        console.error("Error validando etiqueta:", id, error);
+                        continue;
+                    }
+
+                    if (!data.valida) {
+                        errores++;
+                        if (data.motivo && !motivosErrores.includes(data.motivo)) {
+                            motivosErrores.push(data.motivo);
+                        }
+                        continue;
+                    }
+
+                    const ok = agregarItemEtiqueta(id, data);
+                    if (ok) {
+                        agregadas++;
+                    } else {
+                        duplicadas++;
                     }
                 }
 

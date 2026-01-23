@@ -463,7 +463,19 @@ class ResumenEtiquetaService
             $productoNColada = null;
             $producto2NColada = null;
 
-            // Obtener todos los elementos del grupo para asignación de productos
+            // ══════════════════════════════════════════════════════════════════════
+            // OPTIMIZACIÓN: Cargar todos los productos de la máquina de una sola vez
+            // ══════════════════════════════════════════════════════════════════════
+            $todosProductos = $maquina->productos()
+                ->where('peso_stock', '>', 0)
+                ->with('productoBase')
+                ->orderBy('peso_stock')
+                ->get();
+
+            // Indexar por diámetro para acceso O(1)
+            $productosPorDiametro = $todosProductos->groupBy(fn($p) => (int) $p->productoBase->diametro);
+
+            // Obtener todos los elementos del grupo
             $elementosDelGrupo = Elemento::whereIn('etiqueta_sub_id', $etiquetas->pluck('etiqueta_sub_id'))
                 ->where(function ($q) use ($maquinaId) {
                     $q->where('maquina_id', $maquinaId)
@@ -471,57 +483,35 @@ class ResumenEtiquetaService
                 })
                 ->get();
 
-            // Agrupar elementos por diámetro para asignación de productos
-            $elementosPorDiametro = $elementosDelGrupo->groupBy(fn($e) => (int) $e->diametro);
+            // ══════════════════════════════════════════════════════════════════════
+            // OPTIMIZACIÓN: Preparar actualizaciones batch para elementos
+            // ══════════════════════════════════════════════════════════════════════
+            $elementosParaActualizar = [];
 
-            // Buscar productos disponibles en la máquina por diámetro
-            $productosPorDiametro = [];
-            foreach ($elementosPorDiametro->keys() as $diametro) {
-                $productosPorDiametro[$diametro] = $maquina->productos()
-                    ->whereHas('productoBase', fn($q) => $q->where('diametro', $diametro))
-                    ->where('peso_stock', '>', 0)
-                    ->with('productoBase')
-                    ->orderBy('peso_stock')
-                    ->get();
-            }
-
-            foreach ($etiquetas as $index => $etiqueta) {
+            foreach ($etiquetas as $etiqueta) {
                 $estadoAnterior = $etiqueta->estado;
+                $elementosEtiqueta = $elementosDelGrupo->where('etiqueta_sub_id', $etiqueta->etiqueta_sub_id);
 
                 if ($siguienteEstado === 'fabricando') {
-                    // ═══════════════════════════════════════════════════════════════════
                     // PRIMER CLIC: PENDIENTE -> FABRICANDO
-                    // Asignar producto_id a etiqueta y elementos
-                    // ═══════════════════════════════════════════════════════════════════
-
-                    // Obtener elementos de esta etiqueta en la máquina
-                    $elementosEtiqueta = $elementosDelGrupo->where('etiqueta_sub_id', $etiqueta->etiqueta_sub_id);
-
                     foreach ($elementosEtiqueta as $elemento) {
                         $diametro = (int) $elemento->diametro;
                         $productos = $productosPorDiametro[$diametro] ?? collect();
+                        $producto = $productos->first();
 
-                        if ($productos->isNotEmpty()) {
-                            $producto = $productos->first();
+                        $elemento->estado = 'fabricando';
+                        $elemento->users_id = $usuarioId;
+                        if ($producto) {
                             $elemento->producto_id = $producto->id;
-                            $elemento->estado = 'fabricando';
-                            $elemento->users_id = $usuarioId;
-                            $elemento->save();
-
-                            // Guardar colada del primer producto para la respuesta
                             if (!$productoNColada) {
                                 $productoNColada = $producto->n_colada;
                             }
-                        } else {
-                            $elemento->estado = 'fabricando';
-                            $elemento->users_id = $usuarioId;
-                            $elemento->save();
                         }
+                        $elementosParaActualizar[] = $elemento;
                     }
 
-                    // Asignar producto_id a la etiqueta (usar el primer producto encontrado)
                     $primerElemento = $elementosEtiqueta->first();
-                    if ($primerElemento && $primerElemento->producto_id && !$etiqueta->producto_id) {
+                    if ($primerElemento?->producto_id && !$etiqueta->producto_id) {
                         $etiqueta->producto_id = $primerElemento->producto_id;
                     }
 
@@ -530,23 +520,15 @@ class ResumenEtiquetaService
                     $etiqueta->operario1_id = $usuarioId;
 
                 } elseif ($siguienteEstado === 'completada') {
-                    // ═══════════════════════════════════════════════════════════════════
                     // SEGUNDO CLIC: FABRICANDO -> COMPLETADA
-                    // Verificar si el producto cambió, asignar producto_id_2, consumir stock
-                    // ═══════════════════════════════════════════════════════════════════
-
-                    $elementosEtiqueta = $elementosDelGrupo->where('etiqueta_sub_id', $etiqueta->etiqueta_sub_id);
-
                     foreach ($elementosEtiqueta as $elemento) {
                         $diametro = (int) $elemento->diametro;
                         $productos = $productosPorDiametro[$diametro] ?? collect();
+                        $productoActual = $productos->first();
 
-                        if ($productos->isNotEmpty()) {
-                            $productoActual = $productos->first();
-
-                            // Verificar si el producto cambió desde el primer clic
+                        if ($productoActual) {
+                            // Verificar si el producto cambió
                             if ($elemento->producto_id && $elemento->producto_id != $productoActual->id) {
-                                // El producto cambió, asignar a producto_id_2 o producto_id_3
                                 if (!$elemento->producto_id_2) {
                                     $elemento->producto_id_2 = $productoActual->id;
                                 } elseif ($elemento->producto_id_2 != $productoActual->id && !$elemento->producto_id_3) {
@@ -556,39 +538,38 @@ class ResumenEtiquetaService
                                 $elemento->producto_id = $productoActual->id;
                             }
 
-                            // Consumir stock del producto
-                            $pesoElemento = (float) ($elemento->peso_kg ?? 0);
+                            // Consumir stock
+                            $pesoElemento = (float) ($elemento->peso ?? 0);
                             if ($pesoElemento > 0 && $productoActual->peso_stock >= $pesoElemento) {
                                 $productoActual->peso_stock -= $pesoElemento;
                                 if ($productoActual->peso_stock <= 0) {
                                     $productoActual->peso_stock = 0;
                                     $productoActual->estado = 'consumido';
                                 }
-                                $productoActual->save();
+                                // Los productos se guardan después del loop
 
-                                $productosAfectados[] = [
+                                $productosAfectados[$productoActual->id] = [
                                     'id' => $productoActual->id,
                                     'peso_stock' => $productoActual->peso_stock,
                                     'peso_inicial' => $productoActual->peso_inicial ?? null,
                                 ];
                             }
 
-                            // Guardar coladas para la respuesta
+                            // Guardar coladas (ya tenemos el producto cargado, no necesitamos query extra)
                             if (!$productoNColada && $elemento->producto_id) {
-                                $prod1 = Producto::find($elemento->producto_id);
+                                $prod1 = $todosProductos->firstWhere('id', $elemento->producto_id);
                                 $productoNColada = $prod1?->n_colada;
                             }
                             if (!$producto2NColada && $elemento->producto_id_2) {
-                                $prod2 = Producto::find($elemento->producto_id_2);
+                                $prod2 = $todosProductos->firstWhere('id', $elemento->producto_id_2);
                                 $producto2NColada = $prod2?->n_colada;
                             }
                         }
 
                         $elemento->estado = 'completado';
-                        $elemento->save();
+                        $elementosParaActualizar[] = $elemento;
                     }
 
-                    // Verificar si el producto de la etiqueta cambió
                     $primerElemento = $elementosEtiqueta->first();
                     if ($primerElemento) {
                         if ($etiqueta->producto_id && $primerElemento->producto_id && $etiqueta->producto_id != $primerElemento->producto_id) {
@@ -603,14 +584,12 @@ class ResumenEtiquetaService
                     $etiqueta->estado = 'completada';
                     $etiqueta->fecha_finalizacion = $ahora;
 
-                    // Calcular tiempo total y repartir
                     if ($etiqueta->fecha_inicio) {
                         $tiempoTotalSegundos = $etiqueta->fecha_inicio->diffInSeconds($ahora);
                         $tiempoPorEtiqueta = (int) round($tiempoTotalSegundos / $totalEtiquetas);
                         $etiqueta->fecha_inicio = $ahora->copy()->subSeconds($tiempoPorEtiqueta);
                     }
 
-                    // Recolectar etiquetas que NO se han impreso para impresión automática
                     if (!$etiqueta->impresa) {
                         $etiquetasParaImprimir[] = [
                             'id' => $etiqueta->id,
@@ -628,18 +607,24 @@ class ResumenEtiquetaService
                     'estado_anterior' => $estadoAnterior,
                     'estado_nuevo' => $siguienteEstado,
                 ];
-
-                Log::info('Estado de etiqueta actualizado via grupo', [
-                    'grupo_id' => $grupo->id,
-                    'etiqueta_id' => $etiqueta->id,
-                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
-                    'estado_anterior' => $estadoAnterior,
-                    'estado_nuevo' => $siguienteEstado,
-                    'producto_n_colada' => $productoNColada,
-                ]);
             }
 
-            // Si se completó el grupo, desagrupar las etiquetas para trabajar individualmente
+            // ══════════════════════════════════════════════════════════════════════
+            // OPTIMIZACIÓN: Guardar elementos y productos en batch
+            // ══════════════════════════════════════════════════════════════════════
+            foreach ($elementosParaActualizar as $elemento) {
+                $elemento->save();
+            }
+
+            // Guardar productos afectados (solo los que cambiaron)
+            foreach ($productosAfectados as $prodData) {
+                $prod = $todosProductos->firstWhere('id', $prodData['id']);
+                if ($prod && $prod->isDirty()) {
+                    $prod->save();
+                }
+            }
+
+            // Desagrupar si se completó
             $desagrupado = false;
             if ($siguienteEstado === 'completada') {
                 Etiqueta::where('grupo_resumen_id', $grupo->id)
@@ -648,12 +633,6 @@ class ResumenEtiquetaService
                 $grupo->activo = false;
                 $grupo->save();
                 $desagrupado = true;
-
-                Log::info('Grupo desagrupado automáticamente al completar', [
-                    'grupo_id' => $grupo->id,
-                    'codigo' => $grupo->codigo,
-                    'etiquetas_liberadas' => $totalEtiquetas,
-                ]);
             }
 
             return [
@@ -668,7 +647,7 @@ class ResumenEtiquetaService
                 'etiquetas' => $etiquetasActualizadas,
                 'desagrupado' => $desagrupado,
                 'imprimir_etiquetas' => $etiquetasParaImprimir,
-                'productos_afectados' => $productosAfectados,
+                'productos_afectados' => array_values($productosAfectados),
                 'producto_n_colada' => $productoNColada,
                 'producto2_n_colada' => $producto2NColada,
             ];
