@@ -1330,10 +1330,27 @@ PROMPT;
 - REGLA: Una planilla está EN COLA si tiene elementos con estado 'pendiente' o 'fabricando'
 - REGLA: Una planilla está COMPLETADA si TODOS sus elementos están en estado 'fabricado' (ignorar aunque su estado diga 'fabricando')
 - REGLA: Diferenciar entre REVISADAS (revisada=1, listas para fabricar) y NO REVISADAS (revisada=0, aún en revisión)
-- CONSULTA CORRECTA para cola: SELECT p.* FROM planillas p WHERE p.revisada = 1 AND EXISTS (SELECT 1 FROM elementos e WHERE e.planilla_id = p.id AND e.estado IN ('pendiente', 'fabricando')) ORDER BY p.fecha_estimada_entrega ASC
 - "primera planilla" → La primera planilla REVISADA que tenga elementos pendientes/fabricando
 - "planillas sin revisar" → planillas WHERE revisada = 0
 - El estado de la planilla (pendiente/fabricando) NO es fiable, siempre verificar elementos
+
+### COLA POR MÁQUINA (MUY IMPORTANTE)
+- Cuando mencionan una MÁQUINA, SIEMPRE filtrar por elementos.maquina_id
+- Los elementos tienen maquina_id, las planillas NO. Siempre JOIN con elementos para filtrar por máquina
+- "en la syntax line 28/en SL28" → maquina_id = 1 (Syntax Line 28)
+- "en la mini syntax/en MS16" → maquina_id = 3 (Mini Syntax 16)
+- "en la MSR/msr20" → buscar en maquinas WHERE nombre LIKE '%msr%'
+- CONSULTA para primera planilla EN UNA MÁQUINA:
+  SELECT DISTINCT p.codigo, c.empresa as cliente, o.obra
+  FROM planillas p
+  JOIN elementos e ON e.planilla_id = p.id
+  JOIN obras o ON p.obra_id = o.id
+  JOIN clientes c ON o.cliente_id = c.id
+  WHERE p.revisada = 1
+  AND e.maquina_id = [ID_MAQUINA]
+  AND e.estado IN ('pendiente', 'fabricando')
+  ORDER BY p.fecha_estimada_entrega ASC
+  LIMIT 1
 
 ### ALMACÉN Y STOCK
 - "material/stock/existencias/inventario" → productos con peso_stock
