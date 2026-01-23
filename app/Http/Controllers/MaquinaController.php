@@ -454,9 +454,10 @@ class MaquinaController extends Controller
             })
             ->toArray();
 
-        // 11) AUTO-RESUMEN: Reagrupa etiquetas automáticamente al entrar en la máquina
-        $resumenService = app(\App\Services\ResumenEtiquetaService::class);
-        $resumenService->resumirMultiplanilla($maquina->id, auth()->id());
+        // 11) AUTO-RESUMEN: Desactivado para evitar lock timeouts con muchas planillas
+        // Se puede ejecutar manualmente desde la UI si se necesita reagrupar
+        // $resumenService = app(\App\Services\ResumenEtiquetaService::class);
+        // $resumenService->resumirMultiplanilla($maquina->id, auth()->id());
 
         // 12) Grupos de resumen activos para esta máquina
         // Incluye tanto grupos de planilla individual como grupos multi-planilla (planilla_id = null)
