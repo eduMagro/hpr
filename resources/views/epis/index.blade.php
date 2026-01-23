@@ -6,8 +6,7 @@
             <div class="flex justify-center mb-10">
                 <div
                     class="inline-flex p-1.5 bg-gray-100/80 backdrop-blur-md rounded-2xl border border-gray-200 shadow-inner">
-                    <button @click="activeView = 'agenda'"
-                        :class="activeView === 'agenda' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
+                    <button @click="activeView = 'agenda'" :class="activeView === 'agenda' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
                             'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
                         class="px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -16,8 +15,7 @@
                         </svg>
                         Agenda
                     </button>
-                    <button @click="activeView = 'tallas'"
-                        :class="activeView === 'tallas' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
+                    <button @click="activeView = 'tallas'" :class="activeView === 'tallas' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
                             'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
                         class="px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -223,8 +221,7 @@
 
                                     <div class="flex gap-2 items-center">
                                         <!-- Indicador de tallas faltantes -->
-                                        <template
-                                            x-if="(() => {
+                                        <template x-if="(() => {
                                             const t = u.tallas || {};
                                             const count = [t.talla_guante, t.talla_zapato, t.talla_pantalon, t.talla_chaqueta].filter(Boolean).length;
                                             return count < 4;
@@ -242,10 +239,8 @@
                                                     })()">
                                                     <path
                                                         d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
-                                                    <line x1="12" x2="12" y1="8"
-                                                        y2="12" />
-                                                    <line x1="12" x2="12.01" y1="16"
-                                                        y2="16" />
+                                                    <line x1="12" x2="12" y1="8" y2="12" />
+                                                    <line x1="12" x2="12.01" y1="16" y2="16" />
                                                 </svg>
                                                 <!-- Tooltip -->
                                                 <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 text-xs font-medium rounded-lg shadow-lg opacity-0 invisible group-hover/tallas:opacity-100 group-hover/tallas:visible transition-all duration-200 whitespace-nowrap z-50"
@@ -257,8 +252,7 @@
                                                         return count === 0 ? 'bg-red-600 text-white' :
                                                             'bg-amber-500 text-white';
                                                     })()">
-                                                    <span
-                                                        x-text="(() => {
+                                                    <span x-text="(() => {
                                                         const t = u.tallas || {};
                                                         const count = [t.talla_guante, t.talla_zapato, t.talla_pantalon, t.talla_chaqueta].filter(Boolean).length;
                                                         if (count === 0) return 'Usuario sin tallas registradas';
@@ -499,6 +493,13 @@
                                                         @click="openRecentModal()">
                                                         Últimos asignados
                                                     </button>
+
+                                                    <button type="button"
+                                                        class="w-full mt-2 px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                                                        @click="requestConsent()" :disabled="sendingConsent">
+                                                        <span x-show="!sendingConsent">Solicitar firma</span>
+                                                        <span x-show="sendingConsent">Enviando...</span>
+                                                    </button>
                                                 </div>
                                             </div>
 
@@ -509,32 +510,28 @@
                                                     <div>
                                                         <label
                                                             class="block text-[10px] font-medium text-gray-500 uppercase">Guante</label>
-                                                        <input type="text"
-                                                            x-model="selectedUser.tallas.talla_guante"
+                                                        <input type="text" x-model="selectedUser.tallas.talla_guante"
                                                             class="w-full mt-1 px-2 py-1 text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                                                             placeholder="Ej: 9, L...">
                                                     </div>
                                                     <div>
                                                         <label
                                                             class="block text-[10px] font-medium text-gray-500 uppercase">Zapato</label>
-                                                        <input type="text"
-                                                            x-model="selectedUser.tallas.talla_zapato"
+                                                        <input type="text" x-model="selectedUser.tallas.talla_zapato"
                                                             class="w-full mt-1 px-2 py-1 text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                                                             placeholder="Ej: 42, 43...">
                                                     </div>
                                                     <div>
                                                         <label
                                                             class="block text-[10px] font-medium text-gray-500 uppercase">Pantalón</label>
-                                                        <input type="text"
-                                                            x-model="selectedUser.tallas.talla_pantalon"
+                                                        <input type="text" x-model="selectedUser.tallas.talla_pantalon"
                                                             class="w-full mt-1 px-2 py-1 text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                                                             placeholder="Ej: 44, XL...">
                                                     </div>
                                                     <div>
                                                         <label
                                                             class="block text-[10px] font-medium text-gray-500 uppercase">Chaqueta</label>
-                                                        <input type="text"
-                                                            x-model="selectedUser.tallas.talla_chaqueta"
+                                                        <input type="text" x-model="selectedUser.tallas.talla_chaqueta"
                                                             class="w-full mt-1 px-2 py-1 text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                                                             placeholder="Ej: 52, L...">
                                                     </div>
@@ -574,8 +571,7 @@
 
                                             <template x-if="!loadingAsignaciones && userEpiGroupsFiltered.length > 0">
                                                 <div class="divide-y divide-gray-100">
-                                                    <template x-for="g in userEpiGroupsFiltered"
-                                                        :key="g.epi.id">
+                                                    <template x-for="g in userEpiGroupsFiltered" :key="g.epi.id">
                                                         <div>
                                                             <div class="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 cursor-pointer"
                                                                 @click="toggleEpiGroup(g.epi.id)"
@@ -594,8 +590,7 @@
                                                                         </template>
                                                                     </div>
                                                                     <div class="min-w-0">
-                                                                        <p
-                                                                            class="font-semibold text-gray-900 truncate">
+                                                                        <p class="font-semibold text-gray-900 truncate">
                                                                             <span x-text="g.epi.nombre"></span>
                                                                             <template x-if="g.epi.codigo">
                                                                                 <span class="text-sm text-gray-600"
@@ -621,8 +616,7 @@
                                                             </div>
 
                                                             <div :id="`epi-details-${g.epi.id}`"
-                                                                x-show="expandedEpiId === Number(g.epi.id)"
-                                                                x-transition
+                                                                x-show="expandedEpiId === Number(g.epi.id)" x-transition
                                                                 class="px-4 sm:px-6 py-4 border-t border-gray-300 bg-gray-300">
                                                                 <div
                                                                     class="bg-white/95 border border-slate-200 shadow-sm rounded-xl overflow-hidden mt-2">
@@ -657,8 +651,7 @@
                                                                                             <span
                                                                                                 x-text="`Devuelto: ${formatDate(a.devuelto_en)}`"></span>
                                                                                         </template>
-                                                                                        <template
-                                                                                            x-if="!a.devuelto_en">
+                                                                                        <template x-if="!a.devuelto_en">
                                                                                             <span
                                                                                                 class="text-green-700 font-medium">En
                                                                                                 posesión</span>
@@ -715,8 +708,7 @@
                                                                                         :disabled="saving"
                                                                                         @click.stop="openFechaModal(a, 'devolucion')">
                                                                                         <svg viewBox="0 0 24 24"
-                                                                                            class="h-7 w-7"
-                                                                                            fill="none"
+                                                                                            class="h-7 w-7" fill="none"
                                                                                             xmlns="http://www.w3.org/2000/svg">
                                                                                             <g id="SVGRepo_bgCarrier"
                                                                                                 stroke-width="0"></g>
@@ -724,8 +716,7 @@
                                                                                                 stroke-linecap="round"
                                                                                                 stroke-linejoin="round">
                                                                                             </g>
-                                                                                            <g
-                                                                                                id="SVGRepo_iconCarrier">
+                                                                                            <g id="SVGRepo_iconCarrier">
                                                                                                 <path
                                                                                                     d="M6.94028 2C7.35614 2 7.69326 2.32421 7.69326 2.72414V4.18487C8.36117 4.17241 9.10983 4.17241 9.95219 4.17241H13.9681C14.8104 4.17241 15.5591 4.17241 16.227 4.18487V2.72414C16.227 2.32421 16.5641 2 16.98 2C17.3958 2 17.733 2.32421 17.733 2.72414V4.24894C19.178 4.36022 20.1267 4.63333 20.8236 5.30359C21.5206 5.97385 21.8046 6.88616 21.9203 8.27586L22 9H2.92456H2V8.27586C2.11571 6.88616 2.3997 5.97385 3.09665 5.30359C3.79361 4.63333 4.74226 4.36022 6.1873 4.24894V2.72414C6.1873 2.32421 6.52442 2 6.94028 2Z"
                                                                                                     fill="#000000">
@@ -796,8 +787,7 @@
                                         <div class="sm:col-span-2">
                                             <label
                                                 class="block text-xs font-medium text-gray-700 mb-1">Categoría</label>
-                                            <input type="text" x-model="epiCreate.categoria"
-                                                placeholder="Opcional"
+                                            <input type="text" x-model="epiCreate.categoria" placeholder="Opcional"
                                                 class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
                                         </div>
                                         <div>
@@ -811,8 +801,7 @@
                                         <div class="sm:col-span-4">
                                             <label
                                                 class="block text-xs font-medium text-gray-700 mb-1">Descripción</label>
-                                            <input type="text" x-model="epiCreate.descripcion"
-                                                placeholder="Opcional"
+                                            <input type="text" x-model="epiCreate.descripcion" placeholder="Opcional"
                                                 class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
                                         </div>
                                         <div class="sm:col-span-2">
@@ -833,8 +822,7 @@
 
                                 <div class="bg-white/95 border border-slate-200 shadow-sm rounded-xl overflow-hidden">
                                     <div class="px-6 py-4 border-b border-gray-300">
-                                        <div
-                                            class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                             <h3 class="font-semibold text-gray-900">EPIs en base de datos</h3>
                                             <div class="flex gap-2">
                                                 <button type="button"
@@ -1095,8 +1083,7 @@
 
                         <button type="button" class="p-2 rounded-lg hover:bg-gray-200" @click="closeFechaModal()"
                             aria-label="Cerrar">
-                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -1121,8 +1108,7 @@
                     </div>
 
                     <div class="px-5 py-4 border-t border-gray-300 flex justify-end gap-3">
-                        <button type="button"
-                            class="px-4 py-2 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200"
+                        <button type="button" class="px-4 py-2 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200"
                             @click="closeFechaModal()">
                             Cancelar
                         </button>
@@ -1149,8 +1135,7 @@
                         </div>
                         <button type="button" class="p-2 rounded-lg hover:bg-gray-200" @click="closeCompras()"
                             aria-label="Cerrar">
-                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -1248,8 +1233,7 @@
 
                         <div class="space-y-3" x-show="!comprasLoading && compras.length > 0">
                             <template x-for="c in compras" :key="c.id">
-                                <div class="p-4 border rounded-xl"
-                                    :class="c.items?.some(it => it.precio_unitario === null || it.precio_unitario ===
+                                <div class="p-4 border rounded-xl" :class="c.items?.some(it => it.precio_unitario === null || it.precio_unitario ===
                                             undefined ||
                                             it.precio_unitario === '') ? 'border-yellow-400' :
                                         'border-slate-200'">
@@ -1316,8 +1300,7 @@
                         </div>
                         <button type="button" class="p-2 rounded-lg hover:bg-gray-200" @click="closeCompraModal()"
                             aria-label="Cerrar">
-                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -1339,8 +1322,7 @@
                                 <div class="sm:col-span-4">
                                     <label class="block text-xs font-medium text-gray-700 mb-1">EPI</label>
                                     <div class="relative" data-compra-epi-suggest>
-                                        <input type="text" x-model="compraEpiQuery"
-                                            @input="onCompraEpiQueryChange()"
+                                        <input type="text" x-model="compraEpiQuery" @input="onCompraEpiQueryChange()"
                                             @keydown.escape="closeCompraEpiSuggestions()"
                                             @focus="openCompraEpiSuggestions()"
                                             placeholder="Buscar EPI (nombre, código, categoría)…"
@@ -1359,8 +1341,7 @@
                                                         <div
                                                             class="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
                                                             <template x-if="e.imagen_url">
-                                                                <img :src="e.imagen_url"
-                                                                    :alt="`Imagen de ${e.nombre}`"
+                                                                <img :src="e.imagen_url" :alt="`Imagen de ${e.nombre}`"
                                                                     class="w-full h-full object-cover" />
                                                             </template>
                                                             <template x-if="!e.imagen_url">
@@ -1487,10 +1468,9 @@
                         class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100/60 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300">
                         <div class="flex items-center gap-4 mb-5">
                             <div class="p-3 bg-blue-50 text-blue-600 rounded-2xl ring-1 ring-blue-100">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round"
-                                    class="lucide lucide-hand-icon lucide-hand">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="lucide lucide-hand-icon lucide-hand">
                                     <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" />
                                     <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" />
                                     <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" />
@@ -1522,10 +1502,9 @@
                         class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100/60 hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-300">
                         <div class="flex items-center gap-4 mb-5">
                             <div class="p-3 bg-emerald-50 text-emerald-600 rounded-2xl ring-1 ring-emerald-100">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round"
-                                    class="lucide lucide-footprints-icon lucide-footprints">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="lucide lucide-footprints-icon lucide-footprints">
                                     <path
                                         d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z" />
                                     <path
@@ -1558,9 +1537,9 @@
                         class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100/60 hover:shadow-xl hover:shadow-amber-500/5 transition-all duration-300">
                         <div class="flex items-center gap-4 mb-5">
                             <div class="p-3 bg-amber-50 text-amber-600 rounded-2xl ring-1 ring-amber-100">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round"
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round"
                                     class="lucide lucide-person-standing-icon lucide-person-standing">
                                     <circle cx="12" cy="5" r="1" />
                                     <path d="m9 20 3-6 3 6" />
@@ -1593,10 +1572,9 @@
                         class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100/60 hover:shadow-xl hover:shadow-rose-500/5 transition-all duration-300">
                         <div class="flex items-center gap-4 mb-5">
                             <div class="p-3 bg-rose-50 text-rose-600 rounded-2xl ring-1 ring-rose-100">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round"
-                                    class="lucide lucide-shirt-icon lucide-shirt">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="lucide lucide-shirt-icon lucide-shirt">
                                     <path
                                         d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
                                 </svg>
@@ -1631,8 +1609,7 @@
                             <button type="button" @click="resetTallasFilters()"
                                 :disabled="!filterGuante && !filterZapato && !filterPantalon && !filterChaqueta"
                                 class="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium transition-all flex items-center gap-1.5">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -1835,6 +1812,7 @@
                     modalOpen: false,
                     modalTab: 'usuario', // usuario | catalogo
                     selectedUser: null,
+                    sendingConsent: false,
                     asignacionesEnPosesion: [],
                     asignacionesAll: [],
                     historialAsignaciones: [],
@@ -1933,7 +1911,7 @@
 
                             // Filtro de nombre/DNI (reutilizando query de búsqueda)
                             if (q && !u.nombre_completo.toLowerCase().includes(q) && !(u.dni && u.dni.toLowerCase()
-                                    .includes(q))) return false;
+                                .includes(q))) return false;
 
                             // Filtros por cada tipo de prenda
                             if (this.filterGuante && u.tallas.talla_guante !== this.filterGuante) return false;
@@ -2407,6 +2385,32 @@
                         }
                     },
 
+                    async requestConsent() {
+                        if (!this.selectedUser) return;
+                        if (!confirm('¿Enviar solicitud de firma al trabajador? Esta acción le notificará que debe firmar los EPIs pendientes.')) return;
+                        this.sendingConsent = true;
+                        try {
+                            const url = @js(url('/epis/usuarios/__ID__/consentimiento')).replace('__ID__', this.selectedUser.id);
+                            const res = await this.api(url, { method: 'POST' });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.message || 'Error al enviar solicitud.');
+
+                            Swal.fire({
+                                position: 'top',
+                                icon: 'success',
+                                title: 'Solicitud enviada',
+                                showConfirmButton: false,
+                                timer: 1500,
+                                toast: true
+                            });
+
+                        } catch (e) {
+                            alert(e.message);
+                        } finally {
+                            this.sendingConsent = false;
+                        }
+                    },
+
                     formatDate(iso) {
                         if (!iso) return '—';
                         const d = new Date(iso);
@@ -2734,7 +2738,7 @@
                                 epi_id: it.epi_id,
                                 cantidad: Number(it.cantidad) || 1,
                                 precio_unitario: (it.precio_unitario === null || it.precio_unitario ===
-                                        '' || Number.isNaN(Number(it.precio_unitario))) ?
+                                    '' || Number.isNaN(Number(it.precio_unitario))) ?
                                     null : Number(it.precio_unitario),
                             }))));
                             if (this.compraTicketFile) fd.append('ticket', this.compraTicketFile);

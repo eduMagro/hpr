@@ -9,6 +9,7 @@ use App\Models\EpiCompraItem;
 use App\Models\EpiUsuario;
 use App\Models\Empresa;
 use App\Models\User;
+use App\Models\Alerta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -887,5 +888,51 @@ class EpisController extends Controller
         } catch (\Throwable $e) {
             return null;
         }
+    }
+
+    public function enviarConsentimiento(User $user)
+    {
+        Alerta::create([
+            'user_id_1' => auth()->id(),
+            'destinatario_id' => $user->id,
+            'mensaje' => "Tiene EPIs pendientes de firmar. Por favor, firme el consentimiento en su perfil.",
+            'tipo' => 'sistema',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function firmarEpis(Request $request)
+    {
+        $data = $request->validate([
+            'firma' => ['required', 'string'], // base64
+        ]);
+
+        $user = auth()->user();
+
+        // Decodificar firma
+        $image = $data['firma'];
+        if (strpos($image, ',', 0) !== false) {
+            $image = explode(',', $image)[1];
+        }
+        $image = str_replace(' ', '+', $image);
+        $imageName = 'epis/firmas/firma_epis_' . $user->id . '_' . time() . '.png';
+
+        Storage::disk('public')->put($imageName, base64_decode($image));
+
+        // Actualizar asignaciones no firmadas
+        // Solo las que no han sido devueltas
+        EpiUsuario::where('user_id', $user->id)
+            ->where('firmado', false)
+            ->whereNull('devuelto_en')
+            ->update([
+                'firmado' => true,
+                'firmado_dia' => now(),
+                'firma_ruta' => $imageName
+            ]);
+
+        return response()->json(['ok' => true]);
     }
 }
