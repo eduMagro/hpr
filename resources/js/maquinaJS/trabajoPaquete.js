@@ -110,8 +110,7 @@
 
             li.innerHTML = `
                 <div>
-                    <div class="font-semibold">${item.id
-                } === ${item.peso.toFixed(2)} kg</div>
+                    <div class="font-semibold">${item.id}</div>
                 </div>
                 <button class="text-red-600 hover:text-red-800" title="Eliminar">❌</button>
             `;
@@ -123,8 +122,7 @@
         const total = calcularPesoTotal();
         const resumen = document.createElement("li");
         resumen.className = "py-3 px-3 bg-blue-50 border-t-2 mt-3 font-bold";
-        resumen.textContent = `Total: ${total.toFixed(2)} kg (${items.length
-            } etiquetas)`;
+        resumen.textContent = `Total: ${Math.round(total)} kg (${items.length} etiquetas)`;
         itemsList.appendChild(resumen);
     }
 

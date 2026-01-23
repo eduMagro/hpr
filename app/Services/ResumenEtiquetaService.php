@@ -736,9 +736,13 @@ class ResumenEtiquetaService
 
         // 3. Procesar en transacción corta
         return DB::transaction(function () use ($etiquetas, $maquinaId, $usuarioId) {
-            // Agrupar etiquetas por diámetro + dimensiones (ignorando planilla)
+            // Agrupar etiquetas por OBRA + diámetro + dimensiones
+            // Solo se agrupan etiquetas de la misma obra
             $agrupaciones = [];
             $planillasInvolucradas = [];
+
+            // Cargar las obras de las planillas
+            $etiquetas->load('planilla.obra');
 
             foreach ($etiquetas as $etiqueta) {
                 $elementos = $etiqueta->elementos->filter(function ($e) use ($maquinaId) {
@@ -753,7 +757,10 @@ class ResumenEtiquetaService
                 $primerElemento = $elementos->first();
                 $diametro = (float) $primerElemento->diametro;
                 $dimensiones = $this->normalizarDimensiones($primerElemento->dimensiones);
-                $key = "{$diametro}|{$dimensiones}";
+
+                // Incluir obra_id en la clave para que solo se agrupen etiquetas de la misma obra
+                $obraId = $etiqueta->planilla->obra_id ?? 'sin_obra';
+                $key = "{$obraId}|{$diametro}|{$dimensiones}";
 
                 if (!isset($agrupaciones[$key])) {
                     $agrupaciones[$key] = [
@@ -857,9 +864,10 @@ class ResumenEtiquetaService
                 });
             });
 
-        $etiquetas = $query->with(['elementos', 'planilla'])->get();
+        $etiquetas = $query->with(['elementos', 'planilla.obra'])->get();
 
-        // Agrupar
+        // Agrupar por OBRA + diámetro + dimensiones
+        // Solo se agrupan etiquetas de la misma obra
         $agrupaciones = [];
         $planillasInvolucradas = [];
 
@@ -876,12 +884,18 @@ class ResumenEtiquetaService
             $primerElemento = $elementos->first();
             $diametro = (float) $primerElemento->diametro;
             $dimensiones = $this->normalizarDimensiones($primerElemento->dimensiones);
-            $key = "{$diametro}|{$dimensiones}";
+
+            // Incluir obra_id en la clave para que solo se agrupen etiquetas de la misma obra
+            $obraId = $etiqueta->planilla->obra_id ?? 'sin_obra';
+            $obraNombre = $etiqueta->planilla->obra->obra ?? 'Sin obra';
+            $key = "{$obraId}|{$diametro}|{$dimensiones}";
 
             if (!isset($agrupaciones[$key])) {
                 $agrupaciones[$key] = [
                     'diametro' => $diametro,
                     'dimensiones' => $primerElemento->dimensiones ?: 'barra',
+                    'obra_id' => $etiqueta->planilla->obra_id,
+                    'obra_nombre' => $obraNombre,
                     'etiquetas' => [],
                     'total_elementos' => 0,
                     'peso_total' => 0,

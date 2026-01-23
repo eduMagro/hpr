@@ -1154,7 +1154,7 @@
              * Actualiza los selects después de completar una planilla
              * - Elimina la opción de la posición completada
              * - Reordena las posiciones restantes (las mayores bajan 1)
-             * - Resetea el select que tenía esa posición a 0
+             * - Pasa a la siguiente planilla disponible (no a 0)
              */
             function actualizarSelectsDespuesDeCompletar(posicionCompletada) {
                 const select1 = document.getElementById('posicion_1');
@@ -1164,7 +1164,8 @@
                 [select1, select2].forEach(select => {
                     if (!select) return;
 
-                    const valorActual = select.value;
+                    const valorActual = parseInt(select.value);
+                    const teniaLaPosicionCompletada = valorActual === posNum;
 
                     // Recorrer opciones y actualizar
                     Array.from(select.options).forEach(option => {
@@ -1184,9 +1185,21 @@
                         }
                     });
 
-                    // Si este select tenía la posición completada, resetear a 0
-                    if (parseInt(valorActual) === posNum) {
-                        select.value = '0';
+                    // Si este select tenía la posición completada, pasar a la siguiente disponible
+                    if (teniaLaPosicionCompletada) {
+                        // Buscar la siguiente opción disponible (la que ahora tiene la misma posición)
+                        // Porque las posiciones posteriores bajaron 1
+                        const siguienteOpcion = Array.from(select.options).find(opt => {
+                            const optPos = parseInt(opt.value);
+                            return !isNaN(optPos) && optPos > 0;
+                        });
+
+                        if (siguienteOpcion) {
+                            select.value = siguienteOpcion.value;
+                        } else {
+                            // No hay más planillas, ir a 0
+                            select.value = '0';
+                        }
                     }
                 });
 
