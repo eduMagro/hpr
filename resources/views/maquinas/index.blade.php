@@ -28,7 +28,7 @@
             <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 {{-- Filtro de nave --}}
                 <select id="naveFilter"
-                    class="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                    class="border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
                     <option value="">Todas las naves</option>
                     @foreach ($obras as $obra)
                         <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
@@ -37,7 +37,7 @@
 
                 {{-- Filtro de máquina --}}
                 <select id="machineFilter"
-                    class="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                    class="border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
                     <option value="">Todas las máquinas ({{ $registrosMaquina->count() }})</option>
                     @foreach ($registrosMaquina as $maquina)
                         <option value="{{ $maquina->id }}">{{ $maquina->codigo }} — {{ $maquina->nombre }}</option>
@@ -98,8 +98,8 @@
                                     @php
                                         $inProduction =
                                             $maquina->tipo == 'ensambladora'
-                                                ? $maquina->elementos_ensambladora > 0
-                                                : $maquina->elementos_count > 0;
+                                            ? $maquina->elementos_ensambladora > 0
+                                            : $maquina->elementos_count > 0;
                                     @endphp
                                     <span class="font-semibold text-gray-700 mr-2">Estado:</span>
                                     <span
@@ -143,11 +143,11 @@
                                     <ul class="space-y-1 max-h-20 overflow-y-auto">
                                         @foreach ($asignacionesOrdenadas as $asig)
                                             <li class="text-xs text-gray-700 flex items-center">
-                                                <svg class="w-3 h-3 mr-1.5 text-gray-400 flex-shrink-0"
-                                                    fill="currentColor" viewBox="0 0 20 20">
+                                                <svg class="w-3 h-3 mr-1.5 text-gray-400 flex-shrink-0" fill="currentColor"
+                                                    viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd"
-                                                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                                                        clip-rule="evenodd"></path>
+                                                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd">
+                                                    </path>
                                                 </svg>
                                                 <span class="truncate flex-1">{{ $asig->user->name }}</span>
                                                 <span
@@ -204,8 +204,7 @@
                                 <a href="javascript:void(0);"
                                     class="open-edit-modal flex-1 inline-flex items-center justify-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
                                     data-id="{{ $maquina->id }}">
-                                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
+                                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
                                         </path>
@@ -218,10 +217,8 @@
                         </div>
                     </div>
                 @empty
-                    <div
-                        class="col-span-full bg-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
-                        <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
+                    <div class="col-span-full bg-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
+                        <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
                             </path>
@@ -356,7 +353,7 @@
 
         <script>
             // Migración a patrón de inicialización SPA Livewire
-            window.initMaquinasIndexPage = function() {
+            window.initMaquinasIndexPage = function () {
                 if (document.body.dataset.maquinasIndexPageInit === 'true') return;
                 console.log('Inicializando Maquinas Index Page');
 
@@ -477,20 +474,20 @@
                     // Removemos el listener previo si existiera (aunque livewire reemplaza el DOM, es buena práctica)
                     // form.removeEventListener('submit', ...); 
                     // Pero aquí definimos el handler inline wrapper
-                    form.addEventListener('submit', function(e) {
+                    form.addEventListener('submit', function (e) {
                         e.preventDefault();
                         const id = document.getElementById('edit-id').value;
                         const formData = new FormData(this);
                         formData.append('_method', 'PUT');
 
                         fetch(`/maquinas/${id}`, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRF-TOKEN': formData.get('_token'),
-                                    'Accept': 'application/json'
-                                },
-                                body: formData
-                            })
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': formData.get('_token'),
+                                'Accept': 'application/json'
+                            },
+                            body: formData
+                        })
                             .then(response => {
                                 if (response.ok) {
                                     closeModal();
