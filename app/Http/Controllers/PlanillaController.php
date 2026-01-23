@@ -381,7 +381,7 @@ class PlanillaController extends Controller
             'obra:id,obra',
             'cliente:id,empresa',
             // Limitar columnas de etiquetas para reducir memoria
-            'etiquetas:id,planilla_id,etiqueta_sub_id,estado,peso_kg',
+            'etiquetas:id,planilla_id,etiqueta_sub_id,estado,peso',
             // Limitar columnas de elementos (las esenciales para la vista)
             'elementos' => function ($q) {
                 $q->select([
