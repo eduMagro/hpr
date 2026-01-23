@@ -51,6 +51,7 @@ class Etiqueta extends Model
         'estado',
         'subido',
         'impresa',
+        'resumida',
     ];
 
     // ==================== RELACIONES ====================

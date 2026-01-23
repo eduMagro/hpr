@@ -689,94 +689,54 @@ class ResumenEtiquetaService
     {
         Log::info('📦 resumirMultiplanilla INICIO', ['maquina_id' => $maquinaId]);
 
-        return DB::transaction(function () use ($maquinaId, $usuarioId) {
-            Log::info('📦 resumirMultiplanilla - Dentro de transacción');
+        // 1. Obtener planillas de orden_planillas para esta máquina (REVISADAS)
+        $planillasEnCola = DB::table('orden_planillas')
+            ->join('planillas', 'orden_planillas.planilla_id', '=', 'planillas.id')
+            ->where('orden_planillas.maquina_id', $maquinaId)
+            ->where('planillas.revisada', true)
+            ->pluck('orden_planillas.planilla_id')
+            ->toArray();
 
-            // 1. Obtener etiquetas elegibles de planillas REVISADAS
-            $query = Etiqueta::where('estado', 'pendiente')
-                ->whereNull('grupo_resumen_id')
-                ->whereHas('planilla', function ($q) {
-                    $q->where('revisada', true);
-                })
-                ->whereHas('elementos', function ($q) use ($maquinaId) {
-                    $q->where(function ($subQ) use ($maquinaId) {
-                        $subQ->where('maquina_id', $maquinaId)
-                            ->orWhere('maquina_id_2', $maquinaId);
-                    });
-                });
+        if (empty($planillasEnCola)) {
+            Log::info('📦 resumirMultiplanilla - No hay planillas en cola');
+            return [
+                'success' => true,
+                'message' => 'No hay planillas en la cola de esta máquina',
+                'grupos' => [],
+                'stats' => ['grupos_creados' => 0, 'etiquetas_agrupadas' => 0, 'planillas_involucradas' => 0],
+            ];
+        }
 
-            Log::info('📦 resumirMultiplanilla - Ejecutando query OPTIMIZADA');
+        Log::info('📦 resumirMultiplanilla - Planillas en cola: ' . count($planillasEnCola));
 
-            // Query optimizada: obtener planillas REVISADAS activas en la máquina (con elementos pendientes/fabricando)
-            $planillasActivas = DB::table('elementos')
-                ->join('planillas', 'elementos.planilla_id', '=', 'planillas.id')
-                ->where('planillas.revisada', true)
-                ->where(function ($q) use ($maquinaId) {
-                    $q->where('elementos.maquina_id', $maquinaId)
-                        ->orWhere('elementos.maquina_id_2', $maquinaId);
-                })
-                ->whereIn('elementos.estado', ['pendiente', 'fabricando'])
-                ->whereNotNull('elementos.planilla_id')
-                ->distinct()
-                ->pluck('elementos.planilla_id')
-                ->toArray();
-
-            Log::info('📦 resumirMultiplanilla - Planillas activas en máquina: ' . count($planillasActivas), ['ids' => $planillasActivas]);
-
-            if (empty($planillasActivas)) {
-                Log::info('📦 resumirMultiplanilla - No hay planillas activas');
-                return [
-                    'success' => true,
-                    'message' => 'No hay planillas con elementos pendientes en esta máquina',
-                    'grupos' => [],
-                    'stats' => ['grupos_creados' => 0, 'etiquetas_agrupadas' => 0, 'planillas_involucradas' => 0],
-                ];
-            }
-
-            // Obtener IDs de etiquetas de esas planillas activas
-            $etiquetaIds = DB::table('elementos')
-                ->where(function ($q) use ($maquinaId) {
-                    $q->where('maquina_id', $maquinaId)
+        // 2. Obtener etiquetas NO resumidas de esas planillas
+        $etiquetas = Etiqueta::whereIn('planilla_id', $planillasEnCola)
+            ->where('estado', 'pendiente')
+            ->where('resumida', false)
+            ->whereNull('grupo_resumen_id')
+            ->with(['elementos' => function ($q) use ($maquinaId) {
+                $q->where(function ($subQ) use ($maquinaId) {
+                    $subQ->where('maquina_id', $maquinaId)
                         ->orWhere('maquina_id_2', $maquinaId);
-                })
-                ->whereIn('planilla_id', $planillasActivas)
-                ->whereNotNull('etiqueta_id')
-                ->distinct()
-                ->pluck('etiqueta_id')
-                ->toArray();
+                });
+            }])
+            ->limit(200) // Limitar para evitar timeouts
+            ->get();
 
-            Log::info('📦 resumirMultiplanilla - IDs de etiquetas: ' . count($etiquetaIds));
+        Log::info('📦 resumirMultiplanilla - Etiquetas no resumidas: ' . $etiquetas->count());
 
-            if (empty($etiquetaIds)) {
-                return [
-                    'success' => true,
-                    'message' => 'No hay etiquetas para agrupar en las planillas activas',
-                    'grupos' => [],
-                    'stats' => ['grupos_creados' => 0, 'etiquetas_agrupadas' => 0, 'planillas_involucradas' => 0],
-                ];
-            }
+        if ($etiquetas->isEmpty()) {
+            return [
+                'success' => true,
+                'message' => 'No hay etiquetas nuevas para resumir',
+                'grupos' => [],
+                'stats' => ['grupos_creados' => 0, 'etiquetas_agrupadas' => 0, 'planillas_involucradas' => 0],
+            ];
+        }
 
-            // Ahora buscar etiquetas elegibles con esos IDs
-            $etiquetas = Etiqueta::whereIn('id', $etiquetaIds)
-                ->where('estado', 'pendiente')
-                ->whereNull('grupo_resumen_id')
-                ->whereHas('planilla', fn($q) => $q->where('revisada', true))
-                ->with(['elementos', 'planilla'])
-                ->limit(500)
-                ->get();
-
-            Log::info('📦 resumirMultiplanilla - Etiquetas encontradas: ' . $etiquetas->count());
-
-            if ($etiquetas->isEmpty()) {
-                return [
-                    'success' => true,
-                    'message' => 'No hay etiquetas pendientes en planillas revisadas para agrupar',
-                    'grupos' => [],
-                    'stats' => ['grupos_creados' => 0, 'etiquetas_agrupadas' => 0, 'planillas_involucradas' => 0],
-                ];
-            }
-
-            // 2. Agrupar etiquetas por diámetro + dimensiones (ignorando planilla)
+        // 3. Procesar en transacción corta
+        return DB::transaction(function () use ($etiquetas, $maquinaId, $usuarioId) {
+            // Agrupar etiquetas por diámetro + dimensiones (ignorando planilla)
             $agrupaciones = [];
             $planillasInvolucradas = [];
 
@@ -834,9 +794,10 @@ class ResumenEtiquetaService
                     'activo' => true,
                 ]);
 
-                // Asignar etiquetas al grupo
+                // Asignar etiquetas al grupo y marcar como resumidas
                 foreach ($grupoData['etiquetas'] as $etiqueta) {
                     $etiqueta->grupo_resumen_id = $grupo->id;
+                    $etiqueta->resumida = true;
                     $etiqueta->save();
                     $stats['etiquetas_agrupadas']++;
                 }
@@ -857,11 +818,19 @@ class ResumenEtiquetaService
                 ]);
             }
 
+            // Marcar como resumidas las etiquetas que no se agruparon (para no reprocesarlas)
+            $etiquetasNoAgrupadas = $etiquetas->filter(fn($e) => !$e->grupo_resumen_id);
+            if ($etiquetasNoAgrupadas->isNotEmpty()) {
+                Etiqueta::whereIn('id', $etiquetasNoAgrupadas->pluck('id'))
+                    ->update(['resumida' => true]);
+                Log::info('📦 Etiquetas marcadas como resumidas (sin agrupar): ' . $etiquetasNoAgrupadas->count());
+            }
+
             return [
                 'success' => true,
                 'message' => $stats['grupos_creados'] > 0
-                    ? "Resumen multi-planilla completado: {$stats['grupos_creados']} grupos con {$stats['etiquetas_agrupadas']} etiquetas de {$stats['planillas_involucradas']} planillas"
-                    : 'No se encontraron etiquetas similares para agrupar entre planillas',
+                    ? "Resumen completado: {$stats['grupos_creados']} grupos con {$stats['etiquetas_agrupadas']} etiquetas"
+                    : 'No se encontraron etiquetas similares para agrupar',
                 'grupos' => $gruposCreados,
                 'stats' => $stats,
             ];
