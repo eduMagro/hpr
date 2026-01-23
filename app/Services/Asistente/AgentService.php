@@ -417,6 +417,7 @@ Analiza el siguiente mensaje de un usuario de un sistema de gestión de ferralla
 - Si es pregunta informativa (cómo, qué pasos, explícame, por qué, etc.) → herramienta: "ninguna"
 - Si pide que le muestres datos específicos (listar, ver, consultar) → seleccionar herramienta de consulta
 - Si pide modificar algo (cambiar, mover, adelantar) → seleccionar herramienta de modificación
+- Si pide mover/intercambiar/pasar planillas de posición en una máquina → planilla_adelantar
 - Si no estás seguro → herramienta: "ninguna", confianza: 0
 
 ## RESPUESTA (solo JSON válido)
@@ -429,7 +430,10 @@ Analiza el siguiente mensaje de un usuario de un sistema de gestión de ferralla
     "codigo": "si menciona código de planilla",
     "estado": "si menciona estado",
     "periodo": "hoy/semana/mes si aplica",
-    "maquina": "nombre de máquina si pregunta por producción en máquina específica (ej: syntax, robomaster, schnell, etc.)"
+    "maquina": "nombre de máquina si pregunta por producción en máquina específica (ej: syntax, robomaster, schnell, ms16, ms20, etc.)",
+    "posicion_origen": "posición actual de la planilla a mover (número)",
+    "posicion_destino": "posición destino donde mover la planilla (número)",
+    "nueva_posicion": "sinónimo de posicion_destino"
   }
 }
 ```
@@ -1467,10 +1471,189 @@ PROMPT;
         ];
     }
 
-    // Herramientas pendientes de implementación completa
+    /**
+     * Mueve una planilla a una nueva posición en la cola de una máquina
+     */
     protected function ejecutarPlanillaAdelantar(array $params): array
     {
-        return ['exito' => false, 'contenido' => 'Función en desarrollo'];
+        // Parámetros: maquina, planilla (código o posición actual), nueva_posicion
+        $maquinaNombre = $params['maquina'] ?? null;
+        $planillaRef = $params['planilla'] ?? $params['codigo'] ?? $params['posicion_actual'] ?? null;
+        $nuevaPosicion = (int) ($params['nueva_posicion'] ?? $params['posicion'] ?? 1);
+
+        // También puede venir como "intercambiar posicion X con Y"
+        $posicionOrigen = $params['posicion_origen'] ?? null;
+        $posicionDestino = $params['posicion_destino'] ?? $nuevaPosicion;
+
+        if (!$maquinaNombre) {
+            return [
+                'exito' => false,
+                'contenido' => 'Necesito saber en qué máquina quieres mover la planilla.',
+            ];
+        }
+
+        // Buscar máquina
+        $maquina = DB::table('maquinas')
+            ->whereNull('deleted_at')
+            ->where(function ($q) use ($maquinaNombre) {
+                $q->where('nombre', 'LIKE', "%{$maquinaNombre}%")
+                  ->orWhere('codigo', 'LIKE', "%{$maquinaNombre}%");
+            })
+            ->first();
+
+        if (!$maquina) {
+            return [
+                'exito' => false,
+                'contenido' => "No encontré la máquina '{$maquinaNombre}'.",
+            ];
+        }
+
+        // Si nos dan posiciones directas para intercambiar
+        if ($posicionOrigen && $posicionDestino) {
+            return $this->intercambiarPosiciones($maquina, (int) $posicionOrigen, (int) $posicionDestino);
+        }
+
+        // Buscar la planilla por código o por posición
+        $ordenPlanilla = null;
+
+        // Si es numérico y pequeño, probablemente es una posición
+        if (is_numeric($planillaRef) && (int) $planillaRef <= 50) {
+            $ordenPlanilla = DB::table('orden_planillas')
+                ->where('maquina_id', $maquina->id)
+                ->where('posicion', (int) $planillaRef)
+                ->first();
+        }
+
+        // Si no encontramos por posición, buscar por código de planilla
+        if (!$ordenPlanilla && $planillaRef) {
+            $planilla = DB::table('planillas')
+                ->whereNull('deleted_at')
+                ->where(function ($q) use ($planillaRef) {
+                    $q->where('codigo', 'LIKE', "%{$planillaRef}%")
+                      ->orWhere('numero_planilla', 'LIKE', "%{$planillaRef}%");
+                })
+                ->first();
+
+            if ($planilla) {
+                $ordenPlanilla = DB::table('orden_planillas')
+                    ->where('maquina_id', $maquina->id)
+                    ->where('planilla_id', $planilla->id)
+                    ->first();
+            }
+        }
+
+        if (!$ordenPlanilla) {
+            return [
+                'exito' => false,
+                'contenido' => "No encontré la planilla '{$planillaRef}' en la cola de **{$maquina->nombre}**.",
+            ];
+        }
+
+        $posActual = (int) $ordenPlanilla->posicion;
+        $posNueva = (int) $posicionDestino;
+
+        if ($posNueva === $posActual) {
+            return [
+                'exito' => true,
+                'contenido' => "La planilla ya está en la posición {$posActual}.",
+            ];
+        }
+
+        // Obtener máxima posición
+        $maxPos = (int) DB::table('orden_planillas')
+            ->where('maquina_id', $maquina->id)
+            ->max('posicion');
+
+        if ($posNueva < 1) $posNueva = 1;
+        if ($posNueva > $maxPos) $posNueva = $maxPos;
+
+        // Ejecutar reordenamiento
+        DB::transaction(function () use ($maquina, $ordenPlanilla, $posActual, $posNueva) {
+            if ($posNueva < $posActual) {
+                // Mover hacia arriba: incrementar posiciones intermedias
+                DB::statement(
+                    'UPDATE orden_planillas SET posicion = posicion + 1 WHERE maquina_id = ? AND posicion >= ? AND posicion < ?',
+                    [$maquina->id, $posNueva, $posActual]
+                );
+            } else {
+                // Mover hacia abajo: decrementar posiciones intermedias
+                DB::statement(
+                    'UPDATE orden_planillas SET posicion = posicion - 1 WHERE maquina_id = ? AND posicion > ? AND posicion <= ?',
+                    [$maquina->id, $posActual, $posNueva]
+                );
+            }
+
+            DB::table('orden_planillas')
+                ->where('id', $ordenPlanilla->id)
+                ->update(['posicion' => $posNueva]);
+        }, 3);
+
+        // Obtener código de planilla para el mensaje
+        $planillaInfo = DB::table('planillas')->find($ordenPlanilla->planilla_id);
+        $codigoPlanilla = $planillaInfo->codigo ?? "ID:{$ordenPlanilla->planilla_id}";
+
+        return [
+            'exito' => true,
+            'contenido' => "Planilla **{$codigoPlanilla}** movida de posición **{$posActual}** a **{$posNueva}** en **{$maquina->nombre}**.",
+            'datos' => [
+                'planilla' => $codigoPlanilla,
+                'maquina' => $maquina->nombre,
+                'posicion_anterior' => $posActual,
+                'posicion_nueva' => $posNueva,
+            ],
+            'navegacion' => '/maquinas/' . $maquina->id,
+        ];
+    }
+
+    /**
+     * Intercambia dos posiciones directamente
+     */
+    protected function intercambiarPosiciones($maquina, int $pos1, int $pos2): array
+    {
+        $orden1 = DB::table('orden_planillas')
+            ->where('maquina_id', $maquina->id)
+            ->where('posicion', $pos1)
+            ->first();
+
+        $orden2 = DB::table('orden_planillas')
+            ->where('maquina_id', $maquina->id)
+            ->where('posicion', $pos2)
+            ->first();
+
+        if (!$orden1 || !$orden2) {
+            $faltante = !$orden1 ? $pos1 : $pos2;
+            return [
+                'exito' => false,
+                'contenido' => "No hay planilla en la posición **{$faltante}** de **{$maquina->nombre}**.",
+            ];
+        }
+
+        // Intercambiar posiciones
+        DB::transaction(function () use ($orden1, $orden2, $pos1, $pos2) {
+            // Usar posición temporal para evitar conflictos de unique
+            DB::table('orden_planillas')->where('id', $orden1->id)->update(['posicion' => -1]);
+            DB::table('orden_planillas')->where('id', $orden2->id)->update(['posicion' => $pos1]);
+            DB::table('orden_planillas')->where('id', $orden1->id)->update(['posicion' => $pos2]);
+        }, 3);
+
+        // Obtener códigos de planillas
+        $planilla1 = DB::table('planillas')->find($orden1->planilla_id);
+        $planilla2 = DB::table('planillas')->find($orden2->planilla_id);
+
+        return [
+            'exito' => true,
+            'contenido' => "Intercambiadas las posiciones en **{$maquina->nombre}**:\n" .
+                "- **{$planilla1->codigo}**: {$pos1} → {$pos2}\n" .
+                "- **{$planilla2->codigo}**: {$pos2} → {$pos1}",
+            'datos' => [
+                'maquina' => $maquina->nombre,
+                'intercambio' => [
+                    ['planilla' => $planilla1->codigo, 'de' => $pos1, 'a' => $pos2],
+                    ['planilla' => $planilla2->codigo, 'de' => $pos2, 'a' => $pos1],
+                ],
+            ],
+            'navegacion' => '/maquinas/' . $maquina->id,
+        ];
     }
 
     protected function ejecutarPlanillaAsignarMaquina(array $params): array
