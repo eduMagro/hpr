@@ -62,14 +62,34 @@ class ColadaController extends Controller
 
     public function update(Request $request, Colada $colada)
     {
-        $validated = $request->validate([
+        $rules = [
             'numero_colada' => 'required|string|max:100',
             'producto_base_id' => 'required|exists:productos_base,id',
             'fabricante_id' => 'nullable|exists:fabricantes,id',
             'documento' => 'nullable|file|mimes:pdf|max:10240',
             'codigo_adherencia' => 'nullable|string|max:100',
             'observaciones' => 'nullable|string',
-        ]);
+        ];
+
+        $messages = [
+            'numero_colada.required' => 'El numero de colada es obligatorio.',
+            'producto_base_id.required' => 'Debe seleccionar un producto base.',
+            'documento.mimes' => 'El documento debe ser un archivo PDF.',
+            'documento.max' => 'El documento no puede superar los 10MB.',
+        ];
+
+        // Si es AJAX, validar y devolver JSON en caso de error
+        if ($request->ajax() || $request->wantsJson()) {
+            $validator = \Validator::make($request->all(), $rules, $messages);
+
+            if ($validator->fails()) {
+                return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+            }
+
+            $validated = $validator->validated();
+        } else {
+            $validated = $request->validate($rules, $messages);
+        }
 
         // Verificar que no exista la combinación (excluyendo la actual)
         $existe = Colada::where('numero_colada', $validated['numero_colada'])
@@ -78,6 +98,12 @@ class ColadaController extends Controller
             ->exists();
 
         if ($existe) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => ['numero_colada' => ['Ya existe una colada con ese numero para este producto base.']]
+                ], 422);
+            }
             return back()->withErrors(['numero_colada' => 'Ya existe una colada con ese numero para este producto base.'])->withInput();
         }
 
@@ -100,6 +126,17 @@ class ColadaController extends Controller
         }
 
         $colada->save();
+
+        // Cargar relaciones para devolver datos completos
+        $colada->load(['productoBase', 'fabricante']);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Colada actualizada correctamente.',
+                'colada' => $colada
+            ]);
+        }
 
         return redirect()->route('coladas.index')->with('success', 'Colada actualizada correctamente.');
     }
