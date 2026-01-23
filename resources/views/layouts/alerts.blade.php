@@ -25,6 +25,84 @@
 
 
 
+<!-- Interceptor global para errores 500 en AJAX/Livewire -->
+<script data-navigate-once>
+    (function() {
+        // Evitar doble inicialización
+        if (window._error500InterceptorInit) return;
+        window._error500InterceptorInit = true;
+
+        // Función para mostrar error 500 con SweetAlert
+        window.mostrarError500 = function(detalles = null) {
+            const urlActual = window.location.href;
+            let mensajeReporte = `Error 500 en: ${urlActual}\nFecha: ${new Date().toLocaleString('es-ES')}`;
+            if (detalles) {
+                mensajeReporte += `\nDetalles: ${detalles}`;
+            }
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Error 500: Error del servidor',
+                html: '<p>Ha ocurrido un error interno en el servidor.</p><p class="text-sm text-gray-500 mt-2">Puedes reportar este error para que el equipo técnico lo revise.</p>',
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Aceptar',
+                showCancelButton: true,
+                cancelButtonText: 'Reportar Error',
+                cancelButtonColor: '#6b7280'
+            }).then((result) => {
+                if (result.dismiss === Swal.DismissReason.cancel) {
+                    if (typeof notificarProgramador === 'function') {
+                        notificarProgramador(mensajeReporte, 'Error 500 del servidor');
+                    }
+                }
+            });
+        };
+
+        // Interceptar errores de Livewire
+        document.addEventListener('livewire:init', () => {
+            if (typeof Livewire !== 'undefined') {
+                Livewire.hook('request', ({ fail }) => {
+                    fail(({ status, content }) => {
+                        if (status === 500) {
+                            console.error('Error 500 en Livewire:', content);
+                            window.mostrarError500(content?.message || 'Error en petición Livewire');
+                        }
+                    });
+                });
+            }
+        });
+
+        // Interceptar fetch global para errores 500
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            try {
+                const response = await originalFetch.apply(this, args);
+                if (response.status === 500) {
+                    const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || 'desconocida';
+                    // Solo mostrar si no es una petición de Livewire (ya se maneja arriba)
+                    if (!url.includes('/livewire/')) {
+                        console.error('Error 500 en fetch:', url);
+                        // Intentar obtener mensaje de error del response
+                        const clone = response.clone();
+                        try {
+                            const data = await clone.json();
+                            if (data.server_error) {
+                                window.mostrarError500(data.message || 'Error del servidor');
+                            }
+                        } catch (e) {
+                            // Si no es JSON, mostrar error genérico
+                            window.mostrarError500(`URL: ${url}`);
+                        }
+                    }
+                }
+                return response;
+            } catch (error) {
+                throw error;
+            }
+        };
+    })();
+</script>
+
 <!-- Función para notificar a programadores -->
 <script>
     function notificarProgramador(mensaje, asunto = 'Error reportado por usuario') {
@@ -172,6 +250,32 @@ Navegador: ${navigator.userAgent}`;
             }).then((result) => {
                 if (result.dismiss === Swal.DismissReason.cancel) {
                     notificarProgramador(@json(session('error')));
+                }
+            });
+        @endif
+
+        // Procesar error 500 del servidor
+        @if (session('server_error'))
+            const serverError = @json(session('server_error'));
+            let errorDetails = serverError.message;
+            @if(config('app.debug'))
+                if (serverError.exception) {
+                    errorDetails += '\n\nDetalles: ' + serverError.exception;
+                }
+            @endif
+
+            Swal.fire({
+                icon: 'error',
+                title: serverError.title || 'Error 500: Error del servidor',
+                html: '<p>' + serverError.message + '</p>',
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Aceptar',
+                showCancelButton: true,
+                cancelButtonText: 'Reportar Error',
+                cancelButtonColor: '#6b7280'
+            }).then((result) => {
+                if (result.dismiss === Swal.DismissReason.cancel) {
+                    notificarProgramador(errorDetails, 'Error 500 del servidor');
                 }
             });
         @endif

@@ -10,6 +10,7 @@ use Illuminate\Session\TokenMismatchException;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 //use App\Console\Commands\SincronizarFestivosCommand;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -67,6 +68,35 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return null; // Dejar que Laravel maneje los demás errores
+        });
+
+        // Manejar errores 500 (Server Error) - captura todas las excepciones no manejadas
+        $exceptions->render(function (\Throwable $e, Request $request) {
+            // Ignorar excepciones HTTP ya manejadas arriba
+            if ($e instanceof HttpException || $e instanceof TokenMismatchException || $e instanceof AccessDeniedHttpException) {
+                return null;
+            }
+
+            // Ignorar errores 404
+            if ($e instanceof NotFoundHttpException) {
+                return null;
+            }
+
+            // Para peticiones AJAX/JSON
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'error' => 'Error 500: Error del servidor',
+                    'message' => 'Ha ocurrido un error interno en el servidor.',
+                    'server_error' => true
+                ], 500);
+            }
+
+            // Para navegación normal: redirigir con session flash para SweetAlert
+            return redirect()->route('dashboard')->with('server_error', [
+                'title' => 'Error 500: Error del servidor',
+                'message' => 'Ha ocurrido un error interno en el servidor. Puedes reportar este error para que el equipo técnico lo revise.',
+                'exception' => config('app.debug') ? $e->getMessage() : null
+            ]);
         });
     })
     ->withCommands([
