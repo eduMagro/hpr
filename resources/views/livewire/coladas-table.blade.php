@@ -585,9 +585,12 @@
                                     showConfirmButton: false
                                 });
 
-                                // Refrescar la tabla Livewire
+                                // Refrescar la tabla Livewire sin perder estado
                                 if (typeof Livewire !== 'undefined') {
-                                    Livewire.dispatch('$refresh');
+                                    const component = Livewire.getByName('coladas-table')[0];
+                                    if (component) {
+                                        component.$refresh();
+                                    }
                                 }
                             } else {
                                 // Mostrar errores de validación
