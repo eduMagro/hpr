@@ -121,7 +121,7 @@ class MaquinaController extends Controller
         ) as elementos_ensambladora')
             ->withCount([
                 'elementos as elementos_count' => fn($q) =>
-                    $q->where('estado', '!=', 'fabricado')
+                $q->where('estado', '!=', 'fabricado')
             ]);
 
         if ($request->filled('nombre')) {
@@ -184,7 +184,7 @@ class MaquinaController extends Controller
         $t0 = microtime(true);
 
         // 0) Primero cargar solo la máquina para verificar el tipo
-        $maquina = Maquina::findOrFail($id);
+
         \Log::info("⏱️ [SHOW] Cargar máquina: " . round((microtime(true) - $t0) * 1000) . "ms");
 
         // 1) Rama GRÚA: cargar contexto mínimo y devolver pronto
@@ -315,9 +315,9 @@ class MaquinaController extends Controller
         $planillaIdsActivos = collect($planillasActivas)->pluck('id')->toArray();
         $etiquetasResumidas = $planillaIdsActivos
             ? Etiqueta::whereNotNull('grupo_resumen_id')
-                ->whereIn('planilla_id', $planillaIdsActivos)
-                ->pluck('etiqueta_sub_id')
-                ->toArray()
+            ->whereIn('planilla_id', $planillaIdsActivos)
+            ->pluck('etiqueta_sub_id')
+            ->toArray()
             : [];
 
         $etiquetasData = $elementosFiltrados
@@ -429,18 +429,18 @@ class MaquinaController extends Controller
 
         $longitudesPorDiametro = $esBarra
             ? $productosBaseCompatibles
-                ->filter(fn($pb) => strtoupper($pb->tipo) === 'BARRA')
-                ->groupBy(fn($pb) => (int) $pb->diametro)
-                ->map(
-                    fn($g) => $g->pluck('longitud')
-                        ->filter(fn($L) => is_numeric($L) && $L > 0)
-                        ->map(fn($L) => (float) $L)
-                        ->unique()
-                        ->sort()
-                        ->values()
-                        ->all()
-                )
-                ->toArray()
+            ->filter(fn($pb) => strtoupper($pb->tipo) === 'BARRA')
+            ->groupBy(fn($pb) => (int) $pb->diametro)
+            ->map(
+                fn($g) => $g->pluck('longitud')
+                    ->filter(fn($L) => is_numeric($L) && $L > 0)
+                    ->map(fn($L) => (float) $L)
+                    ->unique()
+                    ->sort()
+                    ->values()
+                    ->all()
+            )
+            ->toArray()
             : [];
 
         // 10) Diámetro por subetiqueta (desde elementos FILTRADOS)
@@ -475,14 +475,14 @@ class MaquinaController extends Controller
         $todosEtiquetaIds = $gruposResumen->flatMap(fn($g) => $g->etiquetas->pluck('id'))->unique()->toArray();
         $elementosDeGrupos = $todosEtiquetaIds
             ? Elemento::with(['producto', 'producto2', 'producto3'])
-                ->whereIn('etiqueta_id', $todosEtiquetaIds)
-                ->where(function ($query) use ($maquina) {
-                    // CORREGIDO: Buscar en cualquier campo de máquina
-                    $query->where('maquina_id', $maquina->id)
-                        ->orWhere('maquina_id_2', $maquina->id);
-                })
-                ->get()
-                ->groupBy('etiqueta_id')
+            ->whereIn('etiqueta_id', $todosEtiquetaIds)
+            ->where(function ($query) use ($maquina) {
+                // CORREGIDO: Buscar en cualquier campo de máquina
+                $query->where('maquina_id', $maquina->id)
+                    ->orWhere('maquina_id_2', $maquina->id);
+            })
+            ->get()
+            ->groupBy('etiqueta_id')
             : collect();
         \Log::info("⏱️ [SHOW] Grupos resumen: " . round((microtime(true) - $t6) * 1000) . "ms");
 
@@ -899,11 +899,11 @@ class MaquinaController extends Controller
     {
         // Obtener entidades de la cola de ensamblaje (ordenadas por posición)
         $ordenesEnsamblaje = OrdenPlanillaEnsamblaje::with([
-                'entidad.planilla.obra',
-                'entidad.planilla.cliente',
-                'entidad.etiquetasEnsamblaje.operario',
-                'entidad.elementos'
-            ])
+            'entidad.planilla.obra',
+            'entidad.planilla.cliente',
+            'entidad.etiquetasEnsamblaje.operario',
+            'entidad.elementos'
+        ])
             ->where('maquina_id', $maquina->id)
             ->whereIn('estado', ['pendiente', 'en_proceso'])
             ->orderBy('posicion', 'asc')
