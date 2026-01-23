@@ -161,6 +161,13 @@ class AgentService
             'nivel_permiso' => 1,
             'requiere_confirmacion' => false,
         ],
+        'produccion_maquina_planilla' => [
+            'nombre' => 'Planilla actual en máquina',
+            'descripcion' => 'Muestra qué planilla se está fabricando en una máquina específica',
+            'categoria' => 'produccion',
+            'nivel_permiso' => 1,
+            'requiere_confirmacion' => false,
+        ],
 
         // === CLIENTES Y OBRAS ===
         'cliente_listar' => [
@@ -419,9 +426,10 @@ Analiza el siguiente mensaje de un usuario de un sistema de gestión de ferralla
   "confianza": 0-100,
   "es_pregunta_informativa": true/false,
   "parametros": {
-    "codigo": "si menciona código",
+    "codigo": "si menciona código de planilla",
     "estado": "si menciona estado",
-    "periodo": "hoy/semana/mes si aplica"
+    "periodo": "hoy/semana/mes si aplica",
+    "maquina": "nombre de máquina si pregunta por producción en máquina específica (ej: syntax, robomaster, schnell, etc.)"
   }
 }
 ```
@@ -627,6 +635,7 @@ PROMPT;
                 'produccion_resumen' => $this->ejecutarProduccionResumen($parametros),
                 'produccion_maquinas' => $this->ejecutarProduccionMaquinas($parametros),
                 'produccion_cola' => $this->ejecutarProduccionCola($parametros),
+                'produccion_maquina_planilla' => $this->ejecutarProduccionMaquinaPlanilla($parametros),
 
                 // Clientes
                 'cliente_listar' => $this->ejecutarClienteListar($parametros),
@@ -1056,7 +1065,7 @@ PROMPT;
             ->leftJoin('clientes', 'planillas.cliente_id', '=', 'clientes.id')
             ->whereIn('planillas.estado', ['pendiente', 'fabricando'])
             ->whereNull('planillas.deleted_at')
-            ->orderBy('planillas.prioridad', 'desc')
+            ->orderBy('planillas.fecha_estimada_entrega')
             ->orderBy('planillas.created_at')
             ->limit(15)
             ->get();
@@ -1083,6 +1092,188 @@ PROMPT;
             'contenido' => $contenido,
             'datos' => $planillas->toArray(),
         ];
+    }
+
+    /**
+     * Muestra qué planilla se está fabricando en una máquina específica
+     * Lógica: De orden_planillas, buscar planillas revisadas ordenadas por posición ASC
+     */
+    protected function ejecutarProduccionMaquinaPlanilla(array $params): array
+    {
+        $nombreMaquina = $params['maquina'] ?? $params['nombre_maquina'] ?? $params['nombre'] ?? null;
+
+        if (!$nombreMaquina) {
+            // Si no se especifica máquina, listar todas con su planilla actual
+            return $this->listarPlanillasActualesEnMaquinas();
+        }
+
+        // Buscar la máquina por nombre (búsqueda flexible)
+        $maquina = DB::table('maquinas')
+            ->whereNull('deleted_at')
+            ->where(function ($q) use ($nombreMaquina) {
+                $q->whereRaw('LOWER(nombre) LIKE ?', ['%' . strtolower($nombreMaquina) . '%'])
+                  ->orWhereRaw('LOWER(codigo) LIKE ?', ['%' . strtolower($nombreMaquina) . '%']);
+            })
+            ->first();
+
+        if (!$maquina) {
+            return [
+                'exito' => false,
+                'contenido' => "No encontré ninguna máquina con el nombre **{$nombreMaquina}**.\n\n" .
+                              "Las máquinas disponibles son:\n" . $this->listarNombresMaquinas(),
+                'datos' => [],
+            ];
+        }
+
+        // Buscar la planilla actual: la de menor posición en orden_planillas que esté revisada
+        $planillaActual = DB::table('orden_planillas')
+            ->join('planillas', 'orden_planillas.planilla_id', '=', 'planillas.id')
+            ->leftJoin('clientes', 'planillas.cliente_id', '=', 'clientes.id')
+            ->leftJoin('obras', 'planillas.obra_id', '=', 'obras.id')
+            ->where('orden_planillas.maquina_id', $maquina->id)
+            ->where('planillas.revisada', 1)
+            ->whereNull('planillas.deleted_at')
+            ->whereIn('planillas.estado', ['pendiente', 'fabricando'])
+            ->orderBy('orden_planillas.posicion', 'asc')
+            ->select(
+                'planillas.*',
+                'clientes.empresa as cliente_nombre',
+                'obras.obra as obra_nombre',
+                'orden_planillas.posicion'
+            )
+            ->first();
+
+        if (!$planillaActual) {
+            // Buscar si hay planillas asignadas pero no revisadas
+            $sinRevisar = DB::table('orden_planillas')
+                ->join('planillas', 'orden_planillas.planilla_id', '=', 'planillas.id')
+                ->where('orden_planillas.maquina_id', $maquina->id)
+                ->where('planillas.revisada', 0)
+                ->whereNull('planillas.deleted_at')
+                ->count();
+
+            $msg = "No hay planillas **revisadas** en fabricación en **{$maquina->nombre}**.";
+            if ($sinRevisar > 0) {
+                $msg .= "\n\n⚠️ Hay **{$sinRevisar} planilla(s) sin revisar** asignadas a esta máquina.";
+            }
+
+            return [
+                'exito' => true,
+                'contenido' => $msg,
+                'datos' => [],
+                'navegacion' => '/produccion/maquinas/' . $maquina->id,
+            ];
+        }
+
+        // Contar elementos pendientes y fabricados
+        $elementos = DB::table('elementos')
+            ->where('planilla_id', $planillaActual->id)
+            ->selectRaw("
+                COUNT(*) as total,
+                SUM(CASE WHEN estado = 'fabricado' THEN 1 ELSE 0 END) as fabricados,
+                SUM(CASE WHEN estado = 'pendiente' THEN 1 ELSE 0 END) as pendientes,
+                SUM(CASE WHEN estado = 'asignado' THEN 1 ELSE 0 END) as asignados
+            ")
+            ->first();
+
+        $progreso = $elementos->total > 0
+            ? round(($elementos->fabricados / $elementos->total) * 100, 1)
+            : 0;
+
+        $contenido = "**Fabricando en {$maquina->nombre}:**\n\n";
+        $contenido .= "📋 **Planilla:** {$planillaActual->codigo}\n";
+        $contenido .= "🏢 **Cliente:** " . ($planillaActual->cliente_nombre ?? 'N/A') . "\n";
+        $contenido .= "🏗️ **Obra:** " . ($planillaActual->obra_nombre ?? 'N/A') . "\n";
+        $contenido .= "📊 **Estado:** {$planillaActual->estado}\n";
+        $contenido .= "⚖️ **Peso total:** " . number_format($planillaActual->peso_total ?? 0, 0, ',', '.') . " kg\n\n";
+
+        $contenido .= "**Progreso:** {$progreso}%\n";
+        $contenido .= "- ✅ Fabricados: {$elementos->fabricados}\n";
+        $contenido .= "- 🔄 Asignados: {$elementos->asignados}\n";
+        $contenido .= "- ⏳ Pendientes: {$elementos->pendientes}\n";
+        $contenido .= "- 📦 Total elementos: {$elementos->total}\n";
+
+        // Ver si hay más planillas en cola
+        $enCola = DB::table('orden_planillas')
+            ->join('planillas', 'orden_planillas.planilla_id', '=', 'planillas.id')
+            ->where('orden_planillas.maquina_id', $maquina->id)
+            ->where('planillas.revisada', 1)
+            ->whereNull('planillas.deleted_at')
+            ->whereIn('planillas.estado', ['pendiente', 'fabricando'])
+            ->where('orden_planillas.posicion', '>', $planillaActual->posicion)
+            ->count();
+
+        if ($enCola > 0) {
+            $contenido .= "\n📌 **{$enCola} planilla(s) más en cola** para esta máquina.";
+        }
+
+        return [
+            'exito' => true,
+            'contenido' => $contenido,
+            'datos' => [
+                'planilla' => $planillaActual,
+                'elementos' => $elementos,
+                'maquina' => $maquina,
+            ],
+            'navegacion' => '/produccion/maquinas/' . $maquina->id,
+        ];
+    }
+
+    /**
+     * Lista las planillas actuales en todas las máquinas
+     */
+    protected function listarPlanillasActualesEnMaquinas(): array
+    {
+        $maquinas = DB::table('maquinas')
+            ->whereNull('deleted_at')
+            ->where('activa', 1)
+            ->get();
+
+        $contenido = "**Planillas en fabricación por máquina:**\n\n";
+        $contenido .= "| Máquina | Planilla | Cliente | Progreso |\n";
+        $contenido .= "|---------|----------|---------|----------|\n";
+
+        foreach ($maquinas as $maquina) {
+            $planilla = DB::table('orden_planillas')
+                ->join('planillas', 'orden_planillas.planilla_id', '=', 'planillas.id')
+                ->leftJoin('clientes', 'planillas.cliente_id', '=', 'clientes.id')
+                ->where('orden_planillas.maquina_id', $maquina->id)
+                ->where('planillas.revisada', 1)
+                ->whereNull('planillas.deleted_at')
+                ->whereIn('planillas.estado', ['pendiente', 'fabricando'])
+                ->orderBy('orden_planillas.posicion', 'asc')
+                ->select('planillas.codigo', 'clientes.empresa as cliente', 'planillas.id')
+                ->first();
+
+            if ($planilla) {
+                $elementos = DB::table('elementos')
+                    ->where('planilla_id', $planilla->id)
+                    ->selectRaw("COUNT(*) as total, SUM(CASE WHEN estado = 'fabricado' THEN 1 ELSE 0 END) as fabricados")
+                    ->first();
+                $progreso = $elementos->total > 0 ? round(($elementos->fabricados / $elementos->total) * 100) . '%' : '0%';
+                $contenido .= "| {$maquina->nombre} | {$planilla->codigo} | " . ($planilla->cliente ?? 'N/A') . " | {$progreso} |\n";
+            } else {
+                $contenido .= "| {$maquina->nombre} | - | - | - |\n";
+            }
+        }
+
+        return [
+            'exito' => true,
+            'contenido' => $contenido,
+            'datos' => [],
+        ];
+    }
+
+    /**
+     * Helper: Lista los nombres de las máquinas disponibles
+     */
+    protected function listarNombresMaquinas(): string
+    {
+        $maquinas = DB::table('maquinas')
+            ->whereNull('deleted_at')
+            ->pluck('nombre');
+
+        return $maquinas->map(fn($n) => "- {$n}")->implode("\n");
     }
 
     protected function ejecutarNavegar(array $params): array

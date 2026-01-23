@@ -184,9 +184,7 @@ class MaquinaController extends Controller
         $t0 = microtime(true);
 
         // 0) Primero cargar solo la máquina para verificar el tipo
-
-        \Log::info("⏱️ [SHOW] Cargar máquina: " . round((microtime(true) - $t0) * 1000) . "ms");
-
+        $maquina = Maquina::findOrFail($id);
         // 1) Rama GRÚA: cargar contexto mínimo y devolver pronto
         if ($this->esGrua($maquina)) {
             $base = $this->cargarContextoBase($maquina);
@@ -226,7 +224,6 @@ class MaquinaController extends Controller
         $t1 = microtime(true);
         $maquina->load('productos');
         $base = $this->cargarContextoBase($maquina);
-        \Log::info("⏱️ [SHOW] Contexto base: " . round((microtime(true) - $t1) * 1000) . "ms");
 
         // 3) Cola de planillas - solo planillas revisadas
         // ⚠️ LÓGICA ESTRICTA: Solo planillas revisadas entran en planificación
@@ -235,7 +232,6 @@ class MaquinaController extends Controller
             ->with('planilla')
             ->orderBy('posicion', 'asc')
             ->get();
-        \Log::info("⏱️ [SHOW] Ordenes planillas: " . round((microtime(true) - $t2) * 1000) . "ms");
 
         // Obtener IDs de planillas revisadas en la cola
         $planillasRevisadasIds = $ordenesPlanillas
@@ -264,7 +260,6 @@ class MaquinaController extends Controller
             })
             ->whereIn('planilla_id', $planillasRevisadasIds)
             ->get();
-        \Log::info("⏱️ [SHOW] Elementos máquina (" . count($elementosMaquina) . "): " . round((microtime(true) - $t3) * 1000) . "ms");
 
         // Obtener posiciones del request o calcular automáticamente
         $posicion1 = request('posicion_1');
@@ -292,7 +287,6 @@ class MaquinaController extends Controller
         $t4 = microtime(true);
         [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles, $codigosPorPosicion, $planillaIdsPorPosicion] =
             $this->aplicarColaPlanillasPorPosicion($maquina, $elementosMaquina, $posiciones, $ordenesPlanillas);
-        \Log::info("⏱️ [SHOW] aplicarColaPlanillasPorPosicion: " . round((microtime(true) - $t4) * 1000) . "ms");
 
         // 5) Datasets filtrados por planilla
         $elementosPorPlanilla = $elementosFiltrados->groupBy('planilla_id');
@@ -422,7 +416,6 @@ class MaquinaController extends Controller
             $colegas = $colegasDe($el);
             $sugerenciasPorElemento[$el->id] = $sugeridor->sugerirParaElemento($el, $productosBarra, $colegas);
         }
-        \Log::info("⏱️ [SHOW] Sugerencias (" . count($elementosFiltrados) . " elementos): " . round((microtime(true) - $t5) * 1000) . "ms");
 
         // 9) Longitudes por diámetro (solo si la máquina es de barras)
         $esBarra = strcasecmp($maquina->tipo_material, 'barra') === 0;
@@ -484,7 +477,6 @@ class MaquinaController extends Controller
             ->get()
             ->groupBy('etiqueta_id')
             : collect();
-        \Log::info("⏱️ [SHOW] Grupos resumen: " . round((microtime(true) - $t6) * 1000) . "ms");
 
         // Preparar datos de grupos para la vista (con elementos de cada etiqueta)
         $gruposResumenData = $gruposResumen->map(function ($grupo) use ($elementosDeGrupos) {
@@ -588,7 +580,6 @@ class MaquinaController extends Controller
         })->values();
 
         // 12) Devolver vista
-        \Log::info("⏱️ [SHOW] TOTAL: " . round((microtime(true) - $t0) * 1000) . "ms");
         return view('maquinas.show', array_merge($base, [
             // base
             'maquina' => $maquina,

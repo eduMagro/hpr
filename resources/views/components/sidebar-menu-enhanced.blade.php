@@ -313,11 +313,8 @@
             // Sección asociada a la ruta actual (para resaltar visualmente)
             this.currentSectionId = id;
 
-            // Asegurar que esa sección esté en el conjunto de acordeones abiertos
-            if (!this.activeSections.includes(id)) {
-                this.activeSections = [...this.activeSections, id];
-                localStorage.setItem('sidebar_active_sections', JSON.stringify(this.activeSections));
-            }
+            // NO abrir automáticamente el desplegable - el usuario lo controla manualmente
+            // El desplegable solo se abre cuando el usuario hace clic en él
 
             // Agregar a recientes cuando navegamos
             this.addToRecent('{{ $item['route'] }}', '{{ $item['label'] }}', '{{ $section['label'] }}', '{{ $item['icon'] }}', '{{ route($item['route']) }}');
@@ -430,6 +427,8 @@
         } else {
             document.documentElement.classList.remove('dark');
         }
+        // Emitir evento para que otros componentes (como el asistente) se sincronicen
+        window.dispatchEvent(new CustomEvent('dark-mode-changed', { detail: this.darkMode }));
     },
 
     performSearch() {
@@ -710,7 +709,8 @@
 
                     <!-- Submenú -->
                     @if (isset($section['submenu']))
-                        <div x-show="open && activeSections.includes('{{ $section['id'] }}')"
+                        <div x-cloak
+                            x-show="ready && open && activeSections.includes('{{ $section['id'] }}')"
                             x-transition
                             class="mt-2 ml-4 space-y-1 border-l-2 border-gray-700 pl-4">
                             @foreach ($section['submenu'] as $itemIndex => $item)
@@ -934,6 +934,7 @@
         display: none !important;
     }
 
+
     /* ===== ESTADO INICIAL DEL SIDEBAR (antes de Alpine) ===== */
     @media (min-width: 768px) {
         /* Sidebar abierto inicialmente */
@@ -1049,6 +1050,11 @@
         /* Transiciones solo cuando ready */
         .sidebar-mobile-hidden.sidebar-ready {
             transition: width 0.3s ease-in-out;
+        }
+
+        /* Ocultar submenús completamente cuando sidebar cerrado */
+        .sidebar-mobile-hidden.sidebar-closed nav > div > div:last-child {
+            display: none !important;
         }
     }
 </style>

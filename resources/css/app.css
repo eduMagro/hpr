@@ -90,3 +90,405 @@ select:focus-visible {
 .proceso.estado-en-paquete {
     --bg-estado: #e3e4FA;
 }
+
+/* === ESTILOS GLOBALES DE TABLAS === */
+
+/* Contenedor de tabla */
+.table-container {
+    @apply bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden;
+}
+
+.dark .table-container {
+    @apply bg-gray-800 border-gray-700;
+}
+
+/* Tabla base */
+table.table-global,
+.table-global table {
+    @apply w-full text-sm text-left;
+}
+
+/* ========== CABECERA (THEAD) ========== */
+
+/* Cabecera con tema azul (por defecto) */
+.table-global thead {
+    @apply bg-blue-600 text-white uppercase text-xs tracking-wider;
+}
+
+.dark .table-global thead {
+    @apply bg-blue-700;
+}
+
+/* Cabecera con tema gris */
+.table-global.thead-gray thead {
+    @apply bg-gray-100 text-gray-700;
+}
+
+.dark .table-global.thead-gray thead {
+    @apply bg-gray-700 text-gray-300;
+}
+
+/* Celdas de cabecera */
+.table-global th {
+    @apply px-4 py-3 font-semibold border border-blue-400;
+}
+
+.dark .table-global th {
+    @apply border-blue-600;
+}
+
+.table-global.thead-gray th {
+    @apply border-gray-200;
+}
+
+.dark .table-global.thead-gray th {
+    @apply border-gray-600;
+}
+
+/* Cabecera ordenable */
+.table-global th.sortable {
+    @apply cursor-pointer select-none transition-colors;
+}
+
+.table-global th.sortable:hover {
+    @apply bg-blue-500;
+}
+
+.dark .table-global th.sortable:hover {
+    @apply bg-blue-600;
+}
+
+/* ========== FILA DE FILTROS ========== */
+
+.table-global .filters-row {
+    @apply bg-blue-500;
+}
+
+.dark .table-global .filters-row {
+    @apply bg-blue-800;
+}
+
+.table-global .filters-row th {
+    @apply p-1 border border-blue-400;
+}
+
+.dark .table-global .filters-row th {
+    @apply border-blue-600;
+}
+
+/* ========== INPUTS Y SELECTS EN TABLAS ========== */
+
+.table-global input[type="text"],
+.table-global input[type="number"],
+.table-global input[type="date"],
+.table-global input[type="email"],
+.table-global select,
+.table-input {
+    @apply w-full text-xs px-2 py-1 border rounded
+           bg-white text-gray-900 border-gray-300
+           placeholder-gray-400
+           focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none
+           transition-colors;
+}
+
+.dark .table-global input[type="text"],
+.dark .table-global input[type="number"],
+.dark .table-global input[type="date"],
+.dark .table-global input[type="email"],
+.dark .table-global select,
+.dark .table-input {
+    @apply bg-gray-700 text-gray-100 border-gray-600
+           placeholder-gray-400;
+}
+
+/* ========== CUERPO (TBODY) ========== */
+
+.table-global tbody {
+    @apply text-gray-700 text-sm;
+}
+
+.dark .table-global tbody {
+    @apply text-gray-200;
+}
+
+/* Celdas del cuerpo */
+.table-global td {
+    @apply px-2 py-3 text-center border border-gray-200;
+}
+
+.dark .table-global td {
+    @apply border-gray-700 text-gray-200;
+}
+
+/* Filas base */
+.table-global tbody tr {
+    @apply border-b border-gray-200 transition-colors;
+}
+
+.dark .table-global tbody tr {
+    @apply border-gray-700;
+}
+
+/* Filas alternas (zebra) */
+.table-global tbody tr:nth-child(odd) {
+    @apply bg-gray-50;
+}
+
+.table-global tbody tr:nth-child(even) {
+    @apply bg-white;
+}
+
+.dark .table-global tbody tr:nth-child(odd) {
+    @apply bg-gray-800;
+}
+
+.dark .table-global tbody tr:nth-child(even) {
+    @apply bg-gray-800/50;
+}
+
+/* Filas hover */
+.table-global tbody tr:hover {
+    @apply bg-blue-50;
+}
+
+.dark .table-global tbody tr:hover {
+    @apply bg-gray-700;
+}
+
+/* Fila en edición */
+.table-global tbody tr.editing {
+    @apply bg-yellow-100;
+}
+
+.dark .table-global tbody tr.editing {
+    @apply bg-yellow-900/30;
+}
+
+/* ========== PIE DE TABLA (TFOOT) ========== */
+
+.table-global tfoot tr {
+    @apply bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-300;
+}
+
+.dark .table-global tfoot tr {
+    @apply from-gray-700 to-gray-800 border-gray-600;
+}
+
+.table-global tfoot td {
+    @apply px-6 py-3 text-gray-700;
+}
+
+.dark .table-global tfoot td {
+    @apply text-gray-200;
+}
+
+/* ========== BOTONES DE ACCIÓN ========== */
+
+/* Base de botones de tabla */
+.table-btn {
+    @apply w-6 h-6 rounded flex items-center justify-center transition-colors;
+}
+
+/* Botón azul (ver, editar inline) */
+.table-btn-blue {
+    @apply bg-blue-100 text-blue-600 hover:bg-blue-200;
+}
+
+.dark .table-btn-blue {
+    @apply bg-blue-900/50 text-blue-400 hover:bg-blue-800;
+}
+
+/* Botón verde (guardar, mover) */
+.table-btn-green {
+    @apply bg-green-100 text-green-600 hover:bg-green-200;
+}
+
+.dark .table-btn-green {
+    @apply bg-green-900/50 text-green-400 hover:bg-green-800;
+}
+
+/* Botón amarillo (editar completo, configuración) */
+.table-btn-yellow {
+    @apply bg-yellow-100 text-yellow-600 hover:bg-yellow-200;
+}
+
+.dark .table-btn-yellow {
+    @apply bg-yellow-900/50 text-yellow-400 hover:bg-yellow-800;
+}
+
+/* Botón rojo (eliminar, cancelar, consumir) */
+.table-btn-red {
+    @apply bg-red-100 text-red-600 hover:bg-red-200;
+}
+
+.dark .table-btn-red {
+    @apply bg-red-900/50 text-red-400 hover:bg-red-800;
+}
+
+/* Botón gris (secundario) */
+.table-btn-gray {
+    @apply bg-gray-100 text-gray-600 hover:bg-gray-200;
+}
+
+.dark .table-btn-gray {
+    @apply bg-gray-700 text-gray-400 hover:bg-gray-600;
+}
+
+/* ========== ENLACES EN TABLAS ========== */
+
+.table-global a.table-link {
+    @apply text-blue-600 hover:underline hover:text-blue-800 transition-colors;
+}
+
+.dark .table-global a.table-link {
+    @apply text-blue-400 hover:text-blue-300;
+}
+
+/* ========== BADGES / ESTADOS ========== */
+
+.table-badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+}
+
+.table-badge-success {
+    @apply bg-green-100 text-green-800;
+}
+
+.dark .table-badge-success {
+    @apply bg-green-900/50 text-green-400;
+}
+
+.table-badge-warning {
+    @apply bg-yellow-100 text-yellow-800;
+}
+
+.dark .table-badge-warning {
+    @apply bg-yellow-900/50 text-yellow-400;
+}
+
+.table-badge-danger {
+    @apply bg-red-100 text-red-800;
+}
+
+.dark .table-badge-danger {
+    @apply bg-red-900/50 text-red-400;
+}
+
+.table-badge-info {
+    @apply bg-blue-100 text-blue-800;
+}
+
+.dark .table-badge-info {
+    @apply bg-blue-900/50 text-blue-400;
+}
+
+.table-badge-gray {
+    @apply bg-gray-100 text-gray-800;
+}
+
+.dark .table-badge-gray {
+    @apply bg-gray-700 text-gray-300;
+}
+
+/* ========== ESTADOS DE FILAS ========== */
+
+.table-global tr.row-success {
+    @apply bg-green-50;
+}
+
+.dark .table-global tr.row-success {
+    @apply bg-green-900/20;
+}
+
+.table-global tr.row-warning {
+    @apply bg-yellow-50;
+}
+
+.dark .table-global tr.row-warning {
+    @apply bg-yellow-900/20;
+}
+
+.table-global tr.row-danger {
+    @apply bg-red-50;
+}
+
+.dark .table-global tr.row-danger {
+    @apply bg-red-900/20;
+}
+
+/* ========== PAGINACIÓN ========== */
+
+.table-pagination {
+    @apply mt-4 flex items-center justify-between px-4 py-3 bg-white border border-gray-200 rounded-lg;
+}
+
+.dark .table-pagination {
+    @apply bg-gray-800 border-gray-700;
+}
+
+/* ========== FILTROS APLICADOS ========== */
+
+.table-filters-badge {
+    @apply bg-blue-100 border border-blue-300 text-blue-800 text-sm px-4 py-2 rounded shadow-sm mt-2 mb-4;
+}
+
+.dark .table-filters-badge {
+    @apply bg-blue-900/30 border-blue-700 text-blue-300;
+}
+
+/* ========== TABLA COMPACTA ========== */
+
+.table-global.table-compact th,
+.table-global.table-compact td {
+    @apply px-2 py-1.5 text-xs;
+}
+
+/* ========== TABLA RESPONSIVE ========== */
+
+@media (max-width: 768px) {
+    .table-responsive {
+        @apply block overflow-x-auto -mx-4 px-4;
+    }
+
+    .table-responsive table {
+        @apply min-w-max;
+    }
+}
+
+/* ========== CELDA DE ACCIONES ========== */
+
+.table-global .td-actions {
+    @apply px-2 py-2 text-center;
+}
+
+.table-global .td-actions > div {
+    @apply flex items-center justify-center space-x-2;
+}
+
+/* ========== INPUTS INLINE PARA EDICIÓN ========== */
+
+.table-global .inline-edit-input,
+.inline-edit-input {
+    @apply w-full text-xs border rounded px-1 py-0.5 text-center
+           bg-white text-gray-900 border-gray-300
+           focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none
+           transition-colors;
+}
+
+.dark .table-global .inline-edit-input,
+.dark .inline-edit-input {
+    @apply bg-gray-700 text-gray-100 border-gray-600;
+}
+
+.table-global .inline-edit-select,
+.inline-edit-select {
+    @apply w-full text-xs border rounded px-1 py-0.5
+           bg-white text-gray-900 border-gray-300
+           focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none
+           transition-colors;
+}
+
+.dark .table-global .inline-edit-select,
+.dark .inline-edit-select {
+    @apply bg-gray-700 text-gray-100 border-gray-600;
+}

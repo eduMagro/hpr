@@ -707,10 +707,12 @@ class AsignacionTurnoController extends Controller
         // Margen de anticipación en minutos (fichar hasta 2 horas antes)
         $margenAnticipacion = 120;
 
-        // Obtener turnos con horarios definidos (excluir montaje, festivo, dinámico que no tienen hora)
+        // Obtener solo turnos de mañana, tarde y noche para detección automática
+        // (excluir otros turnos como montaje, festivo, dinámico, etc.)
         $turnos = Turno::whereNotNull('hora_inicio')
             ->whereNotNull('hora_fin')
             ->where('activo', true)
+            ->whereIn('nombre', ['mañana', 'tarde', 'noche'])
             ->orderBy('orden')
             ->get();
 

@@ -58,7 +58,7 @@ class IAService
     }
 
     /**
-     * Obtiene todos los modelos disponibles
+     * Obtiene todos los modelos disponibles, ordenados: local primero, luego por proveedor
      */
     public static function getModelosDisponibles(): array
     {
@@ -80,6 +80,14 @@ class IAService
                 }
             }
         }
+
+        // Ordenar: local primero, luego por proveedor (openai antes que anthropic)
+        $ordenProveedores = ['local' => 0, 'openai' => 1, 'anthropic' => 2];
+        uasort($disponibles, function ($a, $b) use ($ordenProveedores) {
+            $ordenA = $ordenProveedores[$a['proveedor']] ?? 99;
+            $ordenB = $ordenProveedores[$b['proveedor']] ?? 99;
+            return $ordenA <=> $ordenB;
+        });
 
         return $disponibles;
     }

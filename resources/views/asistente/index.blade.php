@@ -253,12 +253,6 @@
                                     </svg>
                                     Nuevo
                                 </button>
-                                <button @click="toggleTema"
-                                        :class="['px-3 md:px-4 py-2.5 md:py-3 rounded-xl transition duration-200 transform hover:scale-105 mobile-touch-target',
-                                                tema === 'dark' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-800 hover:bg-gray-900']"
-                                        :title="tema === 'dark' ? 'Modo claro' : 'Modo oscuro'">
-                                    <span class="text-lg md:text-xl">@{{ tema === 'dark' ? '☀️' : '🌙' }}</span>
-                                </button>
                                 <!-- Botón cerrar sidebar en móvil -->
                                 <button @click="cerrarSidebar"
                                         class="md:hidden px-3 py-2.5 rounded-xl transition duration-200 bg-red-500 hover:bg-red-600 text-white mobile-touch-target">
@@ -347,8 +341,8 @@
                             </div>
                             <div class="flex gap-1 md:gap-2 flex-shrink-0 items-center">
                                 <!-- Selector de modelo de IA -->
-                                <div class="relative" style="position: static;">
-                                    <button @click="toggleSelectorModelo" ref="botonModelo"
+                                <div class="relative">
+                                    <button @click="mostrarSelectorModelo = !mostrarSelectorModelo"
                                             :class="['flex items-center gap-1 px-2 py-1.5 md:px-3 md:py-2 rounded-lg text-xs md:text-sm font-medium transition-all',
                                                     tema === 'dark' ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700']"
                                             title="Cambiar modelo de IA">
@@ -360,12 +354,11 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                         </svg>
                                     </button>
-                                    <!-- Dropdown de modelos (posición fija para evitar overflow) -->
+                                    <!-- Dropdown de modelos -->
                                     <div v-if="mostrarSelectorModelo"
                                          @click.away="mostrarSelectorModelo = false"
-                                         :class="['fixed w-72 rounded-xl shadow-2xl border overflow-hidden',
-                                                 tema === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200']"
-                                         :style="dropdownModeloStyle">
+                                         :class="['absolute right-0 top-full mt-2 w-72 rounded-xl shadow-2xl border overflow-hidden z-50',
+                                                 tema === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200']">
                                         <div :class="['px-4 py-3 border-b', tema === 'dark' ? 'border-gray-700' : 'border-gray-200']">
                                             <h4 :class="['font-semibold text-sm', tema === 'dark' ? 'text-white' : 'text-gray-900']">Modelo de IA</h4>
                                             <p :class="['text-xs mt-1', tema === 'dark' ? 'text-gray-400' : 'text-gray-500']">Selecciona el modelo para el análisis</p>
@@ -519,8 +512,9 @@
                                         <!-- Avatar -->
                                         <div class="flex-shrink-0">
                                             <div v-if="mensaje.role === 'user'"
-                                                 class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold shadow-lg text-sm md:text-base">
-                                                👤
+                                                 class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold shadow-lg text-sm md:text-base overflow-hidden">
+                                                <img v-if="usuarioFoto" :src="usuarioFoto" :alt="usuarioNombre" class="w-full h-full object-cover">
+                                                <span v-else>@{{ usuarioNombre.charAt(0).toUpperCase() }}</span>
                                             </div>
                                             <div v-else
                                                  class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-800 flex items-center justify-center shadow-lg overflow-hidden">
@@ -538,39 +532,20 @@
                                                 <!-- Contenido principal con markdown -->
                                                 <div class="prose prose-sm max-w-none text-xs md:text-base" v-html="formatearMensaje(mensaje.contenido)"></div>
 
-                                                <!-- SQL ejecutado con syntax highlighting -->
-                                                <div v-if="mensaje.metadata && mensaje.metadata.sql"
-                                                     :class="['mt-3 md:mt-4 rounded-xl overflow-hidden border',
-                                                             tema === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-gray-100 border-gray-300']">
-                                                    <div :class="['flex justify-between items-center px-3 md:px-4 py-2 border-b',
-                                                                 tema === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-200 border-gray-300']">
-                                                        <span :class="['text-xs font-bold flex items-center gap-1 md:gap-2',
-                                                                      tema === 'dark' ? 'text-gray-300' : 'text-gray-700']">
-                                                            <span class="text-base md:text-lg">🔍</span>
-                                                            <span class="hidden sm:inline">SQL Ejecutado</span>
-                                                            <span :class="['px-2 py-0.5 rounded-full text-xs',
-                                                                          mensaje.metadata.tipo_operacion === 'SELECT' ? 'bg-blue-500 text-white' :
-                                                                          mensaje.metadata.tipo_operacion === 'INSERT' ? 'bg-green-500 text-white' :
-                                                                          mensaje.metadata.tipo_operacion === 'UPDATE' ? 'bg-yellow-500 text-white' :
-                                                                          'bg-red-500 text-white']">
-                                                                @{{ mensaje.metadata.tipo_operacion || 'SELECT' }}
-                                                            </span>
-                                                        </span>
-                                                        <button @click="copiarTexto(mensaje.metadata.sql)"
-                                                                :class="['text-xs font-semibold px-2 md:px-3 py-1 rounded-lg transition-all duration-200 flex items-center gap-1 mobile-touch-target',
-                                                                        tema === 'dark' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white']"
-                                                                title="Copiar SQL">
-                                                            <span class="hidden sm:inline">📋</span> Copiar
-                                                        </button>
-                                                    </div>
-                                                    <div :class="['p-3 md:p-4 overflow-x-auto', tema === 'dark' ? 'bg-gray-900' : 'bg-gray-50']">
-                                                        <pre :class="['text-xs font-mono', tema === 'dark' ? 'text-gray-300' : 'text-gray-800']" v-html="highlightSQL(mensaje.metadata.sql)"></pre>
-                                                    </div>
-                                                    <div :class="['px-3 md:px-4 py-2 text-xs border-t flex gap-2 md:gap-4',
-                                                                 tema === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-400' : 'bg-gray-100 border-gray-300 text-gray-600']">
-                                                        <span>📊 <span class="hidden sm:inline">Filas:</span> <strong>@{{ mensaje.metadata.filas_afectadas || 0 }}</strong></span>
-                                                    </div>
-                                                </div>
+                                                <!-- Botón SQL compacto -->
+                                                <button v-if="mensaje.metadata && mensaje.metadata.sql"
+                                                        @click="copiarTexto(mensaje.metadata.sql)"
+                                                        :class="['mt-2 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 transform hover:scale-110 shadow-md group',
+                                                                tema === 'dark'
+                                                                    ? 'bg-gray-700 hover:bg-blue-600 text-gray-400 hover:text-white border border-gray-600'
+                                                                    : 'bg-gray-200 hover:bg-blue-500 text-gray-500 hover:text-white border border-gray-300']"
+                                                        :title="'Copiar SQL (' + (mensaje.metadata.filas_afectadas || 0) + ' filas)'">
+                                                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                        <ellipse cx="12" cy="6" rx="8" ry="3"/>
+                                                        <path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6"/>
+                                                        <path d="M4 12v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6"/>
+                                                    </svg>
+                                                </button>
 
                                                 <!-- Botón descargar PDF para informes -->
                                                 <div v-if="mensaje.metadata && mensaje.metadata.informe_id"
@@ -662,7 +637,7 @@
                                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                                                         </svg>
-                                                        <span>Ir a la sección</span>
+                                                        <span>Ir a máquina</span>
                                                     </button>
                                                 </div>
 
@@ -738,9 +713,9 @@
                                     </div>
                                     <button @click="enviarMensaje"
                                             :disabled="!mensajeNuevo.trim() || enviando"
-                                            class="bg-gray-800 hover:bg-gray-700 text-white font-bold px-4 md:px-6 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center mobile-touch-target">
-                                        <svg v-if="!enviando" class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                                            class="w-10 h-10 md:w-12 md:h-12 bg-gray-800 hover:bg-gray-700 text-white rounded-full transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center flex-shrink-0">
+                                        <svg v-if="!enviando" class="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
                                         </svg>
                                         <div v-else class="animate-spin w-5 h-5 md:w-6 md:h-6 border-2 border-white border-t-transparent rounded-full"></div>
                                     </button>
@@ -782,26 +757,21 @@
                         sugerencias: [],
                         sugerenciasMostradas: [],
                         sugerenciasProactivas: [],
-                        tema: localStorage.getItem('tema-asistente') || 'light',
+                        tema: localStorage.getItem('dark_mode') === 'true' ? 'dark' : 'light',
                         busquedaConversacion: '',
                         sidebarAbierto: false,
                         isMobile: window.innerWidth < 768,
                         // Configuración de modelos de IA
                         modelosDisponibles: {},
-                        modeloActual: 'claude-haiku',
+                        modeloActual: 'local',
                         mostrarSelectorModelo: false,
                         cambiandoModelo: false,
-                        dropdownModeloPos: { top: 0, right: 0 }
+                        // Foto del usuario
+                        usuarioFoto: '{{ Auth::user()->ruta_imagen ?? "" }}',
+                        usuarioNombre: '{{ Auth::user()->name ?? "Usuario" }}'
                     }
                 },
                 computed: {
-                    dropdownModeloStyle() {
-                        return {
-                            top: this.dropdownModeloPos.top + 'px',
-                            right: this.dropdownModeloPos.right + 'px',
-                            zIndex: 99999
-                        }
-                    },
                     conversacionesFiltradas() {
                         if (!this.busquedaConversacion.trim()) {
                             return this.conversaciones
@@ -831,6 +801,17 @@
 
                     // Detectar cambios de tamaño de pantalla
                     window.addEventListener('resize', this.handleResize)
+
+                    // Escuchar cambios del dark mode global
+                    window.addEventListener('dark-mode-changed', (e) => {
+                        this.tema = e.detail ? 'dark' : 'light'
+                    })
+
+                    // También observar cambios en la clase dark del html
+                    const observer = new MutationObserver(() => {
+                        this.tema = document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+                    })
+                    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
                 },
                 beforeUnmount() {
                     // Limpiar event listeners
@@ -857,20 +838,6 @@
                         document.body.setAttribute('data-theme', this.tema)
                     },
                     // === GESTIÓN DE MODELOS DE IA ===
-                    toggleSelectorModelo() {
-                        if (!this.mostrarSelectorModelo) {
-                            // Calcular posición del dropdown basado en el botón
-                            const btn = this.$refs.botonModelo
-                            if (btn) {
-                                const rect = btn.getBoundingClientRect()
-                                this.dropdownModeloPos = {
-                                    top: rect.bottom + 8,
-                                    right: window.innerWidth - rect.right
-                                }
-                            }
-                        }
-                        this.mostrarSelectorModelo = !this.mostrarSelectorModelo
-                    },
                     async cargarModelos() {
                         try {
                             const response = await axios.get('/api/asistente/modelos')
@@ -1071,20 +1038,45 @@
                     navegarA(ruta) {
                         // Navegar a una sección de la aplicación
                         if (ruta) {
+                            // Quitar /produccion de la ruta
+                            ruta = ruta.replace('/produccion/', '/')
                             window.location.href = ruta
                         }
                     },
                     async eliminarConversacionActual() {
-                        if (!confirm('¿Estás seguro de que quieres eliminar esta conversación?')) return
+                        const result = await Swal.fire({
+                            title: '¿Eliminar conversación?',
+                            text: 'Esta acción no se puede deshacer. Se eliminarán todos los mensajes de esta conversación.',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#ef4444',
+                            cancelButtonColor: '#6b7280',
+                            confirmButtonText: 'Sí, eliminar',
+                            cancelButtonText: 'Cancelar'
+                        })
+
+                        if (!result.isConfirmed) return
 
                         try {
                             await axios.delete(`/api/asistente/conversaciones/${this.conversacionActual}`)
                             this.conversaciones = this.conversaciones.filter(c => c.id !== this.conversacionActual)
                             this.conversacionActual = null
                             this.mensajes = []
+
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Eliminada',
+                                text: 'La conversación ha sido eliminada',
+                                timer: 1500,
+                                showConfirmButton: false
+                            })
                         } catch (error) {
                             console.error('Error eliminando conversación:', error)
-                            this.mostrarError('Error al eliminar la conversación')
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'No se pudo eliminar la conversación'
+                            })
                         }
                     },
                     formatearMensaje(contenido) {

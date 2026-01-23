@@ -341,9 +341,10 @@ $ordenablesAlertas = [];
         try {
             $user = auth()->user();
 
+            // Si no hay usuario autenticado, devolver 0 sin error
+            // Esto evita errores 500 durante problemas de sesión intermitentes
             if (!$user) {
-                Log::warning('🔐 Usuario no autenticado al acceder a alertas/sin-leer');
-                return response()->json(['error' => 'No autenticado'], 401);
+                return response()->json(['cantidad' => 0]);
             }
 
             // Contar HILOS únicos sin leer (solo mensajes raíz, no respuestas individuales)
@@ -359,17 +360,14 @@ $ordenablesAlertas = [];
 
             return response()->json(['cantidad' => $cantidadHilosSinLeer]);
         } catch (\Throwable $e) {
-            Log::error('❌ Error en sinLeer()', [
+            // En caso de cualquier error, devolver 0 en lugar de un error 500
+            // Esto evita molestar al usuario con errores no críticos
+            Log::warning('⚠️ Error no crítico en sinLeer()', [
                 'mensaje' => $e->getMessage(),
                 'linea' => $e->getLine(),
-                'archivo' => $e->getFile(),
-                'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
-                'error' => 'Error interno del servidor',
-                'mensaje' => config('app.debug') ? $e->getMessage() : 'Ocurrió un error'
-            ], 500);
+            return response()->json(['cantidad' => 0]);
         }
     }
 

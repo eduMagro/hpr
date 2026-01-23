@@ -1,14 +1,14 @@
 <x-app-layout>
     <div class="py-4 lg:py-12 ">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6 text-gray-900 dark:text-gray-100">
                     <div
                         class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 px-6 justify-items-center">
 
                         @foreach ($items as $index => $item)
                             <a href="{{ $item['route'] ? route($item['route']) : '#' }}" wire:navigate
-                                class="dashboard-icon w-32 h-32 bg-white rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl hover:scale-105 hover:-translate-y-1 transition-all duration-300 ease-out relative group"
+                                class="dashboard-icon w-32 h-32 bg-white dark:bg-gray-700 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl hover:scale-105 hover:-translate-y-1 transition-all duration-300 ease-out relative group"
                                 style="animation-delay: {{ 0.05 * $index }}s">
 
                                 <div class="relative">
@@ -16,7 +16,7 @@
                                         class="w-20 h-20 mb-2 transition-transform duration-300 group-hover:scale-110">
                                 </div>
                                 <span
-                                    class="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">{{ $item['label'] }}</span>
+                                    class="text-sm font-medium text-gray-700 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">{{ $item['label'] }}</span>
 
                                 @if ($item['route'] === 'alertas.index')
                                     <img id="notificacion-alertas-icono"
@@ -34,7 +34,7 @@
 
             @if (Auth::user()->esOficina() || Auth::user()->esAdminDepartamento())
                 <!-- Asistente Virtual Ferrallin -->
-                <div class="mt-8 bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="mt-8 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-4 border-b border-gray-800 bg-gray-900">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
@@ -61,39 +61,39 @@
                             </a>
                         </div>
                     </div>
-                    <div class="p-6 bg-gray-50">
-                        <p class="text-gray-700 mb-4">
+                    <div class="p-6 bg-gray-50 dark:bg-gray-700">
+                        <p class="text-gray-700 dark:text-gray-200 mb-4">
                             Ferrallin es tu asistente virtual potenciado por inteligencia artificial. Puede ayudarte con
                             consultas sobre el sistema, gestión de información y mucho más.
                         </p>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div
-                                class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition">
+                                class="bg-white dark:bg-gray-600 p-3 rounded-lg border border-gray-200 dark:border-gray-500 shadow-sm hover:shadow-md transition">
                                 <div class="flex items-start gap-2">
                                     <span class="text-2xl">🔍</span>
                                     <div>
-                                        <h4 class="font-semibold text-gray-800 text-sm">Consultas SQL</h4>
-                                        <p class="text-xs text-gray-600">Realiza búsquedas en la base de datos</p>
+                                        <h4 class="font-semibold text-gray-800 dark:text-gray-100 text-sm">Consultas SQL</h4>
+                                        <p class="text-xs text-gray-600 dark:text-gray-300">Realiza búsquedas en la base de datos</p>
                                     </div>
                                 </div>
                             </div>
                             <div
-                                class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition">
+                                class="bg-white dark:bg-gray-600 p-3 rounded-lg border border-gray-200 dark:border-gray-500 shadow-sm hover:shadow-md transition">
                                 <div class="flex items-start gap-2">
                                     <span class="text-2xl">💡</span>
                                     <div>
-                                        <h4 class="font-semibold text-gray-800 text-sm">Información</h4>
-                                        <p class="text-xs text-gray-600">Obtén datos del sistema al instante</p>
+                                        <h4 class="font-semibold text-gray-800 dark:text-gray-100 text-sm">Información</h4>
+                                        <p class="text-xs text-gray-600 dark:text-gray-300">Obtén datos del sistema al instante</p>
                                     </div>
                                 </div>
                             </div>
                             <div
-                                class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition">
+                                class="bg-white dark:bg-gray-600 p-3 rounded-lg border border-gray-200 dark:border-gray-500 shadow-sm hover:shadow-md transition">
                                 <div class="flex items-start gap-2">
                                     <span class="text-2xl">⚙️</span>
                                     <div>
-                                        <h4 class="font-semibold text-gray-800 text-sm">Gestión</h4>
-                                        <p class="text-xs text-gray-600">Ayuda con tareas administrativas</p>
+                                        <h4 class="font-semibold text-gray-800 dark:text-gray-100 text-sm">Gestión</h4>
+                                        <p class="text-xs text-gray-600 dark:text-gray-300">Ayuda con tareas administrativas</p>
                                     </div>
                                 </div>
                             </div>

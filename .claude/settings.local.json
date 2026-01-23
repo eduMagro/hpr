@@ -89,7 +89,8 @@
       "Bash(git reset:*)",
       "Bash(C:xamppmysqlbinmysql.exe -u root -e \"SELECT ''orden_planilla_id NULL'' as check_type, COUNT\\(*\\) as total FROM elementos WHERE deleted_at IS NULL AND estado NOT IN \\(''completado'', ''fabricado''\\) AND orden_planilla_id IS NULL; SELECT ''maquina_id NULL'' as check_type, COUNT\\(*\\) as total FROM elementos WHERE deleted_at IS NULL AND estado NOT IN \\(''completado'', ''fabricado''\\) AND maquina_id IS NULL; SELECT ''etiqueta_id NULL'' as check_type, COUNT\\(*\\) as total FROM elementos WHERE deleted_at IS NULL AND etiqueta_id IS NULL;\" manager_pruebas)",
       "Bash(node --check:*)",
-      "Bash(Get-Content \"C:\\\\xampp\\\\htdocs\\\\manager\\\\storage\\\\logs\\\\laravel.log\" -Tail 150)"
+      "Bash(Get-Content \"C:\\\\xampp\\\\htdocs\\\\manager\\\\storage\\\\logs\\\\laravel.log\" -Tail 150)",
+      "Bash(wmic path win32_videocontroller get:*)"
     ],
     "deny": [],
     "ask": []

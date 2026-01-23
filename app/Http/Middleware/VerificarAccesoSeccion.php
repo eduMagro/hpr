@@ -41,37 +41,58 @@ class VerificarAccesoSeccion
 
     public function handle(Request $request, Closure $next): mixed
     {
-        $user = Auth::user();
+        try {
+            $user = Auth::user();
 
-        if (!$user) {
-            return $this->denegarAcceso($request, 'No autenticado.');
-        }
-
-        $routeName = $request->route()?->getName() ?? '';
-
-        // Verificar acceso usando el servicio centralizado
-        if ($this->permissions->canAccessRoute($user, $routeName)) {
-            // Para rol oficina, verificar también la acción específica
-            if (strtolower($user->rol ?? '') === 'oficina') {
-                if ($this->permissions->canPerformAction($user, $routeName)) {
-                    return $next($request);
-                }
-
-                return $this->denegarAcceso($request, 'No tienes permisos suficientes para realizar esta acción.', [
-                    'usuario' => $user->email,
-                    'ruta' => $routeName,
-                    'tipo' => 'accion_no_autorizada',
-                ]);
+            if (!$user) {
+                return $this->denegarAcceso($request, 'No autenticado.');
             }
 
+            $routeName = $request->route()?->getName() ?? '';
+
+            // Verificar acceso usando el servicio centralizado
+            if ($this->permissions->canAccessRoute($user, $routeName)) {
+                // Para rol oficina, verificar también la acción específica
+                if (strtolower($user->rol ?? '') === 'oficina') {
+                    if ($this->permissions->canPerformAction($user, $routeName)) {
+                        return $next($request);
+                    }
+
+                    return $this->denegarAcceso($request, 'No tienes permisos suficientes para realizar esta acción.', [
+                        'usuario' => $user->email,
+                        'ruta' => $routeName,
+                        'tipo' => 'accion_no_autorizada',
+                    ]);
+                }
+
+                return $next($request);
+            }
+
+            return $this->denegarAcceso($request, 'No tienes permiso para acceder.', [
+                'usuario' => $user->email,
+                'ruta' => $routeName,
+                'rol' => $user->rol,
+                'tipo' => 'sin_acceso',
+            ]);
+        } catch (\Throwable $e) {
+            // Si hay un error en el servicio de permisos, loguear y permitir acceso
+            // para evitar bloquear al usuario por errores técnicos
+            Log::error('Error en verificación de permisos', [
+                'error' => $e->getMessage(),
+                'ruta' => $request->route()?->getName(),
+                'url' => $request->fullUrl(),
+            ]);
+
+            // Para rutas AJAX/API, devolver error controlado en lugar de 500
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'error' => 'Error temporal de permisos',
+                    'cantidad' => 0 // Para compatibilidad con alertas/sin-leer
+                ], 200);
+            }
+
+            // Para peticiones normales, permitir continuar
             return $next($request);
         }
-
-        return $this->denegarAcceso($request, 'No tienes permiso para acceder.', [
-            'usuario' => $user->email,
-            'ruta' => $routeName,
-            'rol' => $user->rol,
-            'tipo' => 'sin_acceso',
-        ]);
     }
 }

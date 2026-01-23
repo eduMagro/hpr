@@ -1,8 +1,25 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-
 <head>
     <meta charset="utf-8">
+    <!-- ⚡ Dark mode instantáneo - antes de cualquier CSS -->
+    <script>
+        (function(){
+            var isDark = localStorage.getItem('dark_mode') === 'true';
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.add('light');
+            }
+        })();
+    </script>
+    <style>
+        /* Color inicial oscuro para evitar flash blanco */
+        html:not(.light) body { background-color: #111827 !important; }
+        html.light body { background-color: #f9fafb !important; }
+        /* Ocultar elementos con x-cloak antes de que Alpine cargue */
+        [x-cloak] { display: none !important; }
+    </style>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="base-url" content="{{ url('') }}">
@@ -85,6 +102,11 @@
             height: 100%;
             overflow-x: hidden;
             background-color: #f9fafb;
+        }
+
+        /* Dark mode: un poco más claro que sidebar/navigation */
+        html.dark body {
+            background-color: #111827;
         }
 
         * {
@@ -175,7 +197,7 @@
     </style>
 </head>
 
-<body class="font-sans antialiased transition-colors duration-200" @auth data-user-id="{{ auth()->id() }}" @endauth>
+<body class="font-sans antialiased transition-colors duration-200 bg-slate-100 dark:bg-gray-900" @auth data-user-id="{{ auth()->id() }}" @endauth>
     <!-- Overlay de navegación -->
     <div id="navigation-overlay" class="navigation-overlay">
         <div class="navigation-spinner"></div>

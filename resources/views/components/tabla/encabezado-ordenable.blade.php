@@ -1,6 +1,6 @@
 @props(['campo', 'sortActual', 'orderActual', 'texto', 'padding' => 'p-2'])
 
-<th class="{{ $padding }} border cursor-pointer hover:bg-blue-600 transition-colors select-none"
+<th class="{{ $padding }} border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors select-none"
     wire:click="sortBy('{{ $campo }}')">
     <div class="flex items-center justify-center gap-1">
         <span>{{ $texto }}</span>

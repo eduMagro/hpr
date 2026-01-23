@@ -2,10 +2,10 @@
     <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
     {{-- Tabla --}}
-    <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
-        <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
-            <thead class="bg-blue-500 text-white">
-                <tr class="text-center text-xs uppercase">
+    <div class="table-container w-full overflow-x-auto">
+        <table class="table-global w-full min-w-[1000px]">
+            <thead>
+                <tr class="text-center">
                     <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
                     <x-tabla.encabezado-ordenable campo="entrada_id" :sortActual="$sort" :orderActual="$order"
                         texto="Albarán" />
@@ -34,69 +34,57 @@
                     <th class="p-2 border">Acciones</th>
                 </tr>
                 {{-- Fila de filtros --}}
-                <tr class="text-center text-xs uppercase bg-blue-400">
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="id" placeholder="ID"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                <tr class="filters-row text-center">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="id" placeholder="ID">
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="albaran" placeholder="Albarán"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="albaran" placeholder="Albarán">
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="codigo" placeholder="Código"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="codigo" placeholder="Código">
                     </th>
-                    <th class="p-1 border">
-                        <select wire:model.live="nave_id"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <select wire:model.live="nave_id">
                             <option value="">Todas</option>
                             @foreach ($naves as $id => $nombre)
                                 <option value="{{ $id }}">{{ $nombre }}</option>
                             @endforeach
                         </select>
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="fabricante" placeholder="Fabricante"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="fabricante" placeholder="Fabricante">
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="tipo" placeholder="Tipo"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="tipo" placeholder="Tipo">
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="diametro" placeholder="Ø"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="diametro" placeholder="Ø">
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="longitud" placeholder="Long."
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="longitud" placeholder="Long.">
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="n_colada" placeholder="N° Colada"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="n_colada" placeholder="N° Colada">
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="n_paquete" placeholder="N° Paquete"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="n_paquete" placeholder="N° Paquete">
                     </th>
-                    <th class="p-1 border"></th>
-                    <th class="p-1 border"></th>
-                    <th class="p-1 border">
-                        <select wire:model.live="estado"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th></th>
+                    <th></th>
+                    <th>
+                        <select wire:model.live="estado">
                             <option value="">Todos</option>
                             <option value="almacenado">Almacenado</option>
                             <option value="fabricando">Fabricando</option>
                             <option value="consumido">Consumido</option>
                         </select>
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="ubicacion" placeholder="Ubicación"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="ubicacion" placeholder="Ubicación">
                     </th>
-                    <th class="p-1 border"></th>
-                    <th class="p-1 border text-center align-middle">
+                    <th></th>
+                    <th class="text-center align-middle">
                         <div class="flex justify-center gap-2 items-center h-full">
                             {{-- ♻️ Botón reset --}}
                             <button type="button" wire:click="limpiarFiltros"
@@ -112,7 +100,7 @@
                     </th>
                 </tr>
             </thead>
-            <tbody class="text-gray-700 text-sm">
+            <tbody>
                 @forelse($productos as $producto)
                     <tr wire:key="producto-{{ $producto->id }}" x-data="{
                         editando: false,
@@ -129,19 +117,16 @@
                         }"
                         @keydown.enter.stop="if(editando) { guardarCambiosProducto(producto); editando = false; }"
                         @keydown.escape.stop="if(editando) { producto = JSON.parse(JSON.stringify(original)); editando = false; }"
-                        :class="{
-                            'bg-yellow-100': editando,
-                            'hover:bg-blue-50': !editando
-                        }"
-                        class="border-b odd:bg-gray-100 even:bg-gray-50 text-xs leading-none cursor-pointer transition-colors">
+                        :class="{ 'editing': editando }"
+                        class="text-xs leading-none cursor-pointer">
                         <!-- ID -->
-                        <td class="px-2 py-3 text-center border" x-text="producto.id"></td>
+                        <td class="px-2 py-3" x-text="producto.id"></td>
 
                         <!-- ALBARAN -->
-                        <td class="px-2 py-3 text-center border">
+                        <td class="px-2 py-3">
                             @if ($producto->entrada)
                                 <a href="{{ route('entradas.index', ['albaran' => $producto->entrada->albaran]) }}"
-                                    class="text-blue-600 hover:underline">
+                                    class="text-blue-600 dark:text-blue-400 hover:underline hover:text-blue-800 dark:hover:text-blue-300 transition-colors">
                                     {{ $producto->entrada->albaran }}
                                 </a>
                             @else
@@ -150,21 +135,20 @@
                         </td>
 
                         <!-- CODIGO -->
-                        <td class="px-2 py-3 text-center border">
+                        <td class="px-2 py-3">
                             <template x-if="!editando">
                                 <span x-text="producto.codigo ?? 'N/A'"></span>
                             </template>
                             <input x-show="editando" x-cloak type="text" x-model="producto.codigo"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-center">
+                                class="inline-edit-input">
                         </td>
 
                         <!-- NAVE -->
-                        <td class="px-2 py-3 text-center border">
+                        <td class="px-2 py-3">
                             <template x-if="!editando">
                                 <span>{{ $producto->obra->obra ?? '—' }}</span>
                             </template>
-                            <select x-show="editando" x-cloak x-model="producto.obra_id"
-                                class="w-full text-xs border rounded px-1 py-0.5">
+                            <select x-show="editando" x-cloak x-model="producto.obra_id" class="inline-edit-select">
                                 <option value="">Sin nave</option>
                                 @foreach ($naves as $naveId => $naveNombre)
                                     <option value="{{ $naveId }}">{{ $naveNombre }}</option>
@@ -173,12 +157,11 @@
                         </td>
 
                         <!-- FABRICANTE -->
-                        <td class="px-2 py-3 text-center border">
+                        <td class="px-2 py-3">
                             <template x-if="!editando">
                                 <span>{{ $producto->fabricante->nombre ?? '—' }}</span>
                             </template>
-                            <select x-show="editando" x-cloak x-model="producto.fabricante_id"
-                                class="w-full text-xs border rounded px-1 py-0.5">
+                            <select x-show="editando" x-cloak x-model="producto.fabricante_id" class="inline-edit-select">
                                 <option value="">Sin fabricante</option>
                                 @foreach ($fabricantes as $fab)
                                     <option value="{{ $fab->id }}">{{ $fab->nombre }}</option>
@@ -187,12 +170,11 @@
                         </td>
 
                         <!-- PRODUCTO BASE (Tipo + Diámetro + Longitud) -->
-                        <td class="px-2 py-3 text-center border">
+                        <td class="px-2 py-3">
                             <template x-if="!editando">
                                 <span>{{ ucfirst($producto->productoBase->tipo ?? '—') }}</span>
                             </template>
-                            <select x-show="editando" x-cloak x-model="producto.producto_base_id"
-                                class="w-full text-xs border rounded px-1 py-0.5">
+                            <select x-show="editando" x-cloak x-model="producto.producto_base_id" class="inline-edit-select">
                                 <option value="">Seleccionar</option>
                                 @foreach ($productosBase as $pb)
                                     <option value="{{ $pb->id }}">{{ ucfirst($pb->tipo) }}
@@ -202,44 +184,43 @@
                         </td>
 
                         <!-- DIAMETRO (solo lectura, se actualiza con producto_base) -->
-                        <td class="px-2 py-3 text-center border">{{ $producto->productoBase->diametro ?? '—' }}</td>
+                        <td class="px-2 py-3">{{ $producto->productoBase->diametro ?? '—' }}</td>
 
                         <!-- LONGITUD (solo lectura, se actualiza con producto_base) -->
-                        <td class="px-2 py-3 text-center border">{{ $producto->productoBase->longitud ?? '—' }}</td>
+                        <td class="px-2 py-3">{{ $producto->productoBase->longitud ?? '—' }}</td>
 
                         <!-- N_COLADA -->
-                        <td class="px-2 py-3 text-center border">
+                        <td class="px-2 py-3">
                             <template x-if="!editando">
                                 <span x-text="producto.n_colada"></span>
                             </template>
                             <input x-show="editando" x-cloak type="text" x-model="producto.n_colada"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-center">
+                                class="inline-edit-input">
                         </td>
 
                         <!-- N_PAQUETE -->
-                        <td class="px-2 py-3 text-center border">
+                        <td class="px-2 py-3">
                             <template x-if="!editando">
                                 <span x-text="producto.n_paquete"></span>
                             </template>
                             <input x-show="editando" x-cloak type="text" x-model="producto.n_paquete"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-center">
+                                class="inline-edit-input">
                         </td>
 
                         <!-- PESO_INICIAL -->
-                        <td class="px-2 py-3 text-center border">
+                        <td class="px-2 py-3">
                             <template x-if="!editando">
                                 <span x-text="producto.peso_inicial + ' kg'"></span>
                             </template>
                             <input x-show="editando" x-cloak type="number" step="0.01"
-                                x-model="producto.peso_inicial"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-center">
+                                x-model="producto.peso_inicial" class="inline-edit-input">
                         </td>
 
                         <!-- PESO_STOCK -->
-                        <td class="px-2 py-3 text-center border" x-text="producto.peso_stock + ' kg'"></td>
+                        <td class="px-2 py-3" x-text="producto.peso_stock + ' kg'"></td>
 
                         <!-- ESTADO -->
-                        <td class="px-2 py-3 text-center border">
+                        <td class="px-2 py-3">
                             <template x-if="!editando">
                                 @if ($producto->estado === 'consumido')
                                     <div class="relative group inline-block">
@@ -264,8 +245,7 @@
                                     <span x-text="producto.estado"></span>
                                 @endif
                             </template>
-                            <select x-show="editando" x-cloak x-model="producto.estado"
-                                class="w-full text-xs border rounded px-1 py-0.5">
+                            <select x-show="editando" x-cloak x-model="producto.estado" class="inline-edit-select">
                                 <option value="almacenado">Almacenado</option>
                                 <option value="fabricando">Fabricando</option>
                                 <option value="consumido">Consumido</option>
@@ -273,7 +253,7 @@
                         </td>
 
                         <!-- UBICACION -->
-                        <td class="px-2 py-3 text-center border">
+                        <td class="px-2 py-3">
                             <template x-if="!editando">
                                 <span>
                                     @if ($producto->ubicacion)
@@ -285,8 +265,7 @@
                                     @endif
                                 </span>
                             </template>
-                            <select x-show="editando" x-cloak x-model="producto.ubicacion_id"
-                                class="w-full text-xs border rounded px-1 py-0.5">
+                            <select x-show="editando" x-cloak x-model="producto.ubicacion_id" class="inline-edit-select">
                                 <option value="">Sin ubicación</option>
                                 <optgroup label="Ubicaciones">
                                     @foreach ($ubicaciones as $ubi)
@@ -297,14 +276,13 @@
                         </td>
 
                         <!-- FECHA CREACION -->
-                        <td class="px-2 py-3 text-center border">{{ $producto->created_at->format('d/m/Y') }}</td>
-                        <td class="px-2 py-2 border text-xs font-bold">
+                        <td class="px-2 py-3">{{ $producto->created_at->format('d/m/Y') }}</td>
+                        <td class="px-2 py-2 border border-gray-200 dark:border-gray-700 text-xs font-bold">
                             <div class="flex items-center space-x-2 justify-center">
                                 <!-- Botones en modo edición -->
                                 <button x-show="editando" x-cloak
                                     @click="guardarCambiosProducto(producto); editando = false"
-                                    class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
-                                    title="Guardar cambios">
+                                    class="table-btn table-btn-green" title="Guardar cambios">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                         viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -313,8 +291,7 @@
                                 </button>
                                 <button x-show="editando" x-cloak
                                     @click="producto = JSON.parse(JSON.stringify(original)); editando = false"
-                                    class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
-                                    title="Cancelar edición">
+                                    class="table-btn table-btn-red" title="Cancelar edición">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                         viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -326,8 +303,7 @@
                                 <template x-if="!editando">
                                     <div class="flex items-center space-x-2">
                                         <button @click="editando = true"
-                                            class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
-                                            title="Editar inline">
+                                            class="table-btn table-btn-blue" title="Editar inline">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                                 viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -335,8 +311,7 @@
                                             </svg>
                                         </button>
                                         <a href="{{ route('productos.edit', $producto->id) }}"
-                                            class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
-                                            title="Editar completo">
+                                            class="table-btn table-btn-yellow" title="Editar completo">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round"
@@ -346,8 +321,7 @@
                                             </svg>
                                         </a>
                                         <a href="{{ route('productos.show', $producto->id) }}"
-                                            class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
-                                            title="Ver">
+                                            class="table-btn table-btn-blue" title="Ver">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round"
@@ -358,8 +332,7 @@
                                         </a>
                                         <button type="button"
                                             onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')"
-                                            class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
-                                            title="Mover producto">
+                                            class="table-btn table-btn-green" title="Mover producto">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                                 viewBox="0 0 24 24" fill="currentColor">
                                                 <path
@@ -368,8 +341,7 @@
                                         </button>
                                         <button type="button"
                                             data-consumir="{{ route('productos.editarConsumir', $producto->id) }}"
-                                            class="btn-consumir w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
-                                            title="Consumir">
+                                            class="btn-consumir table-btn table-btn-red" title="Consumir">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                                 fill="currentColor" viewBox="0 0 24 24">
                                                 <path
@@ -384,20 +356,20 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="16" class="text-center py-4 text-gray-500">No hay productos con esa
+                        <td colspan="16" class="text-center py-4 text-gray-500 dark:text-gray-400">No hay productos con esa
                             descripción.</td>
                     </tr>
                 @endforelse
             </tbody>
             <tfoot>
-                <tr class="bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-300">
-                    <td colspan="16" class="px-6 py-3">
-                        <div class="flex justify-end items-center gap-4 text-sm text-gray-700">
+                <tr>
+                    <td colspan="16">
+                        <div class="flex justify-end items-center gap-4 text-sm">
                             <span class="font-semibold">Total peso filtrado:</span>
-                            <span class="text-base font-bold text-blue-800">
+                            <span class="text-base font-bold text-blue-800 dark:text-blue-400">
                                 {{ number_format($totalPesoInicial, 2, ',', '.') }} kg
                             </span>
-                            <span class="text-xs text-gray-500">
+                            <span class="text-xs text-gray-500 dark:text-gray-400">
                                 ({{ $productos->total() }} productos)
                             </span>
                         </div>
@@ -555,4 +527,3 @@
         });
     </script>
 </div>
-```

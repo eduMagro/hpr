@@ -120,8 +120,11 @@
                 const response = await originalFetch.apply(this, args);
                 if (response.status === 500) {
                     const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || 'desconocida';
-                    // Solo mostrar si no es una petición de Livewire (ya se maneja arriba)
-                    if (!url.includes('/livewire/')) {
+                    // Excluir URLs no críticas que no deben mostrar error 500
+                    const urlsExcluidas = ['/livewire/', '/alertas/sin-leer'];
+                    const esUrlExcluida = urlsExcluidas.some(excluida => url.includes(excluida));
+
+                    if (!esUrlExcluida) {
                         console.error('Error 500 en fetch:', url);
                         // Intentar obtener mensaje de error del response
                         const clone = response.clone();

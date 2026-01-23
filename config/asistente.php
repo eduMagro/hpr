@@ -97,16 +97,16 @@ return [
         ],
 
         // ═══════════════════════════════════════════════════════════════
-        // LOCAL (Sin coste, requiere configuración)
+        // LOCAL (Sin coste, sin límites)
         // ═══════════════════════════════════════════════════════════════
         'local' => [
-            'nombre' => 'Análisis Local',
+            'nombre' => '🆓 Análisis Local (Gratuito)',
             'proveedor' => 'local',
             'modelo_id' => null,
-            'descripcion' => 'Usa análisis semántico local (sin IA externa).',
-            'coste' => 'Gratis',
-            'velocidad' => 'Instantáneo',
-            'capacidad' => 'Básica (patrones predefinidos)',
+            'descripcion' => 'Sin límites de uso. Análisis por patrones sin IA externa.',
+            'coste' => '🆓 GRATIS',
+            'velocidad' => '⚡ Instantáneo',
+            'capacidad' => 'Consultas básicas predefinidas',
             'max_tokens' => null,
             'activo' => true,
         ],
