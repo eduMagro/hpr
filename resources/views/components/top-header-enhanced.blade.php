@@ -28,34 +28,34 @@
             <div class="flex items-center space-x-4 relative overflow-hidden">
                 <!-- Botón hamburguesa para móvil (solo usuarios con sidebar) -->
                 @if(auth()->user()->esOficina())
-                <button @click="$dispatch('toggle-sidebar')"
-                    class="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 6h16M4 12h16M4 18h16"></path>
-                    </svg>
-                </button>
+                    <button @click="$dispatch('toggle-sidebar')"
+                        class="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
                 @endif
 
                 <!-- Logo del Top Header (visible cuando sidebar está cerrado, o siempre para operarios) -->
                 @if(auth()->user()->esOficina())
-                <a x-show="!sidebarOpen && !isToggling" x-transition:enter="transition-all duration-200 delay-200"
-                    x-transition:enter-start="opacity-0 transform -translate-y-16"
-                    x-transition:enter-end="opacity-100 transform translate-y-0"
-                    x-transition:leave="transition-all duration-200"
-                    x-transition:leave-start="opacity-100 transform translate-y-0"
-                    x-transition:leave-end="opacity-0 transform -translate-y-16" href="{{ route('dashboard') }}" wire:navigate
-                    class="topheader-logo flex items-center space-x-3 group relative z-50">
-                    <x-application-logo
-                        class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
-                </a>
+                    <a x-show="!sidebarOpen && !isToggling" x-transition:enter="transition-all duration-200 delay-200"
+                        x-transition:enter-start="opacity-0 transform -translate-y-16"
+                        x-transition:enter-end="opacity-100 transform translate-y-0"
+                        x-transition:leave="transition-all duration-200"
+                        x-transition:leave-start="opacity-100 transform translate-y-0"
+                        x-transition:leave-end="opacity-0 transform -translate-y-16" href="{{ route('dashboard') }}"
+                        wire:navigate class="topheader-logo flex items-center space-x-3 group relative z-50">
+                        <x-application-logo
+                            class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
+                    </a>
                 @else
-                <!-- Logo siempre visible para operarios (no tienen sidebar) -->
-                <a href="{{ route('dashboard') }}" wire:navigate
-                    class="flex items-center space-x-3 group relative z-50 pl-4">
-                    <x-application-logo
-                        class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
-                </a>
+                    <!-- Logo siempre visible para operarios (no tienen sidebar) -->
+                    <a href="{{ route('dashboard') }}" wire:navigate
+                        class="flex items-center space-x-3 group relative z-50 pl-4">
+                        <x-application-logo
+                            class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
+                    </a>
                 @endif
             </div>
 
@@ -66,7 +66,8 @@
                     class="relative p-2 text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-700 rounded-lg transition"
                     title="Volver atrás">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>
                 </button>
 
@@ -99,10 +100,15 @@
                 <div class="relative" x-data="{ open: false }">
                     <button @click="open = !open" @click.away="open = false"
                         class="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-300 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 rounded-lg transition">
-                        <div
-                            class="w-8 h-8 bg-gray-800 dark:bg-gray-950 rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-gray-600">
-                            {{ strtoupper(substr(Auth::user()->nombre_completo, 0, 1)) }}
-                        </div>
+                        @if (Auth::user()->ruta_imagen)
+                            <img class="w-8 h-8 rounded-full object-cover border-2 border-gray-600"
+                                src="{{ Auth::user()->ruta_imagen }}" alt="Avatar" />
+                        @else
+                            <div
+                                class="w-8 h-8 bg-gray-800 dark:bg-gray-950 rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-gray-600">
+                                {{ strtoupper(substr(Auth::user()->nombre_completo, 0, 1)) }}
+                            </div>
+                        @endif
                         <span class="hidden sm:block">{{ Auth::user()->nombre_completo }}</span>
                         <svg class="w-4 h-4" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
@@ -116,7 +122,8 @@
                         class="absolute right-2 mt-2 w-56 bg-gray-900 dark:bg-gray-800 rounded-lg shadow-xl border border-gray-800 dark:border-gray-700 py-2 z-50">
                         <div class="px-4 py-3 border-b border-gray-800 dark:border-gray-700">
                             <p class="text-sm font-medium text-gray-300 dark:text-white">
-                                {{ Auth::user()->nombre_completo }}</p>
+                                {{ Auth::user()->nombre_completo }}
+                            </p>
                             <p class="text-xs text-gray-400 dark:text-gray-400 truncate">{{ Auth::user()->email }}</p>
                         </div>
 
@@ -183,7 +190,7 @@
             if (first >= 0 && last > first) {
                 try {
                     return JSON.parse(text.slice(first, last + 1));
-                } catch {}
+                } catch { }
             }
             return null;
         }
@@ -191,11 +198,11 @@
 
     function actualizarContadorCampanita() {
         fetch("{{ route('alertas.verSinLeer') }}", {
-                headers: {
-                    'Accept': 'application/json'
-                },
-                credentials: 'same-origin'
-            })
+            headers: {
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
             .then(async (response) => {
                 const text = await response.text();
                 if (!response.ok) throw new Error(`HTTP ${response.status}: ${text}`);
@@ -218,7 +225,7 @@
             .catch(error => console.warn("Error al obtener alertas:", error));
     }
 
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
         // Actualizar al cargar la página
         actualizarContadorCampanita();
 
