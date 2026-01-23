@@ -149,8 +149,8 @@
     // Información del dispositivo parseada desde el servidor
     window._infoDispositivo = @json($infoDispositivo);
 
-    function notificarProgramador(mensaje, asunto = 'Error reportado por usuario') {
-        const urlActual = window.location.href;
+    function notificarProgramador(mensaje, asunto = 'Error reportado por usuario', urlPersonalizada = null) {
+        const urlActual = urlPersonalizada || window.location.href;
         const usuario = '{{ auth()->user()->name ?? 'Usuario desconocido' }}';
         const email = '{{ auth()->user()->email ?? 'Email no disponible' }}';
         const dispositivo = window._infoDispositivo;
@@ -311,7 +311,8 @@ Dispositivo: ${infoDispositivo}`;
         // Procesar error 500 del servidor
         @if (session('server_error'))
             const serverError = @json(session('server_error'));
-            let errorDetails = serverError.message;
+            const urlOrigen = serverError.url_origen || window.location.href;
+            let errorDetails = `URL con error: ${urlOrigen}\n\n${serverError.message}`;
             @if(config('app.debug'))
                 if (serverError.exception) {
                     errorDetails += '\n\nDetalles: ' + serverError.exception;
@@ -321,7 +322,7 @@ Dispositivo: ${infoDispositivo}`;
             Swal.fire({
                 icon: 'error',
                 title: serverError.title || 'Error 500: Error del servidor',
-                html: '<p>' + serverError.message + '</p>',
+                html: '<p>' + serverError.message + '</p><p class="text-xs text-gray-400 mt-2">URL: ' + urlOrigen + '</p>',
                 confirmButtonColor: '#d33',
                 confirmButtonText: 'Aceptar',
                 showCancelButton: true,
@@ -329,7 +330,7 @@ Dispositivo: ${infoDispositivo}`;
                 cancelButtonColor: '#6b7280'
             }).then((result) => {
                 if (result.dismiss === Swal.DismissReason.cancel) {
-                    notificarProgramador(errorDetails, 'Error 500 del servidor');
+                    notificarProgramador(errorDetails, 'Error 500 del servidor', urlOrigen);
                 }
             });
         @endif

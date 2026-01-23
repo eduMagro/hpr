@@ -95,6 +95,7 @@ return Application::configure(basePath: dirname(__DIR__))
             return redirect()->route('dashboard')->with('server_error', [
                 'title' => 'Error 500: Error del servidor',
                 'message' => 'Ha ocurrido un error interno en el servidor. Puedes reportar este error para que el equipo técnico lo revise.',
+                'url_origen' => $request->fullUrl(),
                 'exception' => config('app.debug') ? $e->getMessage() : null
             ]);
         });
