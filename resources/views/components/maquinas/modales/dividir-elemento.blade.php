@@ -194,7 +194,7 @@
 
                     // Llamar a la función de impresión si existe
                     if (typeof window.imprimirEtiquetas === 'function') {
-                        await window.imprimirEtiquetas(result.todas_las_etiquetas, 'etiqueta');
+                        await window.imprimirEtiquetas(result.todas_las_etiquetas, 'a6');
                     }
 
                     Swal.close();
