@@ -169,7 +169,7 @@
                             <td class="px-4 py-3">
                                 <div class="flex justify-center gap-2">
                                     <button
-                                        onclick="abrirModalEditar({{ $colada->id }}, '{{ $colada->numero_colada }}', {{ $colada->producto_base_id }}, {{ $colada->fabricante_id ?? 'null' }}, '{{ addslashes($colada->codigo_adherencia ?? '') }}', '{{ addslashes($colada->observaciones ?? '') }}')"
+                                        onclick="abrirModalEditar({{ $colada->id }}, '{{ $colada->numero_colada }}', {{ $colada->producto_base_id }}, {{ $colada->fabricante_id ?? 'null' }}, '{{ addslashes($colada->codigo_adherencia ?? '') }}', '{{ addslashes($colada->observaciones ?? '') }}', {{ $colada->documento ? '\'' . addslashes($colada->documento) . '\'' : 'null' }})"
                                         class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors">
                                         Editar
                                     </button>
@@ -351,8 +351,35 @@
                 </div>
 
                 <div>
-                    <label for="edit_documento" class="block text-sm font-medium text-gray-700 mb-1">Documento PDF
-                        (dejar vacio para mantener actual)</label>
+                    <label for="edit_documento" class="block text-sm font-medium text-gray-700 mb-1">Documento PDF</label>
+
+                    <!-- Indicador de documento actual -->
+                    <div id="documento_actual_container" class="hidden mb-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2 text-green-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" />
+                                </svg>
+                                <span class="text-sm font-medium">Documento actual adjunto</span>
+                            </div>
+                            <a id="link_documento_actual" href="#" target="_blank"
+                                class="text-xs text-blue-600 hover:text-blue-800 underline">
+                                Ver PDF
+                            </a>
+                        </div>
+                        <p class="text-xs text-green-600 mt-1">Solo sube un nuevo archivo si deseas reemplazarlo.</p>
+                    </div>
+
+                    <!-- Indicador sin documento -->
+                    <div id="sin_documento_container" class="hidden mb-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                        <div class="flex items-center gap-2 text-gray-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="text-sm">Sin documento adjunto</span>
+                        </div>
+                    </div>
+
                     <input type="file" id="edit_documento" name="documento" accept=".pdf"
                         class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     <p class="text-xs text-gray-500 mt-1">Maximo 10MB. Solo archivos PDF.</p>
@@ -414,7 +441,7 @@
                 };
 
                 window.abrirModalEditar = function(id, numeroColada, productoBaseId, fabricanteId, codigoAdherencia,
-                    observaciones) {
+                    observaciones, documento) {
                     const form = document.getElementById('formEditar');
                     const modal = document.getElementById('modalEditar');
 
@@ -432,6 +459,24 @@
                             const el = document.getElementById(id);
                             if (el) el.value = value;
                         });
+
+                        // Mostrar/ocultar indicador de documento actual
+                        const docActualContainer = document.getElementById('documento_actual_container');
+                        const sinDocContainer = document.getElementById('sin_documento_container');
+                        const linkDocumento = document.getElementById('link_documento_actual');
+                        const inputFile = document.getElementById('edit_documento');
+
+                        // Limpiar input de archivo
+                        if (inputFile) inputFile.value = '';
+
+                        if (documento) {
+                            docActualContainer.classList.remove('hidden');
+                            sinDocContainer.classList.add('hidden');
+                            linkDocumento.href = '/storage/' + documento;
+                        } else {
+                            docActualContainer.classList.add('hidden');
+                            sinDocContainer.classList.remove('hidden');
+                        }
 
                         modal.classList.remove('hidden');
                         modal.classList.add('flex');
