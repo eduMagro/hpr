@@ -454,6 +454,12 @@
                             <p class="text-sm text-gray-500 dark:text-gray-400">Filtra y cambia el tipo de gráfica.</p>
                         </div>
                         <div class="flex items-center gap-2">
+                            <div class="mr-2 text-xs text-right hidden sm:block" x-cloak>
+                                <span x-show="chartsLoading"
+                                    class="text-gray-500 dark:text-gray-400 font-medium">Cargando...</span>
+                                <span x-show="chartsError" x-text="chartsError"
+                                    class="text-red-600 dark:text-red-400 font-medium whitespace-nowrap"></span>
+                            </div>
                             <button type="button" @click="resetChartFilters()"
                                 class="inline-flex items-center rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                                 Reset
@@ -535,14 +541,14 @@
                         </div>
 
                         <div>
-                            <label
-                                class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Obra</label>
+                            <label class="block mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300"
+                                x-text="chartObraLabel">Obra</label>
                             <select x-model="charts.obra_id" @change="loadCharts()"
                                 class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm py-2 px-3">
                                 <option value="">Todas</option>
-                                @foreach ($obras as $obra)
-                                    <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
-                                @endforeach
+                                <template x-for="item in chartObraOptions" :key="item.id">
+                                    <option :value="item.id" x-text="item.obra"></option>
+                                </template>
                             </select>
                         </div>
 
@@ -605,13 +611,7 @@
                             </div>
                         </div>
 
-                        <div class="md:col-span-3 xl:col-span-6 flex items-center gap-3">
-                            <div class="text-xs text-gray-500 dark:text-gray-400" x-show="chartsLoading" x-cloak>
-                                Cargando gráficas...
-                            </div>
-                            <div class="text-xs text-red-600 dark:text-red-400" x-show="chartsError"
-                                x-text="chartsError" x-cloak></div>
-                        </div>
+
                     </div>
 
                 </div>
@@ -1579,6 +1579,8 @@
                     // Lists
                     proveedores: @json($proveedoresLista),
                     motivos: @json($motivosLista),
+                    navesList: @json($naves),
+                    obrasList: @json($obras),
 
                     formAction: '{{ route('gastos.store') }}',
                     chartsEndpoint: '{{ route('gastos.charts') }}',
@@ -1694,6 +1696,23 @@
                         if (this.charts.breakdownType === type) return;
                         this.charts.breakdownType = type;
                         this.rerenderBreakdownChart();
+                    },
+
+                    get chartObraLabel() {
+                        if (this.charts.tipo === 'gasto') return 'Nave';
+                        if (this.charts.tipo === 'obra') return 'Obras';
+                        return 'Obra o Nave';
+                    },
+
+                    get chartObraOptions() {
+                        if (this.charts.tipo === 'gasto') {
+                            return this.navesList;
+                        } else if (this.charts.tipo === 'obra') {
+                            return this.obrasList;
+                        } else {
+                            // All: mix both, Naves first
+                            return [...this.navesList, ...this.obrasList];
+                        }
                     },
 
                     onFromBeginningChange() {

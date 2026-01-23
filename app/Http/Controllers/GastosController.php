@@ -117,13 +117,19 @@ class GastosController extends Controller
             ->whereBetween('fecha_pedido', [$fromDate->toDateString(), $toDate->toDateString()]);
 
         if ($tipo === 'obra') {
-            $base->whereNotNull('obra_id');
+            $base->whereNotNull('obra_id')->whereNull('nave_id');
         } elseif ($tipo === 'gasto') {
             $base->whereNull('obra_id');
         }
 
         if ($obraId) {
-            $base->where('obra_id', $obraId);
+            // Check if the ID corresponds to a Nave (Nave A or Nave B)
+            $isNave = \App\Models\Obra::where('id', $obraId)->whereIn('obra', ['Nave A', 'Nave B'])->exists();
+            if ($isNave) {
+                $base->where('nave_id', $obraId);
+            } else {
+                $base->where('obra_id', $obraId);
+            }
         }
         if ($proveedorId) {
             $base->where('proveedor_id', $proveedorId);
