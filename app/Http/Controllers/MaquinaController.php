@@ -1907,11 +1907,21 @@ class MaquinaController extends Controller
             // Intentar escribir directamente (a veces is_dir falla pero la escritura funciona)
             $resultado = @file_put_contents($rutaCompleta, $contenido);
 
+            // Verificar que el archivo realmente se escribió (importante para rutas de red)
             if ($resultado !== false) {
-                $guardadoEnRed = true;
-                $rutaFinal = $rutaCompleta;
-                Log::info("Export BVBS guardado exitosamente en: {$rutaFinal} para máquina {$maquina->id} con " . count($datos) . " líneas.");
-                break;
+                // Forzar flush y verificar que el archivo existe con contenido
+                clearstatcache(true, $rutaCompleta);
+
+                if (file_exists($rutaCompleta) && filesize($rutaCompleta) > 0) {
+                    $guardadoEnRed = true;
+                    $rutaFinal = $rutaCompleta;
+                    Log::info("Export BVBS guardado exitosamente en: {$rutaFinal} para máquina {$maquina->id} con " . count($datos) . " líneas.");
+                    break;
+                } else {
+                    $errores[] = "{$rutaBase}: file_put_contents OK pero archivo no verificado (existe: " . (file_exists($rutaCompleta) ? 'sí' : 'no') . ")";
+                    Log::warning("Export BVBS: Escritura aparentemente OK pero archivo no verificado en '{$rutaCompleta}'");
+                    continue;
+                }
             } else {
                 $error = error_get_last();
                 $errorMsg = $error ? $error['message'] : 'Error desconocido';
