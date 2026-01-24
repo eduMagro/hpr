@@ -12,8 +12,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Intentar eliminar foreign keys si existen
+        // Intentar eliminar foreign keys con diferentes nombres posibles
         $foreignKeys = [
+            'etiquetas_soldador1_foreign',
+            'etiquetas_soldador2_foreign',
+            'etiquetas_ensamblador1_foreign',
+            'etiquetas_ensamblador2_foreign',
             'etiquetas_soldador1_id_foreign',
             'etiquetas_soldador2_id_foreign',
             'etiquetas_ensamblador1_id_foreign',
@@ -30,15 +34,15 @@ return new class extends Migration
             }
         }
 
-        // Eliminar columnas
-        Schema::table('etiquetas', function (Blueprint $table) {
-            $columns = ['soldador1_id', 'soldador2_id', 'ensamblador1_id', 'ensamblador2_id'];
-            foreach ($columns as $col) {
-                if (Schema::hasColumn('etiquetas', $col)) {
+        // Eliminar columnas una por una para evitar problemas
+        $columns = ['soldador1_id', 'soldador2_id', 'ensamblador1_id', 'ensamblador2_id'];
+        foreach ($columns as $col) {
+            if (Schema::hasColumn('etiquetas', $col)) {
+                Schema::table('etiquetas', function (Blueprint $table) use ($col) {
                     $table->dropColumn($col);
-                }
+                });
             }
-        });
+        }
     }
 
     /**
