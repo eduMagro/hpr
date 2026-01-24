@@ -48,8 +48,6 @@ class SoldadoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqueta
                     // Inicia fase de soldadura
                     $etiqueta->fecha_inicio_soldadura = now();
                     $etiqueta->estado = 'soldando';
-                    $etiqueta->soldador1_id = $datos->operario1Id;
-                    $etiqueta->soldador2_id = $datos->operario2Id;
                     $etiqueta->save();
                     break;
 

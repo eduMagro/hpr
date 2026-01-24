@@ -34,10 +34,6 @@ class Etiqueta extends Model
         'ubicacion_id',
         'operario1_id',
         'operario2_id',
-        'soldador1_id',
-        'soldador2_id',
-        'ensamblador1_id',
-        'ensamblador2_id',
         'nombre',
         'marca',
         'numero_etiqueta',
@@ -145,14 +141,6 @@ class Etiqueta extends Model
     }
 
     /**
-     * Relación: Usuario relacionado con el ensamblador principal
-     */
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'ensamblador1_id');
-    }
-
-    /**
      * Relaciones con operarios
      */
     public function operario1()
@@ -163,26 +151,6 @@ class Etiqueta extends Model
     public function operario2()
     {
         return $this->belongsTo(User::class, 'operario2_id');
-    }
-
-    public function soldador1()
-    {
-        return $this->belongsTo(User::class, 'soldador1_id');
-    }
-
-    public function soldador2()
-    {
-        return $this->belongsTo(User::class, 'soldador2_id');
-    }
-
-    public function ensamblador1()
-    {
-        return $this->belongsTo(User::class, 'ensamblador1_id');
-    }
-
-    public function ensamblador2()
-    {
-        return $this->belongsTo(User::class, 'ensamblador2_id');
     }
 
     // ==================== ACCESSORS ====================
@@ -197,38 +165,6 @@ class Etiqueta extends Model
         }
 
         return number_format((float) $this->peso, 2, ',', '.') . ' kg';
-    }
-
-    /**
-     * Accessor: Obtiene el nombre del ensamblador principal
-     */
-    public function getUserNameAttribute()
-    {
-        return optional($this->ensamblador1)->name ?? 'N/A';
-    }
-
-    /**
-     * Accessor: Obtiene el nombre del ensamblador secundario
-     */
-    public function getUser2NameAttribute()
-    {
-        return optional($this->ensamblador2)->name ?? 'N/A';
-    }
-
-    /**
-     * Accessor: Obtiene el nombre del soldador principal
-     */
-    public function getSoldNameAttribute()
-    {
-        return optional($this->soldador1)->name ?? 'N/A';
-    }
-
-    /**
-     * Accessor: Obtiene el nombre del soldador secundario
-     */
-    public function getSold2NameAttribute()
-    {
-        return optional($this->soldador2)->name ?? 'N/A';
     }
 
     // ==================== MÉTODOS ÚTILES ====================

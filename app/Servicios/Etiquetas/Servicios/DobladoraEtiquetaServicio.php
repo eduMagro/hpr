@@ -46,10 +46,8 @@ class DobladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqueta
                 case 'fabricada':
                 case 'parcialmente completada':
                     // Inicia fase de doblado
-                    $etiqueta->fecha_inicio_soldadura = now(); // reutilizado en tu modelo
+                    $etiqueta->fecha_inicio_soldadura = now();
                     $etiqueta->estado = 'doblando';
-                    $etiqueta->soldador1_id = $datos->operario1Id; // campos existentes
-                    $etiqueta->soldador2_id = $datos->operario2Id;
                     $etiqueta->save();
                     break;
 

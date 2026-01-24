@@ -1851,10 +1851,6 @@ class PlanillaController extends Controller
                         'fecha_finalizacion_soldadura' => null,
                         'operario1_id' => null,
                         'operario2_id' => null,
-                        'soldador1_id' => null,
-                        'soldador2_id' => null,
-                        'ensamblador1_id' => null,
-                        'ensamblador2_id' => null,
                         'paquete_id' => null,
                     ]);
             }

@@ -278,20 +278,14 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
                     if ($maquina->tipo === 'ensambladora') {
                         $etiqueta->fecha_inicio_ensamblado = now();
                         $etiqueta->estado = 'ensamblando';
-                        $etiqueta->ensamblador1_id =  $operario1;
-                        $etiqueta->ensamblador2_id =  $operario2;
                         $etiqueta->save();
                     } elseif ($maquina->tipo === 'soldadora') {
                         $etiqueta->fecha_inicio_soldadura = now();
                         $etiqueta->estado = 'soldando';
-                        $etiqueta->soldador1_id =  $operario1;
-                        $etiqueta->soldador2_id =  $operario2;
                         $etiqueta->save();
                     } elseif ($maquina->tipo === 'dobladora_manual') {
                         $etiqueta->fecha_inicio_soldadura = now();
                         $etiqueta->estado = 'doblando';
-                        $etiqueta->soldador1_id =  $operario1;
-                        $etiqueta->soldador2_id =  $operario2;
                         $etiqueta->save();
                     } else {
                         if (

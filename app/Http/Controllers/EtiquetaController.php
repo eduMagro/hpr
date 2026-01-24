@@ -1864,22 +1864,16 @@ class EtiquetaController extends Controller
                         // Si la máquina es de tipo ensambladora, se inicia la fase de ensamblado:
                         $etiqueta->fecha_inicio_ensamblado = now();
                         $etiqueta->estado = 'ensamblando';
-                        $etiqueta->ensamblador1_id =  $operario1;
-                        $etiqueta->ensamblador2_id =  $operario2;
                         $etiqueta->save();
                     } elseif ($maquina->tipo === 'soldadora') {
                         // Si la máquina es de tipo soldadora, se inicia la fase de soldadura:
                         $etiqueta->fecha_inicio_soldadura = now();
                         $etiqueta->estado = 'soldando';
-                        $etiqueta->soldador1_id =  $operario1;
-                        $etiqueta->soldador2_id =  $operario2;
                         $etiqueta->save();
                     } elseif ($maquina->tipo === 'dobladora_manual') {
-                        // Si la máquina es de tipo soldadora, se inicia la fase de soldadura:
+                        // Si la máquina es de tipo dobladora manual, se inicia la fase de doblado:
                         $etiqueta->fecha_inicio_soldadura = now();
                         $etiqueta->estado = 'doblando';
-                        $etiqueta->soldador1_id =  $operario1;
-                        $etiqueta->soldador2_id =  $operario2;
                         $etiqueta->save();
                     } else {
                         // Verificamos si ya todos los elementos en la máquina han sido completados

@@ -222,27 +222,6 @@ class User extends Authenticatable
         return $resultado;
     }
 
-    public function etiquetasComoSoldador1()
-    {
-        return $this->hasMany(Etiqueta::class, 'soldador1_id');
-    }
-
-    public function etiquetasComoSoldador2()
-    {
-        return $this->hasMany(Etiqueta::class, 'soldador2_id');
-    }
-
-    public function etiquetasComoEnsamblador1()
-    {
-        return $this->hasMany(Etiqueta::class, 'ensamblador1_id');
-    }
-
-    public function etiquetasComoEnsamblador2()
-    {
-        return $this->hasMany(Etiqueta::class, 'ensamblador2_id');
-    }
-
-
     /**
      * Relación con `AsignacionTurno` (Un usuario puede tener muchas asignaciones de turnos)
      */
