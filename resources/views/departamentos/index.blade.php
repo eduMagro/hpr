@@ -418,8 +418,16 @@
                         <tr x-data="{
                             editando: false,
                             departamento: @js($dep),
-                            original: JSON.parse(JSON.stringify(@js($dep)))
-                        }" @dblclick="editando = true"
+                            original: JSON.parse(JSON.stringify(@js($dep))),
+                            cerrarEdicion() {
+                                if (this.editando) {
+                                    this.departamento = JSON.parse(JSON.stringify(this.original));
+                                    this.editando = false;
+                                }
+                            }
+                        }"
+                            @cerrar-edicion-dep.window="cerrarEdicion()"
+                            @dblclick="$dispatch('cerrar-edicion-dep'); $nextTick(() => editando = true)"
                             @keydown.enter.stop.prevent="guardarDepartamento(departamento); editando = false"
                             @keydown.escape="departamento = JSON.parse(JSON.stringify(original)); editando = false"
                             :class="{ 'bg-yellow-100': editando }"
@@ -605,8 +613,16 @@
                         <tr x-data="{
                             editando: false,
                             seccion: @js($sec),
-                            original: JSON.parse(JSON.stringify(@js($sec)))
-                        }" @dblclick="editando = true"
+                            original: JSON.parse(JSON.stringify(@js($sec))),
+                            cerrarEdicion() {
+                                if (this.editando) {
+                                    this.seccion = JSON.parse(JSON.stringify(this.original));
+                                    this.editando = false;
+                                }
+                            }
+                        }"
+                            @cerrar-edicion-sec.window="cerrarEdicion()"
+                            @dblclick="$dispatch('cerrar-edicion-sec'); $nextTick(() => editando = true)"
                             @keydown.enter.stop.prevent="guardarSeccion(seccion); editando = false"
                             @keydown.escape="seccion = JSON.parse(JSON.stringify(original)); editando = false"
                             :class="{ 'bg-yellow-100': editando }"
