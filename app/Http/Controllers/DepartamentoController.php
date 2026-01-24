@@ -224,9 +224,27 @@ class DepartamentoController extends Controller
 
     public function destroy(Departamento $departamento)
     {
-        $departamento->delete();
+        try {
+            $departamento->delete();
 
-        return redirect()->route('departamentos.index')->with('success', 'Departamento eliminado correctamente.');
+            if (request()->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Departamento eliminado correctamente.'
+                ]);
+            }
+
+            return redirect()->route('departamentos.index')->with('success', 'Departamento eliminado correctamente.');
+        } catch (\Exception $e) {
+            if (request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pudo eliminar el departamento: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()->route('departamentos.index')->with('error', 'No se pudo eliminar el departamento.');
+        }
     }
 
     /**

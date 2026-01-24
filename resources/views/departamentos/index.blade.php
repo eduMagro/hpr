@@ -410,6 +410,7 @@
                         <th class="px-4 py-2 text-left">Descripción</th>
                         <th class="px-4 py-2 text-left">Usuarios asignados</th>
                         <th class="px-4 py-2 text-left">Secciones visibles</th>
+                        <th class="px-4 py-2 text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -451,6 +452,18 @@
                             <!-- Secciones visibles -->
                             <td class="px-4 py-2 border text-center">
                                 {{ $dep->secciones->count() }} sección{{ $dep->secciones->count() === 1 ? '' : 'es' }}
+                            </td>
+
+                            <!-- Acciones -->
+                            <td class="px-4 py-2 border text-center">
+                                <button type="button"
+                                    @click.stop="eliminarDepartamento({{ $dep->id }}, '{{ $dep->nombre }}')"
+                                    class="text-red-600 hover:text-red-800 hover:bg-red-100 p-1 rounded"
+                                    title="Eliminar departamento">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                </button>
                             </td>
 
                         </tr>
@@ -514,6 +527,55 @@
                         });
                     });
             }
+
+            function eliminarDepartamento(id, nombre) {
+                Swal.fire({
+                    title: '¿Eliminar departamento?',
+                    html: `¿Estás seguro de eliminar el departamento <strong>${nombre}</strong>?<br><br><span class="text-red-600 text-sm">Esta acción no se puede deshacer.</span>`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(`{{ url('/departamentos') }}/${id}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                                'Accept': 'application/json'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Eliminado',
+                                    text: 'El departamento ha sido eliminado.',
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                }).then(() => location.reload());
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: data.message || 'No se pudo eliminar el departamento.'
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Error de conexión al eliminar.'
+                            });
+                        });
+                    }
+                });
+            }
         </script>
 
         <!-- Tabla resumen de todas las secciones -->
@@ -535,6 +597,7 @@
                         <th class="px-4 py-2 text-left">Icono</th>
                         <th class="px-4 py-2 text-left">Departamentos asociados</th>
                         <th class="px-4 py-2 text-left">Pagina Principal</th>
+                        <th class="px-4 py-2 text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -594,7 +657,17 @@
                                     class="form-checkbox h-5 w-5 text-blue-600 cursor-pointer">
                             </td>
 
-
+                            <!-- Acciones -->
+                            <td class="px-4 py-2 border text-center">
+                                <button type="button"
+                                    @click.stop="eliminarSeccion({{ $sec->id }}, '{{ $sec->nombre }}')"
+                                    class="text-red-600 hover:text-red-800 hover:bg-red-100 p-1 rounded"
+                                    title="Eliminar sección">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                </button>
+                            </td>
 
                         </tr>
                     @endforeach
@@ -1253,6 +1326,55 @@
                             confirmButtonText: "OK"
                         });
                     });
+            }
+
+            function eliminarSeccion(id, nombre) {
+                Swal.fire({
+                    title: '¿Eliminar sección?',
+                    html: `¿Estás seguro de eliminar la sección <strong>${nombre}</strong>?<br><br><span class="text-red-600 text-sm">Esta acción no se puede deshacer.</span>`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(`{{ url('/secciones') }}/${id}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                                'Accept': 'application/json'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Eliminada',
+                                    text: 'La sección ha sido eliminada.',
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                }).then(() => location.reload());
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: data.message || 'No se pudo eliminar la sección.'
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Error de conexión al eliminar.'
+                            });
+                        });
+                    }
+                });
             }
         </script>
 
