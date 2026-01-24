@@ -22,6 +22,7 @@ window.guardarCambios = function(elemento) {
         peso: elemento.peso || null,
         diametro: elemento.diametro || null,
         longitud: elemento.longitud || null,
+        barras: elemento.barras ?? null,
 
         estado: elemento.estado ?? null,
     };

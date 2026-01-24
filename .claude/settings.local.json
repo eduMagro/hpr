@@ -90,7 +90,22 @@
       "Bash(C:xamppmysqlbinmysql.exe -u root -e \"SELECT ''orden_planilla_id NULL'' as check_type, COUNT\\(*\\) as total FROM elementos WHERE deleted_at IS NULL AND estado NOT IN \\(''completado'', ''fabricado''\\) AND orden_planilla_id IS NULL; SELECT ''maquina_id NULL'' as check_type, COUNT\\(*\\) as total FROM elementos WHERE deleted_at IS NULL AND estado NOT IN \\(''completado'', ''fabricado''\\) AND maquina_id IS NULL; SELECT ''etiqueta_id NULL'' as check_type, COUNT\\(*\\) as total FROM elementos WHERE deleted_at IS NULL AND etiqueta_id IS NULL;\" manager_pruebas)",
       "Bash(node --check:*)",
       "Bash(Get-Content \"C:\\\\xampp\\\\htdocs\\\\manager\\\\storage\\\\logs\\\\laravel.log\" -Tail 150)",
-      "Bash(wmic path win32_videocontroller get:*)"
+      "Bash(wmic path win32_videocontroller get:*)",
+      "Bash(cmd //c \"dir \\\\\\\\192.168.0.10\\\\Datos\\\\Compartido\\\\COMPARTIDO_MAQUINA_MSR\\\\*BVBS*\")",
+      "Bash(cmd //c \"net view \\\\\\\\192.168.0.10\")",
+      "Bash(ping:*)",
+      "Bash(cmd //c \"dir \\\\\\\\192.168.0.10\\\\Datos\\\\\")",
+      "Bash(cmd //c \"type C:\\\\xampp\\\\htdocs\\\\manager\\\\storage\\\\logs\\\\laravel.log\")",
+      "Bash(cmd //c \"type \\\\\\\\192.168.0.10\\\\Datos\\\\Compartido\\\\COMPARTIDO_MAQUINA_MSR\\\\BVBS_MSR20_PRJ2430_20260124_125723.bvbs\")",
+      "Bash(cmd //c \"dir /od C:\\\\xampp\\\\htdocs\\\\manager\\\\storage\\\\app\\\\exports\\\\bvbs\"\")",
+      "Bash(cmd //c \"dir C:\\\\Users\")",
+      "Bash(cmd //c \"dir /s /b C:\\\\Users\\\\jjdc1\\\\Desktop\\\\*msr* C:\\\\Users\\\\eduma\\\\Desktop\\\\*msr* 2>nul\")",
+      "Bash(cmd //c \"dir C:\\\\Users\\\\jjdc1\\\\Desktop\")",
+      "Bash(cmd //c \"dir C:\\\\Users\\\\jjdc1\\\\Escritorio\")",
+      "Bash(cmd //c \"dir C:\\\\Users\\\\jjdc1\")",
+      "Bash(cmd //c \"dir /s /b C:\\\\Users\\\\jjdc1\\\\*msr* 2>nul\")",
+      "Bash(cmd //c \"dir \"\"C:\\\\Users\\\\jjdc1\\\\OneDrive\\\\Escritorio\\\\MSR20\"\"\")",
+      "Bash(cmd //c \"dir /s /b \"\"C:\\\\Users\\\\jjdc1\\\\OneDrive\\\\Escritorio\\\\MSR20\"\"\")"
     ],
     "deny": [],
     "ask": []

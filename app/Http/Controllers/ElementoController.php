@@ -1045,6 +1045,7 @@ class ElementoController extends Controller
                 'diametro'      => 'nullable|numeric',
                 'peso'      => 'nullable|numeric',
                 'longitud'      => 'nullable|numeric',
+                'barras'        => 'nullable|integer|min:0',
                 'estado'        => 'nullable|string|max:50'
             ], [
                 'planilla_id.integer'   => 'El campo planilla_id debe ser un número entero.',
@@ -1074,6 +1075,8 @@ class ElementoController extends Controller
                 'diametro.numeric'      => 'El campo diametro debe ser un número.',
                 'peso.numeric'          => 'El campo peso debe ser un número.',
                 'longitud.numeric'      => 'El campo longitud debe ser un número.',
+                'barras.integer'        => 'El campo barras debe ser un número entero.',
+                'barras.min'            => 'El campo barras no puede ser negativo.',
                 'estado.string'         => 'El campo estado debe ser una cadena de texto.',
                 'estado.max'            => 'El campo estado no debe tener más de 50 caracteres.',
             ]);
