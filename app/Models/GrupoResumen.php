@@ -124,8 +124,11 @@ class GrupoResumen extends Model
     public function desagrupar(): void
     {
         DB::transaction(function () {
-            // Quitar referencia de las etiquetas
-            $this->etiquetas()->update(['grupo_resumen_id' => null]);
+            // Quitar referencia de las etiquetas y resetear resumida para permitir reagrupación
+            $this->etiquetas()->update([
+                'grupo_resumen_id' => null,
+                'resumida' => false,
+            ]);
 
             // Marcar grupo como inactivo
             $this->activo = false;
