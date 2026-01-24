@@ -415,7 +415,8 @@
                 </thead>
                 <tbody>
                     @foreach ($departamentos as $dep)
-                        <tr x-data="{
+                        <tr data-departamento-id="{{ $dep->id }}"
+                            x-data="{
                             editando: false,
                             departamento: @js($dep),
                             original: JSON.parse(JSON.stringify(@js($dep))),
@@ -428,7 +429,7 @@
                         }"
                             @cerrar-edicion-dep.window="cerrarEdicion()"
                             @dblclick="$dispatch('cerrar-edicion-dep'); $nextTick(() => editando = true)"
-                            @keydown.enter.stop.prevent="guardarDepartamento(departamento); editando = false"
+                            @keydown.enter.stop.prevent="guardarDepartamento(departamento); editando = false; original = JSON.parse(JSON.stringify(departamento))"
                             @keydown.escape="departamento = JSON.parse(JSON.stringify(original)); editando = false"
                             :class="{ 'bg-yellow-100': editando }"
                             class="border-t cursor-pointer hover:bg-blue-50 focus:outline-none" tabindex="0">
@@ -559,13 +560,22 @@
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
+                                // Eliminar fila del DOM con animación
+                                const fila = document.querySelector(`tr[data-departamento-id="${id}"]`);
+                                if (fila) {
+                                    fila.style.transition = 'opacity 0.3s, transform 0.3s';
+                                    fila.style.opacity = '0';
+                                    fila.style.transform = 'translateX(-20px)';
+                                    setTimeout(() => fila.remove(), 300);
+                                }
+
                                 Swal.fire({
                                     icon: 'success',
                                     title: 'Eliminado',
                                     text: 'El departamento ha sido eliminado.',
                                     timer: 1500,
                                     showConfirmButton: false
-                                }).then(() => location.reload());
+                                });
                             } else {
                                 Swal.fire({
                                     icon: 'error',
@@ -610,7 +620,8 @@
                 </thead>
                 <tbody>
                     @foreach ($todasLasSecciones as $sec)
-                        <tr x-data="{
+                        <tr data-seccion-id="{{ $sec->id }}"
+                            x-data="{
                             editando: false,
                             seccion: @js($sec),
                             original: JSON.parse(JSON.stringify(@js($sec))),
@@ -623,7 +634,7 @@
                         }"
                             @cerrar-edicion-sec.window="cerrarEdicion()"
                             @dblclick="$dispatch('cerrar-edicion-sec'); $nextTick(() => editando = true)"
-                            @keydown.enter.stop.prevent="guardarSeccion(seccion); editando = false"
+                            @keydown.enter.stop.prevent="guardarSeccion(seccion); editando = false; original = JSON.parse(JSON.stringify(seccion))"
                             @keydown.escape="seccion = JSON.parse(JSON.stringify(original)); editando = false"
                             :class="{ 'bg-yellow-100': editando }"
                             class="border-t cursor-pointer hover:bg-blue-50 focus:outline-none" tabindex="0">
@@ -1367,13 +1378,22 @@
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
+                                // Eliminar fila del DOM con animación
+                                const fila = document.querySelector(`tr[data-seccion-id="${id}"]`);
+                                if (fila) {
+                                    fila.style.transition = 'opacity 0.3s, transform 0.3s';
+                                    fila.style.opacity = '0';
+                                    fila.style.transform = 'translateX(-20px)';
+                                    setTimeout(() => fila.remove(), 300);
+                                }
+
                                 Swal.fire({
                                     icon: 'success',
                                     title: 'Eliminada',
                                     text: 'La sección ha sido eliminada.',
                                     timer: 1500,
                                     showConfirmButton: false
-                                }).then(() => location.reload());
+                                });
                             } else {
                                 Swal.fire({
                                     icon: 'error',
