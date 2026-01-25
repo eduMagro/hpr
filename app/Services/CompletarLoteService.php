@@ -125,13 +125,8 @@ class CompletarLoteService
     private function actualizarElementosYConsumos($elementosEnMaquina, $maquina, &$etiqueta, &$warnings, &$numeroElementosCompletadosEnMaquina, $enOtrasMaquinas, &$productosAfectados, &$planilla)
     {
 
-        foreach ($elementosEnMaquina as $elemento) {
-            $elemento->estado = "fabricado";
-            $elemento->save();
-        }
-
-        // ✅ ACTUALIZAR EL CONTADOR DE ELEMENTOS COMPLETADOS
-        $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->where('estado', 'fabricado')->count();
+        // Contador de elementos en máquina
+        $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->count();
 
         // -------------- CONSUMOS
         $consumos = [];
@@ -244,90 +239,43 @@ class CompletarLoteService
         }
 
         if (str_contains($ensambladoText, 'taller')) {
-            // Verificar si todos los elementos de la etiqueta están en estado "completado"
-            $elementosEtiquetaCompletos = $etiqueta->elementos()->where('estado', '!=', 'fabricado')->doesntExist();
-            if (str_contains($planilla->comentario, 'amarrado')) {
-            } elseif (str_contains($planilla->comentario, 'ensamblado amarrado')) {
-            } else {
-                // Verificar si TODOS los elementos de la máquina actual están completados
-                if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
-                    // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
-                    if ($enOtrasMaquinas) {
-                        $etiqueta->estado = 'parcialmente_completada';
-                    } else {
-                        // Si no hay elementos en otras máquinas, se marca como fabricada/completada
-                        $etiqueta->estado = 'fabricada';
-                        $etiqueta->fecha_finalizacion = now();
-                    }
-
-                    $etiqueta->save();
-                }
-            }
-        } elseif (str_contains($ensambladoText, 'carcasas')) {
-            $elementosEtiquetaCompletos = $etiqueta->elementos()
-                ->where('diametro', '!=', 5.00)
-                ->where('estado', '!=', 'fabricado')
-                ->doesntExist();
-
-            if ($elementosEtiquetaCompletos) {
-                $etiqueta->estado = $maquina->tipo === 'estribadora' ? 'fabricada' : 'completada';
+            // Regla TALLER
+            if (!str_contains($planilla->comentario ?? '', 'amarrado') && !str_contains($planilla->comentario ?? '', 'ensamblado amarrado')) {
+                $etiqueta->estado = 'fabricada';
                 $etiqueta->fecha_finalizacion = now();
                 $etiqueta->save();
             }
+        } elseif (str_contains($ensambladoText, 'carcasas')) {
+            // Regla CARCASAS
+            $etiqueta->estado = $maquina->tipo === 'estribadora' ? 'fabricada' : 'completada';
+            $etiqueta->fecha_finalizacion = now();
+            $etiqueta->save();
 
-            // 🔧 Solo si la máquina actual no es cortadora_dobladora
+            // Si no estamos en cortadora_dobladora, enviar a ensambladora
             if ($maquina->tipo !== 'cortadora_dobladora') {
                 $maquinaEnsambladora = Maquina::where('tipo', 'ensambladora')->first();
 
                 if ($maquinaEnsambladora) {
+                    $algunoAsignado = false;
                     foreach ($elementosEnMaquina as $elemento) {
                         if (is_null($elemento->maquina_id_2)) {
                             $elemento->maquina_id_2 = $maquinaEnsambladora->id;
                             $elemento->save();
+                            $algunoAsignado = true;
                         }
+                    }
+                    // Actualizar estado2 de la etiqueta si se asignó algún elemento
+                    if ($algunoAsignado && is_null($etiqueta->estado2)) {
+                        $etiqueta->estado2 = 'pendiente';
+                        $etiqueta->save();
                     }
                 }
             }
         } else {
-
-            // Verificar si todos los elementos de la etiqueta están en estado "completado"
-            $elementosEtiquetaCompletos = $etiqueta->elementos()->where('estado', '!=', 'fabricado')->doesntExist();
-
-            if ($elementosEtiquetaCompletos) {
-                $etiqueta->estado = 'completada';
-                $etiqueta->fecha_finalizacion = now();
-                $etiqueta->save();
-            } else {
-                // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
-                if ($enOtrasMaquinas) {
-                    $etiqueta->estado = 'parcialmente_completada';
-                    $etiqueta->save();
-                }
-            }
-        }
-        // ✅ Si todos los elementos de la planilla están completados, actualizar la planilla
-        $todosElementosPlanillaCompletos = $planilla->elementos()->where('estado', '!=', 'fabricado')->doesntExist();
-        if ($todosElementosPlanillaCompletos) {
-            $planilla->estado = 'completada';
-            $planilla->save();
-
-            DB::transaction(function () use ($planilla, $maquina) {
-                // 1. Eliminar el registro de esa planilla en esta máquina
-                OrdenPlanilla::where('planilla_id', $planilla->id)
-                    ->where('maquina_id', $maquina->id)
-                    ->delete();
-
-                // 2. Reordenar las posiciones de las planillas restantes en esta máquina
-                $ordenes = OrdenPlanilla::where('maquina_id', $maquina->id)
-                    ->orderBy('posicion')
-                    ->lockForUpdate()
-                    ->get();
-
-                foreach ($ordenes as $index => $orden) {
-                    $orden->posicion = $index;
-                    $orden->save();
-                }
-            });
+            // Lógica normal: marcar etiqueta como completada
+            $etiqueta->estado = 'completada';
+            $etiqueta->fecha_finalizacion = now();
+            $etiqueta->save();
         }
         return true;
     }

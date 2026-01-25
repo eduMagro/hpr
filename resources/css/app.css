@@ -71,6 +71,10 @@ select:focus-visible {
     --bg-estado: #facc15;
 }
 
+.proceso.estado-doblando {
+    --bg-estado: #facc15;
+}
+
 .proceso.estado-fabricada {
     --bg-estado: #22c55e;
 }

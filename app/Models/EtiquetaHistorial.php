@@ -108,6 +108,7 @@ class EtiquetaHistorial extends Model
             $snapshotEtiqueta = [
                 'id' => $etiqueta->id,
                 'estado' => $etiqueta->estado,
+                'estado2' => $etiqueta->estado2, // Estado secundario (para maquina_id_2)
                 'paquete_id' => $etiqueta->paquete_id,
                 'fecha_inicio' => $formatearFecha($etiqueta->getRawOriginal('fecha_inicio')),
                 'fecha_finalizacion' => $formatearFecha($etiqueta->getRawOriginal('fecha_finalizacion')),
@@ -124,7 +125,7 @@ class EtiquetaHistorial extends Model
             $snapshotElementos = $etiqueta->elementos->map(function ($elemento) {
                 return [
                     'id' => $elemento->id,
-                    'estado' => $elemento->estado,
+                    'elaborado' => $elemento->elaborado,
                     'producto_id' => $elemento->producto_id,
                     'producto_id_2' => $elemento->producto_id_2,
                     'producto_id_3' => $elemento->producto_id_3,
@@ -271,6 +272,7 @@ class EtiquetaHistorial extends Model
 
             $etiqueta->update([
                 'estado' => $snapshot['estado'],
+                'estado2' => $snapshot['estado2'] ?? null, // Restaurar estado secundario
                 'paquete_id' => $snapshot['paquete_id'],
                 'fecha_inicio' => $normalizarFecha($snapshot['fecha_inicio']),
                 'fecha_finalizacion' => $normalizarFecha($snapshot['fecha_finalizacion']),
@@ -282,7 +284,12 @@ class EtiquetaHistorial extends Model
                 'operario2_id' => $snapshot['operario2_id'] ?? null,
             ]);
 
-            $resultado['cambios'][] = "Etiqueta restaurada a estado: {$snapshot['estado']}";
+            // Mensaje con ambos estados si aplica
+            $estadoMsg = $snapshot['estado'];
+            if (!empty($snapshot['estado2'])) {
+                $estadoMsg .= '/' . $snapshot['estado2'];
+            }
+            $resultado['cambios'][] = "Etiqueta restaurada a estado: {$estadoMsg}";
 
             // 2. REVERTIR ELEMENTOS
             if (!empty($this->snapshot_elementos)) {
@@ -290,7 +297,7 @@ class EtiquetaHistorial extends Model
                     $elemento = Elemento::find($elemData['id']);
                     if ($elemento) {
                         $elemento->update([
-                            'estado' => $elemData['estado'],
+                            'elaborado' => $elemData['elaborado'] ?? ($elemData['estado'] === 'fabricado' ? 1 : 0), // Compatibilidad con snapshots antiguos
                             'producto_id' => $elemData['producto_id'],
                             'producto_id_2' => $elemData['producto_id_2'],
                             'producto_id_3' => $elemData['producto_id_3'],
@@ -404,12 +411,18 @@ class EtiquetaHistorial extends Model
                 'revertido_por' => $usuarioId,
             ]);
 
-            $resultado['message'] = "Cambio revertido exitosamente. Estado restaurado a: {$snapshot['estado']}";
+            // Mensaje con ambos estados si aplica
+            $estadoRestaurado = $snapshot['estado'];
+            if (!empty($snapshot['estado2'])) {
+                $estadoRestaurado .= '/' . $snapshot['estado2'];
+            }
+            $resultado['message'] = "Cambio revertido exitosamente. Estado restaurado a: {$estadoRestaurado}";
 
             Log::info('Cambio de etiqueta revertido', [
                 'historial_id' => $this->id,
                 'etiqueta_sub_id' => $this->etiqueta_sub_id,
                 'estado_restaurado' => $snapshot['estado'],
+                'estado2_restaurado' => $snapshot['estado2'] ?? null,
                 'usuario_id' => $usuarioId,
                 'cambios' => $resultado['cambios'],
             ]);

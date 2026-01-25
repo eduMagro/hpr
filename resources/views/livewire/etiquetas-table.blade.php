@@ -362,20 +362,38 @@
                                     class="w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
-                            <!-- Estado (editable mediante select) -->
+                            <!-- Estado (editable mediante select) - Muestra estado/estado2 si tiene maquina_id_2 -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span
-                                        x-text="etiqueta.estado ? etiqueta.estado.charAt(0).toUpperCase() + etiqueta.estado.slice(1) : ''"></span>
+                                    <span>
+                                        @php
+                                            $estadoDisplay = ucfirst($etiqueta->estado ?? 'pendiente');
+                                            if ($etiqueta->estado2) {
+                                                $estadoDisplay .= '/' . ucfirst($etiqueta->estado2);
+                                            }
+                                        @endphp
+                                        {{ $estadoDisplay }}
+                                    </span>
                                 </template>
-                                <select x-show="editando" x-model="etiqueta.estado"
-                                    class="w-full text-xs border rounded px-1 py-0.5">
-                                    <option value="pendiente">Pendiente</option>
-                                    <option value="fabricando">Fabricando</option>
-                                    <option value="ensamblando">Ensamblando</option>
-                                    <option value="soldando">Soldando</option>
-                                    <option value="completada">Completada</option>
-                                </select>
+                                <div x-show="editando" class="flex flex-col gap-1">
+                                    <select x-model="etiqueta.estado"
+                                        class="w-full text-xs border rounded px-1 py-0.5">
+                                        <option value="pendiente">Pendiente</option>
+                                        <option value="fabricando">Fabricando</option>
+                                        <option value="fabricada">Fabricada</option>
+                                        <option value="ensamblando">Ensamblando</option>
+                                        <option value="soldando">Soldando</option>
+                                        <option value="completada">Completada</option>
+                                    </select>
+                                    @if($etiqueta->estado2)
+                                    <select x-model="etiqueta.estado2"
+                                        class="w-full text-xs border rounded px-1 py-0.5">
+                                        <option value="pendiente">Pendiente</option>
+                                        <option value="doblando">Doblando</option>
+                                        <option value="completada">Completada</option>
+                                    </select>
+                                    @endif
+                                </div>
                             </td>
 
                             <!-- Acciones (no editable) -->

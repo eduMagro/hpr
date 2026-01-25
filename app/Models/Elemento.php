@@ -54,7 +54,6 @@ class Elemento extends Model
         'peso',
         'dimensiones',
         'tiempo_fabricacion',
-        'estado',
         'fecha_entrega'
     ];
 

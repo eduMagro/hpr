@@ -89,23 +89,24 @@ Este módulo se apoya en modelos Eloquent que representan las entidades de produ
 
 ### Campos clave
 
-| Campo                                            | Descripción                                              |
-| ------------------------------------------------ | -------------------------------------------------------- |
-| `codigo`                                         | Identificador del elemento (p. ej. `EL25061`).           |
-| `planilla_id`, `etiqueta_id`, `etiqueta_sub_id`  | Relaciones de origen.                                    |
-| `maquina_id`, `maquina_id_2`, `maquina_id_3`     | Máquinas principal/secundaria/terciaria.                 |
-| `producto_id`, `producto_id_2`, `producto_id_3`  | Productos consumidos.                                    |
-| `paquete_id`                                     | Paquete (si aplica).                                     |
-| `figura`, `fila`, `marca`, `etiqueta`            | Descriptores de dibujo/planilla.                         |
-| `diametro`, `longitud`, `barras`, `dobles_barra` | Propiedades geométricas.                                 |
-| `peso`, `dimensiones`                            | Propiedades físicas.                                     |
-| `tiempo_fabricacion`                             | Duración en segundos.                                    |
-| `estado`                                         | `pendiente` · `fabricando` · `fabricado` · `completado`. |
+| Campo                                            | Descripción                                                   |
+| ------------------------------------------------ | ------------------------------------------------------------- |
+| `codigo`                                         | Identificador del elemento (p. ej. `EL25061`).                |
+| `planilla_id`, `etiqueta_id`, `etiqueta_sub_id`  | Relaciones de origen.                                         |
+| `maquina_id`, `maquina_id_2`                     | Máquinas principal y secundaria.                              |
+| `producto_id`, `producto_id_2`, `producto_id_3`  | Productos consumidos.                                         |
+| `paquete_id`                                     | Paquete (si aplica).                                          |
+| `figura`, `fila`, `marca`, `etiqueta`            | Descriptores de dibujo/planilla.                              |
+| `diametro`, `longitud`, `barras`, `dobles_barra` | Propiedades geométricas.                                      |
+| `peso`, `dimensiones`                            | Propiedades físicas.                                          |
+| `tiempo_fabricacion`                             | Duración en segundos.                                         |
+| `estado`                                         | `pendiente` · `fabricando` · `fabricado` · `completado`.      |
+| `estado2`                                        | Estado en máquina secundaria (si aplica): igual que `estado`. |
 
 ### Relaciones
 
 -   `planilla()`, `etiquetaRelacion()`
--   `maquina()`, `maquina_2()`, `maquina_3()`
+-   `maquina()`, `maquina_2()`
 -   `producto()`, `producto2()`, `producto3()`
 -   `ubicacion()`
 

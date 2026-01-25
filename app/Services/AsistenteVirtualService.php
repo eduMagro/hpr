@@ -1332,7 +1332,7 @@ PROMPT;
                 'clientes' => ['id', 'empresa (nombre)', 'codigo', 'cif_nif', 'contacto1_nombre', 'contacto1_telefono', 'direccion', 'ciudad'],
                 'obras' => ['id', 'obra (nombre)', 'cod_obra', 'cliente_id', 'ciudad', 'direccion', 'estado', 'tipo'],
                 'planillas' => ['id', 'codigo', 'obra_id', 'cliente_id', 'estado', 'peso_total', 'fecha_estimada_entrega', 'revisada', 'aprobada', 'fecha_inicio', 'fecha_finalizacion'],
-                'elementos' => ['id', 'planilla_id', 'maquina_id', 'etiqueta_id', 'paquete_id', 'estado', 'peso', 'diametro', 'longitud', 'barras (cantidad)', 'figura', 'marca'],
+                'elementos' => ['id', 'planilla_id', 'maquina_id', 'etiqueta_id', 'paquete_id', 'elaborado', 'peso', 'diametro', 'longitud', 'barras (cantidad)', 'figura', 'marca'],
                 'etiquetas' => ['id', 'codigo', 'planilla_id', 'paquete_id', 'estado', 'peso', 'nombre', 'marca', 'numero_etiqueta'],
                 'paquetes' => ['id', 'codigo', 'planilla_id', 'peso', 'estado', 'ubicacion_id', 'nave_id', 'user_id'],
                 'maquinas' => ['id', 'codigo', 'nombre', 'tipo', 'estado', 'obra_id', 'diametro_min', 'diametro_max'],

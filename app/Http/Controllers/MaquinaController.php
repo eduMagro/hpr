@@ -113,16 +113,8 @@ class MaquinaController extends Controller
          * 2️⃣  RESTO DE USUARIOS
          * ─────────────────────────────────────────── */
 
-        // ▸ 2.1 Consulta de máquinas + conteos
-        $query = Maquina::with('productos')
-            ->selectRaw('maquinas.*, (
-            SELECT COUNT(*) FROM elementos
-            WHERE elementos.maquina_id_2 = maquinas.id
-        ) as elementos_ensambladora')
-            ->withCount([
-                'elementos as elementos_count' => fn($q) =>
-                $q->where('estado', '!=', 'fabricado')
-            ]);
+        // ▸ 2.1 Consulta de máquinas (simplificada)
+        $query = Maquina::with('productos');
 
         if ($request->filled('nombre')) {
             $query->where('nombre', 'like', '%' . $request->input('nombre') . '%');
@@ -138,13 +130,8 @@ class MaquinaController extends Controller
         $registrosMaquina = $query->paginate($perPage)
             ->appends($request->except('page'));
 
-        // ▸ 2.2 Operarios asignados hoy
-        $hoy = Carbon::today();
-        $usuariosPorMaquina = AsignacionTurno::with(['user', 'turno'])
-            ->whereDate('fecha', $hoy)
-            ->whereNotNull('maquina_id')
-            ->get()
-            ->groupBy('maquina_id');
+        // ▸ 2.2 Operarios (deshabilitado para mejorar rendimiento)
+        $usuariosPorMaquina = collect();
         $obras = Obra::whereHas('cliente', function ($query) {
             $query->where('empresa', 'like', '%Hierros Paco Reyes%');
         })
@@ -252,11 +239,36 @@ class MaquinaController extends Controller
 
         // 4) Cargar SOLO elementos de planillas revisadas en cola (no todos los 30k+)
         // Buscar en cualquiera de los campos de máquina (maquina_id, maquina_id_2)
+        // Para dobladora_manual: filtrar por estado pendiente según corresponda
         $t3 = microtime(true);
+        $esDobladoraManual = $this->esDobladoraManual($maquina);
+        // Estados válidos para etiqueta en máquina principal
+        $estadosEtiquetaPrincipal = ['pendiente', 'fabricando', 'fabricada'];
+        // Estados válidos para etiqueta.estado2 en máquina secundaria
+        $estadosEtiquetaSecundaria = ['pendiente', 'doblando'];
+
         $elementosMaquina = Elemento::with(['planilla', 'etiquetaRelacion', 'subetiquetas', 'maquina', 'maquina_2', 'producto', 'producto2', 'producto3'])
-            ->where(function ($query) use ($maquina) {
-                $query->where('maquina_id', $maquina->id)
-                    ->orWhere('maquina_id_2', $maquina->id);
+            ->where(function ($query) use ($maquina, $esDobladoraManual, $estadosEtiquetaPrincipal, $estadosEtiquetaSecundaria) {
+                // Elementos donde esta máquina es la principal
+                $query->where(function ($q) use ($maquina, $esDobladoraManual, $estadosEtiquetaPrincipal) {
+                    $q->where('maquina_id', $maquina->id);
+                    // Para dobladora_manual: solo elementos cuya etiqueta tenga estado válido
+                    if ($esDobladoraManual) {
+                        $q->whereHas('etiquetaRelacion', function ($subQ) use ($estadosEtiquetaPrincipal) {
+                            $subQ->whereIn('estado', $estadosEtiquetaPrincipal);
+                        });
+                    }
+                });
+                // Elementos donde esta máquina es la secundaria
+                $query->orWhere(function ($q) use ($maquina, $esDobladoraManual, $estadosEtiquetaSecundaria) {
+                    $q->where('maquina_id_2', $maquina->id);
+                    // Para dobladora_manual: solo elementos cuya etiqueta tenga estado2 pendiente/doblando
+                    if ($esDobladoraManual) {
+                        $q->whereHas('etiquetaRelacion', function ($subQ) use ($estadosEtiquetaSecundaria) {
+                            $subQ->whereIn('estado2', $estadosEtiquetaSecundaria);
+                        });
+                    }
+                });
             })
             ->whereIn('planilla_id', $planillasRevisadasIds)
             ->get();
@@ -2331,6 +2343,24 @@ class MaquinaController extends Controller
             OrdenPlanilla::where('maquina_id', $maquina->id)
                 ->where('posicion', '>', $posicionEliminada)
                 ->decrement('posicion');
+
+            // Si hay elementos con maquina_id_2 sin procesar,
+            // cambiar etiquetas a 'fabricada' para que aparezcan en cola de la dobladora
+            $etiquetasConPendienteEnMaquina2 = $planilla->etiquetas()
+                ->whereHas('elementosPorId', function ($q) {
+                    $q->whereNotNull('maquina_id_2')
+                      ->where(function ($subQ) {
+                          $subQ->whereNull('estado2')
+                               ->orWhere('estado2', 'pendiente');
+                      });
+                })
+                ->whereNotIn('estado', ['fabricada', 'pendiente'])
+                ->get();
+
+            foreach ($etiquetasConPendienteEnMaquina2 as $etiquetaPendiente) {
+                $etiquetaPendiente->estado = 'fabricada';
+                $etiquetaPendiente->save();
+            }
 
             DB::commit();
 

@@ -5,11 +5,12 @@ return [
 
     // Tipos "simples" => clase de servicio
     'mapa_por_tipo' => [
-        'cortadora'       => \App\Servicios\Etiquetas\Servicios\DobladoraEtiquetaServicio::class,
-        'dobladora'       => \App\Servicios\Etiquetas\Servicios\EnsambladoraEtiquetaServicio::class,
-        'ensambladora'    => \App\Servicios\Etiquetas\Servicios\SoldadoraEtiquetaServicio::class,
+        'cortadora'        => \App\Servicios\Etiquetas\Servicios\DobladoraEtiquetaServicio::class,
+        'dobladora'        => \App\Servicios\Etiquetas\Servicios\EnsambladoraEtiquetaServicio::class,
+        'ensambladora'     => \App\Servicios\Etiquetas\Servicios\SoldadoraEtiquetaServicio::class,
         'cortadora_manual' => \App\Servicios\Etiquetas\Servicios\CortadoraDobladoraBarraEtiquetaServicio::class,
-        'grua'            => \App\Servicios\Etiquetas\Servicios\GruaEtiquetaServicio::class,
+        'dobladora_manual' => \App\Servicios\Etiquetas\Servicios\DobladoraEtiquetaServicio::class,
+        'grua'             => \App\Servicios\Etiquetas\Servicios\GruaEtiquetaServicio::class,
     ],
 
     // Rama especial para cortadora_dobladora según material

@@ -18,6 +18,31 @@ use RuntimeException;
 
 class DobladoraEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServicio
 {
+    /**
+     * Verifica si la etiqueta puede marcarse como completada.
+     * Considera estado de la etiqueta y estado2 si tiene maquina_id_2.
+     */
+    private function puedeCompletarEtiqueta(Etiqueta $etiqueta): bool
+    {
+        $estadosCompletados = ['fabricado', 'completado', 'fabricada', 'completada'];
+
+        // Verificar estado principal de la etiqueta
+        if (!in_array($etiqueta->estado, $estadosCompletados)) {
+            return false;
+        }
+
+        // Si hay elementos con maquina_id_2, verificar que el estado2 de la ETIQUETA esté completado
+        $tieneElementosConMaquina2 = $etiqueta->elementos()
+            ->whereNotNull('maquina_id_2')
+            ->exists();
+
+        if ($tieneElementosConMaquina2 && !in_array($etiqueta->estado2, $estadosCompletados)) {
+            return false;
+        }
+
+        return true;
+    }
+
     public function actualizar(ActualizarEtiquetaDatos $datos): ActualizarEtiquetaResultado
     {
         return DB::transaction(function () use ($datos) {
@@ -42,73 +67,70 @@ class DobladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqueta
                 })
                 ->get();
 
-            switch ($etiqueta->estado) {
-                case 'fabricada':
-                case 'parcialmente completada':
-                    // Inicia fase de doblado
-                    $etiqueta->fecha_inicio_soldadura = now();
-                    $etiqueta->estado = 'doblando';
-                    $etiqueta->save();
-                    break;
+            // Determinar si esta máquina es secundaria para estos elementos
+            $esSecundaria = $elementosEnMaquina->first()?->maquina_id_2 === $maquina->id;
 
-                case 'doblando':
-                    // Completar elementos en esta máquina
-                    foreach ($elementosEnMaquina as $el) {
-                        $el->estado = 'completado';
-                        $el->users_id = $datos->operario1Id;
-                        $el->users_id_2 = $datos->operario2Id;
-                        $el->save();
-                    }
+            // Si es máquina secundaria, usar flujo basado en etiqueta->estado2
+            if ($esSecundaria) {
+                $estado2Actual = $etiqueta->estado2 ?? 'pendiente';
 
-                    $todosCompletados = $etiqueta->elementos()
-                        ->where('estado', '!=', 'completado')
-                        ->doesntExist();
+                switch ($estado2Actual) {
+                    case 'pendiente':
+                        // Iniciar doblado: pendiente -> doblando
+                        $etiqueta->estado2 = 'doblando';
+                        $etiqueta->fecha_inicio_soldadura = now();
+                        // Máquina secundaria → operario2
+                        $etiqueta->operario2_id = auth()->id();
+                        $etiqueta->save();
+                        break;
 
-                    if ($todosCompletados) {
+                    case 'doblando':
+                        // Completar doblado: doblando -> completada
+                        $etiqueta->estado2 = 'completada';
+                        $etiqueta->fecha_finalizacion_soldadura = now();
+
+                        // Verificar si la etiqueta principal también está completa
+                        if ($this->puedeCompletarEtiqueta($etiqueta)) {
+                            $etiqueta->estado = 'completada';
+                            $etiqueta->fecha_finalizacion = now();
+                        }
+                        $etiqueta->save();
+                        break;
+
+                    case 'completada':
+                        throw new RuntimeException('Etiqueta ya completada en esta máquina.');
+                }
+            } else {
+                // Flujo normal para máquina principal
+                switch ($etiqueta->estado) {
+                    case 'fabricada':
+                    case 'parcialmente completada':
+                        // Inicia fase de doblado
+                        $etiqueta->fecha_inicio_soldadura = now();
+                        $etiqueta->estado = 'doblando';
+                        // Máquina principal → operario1
+                        $etiqueta->operario1_id = $datos->operario1Id ?? auth()->id();
+                        $etiqueta->save();
+                        break;
+
+                    case 'doblando':
+                        // Completar doblado en máquina principal
                         $etiqueta->estado = 'completada';
                         $etiqueta->fecha_finalizacion_soldadura = now();
                         $etiqueta->fecha_finalizacion = now();
                         $etiqueta->save();
-                    } else {
-                        $etiqueta->fecha_finalizacion_soldadura = now();
-                        $etiqueta->save();
-                    }
-                    break;
+                        break;
 
-                case 'completada':
-                    throw new RuntimeException('Etiqueta ya completada.');
+                    case 'completada':
+                        throw new RuntimeException('Etiqueta ya completada.');
 
-                default:
-                    break;
-            }
-
-            if ($planilla) {
-                $quedanPendientesEnEstaMaquina = Elemento::where('planilla_id', $planilla->id)
-                    ->where(function ($q) use ($maquina) {
-                        $q->where('maquina_id', $maquina->id)
-                            ->orWhere('maquina_id_2', $maquina->id);
-                    })
-                    ->where(function ($q) {
-                        $q->whereNull('estado')->orWhere('estado', '!=', 'completado');
-                    })
-                    ->exists();
-
-                if (!$quedanPendientesEnEstaMaquina) {
-                    DB::transaction(function () use ($planilla, $maquina) {
-                        $registro = OrdenPlanilla::where('planilla_id', $planilla->id)
-                            ->where('maquina_id', $maquina->id)
-                            ->lockForUpdate()
-                            ->first();
-                        if ($registro) {
-                            $pos = $registro->posicion;
-                            $registro->delete();
-                            OrdenPlanilla::where('maquina_id', $maquina->id)
-                                ->where('posicion', '>', $pos)
-                                ->decrement('posicion');
-                        }
-                    });
+                    default:
+                        break;
                 }
             }
+
+            // NOTA: No eliminamos automáticamente la planilla de la cola.
+            // El usuario debe hacer clic en "Completar planilla" manualmente.
 
             $etiqueta->refresh();
             return new ActualizarEtiquetaResultado(

@@ -61,11 +61,11 @@
                  COLUMNA IZQUIERDA - MATERIA PRIMA
                  ============================================================ -->
             <div x-show="showLeft" x-cloak
-                class="col-span-12 lg:col-span-2 bg-white border border-gray-200 shadow-lg rounded-lg self-start lg:sticky lg:top-2 overflow-hidden">
+                class="col-span-12 lg:col-span-2 bg-gray-900/95 border border-blue-500/40 shadow-lg rounded-xl self-start lg:sticky lg:top-2 overflow-hidden backdrop-blur-sm">
 
                 <div id="materia-prima-container" class="p-1.5 overflow-y-auto" style="max-height: calc(100vh - 60px);">
                     @if($productosBaseCompatibles->isEmpty())
-                        <div class="text-center text-gray-500 py-4">
+                        <div class="text-center text-gray-400 py-4">
                             <p class="text-xs">No hay productos base compatibles</p>
                         </div>
                     @endif
@@ -80,7 +80,7 @@
                             $tieneProductos = $productosDeEsteBase->isNotEmpty();
                         @endphp
 
-                        <div class="mb-2 p-1.5 {{ $tieneProductos ? 'bg-gray-50' : 'bg-red-50' }} rounded border {{ $tieneProductos ? 'border-gray-200' : 'border-red-200' }}">
+                        <div class="mb-2 p-1.5 {{ $tieneProductos ? 'bg-gray-800/50' : 'bg-red-900/30' }} rounded-lg border {{ $tieneProductos ? 'border-gray-700/50' : 'border-red-500/40' }}">
                             {{-- Cabecera del producto base --}}
                             <div class="flex items-center justify-between mb-1">
                                 <span class="{{ $tieneProductos ? 'bg-green-600' : 'bg-red-500' }} text-white px-1.5 py-0.5 rounded text-xs font-bold shadow-sm">
@@ -96,7 +96,7 @@
                                 @else
                                     <button
                                         onclick="solicitarRecarga(this, {{ $maquina->id }}, {{ $productoBase->id }}, '{{ $productoBase->diametro }}')"
-                                        class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded font-medium"
+                                        class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium"
                                         title="Solicitar recarga">
                                         +
                                     </button>
@@ -113,14 +113,14 @@
                                         $porcentaje = $pesoInicial > 0 ? ($pesoStock / $pesoInicial) * 100 : 0;
                                         $esFabricando = $producto->estado === 'fabricando';
                                     @endphp
-                                    <div class="p-1 rounded {{ $esFabricando ? 'bg-green-50 border border-green-200' : 'bg-white border border-gray-100' }}">
+                                    <div class="p-1 rounded {{ $esFabricando ? 'bg-green-900/30 border border-green-500/40' : 'bg-gray-800/60 border border-gray-600/40' }}">
                                         {{-- Barra de progreso + botón consumir --}}
                                         <div class="flex items-center gap-1">
-                                            <div class="relative flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
+                                            <div class="relative flex-1 h-4 bg-gray-700 rounded-full overflow-hidden">
                                                 <div class="absolute left-0 h-full transition-all duration-300"
-                                                    style="width: {{ $porcentaje }}%; background: {{ $esFabricando ? 'linear-gradient(90deg, #10b981, #059669)' : 'linear-gradient(90deg, #9ca3af, #6b7280)' }};">
+                                                    style="width: {{ $porcentaje }}%; background: {{ $esFabricando ? 'linear-gradient(90deg, #10b981, #059669)' : 'linear-gradient(90deg, #6b7280, #4b5563)' }};">
                                                 </div>
-                                                <span class="absolute inset-0 flex items-center justify-center text-[10px] font-bold {{ $porcentaje > 50 ? 'text-white' : 'text-gray-700' }}">
+                                                <span class="absolute inset-0 flex items-center justify-center text-[10px] font-bold {{ $porcentaje > 50 ? 'text-white' : 'text-gray-300' }}">
                                                     {{ number_format($pesoStock, 0, ',', '.') }}/{{ number_format($pesoInicial, 0, ',', '.') }} kg
                                                 </span>
                                             </div>
@@ -134,7 +134,7 @@
                                             </button>
                                         </div>
                                         {{-- Info compacta --}}
-                                        <div class="flex items-center justify-between text-[9px] text-gray-500 mt-0.5 px-0.5">
+                                        <div class="flex items-center justify-between text-[9px] text-gray-400 mt-0.5 px-0.5">
                                             <span title="Código" class="truncate">{{ $producto->codigo ?? '—' }}</span>
                                             <span title="Colada">C: {{ $producto->n_colada ?? '—' }}</span>
                                         </div>
@@ -144,7 +144,7 @@
                             @else
                             {{-- Sin stock - mostrar mensaje --}}
                             <div class="text-center py-2">
-                                <span class="text-xs text-red-600 font-medium">⚠️ Sin stock</span>
+                                <span class="text-xs text-red-400 font-medium">⚠️ Sin stock</span>
                             </div>
                             @endif
                         </div>
@@ -152,7 +152,7 @@
                 </div>
 
                 {{-- Botones de acciones --}}
-                <div class="p-3 border-t bg-gray-50 space-y-2">
+                <div class="p-3 border-t border-gray-700/50 bg-gray-800/50 space-y-2">
                     @if ($elementosAgrupados->isNotEmpty())
                         <div id="datos-lote" data-lote='@json($elementosAgrupados->keys()->values())' class="hidden"></div>
 
@@ -194,7 +194,7 @@
             <!-- ============================================================
                  COLUMNA CENTRAL - PLANILLAS DE TRABAJO
                  ============================================================ -->
-            <div class="bg-white border border-gray-200 shadow-lg rounded-lg overflow-hidden"
+            <div class="bg-gray-900/95 border border-blue-500/40 shadow-lg rounded-xl overflow-hidden backdrop-blur-sm"
                 :class="{
                     'col-span-12 lg:col-span-8': showLeft && showRight,
                     'col-span-12 lg:col-span-10': (showLeft && !showRight) || (!showLeft && showRight),
@@ -204,20 +204,20 @@
                 {{-- Panel flotante de sugerencia de corte --}}
                 <div id="element-info-panel"
                     class="fixed top-20 left-1/2 z-50 w-full max-w-md hidden -translate-x-1/2
-                    bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-400 shadow-2xl rounded-xl p-4">
+                    bg-gray-900/95 border border-blue-500/50 shadow-2xl rounded-xl p-4 backdrop-blur-sm">
                     <div class="flex items-start justify-between gap-2 mb-2">
-                        <h4 class="font-bold text-sm text-blue-900 flex items-center gap-2">
+                        <h4 class="font-bold text-sm text-blue-400 flex items-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                             </svg>
                             Sugerencia de corte
                         </h4>
-                        <button type="button" class="text-blue-700 hover:text-blue-900 font-bold"
+                        <button type="button" class="text-gray-400 hover:text-gray-200 font-bold"
                             onclick="document.getElementById('element-info-panel').classList.add('hidden')">
                             ✕
                         </button>
                     </div>
-                    <div id="element-info-body" class="text-xs text-blue-900 space-y-1"></div>
+                    <div id="element-info-body" class="text-xs text-gray-300 space-y-1"></div>
                 </div>
 
                 <div class="flex items-center justify-center" style="min-height: calc(100vh - 70px);">
@@ -239,7 +239,7 @@
                                 );
                             @endphp
 
-                            <section class="bg-gradient-to-br from-gray-50 to-white rounded-lg border-2 border-gray-200 shadow-md overflow-hidden">
+                            <section class="bg-gray-800/50 rounded-lg border border-gray-700/50 shadow-md overflow-hidden">
                                 <div class="space-y-2 overflow-y-auto flex flex-col items-center justify-start pt-4" style="max-height: calc(100vh - 70px);">
 
                                     {{-- GRUPOS DE RESUMEN de esta planilla --}}
@@ -302,32 +302,32 @@
                                         @endphp
 
                                         @if ($etiqueta)
-                                            <div class="hover:border-blue-400 hover:shadow-md transition-all duration-200">
+                                            <div class="hover:border-blue-500/60 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-200 rounded-lg">
                                                 <x-etiqueta.etiqueta :etiqueta="$etiqueta" :planilla="$planilla" :maquina-tipo="$maquina->tipo" />
 
                                                 @if ($tieneElementosEnOtrasMaquinas)
-                                                    <div class="mt-2 pt-2 border-t border-gray-200 text-center">
-                                                        <span class="text-amber-600 font-semibold text-xs">⚠️ En otras máq.</span>
+                                                    <div class="mt-2 pt-2 border-t border-gray-700/50 text-center">
+                                                        <span class="text-orange-400/80 font-semibold text-xs">⚠️ En otras máq.</span>
                                                     </div>
                                                 @endif
                                             </div>
                                         @else
-                                            <div class="p-4 bg-yellow-50 border border-yellow-200 rounded text-center text-yellow-700 text-sm">
+                                            <div class="p-4 bg-gray-800/50 border border-gray-600/50 rounded text-center text-gray-400 text-sm">
                                                 ⚠️ Etiqueta no encontrada: {{ $etiquetaSubId }}
                                             </div>
                                         @endif
                                     @empty
-                                        <div class="text-center p-8 text-sm text-gray-500 bg-gray-50 rounded-lg">
+                                        <div class="text-center p-8 text-sm text-gray-400 bg-gray-800/30 rounded-lg border border-gray-700/30">
                                             Sin subetiquetas pendientes
                                         </div>
                                     @endforelse
                                 </div>
                             </section>
                         @empty
-                            <div class="col-span-2 text-center p-6 bg-gradient-to-r from-yellow-50 to-yellow-100 border-2 border-yellow-300 rounded-xl shadow-md">
+                            <div class="col-span-2 text-center p-6 bg-gray-800/50 border border-blue-500/30 rounded-xl shadow-md">
                                 <div class="text-6xl mb-3">📋</div>
-                                <p class="text-lg font-bold text-gray-800 mb-1">No hay planillas en cola</p>
-                                <p class="text-sm text-gray-600">Selecciona una posición en los controles superiores</p>
+                                <p class="text-lg font-bold text-gray-300 mb-1">No hay planillas en cola</p>
+                                <p class="text-sm text-gray-400">Selecciona una posición en los controles superiores</p>
                             </div>
                         @endforelse
                     </div>
@@ -338,18 +338,18 @@
                  COLUMNA DERECHA - GESTIÓN DE PAQUETES
                  ============================================================ -->
             <div x-show="showRight" x-cloak
-                class="col-span-12 lg:col-span-2 bg-white border border-gray-200 shadow-lg rounded-lg self-start lg:sticky lg:top-2 overflow-hidden">
+                class="col-span-12 lg:col-span-2 bg-gray-900/95 border border-blue-500/40 shadow-lg rounded-xl self-start lg:sticky lg:top-2 overflow-hidden backdrop-blur-sm">
 
                 <div x-data="{ tabActivo: 'crear' }" class="w-full">
                     {{-- Tabs Header --}}
-                    <div class="flex bg-gray-100 border-b">
+                    <div class="flex bg-gray-800/50 border-b border-gray-700/50">
                         <button @click="tabActivo = 'crear'"
-                            :class="tabActivo === 'crear' ? 'bg-white border-b-2 border-blue-600 text-blue-700 font-bold' : 'text-gray-600 hover:text-gray-900'"
+                            :class="tabActivo === 'crear' ? 'bg-gray-900/80 border-b-2 border-blue-500 text-blue-400 font-bold' : 'text-gray-400 hover:text-gray-200'"
                             class="flex-1 py-3 px-4 text-sm transition">
                             📦 Crear Paquete
                         </button>
                         <button @click="tabActivo = 'gestion'"
-                            :class="tabActivo === 'gestion' ? 'bg-white border-b-2 border-blue-600 text-blue-700 font-bold' : 'text-gray-600 hover:text-gray-900'"
+                            :class="tabActivo === 'gestion' ? 'bg-gray-900/80 border-b-2 border-blue-500 text-blue-400 font-bold' : 'text-gray-400 hover:text-gray-200'"
                             class="flex-1 py-3 px-4 text-sm transition">
                             🗂️ Gestión
                         </button>
@@ -359,24 +359,24 @@
 
                     {{-- Tab: Crear Paquete --}}
                     <div x-show="tabActivo === 'crear'" class="p-4">
-                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-4 shadow-md">
-                            <h3 class="font-bold text-lg mb-3 text-blue-900">Crear Paquete</h3>
+                        <div class="bg-gray-800/50 border border-blue-500/30 rounded-lg p-4 shadow-md">
+                            <h3 class="font-bold text-lg mb-3 text-blue-400">Crear Paquete</h3>
 
                             <div class="mb-3">
                                 <input type="text" id="qrItem"
-                                    class="w-full border-2 border-blue-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-3"
+                                    class="w-full border border-gray-600 bg-gray-800 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-3 placeholder-gray-500"
                                     placeholder="🔍 Escanear etiqueta" autocomplete="off">
                             </div>
 
-                            <div class="mb-4 bg-white rounded-lg p-3 border border-blue-200">
-                                <h4 class="font-semibold text-gray-700 mb-2 text-sm">Etiquetas en el carro:</h4>
-                                <ul id="itemsList" class="list-disc pl-5 space-y-1.5 text-sm text-gray-700">
+                            <div class="mb-4 bg-gray-900/50 rounded-lg p-3 border border-gray-700/50">
+                                <h4 class="font-semibold text-gray-300 mb-2 text-sm">Etiquetas en el carro:</h4>
+                                <ul id="itemsList" class="list-disc pl-5 space-y-1.5 text-sm text-gray-400">
                                     <!-- Dinámico -->
                                 </ul>
                             </div>
 
                             <button id="crearPaqueteBtn"
-                                class="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition transform hover:scale-105">
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition transform hover:scale-105">
                                 📦 Crear Paquete
                             </button>
                         </div>
@@ -404,11 +404,11 @@
 <x-maquinas.modales.cambio-maquina :maquina="$maquina" :maquinas="$maquinas" />
 <x-maquinas.modales.dividir-elemento />
 
-<div id="modalPatron" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl p-6 w-auto max-w-full max-h-[85vh] overflow-y-auto">
+<div id="modalPatron" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
+    <div class="bg-gray-900/95 border border-blue-500/40 rounded-xl shadow-xl p-6 w-auto max-w-full max-h-[85vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold text-gray-800">Elementos del patrón</h2>
-            <button onclick="onclick="cerrarModalPatron()" wire:navigate" class="text-gray-500 hover:text-gray-800 text-2xl">✖</button>
+            <h2 class="text-xl font-bold text-gray-200">Elementos del patrón</h2>
+            <button onclick="cerrarModalPatron()" class="text-gray-400 hover:text-gray-200 text-2xl">✖</button>
         </div>
         <div id="contenedorPatron" class="flex flex-col gap-4"></div>
     </div>
@@ -589,7 +589,7 @@
                 // Restaurar botón si falla
                 btn.disabled = false;
                 btn.innerHTML = '+';
-                btn.className = 'bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded font-medium';
+                btn.className = 'bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium';
 
                 Swal.fire({
                     toast: true,
@@ -606,7 +606,7 @@
             // Restaurar botón si falla
             btn.disabled = false;
             btn.innerHTML = '+';
-            btn.className = 'bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded font-medium';
+            btn.className = 'bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium';
 
             Swal.fire({
                 toast: true,

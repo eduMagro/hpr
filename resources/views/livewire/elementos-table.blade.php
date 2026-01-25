@@ -96,8 +96,6 @@
                             texto="Código" />
                         <x-tabla.encabezado-ordenable campo="codigo_planilla" :sortActual="$sort" :orderActual="$order"
                             texto="Planilla" />
-                        <x-tabla.encabezado-ordenable campo="etiqueta" :sortActual="$sort" :orderActual="$order"
-                            texto="Etiqueta" />
                         <x-tabla.encabezado-ordenable campo="subetiqueta" :sortActual="$sort" :orderActual="$order"
                             texto="Subetiqueta" />
                         <x-tabla.encabezado-ordenable campo="dimensiones" :sortActual="$sort" :orderActual="$order"
@@ -122,8 +120,6 @@
                             texto="Peso (kg)" wire:navigate />
                         <x-tabla.encabezado-ordenable campo="longitud" :sortActual="$sort" :orderActual="$order"
                             texto="Longitud (m)" wire:navigate />
-                        <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order"
-                            texto="Estado" />
                         <th class="p-2 border">Acciones</th>
                     </tr>
 
@@ -142,11 +138,6 @@
                             <input type="text" wire:model.live.debounce.300ms="codigo_planilla"
                                 class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Planilla...">
-                        </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="etiqueta"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Etiqueta...">
                         </th>
                         <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="subetiqueta"
@@ -207,16 +198,6 @@
                             <input type="text" wire:model.live.debounce.300ms="longitud"
                                 class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Longitud...">
-                        </th>
-                        <th class="p-2 border">
-                            <select wire:model.live="estado"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
-                                <option value="">Todos</option>
-                                <option value="pendiente">Pendiente</option>
-                                <option value="fabricando">Fabricando</option>
-                                <option value="fabricado">Fabricado</option>
-                                <option value="montaje">Montaje</option>
-                            </select>
                         </th>
                         <th class="p-2 border text-center align-middle">
                             <div class="flex justify-center gap-2 items-center h-full">
@@ -286,18 +267,10 @@
                                 </a>
                             </td>
 
-                            <!-- ETIQUETA -->
-                            <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('etiquetas.index', ['etiqueta_id' => $elemento->etiquetaRelacion?->id ?? '']) }}"
-                                    wire:navigate class="text-blue-500 hover:underline">
-                                    {{ $elemento->etiquetaRelacion?->id ?? 'N/A' }}
-                                </a>
-                            </td>
-
                             <!-- SUBETIQUETA -->
                             <td class="px-2 py-2 text-center border">
                                 <a href="{{ route('etiquetas.index', ['etiqueta_sub_id' => $elemento->subetiqueta ?? '']) }}"
-                                    wire:navigate class="text-blue-500 hover:underline">
+                                    class="text-blue-500 hover:underline">
                                     {{ $elemento->subetiqueta ?? 'N/A' }}
                                 </a>
                             </td>
@@ -433,19 +406,6 @@
                                     class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
-                            <!-- ESTADO -->
-                            <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="elemento.estado"></span>
-                                </template>
-                                <select x-show="editando" style="display: none;" x-model="elemento.estado"
-                                    class="form-select w-full text-xs border rounded px-1 py-0.5">
-                                    <option value="pendiente">Pendiente</option>
-                                    <option value="fabricando">Fabricando</option>
-                                    <option value="fabricado">Fabricado</option>
-                                </select>
-                            </td>
-
                             <!-- BOTONES -->
                             <td class="px-1 py-2 border text-xs font-bold">
                                 <div class="flex items-center space-x-2 justify-center">
@@ -507,7 +467,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="19" class="text-center py-4 text-gray-500">
+                            <td colspan="18" class="text-center py-4 text-gray-500">
                                 No hay elementos registrados
                             </td>
                         </tr>
@@ -516,7 +476,7 @@
 
                 <tfoot>
                     <tr class="bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-300">
-                        <td colspan="19" class="px-6 py-3">
+                        <td colspan="18" class="px-6 py-3">
                             <div class="flex justify-end items-center gap-4 text-sm text-gray-700">
                                 <span class="font-semibold">Total peso filtrado:</span>
                                 <span class="text-base font-bold text-blue-800">

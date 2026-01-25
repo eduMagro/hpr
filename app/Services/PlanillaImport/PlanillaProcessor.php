@@ -490,7 +490,6 @@ class PlanillaProcessor
                 'peso' => (float)$item['peso'],
                 'dimensiones' => $fila[47] ?? null,
                 'tiempo_fabricacion' => $tiempoFabricacion,
-                'estado' => 'pendiente',
                 'elaborado' => $elaborado,
             ]);
         }

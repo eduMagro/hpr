@@ -310,10 +310,6 @@ class EtiquetasTable extends Component
             'paquete:id,codigo',
             'producto:id,codigo',
             'producto2:id,codigo',
-            'soldador1:id,name,primer_apellido',
-            'soldador2:id,name,primer_apellido',
-            'ensamblador1:id,name,primer_apellido',
-            'ensamblador2:id,name,primer_apellido',
             'operario1:id,name,primer_apellido',
             'operario2:id,name,primer_apellido',
         ])->whereNotNull('etiqueta_sub_id');

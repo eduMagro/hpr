@@ -281,8 +281,7 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                         ->first();
 
                     foreach ($elementosEnMaquina as $elemento) {
-                        $elemento->estado = "fabricando";
-                        if ($productoActual) {
+                                                if ($productoActual) {
                             $elemento->producto_id = $productoActual->id; // Guardar producto del primer clic
                         }
                         $elemento->save();
@@ -363,11 +362,18 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                         ->orderBy('id')
                         ->first();
                     if ($dobladora) {
+                        $algunoAsignado = false;
                         foreach ($elementosEnMaquina as $el) {
                             if (is_null($el->maquina_id_2)) {
                                 $el->maquina_id_2 = $dobladora->id;
                                 $el->save();
+                                $algunoAsignado = true;
                             }
+                        }
+                        // Actualizar estado2 de la etiqueta si se asignó algún elemento
+                        if ($algunoAsignado && is_null($etiqueta->estado2)) {
+                            $etiqueta->estado2 = 'pendiente';
+                            $etiqueta->save();
                         }
                     }
                     break;
@@ -379,6 +385,9 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                     break;
             }
 
+            // ❌ DESHABILITADO: La verificación automática y eliminación de planilla
+            // ahora se hace manualmente desde la vista de máquina con el botón "Planilla Completada"
+            /*
             // Si planilla queda sin pendientes en esta máquina, reordenar cola
             if ($planilla) {
                 $quedanPendientesEnEstaMaquina = Elemento::where('planilla_id', $planilla->id)
@@ -407,6 +416,8 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                     });
                 }
             }
+            */
+            // NOTA: La planilla se completa manualmente cuando el usuario lo indique
 
             $etiqueta->refresh();
             return new ActualizarEtiquetaResultado(
@@ -501,9 +512,6 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
             $elemento->producto_id   = $asignados[0] ?? null;
             $elemento->producto_id_2 = $asignados[1] ?? null;
             $elemento->producto_id_3 = $asignados[2] ?? null;
-            if ($pesoRestante <= 0) {
-                $elemento->estado = 'fabricado';
-            }
             $elemento->save();
         }
     }
@@ -784,8 +792,7 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
             ->first();
 
         foreach ($elementosEnMaquina as $elemento) {
-            $elemento->estado = "fabricando";
-            if ($productoActual) {
+                        if ($productoActual) {
                 $elemento->producto_id = $productoActual->id;
             }
             $elemento->save();
@@ -857,6 +864,9 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
             solicitanteId: $operario1Id
         );
 
+        // ❌ DESHABILITADO: La verificación automática y eliminación de planilla
+        // ahora se hace manualmente desde la vista de máquina con el botón "Planilla Completada"
+        /*
         // Verificar si la planilla ya no tiene pendientes en esta máquina
         if ($planilla) {
             $quedanPendientesEnEstaMaquina = Elemento::where('planilla_id', $planilla->id)
@@ -885,6 +895,8 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                 });
             }
         }
+        */
+        // NOTA: La planilla se completa manualmente cuando el usuario lo indique
 
         return true;
     }

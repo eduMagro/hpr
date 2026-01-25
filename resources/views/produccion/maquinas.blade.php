@@ -2314,20 +2314,11 @@
                                 elementoDiv);
                             console.log('📊 dataMovimiento:', dataMovimiento);
 
-
-                            // Validar que tengamos la máquina original
-                            if (!dataMovimiento.maquinaOriginal || isNaN(dataMovimiento.maquinaOriginal)) {
-                                console.log('❌ No se pudo obtener maquina original');
-                                console.error('Error: No se pudo obtener la máquina original del elemento',
-                                    elementoDiv);
-                                info.revert();
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Error',
-                                    text: 'No se pudo determinar la máquina original del elemento'
-                                });
-                                return;
-                            }
+                            // maquinaOriginal puede ser null si el elemento no tiene máquina asignada
+                            // En ese caso, se está asignando por primera vez
+                            const maquinaOrigenId = dataMovimiento.maquinaOriginal && !isNaN(dataMovimiento.maquinaOriginal)
+                                ? dataMovimiento.maquinaOriginal
+                                : null;
 
                             const recursos = info.event.getResources();
                             if (!recursos || recursos.length === 0 || !recursos[0]) {
@@ -2373,7 +2364,7 @@
                                     body: JSON.stringify({
                                         id: dataMovimiento.planillaId,
                                         maquina_id: maquinaDestinoId,
-                                        maquina_origen_id: dataMovimiento.maquinaOriginal,
+                                        maquina_origen_id: maquinaOrigenId,
                                         nueva_posicion: nuevaPosicion,
                                         elementos_id: dataMovimiento.elementosIds,
                                         check_only: true
@@ -2500,7 +2491,7 @@
                                 const params = {
                                     id: dataMovimiento.planillaId,
                                     maquina_id: maquinaDestinoId,
-                                    maquina_origen_id: dataMovimiento.maquinaOriginal,
+                                    maquina_origen_id: maquinaOrigenId,
                                     elementos_id: dataMovimiento.elementosIds,
                                 };
 

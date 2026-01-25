@@ -46,12 +46,13 @@ Relaciones: `planilla`, `elementos`, `paquete`, operarios y productos.
 
 Campos clave:
 
-| Campo                                           | Descripción                                           |
-| ----------------------------------------------- | ----------------------------------------------------- |
-| `diametro`, `longitud`, `barras`, `peso`        | Propiedades físicas.                                  |
-| `maquina_id`, `maquina_id_2`, `maquina_id_3`    | Flujo por máquinas.                                   |
-| `producto_id`, `producto_id_2`, `producto_id_3` | Consumos asignados.                                   |
-| `estado`                                        | `pendiente`, `fabricando`, `fabricado`, `completado`. |
+| Campo                                           | Descripción                                                  |
+| ----------------------------------------------- | ------------------------------------------------------------ |
+| `diametro`, `longitud`, `barras`, `peso`        | Propiedades físicas.                                         |
+| `maquina_id`, `maquina_id_2`                    | Máquinas principal y secundaria.                             |
+| `producto_id`, `producto_id_2`, `producto_id_3` | Consumos asignados.                                          |
+| `estado`                                        | `pendiente`, `fabricando`, `fabricado`, `completado`.        |
+| `estado2`                                       | Estado en máquina secundaria (si aplica): igual que `estado`.|
 
 ---
 

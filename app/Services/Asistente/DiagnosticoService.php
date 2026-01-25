@@ -438,7 +438,7 @@ class DiagnosticoService
             )
             ->leftJoin('planillas', 'elementos.planilla_id', '=', 'planillas.id')
             ->leftJoin('maquinas', 'elementos.maquina_id', '=', 'maquinas.id')
-            ->where('elementos.estado', 'fabricado')
+            ->where('elementos.elaborado', 1)
             ->whereNull('elementos.deleted_at');
 
         if (!empty($contexto['codigo_planilla'])) {

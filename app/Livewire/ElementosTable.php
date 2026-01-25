@@ -65,9 +65,6 @@ class ElementosTable extends Component
     public $longitud = '';
 
     #[Url(keep: true)]
-    public $estado = '';
-
-    #[Url(keep: true)]
     public $planilla_id = '';
 
     #[Url(keep: true)]
@@ -179,11 +176,6 @@ class ElementosTable extends Component
             });
         }
 
-        // Estado
-        if (!empty($this->estado)) {
-            $query->where('estado', 'like', "%{$this->estado}%");
-        }
-
         if (!empty($this->peso)) {
             $query->where('peso', 'like', "%{$this->peso}%");
         }
@@ -218,7 +210,6 @@ class ElementosTable extends Component
             'figura' => 'elementos.figura',
             'peso' => 'elementos.peso',
             'longitud' => 'elementos.longitud',
-            'estado' => 'elementos.estado',
         ];
 
         if (!empty($this->sort) && isset($map[$this->sort])) {

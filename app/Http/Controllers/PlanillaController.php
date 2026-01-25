@@ -404,23 +404,18 @@ class PlanillaController extends Controller
             $planilla->load('etiquetasEnsamblaje.entidad');
         }
 
-        // ------ Color por estado (igual que antes)
-        $getColor = fn($s) => match (strtolower(trim($s ?? ''))) {
-            'fabricado'  => 'bg-green-200',
-            'pendiente'  => 'bg-red-200',
-            'fabricando' => 'bg-blue-200',
-            default      => 'bg-gray-200',
-        };
+        // ------ Color por estado de elaboración
+        $getColor = fn($elaborado) => $elaborado == 1 ? 'bg-green-200' : 'bg-red-200';
 
         // Clonamos elementos y añadimos color
         $elementos = $planilla->elementos->map(function ($e) use ($getColor) {
-            $e->color = $getColor($e->estado);
+            $e->color = $getColor($e->elaborado);
             return $e;
         });
 
         // ------ Progreso
         $progreso = round(
-            min(100, ($elementos->where('estado', 'fabricado')->sum('peso') / max(1, ($planilla->peso_total ?? 0))) * 100),
+            min(100, ($elementos->where('elaborado', 1)->sum('peso') / max(1, ($planilla->peso_total ?? 0))) * 100),
             2
         );
 
@@ -1925,5 +1920,102 @@ class PlanillaController extends Controller
         ]);
 
         return view('planillas.ensamblaje', compact('planilla'));
+    }
+
+    /**
+     * Obtiene los datos de configuración para el modal de reset/edición de planilla.
+     * Incluye fecha_estimada_entrega y elementos con sus máquinas asignadas.
+     */
+    public function getConfigReset(int $id)
+    {
+        $planilla = Planilla::with(['cliente', 'obra'])->findOrFail($id);
+
+        // Obtener elementos agrupados por diámetro con su máquina asignada
+        $elementos = Elemento::where('planilla_id', $id)
+            ->select('id', 'marca', 'diametro', 'forma', 'maquina_id', 'maquina_id_2', 'n_unidades', 'longitud', 'peso')
+            ->orderBy('diametro')
+            ->orderBy('marca')
+            ->get()
+            ->map(function ($elem) {
+                return [
+                    'id' => $elem->id,
+                    'marca' => $elem->marca,
+                    'diametro' => $elem->diametro,
+                    'forma' => $elem->forma,
+                    'maquina_id' => $elem->maquina_id,
+                    'maquina_id_2' => $elem->maquina_id_2,
+                    'n_unidades' => $elem->n_unidades,
+                    'longitud' => $elem->longitud,
+                    'peso' => $elem->peso,
+                ];
+            });
+
+        // Obtener todas las máquinas disponibles
+        $maquinas = Maquina::select('id', 'codigo', 'nombre', 'tipo', 'diametro_min', 'diametro_max')
+            ->orderBy('codigo')
+            ->get();
+
+        // Fecha estimada de entrega (convertir a formato para input datetime-local)
+        $fechaEntrega = null;
+        if ($planilla->fecha_estimada_entrega) {
+            try {
+                $fecha = $planilla->getRawOriginal('fecha_estimada_entrega');
+                $carbon = Carbon::parse($fecha);
+                $fechaEntrega = $carbon->format('Y-m-d\TH:i');
+            } catch (\Exception $e) {
+                $fechaEntrega = null;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'planilla' => [
+                'id' => $planilla->id,
+                'codigo' => $planilla->codigo,
+                'cliente' => $planilla->cliente?->nombre,
+                'obra' => $planilla->obra?->nombre,
+                'estado' => $planilla->estado,
+                'fecha_estimada_entrega' => $fechaEntrega,
+            ],
+            'elementos' => $elementos,
+            'maquinas' => $maquinas,
+        ]);
+    }
+
+    /**
+     * Guarda la configuración de la planilla (fecha_estimada_entrega y asignaciones de máquinas).
+     */
+    public function saveConfigReset(Request $request, int $id)
+    {
+        $planilla = Planilla::findOrFail($id);
+
+        $request->validate([
+            'fecha_estimada_entrega' => 'nullable|date',
+            'elementos' => 'nullable|array',
+            'elementos.*.id' => 'required|integer|exists:elementos,id',
+            'elementos.*.maquina_id' => 'nullable|integer|exists:maquinas,id',
+        ]);
+
+        DB::transaction(function () use ($request, $planilla) {
+            // Actualizar fecha_estimada_entrega si se proporcionó
+            if ($request->has('fecha_estimada_entrega')) {
+                $planilla->fecha_estimada_entrega = $request->fecha_estimada_entrega;
+                $planilla->save();
+            }
+
+            // Actualizar asignaciones de máquinas de elementos
+            if ($request->has('elementos')) {
+                foreach ($request->elementos as $elemData) {
+                    Elemento::where('id', $elemData['id'])
+                        ->where('planilla_id', $planilla->id)
+                        ->update(['maquina_id' => $elemData['maquina_id'] ?? null]);
+                }
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Configuración guardada correctamente',
+        ]);
     }
 }

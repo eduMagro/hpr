@@ -136,6 +136,80 @@ abstract class ServicioEtiquetaBase
 
         return (int) $nuevo->id;
     }
+
+    /**
+     * Encola una planilla en la máquina destino ordenada por fecha estimada de entrega.
+     * Si la planilla ya existe en la cola, no hace nada.
+     *
+     * @param int $maquinaId ID de la máquina destino
+     * @param int $planillaId ID de la planilla a encolar
+     * @return void
+     */
+    public static function encolarPlanillaEnMaquina(int $maquinaId, int $planillaId): void
+    {
+        // Verificar si ya existe
+        $yaExiste = OrdenPlanilla::where('maquina_id', $maquinaId)
+            ->where('planilla_id', $planillaId)
+            ->lockForUpdate()
+            ->exists();
+
+        if ($yaExiste) {
+            return;
+        }
+
+        // Obtener la planilla para su fecha estimada de entrega
+        $planilla = Planilla::find($planillaId);
+        if (!$planilla) {
+            return;
+        }
+
+        $fechaEntrega = $planilla->fecha_estimada_entrega;
+
+        // Obtener todas las planillas en cola con sus fechas
+        $ordenesActuales = OrdenPlanilla::where('maquina_id', $maquinaId)
+            ->with('planilla:id,fecha_estimada_entrega')
+            ->orderBy('posicion')
+            ->lockForUpdate()
+            ->get();
+
+        // Determinar la posición correcta basada en fecha de entrega
+        $posicionNueva = 1;
+
+        if ($ordenesActuales->isNotEmpty()) {
+            // Buscar la posición donde insertar (ordenado por fecha_estimada_entrega)
+            $insertarAntes = null;
+
+            foreach ($ordenesActuales as $orden) {
+                $fechaOrden = $orden->planilla?->fecha_estimada_entrega;
+
+                // Si la planilla actual no tiene fecha, va al final
+                // Si la nueva tiene fecha y es anterior a la actual, insertar antes
+                if ($fechaEntrega && $fechaOrden && $fechaEntrega < $fechaOrden) {
+                    $insertarAntes = $orden->posicion;
+                    break;
+                }
+            }
+
+            if ($insertarAntes !== null) {
+                // Desplazar posiciones desde $insertarAntes hacia adelante
+                OrdenPlanilla::where('maquina_id', $maquinaId)
+                    ->where('posicion', '>=', $insertarAntes)
+                    ->increment('posicion');
+
+                $posicionNueva = $insertarAntes;
+            } else {
+                // Insertar al final
+                $posicionNueva = $ordenesActuales->max('posicion') + 1;
+            }
+        }
+
+        OrdenPlanilla::create([
+            'maquina_id'  => $maquinaId,
+            'planilla_id' => $planillaId,
+            'posicion'    => $posicionNueva,
+        ]);
+    }
+
     // --------------------------------------------
     // 🧩 1) Helper: completar etiqueta si corresponde
     // --------------------------------------------
@@ -146,15 +220,14 @@ abstract class ServicioEtiquetaBase
      */
     protected function completarEtiquetaSiCorresponde(
         Etiqueta $etiqueta,
-        array $fabricadoCompletado = ['fabricado', 'completado']
+        array $fabricadoCompletado = ['fabricado', 'completado', 'fabricada', 'completada']
     ): bool {
-        $quedanSinCompletar = $etiqueta->elementos()
-            ->where(function ($q) use ($fabricadoCompletado) {
-                $q->whereNull('estado')->orWhereNotIn('estado', $fabricadoCompletado);
-            })
+        // Si hay elementos con maquina_id_2, verificar que estado2 de la ETIQUETA esté completado
+        $tieneElementosConMaquina2 = $etiqueta->elementos()
+            ->whereNotNull('maquina_id_2')
             ->exists();
 
-        if ($quedanSinCompletar) {
+        if ($tieneElementosConMaquina2 && !in_array($etiqueta->estado2, $fabricadoCompletado)) {
             return false;
         }
 
@@ -234,12 +307,6 @@ abstract class ServicioEtiquetaBase
             $productosParaHistorial
         );
         // ─────────────────────────────────────────────────────────────────────
-
-        // 0) Marcar todos los elementos en esta máquina como "fabricado"
-        foreach ($elementosEnMaquina as $elemento) {
-            $elemento->estado = 'fabricado';
-            $elemento->save();
-        }
 
         // 1) CONSUMOS (con pool por diámetro y locks)
         $consumos = [];
@@ -422,9 +489,6 @@ abstract class ServicioEtiquetaBase
                 $elemento->producto_id_3 = $asignados[2] ?? null;
             }
 
-            if ($pesoRestante <= 0) {
-                $elemento->estado = 'fabricado';
-            }
             $elemento->save();
         }
 
@@ -446,27 +510,27 @@ abstract class ServicioEtiquetaBase
         $ensambladoText = strtolower($etiqueta->planilla->ensamblado ?? '');
 
         if (str_contains($ensambladoText, 'carcasas')) {
-            // Todos los elementos de la etiqueta listos (excluye Ø5 si corresponde)
-            $elementosEtiquetaCompletos = $etiqueta->elementos()
-                ->where('diametro', '!=', 5.00) // como en tu código original
-                ->where('estado', '!=', 'fabricado')
-                ->doesntExist();
-
-            if ($elementosEtiquetaCompletos) {
-                $etiqueta->estado = ($maquina->tipo === 'estribadora') ? 'fabricada' : 'completada';
-                $etiqueta->fecha_finalizacion = now();
-                $etiqueta->save();
-            }
+            // Regla CARCASAS: marcar como fabricada/completada
+            $etiqueta->estado = ($maquina->tipo === 'estribadora') ? 'fabricada' : 'completada';
+            $etiqueta->fecha_finalizacion = now();
+            $etiqueta->save();
 
             // Si no estamos en cortadora_dobladora, empujar a ensambladora
             if ($maquina->tipo !== 'cortadora_dobladora') {
                 $maquinaEnsambladora = Maquina::where('tipo', 'ensambladora')->first();
                 if ($maquinaEnsambladora) {
+                    $algunoAsignado = false;
                     foreach ($elementosEnMaquina as $elemento) {
                         if (is_null($elemento->maquina_id_2)) {
                             $elemento->maquina_id_2 = $maquinaEnsambladora->id;
                             $elemento->save();
+                            $algunoAsignado = true;
                         }
+                    }
+                    // Actualizar estado2 de la etiqueta si se asignó algún elemento
+                    if ($algunoAsignado && is_null($etiqueta->estado2)) {
+                        $etiqueta->estado2 = 'pendiente';
+                        $etiqueta->save();
                     }
                 }
             }
@@ -487,27 +551,14 @@ abstract class ServicioEtiquetaBase
                             ->where('maquina_id', $maquina->id)
                             ->update(['maquina_id_2' => $dobladora->id]);
 
-                        // 3.b) encolar planilla en la dobladora si no estaba
+                        // Actualizar estado2 de la etiqueta
+                        $etiqueta->estado2 = 'pendiente';
+                        $etiqueta->save();
+
+                        // 3.b) encolar planilla en la dobladora ordenada por fecha de entrega
                         $planillaId = $etiqueta->planilla_id ?? optional($etiqueta->planilla)->id;
                         if ($planillaId) {
-                            $yaExiste = OrdenPlanilla::where('maquina_id', $dobladora->id)
-                                ->where('planilla_id', $planillaId)
-                                ->lockForUpdate()
-                                ->exists();
-
-                            if (!$yaExiste) {
-                                $ultimaPos = OrdenPlanilla::where('maquina_id', $dobladora->id)
-                                    ->select('posicion')
-                                    ->orderByDesc('posicion')
-                                    ->lockForUpdate()
-                                    ->value('posicion');
-
-                                OrdenPlanilla::create([
-                                    'maquina_id'  => $dobladora->id,
-                                    'planilla_id' => $planillaId,
-                                    'posicion'    => is_null($ultimaPos) ? 0 : ($ultimaPos + 1),
-                                ]);
-                            }
+                            self::encolarPlanillaEnMaquina($dobladora->id, $planillaId);
                         } else {
                             Log::warning('No se pudo encolar planilla en dobladora: planilla_id nulo', [
                                 'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
@@ -567,15 +618,7 @@ abstract class ServicioEtiquetaBase
                 }
             }
             */
-            // 5) Si todos los elementos de la planilla están fabricados → cerrar planilla
-            $todosElementosPlanillaCompletos = $planilla->elementos()
-                ->where('estado', '!=', 'fabricado')
-                ->doesntExist();
-
-            if ($todosElementosPlanillaCompletos) {
-                $planilla->estado = 'completada';
-                $planilla->save();
-            }
+            // NOTA: La planilla se completa manualmente cuando el usuario lo indique
         }
     }
 

@@ -261,7 +261,10 @@ class StockService
         $query = DB::table('elementos')
             ->join('maquinas', 'elementos.maquina_id', '=', 'maquinas.id')
             ->join('planillas', 'elementos.planilla_id', '=', 'planillas.id')
-            ->where('elementos.estado', 'pendiente')
+            ->where(function($q) {
+                $q->where('elementos.elaborado', '!=', 1)
+                  ->orWhereNull('elementos.elaborado');
+            })
             ->whereNull('elementos.deleted_at')
             ->whereNotNull('maquinas.tipo_material')
             ->whereNotNull('elementos.diametro')

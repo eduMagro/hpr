@@ -194,13 +194,17 @@ class PlanillaImportService
 
             DB::beginTransaction();
 
-            // 4. ELIMINAR SOLO ELEMENTOS PENDIENTES (forceDelete para evitar conflictos de código único)
+            // 4. ELIMINAR SOLO ELEMENTOS NO ELABORADOS (forceDelete para evitar conflictos de código único)
             $elementosEliminados = $planilla->elementos()
-                ->where('estado', 'pendiente')
+                ->where(function($q) {
+                    $q->where('elaborado', '!=', 1)->orWhereNull('elaborado');
+                })
                 ->count();
 
             $planilla->elementos()
-                ->where('estado', 'pendiente')
+                ->where(function($q) {
+                    $q->where('elaborado', '!=', 1)->orWhereNull('elaborado');
+                })
                 ->forceDelete();
 
             Log::channel('planilla_import')->info("🗑️ Elementos pendientes eliminados", [

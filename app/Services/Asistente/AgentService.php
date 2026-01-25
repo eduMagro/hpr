@@ -857,11 +857,11 @@ PROMPT;
         $contenido .= "- **Peso total:** " . number_format($planilla->peso_total ?? 0, 0) . " kg\n";
         $contenido .= "- **Elementos:** {$elementos->count()}\n";
 
-        $porEstado = $elementos->groupBy('estado');
+        $elaborados = $elementos->where('elaborado', 1)->count();
+        $pendientes = $elementos->count() - $elaborados;
         $contenido .= "\n**Elementos por estado:**\n";
-        foreach ($porEstado as $estado => $grupo) {
-            $contenido .= "- {$estado}: {$grupo->count()}\n";
-        }
+        $contenido .= "- Elaborados: {$elaborados}\n";
+        $contenido .= "- Pendientes: {$pendientes}\n";
 
         return [
             'exito' => true,
@@ -1005,7 +1005,7 @@ PROMPT;
         $porMaquina = DB::table('elementos')
             ->select('maquinas.nombre', DB::raw('COUNT(*) as cantidad'), DB::raw('SUM(elementos.peso) as peso'))
             ->leftJoin('maquinas', 'elementos.maquina_id', '=', 'maquinas.id')
-            ->where('elementos.estado', 'fabricado')
+            ->where('elementos.elaborado', 1)
             ->where('elementos.updated_at', '>=', $desde)
             ->groupBy('maquinas.id', 'maquinas.nombre')
             ->get();
@@ -1688,15 +1688,13 @@ PROMPT;
             ->whereNull('deleted_at')
             ->get();
 
-        $porEstado = $elementos->groupBy('estado');
+        $elaborados = $elementos->where('elaborado', 1);
+        $pendientes = $elementos->where('elaborado', '!=', 1);
 
         $contenido = "**Elementos de planilla {$planilla->codigo}:**\n\n";
         $contenido .= "Total: {$elementos->count()} elementos\n\n";
-
-        foreach ($porEstado as $estado => $grupo) {
-            $peso = $grupo->sum('peso');
-            $contenido .= "- **{$estado}:** {$grupo->count()} elementos (" . number_format($peso, 0) . " kg)\n";
-        }
+        $contenido .= "- **Elaborados:** {$elaborados->count()} elementos (" . number_format($elaborados->sum('peso'), 0) . " kg)\n";
+        $contenido .= "- **Pendientes:** {$pendientes->count()} elementos (" . number_format($pendientes->sum('peso'), 0) . " kg)\n";
 
         return [
             'exito' => true,

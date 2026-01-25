@@ -6,7 +6,25 @@
 
 @php
     $safeSubId = str_replace('.', '-', $etiqueta->etiqueta_sub_id);
-    $estado = strtolower($etiqueta->estado ?? 'pendiente');
+    $estadoPrincipal = strtolower($etiqueta->estado ?? 'pendiente');
+    $estado2 = $etiqueta->estado2 ? strtolower($etiqueta->estado2) : null;
+
+    // Verificar si la etiqueta tiene elementos con maquina_id_2 (proceso secundario)
+    $tieneMaquina2 = $etiqueta->elementos()->whereNotNull('maquina_id_2')->exists();
+
+    // El estado para el color depende de si tiene maquina_id_2
+    // Si tiene maquina_id_2, el color se basa en estado2
+    if ($tieneMaquina2 && $estado2) {
+        $estado = $estado2;
+    } else {
+        $estado = $estadoPrincipal;
+    }
+
+    // Estado combinado para mostrar en badge
+    $estadoCombinado = ucfirst($estadoPrincipal);
+    if ($estado2) {
+        $estadoCombinado .= '/' . ucfirst($estado2);
+    }
 
     if (in_array($estado, ['fabricada', 'completada', 'ensamblada', 'soldada']) && $etiqueta->paquete_id) {
         $estado = 'en-paquete';
@@ -141,8 +159,10 @@
 </style>
 
 <div class="etiqueta-wrapper" data-etiqueta-sub-id="{{ $etiqueta->etiqueta_sub_id }}" data-paquete-id="{{ $etiqueta->paquete_id ?? '' }}">
-    <div class="etiqueta-card proceso estado-{{ $estado }}" id="etiqueta-{{ $safeSubId }}"
-        data-estado="{{ $estado }}"
+    <div class="etiqueta-card proceso estado-{{ $estado }}{{ $estado2 ? ' estado2-' . $estado2 : '' }}" id="etiqueta-{{ $safeSubId }}"
+        data-estado="{{ $estadoPrincipal }}"
+        data-estado2="{{ $estado2 ?? '' }}"
+        data-tiene-maquina2="{{ $tieneMaquina2 ? 'true' : 'false' }}"
         data-en-paquete="{{ $etiqueta->paquete_id ? 'true' : 'false' }}"
         data-planilla-codigo="{{ $planilla->codigo_limpio ?? '' }}"
         data-planilla-id="{{ $planilla->id ?? '' }}">
@@ -202,6 +222,19 @@
                 @endif
                 - {{ $etiqueta->nombre ?? 'Sin nombre' }} - Cal:B500SD -
                 {{ $etiqueta->peso_kg ?? 'N/A' }}
+                <span class="estado-badge ml-2 text-xs px-2 py-0.5 rounded-full
+                    @if(in_array($estado, ['pendiente']))
+                        bg-gray-200 text-gray-700
+                    @elseif(in_array($estado, ['fabricando', 'ensamblando', 'soldando', 'doblando']))
+                        bg-yellow-200 text-yellow-800
+                    @elseif(in_array($estado, ['fabricada', 'completada', 'ensamblada', 'soldada']))
+                        bg-green-200 text-green-800
+                    @elseif($estado === 'en-paquete')
+                        bg-purple-200 text-purple-800
+                    @else
+                        bg-gray-200 text-gray-700
+                    @endif
+                ">{{ $estadoCombinado }}</span>
             </h3>
         </div>
 

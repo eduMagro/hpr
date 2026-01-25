@@ -194,7 +194,7 @@ class InformeService
             ->selectRaw('SUM(elementos.peso) as kilos_fabricados')
             ->selectRaw('COUNT(elementos.id) as elementos_fabricados')
             ->join('maquinas', 'elementos.maquina_id', '=', 'maquinas.id')
-            ->where('elementos.estado', 'fabricado')
+            ->where('elementos.elaborado', 1)
             ->whereDate('elementos.updated_at', $fecha)
             ->groupBy('maquinas.id', 'maquinas.nombre', 'maquinas.codigo')
             ->orderByDesc('kilos_fabricados')
@@ -212,7 +212,7 @@ class InformeService
 
         // Comparativa con ayer
         $produccionAyer = Elemento::query()
-            ->where('estado', 'fabricado')
+            ->where('elaborado', 1)
             ->whereDate('updated_at', $fecha->copy()->subDay())
             ->sum('peso');
 
@@ -255,7 +255,7 @@ class InformeService
             ->selectRaw('DATE(updated_at) as fecha')
             ->selectRaw('SUM(peso) as kilos')
             ->selectRaw('COUNT(*) as elementos')
-            ->where('estado', 'fabricado')
+            ->where('elaborado', 1)
             ->whereBetween('updated_at', [$fechaInicio, $fechaFin->endOfDay()])
             ->groupBy(DB::raw('DATE(updated_at)'))
             ->orderBy('fecha')
@@ -274,7 +274,7 @@ class InformeService
             ->selectRaw('SUM(elementos.peso) as kilos')
             ->selectRaw('COUNT(elementos.id) as elementos')
             ->join('maquinas', 'elementos.maquina_id', '=', 'maquinas.id')
-            ->where('elementos.estado', 'fabricado')
+            ->where('elementos.elaborado', 1)
             ->whereBetween('elementos.updated_at', [$fechaInicio, $fechaFin->endOfDay()])
             ->groupBy('maquinas.id', 'maquinas.nombre', 'maquinas.codigo')
             ->orderByDesc('kilos')
@@ -489,7 +489,7 @@ class InformeService
             ->selectRaw('COUNT(elementos.id) as elementos')
             ->join('users', 'elementos.user_id', '=', 'users.id')
             ->leftJoin('maquinas', 'elementos.maquina_id', '=', 'maquinas.id')
-            ->where('elementos.estado', 'fabricado')
+            ->where('elementos.elaborado', 1)
             ->whereBetween('elementos.updated_at', [$fechaInicio, $fechaFin->endOfDay()])
             ->groupBy('users.id', 'users.name', 'maquinas.nombre')
             ->orderByDesc('kilos')

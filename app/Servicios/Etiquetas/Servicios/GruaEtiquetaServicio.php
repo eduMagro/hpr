@@ -205,9 +205,8 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
                 'consumido' => $pesoConsumido,
             ];
 
-            // Marcar elementos como fabricados y asignar producto
+            // Asignar producto a elementos
             foreach ($elementosEnMaquina as $elemento) {
-                $elemento->estado = 'fabricado';
                 $elemento->elaborado = 1;
                 $elemento->producto_id = $producto->id;
                 $elemento->save();

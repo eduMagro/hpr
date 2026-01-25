@@ -417,7 +417,7 @@ class ProduccionController extends Controller
             $elementosPorMaquina = $planilla->elementos->groupBy('maquina_id');
 
             foreach ($elementosPorMaquina as $maquinaId => $elementos) {
-                $completados = $elementos->where('estado', 'fabricado')->count();
+                $completados = $elementos->where('elaborado', 1)->count();
                 $total = $elementos->count();
                 $progreso = $total > 0 ? round(($completados / $total) * 100) : 0;
 
@@ -579,29 +579,12 @@ class ProduccionController extends Controller
             ->filter(fn($data) => !is_null($data['maquina_id']));
 
 
-        // 🔹 3. Calcular colas iniciales de cada máquina (OPTIMIZADO: una sola query)
+        // 🔹 3. Colas iniciales de cada máquina: siempre now()
+        // La primera planilla en cola usará su fecha_inicio si la tiene
         $maquinaIds = $maquinas->pluck('id')->all();
-        $ultimasPlanillasPorMaquina = DB::table('planillas')
-            ->join('elementos', 'planillas.id', '=', 'elementos.planilla_id')
-            ->whereIn('elementos.maquina_id', $maquinaIds)
-            ->where('planillas.estado', 'fabricando')
-            ->whereNull('planillas.deleted_at')
-            ->whereNull('elementos.deleted_at')
-            ->select('elementos.maquina_id', DB::raw('MAX(planillas.fecha_inicio) as fecha_inicio'))
-            ->groupBy('elementos.maquina_id')
-            ->pluck('fecha_inicio', 'maquina_id');
-
         $colasMaquinas = [];
-        $maxFecha = Carbon::now()->addYear();
         foreach ($maquinas as $m) {
-            $fechaInicioRaw = $ultimasPlanillasPorMaquina[$m->id] ?? null;
-            $fechaInicioCola = $fechaInicioRaw ? toCarbon($fechaInicioRaw) : Carbon::now();
-
-            if ($fechaInicioCola->gt($maxFecha)) {
-                $fechaInicioCola = Carbon::now();
-            }
-
-            $colasMaquinas[$m->id] = $fechaInicioCola;
+            $colasMaquinas[$m->id] = Carbon::now();
         }
 
         // 🔹 4. Obtener ordenes desde la tabla orden_planillas (SIN reordenar)
@@ -955,7 +938,11 @@ class ProduccionController extends Controller
         $ordenes = OrdenPlanilla::orderBy('posicion')
             ->get()
             ->groupBy('maquina_id')
-            ->map(fn($ordenesMaquina) => $ordenesMaquina->pluck('planilla_id')->all());
+            ->map(fn($ordenesMaquina) => $ordenesMaquina->map(fn($o) => [
+                'id' => $o->id,
+                'planilla_id' => $o->planilla_id,
+                'posicion' => $o->posicion,
+            ])->all());
 
         // 5. Generar eventos usando el mismo método que maquinas()
         try {
@@ -1001,64 +988,34 @@ class ProduccionController extends Controller
     private function calcularInitialDate(): string
     {
         try {
-            // Obtener el turno que determina el inicio real de la semana laboral
-            // Buscar el turno activo con el offset más bajo (más negativo) = el que empieza antes
-            // Solo considerar turnos principales (Mañana, Tarde, Noche)
-            $primerTurno = Turno::where('activo', true)
-                ->whereIn('nombre', ['Mañana', 'Tarde', 'Noche'])
-                ->whereNotNull('hora_inicio')
-                ->orderBy('offset_dias_inicio') // Offset más bajo primero (ej: -1 antes que 0)
-                ->orderBy('hora_inicio') // Hora más temprana como desempate
-                ->first();
+            // Por defecto: fecha actual
+            $fechaBase = now();
 
-            // Determinar la fecha base (inicio de semana actual = lunes)
-            $fechaBase = now()->startOfWeek(Carbon::MONDAY);
+            // Si hay planillas fabricando, usar la fecha de inicio más antigua
+            $planillasFabricando = Planilla::where('estado', 'fabricando')
+                ->whereNotNull('fecha_inicio')
+                ->get();
 
-            // Si hay planillas fabricando, usar su fecha como referencia
-            $planillasPrimeraPos = OrdenPlanilla::with(['planilla:id,estado,fecha_inicio'])
-                ->where('posicion', 1)
-                ->get()
-                ->pluck('planilla')
-                ->filter();
-
-            $fabricando = $planillasPrimeraPos->filter(
-                fn($p) => $p && strcasecmp((string)$p->estado, 'fabricando') === 0
-            );
-
-            if ($fabricando->isNotEmpty()) {
-                $minFecha = $fabricando
-                    ->pluck('fecha_inicio')
+            if ($planillasFabricando->isNotEmpty()) {
+                $minFecha = $planillasFabricando
+                    ->map(function ($p) {
+                        try {
+                            return Carbon::createFromFormat('d/m/Y H:i', $p->getRawOriginal('fecha_inicio'));
+                        } catch (\Exception $e) {
+                            return Carbon::parse($p->getRawOriginal('fecha_inicio'));
+                        }
+                    })
                     ->filter()
                     ->min();
 
                 if ($minFecha) {
-                    try {
-                        $fechaBase = Carbon::createFromFormat('d/m/Y H:i', $minFecha)->startOfWeek(Carbon::MONDAY);
-                    } catch (\Exception $e) {
-                        $fechaBase = Carbon::parse($minFecha)->startOfWeek(Carbon::MONDAY);
-                    }
+                    $fechaBase = $minFecha;
                 }
-            }
-
-            // Aplicar offset y hora del primer turno
-            if ($primerTurno) {
-                $offsetDias = $primerTurno->offset_dias_inicio ?? 0;
-                $horaInicio = $primerTurno->hora_inicio ?? '06:00:00';
-
-                // Parsear hora de inicio
-                $hora = Carbon::parse($horaInicio);
-
-                // Aplicar offset (negativo = día anterior, ej: domingo 22:00 para turno de lunes)
-                $fechaBase->addDays($offsetDias);
-                $fechaBase->setTime($hora->hour, $hora->minute, 0);
-            } else {
-                // Sin turnos configurados, empezar a las 06:00
-                $fechaBase->setTime(6, 0, 0);
             }
 
             return $fechaBase->toIso8601String();
         } catch (\Exception $e) {
-            Log::error('❌ Error en calcularInitialDate', [
+            Log::error('Error en calcularInitialDate', [
                 'error' => $e->getMessage()
             ]);
         }
@@ -1337,7 +1294,7 @@ class ProduccionController extends Controller
         $request->validate([
             'id'                => 'required|integer|exists:planillas,id',
             'maquina_id'        => 'required|integer|exists:maquinas,id',
-            'maquina_origen_id' => 'required|integer|exists:maquinas,id',
+            'maquina_origen_id' => 'nullable|integer|exists:maquinas,id',
             'nueva_posicion'    => 'nullable|integer|min:1',
             'forzar_movimiento' => 'sometimes|boolean',
             'elementos_id'      => 'sometimes|array',
@@ -1351,7 +1308,7 @@ class ProduccionController extends Controller
 
         $planillaId   = (int) $request->id;
         $maqDestino   = (int) $request->maquina_id;
-        $maqOrigen    = (int) $request->maquina_origen_id;
+        $maqOrigen    = $request->maquina_origen_id ? (int) $request->maquina_origen_id : null;
         $forzar       = (bool) $request->boolean('forzar_movimiento');
         $subsetIds    = collect($request->input('elementos_id', []))->map(fn($v) => (int)$v);
         $ordenPlanillaIdOrigen = $request->input('orden_planilla_id') ? (int) $request->input('orden_planilla_id') : null;
@@ -1593,9 +1550,10 @@ class ProduccionController extends Controller
                 // En el origen, si no quedan elementos (o si tu regla es sacarla siempre en cambio de máquina):
                 // aquí puedes decidir si eliminar el orden de origen o no.
                 // Si deseas mantener una sola cola por planilla, elimina del origen:
-                $ordenOrigen = OrdenPlanilla::where('planilla_id', $planillaId)
-                    ->where('maquina_id', $maqOrigen)
-                    ->first();
+                // Solo si hay máquina origen (elementos que ya tenían máquina asignada)
+                $ordenOrigen = $maqOrigen
+                    ? OrdenPlanilla::where('planilla_id', $planillaId)->where('maquina_id', $maqOrigen)->first()
+                    : null;
                 if ($ordenOrigen) {
                     // comprueba si aún quedan elementos en origen (opcional)
                     $quedanEnOrigen = Elemento::where('planilla_id', $planillaId)
@@ -1629,13 +1587,13 @@ class ProduccionController extends Controller
 
                 // 6) Consolidar posiciones adyacentes de la misma planilla en ambas máquinas
                 $this->consolidarPosicionesAdyacentes($maqDestino);
-                if ($maqOrigen !== $maqDestino) {
+                if ($maqOrigen && $maqOrigen !== $maqDestino) {
                     $this->consolidarPosicionesAdyacentes($maqOrigen);
                 }
             });
 
             // 🔄 Obtener eventos actualizados de ambas máquinas
-            $maquinasAfectadas = array_unique([$maqOrigen, $maqDestino]);
+            $maquinasAfectadas = array_values(array_filter(array_unique([$maqOrigen, $maqDestino])));
             $eventosActualizados = $this->obtenerEventosDeMaquinas($maquinasAfectadas);
 
             Log::info("✅ Planilla reordenada correctamente", [
@@ -1644,12 +1602,13 @@ class ProduccionController extends Controller
             ]);
 
             // Registrar en log de planificación
-            $maquinaOrigen = Maquina::find($maqOrigen);
+            $maquinaOrigen = $maqOrigen ? Maquina::find($maqOrigen) : null;
             $maquinaDestino = Maquina::find($maqDestino);
             $planilla = Planilla::find($planillaId);
             $cantidadElementos = $compatibles->count();
+            $nombreOrigen = $maquinaOrigen ? $maquinaOrigen->nombre : 'Sin máquina';
 
-            if ($maqOrigen === $maqDestino) {
+            if ($maqOrigen && $maqOrigen === $maqDestino) {
                 LogPlanificacionProduccion::registrar(
                     'cambiar_posicion',
                     "ha movido planilla {$planilla->numero_planilla} a posición {$posNueva} en {$maquinaDestino->nombre}",
@@ -1670,10 +1629,10 @@ class ProduccionController extends Controller
 
                 LogPlanificacionProduccion::registrar(
                     'mover_elementos',
-                    "ha pasado {$codigosTexto} de {$maquinaOrigen->nombre} a {$maquinaDestino->nombre}",
+                    "ha pasado {$codigosTexto} de {$nombreOrigen} a {$maquinaDestino->nombre}",
                     [
                         'codigos' => $codigosElementos,
-                        'origen' => $maquinaOrigen->nombre,
+                        'origen' => $nombreOrigen,
                         'destino' => $maquinaDestino->nombre,
                     ],
                     ['maquina_id' => $maqDestino, 'planilla_id' => $planillaId],
@@ -1740,34 +1699,18 @@ class ProduccionController extends Controller
 
         $colasMaquinas = [];
         foreach ($maquinas as $m) {
-            $ultimaPlanillaFabricando = Planilla::whereHas('elementos', fn($q) => $q->where('maquina_id', $m->id))
-                ->where('estado', 'fabricando')
-                ->orderByDesc('fecha_inicio')
-                ->first();
-
-            $fechaInicioCola = optional($ultimaPlanillaFabricando)->fecha_inicio
-                ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
-                : now();
-
-            // Validar que la fecha no esté demasiado lejos en el futuro
-            $maxFecha = Carbon::now()->addYear();
-            if ($fechaInicioCola->gt($maxFecha)) {
-                Log::warning('COLA MAQUINA: fecha_inicio demasiado lejana, usando now()', [
-                    'maquina_id' => $m->id,
-                    'fecha_inicio' => $fechaInicioCola->toIso8601String(),
-                    'planilla_id' => optional($ultimaPlanillaFabricando)->id,
-                ]);
-                $fechaInicioCola = Carbon::now();
-            }
-
-            $colasMaquinas[$m->id] = $fechaInicioCola;
+            $colasMaquinas[$m->id] = Carbon::now();
         }
 
         $ordenes = OrdenPlanilla::whereIn('maquina_id', $maquinaIds)
             ->orderBy('posicion')
             ->get()
             ->groupBy('maquina_id')
-            ->map(fn($ordenesMaquina) => $ordenesMaquina->pluck('planilla_id')->all());
+            ->map(fn($ordenesMaquina) => $ordenesMaquina->map(fn($o) => [
+                'id' => $o->id,
+                'planilla_id' => $o->planilla_id,
+                'posicion' => $o->posicion,
+            ])->all());
 
         return $this->generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas);
     }
@@ -2015,41 +1958,34 @@ class ProduccionController extends Controller
                         });
                         $duracionSegundos = max($duracionSegundos, 3600); // mínimo 1 hora
 
-                        // Buscar la fecha_inicio más antigua de las etiquetas fabricando/completadas
-                        $fechaInicioMasAntigua = null;
-                        if ($elementosFabricandoOCompletados->isNotEmpty()) {
-                            $fechasInicio = collect();
-                            foreach ($elementosFabricandoOCompletados as $elem) {
-                                $etiqueta = $elem->subetiquetas->first();
-                                if ($etiqueta && !empty($etiqueta->fecha_inicio)) {
-                                    $fechasInicio->push(toCarbon($etiqueta->fecha_inicio));
-                                }
-                            }
-                            $fechaInicioMasAntigua = $fechasInicio->min();
-                        }
-
                         // Determinar fecha de inicio:
-                        // - Primera planilla en cola Y fabricando: usa su fecha_inicio real
-                        // - Todas las demás: empiezan donde termina la anterior
-                        $usarFechaInicioPropia = $esPrimeraEnCola && $fechaInicioMasAntigua && $planilla->estado === 'fabricando';
+                        // - Primera en cola + fabricando: usa planilla->fecha_inicio
+                        // - Primera en cola + pendiente: usa now()
+                        // - Resto: empiezan donde termina la anterior
+                        if ($esPrimeraEnCola) {
+                            if ($planilla->estado === 'fabricando' && $planilla->fecha_inicio) {
+                                // Fabricando: usar fecha_inicio de la planilla
+                                try {
+                                    $fechaInicio = Carbon::createFromFormat('d/m/Y H:i', $planilla->getRawOriginal('fecha_inicio'));
+                                } catch (\Exception $e) {
+                                    $fechaInicio = toCarbon($planilla->getRawOriginal('fecha_inicio'));
+                                }
 
-                        if ($usarFechaInicioPropia) {
-                            // Primera planilla fabricando: usar su fecha de inicio real
-                            $fechaInicio = $fechaInicioMasAntigua;
-
-                            // Duración de elementos pendientes (aún no fabricados)
-                            $duracionPendientes = $elementosPendientes->sum(function ($elemento) {
-                                $tiempoFabricacion = (float)($elemento->tiempo_fabricacion ?? 1200);
-                                $tiempoAmarrado = 1200;
-                                return $tiempoFabricacion + $tiempoAmarrado;
-                            });
-
-                            // El evento se alarga hasta now() + tiempo pendiente
-                            $tiempoTranscurrido = $fechaInicio->diffInSeconds(Carbon::now());
-                            $duracionSegundos = $tiempoTranscurrido + $duracionPendientes;
-                            $duracionSegundos = max($duracionSegundos, 3600);
+                                // Alargar hasta now() + tiempo pendiente
+                                $duracionPendientes = $elementosPendientes->sum(function ($elemento) {
+                                    $tiempoFabricacion = (float)($elemento->tiempo_fabricacion ?? 1200);
+                                    $tiempoAmarrado = 1200;
+                                    return $tiempoFabricacion + $tiempoAmarrado;
+                                });
+                                $tiempoTranscurrido = $fechaInicio->diffInSeconds(Carbon::now());
+                                $duracionSegundos = $tiempoTranscurrido + $duracionPendientes;
+                                $duracionSegundos = max($duracionSegundos, 3600);
+                            } else {
+                                // Pendiente: usar now()
+                                $fechaInicio = Carbon::now();
+                            }
                         } else {
-                            // Demás planillas: empiezan donde termina la anterior
+                            // No es primera: usar fin del evento anterior
                             $fechaInicio = $inicioCola->copy();
                         }
 
@@ -2497,27 +2433,7 @@ class ProduccionController extends Controller
 
             $colasMaquinas = [];
             foreach ($maquinas as $m) {
-                $ultimaPlanillaFabricando = Planilla::whereHas('elementos', fn($q) => $q->where('maquina_id', $m->id))
-                    ->where('estado', 'fabricando')
-                    ->orderByDesc('fecha_inicio')
-                    ->first();
-
-                $fechaInicioCola = optional($ultimaPlanillaFabricando)->fecha_inicio
-                    ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
-                    : now();
-
-                // Validar que la fecha no esté demasiado lejos en el futuro
-                $maxFecha = Carbon::now()->addYear();
-                if ($fechaInicioCola->gt($maxFecha)) {
-                    Log::warning('COLA MAQUINA: fecha_inicio demasiado lejana, usando now()', [
-                        'maquina_id' => $m->id,
-                        'fecha_inicio' => $fechaInicioCola->toIso8601String(),
-                        'planilla_id' => optional($ultimaPlanillaFabricando)->id,
-                    ]);
-                    $fechaInicioCola = Carbon::now();
-                }
-
-                $colasMaquinas[$m->id] = $fechaInicioCola;
+                $colasMaquinas[$m->id] = Carbon::now();
             }
 
             $ordenes = OrdenPlanilla::orderBy('posicion')
@@ -2526,7 +2442,7 @@ class ProduccionController extends Controller
                 ->map(fn($ordenesMaquina) => $ordenesMaquina->map(fn($orden) => [
                     'planilla_id' => $orden->planilla_id,
                     'posicion' => $orden->posicion,
-                    'id' => $orden->id
+                    'id' => $orden->id,
                 ])->all());
 
             $eventos = $this->generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas);

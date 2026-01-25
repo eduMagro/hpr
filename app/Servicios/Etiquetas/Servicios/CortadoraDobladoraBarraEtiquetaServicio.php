@@ -83,14 +83,14 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                     $etiqueta->producto_id = $producto->id;
 
                     $etiqueta->estado       = 'fabricando';
-                    $etiqueta->operario1_id = $datos->operario1Id;
-                    $etiqueta->operario2_id = $datos->operario2Id;
+                    // Solo operario1 con usuario autenticado
+                    $etiqueta->operario1_id = auth()->id();
                     $etiqueta->fecha_inicio = now();
                     $etiqueta->save();
                     break;
 
                 case 'fabricando':
-                    $quedan = $elementosEnMaquina->contains(fn($e) => !in_array($e->estado, ['fabricado', 'completado'], true));
+                    $quedan = $elementosEnMaquina->contains(fn($e) => $e->elaborado != 1);
                     if (!$quedan) {
                         throw new ServicioEtiquetaException('Todos los elementos ya están completados en esta máquina.');
                     }
@@ -149,11 +149,18 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                         ->orderBy('id')
                         ->first();
                     if ($dobladora) {
+                        $algunoAsignado = false;
                         foreach ($elementosEnMaquina as $el) {
                             if (is_null($el->maquina_id_2)) {
                                 $el->maquina_id_2 = $dobladora->id;
                                 $el->save();
+                                $algunoAsignado = true;
                             }
+                        }
+                        // Actualizar estado2 de la etiqueta si se asignó algún elemento
+                        if ($algunoAsignado && is_null($etiqueta->estado2)) {
+                            $etiqueta->estado2 = 'pendiente';
+                            $etiqueta->save();
                         }
                     }
                     break;
@@ -336,8 +343,7 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                     }
                 }
 
-                // Marcar elemento como fabricado (las asignaciones de producto ya se hicieron antes)
-                $elemento->estado = 'fabricado';
+                // Guardar elemento (las asignaciones de producto ya se hicieron antes)
                 $elemento->save();
                 // ============================
                 // === CALCULAR SOBRA TOTAL
@@ -395,50 +401,38 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
 
     private function evaluarYActualizarEstados(Etiqueta $etiqueta, Maquina $maquina, $elementosEnMaquina, ?Planilla $planilla): void
     {
-        // Contadores
-        $numCompletadosEnMaquina = $elementosEnMaquina->where('estado', 'fabricado')->count();
-        $totalEnMaquina          = $elementosEnMaquina->count();
-        foreach ($elementosEnMaquina as $elemento) {
-            $elemento->estado = "fabricado";
-            $elemento->save();
-        }
         $textoEnsamblado = strtolower($etiqueta->planilla->ensamblado ?? '');
-        $comentarioPlanilla = strtolower($planilla->comentario ?? '');
 
         // === Reglas especiales ===
         if (str_contains($textoEnsamblado, 'taller')) {
-            // Si están completados todos los de esta máquina
-            if ($totalEnMaquina > 0 && $numCompletadosEnMaquina >= $totalEnMaquina) {
-
-                $etiqueta->estado = 'fabricada';
-                $etiqueta->fecha_finalizacion = now();
-                $this->actualizarPesoEtiqueta($etiqueta);
-
-                $etiqueta->save();
-            }
+            // Regla TALLER: marcar como fabricada
+            $etiqueta->estado = 'fabricada';
+            $etiqueta->fecha_finalizacion = now();
+            $this->actualizarPesoEtiqueta($etiqueta);
+            $etiqueta->save();
 
         } elseif (str_contains($textoEnsamblado, 'carcasas')) {
-            // Completos todos excepto Ø5
-            $completosSin5 = $etiqueta->elementos()
-                ->where('diametro', '!=', 5.00)
-                ->where('estado', '!=', 'fabricado')
-                ->doesntExist();
-
-            if ($completosSin5) {
-                $etiqueta->estado = $maquina->tipo === 'estribadora' ? 'fabricada' : 'completada';
-                $etiqueta->fecha_finalizacion = now();
-                $etiqueta->save();
-            }
+            // Regla CARCASAS: marcar como fabricada/completada
+            $etiqueta->estado = $maquina->tipo === 'estribadora' ? 'fabricada' : 'completada';
+            $etiqueta->fecha_finalizacion = now();
+            $etiqueta->save();
 
             // Si no estamos en cortadora_dobladora, enviar a ensambladora como segunda máquina
             if ($maquina->tipo !== 'cortadora_dobladora') {
                 $ensambladora = Maquina::where('tipo', 'ensambladora')->first();
                 if ($ensambladora) {
+                    $algunoAsignado = false;
                     foreach ($elementosEnMaquina as $el) {
                         if (is_null($el->maquina_id_2)) {
                             $el->maquina_id_2 = $ensambladora->id;
                             $el->save();
+                            $algunoAsignado = true;
                         }
+                    }
+                    // Actualizar estado2 de la etiqueta si se asignó algún elemento
+                    if ($algunoAsignado && is_null($etiqueta->estado2)) {
+                        $etiqueta->estado2 = 'pendiente';
+                        $etiqueta->save();
                     }
                 }
             }
@@ -460,42 +454,23 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                         ->where('maquina_id', $maquina->id)
                         ->update(['maquina_id_2' => $dobladora->id]);
 
+                    // Actualizar estado2 de la etiqueta
+                    $etiqueta->estado2 = 'pendiente';
+                    $etiqueta->save();
+
                     $planillaId = $etiqueta->planilla_id ?? optional($etiqueta->planilla)->id;
                     if ($planillaId) {
-                        $yaExiste = OrdenPlanilla::where('maquina_id', $dobladora->id)
-                            ->where('planilla_id', $planillaId)
-                            ->lockForUpdate()
-                            ->exists();
-
-                        if (!$yaExiste) {
-                            $ultimaPos = OrdenPlanilla::where('maquina_id', $dobladora->id)
-                                ->select('posicion')
-                                ->orderByDesc('posicion')
-                                ->lockForUpdate()
-                                ->value('posicion');
-
-                            OrdenPlanilla::create([
-                                'maquina_id'  => $dobladora->id,
-                                'planilla_id' => $planillaId,
-                                'posicion'    => is_null($ultimaPos) ? 0 : ($ultimaPos + 1),
-                            ]);
-                        }
+                        self::encolarPlanillaEnMaquina($dobladora->id, $planillaId);
                     }
                 } else {
                     Log::warning('No hay dobladora manual disponible para "pates".', ['etiqueta' => $etiqueta->etiqueta_sub_id]);
                 }
             });
         } else {
-            // Lógica normal: si todos los elementos de la etiqueta están "fabricado" -> completada
-            $todosElementosEtiquetaFabricados = $etiqueta->elementos()
-                ->where('estado', '!=', 'fabricado')
-                ->doesntExist();
-
-            if ($todosElementosEtiquetaFabricados) {
-                $etiqueta->estado = 'completada';
-                $etiqueta->fecha_finalizacion = now();
-                $etiqueta->save();
-            }
+            // Lógica normal: marcar etiqueta como completada
+            $etiqueta->estado = 'completada';
+            $etiqueta->fecha_finalizacion = now();
+            $etiqueta->save();
         }
     }
 

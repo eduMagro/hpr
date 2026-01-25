@@ -961,10 +961,21 @@ function initTrabajoEtiqueta() {
             window.SistemaDOM.actualizarEstadoEtiqueta(id, data.estado, {
                 peso: data.peso_etiqueta,
                 nombre: data.nombre || id,
+                estado2: data.estado2 || null,
+                es_secundaria: data.es_secundaria || false,
             });
         } else {
             // Fallback: actualización legacy
             aplicarEstadoAProceso(id, data.estado);
+        }
+
+        // ✅ Actualizar data-estado2 en el DOM si existe
+        if (data.estado2) {
+            const safeIdElem = String(id).replace(/\./g, "-");
+            const etiquetaElem = document.getElementById(`etiqueta-${safeIdElem}`);
+            if (etiquetaElem) {
+                etiquetaElem.dataset.estado2 = data.estado2;
+            }
         }
 
         // ✅ Actualizar colada de la etiqueta en la leyenda del SVG
@@ -1170,6 +1181,23 @@ function initTrabajoEtiqueta() {
                     "success",
                     "Etiqueta soldada",
                     "El proceso de soldadura ha finalizado correctamente."
+                );
+                scrollToNextDiv(safeId);
+                break;
+
+            case "doblando":
+                showAlert(
+                    "info",
+                    "Doblando",
+                    "La etiqueta está en proceso de doblado."
+                );
+                break;
+
+            case "completada":
+                showAlert(
+                    "success",
+                    "Doblado completado",
+                    "El proceso de doblado ha finalizado correctamente."
                 );
                 scrollToNextDiv(safeId);
                 break;

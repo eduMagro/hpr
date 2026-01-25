@@ -248,7 +248,6 @@ class EtiquetaController extends Controller
 
     public function index(Request $request)
     {
-        // Retornar vista Livewire
         return view('etiquetas.index-livewire');
     }
 
@@ -1428,9 +1427,20 @@ class EtiquetaController extends Controller
                 );
             }
 
+            // Determinar si esta máquina es secundaria para la etiqueta
+            $esSecundaria = $etiqueta->elementos()
+                ->where('maquina_id_2', $maquina->id)
+                ->exists();
+
+            // Para máquinas secundarias, devolver estado2 como el estado relevante
+            $estadoRelevante = $esSecundaria ? ($etiqueta->estado2 ?? 'pendiente') : $etiqueta->estado;
+
             return response()->json([
                 'success' => true,
-                'estado' => $etiqueta->estado,
+                'estado' => $estadoRelevante,
+                'estado_principal' => $etiqueta->estado,
+                'estado2' => $etiqueta->estado2,
+                'es_secundaria' => $esSecundaria,
                 'peso_etiqueta' => $etiqueta->peso,
                 'nombre' => $etiqueta->etiqueta_sub_id,
                 'productos_afectados' => $resultado->productosAfectados,
@@ -1509,7 +1519,7 @@ class EtiquetaController extends Controller
                 ->get();
             // Suma total de los pesos de los elementos en la máquina
             $pesoTotalMaquina = $elementosEnMaquina->sum('peso');
-            $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->where('estado', 'fabricado')->count();
+            $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->where('elaborado', 1)->count();
             // Número total de elementos asociados a la etiqueta
             $numeroElementosTotalesEnEtiqueta = $etiqueta->elementos()->count();
             // Verificar si la etiqueta está repartida en diferentes máquinas
@@ -1809,7 +1819,6 @@ class EtiquetaController extends Controller
                     foreach ($elementosEnMaquina as $elemento) {
                         $elemento->users_id   = $operario1;
                         $elemento->users_id_2 = $operario2;
-                        $elemento->estado     = "fabricando";
                         $elemento->save();
                     }
 
@@ -1940,13 +1949,14 @@ class EtiquetaController extends Controller
                 case 'ensamblando':
 
                     foreach ($elementosEnMaquina as $elemento) {
-                        $elemento->estado = "completado";
                         $elemento->users_id =  $operario1;
                         $elemento->users_id_2 =  $operario2;
+                        $elemento->elaborado = 1;
                         $elemento->save();
                     }
+                    // Verificar si todos los elementos de la etiqueta están elaborados
                     $elementosEtiquetaCompletos = $etiqueta->elementos()
-                        ->where('estado', '!=', 'completado')
+                        ->where('elaborado', '!=', 1)
                         ->doesntExist();
 
                     if ($elementosEtiquetaCompletos) {
@@ -2061,7 +2071,7 @@ class EtiquetaController extends Controller
                         $elemento->producto_id_2 = $productosAsignados[1] ?? null;
                         $elemento->producto_id_3 = $productosAsignados[2] ?? null;
 
-                        $elemento->estado = "completado";
+                        $elemento->elaborado = 1;
 
                         $elemento->save();
 
@@ -2121,12 +2131,12 @@ class EtiquetaController extends Controller
     {
 
         foreach ($elementosEnMaquina as $elemento) {
-            $elemento->estado = "fabricado";
+            $elemento->elaborado = 1;
             $elemento->save();
         }
 
         // ✅ ACTUALIZAR EL CONTADOR DE ELEMENTOS COMPLETADOS
-        $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->where('estado', 'fabricado')->count();
+        $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->where('elaborado', 1)->count();
 
         // -------------- CONSUMOS
         $consumos = [];
@@ -2245,8 +2255,8 @@ class EtiquetaController extends Controller
         $ensambladoText = strtolower($etiqueta->planilla->ensamblado ?? '');
 
         if (str_contains($ensambladoText, 'taller')) {
-            // Verificar si todos los elementos de la etiqueta están en estado "completado"
-            $elementosEtiquetaCompletos = $etiqueta->elementos()->where('estado', '!=', 'fabricado')->doesntExist();
+            // Verificar si todos los elementos de la etiqueta están elaborados
+            $elementosEtiquetaCompletos = $etiqueta->elementos()->where('elaborado', '!=', 1)->doesntExist();
             if (str_contains($planilla->comentario, 'amarrado')) {
             } elseif (str_contains($planilla->comentario, 'ensamblado amarrado')) {
             } else {
@@ -2281,11 +2291,18 @@ class EtiquetaController extends Controller
                 $maquinaEnsambladora = Maquina::where('tipo', 'ensambladora')->first();
 
                 if ($maquinaEnsambladora) {
+                    $algunoAsignado = false;
                     foreach ($elementosEnMaquina as $elemento) {
                         if (is_null($elemento->maquina_id_2)) {
                             $elemento->maquina_id_2 = $maquinaEnsambladora->id;
                             $elemento->save();
+                            $algunoAsignado = true;
                         }
+                    }
+                    // Actualizar estado2 de la etiqueta si se asignó algún elemento
+                    if ($algunoAsignado && is_null($etiqueta->estado2)) {
+                        $etiqueta->estado2 = 'pendiente';
+                        $etiqueta->save();
                     }
                 }
             }
@@ -2311,6 +2328,10 @@ class EtiquetaController extends Controller
                         Elemento::where('etiqueta_sub_id', $etiqueta->etiqueta_sub_id)
                             ->where('maquina_id', $maquina->id)
                             ->update(['maquina_id_2' => $dobladora->id]);
+
+                        // Actualizar estado2 de la etiqueta
+                        $etiqueta->estado2 = 'pendiente';
+                        $etiqueta->save();
                         // 🔔 Generar movimiento para que el gruista lleve el paquete a la dobladora
                         // $this->generarMovimientoEtiqueta(
                         //     $maquina,
@@ -2323,26 +2344,7 @@ class EtiquetaController extends Controller
                         $planillaId = $etiqueta->planilla_id ?? optional($etiqueta->planilla)->id;
 
                         if ($planillaId) {
-                            // Evitamos duplicados de la misma planilla en esa máquina
-                            $yaExiste = OrdenPlanilla::where('maquina_id', $dobladora->id)
-                                ->where('planilla_id', $planillaId)
-                                ->lockForUpdate()   // bloqueamos la cola mientras consultamos/insertamos
-                                ->exists();
-
-                            if (! $yaExiste) {
-                                // Obtenemos la última posición de esa máquina de forma segura
-                                $ultimaPos = OrdenPlanilla::where('maquina_id', $dobladora->id)
-                                    ->select('posicion')
-                                    ->orderByDesc('posicion')
-                                    ->lockForUpdate()
-                                    ->value('posicion');
-
-                                OrdenPlanilla::create([
-                                    'maquina_id'  => $dobladora->id,
-                                    'planilla_id' => $planillaId,
-                                    'posicion'    => is_null($ultimaPos) ? 0 : ($ultimaPos + 1),
-                                ]);
-                            }
+                            \App\Servicios\Etiquetas\Base\ServicioEtiquetaBase::encolarPlanillaEnMaquina($dobladora->id, $planillaId);
                         } else {
                             Log::warning('No se pudo encolar planilla en dobladora: planilla_id nulo', [
                                 'etiqueta_id' => $etiqueta->id ?? null,
@@ -2437,6 +2439,9 @@ class EtiquetaController extends Controller
                 $planilla->estado = 'completada';
                 $planilla->save();
 
+                // ❌ DESHABILITADO: La eliminación de la cola ahora es manual
+                // con el botón "Planilla Completada" en la vista de máquina
+                /*
                 DB::transaction(function () use ($planilla, $maquina) {
                     // 1. Eliminar el registro de esa planilla en esta máquina
                     OrdenPlanilla::where('planilla_id', $planilla->id)
@@ -2454,6 +2459,7 @@ class EtiquetaController extends Controller
                         $orden->save();
                     }
                 });
+                */
             }
         }
 

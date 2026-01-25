@@ -45,6 +45,7 @@ class Etiqueta extends Model
         'fecha_inicio_soldadura',
         'fecha_finalizacion_soldadura',
         'estado',
+        'estado2',
         'subido',
         'impresa',
         'resumida',

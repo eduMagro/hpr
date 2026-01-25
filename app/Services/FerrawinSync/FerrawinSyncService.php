@@ -319,8 +319,10 @@ class FerrawinSyncService
         try {
             DB::beginTransaction();
 
-            // Eliminar elementos pendientes
-            $planilla->elementos()->where('estado', 'pendiente')->forceDelete();
+            // Eliminar elementos no elaborados (pendientes de fabricación)
+            $planilla->elementos()->where(function($q) {
+                $q->where('elaborado', '!=', 1)->orWhereNull('elaborado');
+            })->forceDelete();
 
             // Eliminar etiquetas huérfanas (verificando por etiqueta_id, no por relación elementos)
             $etiquetasHuerfanas = \App\Models\Etiqueta::where('planilla_id', $planilla->id)

@@ -7,12 +7,13 @@
         }
 
         .machine-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 28px rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.6);
         }
 
         .machine-card {
-            transition: all 0.3s ease;
+            transition: all 0.25s ease;
         }
     </style>
 
@@ -59,23 +60,23 @@
                 @forelse($registrosMaquina as $maquina)
                     <div id="maquina-{{ $maquina->id }}" data-machine-id="{{ $maquina->id }}"
                         data-obra-id="{{ $maquina->obra_id }}"
-                        class="machine-card bg-white border border-gray-200 rounded-xl shadow-md overflow-hidden flex flex-col h-full">
+                        class="machine-card bg-gray-900/95 border border-blue-500/40 rounded-xl shadow-lg overflow-hidden flex flex-col h-full backdrop-blur-sm">
 
                         {{-- Imagen responsive --}}
                         <div
-                            class="w-full h-48 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center flex-shrink-0">
+                            class="w-full h-48 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center flex-shrink-0">
                             @if ($maquina->imagen)
                                 <img src="{{ asset($maquina->imagen) }}" alt="Imagen de {{ $maquina->nombre }}"
                                     class="object-contain h-full w-full p-4">
                             @else
                                 <div class="text-center">
-                                    <svg class="mx-auto h-16 w-16 text-gray-300" fill="none" stroke="currentColor"
+                                    <svg class="mx-auto h-16 w-16 text-gray-600" fill="none" stroke="currentColor"
                                         viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
                                         </path>
                                     </svg>
-                                    <span class="text-gray-400 text-sm mt-2 block">Sin imagen</span>
+                                    <span class="text-gray-500 text-sm mt-2 block">Sin imagen</span>
                                 </div>
                             @endif
                         </div>
@@ -83,92 +84,42 @@
                         {{-- Datos principales --}}
                         <div class="p-4 space-y-3 flex-1 flex flex-col">
                             {{-- Título --}}
-                            <div class="border-b border-gray-200 pb-2">
-                                <h3 class="text-base font-bold text-gray-900 line-clamp-2">
-                                    <span class="text-blue-600">{{ $maquina->codigo }}</span>
-                                    <span class="text-gray-400 text-sm">—</span>
-                                    <span class="text-sm">{{ $maquina->nombre }}</span>
+                            <div class="border-b border-gray-700/50 pb-2">
+                                <h3 class="text-base font-semibold text-gray-100 line-clamp-2">
+                                    <span class="text-blue-400">{{ $maquina->codigo }}</span>
+                                    <span class="text-gray-600 text-sm">—</span>
+                                    <span class="text-sm text-gray-300 font-normal">{{ $maquina->nombre }}</span>
                                 </h3>
                             </div>
 
                             {{-- Grid de información --}}
                             <div class="grid grid-cols-1 gap-2 text-sm flex-1">
-                                {{-- Estado --}}
-                                <div class="flex items-center">
-                                    @php
-                                        $inProduction =
-                                            $maquina->tipo == 'ensambladora'
-                                            ? $maquina->elementos_ensambladora > 0
-                                            : $maquina->elementos_count > 0;
-                                    @endphp
-                                    <span class="font-semibold text-gray-700 mr-2">Estado:</span>
-                                    <span
-                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $inProduction ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                        {{ $inProduction ? '✓ En producción' : '○ Sin trabajo' }}
-                                    </span>
-                                </div>
-
                                 {{-- Nave --}}
                                 <div class="flex items-start flex-col">
-                                    <span class="font-semibold text-gray-700 text-xs">Nave:</span>
-                                    <span class="text-gray-600 text-xs truncate w-full">
+                                    <span class="font-semibold text-blue-400 text-xs">Nave:</span>
+                                    <span class="text-gray-400 text-xs truncate w-full">
                                         {{ $maquina->obra?->obra ?? 'Sin Nave asignada' }}
                                     </span>
                                 </div>
 
                                 {{-- Diámetros --}}
                                 <div class="flex items-start flex-col">
-                                    <span class="font-semibold text-gray-700 text-xs">Diámetros:</span>
-                                    <span class="text-gray-600 text-xs">
+                                    <span class="font-semibold text-blue-400 text-xs">Diámetros:</span>
+                                    <span class="text-gray-400 text-xs">
                                         {{ $maquina->diametro_min }} - {{ $maquina->diametro_max }} mm
                                     </span>
                                 </div>
                             </div>
 
-                            {{-- Operarios --}}
-                            @php
-                                $asignacionesHoy = $usuariosPorMaquina->get($maquina->id, collect());
-                                $ordenTurno = ['noche' => 0, 'mañana' => 1, 'tarde' => 2];
-                                $asignacionesOrdenadas = $asignacionesHoy->sortBy(function ($asig) use ($ordenTurno) {
-                                    $nombreTurno = strtolower($asig->turno->nombre ?? '');
-                                    return $ordenTurno[$nombreTurno] ?? 99;
-                                });
-                            @endphp
-
-                            <div class="bg-gray-50 rounded-lg p-2.5">
-                                <strong class="text-xs text-gray-700 block mb-1.5">Operarios:</strong>
-                                @if ($asignacionesOrdenadas->isEmpty())
-                                    <span class="text-xs text-gray-500 italic">Ninguno</span>
-                                @else
-                                    <ul class="space-y-1 max-h-20 overflow-y-auto">
-                                        @foreach ($asignacionesOrdenadas as $asig)
-                                            <li class="text-xs text-gray-700 flex items-center">
-                                                <svg class="w-3 h-3 mr-1.5 text-gray-400 flex-shrink-0" fill="currentColor"
-                                                    viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd"
-                                                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd">
-                                                    </path>
-                                                </svg>
-                                                <span class="truncate flex-1">{{ $asig->user->name }}</span>
-                                                <span
-                                                    class="ml-1 text-[10px] text-gray-500 bg-white px-1.5 py-0.5 rounded flex-shrink-0">
-                                                    {{ substr(ucfirst(data_get($asig, 'turno.nombre', 'Sin')), 0, 1) }}
-                                                </span>
-                                            </li>
-                                        @endforeach
-                                    </ul>
-                                @endif
-                            </div>
-
                             {{-- Subir imagen --}}
                             <form action="{{ route('maquinas.imagen', $maquina->id) }}" method="POST"
-                                enctype="multipart/form-data" class="border-t border-gray-200 pt-3 mt-auto">
+                                enctype="multipart/form-data" class="border-t border-gray-700/50 pt-3 mt-auto">
                                 @csrf
                                 @method('PUT')
 
                                 <details class="group">
                                     <summary
-                                        class="text-xs font-semibold text-blue-600 cursor-pointer hover:text-blue-700 list-none flex items-center justify-between">
+                                        class="text-xs font-semibold text-blue-400 cursor-pointer hover:text-blue-300 list-none flex items-center justify-between">
                                         <span>Actualizar imagen</span>
                                         <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none"
                                             stroke="currentColor" viewBox="0 0 24 24">
@@ -178,10 +129,10 @@
                                     </summary>
                                     <div class="flex flex-col gap-2 mt-2">
                                         <input type="file" name="imagen" accept="image/*"
-                                            class="text-xs text-gray-600 border border-gray-300 rounded-lg p-1.5 file:mr-2 file:py-1 file:px-2 file:border-0 file:bg-blue-50 file:text-blue-700 file:rounded-md file:text-xs file:font-medium hover:file:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            class="text-xs text-gray-300 border border-gray-600 bg-gray-800 rounded-lg p-1.5 file:mr-2 file:py-1 file:px-2 file:border-0 file:bg-blue-600 file:text-white file:rounded-md file:text-xs file:font-medium hover:file:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             required>
                                         <button type="submit"
-                                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg text-xs font-medium transition-colors shadow-sm">
+                                            class="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded-lg text-xs font-medium transition-colors shadow-sm">
                                             Subir
                                         </button>
                                     </div>
@@ -190,7 +141,7 @@
                         </div>
 
                         {{-- Acciones --}}
-                        <div class="bg-gray-50 px-3 py-3 border-t border-gray-200 flex flex-col gap-2 mt-auto">
+                        <div class="bg-gray-800/50 px-3 py-3 border-t border-gray-700/50 flex flex-col gap-2 mt-auto">
                             <a href="{{ route('maquinas.show', $maquina->id) }}" wire:navigate
                                 class="w-full inline-flex items-center justify-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
                                 <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -217,13 +168,13 @@
                         </div>
                     </div>
                 @empty
-                    <div class="col-span-full bg-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
-                        <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="col-span-full bg-gray-900/95 rounded-xl border border-dashed border-blue-500/40 p-12 text-center">
+                        <svg class="mx-auto h-16 w-16 text-blue-500/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
                             </path>
                         </svg>
-                        <h3 class="mt-4 text-lg font-medium text-gray-900">No hay máquinas disponibles</h3>
+                        <h3 class="mt-4 text-lg font-medium text-gray-200">No hay máquinas disponibles</h3>
                         <p class="mt-2 text-sm text-gray-500">Comienza creando una nueva máquina.</p>
                     </div>
                 @endforelse

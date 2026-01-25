@@ -659,7 +659,7 @@ class PlanillasTable extends Component
         }
 
         // Redirigir a elementos con los filtros de esta planilla
-        return redirect()->route('elementos.index', $params);
+        return $this->redirect(route('elementos.index', $params));
     }
 
     public function render()
@@ -675,7 +675,7 @@ class PlanillasTable extends Component
             'aprobador'
         ])->withSum([
             'elementos as suma_peso_completados' => function ($query) {
-                $query->where('estado', 'fabricado');
+                $query->where('elaborado', 1);
             }
         ], 'peso')
         ->withCount('entidades');

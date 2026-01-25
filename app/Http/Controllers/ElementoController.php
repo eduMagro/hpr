@@ -223,7 +223,7 @@ class ElementoController extends Controller
         Log::info("Actualizando elemento {$elemento->id}, campo: {$campo}, valor: '{$valor}'");
 
         // 1. Bloquear si el elemento ya está fabricado
-        if ($elemento->estado === 'fabricado') {
+        if ($elemento->elaborado == 1) {
             return response()->json([
                 'error' => 'El elemento ya está fabricado'
             ], 403);
@@ -1109,12 +1109,6 @@ class ElementoController extends Controller
             $elemento->fill($validated);
 
             if ($elemento->isDirty()) {
-                if ($elemento->isDirty('estado')) {
-                    Log::debug("⚠️ Estado sí cambió: {$elemento->getOriginal('estado')} → {$elemento->estado}");
-
-                    // 🔧 Actualizar fechas en etiqueta cuando cambia el estado
-                    $this->actualizarFechasEtiqueta($elemento);
-                }
                 $elemento->save();
             }
 

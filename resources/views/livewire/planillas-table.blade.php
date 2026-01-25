@@ -598,6 +598,101 @@
         </div>
     </div>
 
+    {{-- Modal Configurar Planilla (antes de resetear) --}}
+    <div id="modal-config-planilla"
+        class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            {{-- Header --}}
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-gray-800">
+                    Configurar Planilla: <span id="config-planilla-codigo" class="text-blue-600"></span>
+                </h2>
+                <button onclick="cerrarModalConfig()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            {{-- Body --}}
+            <div class="flex-1 overflow-y-auto px-6 py-4">
+                {{-- Info de la planilla --}}
+                <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                        <div><span class="text-gray-500">Cliente:</span> <span id="config-cliente" class="font-medium"></span></div>
+                        <div><span class="text-gray-500">Obra:</span> <span id="config-obra" class="font-medium"></span></div>
+                        <div><span class="text-gray-500">Estado:</span> <span id="config-estado" class="font-medium"></span></div>
+                    </div>
+                </div>
+
+                {{-- Fecha estimada de entrega --}}
+                <div class="mb-6">
+                    <label for="config-fecha-entrega" class="block text-sm font-medium text-gray-700 mb-1">
+                        Fecha estimada de entrega
+                    </label>
+                    <input type="datetime-local" id="config-fecha-entrega"
+                        class="w-full md:w-64 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                {{-- Tabla de elementos --}}
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-medium text-gray-700">Elementos y asignaciones de maquinas</h3>
+                        <span id="config-elementos-count" class="text-sm text-gray-500"></span>
+                    </div>
+
+                    {{-- Filtro por diametro --}}
+                    <div class="mb-3 flex gap-2 items-center">
+                        <label class="text-sm text-gray-600">Filtrar por diametro:</label>
+                        <select id="config-filtro-diametro" onchange="filtrarElementosPorDiametro()"
+                            class="border border-gray-300 rounded px-2 py-1 text-sm">
+                            <option value="">Todos</option>
+                        </select>
+                        <button onclick="asignarMaquinaATodos()" class="ml-auto text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200">
+                            Asignar maquina a filtrados
+                        </button>
+                    </div>
+
+                    <div class="border rounded-lg overflow-hidden">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="px-3 py-2 text-left">Marca</th>
+                                    <th class="px-3 py-2 text-left">Diametro</th>
+                                    <th class="px-3 py-2 text-left">Forma</th>
+                                    <th class="px-3 py-2 text-left">Uds</th>
+                                    <th class="px-3 py-2 text-left">Long.</th>
+                                    <th class="px-3 py-2 text-left">Maquina</th>
+                                </tr>
+                            </thead>
+                            <tbody id="config-elementos-tbody" class="divide-y divide-gray-200">
+                                {{-- Se llena dinamicamente --}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Footer --}}
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-between items-center bg-gray-50">
+                <button onclick="cerrarModalConfig()"
+                    class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">
+                    Cancelar
+                </button>
+                <div class="flex gap-2">
+                    <button onclick="guardarConfigPlanilla(false)"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        Guardar cambios
+                    </button>
+                    <button onclick="guardarConfigPlanilla(true)"
+                        class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600">
+                        Guardar y Resetear
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- SweetAlert2 --}}
     @if (!isset($swalLoaded))
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -622,10 +717,313 @@
             planillaIdReimportar = null;
         }
 
+        // ========== Modal Configurar Planilla ==========
+        var configPlanillaData = {
+            planillaId: null,
+            planillaCodigo: null,
+            elementos: [],
+            maquinas: [],
+            elementosFiltrados: []
+        };
+
+        window.resetearPlanilla = async function(planillaId, codigoPlanilla) {
+            // Abrir modal de configuracion en lugar de resetear directamente
+            await abrirModalConfigPlanilla(planillaId, codigoPlanilla);
+        };
+
+        async function abrirModalConfigPlanilla(planillaId, codigoPlanilla) {
+            configPlanillaData.planillaId = planillaId;
+            configPlanillaData.planillaCodigo = codigoPlanilla;
+
+            // Mostrar loading
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Cargando...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading(),
+                });
+            }
+
+            try {
+                const response = await fetch(`/planillas/${planillaId}/config-reset`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                const data = await response.json();
+
+                if (typeof Swal !== 'undefined') Swal.close();
+
+                if (!data.success) {
+                    throw new Error(data.message || 'Error al cargar datos');
+                }
+
+                // Guardar datos
+                configPlanillaData.elementos = data.elementos;
+                configPlanillaData.maquinas = data.maquinas;
+                configPlanillaData.elementosFiltrados = [...data.elementos];
+
+                // Llenar modal
+                document.getElementById('config-planilla-codigo').textContent = data.planilla.codigo;
+                document.getElementById('config-cliente').textContent = data.planilla.cliente || '-';
+                document.getElementById('config-obra').textContent = data.planilla.obra || '-';
+                document.getElementById('config-estado').textContent = data.planilla.estado || '-';
+                document.getElementById('config-fecha-entrega').value = data.planilla.fecha_estimada_entrega || '';
+
+                // Llenar select de diametros
+                const diametros = [...new Set(data.elementos.map(e => e.diametro))].sort((a, b) => a - b);
+                const selectDiametro = document.getElementById('config-filtro-diametro');
+                selectDiametro.innerHTML = '<option value="">Todos</option>';
+                diametros.forEach(d => {
+                    selectDiametro.innerHTML += `<option value="${d}">${d} mm</option>`;
+                });
+
+                // Renderizar tabla
+                renderizarTablaElementos(data.elementos);
+
+                // Mostrar modal
+                document.getElementById('modal-config-planilla').classList.remove('hidden');
+
+            } catch (error) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire('Error', error.message, 'error');
+                } else {
+                    alert(error.message);
+                }
+            }
+        }
+
+        function renderizarTablaElementos(elementos) {
+            const tbody = document.getElementById('config-elementos-tbody');
+            const countSpan = document.getElementById('config-elementos-count');
+
+            countSpan.textContent = `${elementos.length} elementos`;
+
+            if (elementos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-3 py-4 text-center text-gray-500">No hay elementos</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = elementos.map(elem => {
+                const maquinaOptions = configPlanillaData.maquinas.map(m => {
+                    const selected = m.id === elem.maquina_id ? 'selected' : '';
+                    const compatible = (!m.diametro_min || elem.diametro >= m.diametro_min) &&
+                                       (!m.diametro_max || elem.diametro <= m.diametro_max);
+                    const style = compatible ? '' : 'color: #999;';
+                    return `<option value="${m.id}" ${selected} style="${style}">${m.codigo} - ${m.nombre}</option>`;
+                }).join('');
+
+                return `
+                    <tr class="hover:bg-gray-50" data-elemento-id="${elem.id}" data-diametro="${elem.diametro}">
+                        <td class="px-3 py-2 font-medium">${elem.marca || '-'}</td>
+                        <td class="px-3 py-2">${elem.diametro} mm</td>
+                        <td class="px-3 py-2">${elem.forma || '-'}</td>
+                        <td class="px-3 py-2">${elem.n_unidades || '-'}</td>
+                        <td class="px-3 py-2">${elem.longitud || '-'}</td>
+                        <td class="px-3 py-2">
+                            <select class="maquina-select border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                                    data-elemento-id="${elem.id}">
+                                <option value="">Sin asignar</option>
+                                ${maquinaOptions}
+                            </select>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filtrarElementosPorDiametro() {
+            const filtro = document.getElementById('config-filtro-diametro').value;
+            let elementosFiltrados = configPlanillaData.elementos;
+
+            if (filtro) {
+                elementosFiltrados = elementosFiltrados.filter(e => e.diametro == filtro);
+            }
+
+            configPlanillaData.elementosFiltrados = elementosFiltrados;
+            renderizarTablaElementos(elementosFiltrados);
+        }
+
+        function asignarMaquinaATodos() {
+            const maquinaOptions = configPlanillaData.maquinas.map(m =>
+                `<option value="${m.id}">${m.codigo} - ${m.nombre}</option>`
+            ).join('');
+
+            Swal.fire({
+                title: 'Asignar maquina',
+                html: `
+                    <p class="mb-2 text-sm text-gray-600">Se asignara a ${configPlanillaData.elementosFiltrados.length} elementos filtrados</p>
+                    <select id="swal-maquina-select" class="w-full border rounded px-3 py-2">
+                        <option value="">Sin asignar</option>
+                        ${maquinaOptions}
+                    </select>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Asignar',
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => document.getElementById('swal-maquina-select').value
+            }).then(result => {
+                if (result.isConfirmed) {
+                    const maquinaId = result.value || null;
+                    const idsAActualizar = configPlanillaData.elementosFiltrados.map(e => e.id);
+
+                    // Actualizar en memoria
+                    configPlanillaData.elementos.forEach(e => {
+                        if (idsAActualizar.includes(e.id)) {
+                            e.maquina_id = maquinaId ? parseInt(maquinaId) : null;
+                        }
+                    });
+
+                    // Actualizar selects visibles
+                    document.querySelectorAll('.maquina-select').forEach(select => {
+                        const elemId = parseInt(select.dataset.elementoId);
+                        if (idsAActualizar.includes(elemId)) {
+                            select.value = maquinaId || '';
+                        }
+                    });
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Asignado',
+                        text: `Maquina asignada a ${idsAActualizar.length} elementos`,
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                }
+            });
+        }
+
+        async function guardarConfigPlanilla(resetearDespues = false) {
+            // Recoger datos del formulario
+            const fechaEntrega = document.getElementById('config-fecha-entrega').value;
+
+            // Recoger asignaciones de maquinas desde los selects
+            const elementosActualizados = [];
+            document.querySelectorAll('.maquina-select').forEach(select => {
+                elementosActualizados.push({
+                    id: parseInt(select.dataset.elementoId),
+                    maquina_id: select.value ? parseInt(select.value) : null
+                });
+            });
+
+            // Tambien incluir elementos que no estan visibles (por filtro)
+            const idsVisibles = elementosActualizados.map(e => e.id);
+            configPlanillaData.elementos.forEach(elem => {
+                if (!idsVisibles.includes(elem.id)) {
+                    elementosActualizados.push({
+                        id: elem.id,
+                        maquina_id: elem.maquina_id
+                    });
+                }
+            });
+
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Guardando...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading(),
+                });
+            }
+
+            try {
+                // Guardar configuracion
+                const saveResponse = await fetch(`/planillas/${configPlanillaData.planillaId}/config-reset`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf ?? '',
+                    },
+                    body: JSON.stringify({
+                        fecha_estimada_entrega: fechaEntrega || null,
+                        elementos: elementosActualizados
+                    })
+                });
+
+                const saveData = await saveResponse.json();
+                if (!saveData.success) {
+                    throw new Error(saveData.message || 'Error al guardar');
+                }
+
+                if (resetearDespues) {
+                    // Ejecutar reset
+                    const resetResponse = await fetch(`/planillas/${configPlanillaData.planillaId}/resetear`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrf ?? '',
+                        }
+                    });
+
+                    const resetData = await resetResponse.json();
+
+                    if (typeof Swal !== 'undefined') Swal.close();
+
+                    if (resetData.success) {
+                        const detalles = resetData.detalles ?? {};
+                        await Swal.fire({
+                            title: 'Planilla configurada y reseteada',
+                            html: `
+                                <p>Paquetes eliminados: <strong>${detalles.paquetes_eliminados ?? 0}</strong></p>
+                                <p>Etiquetas reseteadas: <strong>${detalles.etiquetas_reseteadas ?? 0}</strong></p>
+                                <p>Elementos reseteados: <strong>${detalles.elementos_reseteados ?? 0}</strong></p>
+                                <p>Maquinas asignadas: <strong>${(detalles.maquinas_asignadas || []).join(', ') || '-'}</strong></p>
+                            `,
+                            icon: 'success',
+                            confirmButtonText: 'Recargar',
+                        });
+                        window.location.reload();
+                    } else {
+                        throw new Error(resetData.message || 'Error al resetear');
+                    }
+                } else {
+                    if (typeof Swal !== 'undefined') Swal.close();
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Guardado',
+                        text: 'Configuracion guardada correctamente',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    cerrarModalConfig();
+                    // Refrescar Livewire si existe
+                    if (typeof Livewire !== 'undefined') {
+                        Livewire.dispatch('refresh');
+                    }
+                }
+            } catch (error) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire('Error', error.message, 'error');
+                } else {
+                    alert(error.message);
+                }
+            }
+        }
+
+        function cerrarModalConfig() {
+            document.getElementById('modal-config-planilla').classList.add('hidden');
+            configPlanillaData = {
+                planillaId: null,
+                planillaCodigo: null,
+                elementos: [],
+                maquinas: [],
+                elementosFiltrados: []
+            };
+        }
+
+        // Cerrar modal config al hacer click fuera
+        document.getElementById('modal-config-planilla')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                cerrarModalConfig();
+            }
+        });
+
         // Cerrar con ESC
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 cerrarModalReimportar();
+                cerrarModalConfig();
             }
         });
 

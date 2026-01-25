@@ -499,7 +499,6 @@ class ResumenEtiquetaService
                         $productos = $productosPorDiametro[$diametro] ?? collect();
                         $producto = $productos->first();
 
-                        $elemento->estado = 'fabricando';
                         $elemento->users_id = $usuarioId;
                         if ($producto) {
                             $elemento->producto_id = $producto->id;
@@ -566,7 +565,7 @@ class ResumenEtiquetaService
                             }
                         }
 
-                        $elemento->estado = 'completado';
+                        $elemento->elaborado = 1;
                         $elementosParaActualizar[] = $elemento;
                     }
 

@@ -20,8 +20,9 @@
         fabricando: "#facc15", // amarillo
         ensamblando: "#facc15", // amarillo
         soldando: "#facc15", // amarillo
+        doblando: "#facc15", // amarillo (estado2 en máquina secundaria)
         fabricada: "#22c55e", // verde
-        completada: "#22c55e", // verde
+        completada: "#22c55e", // verde (también para estado2)
         ensamblada: "#22c55e", // verde
         soldada: "#22c55e", // verde
         "en-paquete": "#e3e4FA", // morado/lavanda
@@ -104,6 +105,12 @@
             texto: "Soldada",
             icono: "✅",
         },
+        doblando: {
+            cssClass: "estado-doblando",
+            bgColor: "#facc15",
+            texto: "Doblando",
+            icono: "⚙️",
+        },
         completada: {
             cssClass: "estado-completada",
             bgColor: "#22c55e",
@@ -146,27 +153,46 @@
             return false;
         }
 
+        // Determinar si tiene maquina_id_2 (proceso secundario)
+        const tieneMaquina2 = elemento.dataset.tieneMaquina2 === 'true' || datosExtra.es_secundaria;
+
+        // El estado para el color depende de si tiene maquina_id_2
+        // Si es secundaria, usamos estado2 para el color
+        let estadoParaColor = String(nuevoEstado).toLowerCase().trim();
+        const estado2 = datosExtra.estado2 || elemento.dataset.estado2 || null;
+
+        if (tieneMaquina2 && estado2) {
+            estadoParaColor = estado2.toLowerCase().trim();
+            console.log(`🔄 Usando estado2 para color: ${estadoParaColor}`);
+        }
+
         const estadoNormalizado = String(nuevoEstado).toLowerCase().trim();
-        const config = ESTADOS_CONFIG[estadoNormalizado];
+        const config = ESTADOS_CONFIG[estadoParaColor] || ESTADOS_CONFIG[estadoNormalizado];
 
         if (!config) {
             console.warn(`⚠️ Estado no reconocido: ${nuevoEstado}`);
             return false;
         }
 
-        // 1. Actualizar dataset
+        // 1. Actualizar dataset (guardamos ambos estados)
         elemento.dataset.estado = estadoNormalizado;
+        if (estado2) {
+            elemento.dataset.estado2 = estado2;
+        }
 
         // 2. Actualizar clases CSS (eliminar todas las clases estado-*)
         const clases = Array.from(elemento.classList);
         clases.forEach((clase) => {
-            if (clase.startsWith("estado-")) {
+            if (clase.startsWith("estado-") || clase.startsWith("estado2-")) {
                 elemento.classList.remove(clase);
             }
         });
 
-        // 3. Añadir nueva clase de estado
+        // 3. Añadir nueva clase de estado (basada en estadoParaColor)
         elemento.classList.add(config.cssClass);
+        if (estado2) {
+            elemento.classList.add(`estado2-${estado2}`);
+        }
 
         // 4. Actualizar CSS variable --bg-estado
         elemento.style.setProperty("--bg-estado", config.bgColor);
@@ -187,7 +213,34 @@
         }
 
         // 7. Gestionar botones según el estado
-        gestionarBotones(elemento, estadoNormalizado);
+        gestionarBotones(elemento, estadoParaColor);
+
+        // 8. Actualizar badge de estado si existe
+        const estadoBadge = elemento.querySelector(".estado-badge");
+        if (estadoBadge) {
+            // Construir texto combinado estado/estado2
+            const configPrincipal = ESTADOS_CONFIG[estadoNormalizado];
+            let textoBadge = configPrincipal ? configPrincipal.texto : estadoNormalizado;
+            if (estado2) {
+                const config2 = ESTADOS_CONFIG[estado2.toLowerCase()];
+                textoBadge += '/' + (config2 ? config2.texto : estado2);
+            }
+            estadoBadge.textContent = textoBadge;
+
+            // Actualizar clases de color del badge (basado en estadoParaColor)
+            estadoBadge.className = 'estado-badge ml-2 text-xs px-2 py-0.5 rounded-full';
+            if (estadoParaColor === 'pendiente') {
+                estadoBadge.classList.add('bg-gray-200', 'text-gray-700');
+            } else if (['fabricando', 'ensamblando', 'soldando', 'doblando'].includes(estadoParaColor)) {
+                estadoBadge.classList.add('bg-yellow-200', 'text-yellow-800');
+            } else if (['fabricada', 'completada', 'ensamblada', 'soldada'].includes(estadoParaColor)) {
+                estadoBadge.classList.add('bg-green-200', 'text-green-800');
+            } else if (estadoParaColor === 'en-paquete' || estadoParaColor === 'empaquetada') {
+                estadoBadge.classList.add('bg-purple-200', 'text-purple-800');
+            } else {
+                estadoBadge.classList.add('bg-gray-200', 'text-gray-700');
+            }
+        }
 
         // 9. Aplicar animación
         aplicarAnimacion(elemento);

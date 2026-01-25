@@ -54,7 +54,7 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
                 ->get();
 
             $pesoTotalMaquina = (float) $elementosEnMaquina->sum('peso');
-            $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->where('estado', 'fabricado')->count();
+            $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->count();
             $numeroElementosTotalesEnEtiqueta = $etiqueta->elementos()->count();
 
             $enOtrasMaquinas = $etiqueta->elementos()
@@ -249,7 +249,6 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
                     foreach ($elementosEnMaquina as $elemento) {
                         $elemento->users_id   = $operario1;
                         $elemento->users_id_2 = $operario2;
-                        $elemento->estado     = 'fabricando';
                         $elemento->save();
                     }
 
@@ -331,27 +330,14 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
 
                 case 'ensamblando':
                     foreach ($elementosEnMaquina as $elemento) {
-                        $elemento->estado = 'completado';
                         $elemento->users_id =  $operario1;
                         $elemento->users_id_2 =  $operario2;
                         $elemento->save();
                     }
 
-                    $elementosEtiquetaCompletos = $etiqueta->elementos()
-                        ->where('estado', '!=', 'completado')
-                        ->doesntExist();
-
-                    if ($elementosEtiquetaCompletos) {
-                        $etiqueta->estado = 'completada';
-                        $etiqueta->fecha_finalizacion = now();
-                        $etiqueta->save();
-                    } else {
-                        if ($enOtrasMaquinas) {
-                            $etiqueta->estado = 'ensamblada';
-                            $etiqueta->save();
-                        }
-                    }
-
+                    // Completar ensamblaje
+                    $etiqueta->estado = 'completada';
+                    $etiqueta->fecha_finalizacion = now();
                     $etiqueta->fecha_finalizacion_ensamblado = now();
                     $etiqueta->save();
 
@@ -437,7 +423,6 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
                         $elemento->producto_id = $productosAsignados[0] ?? null;
                         $elemento->producto_id_2 = $productosAsignados[1] ?? null;
                         $elemento->producto_id_3 = $productosAsignados[2] ?? null;
-                        $elemento->estado = 'completado';
                         $elemento->save();
                     }
 
@@ -482,8 +467,7 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
 
     private function actualizarElementosYConsumos($elementosEnMaquina, Maquina $maquina, Etiqueta &$etiqueta, array &$warnings, int &$numeroElementosCompletadosEnMaquina, bool $enOtrasMaquinas, array &$productosAfectados, ?Planilla $planilla): void
     {
-        // No marcar como 'fabricado' antes de asegurar consumos; mantenemos 'fabricando'
-        $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->where('estado', 'fabricado')->count();
+        $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->count();
 
         $consumos = [];
         foreach ($elementosEnMaquina->groupBy('diametro') as $diametro => $elementos) {
@@ -584,17 +568,10 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
             $elemento->producto_id = $productosAsignados[0] ?? null;
             $elemento->producto_id_2 = $productosAsignados[1] ?? null;
             $elemento->producto_id_3 = $productosAsignados[2] ?? null;
-            // Solo marcar 'fabricado' si se cubrió todo el peso
-            if ($pesoRestanteElemento <= 0) {
-                $elemento->estado = 'fabricado';
-            }
             $elemento->save();
         }
 
-        // Recalcular completados en máquina tras intentos de consumo
-        $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->where('estado', 'fabricado')->count();
-
-        // Reglas según ensambladoText y nombre etiqueta (portado del controlador en postActualizacion)
+        // Reglas según ensambladoText y nombre etiqueta se manejan en postActualizacionColasYEstados
     }
 
     private function postActualizacionColasYEstados(Maquina $maquina, Etiqueta $etiqueta, ?Planilla $planilla): void
@@ -611,119 +588,88 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
             })
             ->get();
 
-        $enOtrasMaquinas = $etiqueta->elementos()
-            ->where('maquina_id', '!=', $maquina->id)
-            ->exists();
-
         if ($ensambladoText->contains('taller')) {
-            $elementosEtiquetaCompletos = $etiqueta->elementos()->where('estado', '!=', 'fabricado')->doesntExist();
-
+            // Regla TALLER
             if (!$planilla->comentario || (!Str::of($planilla->comentario)->contains('amarrado') && !Str::of($planilla->comentario)->contains('ensamblado amarrado'))) {
-                if ($elementosEnMaquina->count() > 0 && $elementosEnMaquina->where('estado', 'fabricado')->count() >= $elementosEnMaquina->count()) {
-                    if ($enOtrasMaquinas) {
-                        $etiqueta->estado = 'parcialmente completada';
-                    } else {
-                        $etiqueta->estado = 'fabricada';
-                        $etiqueta->fecha_finalizacion = now();
-                        $this->actualizarPesoEtiqueta($etiqueta);
-                    }
-                    $etiqueta->save();
-                }
-
-            }
-        } elseif ($ensambladoText->contains('carcasas')) {
-            $elementosEtiquetaCompletos = $etiqueta->elementos()
-                ->where('diametro', '!=', 5.00)
-                ->where('estado', '!=', 'fabricado')
-                ->doesntExist();
-
-            if ($elementosEtiquetaCompletos) {
-                $etiqueta->estado = $maquina->tipo === 'estribadora' ? 'fabricada' : 'completada';
+                $etiqueta->estado = 'fabricada';
                 $etiqueta->fecha_finalizacion = now();
+                $this->actualizarPesoEtiqueta($etiqueta);
                 $etiqueta->save();
             }
+        } elseif ($ensambladoText->contains('carcasas')) {
+            // Regla CARCASAS
+            $etiqueta->estado = $maquina->tipo === 'estribadora' ? 'fabricada' : 'completada';
+            $etiqueta->fecha_finalizacion = now();
+            $etiqueta->save();
 
             if ($maquina->tipo !== 'cortadora_dobladora') {
                 $maquinaEnsambladora = Maquina::where('tipo', 'ensambladora')->first();
                 if ($maquinaEnsambladora) {
+                    $algunoAsignado = false;
                     foreach ($elementosEnMaquina as $elemento) {
                         if (is_null($elemento->maquina_id_2)) {
                             $elemento->maquina_id_2 = $maquinaEnsambladora->id;
                             $elemento->save();
+                            $algunoAsignado = true;
                         }
                     }
-                }
-            }
-        } else {
-            if (Str::of((string) $etiqueta->nombre)->lower()->contains('pates')) {
-                DB::transaction(function () use ($etiqueta, $maquina, $planilla) {
-                    $etiqueta->estado = 'fabricada';
-                    $etiqueta->fecha_finalizacion = now();
-                    $this->actualizarPesoEtiqueta($etiqueta);
-                    $etiqueta->save();
-
-                    $dobladora = Maquina::where('tipo', 'dobladora_manual')
-                        ->when($maquina->obra_id, fn($q) => $q->where('obra_id', $maquina->obra_id))
-                        ->orderBy('id')
-                        ->first();
-
-                    if ($dobladora) {
-                        Elemento::where('etiqueta_sub_id', $etiqueta->etiqueta_sub_id)
-                            ->where('maquina_id', $maquina->id)
-                            ->update(['maquina_id_2' => $dobladora->id]);
-
-                        $planillaId = $etiqueta->planilla_id ?? optional($etiqueta->planilla)->id;
-                        if ($planillaId) {
-                            $yaExiste = OrdenPlanilla::where('maquina_id', $dobladora->id)
-                                ->where('planilla_id', $planillaId)
-                                ->lockForUpdate()
-                                ->exists();
-
-                            if (!$yaExiste) {
-                                $ultimaPos = OrdenPlanilla::where('maquina_id', $dobladora->id)
-                                    ->select('posicion')
-                                    ->orderByDesc('posicion')
-                                    ->lockForUpdate()
-                                    ->value('posicion');
-
-                                OrdenPlanilla::create([
-                                    'maquina_id'  => $dobladora->id,
-                                    'planilla_id' => $planillaId,
-                                    'posicion'    => is_null($ultimaPos) ? 0 : ($ultimaPos + 1),
-                                ]);
-                            }
-                        } else {
-                            Log::warning('No se pudo encolar planilla en dobladora: planilla_id nulo', [
-                                'etiqueta_id' => $etiqueta->id ?? null,
-                                'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id ?? null,
-                                'dobladora_id' => $dobladora->id,
-                            ]);
-                        }
-                    } else {
-                        Log::warning('No hay dobladora_manual para asignar maquina_id_2', [
-                            'maquina_origen_id' => $maquina->id,
-                            'etiqueta_sub_id'   => $etiqueta->etiqueta_sub_id,
-                        ]);
-                    }
-                });
-            } else {
-                $elementosEtiquetaCompletos = $etiqueta->elementos()
-                    ->where('estado', '!=', 'fabricado')
-                    ->doesntExist();
-
-                if ($elementosEtiquetaCompletos) {
-                    $etiqueta->estado = 'completada';
-                    $etiqueta->fecha_finalizacion = now();
-                    $etiqueta->save();
-                } else {
-                    if ($enOtrasMaquinas) {
-                        $etiqueta->estado = 'parcialmente completada';
+                    // Actualizar estado2 de la etiqueta si se asignó algún elemento
+                    if ($algunoAsignado && is_null($etiqueta->estado2)) {
+                        $etiqueta->estado2 = 'pendiente';
                         $etiqueta->save();
                     }
                 }
             }
+        } else if (Str::of((string) $etiqueta->nombre)->lower()->contains('pates')) {
+            // Regla PATES
+            DB::transaction(function () use ($etiqueta, $maquina, $planilla) {
+                $etiqueta->estado = 'fabricada';
+                $etiqueta->fecha_finalizacion = now();
+                $this->actualizarPesoEtiqueta($etiqueta);
+                $etiqueta->save();
+
+                $dobladora = Maquina::where('tipo', 'dobladora_manual')
+                    ->when($maquina->obra_id, fn($q) => $q->where('obra_id', $maquina->obra_id))
+                    ->orderBy('id')
+                    ->first();
+
+                if ($dobladora) {
+                    Elemento::where('etiqueta_sub_id', $etiqueta->etiqueta_sub_id)
+                        ->where('maquina_id', $maquina->id)
+                        ->update(['maquina_id_2' => $dobladora->id]);
+
+                    // Actualizar estado2 de la etiqueta
+                    $etiqueta->estado2 = 'pendiente';
+                    $etiqueta->save();
+
+                    $planillaId = $etiqueta->planilla_id ?? optional($etiqueta->planilla)->id;
+                    if ($planillaId) {
+                        self::encolarPlanillaEnMaquina($dobladora->id, $planillaId);
+                    } else {
+                        Log::warning('No se pudo encolar planilla en dobladora: planilla_id nulo', [
+                            'etiqueta_id' => $etiqueta->id ?? null,
+                            'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id ?? null,
+                            'dobladora_id' => $dobladora->id,
+                        ]);
+                    }
+                } else {
+                    Log::warning('No hay dobladora_manual para asignar maquina_id_2', [
+                        'maquina_origen_id' => $maquina->id,
+                        'etiqueta_sub_id'   => $etiqueta->etiqueta_sub_id,
+                    ]);
+                }
+            });
+        } else {
+            // Lógica normal: marcar etiqueta como completada
+            $etiqueta->estado = 'completada';
+            $etiqueta->fecha_finalizacion = now();
+            $etiqueta->save();
+            }
         }
 
+        // ❌ DESHABILITADO: La verificación automática de paquetes y eliminación de planilla
+        // ahora se hace manualmente desde la vista de máquina con el botón "Planilla Completada"
+        /*
         // Si ya no quedan elementos de esta planilla en esta máquina, gestionar cola
         $quedanPendientesEnEstaMaquina = Elemento::where('planilla_id', $planilla->id)
             ->where('maquina_id', $maquina->id)
@@ -755,32 +701,9 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
                 });
             }
         }
+        */
 
-        // Si todos los elementos de la planilla están completados, cerrar planilla y reordenar colas
-        $todosElementosPlanillaCompletos = $planilla->elementos()
-            ->where('estado', '!=', 'fabricado')
-            ->doesntExist();
-
-        if ($todosElementosPlanillaCompletos) {
-            $planilla->estado = 'completada';
-            $planilla->save();
-
-            DB::transaction(function () use ($planilla, $maquina) {
-                OrdenPlanilla::where('planilla_id', $planilla->id)
-                    ->where('maquina_id', $maquina->id)
-                    ->delete();
-
-                $ordenes = OrdenPlanilla::where('maquina_id', $maquina->id)
-                    ->orderBy('posicion')
-                    ->lockForUpdate()
-                    ->get();
-
-                foreach ($ordenes as $index => $orden) {
-                    $orden->posicion = $index;
-                    $orden->save();
-                }
-            });
-        }
+        // NOTA: La planilla se completa manualmente cuando el usuario lo indique
     }
 
     private function generarMovimientoRecargaMateriaPrima(ProductoBase $productoBase, Maquina $maquina, ?int $productoId = null, ?int $solicitadoPor = null): void

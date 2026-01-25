@@ -524,7 +524,6 @@ class FerrawinBulkImportService
             'peso' => (float)($elem['peso'] ?? 0),
             'dimensiones' => $elem['dimensiones'] ?? null,
             'tiempo_fabricacion' => $this->calcularTiempo($barras, $doblesBarra),
-            'estado' => 'pendiente',
             'elaborado' => $elaborado,
         ]);
 
@@ -615,16 +614,20 @@ class FerrawinBulkImportService
             }
         }
 
-        // Obtener elementos PENDIENTES actuales con ferrawin_id
+        // Obtener elementos NO ELABORADOS actuales con ferrawin_id
         $elementosPendientes = $planilla->elementos()
-            ->where('estado', 'pendiente')
+            ->where(function($q) {
+                $q->where('elaborado', '!=', 1)->orWhereNull('elaborado');
+            })
             ->whereNotNull('ferrawin_id')
             ->get()
             ->keyBy('ferrawin_id');
 
-        // Obtener elementos PENDIENTES sin ferrawin_id (de sync anterior sin esta feature)
+        // Obtener elementos NO ELABORADOS sin ferrawin_id (de sync anterior sin esta feature)
         $elementosSinFerrawinId = $planilla->elementos()
-            ->where('estado', 'pendiente')
+            ->where(function($q) {
+                $q->where('elaborado', '!=', 1)->orWhereNull('elaborado');
+            })
             ->whereNull('ferrawin_id')
             ->count();
 
@@ -640,13 +643,13 @@ class FerrawinBulkImportService
                 $this->actualizarElementoExistente($elemento, $elemData, $mapaEntidades);
                 $actualizados++;
             } else {
-                // Crear nuevo elemento (no existe en BD o no estaba pendiente)
-                $existeFabricado = $planilla->elementos()
+                // Crear nuevo elemento (no existe en BD o ya estaba elaborado)
+                $existeElaborado = $planilla->elementos()
                     ->where('ferrawin_id', $ferrawinId)
-                    ->whereIn('estado', ['fabricando', 'fabricado', 'completado'])
+                    ->where('elaborado', 1)
                     ->exists();
 
-                if (!$existeFabricado) {
+                if (!$existeElaborado) {
                     // Crear usando el flujo existente (respetando agrupación por etiqueta)
                     $this->crearElementoIndividual($planilla, $elemData, $mapaEntidades);
                     $creados++;
@@ -667,7 +670,9 @@ class FerrawinBulkImportService
         if ($elementosSinFerrawinId > 0) {
             Log::channel('ferrawin_sync')->info("🔄 [BULK] Planilla {$codigo}: {$elementosSinFerrawinId} elementos sin ferrawin_id, reimportando");
             $planilla->elementos()
-                ->where('estado', 'pendiente')
+                ->where(function($q) {
+                    $q->where('elaborado', '!=', 1)->orWhereNull('elaborado');
+                })
                 ->whereNull('ferrawin_id')
                 ->forceDelete();
             $eliminados += $elementosSinFerrawinId;
