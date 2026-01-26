@@ -921,12 +921,16 @@ class AlbaranesScanController extends Controller
                         ],
                         [
                             'fabricante_id' => $fabricanteId,
+                            'dio_de_alta' => Auth::id(),
                         ]
                     );
                     $coladaId = $coladaRegistro->id;
 
                     if ($fabricanteId && !$coladaRegistro->fabricante_id) {
-                        $coladaRegistro->update(['fabricante_id' => $fabricanteId]);
+                        $coladaRegistro->update([
+                            'fabricante_id' => $fabricanteId,
+                            'ultima_modificacion' => Auth::id(),
+                        ]);
                     }
                 }
 

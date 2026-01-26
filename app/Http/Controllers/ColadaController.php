@@ -47,6 +47,7 @@ class ColadaController extends Controller
         $colada->fabricante_id = $validated['fabricante_id'] ?? null;
         $colada->codigo_adherencia = $validated['codigo_adherencia'] ?? null;
         $colada->observaciones = $validated['observaciones'] ?? null;
+        $colada->dio_de_alta = auth()->id();
 
         if ($request->hasFile('documento')) {
             $archivo = $request->file('documento');
@@ -112,6 +113,7 @@ class ColadaController extends Controller
         $colada->fabricante_id = $validated['fabricante_id'] ?? null;
         $colada->codigo_adherencia = $validated['codigo_adherencia'] ?? null;
         $colada->observaciones = $validated['observaciones'] ?? null;
+        $colada->ultima_modificacion = auth()->id();
 
         if ($request->hasFile('documento')) {
             // Eliminar documento anterior si existe

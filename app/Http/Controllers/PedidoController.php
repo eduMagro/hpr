@@ -1097,13 +1097,17 @@ class PedidoController extends Controller
                             ],
                             [
                                 'fabricante_id' => $fabricanteId,
+                                'dio_de_alta' => auth()->id(),
                             ]
                         );
                         $coladaId = $coladaRegistro->id;
 
                         // Si la colada ya existía pero no tenía fabricante, actualizarlo
                         if ($fabricanteId && !$coladaRegistro->fabricante_id) {
-                            $coladaRegistro->update(['fabricante_id' => $fabricanteId]);
+                            $coladaRegistro->update([
+                                'fabricante_id' => $fabricanteId,
+                                'ultima_modificacion' => auth()->id(),
+                            ]);
                         }
                     }
 
