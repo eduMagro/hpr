@@ -5,9 +5,8 @@
         <div class="max-w-6xl mx-auto space-y-6">
             <div class="flex justify-center mb-10">
                 <div
-                    class="inline-flex p-1.5 bg-gray-100/80 backdrop-blur-md rounded-2xl border border-gray-200 shadow-inner">
-                    <button @click="activeView = 'agenda'"
-                        :class="activeView === 'agenda' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
+                    class="inline-flex gap-2 p-1.5 bg-gray-100/80 backdrop-blur-md rounded-2xl border border-gray-200 shadow-inner">
+                    <button @click="activeView = 'agenda'" :class="activeView === 'agenda' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
                             'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
                         class="px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -16,8 +15,7 @@
                         </svg>
                         Agenda
                     </button>
-                    <button @click="activeView = 'tallas'"
-                        :class="activeView === 'tallas' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
+                    <button @click="activeView = 'tallas'" :class="activeView === 'tallas' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
                             'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
                         class="px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -27,6 +25,18 @@
                                 d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
                         </svg>
                         Resumen Tallas
+                    </button>
+                    <button @click="activeView = 'firmas'" :class="activeView === 'firmas' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
+                            'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
+                        class="px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="w-5 h-5">
+                            <path
+                                d="m21 17-2.156-1.868A.5.5 0 0 0 18 15.5v.5a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1c0-2.545-3.991-3.97-8.5-4a1 1 0 0 0 0 5c4.153 0 4.745-11.295 5.708-13.5a2.5 2.5 0 1 1 3.31 3.284" />
+                            <path d="M3 21h18" />
+                        </svg>
+                        Firmas
                     </button>
                 </div>
             </div>
@@ -223,8 +233,7 @@
 
                                     <div class="flex gap-2 items-center">
                                         <!-- Indicador de tallas faltantes -->
-                                        <template
-                                            x-if="(() => {
+                                        <template x-if="(() => {
                                             const t = u.tallas || {};
                                             const count = [t.talla_guante, t.talla_zapato, t.talla_pantalon, t.talla_chaqueta].filter(Boolean).length;
                                             return count < 4;
@@ -242,10 +251,8 @@
                                                     })()">
                                                     <path
                                                         d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
-                                                    <line x1="12" x2="12" y1="8"
-                                                        y2="12" />
-                                                    <line x1="12" x2="12.01" y1="16"
-                                                        y2="16" />
+                                                    <line x1="12" x2="12" y1="8" y2="12" />
+                                                    <line x1="12" x2="12.01" y1="16" y2="16" />
                                                 </svg>
                                                 <!-- Tooltip -->
                                                 <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 text-xs font-medium rounded-lg shadow-lg opacity-0 invisible group-hover/tallas:opacity-100 group-hover/tallas:visible transition-all duration-200 whitespace-nowrap z-50"
@@ -257,8 +264,7 @@
                                                         return count === 0 ? 'bg-red-600 text-white' :
                                                             'bg-amber-500 text-white';
                                                     })()">
-                                                    <span
-                                                        x-text="(() => {
+                                                    <span x-text="(() => {
                                                         const t = u.tallas || {};
                                                         const count = [t.talla_guante, t.talla_zapato, t.talla_pantalon, t.talla_chaqueta].filter(Boolean).length;
                                                         if (count === 0) return 'Usuario sin tallas registradas';
@@ -278,6 +284,27 @@
                                                             return count === 0 ? 'border-t-red-600' :
                                                                 'border-t-amber-500';
                                                         })()">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                        <!-- Indicador de firmas pendientes -->
+                                        <template x-if="u.epis_sin_firmar > 0">
+                                            <div class="relative group/firma">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                    class="text-red-500">
+                                                    <path
+                                                        d="m21 17-2.156-1.868A.5.5 0 0 0 18 15.5v.5a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1c0-2.545-3.991-3.97-8.5-4a1 1 0 0 0 0 5c4.153 0 4.745-11.295 5.708-13.5a2.5 2.5 0 1 1 3.31 3.284" />
+                                                    <path d="M3 21h18" />
+                                                </svg>
+                                                <!-- Tooltip -->
+                                                <div
+                                                    class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 text-xs font-medium rounded-lg shadow-lg opacity-0 invisible group-hover/firma:opacity-100 group-hover/firma:visible transition-all duration-200 whitespace-nowrap z-50 bg-red-600 text-white">
+                                                    <span x-text="`Falta firmar: ${u.epis_sin_firmar}`"></span>
+                                                    <div
+                                                        class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-red-600">
                                                     </div>
                                                 </div>
                                             </div>
@@ -499,6 +526,13 @@
                                                         @click="openRecentModal()">
                                                         Últimos asignados
                                                     </button>
+
+                                                    <button type="button" x-show="userHasPendingSignature"
+                                                        class="w-full mt-2 px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                                                        @click="requestConsent()" :disabled="sendingConsent">
+                                                        <span x-show="!sendingConsent">Solicitar firma</span>
+                                                        <span x-show="sendingConsent">Enviando...</span>
+                                                    </button>
                                                 </div>
                                             </div>
 
@@ -509,32 +543,28 @@
                                                     <div>
                                                         <label
                                                             class="block text-[10px] font-medium text-gray-500 uppercase">Guante</label>
-                                                        <input type="text"
-                                                            x-model="selectedUser.tallas.talla_guante"
+                                                        <input type="text" x-model="selectedUser.tallas.talla_guante"
                                                             class="w-full mt-1 px-2 py-1 text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                                                             placeholder="Ej: 9, L...">
                                                     </div>
                                                     <div>
                                                         <label
                                                             class="block text-[10px] font-medium text-gray-500 uppercase">Zapato</label>
-                                                        <input type="text"
-                                                            x-model="selectedUser.tallas.talla_zapato"
+                                                        <input type="text" x-model="selectedUser.tallas.talla_zapato"
                                                             class="w-full mt-1 px-2 py-1 text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                                                             placeholder="Ej: 42, 43...">
                                                     </div>
                                                     <div>
                                                         <label
                                                             class="block text-[10px] font-medium text-gray-500 uppercase">Pantalón</label>
-                                                        <input type="text"
-                                                            x-model="selectedUser.tallas.talla_pantalon"
+                                                        <input type="text" x-model="selectedUser.tallas.talla_pantalon"
                                                             class="w-full mt-1 px-2 py-1 text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                                                             placeholder="Ej: 44, XL...">
                                                     </div>
                                                     <div>
                                                         <label
                                                             class="block text-[10px] font-medium text-gray-500 uppercase">Chaqueta</label>
-                                                        <input type="text"
-                                                            x-model="selectedUser.tallas.talla_chaqueta"
+                                                        <input type="text" x-model="selectedUser.tallas.talla_chaqueta"
                                                             class="w-full mt-1 px-2 py-1 text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                                                             placeholder="Ej: 52, L...">
                                                     </div>
@@ -574,8 +604,7 @@
 
                                             <template x-if="!loadingAsignaciones && userEpiGroupsFiltered.length > 0">
                                                 <div class="divide-y divide-gray-100">
-                                                    <template x-for="g in userEpiGroupsFiltered"
-                                                        :key="g.epi.id">
+                                                    <template x-for="g in userEpiGroupsFiltered" :key="g.epi.id">
                                                         <div>
                                                             <div class="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 cursor-pointer"
                                                                 @click="toggleEpiGroup(g.epi.id)"
@@ -594,21 +623,30 @@
                                                                         </template>
                                                                     </div>
                                                                     <div class="min-w-0">
-                                                                        <p
-                                                                            class="font-semibold text-gray-900 truncate">
+                                                                        <p class="font-semibold text-gray-900 truncate">
+                                                                        <div class="flex items-center gap-2">
                                                                             <span x-text="g.epi.nombre"></span>
-                                                                            <template x-if="g.epi.codigo">
-                                                                                <span class="text-sm text-gray-600"
-                                                                                    x-text="` (${g.epi.codigo})`"></span>
-                                                                            </template>
+                                                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                                                width="14" height="14"
+                                                                                viewBox="0 0 24 24" fill="none"
+                                                                                stroke="currentColor" stroke-width="2"
+                                                                                stroke-linecap="round"
+                                                                                stroke-linejoin="round"
+                                                                                :class="g.tiene_pendientes_firma ? 'text-red-500' : 'text-blue-500'">
+                                                                                <path
+                                                                                    d="m21 17-2.156-1.868A.5.5 0 0 0 18 15.5v.5a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1c0-2.545-3.991-3.97-8.5-4a1 1 0 0 0 0 5c4.153 0 4.745-11.295 5.708-13.5a2.5 2.5 0 1 1 3.31 3.284" />
+                                                                                <path d="M3 21h18" />
+                                                                            </svg>
+                                                                        </div>
+                                                                        <template x-if="g.epi.codigo">
+                                                                            <span class="text-sm text-gray-600"
+                                                                                x-text="` (${g.epi.codigo})`"></span>
+                                                                        </template>
                                                                         </p>
                                                                         <p class="text-sm text-gray-600">
                                                                             Cantidad: <span class="font-semibold"
                                                                                 x-text="g.total_en_posesion"></span>
                                                                         </p>
-                                                                        <p class="text-xs text-gray-500 mt-1">Click
-                                                                            para
-                                                                            ver historial</p>
                                                                     </div>
                                                                 </div>
 
@@ -621,8 +659,7 @@
                                                             </div>
 
                                                             <div :id="`epi-details-${g.epi.id}`"
-                                                                x-show="expandedEpiId === Number(g.epi.id)"
-                                                                x-transition
+                                                                x-show="expandedEpiId === Number(g.epi.id)" x-transition
                                                                 class="px-4 sm:px-6 py-4 border-t border-gray-300 bg-gray-300">
                                                                 <div
                                                                     class="bg-white/95 border border-slate-200 shadow-sm rounded-xl overflow-hidden mt-2">
@@ -657,8 +694,7 @@
                                                                                             <span
                                                                                                 x-text="`Devuelto: ${formatDate(a.devuelto_en)}`"></span>
                                                                                         </template>
-                                                                                        <template
-                                                                                            x-if="!a.devuelto_en">
+                                                                                        <template x-if="!a.devuelto_en">
                                                                                             <span
                                                                                                 class="text-green-700 font-medium">En
                                                                                                 posesión</span>
@@ -715,8 +751,7 @@
                                                                                         :disabled="saving"
                                                                                         @click.stop="openFechaModal(a, 'devolucion')">
                                                                                         <svg viewBox="0 0 24 24"
-                                                                                            class="h-7 w-7"
-                                                                                            fill="none"
+                                                                                            class="h-7 w-7" fill="none"
                                                                                             xmlns="http://www.w3.org/2000/svg">
                                                                                             <g id="SVGRepo_bgCarrier"
                                                                                                 stroke-width="0"></g>
@@ -724,8 +759,7 @@
                                                                                                 stroke-linecap="round"
                                                                                                 stroke-linejoin="round">
                                                                                             </g>
-                                                                                            <g
-                                                                                                id="SVGRepo_iconCarrier">
+                                                                                            <g id="SVGRepo_iconCarrier">
                                                                                                 <path
                                                                                                     d="M6.94028 2C7.35614 2 7.69326 2.32421 7.69326 2.72414V4.18487C8.36117 4.17241 9.10983 4.17241 9.95219 4.17241H13.9681C14.8104 4.17241 15.5591 4.17241 16.227 4.18487V2.72414C16.227 2.32421 16.5641 2 16.98 2C17.3958 2 17.733 2.32421 17.733 2.72414V4.24894C19.178 4.36022 20.1267 4.63333 20.8236 5.30359C21.5206 5.97385 21.8046 6.88616 21.9203 8.27586L22 9H2.92456H2V8.27586C2.11571 6.88616 2.3997 5.97385 3.09665 5.30359C3.79361 4.63333 4.74226 4.36022 6.1873 4.24894V2.72414C6.1873 2.32421 6.52442 2 6.94028 2Z"
                                                                                                     fill="#000000">
@@ -796,8 +830,7 @@
                                         <div class="sm:col-span-2">
                                             <label
                                                 class="block text-xs font-medium text-gray-700 mb-1">Categoría</label>
-                                            <input type="text" x-model="epiCreate.categoria"
-                                                placeholder="Opcional"
+                                            <input type="text" x-model="epiCreate.categoria" placeholder="Opcional"
                                                 class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
                                         </div>
                                         <div>
@@ -811,8 +844,7 @@
                                         <div class="sm:col-span-4">
                                             <label
                                                 class="block text-xs font-medium text-gray-700 mb-1">Descripción</label>
-                                            <input type="text" x-model="epiCreate.descripcion"
-                                                placeholder="Opcional"
+                                            <input type="text" x-model="epiCreate.descripcion" placeholder="Opcional"
                                                 class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
                                         </div>
                                         <div class="sm:col-span-2">
@@ -833,8 +865,7 @@
 
                                 <div class="bg-white/95 border border-slate-200 shadow-sm rounded-xl overflow-hidden">
                                     <div class="px-6 py-4 border-b border-gray-300">
-                                        <div
-                                            class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                             <h3 class="font-semibold text-gray-900">EPIs en base de datos</h3>
                                             <div class="flex gap-2">
                                                 <button type="button"
@@ -1095,8 +1126,7 @@
 
                         <button type="button" class="p-2 rounded-lg hover:bg-gray-200" @click="closeFechaModal()"
                             aria-label="Cerrar">
-                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -1121,8 +1151,7 @@
                     </div>
 
                     <div class="px-5 py-4 border-t border-gray-300 flex justify-end gap-3">
-                        <button type="button"
-                            class="px-4 py-2 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200"
+                        <button type="button" class="px-4 py-2 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200"
                             @click="closeFechaModal()">
                             Cancelar
                         </button>
@@ -1149,8 +1178,7 @@
                         </div>
                         <button type="button" class="p-2 rounded-lg hover:bg-gray-200" @click="closeCompras()"
                             aria-label="Cerrar">
-                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -1248,8 +1276,7 @@
 
                         <div class="space-y-3" x-show="!comprasLoading && compras.length > 0">
                             <template x-for="c in compras" :key="c.id">
-                                <div class="p-4 border rounded-xl"
-                                    :class="c.items?.some(it => it.precio_unitario === null || it.precio_unitario ===
+                                <div class="p-4 border rounded-xl" :class="c.items?.some(it => it.precio_unitario === null || it.precio_unitario ===
                                             undefined ||
                                             it.precio_unitario === '') ? 'border-yellow-400' :
                                         'border-slate-200'">
@@ -1316,8 +1343,7 @@
                         </div>
                         <button type="button" class="p-2 rounded-lg hover:bg-gray-200" @click="closeCompraModal()"
                             aria-label="Cerrar">
-                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -1339,8 +1365,7 @@
                                 <div class="sm:col-span-4">
                                     <label class="block text-xs font-medium text-gray-700 mb-1">EPI</label>
                                     <div class="relative" data-compra-epi-suggest>
-                                        <input type="text" x-model="compraEpiQuery"
-                                            @input="onCompraEpiQueryChange()"
+                                        <input type="text" x-model="compraEpiQuery" @input="onCompraEpiQueryChange()"
                                             @keydown.escape="closeCompraEpiSuggestions()"
                                             @focus="openCompraEpiSuggestions()"
                                             placeholder="Buscar EPI (nombre, código, categoría)…"
@@ -1359,8 +1384,7 @@
                                                         <div
                                                             class="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
                                                             <template x-if="e.imagen_url">
-                                                                <img :src="e.imagen_url"
-                                                                    :alt="`Imagen de ${e.nombre}`"
+                                                                <img :src="e.imagen_url" :alt="`Imagen de ${e.nombre}`"
                                                                     class="w-full h-full object-cover" />
                                                             </template>
                                                             <template x-if="!e.imagen_url">
@@ -1478,6 +1502,75 @@
                 </div>
             </div>
 
+            <!-- Firmas View -->
+            <div x-show="activeView === 'firmas'" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+                class="space-y-6">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <h1 class="text-2xl font-semibold text-gray-900">Firmas de EPIs</h1>
+                        <p class="text-sm text-gray-600 mt-1">Usuarios que han firmado la recepción de equipos.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <template x-if="usersWithPendingSignatures.length > 0">
+                            <button type="button" @click="openBulkReminderModal()"
+                                class="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path
+                                        d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                                    <path d="M14.05 2a9 9 0 0 1 8 7.94" />
+                                    <path d="M14.05 6A5 5 0 0 1 18 10" />
+                                </svg>
+                                <span x-text="`Recordatorio (${usersWithPendingSignatures.length} pendientes)`"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <template x-for="u in allUsers.filter(x => x.epis_firmados > 0)" :key="u.id">
+                        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer group"
+                            @click="openFirmasModal(u)">
+                            <div class="flex items-center gap-4">
+                                <div class="relative">
+                                    <div
+                                        class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm group-hover:ring-blue-100 transition-all">
+                                        <template x-if="u.ruta_imagen">
+                                            <img :src="u.ruta_imagen" class="w-full h-full object-cover"
+                                                x-on:error="u.ruta_imagen = null">
+                                        </template>
+                                        <template x-if="!u.ruta_imagen">
+                                            <span class="text-lg font-bold text-gray-400"
+                                                x-text="u.nombre_completo.charAt(0)"></span>
+                                        </template>
+                                    </div>
+                                    <div
+                                        class="absolute -bottom-1 -right-1 bg-green-500 text-white rounded-full p-1 border-2 border-white">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M20 6 9 17l-5-5" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors"
+                                        x-text="u.nombre_completo"></p>
+                                    <p class="text-xs text-gray-500" x-text="u.epis_firmados + ' EPIs firmados'"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <template x-if="allUsers.filter(x => x.epis_firmados > 0).length === 0">
+                        <div class="col-span-full py-10 text-center text-gray-500">
+                            No hay firmas registradas.
+                        </div>
+                    </template>
+                </div>
+            </div>
+
             <div x-show="activeView === 'tallas'" x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0">
                 <!-- Summary Cards -->
@@ -1487,10 +1580,9 @@
                         class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100/60 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300">
                         <div class="flex items-center gap-4 mb-5">
                             <div class="p-3 bg-blue-50 text-blue-600 rounded-2xl ring-1 ring-blue-100">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round"
-                                    class="lucide lucide-hand-icon lucide-hand">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="lucide lucide-hand-icon lucide-hand">
                                     <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" />
                                     <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" />
                                     <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" />
@@ -1522,10 +1614,9 @@
                         class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100/60 hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-300">
                         <div class="flex items-center gap-4 mb-5">
                             <div class="p-3 bg-emerald-50 text-emerald-600 rounded-2xl ring-1 ring-emerald-100">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round"
-                                    class="lucide lucide-footprints-icon lucide-footprints">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="lucide lucide-footprints-icon lucide-footprints">
                                     <path
                                         d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z" />
                                     <path
@@ -1558,9 +1649,9 @@
                         class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100/60 hover:shadow-xl hover:shadow-amber-500/5 transition-all duration-300">
                         <div class="flex items-center gap-4 mb-5">
                             <div class="p-3 bg-amber-50 text-amber-600 rounded-2xl ring-1 ring-amber-100">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round"
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round"
                                     class="lucide lucide-person-standing-icon lucide-person-standing">
                                     <circle cx="12" cy="5" r="1" />
                                     <path d="m9 20 3-6 3 6" />
@@ -1593,10 +1684,9 @@
                         class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100/60 hover:shadow-xl hover:shadow-rose-500/5 transition-all duration-300">
                         <div class="flex items-center gap-4 mb-5">
                             <div class="p-3 bg-rose-50 text-rose-600 rounded-2xl ring-1 ring-rose-100">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round"
-                                    class="lucide lucide-shirt-icon lucide-shirt">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="lucide lucide-shirt-icon lucide-shirt">
                                     <path
                                         d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
                                 </svg>
@@ -1631,8 +1721,7 @@
                             <button type="button" @click="resetTallasFilters()"
                                 :disabled="!filterGuante && !filterZapato && !filterPantalon && !filterChaqueta"
                                 class="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium transition-all flex items-center gap-1.5">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -1819,11 +1908,167 @@
                     </div>
                 </div>
             </div>
+            <!-- Modal Firmas -->
+            <div x-cloak x-show="firmasModalOpen" x-transition.opacity
+                class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/50" @click="firmasModalOpen = false"></div>
+                <div
+                    class="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                        <h3 class="font-bold text-lg text-gray-900">
+                            Firmas registradas
+                        </h3>
+                        <button class="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                            @click="firmasModalOpen = false">
+                            <svg class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="p-0 overflow-y-auto bg-gray-50">
+                        <template x-if="firmasLoading">
+                            <div class="p-8 text-center text-gray-500">Cargando firmas...</div>
+                        </template>
+                        <template x-if="!firmasLoading">
+                            <div class="divide-y divide-gray-100">
+                                <template x-for="g in firmasGroups" :key="g.firma_ruta">
+                                    <div
+                                        class="bg-white p-4 border-b border-gray-50 last:border-0 hover:bg-blue-50 transition-colors flex flex-col gap-2">
+                                        <div class="flex items-center justify-between w-full">
+                                            <div class="cursor-pointer flex-1" @click="g.expanded = !g.expanded">
+                                                <div class="flex items-center gap-2">
+                                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                                        class="w-4 h-4 text-gray-400 transition-transform duration-200"
+                                                        :class="g.expanded ? 'rotate-90' : ''" viewBox="0 0 24 24"
+                                                        fill="none" stroke="currentColor" stroke-width="2"
+                                                        stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="m9 18 6-6-6-6" />
+                                                    </svg>
+                                                    <div>
+                                                        <p class="font-semibold text-gray-900"
+                                                            x-text="`Firma del ${formatDateTime(g.firmado_dia)}`"></p>
+                                                        <p class="text-xs text-gray-500 mt-1"
+                                                            x-text="g.count + ' EPIs asociados'"></p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <a :href="'/epis/firma/' + g.firma_ruta.split('/').pop()" target="_blank"
+                                                class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600 shadow-sm transition-all flex items-center gap-2 z-10">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                                                    <circle cx="12" cy="12" r="3" />
+                                                </svg>
+                                                Ver firma
+                                            </a>
+                                        </div>
+                                        <div x-show="g.expanded" x-collapse class="pl-8 pr-4 py-2">
+                                            <div class="bg-gray-50 rounded-lg p-3 space-y-2">
+                                                <template x-for="item in g.items" :key="item.id">
+                                                    <div class="flex items-center justify-between text-sm">
+                                                        <span
+                                                            x-text="item.epi ? item.epi.nombre : 'EPI Desconocido'"></span>
+                                                        <span class="font-bold text-gray-700"
+                                                            x-text="'x' + item.cantidad"></span>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="firmasGroups.length === 0">
+                                    <div class="p-8 text-center text-gray-500">
+                                        No se encontraron firmas agrupadas.
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="p-4 border-t border-gray-100 bg-white flex justify-end">
+                        <button class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+                            @click="firmasModalOpen = false">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Modal Recordatorio Masivo -->
+        <div x-cloak x-show="bulkReminderModalOpen" class="fixed inset-0 z-[60] overflow-y-auto" role="dialog">
+            <div class="flex min-h-screen items-center justify-center p-4">
+                <div x-show="bulkReminderModalOpen" x-transition.opacity
+                    class="fixed inset-0 bg-black/40 backdrop-blur-sm" @click="bulkReminderModalOpen = false"></div>
+
+                <div x-show="bulkReminderModalOpen" x-transition.scale.origin.center
+                    class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                        <h3 class="font-bold text-lg text-gray-900">
+                            Enviar Recordatorios
+                        </h3>
+                        <button class="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                            @click="bulkReminderModalOpen = false">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" class="text-gray-500">
+                                <path d="M18 6 6 18" />
+                                <path d="m6 6 12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="p-6 overflow-y-auto bg-gray-50/50">
+                        <p class="text-sm text-gray-600 mb-4">Se enviará una notificación a los siguientes <strong><span
+                                    x-text="usersWithPendingSignatures.length"></span> usuarios</strong> recordando que
+                            tienen EPIs pendientes de firma:</p>
+
+                        <div
+                            class="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100 max-h-60 overflow-y-auto mb-4">
+                            <template x-for="u in usersWithPendingSignatures" :key="u.id">
+                                <div class="px-3 py-2 text-sm flex items-center justify-between">
+                                    <span class="font-medium text-gray-700" x-text="u.nombre_completo"></span>
+                                    <span
+                                        class="text-xs text-orange-600 flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded-full">
+                                        <span x-text="u.epis_sin_firmar"></span> sin firmar
+                                    </span>
+                                </div>
+                            </template>
+                        </div>
+
+                        <div class="flex justify-end gap-3 mt-4">
+                            <button @click="bulkReminderModalOpen = false"
+                                class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                                Cancelar
+                            </button>
+                            <button @click="sendBulkReminder()" :disabled="sendingBulk"
+                                class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2">
+                                <svg x-show="sendingBulk" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                        stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                    </path>
+                                </svg>
+                                <span x-text="sendingBulk ? 'Enviando...' : 'Enviar notificaciones'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <script data-navigate-once>
             function episPage() {
                 return {
+                    storageUrl: @js(asset('storage')),
+                    firmasModalOpen: false,
+                    bulkReminderModalOpen: false,
+                    sendingBulk: false,
+                    firmasModalUser: null,
+                    firmasLoading: false,
+                    firmasGroups: [],
                     query: '',
                     suggestionsOpen: false,
                     suggestions: [],
@@ -1835,6 +2080,7 @@
                     modalOpen: false,
                     modalTab: 'usuario', // usuario | catalogo
                     selectedUser: null,
+                    sendingConsent: false,
                     asignacionesEnPosesion: [],
                     asignacionesAll: [],
                     historialAsignaciones: [],
@@ -1933,7 +2179,7 @@
 
                             // Filtro de nombre/DNI (reutilizando query de búsqueda)
                             if (q && !u.nombre_completo.toLowerCase().includes(q) && !(u.dni && u.dni.toLowerCase()
-                                    .includes(q))) return false;
+                                .includes(q))) return false;
 
                             // Filtros por cada tipo de prenda
                             if (this.filterGuante && u.tallas.talla_guante !== this.filterGuante) return false;
@@ -2289,6 +2535,49 @@
                         this.refreshUsers();
                     },
 
+                    openFirmasModal(user) {
+                        this.firmasModalUser = user;
+                        this.firmasModalOpen = true;
+                        this.loadFirmasForUser(user.id);
+                    },
+
+                    async loadFirmasForUser(userId) {
+                        this.firmasLoading = true;
+                        this.firmasGroups = [];
+                        try {
+                            const url = @js(url('/epis/api/users/__ID__/asignaciones')).replace('__ID__', userId);
+                            const res = await this.api(url);
+                            const data = await res.json();
+
+                            const all = [...(data.en_posesion || []), ...(data.historial || [])];
+
+                            const signed = all.filter(a => a.firmado && a.firma_ruta);
+
+                            const groups = {};
+                            signed.forEach(a => {
+                                const key = a.firma_ruta;
+                                if (!groups[key]) {
+                                    groups[key] = {
+                                        firma_ruta: key,
+                                        firmado_dia: a.firmado_dia || a.created_at,
+                                        count: 0,
+                                        items: [],
+                                        expanded: false
+                                    };
+                                }
+                                groups[key].count++;
+                                groups[key].items.push(a);
+                            });
+
+                            this.firmasGroups = Object.values(groups).sort((a, b) => {
+                                return new Date(b.firmado_dia) - new Date(a.firmado_dia);
+                            });
+
+                        } finally {
+                            this.firmasLoading = false;
+                        }
+                    },
+
                     async refreshUsers() {
                         this.loadingUsers = true;
                         try {
@@ -2404,6 +2693,32 @@
                             }
                         } finally {
                             this.loadingAsignaciones = false;
+                        }
+                    },
+
+                    async requestConsent() {
+                        if (!this.selectedUser) return;
+                        if (!confirm('¿Enviar solicitud de firma al trabajador? Esta acción le notificará que debe firmar los EPIs pendientes.')) return;
+                        this.sendingConsent = true;
+                        try {
+                            const url = @js(url('/epis/usuarios/__ID__/consentimiento')).replace('__ID__', this.selectedUser.id);
+                            const res = await this.api(url, { method: 'POST' });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.message || 'Error al enviar solicitud.');
+
+                            Swal.fire({
+                                position: 'top',
+                                icon: 'success',
+                                title: 'Solicitud enviada',
+                                showConfirmButton: false,
+                                timer: 1500,
+                                toast: true
+                            });
+
+                        } catch (e) {
+                            alert(e.message);
+                        } finally {
+                            this.sendingConsent = false;
                         }
                     },
 
@@ -2734,7 +3049,7 @@
                                 epi_id: it.epi_id,
                                 cantidad: Number(it.cantidad) || 1,
                                 precio_unitario: (it.precio_unitario === null || it.precio_unitario ===
-                                        '' || Number.isNaN(Number(it.precio_unitario))) ?
+                                    '' || Number.isNaN(Number(it.precio_unitario))) ?
                                     null : Number(it.precio_unitario),
                             }))));
                             if (this.compraTicketFile) fd.append('ticket', this.compraTicketFile);
@@ -2773,13 +3088,18 @@
                                     epi: a.epi,
                                     asignaciones: [],
                                     total_en_posesion: 0,
-                                    total_devueltos: 0
+                                    total_devueltos: 0,
+                                    tiene_pendientes_firma: false
                                 });
                             }
                             const g = map.get(key);
                             g.asignaciones.push(a);
-                            if (a.devuelto_en) g.total_devueltos += a.cantidad || 0;
-                            else g.total_en_posesion += a.cantidad || 0;
+                            if (a.devuelto_en) {
+                                g.total_devueltos += a.cantidad || 0;
+                            } else {
+                                g.total_en_posesion += a.cantidad || 0;
+                                if (!a.firmado) g.tiene_pendientes_firma = true;
+                            }
                         }
                         const groups = Array.from(map.values())
                             .filter(g => g.total_en_posesion > 0)
@@ -2796,6 +3116,16 @@
                         groups.sort((a, b) => (b.total_en_posesion - a.total_en_posesion) || (a.epi.nombre || '')
                             .localeCompare(b.epi.nombre || ''));
                         return groups;
+                    },
+
+                    get userHasPendingSignature() {
+                        if (!this.asignacionesAll) return false;
+                        return this.asignacionesAll.some(a => !a.devuelto_en && !a.firmado);
+                    },
+
+                    get usersWithPendingSignatures() {
+                        if (!this.allUsers) return [];
+                        return this.allUsers.filter(u => u.epis_sin_firmar > 0);
                     },
 
                     openEpiAssignSuggestions() {
@@ -2970,6 +3300,47 @@
                             await this.refreshEpis();
                         } finally {
                             this.saving = false;
+                        }
+                    },
+
+                    openBulkReminderModal() {
+                        if (this.usersWithPendingSignatures.length === 0) {
+                            alert('No hay usuarios con firmas pendientes.');
+                            return;
+                        }
+                        this.bulkReminderModalOpen = true;
+                    },
+
+                    async sendBulkReminder() {
+                        const users = this.usersWithPendingSignatures.map(u => u.id);
+                        if (users.length === 0) return;
+
+                        this.sendingBulk = true;
+                        try {
+                            const url = @js(route('epis.usuarios.consentimiento-masivo'));
+                            const res = await this.api(url, {
+                                method: 'POST',
+                                body: JSON.stringify({ users }),
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+
+                            if (!res.ok) throw new Error('Error al enviar recordatorios.');
+
+                            const data = await res.json();
+                            Swal.fire({
+                                toast: true,
+                                position: 'top',
+                                icon: 'success',
+                                title: `Recordatorio enviado a ${data.count} usuarios.`,
+                                showConfirmButton: false,
+                                timer: 2000,
+                                timerProgressBar: true
+                            });
+                            this.bulkReminderModalOpen = false;
+                        } catch (e) {
+                            alert(e.message);
+                        } finally {
+                            this.sendingBulk = false;
                         }
                     },
                 }

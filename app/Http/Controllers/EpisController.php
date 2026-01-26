@@ -9,6 +9,8 @@ use App\Models\EpiCompraItem;
 use App\Models\EpiUsuario;
 use App\Models\Empresa;
 use App\Models\User;
+use App\Models\Alerta;
+use App\Models\AlertaLeida;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -35,6 +37,9 @@ class EpisController extends Controller
             'entregado_en' => optional($asignacion->entregado_en)->toIso8601String(),
             'devuelto_en' => optional($fechaDevolucion)->toIso8601String(),
             'notas' => $asignacion->notas,
+            'firmado' => (bool) $asignacion->firmado,
+            'firmado_dia' => optional($asignacion->firmado_dia)->toIso8601String(),
+            'firma_ruta' => $asignacion->firma_ruta,
             'epi' => $asignacion->epi ? [
                 'id' => $asignacion->epi->id,
                 'codigo' => $asignacion->epi->codigo,
@@ -158,6 +163,14 @@ class EpisController extends Controller
                 ],
                 'cantidad'
             )
+            ->withCount([
+                'episAsignaciones as epis_sin_firmar' => function ($query) {
+                    $query->whereNull('devuelto_en')->where('firmado', false);
+                },
+                'episAsignaciones as epis_firmados' => function ($query) {
+                    $query->where('firmado', true);
+                }
+            ])
             ->orderByDesc('epis_en_posesion')
             ->orderBy('primer_apellido')
             ->orderBy('segundo_apellido')
@@ -185,6 +198,8 @@ class EpisController extends Controller
                     ] : null,
                     'ruta_imagen' => $user->ruta_imagen,
                     'epis_en_posesion' => (int) ($user->epis_en_posesion ?? 0),
+                    'epis_sin_firmar' => (int) ($user->epis_sin_firmar ?? 0),
+                    'epis_firmados' => (int) ($user->epis_firmados ?? 0),
                     'tiene_epis' => ((int) ($user->epis_en_posesion ?? 0)) > 0,
                     'epi_match' => $epiProvided ? (bool) ($user->epi_match ?? false) : true,
                     'tallas' => $user->tallas ? [
@@ -887,5 +902,99 @@ class EpisController extends Controller
         } catch (\Throwable $e) {
             return null;
         }
+    }
+
+    public function enviarConsentimiento(User $user)
+    {
+        $alerta = Alerta::create([
+            'user_id_1' => auth()->id(),
+            'destinatario_id' => $user->id,
+            'mensaje' => "Tiene EPIs pendientes de firmar. Por favor, firme el consentimiento en su perfil.",
+            'tipo' => 'sistema',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        AlertaLeida::create([
+            'alerta_id' => $alerta->id,
+            'user_id' => $user->id,
+            'leida_en' => null,
+        ]);
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function enviarConsentimientoMasivo(Request $request)
+    {
+        $data = $request->validate([
+            'users' => ['required', 'array', 'min:1'],
+            'users.*' => ['integer', 'exists:users,id'],
+        ]);
+
+        $senderId = auth()->id();
+        $now = now();
+
+        foreach ($data['users'] as $userId) {
+            $alerta = Alerta::create([
+                'user_id_1' => $senderId,
+                'destinatario_id' => $userId,
+                'mensaje' => "Tiene EPIs pendientes de firmar. Por favor, firme el consentimiento en su perfil.",
+                'tipo' => 'sistema',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            AlertaLeida::create([
+                'alerta_id' => $alerta->id,
+                'user_id' => $userId,
+                'leida_en' => null,
+            ]);
+        }
+
+        return response()->json(['ok' => true, 'count' => count($data['users'])]);
+    }
+
+    public function firmarEpis(Request $request)
+    {
+        $data = $request->validate([
+            'firma' => ['required', 'string'], // base64
+        ]);
+
+        $user = auth()->user();
+
+        // Decodificar firma
+        $image = $data['firma'];
+        if (strpos($image, ',', 0) !== false) {
+            $image = explode(',', $image)[1];
+        }
+        $image = str_replace(' ', '+', $image);
+        $imageName = 'epis/firmas/firma_epis_' . $user->id . '_' . time() . '.png';
+
+        Storage::disk('public')->put($imageName, base64_decode($image));
+
+        // Actualizar asignaciones no firmadas
+        // Solo las que no han sido devueltas
+        EpiUsuario::where('user_id', $user->id)
+            ->where('firmado', false)
+            ->whereNull('devuelto_en')
+            ->update([
+                'firmado' => true,
+                'firmado_dia' => now(),
+                'firma_ruta' => $imageName
+            ]);
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function verFirma(string $filename)
+    {
+        $path = 'epis/firmas/' . basename($filename);
+        $disk = Storage::disk('public');
+
+        if (!$disk->exists($path)) {
+            abort(404);
+        }
+
+        return response()->file($disk->path($path));
     }
 }

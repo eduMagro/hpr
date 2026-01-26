@@ -61,7 +61,7 @@
 
     <script>
         // Prevenir que errores de scripts externos rompan Livewire
-        window.addEventListener('error', function(e) {
+        window.addEventListener('error', function (e) {
             if (e.message && e.message.includes('browser is not defined')) {
                 console.warn('Error de browser API ignorado:', e.message);
                 e.preventDefault();
@@ -206,14 +206,14 @@
     <div class="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
         <!-- Sidebar Menu Enhanced (persiste entre navegaciones) -->
         @persist('sidebar')
-            <x-sidebar-menu-enhanced />
+        <x-sidebar-menu-enhanced />
         @endpersist
 
         <!-- Main Content Area -->
         <div class="flex-1 flex flex-col overflow-hidden">
             <!-- Top Header Enhanced (persiste entre navegaciones) -->
             @persist('header')
-                <x-top-header-enhanced />
+            <x-top-header-enhanced />
             @endpersist
 
             <!-- Alerts -->

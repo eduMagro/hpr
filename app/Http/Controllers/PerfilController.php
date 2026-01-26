@@ -102,13 +102,21 @@ class PerfilController extends Controller
                 ];
             });
 
+        // Epis por firmar
+        $episPorFirmar = \App\Models\EpiUsuario::where('user_id', $user->id)
+            ->where('firmado', false)
+            ->whereNull('devuelto_en')
+            ->with('epi')
+            ->get();
+
         return view('perfil.show', compact(
             'user',
             'turnos',
             'resumen',
             'horasMensuales',
             'config',
-            'sesiones'
+            'sesiones',
+            'episPorFirmar'
         ));
     }
     private function getResumenAsistencia(User $user): array
