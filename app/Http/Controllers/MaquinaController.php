@@ -1902,11 +1902,12 @@ class MaquinaController extends Controller
         $filename = "BVBS_{$maquinaTag}_{$proyectoTag}_{$timestamp}.bvbs";
 
         // 6) Intentar guardar en carpeta compartida MSR20 (ruta principal)
-        // IMPORTANTE: La ruta UNC es más fiable que la unidad mapeada para servicios
-        $rutasAIntentar = [
+        // IMPORTANTE: Solo intentar rutas de red en Windows (local). En Linux/producción las rutas UNC no funcionan.
+        $esWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+        $rutasAIntentar = $esWindows ? [
             '\\\\192.168.0.10\\Datos\\Compartido\\COMPARTIDO_MAQUINA_MSR\\',  // Ruta UNC directa (más fiable)
             'M:\\COMPARTIDO_MAQUINA_MSR\\',                                     // Unidad mapeada (solo funciona si Apache corre como usuario)
-        ];
+        ] : [];
         $guardadoEnRed = false;
         $rutaFinal = null;
         $errores = [];
