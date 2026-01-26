@@ -110,7 +110,7 @@
                                     </div>
                                     <div class="flex-1">
                                         <span class="font-semibold text-gray-900 dark:text-white block">Confirmo la recepción</span>
-                                        <span class="text-sm text-gray-600 dark:text-gray-400">Declaro haber recibido los EPIs listados en buen estado y haber sido informado de sus instrucciones de uso.</span>
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">Declaro haber recibido los EPIs listados.</span>
                                     </div>
                                 </label>
                             </div>
