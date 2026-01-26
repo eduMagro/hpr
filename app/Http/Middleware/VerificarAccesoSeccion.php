@@ -12,7 +12,8 @@ class VerificarAccesoSeccion
 {
     public function __construct(
         protected PermissionService $permissions
-    ) {}
+    ) {
+    }
 
     /**
      * Log en el canal de accesos
@@ -58,7 +59,7 @@ class VerificarAccesoSeccion
                         return $next($request);
                     }
 
-                    return $this->denegarAcceso($request, 'No tienes permisos suficientes para realizar esta acción.', [
+                    return $this->denegarAcceso($request, "No tienes permisos suficientes para realizar esta acción. (Ruta: {$routeName})", [
                         'usuario' => $user->email,
                         'ruta' => $routeName,
                         'tipo' => 'accion_no_autorizada',
@@ -68,7 +69,7 @@ class VerificarAccesoSeccion
                 return $next($request);
             }
 
-            return $this->denegarAcceso($request, 'No tienes permiso para acceder.', [
+            return $this->denegarAcceso($request, "No tienes permiso para acceder a esta sección. (Ruta: {$routeName})", [
                 'usuario' => $user->email,
                 'ruta' => $routeName,
                 'rol' => $user->rol,
