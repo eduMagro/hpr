@@ -2072,7 +2072,7 @@ class AsignacionTurnoController extends Controller
         $asignaciones = AsignacionTurno::where('user_id', $userId)
             ->whereBetween('fecha', [$fechaInicio->toDateString(), $fechaFin->toDateString()])
             ->whereNotNull('obra_id')
-            ->with('obra:id,nombre')
+            ->with('obra:id,obra')
             ->get();
 
         $conflictos = [];
@@ -2212,11 +2212,11 @@ class AsignacionTurnoController extends Controller
             ->where('estado', 'aprobada')
             ->where(function ($q) use ($fechaOrigen, $fechaFin) {
                 $q->whereBetween('fecha_inicio', [$fechaOrigen, $fechaFin])
-                  ->orWhereBetween('fecha_fin', [$fechaOrigen, $fechaFin])
-                  ->orWhere(function ($q2) use ($fechaOrigen, $fechaFin) {
-                      $q2->where('fecha_inicio', '<=', $fechaOrigen)
-                         ->where('fecha_fin', '>=', $fechaFin);
-                  });
+                    ->orWhereBetween('fecha_fin', [$fechaOrigen, $fechaFin])
+                    ->orWhere(function ($q2) use ($fechaOrigen, $fechaFin) {
+                        $q2->where('fecha_inicio', '<=', $fechaOrigen)
+                            ->where('fecha_fin', '>=', $fechaFin);
+                    });
             })
             ->get();
 

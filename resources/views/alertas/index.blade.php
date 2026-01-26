@@ -15,7 +15,7 @@
             <div x-show="mostrarModal" x-cloak
                 class="fixed inset-0 flex items-end md:items-center justify-center bg-gray-900 bg-opacity-50 z-50 p-0 md:p-4"
                 style="display: none;" x-transition.opacity @click.self="mostrarModal = false">
-                <div class="bg-white rounded-t-2xl md:rounded-xl shadow-2xl p-6 w-full md:w-96 max-h-[90vh] md:max-h-[85vh] overflow-y-auto relative"
+                <div class="bg-white dark:bg-gray-800 rounded-t-2xl md:rounded-xl shadow-2xl p-6 w-full md:w-96 max-h-[90vh] md:max-h-[85vh] overflow-y-auto relative"
                     x-transition:enter="transition ease-out duration-300"
                     x-transition:enter-start="opacity-0 translate-y-full md:translate-y-0 md:scale-95"
                     x-transition:enter-end="opacity-100 translate-y-0 md:scale-100"
@@ -24,16 +24,16 @@
                     x-transition:leave-end="opacity-0 translate-y-full md:translate-y-0 md:scale-95">
 
                     <!-- Indicador visual de modal móvil -->
-                    <div class="md:hidden w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
+                    <div class="md:hidden w-12 h-1 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mb-4"></div>
 
                     <button @click="mostrarModal = false"
-                        class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full p-2 transition-colors duration-150">
+                        class="absolute top-4 right-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full p-2 transition-colors duration-150">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
-                    <h2 class="text-xl font-bold mb-6 text-gray-900 flex items-center space-x-2">
+                    <h2 class="text-xl font-bold mb-6 text-gray-900 dark:text-gray-100 flex items-center space-x-2">
                         <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                             <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
@@ -44,9 +44,9 @@
                         x-data="formAudioRecorder()" @submit="cargando = true">
                         @csrf
                         <div class="mb-4">
-                            <label for="mensaje" class="block text-sm font-semibold">Mensaje:</label>
+                            <label for="mensaje" class="block text-sm font-semibold dark:text-gray-200">Mensaje:</label>
                             <textarea id="mensaje" name="mensaje" rows="3"
-                                class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500">{{ old('mensaje') }}</textarea>
+                                class="w-full border dark:border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200">{{ old('mensaje') }}</textarea>
                         </div>
 
                         <!-- Audio -->
@@ -66,11 +66,11 @@
                                     </svg>
                                 </button>
                                 <span x-show="recording" class="text-red-500 text-sm font-medium" x-text="recordingTime"></span>
-                                <span x-show="!recording && !hasAudio" class="text-gray-500 text-sm">Pulsa para grabar</span>
+                                <span x-show="!recording && !hasAudio" class="text-gray-500 dark:text-gray-400 text-sm">Pulsa para grabar</span>
                             </div>
 
                             <!-- Preview del audio grabado -->
-                            <div x-show="hasAudio" class="flex items-center gap-2 p-2 bg-gray-100 rounded-lg">
+                            <div x-show="hasAudio" class="flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
                                 <audio x-ref="audioPreview" controls class="flex-1 h-10"></audio>
                                 <button type="button" @click="deleteAudio()" class="text-red-500 hover:text-red-700 p-1">
                                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -81,17 +81,17 @@
 
                             <!-- Subir archivo de audio -->
                             <div class="mt-2">
-                                <label class="text-xs text-gray-500">O sube un archivo de audio:</label>
+                                <label class="text-xs text-gray-500 dark:text-gray-400">O sube un archivo de audio:</label>
                                 <input type="file" name="audio" accept="audio/*" x-ref="audioFileInput"
-                                    class="w-full text-sm border rounded-lg p-1 focus:ring-2 focus:ring-blue-500"
+                                    class="w-full text-sm border dark:border-gray-600 rounded-lg p-1 focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
                                     @change="handleFileSelect($event)">
                             </div>
                         </div>
 
                         @if (auth()->user()->rol === 'oficina')
                             <div class="mb-4">
-                                <label for="rol" class="block text-sm font-semibold">Rol</label>
-                                <select id="rol" name="rol" class="w-full border rounded-lg p-2">
+                                <label for="rol" class="block text-sm font-semibold dark:text-gray-200">Rol</label>
+                                <select id="rol" name="rol" class="w-full border dark:border-gray-600 rounded-lg p-2 dark:bg-gray-700 dark:text-gray-200">
                                     <option value="">-- Seleccionar un Rol --</option>
                                     @foreach ($roles as $rol)
                                         <option value="{{ $rol }}">{{ ucfirst($rol) }}</option>
@@ -100,8 +100,8 @@
                             </div>
 
                             <div class="mb-4">
-                                <label for="categoria" class="block text-sm font-semibold">Categoría</label>
-                                <select id="categoria" name="categoria" class="w-full border rounded-lg p-2">
+                                <label for="categoria" class="block text-sm font-semibold dark:text-gray-200">Categoría</label>
+                                <select id="categoria" name="categoria" class="w-full border dark:border-gray-600 rounded-lg p-2 dark:bg-gray-700 dark:text-gray-200">
                                     <option value="">-- Seleccionar una Categoría --</option>
                                     @foreach ($categorias as $categoria)
                                         <option value="{{ $categoria }}">{{ ucfirst($categoria) }}</option>
@@ -110,10 +110,10 @@
                             </div>
 
                             <div class="mb-4">
-                                <label for="destinatario_id" class="block text-sm font-semibold">Destinatario
+                                <label for="destinatario_id" class="block text-sm font-semibold dark:text-gray-200">Destinatario
                                     Personal</label>
                                 <select id="destinatario_id" name="destinatario_id"
-                                    class="w-full border rounded-lg p-2">
+                                    class="w-full border dark:border-gray-600 rounded-lg p-2 dark:bg-gray-700 dark:text-gray-200">
                                     <option value="">-- Seleccionar un Usuario --</option>
                                     @foreach ($usuarios as $usuario)
                                         <option value="{{ $usuario->id }}">{{ $usuario->nombre_completo }}</option>
@@ -138,8 +138,8 @@
             </div>
 
             <!-- Vista Desktop (Tabla) -->
-            <div class="hidden md:block w-full overflow-x-auto bg-white shadow-lg rounded-lg">
-                <table class="min-w-full divide-y divide-gray-200">
+            <div class="hidden md:block w-full overflow-x-auto bg-white dark:bg-gray-800 shadow-lg rounded-lg">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
                         <tr>
                             <th class="px-4 py-3 text-xs font-semibold text-center uppercase tracking-wider">
@@ -159,7 +159,7 @@
                             </th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200 text-sm">
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 text-sm">
                         @forelse ($alertas as $alerta)
                             @php
                                 $esParaListado = $alerta->leidas->contains('user_id', $user->id);
@@ -170,7 +170,7 @@
                                 $mostrarBadge = $noLeida || ($alerta->tiene_respuestas_nuevas ?? false);
                             @endphp
 
-                            <tr class="cursor-pointer transition-all duration-200 hover:bg-blue-50 hover:shadow-md {{ $mostrarBadge ? 'bg-yellow-50 border-l-4 border-yellow-400' : 'bg-white' }}"
+                            <tr class="cursor-pointer transition-all duration-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:shadow-md {{ $mostrarBadge ? 'bg-yellow-50 dark:bg-yellow-900/30 border-l-4 border-yellow-400' : 'bg-white dark:bg-gray-800' }}"
                                 data-alerta-id="{{ $alerta->id }}"
                                 onclick="marcarAlertaLeida({{ $alerta->id }}, this, @js($alerta->mensaje_completo), {{ $esSaliente ? 'true' : 'false' }})">
 
@@ -178,7 +178,7 @@
                                 <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
                                     @if ($alerta->tipo === 'entrante')
                                         <span
-                                            class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                            class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-700">
                                             <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                 <path
                                                     d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
@@ -188,7 +188,7 @@
                                         </span>
                                     @else
                                         <span
-                                            class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                            class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
                                             <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                 <path
                                                     d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
@@ -212,7 +212,7 @@
                                 <!-- Columna Enviado por -->
                                 <td class="px-4 py-3 text-center">
                                     <div class="flex flex-col items-center">
-                                        <span class="font-medium text-gray-900">
+                                        <span class="font-medium text-gray-900 dark:text-gray-100">
                                             {{ $alerta->nombre_emisor }}
                                         </span>
                                     </div>
@@ -223,12 +223,12 @@
                                     <div class="flex items-start justify-between space-x-2">
                                         <div class="flex-1 min-w-0">
                                             {{-- Mensaje acortado en móvil --}}
-                                            <p class="text-gray-800 line-clamp-2 lg:hidden"
+                                            <p class="text-gray-800 dark:text-gray-200 line-clamp-2 lg:hidden"
                                                 title="{{ $alerta->mensaje_completo }}">
                                                 {{ $alerta->mensaje_corto }}
                                             </p>
                                             {{-- Mensaje completo en PC --}}
-                                            <p class="text-gray-800 hidden lg:block">
+                                            <p class="text-gray-800 dark:text-gray-200 hidden lg:block">
                                                 {!! $alerta->mensaje !!}
                                             </p>
                                             @if (strlen($alerta->mensaje_completo) > strlen($alerta->mensaje_corto))
@@ -256,9 +256,9 @@
                                 <td class="px-4 py-3 text-center">
                                     <div class="flex flex-col items-center">
                                         <span
-                                            class="text-gray-900 font-medium">{{ $alerta->created_at->diffForHumans() }}</span>
+                                            class="text-gray-900 dark:text-gray-100 font-medium">{{ $alerta->created_at->diffForHumans() }}</span>
                                         <span
-                                            class="text-xs text-gray-500 mt-0.5">{{ $alerta->created_at->format('d/m/Y H:i') }}</span>
+                                            class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $alerta->created_at->format('d/m/Y H:i') }}</span>
                                     </div>
                                 </td>
 
@@ -278,20 +278,20 @@
                                                 Eliminar
                                             </button>
                                         @else
-                                            <span class="text-xs text-gray-400 italic">Sin acciones</span>
+                                            <span class="text-xs text-gray-400 dark:text-gray-500 italic">Sin acciones</span>
                                         @endif
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center py-8 text-gray-500">
-                                    <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none"
+                                <td colspan="5" class="text-center py-8 text-gray-500 dark:text-gray-400">
+                                    <svg class="w-12 h-12 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="none"
                                         stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                                     </svg>
-                                    <p class="font-medium">No hay mensajes registrados</p>
+                                    <p class="font-medium dark:text-gray-300">No hay mensajes registrados</p>
                                     <p class="text-sm mt-1">Los mensajes que recibas o envíes aparecerán aquí</p>
                                 </td>
                             </tr>
@@ -312,7 +312,7 @@
                         $usuario = $alerta->usuario1;
                     @endphp
 
-                    <div class="bg-white rounded-lg shadow-md overflow-hidden {{ $mostrarBadge ? 'ring-2 ring-yellow-400 bg-yellow-50' : '' }}"
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden {{ $mostrarBadge ? 'ring-2 ring-yellow-400 bg-yellow-50 dark:bg-yellow-900/30' : '' }}"
                         data-alerta-id="{{ $alerta->id }}">
 
                         <!-- Header de la card -->
@@ -349,8 +349,8 @@
                             <!-- Emisor -->
                             <div class="flex items-start space-x-3">
                                 <div class="flex-shrink-0">
-                                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                        <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd"
                                                 d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
                                                 clip-rule="evenodd" />
@@ -358,20 +358,20 @@
                                     </div>
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-medium text-gray-900">
+                                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
                                         {{ $alerta->nombre_emisor }}
                                     </p>
                                 </div>
                             </div>
 
                             <!-- Mensaje -->
-                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
                                 {{-- Mensaje acortado en móvil --}}
-                                <p class="text-sm text-gray-800 line-clamp-3 lg:hidden">
+                                <p class="text-sm text-gray-800 dark:text-gray-200 line-clamp-3 lg:hidden">
                                     {{ $alerta->mensaje_corto }}
                                 </p>
                                 {{-- Mensaje completo en PC --}}
-                                <p class="text-sm text-gray-800 hidden lg:block">
+                                <p class="text-sm text-gray-800 dark:text-gray-200 hidden lg:block">
                                     {!! $alerta->mensaje !!}
                                 </p>
 
@@ -403,8 +403,8 @@
                             </div>
 
                             <!-- Footer -->
-                            <div class="flex items-center justify-between pt-2 border-t border-gray-200">
-                                <span class="text-xs text-gray-500">
+                            <div class="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
+                                <span class="text-xs text-gray-500 dark:text-gray-400">
                                     {{ $alerta->created_at->format('d/m/Y H:i') }}
                                 </span>
                                 @if ($esSaliente)
@@ -422,14 +422,14 @@
                         </div>
                     </div>
                 @empty
-                    <div class="text-center py-12 bg-white rounded-lg shadow-md">
-                        <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor"
+                    <div class="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                        <svg class="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                         </svg>
-                        <p class="font-medium text-gray-900 text-lg">No hay mensajes</p>
-                        <p class="text-sm text-gray-500 mt-1">Los mensajes que recibas o envíes aparecerán aquí</p>
+                        <p class="font-medium text-gray-900 dark:text-gray-100 text-lg">No hay mensajes</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Los mensajes que recibas o envíes aparecerán aquí</p>
                     </div>
                 @endforelse
             </div>
@@ -444,7 +444,7 @@
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mt-6 md:mt-8 mb-4 gap-3">
-            <h2 class="text-lg sm:text-xl md:text-2xl font-bold text-blue-900 flex items-center">
+            <h2 class="text-lg sm:text-xl md:text-2xl font-bold text-blue-900 dark:text-blue-300 flex items-center">
                 <svg class="w-6 h-6 md:w-7 md:h-7 inline-block mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
                     <path fill-rule="evenodd"
@@ -455,28 +455,28 @@
                 <span class="sm:hidden">Panel Admin</span>
             </h2>
             <span
-                class="text-xs sm:text-sm text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full font-medium whitespace-nowrap">
+                class="text-xs sm:text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded-full font-medium whitespace-nowrap">
                 Total: {{ $todasLasAlertas->total() }}
             </span>
         </div>
 
         <!-- Formulario de filtros para móvil -->
-        <div class="md:hidden bg-white rounded-lg shadow-md p-4 mb-4">
+        <div class="md:hidden bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
             <form method="GET" action="{{ route('alertas.index') }}" class="space-y-3">
                 <div>
-                    <label class="text-xs font-semibold text-gray-700 block mb-1">Emisor</label>
+                    <label class="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-1">Emisor</label>
                     <x-tabla.input name="emisor" value="{{ request('emisor') }}" />
                 </div>
                 <div>
-                    <label class="text-xs font-semibold text-gray-700 block mb-1">Mensaje</label>
+                    <label class="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-1">Mensaje</label>
                     <x-tabla.input name="mensaje" value="{{ request('mensaje') }}" />
                 </div>
                 <div>
-                    <label class="text-xs font-semibold text-gray-700 block mb-1">Tipo</label>
+                    <label class="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-1">Tipo</label>
                     <x-tabla.select name="tipo" :options="$tiposAlerta" :selected="request('tipo')" empty="-- Todos --" />
                 </div>
                 <div>
-                    <label class="text-xs font-semibold text-gray-700 block mb-1">Fecha</label>
+                    <label class="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-1">Fecha</label>
                     <x-tabla.input type="date" name="fecha_creada" value="{{ request('fecha_creada') }}" />
                 </div>
                 <div class="flex gap-2">
@@ -493,7 +493,7 @@
         </div>
 
         <!-- Vista Desktop (Tabla) -->
-        <div class="hidden md:block w-full overflow-x-auto bg-white shadow-xl rounded-lg border border-gray-200">
+        <div class="hidden md:block w-full overflow-x-auto bg-white dark:bg-gray-800 shadow-xl rounded-lg border border-gray-200 dark:border-gray-700">
             <table class="w-full min-w-[1000px]">
                 <thead class="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
                     <tr class="text-center text-xs font-semibold">
@@ -536,44 +536,44 @@
                     </tr>
                 </thead>
 
-                <tbody class="text-gray-700 text-sm">
+                <tbody class="text-gray-700 dark:text-gray-300 text-sm">
                     @forelse ($todasLasAlertas as $alerta)
                         <tr
-                            class="border-b border-gray-200 odd:bg-gray-50 even:bg-white hover:bg-blue-50 transition-colors duration-150">
-                            <td class="p-3 text-center border-r border-gray-200">
+                            class="border-b border-gray-200 dark:border-gray-700 odd:bg-gray-50 dark:odd:bg-gray-700/50 even:bg-white dark:even:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors duration-150">
+                            <td class="p-3 text-center border-r border-gray-200 dark:border-gray-700">
                                 <div class="flex flex-col items-center">
-                                    <span class="font-medium text-gray-900">
+                                    <span class="font-medium text-gray-900 dark:text-gray-100">
                                         {{ $alerta->usuario1?->nombre_completo ?? '—' }}
                                     </span>
                                     @if ($alerta->usuario1?->rol)
                                         <span
-                                            class="text-xs text-gray-500 mt-0.5">{{ ucfirst($alerta->usuario1->rol) }}</span>
+                                            class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ ucfirst($alerta->usuario1->rol) }}</span>
                                     @endif
                                 </div>
                             </td>
-                            <td class="p-3 text-center border-r border-gray-200">
-                                <span class="text-gray-700">
+                            <td class="p-3 text-center border-r border-gray-200 dark:border-gray-700">
+                                <span class="text-gray-700 dark:text-gray-300">
                                     {{ $alerta->usuario2?->nombre_completo ?? '—' }}
                                 </span>
                             </td>
-                            <td class="p-3 text-center border-r border-gray-200">
+                            <td class="p-3 text-center border-r border-gray-200 dark:border-gray-700">
                                 @if ($alerta->destino)
                                     <span
-                                        class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                                        class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-700">
                                         {{ ucfirst($alerta->destino) }}
                                     </span>
                                 @else
-                                    <span class="text-gray-400">—</span>
+                                    <span class="text-gray-400 dark:text-gray-500">—</span>
                                 @endif
                             </td>
-                            <td class="p-3 text-center border-r border-gray-200">
-                                <span class="text-gray-700">
+                            <td class="p-3 text-center border-r border-gray-200 dark:border-gray-700">
+                                <span class="text-gray-700 dark:text-gray-300">
                                     {{ $alerta->destinatarioUser?->nombre_completo ?? '—' }}
                                 </span>
                             </td>
-                            <td class="p-3 border-r border-gray-200">
+                            <td class="p-3 border-r border-gray-200 dark:border-gray-700">
                                 <div class="max-w-md">
-                                    <p class="text-gray-800 line-clamp-2 leading-relaxed"
+                                    <p class="text-gray-800 dark:text-gray-200 line-clamp-2 leading-relaxed"
                                         title="{{ $alerta->mensaje }}">
                                         {{ $alerta->mensaje }}
                                     </p>
@@ -585,10 +585,10 @@
                                     @endif
                                 </div>
                             </td>
-                            <td class="p-3 text-center border-r border-gray-200">
+                            <td class="p-3 text-center border-r border-gray-200 dark:border-gray-700">
                                 @if ($alerta->tipo === 'entrante')
                                     <span
-                                        class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                        class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-700">
                                         <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                             <path
                                                 d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
@@ -598,7 +598,7 @@
                                     </span>
                                 @else
                                     <span
-                                        class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                        class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
                                         <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                             <path
                                                 d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
@@ -607,15 +607,15 @@
                                     </span>
                                 @endif
                             </td>
-                            <td class="p-3 text-center border-r border-gray-200">
+                            <td class="p-3 text-center border-r border-gray-200 dark:border-gray-700">
                                 <div class="flex flex-col items-center">
-                                    <span class="text-gray-900 font-medium text-xs">
+                                    <span class="text-gray-900 dark:text-gray-100 font-medium text-xs">
                                         {{ $alerta->created_at?->format('d/m/Y') }}
                                     </span>
-                                    <span class="text-gray-500 text-xs">
+                                    <span class="text-gray-500 dark:text-gray-400 text-xs">
                                         {{ $alerta->created_at?->format('H:i') }}
                                     </span>
-                                    <span class="text-gray-400 text-xs mt-0.5">
+                                    <span class="text-gray-400 dark:text-gray-500 text-xs mt-0.5">
                                         {{ $alerta->created_at?->diffForHumans() }}
                                     </span>
                                 </div>
@@ -648,13 +648,13 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center py-8 text-gray-500">
-                                <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none"
+                            <td colspan="8" class="text-center py-8 text-gray-500 dark:text-gray-400">
+                                <svg class="w-12 h-12 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="none"
                                     stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                                 </svg>
-                                <p class="font-medium">No hay alertas disponibles</p>
+                                <p class="font-medium dark:text-gray-300">No hay alertas disponibles</p>
                                 <p class="text-sm mt-1">Ajusta los filtros para ver más resultados</p>
                             </td>
                         </tr>
@@ -667,7 +667,7 @@
         <div class="md:hidden space-y-4">
             @forelse ($todasLasAlertas as $alerta)
                 <div
-                    class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 transform transition-all duration-200 hover:shadow-xl">
+                    class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 transform transition-all duration-200 hover:shadow-xl">
 
                     <!-- Header de la card con degradado -->
                     <div
@@ -698,7 +698,7 @@
                     <div class="p-4 space-y-3">
 
                         <!-- Información del emisor -->
-                        <div class="flex items-start space-x-3 pb-3 border-b border-gray-100">
+                        <div class="flex items-start space-x-3 pb-3 border-b border-gray-100 dark:border-gray-700">
                             <div class="flex-shrink-0">
                                 <div
                                     class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-md">
@@ -710,16 +710,16 @@
                                 </div>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <p class="text-sm font-bold text-gray-900">
+                                <p class="text-sm font-bold text-gray-900 dark:text-gray-100">
                                     {{ $alerta->nombre_emisor }}
                                 </p>
                                 @if ($alerta->nombre_emisor !== 'Sistema' && $alerta->usuario1?->rol)
-                                    <p class="text-xs text-gray-500 mt-0.5">
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                         <span class="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1"></span>
                                         {{ ucfirst($alerta->usuario1->rol) }}
                                     </p>
                                 @endif
-                                <p class="text-xs text-gray-400 mt-1">
+                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
                                     {{ $alerta->created_at?->format('H:i') }} ·
                                     {{ $alerta->created_at?->diffForHumans() }}
                                 </p>
@@ -730,7 +730,7 @@
                         <div class="flex flex-wrap gap-2">
                             @if ($alerta->destino)
                                 <span
-                                    class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                                    class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-700">
                                     <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd"
                                             d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
@@ -741,7 +741,7 @@
                             @endif
                             @if ($alerta->destinatarioUser)
                                 <span
-                                    class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                    class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
                                     <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                         <path
                                             d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
@@ -753,8 +753,8 @@
 
                         <!-- Mensaje -->
                         <div
-                            class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200 shadow-inner">
-                            <p class="text-sm text-gray-800 leading-relaxed">
+                            class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600 shadow-inner">
+                            <p class="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
                                 {{ $alerta->mensaje }}
                             </p>
                         </div>
@@ -784,16 +784,16 @@
                     </div>
                 </div>
             @empty
-                <div class="text-center py-16 bg-white rounded-xl shadow-md">
-                    <div class="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                        <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor"
+                <div class="text-center py-16 bg-white dark:bg-gray-800 rounded-xl shadow-md">
+                    <div class="w-20 h-20 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                        <svg class="w-10 h-10 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                         </svg>
                     </div>
-                    <p class="font-bold text-gray-900 text-lg">No hay alertas</p>
-                    <p class="text-sm text-gray-500 mt-2">Ajusta los filtros para ver más resultados</p>
+                    <p class="font-bold text-gray-900 dark:text-gray-100 text-lg">No hay alertas</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Ajusta los filtros para ver más resultados</p>
                 </div>
             @endforelse
         </div>
@@ -809,7 +809,7 @@
 
         <!-- Contenedor del modal -->
         <div class="absolute inset-0 flex items-end md:items-center justify-center p-0 md:p-6">
-            <div class="modal-content bg-white w-full md:w-[360px] md:rounded-2xl shadow-2xl flex flex-col max-h-[100dvh] md:max-h-[80vh] overflow-hidden"
+            <div class="modal-content bg-white dark:bg-gray-800 w-full md:w-[360px] md:rounded-2xl shadow-2xl flex flex-col max-h-[100dvh] md:max-h-[80vh] overflow-hidden"
                 onclick="event.stopPropagation()">
 
                 <!-- Header -->
@@ -834,12 +834,12 @@
 
                 <!-- Area de chat -->
                 <div id="hiloContenido"
-                    class="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-slate-50 to-slate-100 min-h-[280px]">
+                    class="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-slate-50 to-slate-100 dark:from-gray-900 dark:to-gray-900 min-h-[280px]">
                     <!-- Mensajes -->
                 </div>
 
                 <!-- Input -->
-                <div class="bg-white border-t border-slate-200 px-3 py-2 shrink-0" x-data="chatAudioRecorder()">
+                <div class="bg-white dark:bg-gray-800 border-t border-slate-200 dark:border-gray-700 px-3 py-2 shrink-0" x-data="chatAudioRecorder()">
                     <!-- Preview de audio grabado -->
                     <div x-show="hasAudio" class="flex items-center gap-2 mb-2 p-2 bg-emerald-50 rounded-lg">
                         <audio x-ref="chatAudioPreview" controls class="flex-1 h-8"></audio>
@@ -867,9 +867,9 @@
 
                         <!-- Textarea -->
                         <div x-show="!recording"
-                            class="flex-1 bg-slate-100 rounded-2xl overflow-hidden transition-all duration-200 focus-within:bg-slate-50 focus-within:ring-2 focus-within:ring-emerald-500/30">
+                            class="flex-1 bg-slate-100 dark:bg-gray-700 rounded-2xl overflow-hidden transition-all duration-200 focus-within:bg-slate-50 dark:focus-within:bg-gray-600 focus-within:ring-2 focus-within:ring-emerald-500/30">
                             <textarea id="textoRespuesta"
-                                class="w-full resize-none border-0 bg-transparent focus:ring-0 focus:outline-none text-[15px] text-slate-800 leading-6 placeholder-slate-400 py-2.5 px-4 block"
+                                class="w-full resize-none border-0 bg-transparent focus:ring-0 focus:outline-none text-[15px] text-slate-800 dark:text-gray-200 leading-6 placeholder-slate-400 dark:placeholder-gray-400 py-2.5 px-4 block"
                                 rows="1" placeholder="Escribe un mensaje..." oninput="ajustarAlturaTextarea(this)"
                                 onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); enviarRespuestaConAudio(); }"
                                 style="height: 44px; max-height: 120px; overflow-y: auto;"></textarea>
@@ -906,11 +906,11 @@
     <div id="modalConfirmacionCambio"
         class="fixed inset-0 bg-black bg-opacity-60 hidden items-end md:items-center justify-center z-50 transition-opacity duration-300 p-0 md:p-4"
         onclick="cerrarModalConfirmacion()">
-        <div class="bg-white rounded-t-2xl md:rounded-xl shadow-2xl w-full md:max-w-md transform transition-all duration-300"
+        <div class="bg-white dark:bg-gray-800 rounded-t-2xl md:rounded-xl shadow-2xl w-full md:max-w-md transform transition-all duration-300"
             onclick="event.stopPropagation()">
 
             <!-- Indicador visual de modal móvil -->
-            <div class="md:hidden w-12 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-2"></div>
+            <div class="md:hidden w-12 h-1 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mt-3 mb-2"></div>
 
             <!-- Header del modal -->
             <div
@@ -936,24 +936,24 @@
 
             <!-- Contenido dinámico -->
             <div class="p-4 md:p-6">
-                <div class="bg-blue-50 border-l-4 border-blue-500 p-3 md:p-4 rounded-r-lg mb-4">
-                    <p class="text-sm md:text-base text-gray-800 mb-3">
+                <div class="bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500 p-3 md:p-4 rounded-r-lg mb-4">
+                    <p class="text-sm md:text-base text-gray-800 dark:text-gray-200 mb-3">
                         Solicitud para elemento: <strong class="text-blue-700 text-base md:text-lg"><span
                                 id="elementoModal"></span></strong>
                     </p>
                     <div
                         class="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4 text-sm">
-                        <div class="flex items-center bg-red-100 px-3 py-2 rounded-lg w-full sm:w-auto justify-center">
-                            <span class="text-red-700 font-semibold">De: <span id="origenModal"></span></span>
+                        <div class="flex items-center bg-red-100 dark:bg-red-900/50 px-3 py-2 rounded-lg w-full sm:w-auto justify-center">
+                            <span class="text-red-700 dark:text-red-300 font-semibold">De: <span id="origenModal"></span></span>
                         </div>
-                        <svg class="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 rotate-90 sm:rotate-0" fill="none"
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 dark:text-gray-500 rotate-90 sm:rotate-0" fill="none"
                             stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
                         <div
-                            class="flex items-center bg-green-100 px-3 py-2 rounded-lg w-full sm:w-auto justify-center">
-                            <span class="text-green-700 font-semibold">A: <span id="destinoModal"></span></span>
+                            class="flex items-center bg-green-100 dark:bg-green-900/50 px-3 py-2 rounded-lg w-full sm:w-auto justify-center">
+                            <span class="text-green-700 dark:text-green-300 font-semibold">A: <span id="destinoModal"></span></span>
                         </div>
                     </div>
                 </div>
@@ -1198,6 +1198,11 @@
             }
 
             window.verMensajeCompleto = function(mensaje, tipo = null) {
+                // Detectar si estamos en modo oscuro
+                const isDark = document.documentElement.classList.contains('dark');
+                const bgClass = isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-50 text-gray-700';
+                const textClass = isDark ? 'text-gray-200' : 'text-gray-700';
+
                 // Detectar si es una solicitud de revisión de fichajes
                 const revisionMatch = mensaje.match(/\[REVISION_ID:(\d+)\]\[USER_ID:(\d+)\]/);
 
@@ -1210,7 +1215,7 @@
                     Swal.fire({
                         title: 'Solicitud de Revision de Fichajes',
                         html: `
-                            <div class="text-left whitespace-pre-wrap text-gray-700 p-4 mb-4 bg-gray-50 rounded-lg max-h-64 overflow-y-auto">${mensajeLimpio}</div>
+                            <div class="text-left whitespace-pre-wrap ${bgClass} p-4 mb-4 rounded-lg max-h-64 overflow-y-auto">${mensajeLimpio}</div>
                             <div class="flex gap-2 justify-center">
                                 <button onclick="corregirFichajes(${solicitudId})" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors">
                                     Corregir Fichajes
@@ -1222,16 +1227,20 @@
                         `,
                         showConfirmButton: false,
                         showCloseButton: true,
-                        width: '600px'
+                        width: '600px',
+                        background: isDark ? '#1f2937' : '#ffffff',
+                        color: isDark ? '#f3f4f6' : '#1f2937'
                     });
                 } else {
                     Swal.fire({
                         title: 'Mensaje Completo',
-                        html: `<div class="text-left whitespace-pre-wrap text-gray-700 p-4">${mensaje}</div>`,
+                        html: `<div class="text-left whitespace-pre-wrap ${textClass} p-4">${mensaje}</div>`,
                         icon: 'info',
                         confirmButtonColor: '#3B82F6',
                         confirmButtonText: 'Cerrar',
-                        width: '600px'
+                        width: '600px',
+                        background: isDark ? '#1f2937' : '#ffffff',
+                        color: isDark ? '#f3f4f6' : '#1f2937'
                     });
                 }
             }
@@ -1441,7 +1450,7 @@
                     mensajeTexto = mensaje.mensaje.replace(/\[REVISION_ID:\d+\]\[USER_ID:\d+\]\n?/, '');
 
                     botonesRevision = `
-                        <div class="flex gap-2 mt-3 pt-3 border-t border-gray-200">
+                        <div class="flex gap-2 mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
                             <button onclick="corregirFichajes(${solicitudId})" class="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors">
                                 Corregir Fichajes
                             </button>
@@ -2025,6 +2034,41 @@
             background: white;
             border-radius: 18px 18px 18px 4px;
             border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        /* ===== DARK MODE PARA CHAT ===== */
+        .dark .chat-bubble-out {
+            background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+        }
+
+        .dark .chat-bubble-in {
+            background: #374151;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .dark .chat-bubble .text-slate-800,
+        .dark .chat-bubble .mensaje-mensaje {
+            color: #e5e7eb !important;
+        }
+
+        .dark .chat-bubble .text-slate-500 {
+            color: #9ca3af !important;
+        }
+
+        .dark .chat-bubble .text-emerald-600 {
+            color: #34d399 !important;
+        }
+
+        .dark #hiloContenido {
+            scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+        }
+
+        .dark #hiloContenido::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .dark #hiloContenido::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
 
         /* .mensaje-mensaje a {

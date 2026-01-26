@@ -3,6 +3,7 @@
 namespace App\Services\Asistente;
 
 use App\Models\User;
+use App\Models\AccionAsistente;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 class AgentService
 {
     protected IAService $iaService;
+    protected AccionService $accionService;
     protected User $user;
     protected array $herramientas = [];
     protected array $historialAcciones = [];
@@ -58,6 +60,13 @@ class AgentService
         'planilla_asignar_maquina' => [
             'nombre' => 'Asignar planilla a máquina',
             'descripcion' => 'Asigna los elementos de una planilla a una máquina específica',
+            'categoria' => 'planillas',
+            'nivel_permiso' => 2,
+            'requiere_confirmacion' => true,
+        ],
+        'planilla_cambiar_prioridad' => [
+            'nombre' => 'Cambiar prioridad de planilla',
+            'descripcion' => 'Cambia la prioridad de una planilla (alta, normal, baja)',
             'categoria' => 'planillas',
             'nivel_permiso' => 2,
             'requiere_confirmacion' => true,
@@ -242,6 +251,7 @@ class AgentService
     public function __construct(?User $user = null, ?string $modelo = null)
     {
         $this->iaService = new IAService($modelo);
+        $this->accionService = new AccionService();
         $this->log = \Illuminate\Support\Facades\Log::channel('asistente-virtual');
         if ($user) {
             $this->user = $user;
@@ -623,6 +633,7 @@ PROMPT;
                 'planilla_cambiar_estado' => $this->ejecutarPlanillaCambiarEstado($parametros),
                 'planilla_adelantar' => $this->ejecutarPlanillaAdelantar($parametros),
                 'planilla_asignar_maquina' => $this->ejecutarPlanillaAsignarMaquina($parametros),
+                'planilla_cambiar_prioridad' => $this->ejecutarPlanillaCambiarPrioridad($parametros),
 
                 // Elementos
                 'elemento_listar' => $this->ejecutarElementoListar($parametros),
@@ -636,6 +647,7 @@ PROMPT;
                 // Stock
                 'stock_consultar' => $this->ejecutarStockConsultar($parametros),
                 'stock_mover' => $this->ejecutarStockMover($parametros),
+                'stock_ajustar' => $this->ejecutarStockAjustar($parametros),
 
                 // Producción
                 'produccion_resumen' => $this->ejecutarProduccionResumen($parametros),
@@ -695,22 +707,46 @@ PROMPT;
     }
 
     /**
-     * Registra una acción en el historial
+     * Registra una acción en el historial con información completa
      */
     protected function registrarAccion(string $herramienta, array $parametros, array $resultado): void
     {
         try {
-            DB::table('acciones_asistente')->insert([
+            AccionAsistente::create([
                 'user_id' => $this->user->id,
                 'accion' => $herramienta,
-                'parametros' => json_encode($parametros),
-                'resultado' => json_encode($resultado),
-                'created_at' => now(),
-                'updated_at' => now(),
+                'parametros' => $parametros,
+                'resultado' => [
+                    'exito' => $resultado['exito'] ?? false,
+                    'success' => $resultado['exito'] ?? false, // compatibilidad con AccionService
+                    'contenido' => mb_substr($resultado['contenido'] ?? '', 0, 500),
+                    'navegacion' => $resultado['navegacion'] ?? null,
+                ],
+                'ip' => request()->ip(),
+                'user_agent' => request()->userAgent(),
             ]);
         } catch (\Exception $e) {
             $this->log->warning('AgentService: Error registrando acción', ['error' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * Obtiene el historial de acciones del usuario actual
+     */
+    public function obtenerHistorialAcciones(int $limite = 20): array
+    {
+        return AccionAsistente::where('user_id', $this->user->id)
+            ->orderByDesc('created_at')
+            ->limit($limite)
+            ->get()
+            ->map(fn($a) => [
+                'id' => $a->id,
+                'accion' => self::HERRAMIENTAS_DISPONIBLES[$a->accion]['nombre'] ?? $a->accion,
+                'parametros' => $a->parametros,
+                'exito' => $a->fueExitosa(),
+                'fecha' => $a->created_at->diffForHumans(),
+            ])
+            ->toArray();
     }
 
     /**
@@ -784,15 +820,15 @@ PROMPT;
     protected function ejecutarPlanillaListar(array $params): array
     {
         $query = DB::table('planillas')
-            ->select('planillas.*', 'clientes.empresa as cliente', 'obras.obra as obra_nombre')
+            ->select('planillas.*', 'clientes.empresa as cliente', 'maquinas.nombre as maquina')
             ->leftJoin('clientes', 'planillas.cliente_id', '=', 'clientes.id')
-            ->leftJoin('obras', 'planillas.obra_id', '=', 'obras.id')
+            ->leftJoin('orden_planillas', 'planillas.id', '=', 'orden_planillas.planilla_id')
+            ->leftJoin('maquinas', 'orden_planillas.maquina_id', '=', 'maquinas.id')
             ->whereNull('planillas.deleted_at');
 
         if (!empty($params['estado'])) {
             $query->where('planillas.estado', $params['estado']);
         }
-
         if (!empty($params['cliente'])) {
             $query->where('clientes.empresa', 'LIKE', "%{$params['cliente']}%");
         }
@@ -800,78 +836,97 @@ PROMPT;
         $planillas = $query->orderByDesc('planillas.created_at')->limit(20)->get();
 
         if ($planillas->isEmpty()) {
-            return [
-                'exito' => true,
-                'contenido' => 'No se encontraron planillas con los filtros especificados.',
-                'datos' => [],
-            ];
+            return ['exito' => true, 'contenido' => 'No se encontraron planillas.', 'datos' => []];
         }
 
-        $contenido = "**Encontré {$planillas->count()} planillas:**\n\n";
-        $contenido .= "| Código | Cliente | Obra | Estado | Peso |\n";
-        $contenido .= "|--------|---------|------|--------|------|\n";
+        // Stats de elementos
+        $stats = DB::table('elementos')
+            ->select('planilla_id', DB::raw('COUNT(*) as t'), DB::raw('SUM(elaborado) as f'))
+            ->whereIn('planilla_id', $planillas->pluck('id'))
+            ->whereNull('deleted_at')
+            ->groupBy('planilla_id')
+            ->get()->keyBy('planilla_id');
+
+        // Resumen compacto por estado
+        $porEstado = $planillas->groupBy('estado');
+        $resumen = $porEstado->map(fn($g, $e) => "{$e}:{$g->count()}")->implode(' | ');
+
+        $contenido = "**{$planillas->count()} planillas** (" . number_format($planillas->sum('peso_total'), 0, ',', '.') . " kg) → {$resumen}\n\n";
+        $contenido .= "| Código | Cliente | Progreso | Peso | Máq |\n|--------|---------|----------|------|-----|\n";
 
         foreach ($planillas as $p) {
-            $contenido .= "| {$p->codigo} | " . ($p->cliente ?? 'N/A') . " | " . ($p->obra_nombre ?? 'N/A') . " | {$p->estado} | " . number_format($p->peso_total ?? 0, 0) . " kg |\n";
+            $s = $stats[$p->id] ?? null;
+            $prog = $s ? round(($s->f / max($s->t, 1)) * 100) . "%" : '-';
+            $cli = mb_substr($p->cliente ?? '-', 0, 15);
+            $maq = $p->maquina ? mb_substr($p->maquina, 0, 8) : '-';
+            $contenido .= "| {$p->codigo} | {$cli} | {$prog} | " . number_format($p->peso_total ?? 0, 0) . " | {$maq} |\n";
         }
 
-        return [
-            'exito' => true,
-            'contenido' => $contenido,
-            'datos' => $planillas->toArray(),
-        ];
+        return ['exito' => true, 'contenido' => $contenido, 'datos' => $planillas->toArray()];
     }
 
     protected function ejecutarPlanillaVer(array $params): array
     {
         $codigo = $params['codigo'] ?? null;
-
         if (!$codigo) {
-            return [
-                'exito' => false,
-                'contenido' => 'Necesito el código de la planilla para mostrar sus detalles.',
-            ];
+            return ['exito' => false, 'contenido' => 'Necesito el código de la planilla.'];
         }
 
         $planilla = DB::table('planillas')
-            ->select('planillas.*', 'clientes.empresa as cliente', 'obras.obra as obra_nombre')
+            ->select('planillas.*', 'clientes.empresa as cliente', 'obras.obra as obra', 'maquinas.nombre as maquina')
             ->leftJoin('clientes', 'planillas.cliente_id', '=', 'clientes.id')
             ->leftJoin('obras', 'planillas.obra_id', '=', 'obras.id')
+            ->leftJoin('orden_planillas', 'planillas.id', '=', 'orden_planillas.planilla_id')
+            ->leftJoin('maquinas', 'orden_planillas.maquina_id', '=', 'maquinas.id')
             ->where('planillas.codigo', 'LIKE', "%{$codigo}%")
             ->first();
 
         if (!$planilla) {
-            return [
-                'exito' => false,
-                'contenido' => "No encontré ninguna planilla con código '{$codigo}'.",
-            ];
+            return ['exito' => false, 'contenido' => "No encontré planilla '{$codigo}'."];
         }
 
+        // Elementos con stats por diámetro
         $elementos = DB::table('elementos')
+            ->select('diametro', DB::raw('COUNT(*) as total'), DB::raw('SUM(elaborado) as fab'), DB::raw('SUM(peso) as peso'))
             ->where('planilla_id', $planilla->id)
             ->whereNull('deleted_at')
+            ->groupBy('diametro')
+            ->orderBy('diametro')
             ->get();
 
-        $contenido = "**Planilla {$planilla->codigo}**\n\n";
-        $contenido .= "- **Cliente:** " . ($planilla->cliente ?? 'N/A') . "\n";
-        $contenido .= "- **Obra:** " . ($planilla->obra_nombre ?? 'N/A') . "\n";
-        $contenido .= "- **Estado:** {$planilla->estado}\n";
-        $contenido .= "- **Peso total:** " . number_format($planilla->peso_total ?? 0, 0) . " kg\n";
-        $contenido .= "- **Elementos:** {$elementos->count()}\n";
+        $totalElem = $elementos->sum('total');
+        $totalFab = $elementos->sum('fab');
+        $totalPeso = $elementos->sum('peso');
+        $progreso = $totalElem > 0 ? round(($totalFab / $totalElem) * 100) : 0;
 
-        $elaborados = $elementos->where('elaborado', 1)->count();
-        $pendientes = $elementos->count() - $elaborados;
-        $contenido .= "\n**Elementos por estado:**\n";
-        $contenido .= "- Elaborados: {$elaborados}\n";
-        $contenido .= "- Pendientes: {$pendientes}\n";
+        $contenido = "### 📋 {$planilla->codigo}\n";
+        $contenido .= "**{$planilla->cliente}** → {$planilla->obra}\n";
+        $contenido .= "Estado: **{$planilla->estado}** | Máquina: **" . ($planilla->maquina ?? 'Sin asignar') . "**\n\n";
+
+        $contenido .= "**Progreso: {$progreso}%** ({$totalFab}/{$totalElem} elementos | " . number_format($totalPeso, 0, ',', '.') . " kg)\n\n";
+
+        // Desglose por diámetro compacto
+        if ($elementos->isNotEmpty()) {
+            $contenido .= "**Por diámetro:**\n";
+            $contenido .= "| Ø | Fab/Total | Peso |\n|---|-----------|------|\n";
+            foreach ($elementos as $e) {
+                $pct = $e->total > 0 ? round(($e->fab / $e->total) * 100) : 0;
+                $contenido .= "| Ø{$e->diametro} | {$e->fab}/{$e->total} ({$pct}%) | " . number_format($e->peso, 0) . " kg |\n";
+            }
+        }
+
+        // Fechas relevantes
+        if ($planilla->fecha_estimada_entrega) {
+            $fechaEntrega = \Carbon\Carbon::parse($planilla->fecha_estimada_entrega);
+            $diasRestantes = now()->diffInDays($fechaEntrega, false);
+            $urgencia = $diasRestantes < 0 ? "⚠️ **VENCIDA**" : ($diasRestantes <= 2 ? "⏰ {$diasRestantes}d" : "{$diasRestantes}d");
+            $contenido .= "\n📅 Entrega: {$fechaEntrega->format('d/m/Y')} ({$urgencia})";
+        }
 
         return [
             'exito' => true,
             'contenido' => $contenido,
-            'datos' => [
-                'planilla' => $planilla,
-                'elementos' => $elementos,
-            ],
+            'datos' => ['planilla' => $planilla, 'elementos' => $elementos],
             'navegacion' => "/planillas/{$planilla->id}",
         ];
     }
@@ -888,40 +943,24 @@ PROMPT;
             ];
         }
 
-        $estadosValidos = ['pendiente', 'fabricando', 'completada', 'pausada'];
-        if (!in_array($nuevoEstado, $estadosValidos)) {
+        // Delegar a AccionService para ejecución con validación y auditoría
+        $resultado = $this->accionService->ejecutarAccion(
+            'cambiar_estado_planilla',
+            ['codigo_planilla' => $codigo, 'estado' => $nuevoEstado],
+            $this->user
+        );
+
+        if ($resultado['success']) {
             return [
-                'exito' => false,
-                'contenido' => "Estado no válido. Estados disponibles: " . implode(', ', $estadosValidos),
+                'exito' => true,
+                'contenido' => "✅ " . $resultado['mensaje'],
+                'datos' => $resultado,
             ];
         }
-
-        $planilla = DB::table('planillas')->where('codigo', 'LIKE', "%{$codigo}%")->first();
-
-        if (!$planilla) {
-            return [
-                'exito' => false,
-                'contenido' => "No encontré ninguna planilla con código '{$codigo}'.",
-            ];
-        }
-
-        $estadoAnterior = $planilla->estado;
-
-        DB::table('planillas')
-            ->where('id', $planilla->id)
-            ->update([
-                'estado' => $nuevoEstado,
-                'updated_at' => now(),
-            ]);
 
         return [
-            'exito' => true,
-            'contenido' => "✅ Planilla **{$planilla->codigo}** actualizada: estado cambiado de **{$estadoAnterior}** a **{$nuevoEstado}**.",
-            'datos' => [
-                'planilla_id' => $planilla->id,
-                'estado_anterior' => $estadoAnterior,
-                'estado_nuevo' => $nuevoEstado,
-            ],
+            'exito' => false,
+            'contenido' => $resultado['error'] ?? 'Error al cambiar estado',
         ];
     }
 
@@ -931,57 +970,50 @@ PROMPT;
         $nave = $params['nave'] ?? null;
 
         $query = DB::table('stock')
-            ->select(
-                'stock.*',
-                'productos_base.diametro',
-                'productos_base.tipo',
-                'naves.nombre as nave_nombre'
-            )
+            ->select('productos_base.diametro', 'productos_base.tipo', 'naves.nombre as nave', DB::raw('SUM(stock.cantidad) as cantidad'))
             ->leftJoin('productos_base', 'stock.producto_base_id', '=', 'productos_base.id')
             ->leftJoin('naves', 'stock.nave_id', '=', 'naves.id')
-            ->where('stock.cantidad', '>', 0);
+            ->where('stock.cantidad', '>', 0)
+            ->groupBy('productos_base.diametro', 'productos_base.tipo', 'naves.nombre')
+            ->orderBy('productos_base.diametro');
 
-        if ($diametro) {
-            $query->where('productos_base.diametro', $diametro);
-        }
+        if ($diametro) $query->where('productos_base.diametro', $diametro);
+        if ($nave) $query->where('naves.nombre', 'LIKE', "%{$nave}%");
 
-        if ($nave) {
-            $query->where('naves.nombre', 'LIKE', "%{$nave}%");
-        }
-
-        $stock = $query->orderBy('productos_base.diametro')->get();
+        $stock = $query->get();
 
         if ($stock->isEmpty()) {
-            return [
-                'exito' => true,
-                'contenido' => 'No hay stock disponible con los filtros especificados.',
-                'datos' => [],
-            ];
+            return ['exito' => true, 'contenido' => 'No hay stock con esos filtros.', 'datos' => []];
         }
 
-        // Agrupar por diámetro
+        $totalGeneral = $stock->sum('cantidad');
         $porDiametro = $stock->groupBy('diametro');
+        $porNave = $stock->groupBy('nave');
 
-        $contenido = "**Stock actual:**\n\n";
-        $contenido .= "| Diámetro | Tipo | Nave | Cantidad |\n";
-        $contenido .= "|----------|------|------|----------|\n";
+        $contenido = "### 📦 Stock actual\n";
+        $contenido .= "**Total:** " . number_format($totalGeneral, 0, ',', '.') . " kg en " . $porNave->count() . " nave(s)\n\n";
 
-        foreach ($stock as $s) {
-            $contenido .= "| Ø{$s->diametro}mm | {$s->tipo} | " . ($s->nave_nombre ?? 'N/A') . " | " . number_format($s->cantidad, 0) . " kg |\n";
+        // Resumen por diámetro (compacto)
+        $contenido .= "**Por diámetro:** ";
+        $contenido .= $porDiametro->map(fn($items, $d) => "Ø{$d}:" . number_format($items->sum('cantidad'), 0) . "kg")->implode(' | ');
+        $contenido .= "\n\n";
+
+        // Desglose por nave
+        $contenido .= "**Por nave:**\n| Nave | Ø | Tipo | Cantidad |\n|------|---|------|----------|\n";
+        foreach ($porNave as $nave => $items) {
+            $primeraFila = true;
+            $totalNave = $items->sum('cantidad');
+            foreach ($items->sortBy('diametro') as $s) {
+                $naveCol = $primeraFila ? "**" . ($nave ?? 'Sin nave') . "**" : "";
+                $contenido .= "| {$naveCol} | Ø{$s->diametro} | {$s->tipo} | " . number_format($s->cantidad, 0, ',', '.') . " kg |\n";
+                $primeraFila = false;
+            }
+            if ($items->count() > 1) {
+                $contenido .= "| | | _Total nave_ | _" . number_format($totalNave, 0, ',', '.') . " kg_ |\n";
+            }
         }
 
-        // Resumen por diámetro
-        $contenido .= "\n**Resumen por diámetro:**\n";
-        foreach ($porDiametro as $d => $items) {
-            $total = $items->sum('cantidad');
-            $contenido .= "- Ø{$d}mm: " . number_format($total, 0) . " kg\n";
-        }
-
-        return [
-            'exito' => true,
-            'contenido' => $contenido,
-            'datos' => $stock->toArray(),
-        ];
+        return ['exito' => true, 'contenido' => $contenido, 'datos' => $stock->toArray(), 'navegacion' => '/stock'];
     }
 
     protected function ejecutarProduccionResumen(array $params): array
@@ -1219,65 +1251,110 @@ PROMPT;
 
     protected function ejecutarProduccionMaquinas(array $params): array
     {
-        $maquinas = DB::table('maquinas')
-            ->select('maquinas.*')
-            ->whereNull('deleted_at')
-            ->get();
+        $maquinas = DB::table('maquinas')->whereNull('deleted_at')->where('activa', 1)->get();
 
-        $contenido = "**Estado de máquinas:**\n\n";
-        $contenido .= "| Máquina | Código | Estado | En cola |\n";
-        $contenido .= "|---------|--------|--------|--------|\n";
+        // Producción de hoy por máquina
+        $produccionHoy = DB::table('elementos')
+            ->select('maquina_id', DB::raw('COUNT(*) as cant'), DB::raw('SUM(peso) as peso'))
+            ->where('elaborado', 1)
+            ->where('updated_at', '>=', today())
+            ->whereNull('deleted_at')
+            ->groupBy('maquina_id')
+            ->get()->keyBy('maquina_id');
+
+        // Planilla actual por máquina
+        $planillasActuales = DB::table('orden_planillas')
+            ->join('planillas', 'orden_planillas.planilla_id', '=', 'planillas.id')
+            ->where('planillas.revisada', 1)
+            ->whereIn('planillas.estado', ['pendiente', 'fabricando'])
+            ->whereNull('planillas.deleted_at')
+            ->orderBy('orden_planillas.posicion')
+            ->get()
+            ->groupBy('maquina_id')
+            ->map(fn($g) => $g->first());
+
+        // Pendientes por máquina
+        $pendientes = DB::table('elementos')
+            ->select('maquina_id', DB::raw('COUNT(*) as cant'))
+            ->where('elaborado', 0)
+            ->whereNull('deleted_at')
+            ->groupBy('maquina_id')
+            ->get()->keyBy('maquina_id');
+
+        $totalHoy = $produccionHoy->sum('peso');
+        $contenido = "### 🏭 Estado de máquinas\n";
+        $contenido .= "**Producción hoy:** " . number_format($totalHoy, 0, ',', '.') . " kg\n\n";
+
+        $contenido .= "| Máquina | Hoy | Pendiente | Planilla actual |\n";
+        $contenido .= "|---------|-----|-----------|----------------|\n";
 
         foreach ($maquinas as $m) {
-            $enCola = \App\Models\Elemento::where('maquina_id', $m->id)
-                ->pendiente()
-                ->count();
-
-            $contenido .= "| {$m->nombre} | {$m->codigo} | " . ($m->estado ?? 'activa') . " | {$enCola} |\n";
+            $prod = $produccionHoy[$m->id] ?? null;
+            $hoy = $prod ? number_format($prod->peso, 0) . "kg ({$prod->cant})" : '-';
+            $pend = $pendientes[$m->id]->cant ?? 0;
+            $planActual = $planillasActuales[$m->id]->codigo ?? '-';
+            $contenido .= "| **{$m->nombre}** | {$hoy} | {$pend} elem | {$planActual} |\n";
         }
 
         return [
             'exito' => true,
             'contenido' => $contenido,
             'datos' => $maquinas->toArray(),
-            'navegacion' => '/produccion/maquinas',
+            'navegacion' => '/maquinas',
         ];
     }
 
     protected function ejecutarProduccionCola(array $params): array
     {
-        $planillas = DB::table('planillas')
-            ->select('planillas.*', 'clientes.empresa as cliente')
+        // Cola por máquina desde orden_planillas
+        $cola = DB::table('orden_planillas')
+            ->join('planillas', 'orden_planillas.planilla_id', '=', 'planillas.id')
+            ->join('maquinas', 'orden_planillas.maquina_id', '=', 'maquinas.id')
             ->leftJoin('clientes', 'planillas.cliente_id', '=', 'clientes.id')
+            ->where('planillas.revisada', 1)
             ->whereIn('planillas.estado', ['pendiente', 'fabricando'])
             ->whereNull('planillas.deleted_at')
-            ->orderBy('planillas.fecha_estimada_entrega')
-            ->orderBy('planillas.created_at')
-            ->limit(15)
+            ->orderBy('maquinas.nombre')
+            ->orderBy('orden_planillas.posicion')
+            ->select('planillas.*', 'clientes.empresa as cliente', 'maquinas.nombre as maquina', 'orden_planillas.posicion')
             ->get();
 
-        if ($planillas->isEmpty()) {
-            return [
-                'exito' => true,
-                'contenido' => 'No hay planillas en cola de fabricación.',
-                'datos' => [],
-            ];
+        if ($cola->isEmpty()) {
+            return ['exito' => true, 'contenido' => 'No hay planillas en cola.', 'datos' => []];
         }
 
-        $contenido = "**Cola de fabricación:**\n\n";
-        $contenido .= "| # | Código | Cliente | Estado | Peso |\n";
-        $contenido .= "|---|--------|---------|--------|------|\n";
+        // Stats de progreso
+        $stats = DB::table('elementos')
+            ->select('planilla_id', DB::raw('COUNT(*) as t'), DB::raw('SUM(elaborado) as f'))
+            ->whereIn('planilla_id', $cola->pluck('id'))
+            ->whereNull('deleted_at')
+            ->groupBy('planilla_id')
+            ->get()->keyBy('planilla_id');
 
-        foreach ($planillas as $i => $p) {
-            $pos = $i + 1;
-            $contenido .= "| {$pos} | {$p->codigo} | " . ($p->cliente ?? 'N/A') . " | {$p->estado} | " . number_format($p->peso_total ?? 0, 0) . " kg |\n";
+        $porMaquina = $cola->groupBy('maquina');
+        $totalPeso = $cola->sum('peso_total');
+
+        $contenido = "### 📋 Cola de fabricación\n";
+        $contenido .= "**{$cola->count()} planillas** en " . $porMaquina->count() . " máquinas (" . number_format($totalPeso, 0, ',', '.') . " kg)\n\n";
+
+        foreach ($porMaquina as $maquina => $planillas) {
+            $pesoMaq = $planillas->sum('peso_total');
+            $contenido .= "**🏭 {$maquina}** ({$planillas->count()} planillas | " . number_format($pesoMaq, 0, ',', '.') . " kg)\n";
+            $contenido .= "| Pos | Código | Cliente | Progreso | Peso |\n|-----|--------|---------|----------|------|\n";
+
+            foreach ($planillas->take(5) as $p) {
+                $s = $stats[$p->id] ?? null;
+                $prog = $s ? round(($s->f / max($s->t, 1)) * 100) . "%" : '-';
+                $cli = mb_substr($p->cliente ?? '-', 0, 12);
+                $contenido .= "| {$p->posicion} | {$p->codigo} | {$cli} | {$prog} | " . number_format($p->peso_total ?? 0, 0) . " |\n";
+            }
+            if ($planillas->count() > 5) {
+                $contenido .= "| | _...y " . ($planillas->count() - 5) . " más_ | | | |\n";
+            }
+            $contenido .= "\n";
         }
 
-        return [
-            'exito' => true,
-            'contenido' => $contenido,
-            'datos' => $planillas->toArray(),
-        ];
+        return ['exito' => true, 'contenido' => $contenido, 'datos' => $cola->toArray()];
     }
 
     /**
@@ -1507,31 +1584,52 @@ PROMPT;
 
     protected function ejecutarClienteListar(array $params): array
     {
-        $clientes = DB::table('clientes')
-            ->select('clientes.*', DB::raw('COUNT(obras.id) as obras_activas'))
+        $busqueda = $params['busqueda'] ?? $params['nombre'] ?? null;
+
+        $query = DB::table('clientes')
+            ->select(
+                'clientes.*',
+                DB::raw('COUNT(DISTINCT obras.id) as obras'),
+                DB::raw('COUNT(DISTINCT planillas.id) as planillas'),
+                DB::raw('SUM(planillas.peso_total) as peso_total')
+            )
             ->leftJoin('obras', function ($join) {
-                $join->on('clientes.id', '=', 'obras.cliente_id')
-                    ->whereNull('obras.deleted_at');
+                $join->on('clientes.id', '=', 'obras.cliente_id')->whereNull('obras.deleted_at');
+            })
+            ->leftJoin('planillas', function ($join) {
+                $join->on('clientes.id', '=', 'planillas.cliente_id')
+                    ->whereNull('planillas.deleted_at')
+                    ->whereIn('planillas.estado', ['pendiente', 'fabricando']);
             })
             ->whereNull('clientes.deleted_at')
             ->groupBy('clientes.id')
-            ->orderBy('clientes.empresa')
-            ->limit(20)
-            ->get();
+            ->orderByDesc('peso_total')
+            ->limit(15);
 
-        $contenido = "**Clientes:**\n\n";
-        $contenido .= "| Empresa | CIF | Obras activas |\n";
-        $contenido .= "|---------|-----|---------------|\n";
+        if ($busqueda) $query->where('clientes.empresa', 'LIKE', "%{$busqueda}%");
 
-        foreach ($clientes as $c) {
-            $contenido .= "| {$c->empresa} | " . ($c->cif ?? 'N/A') . " | {$c->obras_activas} |\n";
+        $clientes = $query->get();
+
+        if ($clientes->isEmpty()) {
+            return ['exito' => true, 'contenido' => 'No se encontraron clientes.', 'datos' => []];
         }
 
-        return [
-            'exito' => true,
-            'contenido' => $contenido,
-            'datos' => $clientes->toArray(),
-        ];
+        $totalPeso = $clientes->sum('peso_total');
+        $totalPlanillas = $clientes->sum('planillas');
+
+        $contenido = "### 👥 Clientes\n";
+        $contenido .= "**{$clientes->count()} clientes** con {$totalPlanillas} planillas activas (" . number_format($totalPeso, 0, ',', '.') . " kg)\n\n";
+
+        $contenido .= "| Cliente | Obras | Planillas | Peso pend |\n";
+        $contenido .= "|---------|-------|-----------|----------|\n";
+
+        foreach ($clientes as $c) {
+            $nombre = mb_substr($c->empresa, 0, 20);
+            $peso = $c->peso_total ? number_format($c->peso_total, 0, ',', '.') . " kg" : '-';
+            $contenido .= "| {$nombre} | {$c->obras} | {$c->planillas} | {$peso} |\n";
+        }
+
+        return ['exito' => true, 'contenido' => $contenido, 'datos' => $clientes->toArray(), 'navegacion' => '/clientes'];
     }
 
     protected function ejecutarObraListar(array $params): array
@@ -1539,34 +1637,52 @@ PROMPT;
         $cliente = $params['cliente'] ?? null;
 
         $query = DB::table('obras')
-            ->select('obras.*', 'clientes.empresa as cliente')
+            ->select(
+                'obras.*',
+                'clientes.empresa as cliente',
+                DB::raw('COUNT(DISTINCT planillas.id) as planillas'),
+                DB::raw('SUM(planillas.peso_total) as peso_total'),
+                DB::raw('SUM(CASE WHEN planillas.estado IN ("pendiente","fabricando") THEN planillas.peso_total ELSE 0 END) as peso_pend')
+            )
             ->leftJoin('clientes', 'obras.cliente_id', '=', 'clientes.id')
-            ->whereNull('obras.deleted_at');
+            ->leftJoin('planillas', function ($join) {
+                $join->on('obras.id', '=', 'planillas.obra_id')->whereNull('planillas.deleted_at');
+            })
+            ->whereNull('obras.deleted_at')
+            ->groupBy('obras.id')
+            ->orderByDesc('peso_pend')
+            ->limit(15);
 
-        if ($cliente) {
-            $query->where('clientes.empresa', 'LIKE', "%{$cliente}%");
+        if ($cliente) $query->where('clientes.empresa', 'LIKE', "%{$cliente}%");
+
+        $obras = $query->get();
+
+        if ($obras->isEmpty()) {
+            return ['exito' => true, 'contenido' => 'No se encontraron obras.', 'datos' => []];
         }
 
-        $obras = $query->orderByDesc('obras.created_at')->limit(20)->get();
+        $totalPeso = $obras->sum('peso_pend');
+        $titulo = $cliente ? "Obras de {$cliente}" : "Obras";
 
-        $contenido = "**Obras" . ($cliente ? " de {$cliente}" : "") . ":**\n\n";
-        $contenido .= "| Obra | Cliente | Dirección |\n";
-        $contenido .= "|------|---------|----------|\n";
+        $contenido = "### 🏗️ {$titulo}\n";
+        $contenido .= "**{$obras->count()} obras** con " . number_format($totalPeso, 0, ',', '.') . " kg pendientes\n\n";
+
+        $contenido .= "| Obra | Cliente | Planillas | Pend |\n";
+        $contenido .= "|------|---------|-----------|------|\n";
 
         foreach ($obras as $o) {
-            $contenido .= "| {$o->obra} | " . ($o->cliente ?? 'N/A') . " | " . ($o->direccion ?? 'N/A') . " |\n";
+            $nombre = mb_substr($o->obra, 0, 18);
+            $cli = mb_substr($o->cliente ?? '-', 0, 12);
+            $peso = $o->peso_pend ? number_format($o->peso_pend, 0) . "kg" : '-';
+            $contenido .= "| {$nombre} | {$cli} | {$o->planillas} | {$peso} |\n";
         }
 
-        return [
-            'exito' => true,
-            'contenido' => $contenido,
-            'datos' => $obras->toArray(),
-        ];
+        return ['exito' => true, 'contenido' => $contenido, 'datos' => $obras->toArray(), 'navegacion' => '/obras'];
     }
 
     protected function ejecutarAlertaEnviar(array $params): array
     {
-        $mensaje = $params['mensaje'] ?? null;
+        $mensaje = $params['mensaje'] ?? $params['mensaje_alerta'] ?? null;
         $destinatarios = $params['destinatarios'] ?? null;
 
         if (!$mensaje) {
@@ -1576,20 +1692,27 @@ PROMPT;
             ];
         }
 
-        // Crear alerta
-        $alertaId = DB::table('alertas')->insertGetId([
-            'user_id' => $this->user->id,
-            'titulo' => 'Alerta del Asistente',
-            'mensaje' => $mensaje,
-            'tipo' => 'info',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // Delegar a AccionService para ejecución con auditoría
+        $resultado = $this->accionService->ejecutarAccion(
+            'enviar_alerta',
+            [
+                'destinatarios' => $destinatarios ? (is_array($destinatarios) ? $destinatarios : [$destinatarios]) : [$this->user->name],
+                'mensaje_alerta' => $mensaje,
+            ],
+            $this->user
+        );
+
+        if ($resultado['success']) {
+            return [
+                'exito' => true,
+                'contenido' => "✅ " . $resultado['mensaje'],
+                'datos' => $resultado,
+            ];
+        }
 
         return [
-            'exito' => true,
-            'contenido' => "✅ Alerta enviada correctamente.\n\n**Mensaje:** {$mensaje}",
-            'datos' => ['alerta_id' => $alertaId],
+            'exito' => false,
+            'contenido' => $resultado['error'] ?? 'Error al enviar alerta',
         ];
     }
 
@@ -1840,48 +1963,135 @@ PROMPT;
 
     protected function ejecutarPlanillaAsignarMaquina(array $params): array
     {
-        return ['exito' => false, 'contenido' => 'Función en desarrollo'];
+        $codigo = $params['codigo'] ?? $params['planilla'] ?? null;
+        $maquina = $params['maquina'] ?? null;
+
+        if (!$codigo || !$maquina) {
+            return [
+                'exito' => false,
+                'contenido' => 'Necesito el código de la planilla y el nombre de la máquina.',
+            ];
+        }
+
+        // Delegar a AccionService
+        $resultado = $this->accionService->ejecutarAccion(
+            'asignar_maquina',
+            ['codigo_planilla' => $codigo, 'maquina' => $maquina],
+            $this->user
+        );
+
+        if ($resultado['success']) {
+            return [
+                'exito' => true,
+                'contenido' => "✅ " . $resultado['mensaje'],
+                'datos' => $resultado,
+            ];
+        }
+
+        return [
+            'exito' => false,
+            'contenido' => $resultado['error'] ?? 'Error al asignar máquina',
+        ];
+    }
+
+    protected function ejecutarPlanillaCambiarPrioridad(array $params): array
+    {
+        $codigo = $params['codigo'] ?? $params['planilla'] ?? null;
+        $prioridad = $params['prioridad'] ?? null;
+
+        if (!$codigo || !$prioridad) {
+            return [
+                'exito' => false,
+                'contenido' => 'Necesito el código de la planilla y la nueva prioridad (alta, normal, baja).',
+            ];
+        }
+
+        // Delegar a AccionService
+        $resultado = $this->accionService->ejecutarAccion(
+            'cambiar_prioridad',
+            ['codigo_planilla' => $codigo, 'prioridad' => $prioridad],
+            $this->user
+        );
+
+        if ($resultado['success']) {
+            return [
+                'exito' => true,
+                'contenido' => "✅ " . $resultado['mensaje'],
+                'datos' => $resultado,
+            ];
+        }
+
+        return [
+            'exito' => false,
+            'contenido' => $resultado['error'] ?? 'Error al cambiar prioridad',
+        ];
     }
 
     protected function ejecutarElementoListar(array $params): array
     {
         $planillaCodigo = $params['codigo'] ?? $params['planilla'] ?? null;
-
         if (!$planillaCodigo) {
-            return [
-                'exito' => false,
-                'contenido' => 'Necesito el código de la planilla para listar sus elementos.',
-            ];
+            return ['exito' => false, 'contenido' => 'Necesito el código de la planilla.'];
         }
 
-        $planilla = DB::table('planillas')
-            ->where('codigo', 'LIKE', "%{$planillaCodigo}%")
-            ->first();
-
+        $planilla = DB::table('planillas')->where('codigo', 'LIKE', "%{$planillaCodigo}%")->first();
         if (!$planilla) {
-            return [
-                'exito' => false,
-                'contenido' => "No encontré la planilla '{$planillaCodigo}'.",
-            ];
+            return ['exito' => false, 'contenido' => "No encontré planilla '{$planillaCodigo}'."];
         }
 
-        $elementos = DB::table('elementos')
+        // Stats por diámetro y estado
+        $porDiametro = DB::table('elementos')
+            ->select(
+                'diametro',
+                DB::raw('COUNT(*) as total'),
+                DB::raw('SUM(elaborado) as fab'),
+                DB::raw('SUM(peso) as peso'),
+                DB::raw('SUM(CASE WHEN elaborado = 0 THEN peso ELSE 0 END) as peso_pend')
+            )
             ->where('planilla_id', $planilla->id)
             ->whereNull('deleted_at')
+            ->groupBy('diametro')
+            ->orderBy('diametro')
             ->get();
 
-        $elaborados = $elementos->where('elaborado', 1);
-        $pendientes = $elementos->where('elaborado', '!=', 1);
+        // Stats por máquina
+        $porMaquina = DB::table('elementos')
+            ->select('maquinas.nombre', DB::raw('COUNT(*) as total'), DB::raw('SUM(elementos.elaborado) as fab'))
+            ->leftJoin('maquinas', 'elementos.maquina_id', '=', 'maquinas.id')
+            ->where('elementos.planilla_id', $planilla->id)
+            ->whereNull('elementos.deleted_at')
+            ->groupBy('maquinas.id', 'maquinas.nombre')
+            ->get();
 
-        $contenido = "**Elementos de planilla {$planilla->codigo}:**\n\n";
-        $contenido .= "Total: {$elementos->count()} elementos\n\n";
-        $contenido .= "- **Elaborados:** {$elaborados->count()} elementos (" . number_format($elaborados->sum('peso'), 0) . " kg)\n";
-        $contenido .= "- **Pendientes:** {$pendientes->count()} elementos (" . number_format($pendientes->sum('peso'), 0) . " kg)\n";
+        $totalElem = $porDiametro->sum('total');
+        $totalFab = $porDiametro->sum('fab');
+        $totalPeso = $porDiametro->sum('peso');
+        $pesoPend = $porDiametro->sum('peso_pend');
+        $progreso = $totalElem > 0 ? round(($totalFab / $totalElem) * 100) : 0;
+
+        $contenido = "### 📦 Elementos de {$planilla->codigo}\n";
+        $contenido .= "**{$totalFab}/{$totalElem}** elementos ({$progreso}%) | ";
+        $contenido .= "✅ " . number_format($totalPeso - $pesoPend, 0, ',', '.') . " kg fab | ";
+        $contenido .= "⏳ " . number_format($pesoPend, 0, ',', '.') . " kg pend\n\n";
+
+        // Por diámetro
+        $contenido .= "**Por diámetro:**\n| Ø | Fab/Total | Peso pend |\n|---|-----------|----------|\n";
+        foreach ($porDiametro as $d) {
+            $pct = $d->total > 0 ? round(($d->fab / $d->total) * 100) : 0;
+            $contenido .= "| Ø{$d->diametro} | {$d->fab}/{$d->total} ({$pct}%) | " . number_format($d->peso_pend, 0) . " kg |\n";
+        }
+
+        // Por máquina si hay varias
+        if ($porMaquina->count() > 1) {
+            $contenido .= "\n**Por máquina:** ";
+            $contenido .= $porMaquina->map(fn($m) => ($m->nombre ?? 'Sin asignar') . ":{$m->fab}/{$m->total}")->implode(' | ');
+        }
 
         return [
             'exito' => true,
             'contenido' => $contenido,
-            'datos' => $elementos->toArray(),
+            'datos' => ['planilla' => $planilla, 'por_diametro' => $porDiametro],
+            'navegacion' => "/planillas/{$planilla->id}",
         ];
     }
 
@@ -1892,43 +2102,451 @@ PROMPT;
 
     protected function ejecutarPedidoListar(array $params): array
     {
-        $pedidos = DB::table('pedidos')
+        $estado = $params['estado'] ?? null;
+
+        $query = DB::table('pedidos')
             ->select('pedidos.*', 'proveedores.nombre as proveedor')
             ->leftJoin('proveedores', 'pedidos.proveedor_id', '=', 'proveedores.id')
             ->whereNull('pedidos.deleted_at')
             ->orderByDesc('pedidos.created_at')
-            ->limit(15)
-            ->get();
+            ->limit(15);
 
-        $contenido = "**Pedidos recientes:**\n\n";
-        $contenido .= "| Código | Proveedor | Estado | Fecha |\n";
-        $contenido .= "|--------|-----------|--------|-------|\n";
+        if ($estado) $query->where('pedidos.estado', $estado);
+
+        $pedidos = $query->get();
+
+        if ($pedidos->isEmpty()) {
+            return ['exito' => true, 'contenido' => 'No hay pedidos.', 'datos' => []];
+        }
+
+        // Líneas por pedido
+        $lineas = DB::table('lineas_pedido')
+            ->select('pedido_id', DB::raw('COUNT(*) as total'), DB::raw('SUM(cantidad) as cant'), DB::raw('SUM(cantidad_recibida) as recib'))
+            ->whereIn('pedido_id', $pedidos->pluck('id'))
+            ->groupBy('pedido_id')
+            ->get()->keyBy('pedido_id');
+
+        $porEstado = $pedidos->groupBy('estado');
+        $resumen = $porEstado->map(fn($g, $e) => "{$e}:{$g->count()}")->implode(' | ');
+
+        $contenido = "### 📦 Pedidos recientes\n";
+        $contenido .= "**{$pedidos->count()} pedidos** → {$resumen}\n\n";
+
+        $contenido .= "| Código | Proveedor | Estado | Recepción | Fecha |\n";
+        $contenido .= "|--------|-----------|--------|-----------|-------|\n";
 
         foreach ($pedidos as $p) {
-            $fecha = \Carbon\Carbon::parse($p->created_at)->format('d/m/Y');
-            $contenido .= "| {$p->codigo} | " . ($p->proveedor ?? 'N/A') . " | " . ($p->estado ?? 'N/A') . " | {$fecha} |\n";
+            $l = $lineas[$p->id] ?? null;
+            $recep = '-';
+            if ($l && $l->cant > 0) {
+                $pct = round(($l->recib / $l->cant) * 100);
+                $recep = "{$pct}%";
+            }
+            $prov = mb_substr($p->proveedor ?? '-', 0, 15);
+            $fecha = \Carbon\Carbon::parse($p->created_at)->format('d/m');
+            $contenido .= "| {$p->codigo} | {$prov} | {$p->estado} | {$recep} | {$fecha} |\n";
+        }
+
+        // Pedidos pendientes de recibir
+        $pendientesRecibir = $pedidos->where('estado', 'pendiente')->count();
+        if ($pendientesRecibir > 0) {
+            $contenido .= "\n⏳ **{$pendientesRecibir} pedido(s) pendientes de recibir**";
+        }
+
+        return ['exito' => true, 'contenido' => $contenido, 'datos' => $pedidos->toArray(), 'navegacion' => '/pedidos'];
+    }
+
+    protected function ejecutarPedidoVer(array $params): array
+    {
+        $codigo = $params['codigo'] ?? $params['pedido'] ?? null;
+
+        if (!$codigo) {
+            return ['exito' => false, 'contenido' => 'Necesito el código del pedido.'];
+        }
+
+        $pedido = DB::table('pedidos')
+            ->select('pedidos.*', 'proveedores.nombre as proveedor')
+            ->leftJoin('proveedores', 'pedidos.proveedor_id', '=', 'proveedores.id')
+            ->where('pedidos.codigo', 'LIKE', "%{$codigo}%")
+            ->whereNull('pedidos.deleted_at')
+            ->first();
+
+        if (!$pedido) {
+            return ['exito' => false, 'contenido' => "No encontré pedido '{$codigo}'."];
+        }
+
+        // Líneas del pedido
+        $lineas = DB::table('lineas_pedido')
+            ->select('lineas_pedido.*', 'productos_base.diametro', 'productos_base.tipo')
+            ->leftJoin('productos_base', 'lineas_pedido.producto_base_id', '=', 'productos_base.id')
+            ->where('lineas_pedido.pedido_id', $pedido->id)
+            ->orderBy('productos_base.diametro')
+            ->get();
+
+        $totalCant = $lineas->sum('cantidad');
+        $totalRecib = $lineas->sum('cantidad_recibida');
+        $progreso = $totalCant > 0 ? round(($totalRecib / $totalCant) * 100) : 0;
+
+        $contenido = "### 📦 Pedido {$pedido->codigo}\n";
+        $contenido .= "**Proveedor:** " . ($pedido->proveedor ?? 'N/A') . "\n";
+        $contenido .= "**Estado:** {$pedido->estado} | **Recepción:** {$progreso}%\n\n";
+
+        if ($pedido->fecha_pedido) {
+            $contenido .= "📅 Pedido: " . \Carbon\Carbon::parse($pedido->fecha_pedido)->format('d/m/Y') . "\n";
+        }
+        if ($pedido->fecha_entrega_prevista) {
+            $fechaEntrega = \Carbon\Carbon::parse($pedido->fecha_entrega_prevista);
+            $diasRestantes = now()->diffInDays($fechaEntrega, false);
+            $urgencia = $diasRestantes < 0 ? "⚠️ VENCIDO" : "{$diasRestantes}d";
+            $contenido .= "📅 Entrega prevista: {$fechaEntrega->format('d/m/Y')} ({$urgencia})\n";
+        }
+
+        if ($lineas->isNotEmpty()) {
+            $contenido .= "\n**Líneas del pedido:**\n";
+            $contenido .= "| Ø | Tipo | Pedido | Recibido | % |\n";
+            $contenido .= "|---|------|--------|----------|---|\n";
+
+            foreach ($lineas as $l) {
+                $pct = $l->cantidad > 0 ? round(($l->cantidad_recibida / $l->cantidad) * 100) : 0;
+                $estado = $pct >= 100 ? "✅" : ($pct > 0 ? "🔄" : "⏳");
+                $contenido .= "| Ø{$l->diametro} | {$l->tipo} | " . number_format($l->cantidad, 0, ',', '.') . " | " . number_format($l->cantidad_recibida, 0, ',', '.') . " | {$pct}% {$estado} |\n";
+            }
         }
 
         return [
             'exito' => true,
             'contenido' => $contenido,
-            'datos' => $pedidos->toArray(),
+            'datos' => ['pedido' => $pedido, 'lineas' => $lineas],
+            'navegacion' => "/pedidos/{$pedido->id}",
         ];
-    }
-
-    protected function ejecutarPedidoVer(array $params): array
-    {
-        return ['exito' => false, 'contenido' => 'Función en desarrollo'];
     }
 
     protected function ejecutarPedidoRecepcionar(array $params): array
     {
-        return ['exito' => false, 'contenido' => 'Función en desarrollo'];
+        $codigo = $params['codigo'] ?? $params['pedido'] ?? null;
+        $cantidad = $params['cantidad'] ?? null;
+        $diametro = $params['diametro'] ?? null;
+
+        if (!$codigo) {
+            return ['exito' => false, 'contenido' => 'Necesito el código del pedido a recepcionar.'];
+        }
+
+        $pedido = DB::table('pedidos')
+            ->where('codigo', 'LIKE', "%{$codigo}%")
+            ->whereNull('deleted_at')
+            ->first();
+
+        if (!$pedido) {
+            return ['exito' => false, 'contenido' => "No encontré pedido '{$codigo}'."];
+        }
+
+        // Si no se especifica cantidad, mostrar lo pendiente de recepcionar
+        if (!$cantidad) {
+            $lineasPendientes = DB::table('lineas_pedido')
+                ->select('lineas_pedido.*', 'productos_base.diametro', 'productos_base.tipo')
+                ->leftJoin('productos_base', 'lineas_pedido.producto_base_id', '=', 'productos_base.id')
+                ->where('lineas_pedido.pedido_id', $pedido->id)
+                ->whereRaw('lineas_pedido.cantidad_recibida < lineas_pedido.cantidad')
+                ->get();
+
+            if ($lineasPendientes->isEmpty()) {
+                return [
+                    'exito' => true,
+                    'contenido' => "El pedido **{$pedido->codigo}** ya está completamente recepcionado.",
+                ];
+            }
+
+            $contenido = "**Líneas pendientes de recepcionar en {$pedido->codigo}:**\n\n";
+            $contenido .= "| Ø | Tipo | Pendiente |\n|---|------|----------|\n";
+
+            foreach ($lineasPendientes as $l) {
+                $pendiente = $l->cantidad - $l->cantidad_recibida;
+                $contenido .= "| Ø{$l->diametro} | {$l->tipo} | " . number_format($pendiente, 0, ',', '.') . " kg |\n";
+            }
+
+            $contenido .= "\nPara recepcionar, indica la cantidad y opcionalmente el diámetro.";
+            $contenido .= "\nEjemplo: *recepciona 5000 kg del diámetro 12*";
+
+            return ['exito' => true, 'contenido' => $contenido, 'datos' => $lineasPendientes];
+        }
+
+        // Si se especifica cantidad, buscar la línea correspondiente
+        $query = DB::table('lineas_pedido')
+            ->select('lineas_pedido.*', 'productos_base.diametro')
+            ->leftJoin('productos_base', 'lineas_pedido.producto_base_id', '=', 'productos_base.id')
+            ->where('lineas_pedido.pedido_id', $pedido->id)
+            ->whereRaw('lineas_pedido.cantidad_recibida < lineas_pedido.cantidad');
+
+        if ($diametro) {
+            $query->where('productos_base.diametro', $diametro);
+        }
+
+        $linea = $query->first();
+
+        if (!$linea) {
+            return ['exito' => false, 'contenido' => 'No hay líneas pendientes de recepcionar con esos criterios.'];
+        }
+
+        $pendiente = $linea->cantidad - $linea->cantidad_recibida;
+        $cantidadRecepcionar = min($cantidad, $pendiente);
+
+        // Actualizar la línea
+        DB::table('lineas_pedido')
+            ->where('id', $linea->id)
+            ->update([
+                'cantidad_recibida' => $linea->cantidad_recibida + $cantidadRecepcionar,
+                'updated_at' => now(),
+            ]);
+
+        // Verificar si el pedido está completo
+        $pendienteTotal = DB::table('lineas_pedido')
+            ->where('pedido_id', $pedido->id)
+            ->whereRaw('cantidad_recibida < cantidad')
+            ->count();
+
+        if ($pendienteTotal === 0) {
+            DB::table('pedidos')
+                ->where('id', $pedido->id)
+                ->update(['estado' => 'completado', 'updated_at' => now()]);
+        }
+
+        $contenido = "✅ Recepcionados **" . number_format($cantidadRecepcionar, 0, ',', '.') . " kg** de Ø{$linea->diametro}";
+        if ($pendienteTotal === 0) {
+            $contenido .= "\n\n🎉 **Pedido completado**";
+        } else {
+            $contenido .= "\n\n📦 Quedan **{$pendienteTotal} línea(s)** pendientes";
+        }
+
+        return [
+            'exito' => true,
+            'contenido' => $contenido,
+            'datos' => [
+                'cantidad_recepcionada' => $cantidadRecepcionar,
+                'linea_id' => $linea->id,
+                'pedido_completado' => $pendienteTotal === 0,
+            ],
+        ];
     }
 
     protected function ejecutarStockMover(array $params): array
     {
-        return ['exito' => false, 'contenido' => 'Función en desarrollo'];
+        $diametro = $params['diametro'] ?? null;
+        $cantidad = $params['cantidad'] ?? null;
+        $naveOrigen = $params['nave_origen'] ?? $params['origen'] ?? null;
+        $naveDestino = $params['nave_destino'] ?? $params['destino'] ?? null;
+
+        // Validar parámetros
+        if (!$diametro || !$cantidad || !$naveOrigen || !$naveDestino) {
+            $faltantes = [];
+            if (!$diametro) $faltantes[] = 'diámetro';
+            if (!$cantidad) $faltantes[] = 'cantidad';
+            if (!$naveOrigen) $faltantes[] = 'nave origen';
+            if (!$naveDestino) $faltantes[] = 'nave destino';
+
+            return [
+                'exito' => false,
+                'contenido' => "Faltan datos para mover stock: " . implode(', ', $faltantes) . ".\n\nEjemplo: *mueve 5000 kg de Ø12 de nave 1 a nave 2*",
+            ];
+        }
+
+        // Buscar naves
+        $origen = DB::table('naves')
+            ->where(function ($q) use ($naveOrigen) {
+                $q->where('nombre', 'LIKE', "%{$naveOrigen}%")
+                  ->orWhere('codigo', 'LIKE', "%{$naveOrigen}%");
+            })
+            ->first();
+
+        $destino = DB::table('naves')
+            ->where(function ($q) use ($naveDestino) {
+                $q->where('nombre', 'LIKE', "%{$naveDestino}%")
+                  ->orWhere('codigo', 'LIKE', "%{$naveDestino}%");
+            })
+            ->first();
+
+        if (!$origen) {
+            return ['exito' => false, 'contenido' => "No encontré la nave origen '{$naveOrigen}'."];
+        }
+        if (!$destino) {
+            return ['exito' => false, 'contenido' => "No encontré la nave destino '{$naveDestino}'."];
+        }
+
+        // Buscar stock disponible en origen
+        $stockOrigen = DB::table('stock')
+            ->select('stock.*', 'productos_base.diametro')
+            ->leftJoin('productos_base', 'stock.producto_base_id', '=', 'productos_base.id')
+            ->where('stock.nave_id', $origen->id)
+            ->where('productos_base.diametro', $diametro)
+            ->where('stock.cantidad', '>', 0)
+            ->first();
+
+        if (!$stockOrigen) {
+            return [
+                'exito' => false,
+                'contenido' => "No hay stock de Ø{$diametro} en {$origen->nombre}.",
+            ];
+        }
+
+        if ($stockOrigen->cantidad < $cantidad) {
+            return [
+                'exito' => false,
+                'contenido' => "Solo hay " . number_format($stockOrigen->cantidad, 0, ',', '.') . " kg de Ø{$diametro} en {$origen->nombre}. No es posible mover " . number_format($cantidad, 0, ',', '.') . " kg.",
+            ];
+        }
+
+        // Reducir stock en origen
+        DB::table('stock')
+            ->where('id', $stockOrigen->id)
+            ->decrement('cantidad', $cantidad);
+
+        // Aumentar stock en destino (o crear si no existe)
+        $stockDestino = DB::table('stock')
+            ->where('nave_id', $destino->id)
+            ->where('producto_base_id', $stockOrigen->producto_base_id)
+            ->first();
+
+        if ($stockDestino) {
+            DB::table('stock')
+                ->where('id', $stockDestino->id)
+                ->increment('cantidad', $cantidad);
+        } else {
+            DB::table('stock')->insert([
+                'nave_id' => $destino->id,
+                'producto_base_id' => $stockOrigen->producto_base_id,
+                'cantidad' => $cantidad,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        // Registrar movimiento
+        DB::table('movimientos_stock')->insert([
+            'tipo' => 'transferencia',
+            'producto_base_id' => $stockOrigen->producto_base_id,
+            'cantidad' => $cantidad,
+            'nave_origen_id' => $origen->id,
+            'nave_destino_id' => $destino->id,
+            'user_id' => $this->user->id,
+            'motivo' => 'Transferencia via asistente virtual',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $nuevoStockOrigen = $stockOrigen->cantidad - $cantidad;
+
+        return [
+            'exito' => true,
+            'contenido' => "✅ Movidos **" . number_format($cantidad, 0, ',', '.') . " kg** de Ø{$diametro}:\n" .
+                "- **{$origen->nombre}** → " . number_format($nuevoStockOrigen, 0, ',', '.') . " kg restantes\n" .
+                "- **{$destino->nombre}** ← +" . number_format($cantidad, 0, ',', '.') . " kg",
+            'datos' => [
+                'cantidad' => $cantidad,
+                'diametro' => $diametro,
+                'nave_origen' => $origen->nombre,
+                'nave_destino' => $destino->nombre,
+            ],
+        ];
+    }
+
+    protected function ejecutarStockAjustar(array $params): array
+    {
+        $diametro = $params['diametro'] ?? null;
+        $cantidad = $params['cantidad'] ?? null;
+        $nave = $params['nave'] ?? null;
+        $tipo = $params['tipo'] ?? 'entrada'; // entrada o salida
+        $motivo = $params['motivo'] ?? 'Ajuste de inventario';
+
+        // Validar parámetros
+        if (!$diametro || $cantidad === null || !$nave) {
+            return [
+                'exito' => false,
+                'contenido' => "Necesito: diámetro, cantidad y nave para ajustar stock.\n\nEjemplo: *ajusta +2000 kg de Ø12 en nave 1*",
+            ];
+        }
+
+        // Buscar nave
+        $naveObj = DB::table('naves')
+            ->where(function ($q) use ($nave) {
+                $q->where('nombre', 'LIKE', "%{$nave}%")
+                  ->orWhere('codigo', 'LIKE', "%{$nave}%");
+            })
+            ->first();
+
+        if (!$naveObj) {
+            return ['exito' => false, 'contenido' => "No encontré la nave '{$nave}'."];
+        }
+
+        // Buscar producto base
+        $productoBase = DB::table('productos_base')
+            ->where('diametro', $diametro)
+            ->first();
+
+        if (!$productoBase) {
+            return ['exito' => false, 'contenido' => "No encontré producto con diámetro Ø{$diametro}."];
+        }
+
+        // Determinar si es entrada o salida
+        $esEntrada = $cantidad >= 0 || $tipo === 'entrada';
+        $cantidadAbs = abs($cantidad);
+
+        // Buscar stock actual
+        $stockActual = DB::table('stock')
+            ->where('nave_id', $naveObj->id)
+            ->where('producto_base_id', $productoBase->id)
+            ->first();
+
+        $stockAnterior = $stockActual->cantidad ?? 0;
+
+        if (!$esEntrada && $stockAnterior < $cantidadAbs) {
+            return [
+                'exito' => false,
+                'contenido' => "No hay suficiente stock. Actual: " . number_format($stockAnterior, 0, ',', '.') . " kg",
+            ];
+        }
+
+        // Realizar ajuste
+        if ($stockActual) {
+            $nuevoStock = $esEntrada ? $stockAnterior + $cantidadAbs : $stockAnterior - $cantidadAbs;
+            DB::table('stock')
+                ->where('id', $stockActual->id)
+                ->update(['cantidad' => $nuevoStock, 'updated_at' => now()]);
+        } else {
+            $nuevoStock = $cantidadAbs;
+            DB::table('stock')->insert([
+                'nave_id' => $naveObj->id,
+                'producto_base_id' => $productoBase->id,
+                'cantidad' => $nuevoStock,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        // Registrar movimiento
+        DB::table('movimientos_stock')->insert([
+            'tipo' => 'ajuste',
+            'producto_base_id' => $productoBase->id,
+            'cantidad' => $esEntrada ? $cantidadAbs : -$cantidadAbs,
+            'nave_destino_id' => $naveObj->id,
+            'user_id' => $this->user->id,
+            'motivo' => $motivo . ' (via asistente)',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $signo = $esEntrada ? '+' : '-';
+        return [
+            'exito' => true,
+            'contenido' => "✅ Ajuste de stock realizado:\n" .
+                "- **Ø{$diametro}** en **{$naveObj->nombre}**\n" .
+                "- Anterior: " . number_format($stockAnterior, 0, ',', '.') . " kg\n" .
+                "- Ajuste: {$signo}" . number_format($cantidadAbs, 0, ',', '.') . " kg\n" .
+                "- **Nuevo:** " . number_format($nuevoStock, 0, ',', '.') . " kg",
+            'datos' => [
+                'stock_anterior' => $stockAnterior,
+                'stock_nuevo' => $nuevoStock,
+                'ajuste' => $esEntrada ? $cantidadAbs : -$cantidadAbs,
+            ],
+        ];
     }
 
     /**

@@ -389,3 +389,208 @@ Calendario muestra 2 eventos para Planilla #2024-5205 en Máquina 1
 - Los eventos se actualizan dinámicamente al recargar la página
 - El estado de "fabricando" hace que el evento se alargue hasta now() + tiempo pendiente
 - Cada sub-grupo (`orden_planilla_id`) es completamente independiente en cálculo de tiempos
+
+---
+
+## Corte Visual de Eventos por Turnos Desactivados
+
+### Funcionalidad
+
+Cuando se desactiva un turno en los filtros superiores del calendario, los eventos se "cortan" visualmente en la franja horaria de ese turno. Esto simula que durante ese tiempo no se trabaja y los tiempos de fabricación se extienden al siguiente turno activo.
+
+### Implementación
+
+**Archivo:** `app/Http/Controllers/ProduccionController.php`
+
+**Método:** `generarEventosMaquinas()`
+
+```php
+// AGRUPAR TRAMOS CONSECUTIVOS (cortar en turnos desactivados, fines de semana y festivos)
+// Si hay más de 2 horas entre el fin de un tramo y el inicio del siguiente,
+// consideramos que hay un corte (turno desactivado, fin de semana, festivo)
+$gruposTramos = [];
+$grupoActual = [];
+$maxGapHoras = 2; // Gap máximo: 2 horas para detectar turnos desactivados
+```
+
+### Lógica de Corte
+
+1. El servicio `FinProgramadoService` genera tramos laborales basados en turnos activos (`activo = true`)
+2. Si un turno está desactivado, no se genera tramo para esa franja horaria
+3. Se crea un "gap" entre tramos que excede las 2 horas máximas permitidas
+4. Cada grupo de tramos consecutivos se convierte en un evento separado en el calendario
+
+### Ejemplo Visual
+
+```
+Con turno tarde (14:00-22:00) ACTIVO:
+┌─────────────────────────────────────────────┐
+│            Evento continuo                  │
+│   06:00 ─────────────────────────── 22:00   │
+└─────────────────────────────────────────────┘
+
+Con turno tarde (14:00-22:00) DESACTIVADO:
+┌───────────────────┐        ┌───────────────────┐
+│    Evento 1       │        │    Evento 2       │
+│  06:00 ── 14:00   │  GAP   │  06:00 ── 14:00   │
+└───────────────────┘ (16h)  └───────────────────┘
+      Día 1                        Día 2
+```
+
+---
+
+## Fix: Posicionamiento Correcto de Eventos en Vista de Horas Extendidas
+
+### Problema
+
+La vista de "horas extendidas" (`slotMaxTime: 168:00:00`) tiene un bug intermitente donde los eventos no se posicionan correctamente en el eje Y (tiempo). Los eventos pueden aparecer desfasados ~70 minutos de su hora real.
+
+**Síntoma:** Al abrir la consola del navegador (F12), el calendario se redimensiona y los eventos van automáticamente a su posición correcta.
+
+**Causa:** FullCalendar no recalcula correctamente las posiciones de los eventos en el render inicial cuando se usa una vista hackeada de horas extendidas.
+
+### Solución
+
+Simular el comportamiento de resize que ocurre al abrir F12, forzando a FullCalendar a recalcular las posiciones de los eventos.
+
+**Archivo:** `resources/views/produccion/maquinas.blade.php`
+
+```javascript
+// Fix para problema de posicionamiento: simular resize como al abrir F12
+function forzarRecalculoPosiciones() {
+    const calendario = document.getElementById('calendario');
+    if (!calendario || !window.calendar) return;
+
+    // Guardar ancho original
+    const anchoOriginal = calendario.style.width;
+
+    // Reducir ancho temporalmente (simula abrir F12)
+    calendario.style.width = (calendario.offsetWidth - 1) + 'px';
+    window.calendar.updateSize();
+
+    // Restaurar ancho original
+    requestAnimationFrame(() => {
+        calendario.style.width = anchoOriginal || '';
+        window.calendar.updateSize();
+    });
+}
+
+// Ejecutar después de cargar eventos
+calendar.on('eventsSet', function() {
+    setTimeout(forzarRecalculoPosiciones, 100);
+    setTimeout(forzarRecalculoPosiciones, 500);
+});
+```
+
+### Por qué funciona
+
+1. Al cambiar el ancho del contenedor, FullCalendar dispara un recálculo interno de posiciones
+2. `updateSize()` fuerza la actualización de dimensiones del calendario
+3. Al restaurar el ancho original inmediatamente después, se recalculan las posiciones correctamente
+4. Se ejecuta múltiples veces (100ms y 500ms) para cubrir diferentes timings de carga de eventos
+
+### Notas Importantes
+
+- Este fix es necesario debido al uso no estándar de FullCalendar con `slotMaxTime` extendido
+- El problema es intermitente y depende del timing de carga
+- Sin este fix, los eventos pueden aparecer desfasados visualmente aunque los datos sean correctos
+
+---
+
+## Fix: Eventos Pendientes Iniciando en el Próximo Turno Activo
+
+### Problema
+
+Cuando un evento pendiente (primera en cola) se genera fuera del horario de turnos activos, el evento debería comenzar en el siguiente turno disponible, no en la hora actual (`now()`).
+
+**Ejemplo del problema:**
+- Son las 22:23 y el turno de noche está desactivado
+- El próximo turno activo es mañana a las 06:00
+- El evento debería empezar a las 06:00, no a las 22:23
+
+### Solución
+
+La función `generarTramosLaborales()` en `FinProgramadoService` detecta si la fecha de inicio está fuera de horario laborable y la ajusta automáticamente:
+
+**Archivo:** `app/Services/FinProgramadoService.php`
+
+```php
+// Verificar si el inicio está dentro de horario laborable
+$segmentosInicio = $this->obtenerSegmentosLaborablesDia($inicio);
+$segmentosDiaAnterior = $this->obtenerSegmentosLaborablesDia($inicio->copy()->subDay());
+$todosSegmentos = array_merge($segmentosDiaAnterior, $segmentosInicio);
+$dentroDeSegmento = false;
+
+foreach ($todosSegmentos as $seg) {
+    if ($inicio->gte($seg['inicio']) && $inicio->lt($seg['fin'])) {
+        $dentroDeSegmento = true;
+        break;
+    }
+}
+
+// Si el inicio NO está dentro de un segmento laborable, mover al siguiente
+if (!$dentroDeSegmento) {
+    $inicio = $this->siguienteLaborableInicio($inicio);
+}
+```
+
+### Recarga de Turnos
+
+Para garantizar que siempre se use el estado actual de los turnos (especialmente después de que el usuario active/desactive un turno), el servicio incluye:
+
+```php
+/**
+ * Fuerza la recarga de turnos desde la base de datos
+ */
+public function recargarTurnos(): void
+{
+    $this->turnosActivos = Turno::where('activo', true)->get();
+}
+```
+
+El método `init()` ahora llama a `recargarTurnos()` en lugar de `cargarTurnos()` para asegurar datos frescos:
+
+```php
+public function init(): self
+{
+    $this->cargarFestivos();
+    // Forzar recarga de turnos para obtener estado actual
+    $this->recargarTurnos();
+    return $this;
+}
+```
+
+### Flujo de Ajuste de Inicio
+
+```
+1. Evento pendiente detectado → $fechaInicio = Carbon::now()
+2. Llamar generarTramosLaborales($fechaInicio, $duracion)
+3. Verificar si $fechaInicio está dentro de un segmento laborable
+4. Si NO está:
+   a. Llamar siguienteLaborableInicio($fechaInicio)
+   b. Buscar el próximo turno activo
+   c. Retornar el inicio de ese turno
+5. El primer tramo generado comienza en el turno ajustado
+6. El evento usa el inicio del primer tramo
+```
+
+### Ejemplo
+
+```
+Situación: 22:23 Lunes, turno noche DESACTIVADO
+Turnos activos: Mañana (06:00-14:00), Tarde (14:00-22:00)
+
+Proceso:
+1. $fechaInicio = 22:23 Lunes
+2. Segmentos del día: [06:00-14:00, 14:00-22:00]
+3. ¿22:23 está en algún segmento? NO
+4. Llamar siguienteLaborableInicio(22:23 Lunes)
+5. Buscar siguiente segmento...
+   - 22:23 > 14:00 (fin mañana) → continuar
+   - 22:23 > 22:00 (fin tarde) → continuar
+   - Avanzar a Martes 00:00
+   - 00:00 < 06:00 (inicio mañana) → ENCONTRADO
+6. Retorna: Martes 06:00
+7. Primer tramo: Martes 06:00 → ...
+8. Evento: start = "Martes 06:00"
+```

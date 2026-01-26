@@ -1,10 +1,10 @@
 <div>
     <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
-    <div class="w-full overflow-x-auto bg-white shadow-md rounded-lg">
-        <table class="min-w-full table-auto">
-            <thead class="bg-blue-500 text-white text-10">
-                <tr class="text-center text-xs uppercase">
+    <div class="w-full overflow-x-auto bg-white dark:bg-gray-900 shadow-md rounded-lg">
+        <table class="table-global min-w-full">
+            <thead>
+                <tr class="text-center">
                     <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
                     <x-tabla.encabezado-ordenable campo="tipo" :sortActual="$sort" :orderActual="$order" texto="Tipo" />
                     <x-tabla.encabezado-ordenable campo="pedido_producto_id" :sortActual="$sort" :orderActual="$order" texto="Línea Pedido" />
@@ -20,77 +20,77 @@
                     <x-tabla.encabezado-ordenable campo="origen" :sortActual="$sort" :orderActual="$order" texto="Origen" />
                     <x-tabla.encabezado-ordenable campo="destino" :sortActual="$sort" :orderActual="$order" texto="Destino" />
                     <x-tabla.encabezado-ordenable campo="producto_paquete" :sortActual="$sort" :orderActual="$order" texto="Prod/Paq" />
-                    <th class="p-2 border">Acciones</th>
+                    <th>Acciones</th>
                 </tr>
 
-                <tr class="text-center text-xs uppercase">
-                    <th class="p-2 border">
-                        <input type="text" wire:model.live.debounce.300ms="id" placeholder="ID" class="w-full text-xs px-2 py-1.5 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                <x-tabla.filtro-row>
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="id" placeholder="ID" class="inline-edit-input">
                     </th>
-                    <th class="p-2 border">
-                        <input type="text" wire:model.live.debounce.300ms="tipo" placeholder="Tipo" class="w-full text-xs px-2 py-1.5 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="tipo" placeholder="Tipo" class="inline-edit-input">
                     </th>
-                    <th class="p-2 border">
-                        <input type="text" wire:model.live.debounce.300ms="pedido_producto_id" placeholder="Línea" class="w-full text-xs px-2 py-1.5 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="pedido_producto_id" placeholder="Línea" class="inline-edit-input">
                     </th>
-                    <th class="py-2 px-0 border">
-                        <div class="flex gap-2 justify-center">
-                            <input type="text" wire:model.live.debounce.300ms="producto_tipo" placeholder="T" class="bg-white text-blue-900 border border-gray-300 rounded text-[10px] text-center w-14 h-7 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
-                            <input type="text" wire:model.live.debounce.300ms="producto_diametro" placeholder="Ø" class="bg-white text-blue-900 border border-gray-300 rounded text-[10px] text-center w-14 h-7 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
-                            <input type="text" wire:model.live.debounce.300ms="producto_longitud" placeholder="L" class="bg-white text-blue-900 border border-gray-300 rounded text-[10px] text-center w-14 h-7 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                    <th class="px-0">
+                        <div class="flex gap-1 justify-center">
+                            <input type="text" wire:model.live.debounce.300ms="producto_tipo" placeholder="T" class="inline-edit-input !w-12 text-center" />
+                            <input type="text" wire:model.live.debounce.300ms="producto_diametro" placeholder="Ø" class="inline-edit-input !w-12 text-center" />
+                            <input type="text" wire:model.live.debounce.300ms="producto_longitud" placeholder="L" class="inline-edit-input !w-12 text-center" />
                         </div>
                     </th>
-                    <th class="p-2 border">
-                        <input type="text" wire:model.live.debounce.300ms="descripcion" placeholder="Descripción" class="w-full text-xs px-2 py-1.5 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="descripcion" placeholder="Descripción" class="inline-edit-input">
                     </th>
-                    <th class="p-2 border">
-                        <select wire:model.live="nave_id" class="w-full text-xs px-2 py-1.5 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <select wire:model.live="nave_id" class="inline-edit-select">
                             <option value="">Todas</option>
                             @foreach($naves as $id => $nombre)
                                 <option value="{{ $id }}">{{ $nombre }}</option>
                             @endforeach
                         </select>
                     </th>
-                    <th class="p-2 border">
-                        <select wire:model.live="prioridad" class="w-full text-xs px-2 py-1.5 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <select wire:model.live="prioridad" class="inline-edit-select">
                             <option value="">Todas</option>
                             <option value="1">Baja</option>
                             <option value="2">Media</option>
                             <option value="3">Alta</option>
                         </select>
                     </th>
-                    <th class="p-2 border">
-                        <input type="text" wire:model.live.debounce.300ms="solicitado_por" placeholder="Solicitado" class="w-full text-xs px-2 py-1.5 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="solicitado_por" placeholder="Solicitado" class="inline-edit-input">
                     </th>
-                    <th class="p-2 border">
-                        <input type="text" wire:model.live.debounce.300ms="ejecutado_por" placeholder="Ejecutado" class="w-full text-xs px-2 py-1.5 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="ejecutado_por" placeholder="Ejecutado" class="inline-edit-input">
                     </th>
-                    <th class="p-2 border">
-                        <select wire:model.live="estado" class="w-full text-xs px-2 py-1.5 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <select wire:model.live="estado" class="inline-edit-select">
                             <option value="">Todos</option>
                             <option value="pendiente">Pendiente</option>
                             <option value="completado">Completado</option>
                             <option value="cancelado">Cancelado</option>
                         </select>
                     </th>
-                    <th class="p-2 border">
-                        <input type="date" wire:model.live.debounce.300ms="fecha_solicitud" class="w-full text-xs px-2 py-1.5 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="date" wire:model.live.debounce.300ms="fecha_solicitud" class="inline-edit-input">
                     </th>
-                    <th class="p-2 border">
-                        <input type="date" wire:model.live.debounce.300ms="fecha_ejecucion" class="w-full text-xs px-2 py-1.5 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="date" wire:model.live.debounce.300ms="fecha_ejecucion" class="inline-edit-input">
                     </th>
-                    <th class="p-2 border">
-                        <input type="text" wire:model.live.debounce.300ms="origen" placeholder="Origen" class="w-full text-xs px-2 py-1.5 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="origen" placeholder="Origen" class="inline-edit-input">
                     </th>
-                    <th class="p-2 border">
-                        <input type="text" wire:model.live.debounce.300ms="destino" placeholder="Destino" class="w-full text-xs px-2 py-1.5 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="destino" placeholder="Destino" class="inline-edit-input">
                     </th>
-                    <th class="p-2 border">
-                        <input type="text" wire:model.live.debounce.300ms="producto_paquete" placeholder="Prod/Paq" class="w-full text-xs px-2 py-1.5 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="producto_paquete" placeholder="Prod/Paq" class="inline-edit-input">
                     </th>
-                    <th class="p-2 border text-center align-middle">
+                    <th class="text-center align-middle">
                         <button wire:click="limpiarFiltros"
-                            class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
+                            class="table-btn bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white"
                             title="Restablecer filtros">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                                 stroke="currentColor" stroke-width="2">
@@ -99,24 +99,23 @@
                             </svg>
                         </button>
                     </th>
-                </tr>
+                </x-tabla.filtro-row>
             </thead>
 
             <tbody>
                 @forelse($movimientos as $movimiento)
-                    <tr wire:key="movimiento-{{ $movimiento->id }}"
-                        class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 text-xs leading-none">
+                    <x-tabla.row wire:key="movimiento-{{ $movimiento->id }}">
                         <td class="px-2 py-4 text-center border">{{ $movimiento->id }}</td>
 
                         <td class="px-6 py-4 text-center border">{{ ucfirst($movimiento->tipo ?? 'N/A') }}</td>
 
                         <td class="px-6 py-4 text-center border">
                             @if($movimiento->pedidoProducto)
-                                <a href="{{ route('pedidos.index', ['codigo_linea' => '=' . $movimiento->pedidoProducto->codigo]) }}" class="text-indigo-600 hover:underline">
+                                <a href="{{ route('pedidos.index', ['codigo_linea' => '=' . $movimiento->pedidoProducto->codigo]) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">
                                     {{ $movimiento->pedidoProducto->codigo }}
                                 </a>
                             @else
-                                <span class="text-gray-400">—</span>
+                                <span class="text-gray-400 dark:text-gray-500">—</span>
                             @endif
                         </td>
 
@@ -125,7 +124,7 @@
                                 {{ ucfirst(strtolower($movimiento->productoBase->tipo)) }}
                                 (Ø{{ $movimiento->productoBase->diametro }}{{ strtolower($movimiento->productoBase->tipo) === 'barra' ? ', ' . $movimiento->productoBase->longitud . ' m' : '' }})
                             @else
-                                <span class="text-gray-400 italic">Sin datos</span>
+                                <span class="text-gray-400 dark:text-gray-500 italic">Sin datos</span>
                             @endif
                         </td>
 
@@ -137,42 +136,49 @@
                             @if($movimiento->nave)
                                 {{ $movimiento->nave->obra }}
                             @else
-                                <span class="text-gray-400">—</span>
+                                <span class="text-gray-400 dark:text-gray-500">—</span>
                             @endif
                         </td>
 
                         <td class="px-6 py-4 text-center border">
                             @if($movimiento->prioridad == 1)
-                                <span class="px-2 py-1 rounded text-xs font-semibold bg-gray-200 text-gray-800">Baja</span>
+                                <span class="px-2 py-1 rounded text-xs font-semibold bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-300">Baja</span>
                             @elseif($movimiento->prioridad == 2)
-                                <span class="px-2 py-1 rounded text-xs font-semibold bg-yellow-200 text-yellow-800">Media</span>
+                                <span class="px-2 py-1 rounded text-xs font-semibold bg-yellow-200 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300">Media</span>
                             @elseif($movimiento->prioridad == 3)
-                                <span class="px-2 py-1 rounded text-xs font-semibold bg-red-200 text-red-800">Alta</span>
+                                <span class="px-2 py-1 rounded text-xs font-semibold bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-300">Alta</span>
                             @endif
                         </td>
 
                         <td class="px-6 py-4 text-center border">
                             @if($movimiento->solicitadoPor)
-                                <a href="{{ route('users.show', $movimiento->solicitadoPor->id) }}" class="text-blue-500 hover:underline">
+                                <a href="{{ route('users.show', $movimiento->solicitadoPor->id) }}" class="text-blue-600 dark:text-blue-400 hover:underline">
                                     {{ $movimiento->solicitadoPor->nombre_completo }}
                                 </a>
                             @else
-                                <span class="text-gray-400">—</span>
+                                <span class="text-gray-400 dark:text-gray-500">—</span>
                             @endif
                         </td>
 
                         <td class="px-6 py-4 text-center border">
                             @if($movimiento->ejecutadoPor)
-                                <a href="{{ route('users.show', $movimiento->ejecutadoPor->id) }}" class="text-green-600 hover:underline">
+                                <a href="{{ route('users.show', $movimiento->ejecutadoPor->id) }}" class="text-green-600 dark:text-green-400 hover:underline">
                                     {{ $movimiento->ejecutadoPor->nombre_completo }}
                                 </a>
                             @else
-                                <span class="text-gray-400">—</span>
+                                <span class="text-gray-400 dark:text-gray-500">—</span>
                             @endif
                         </td>
 
                         <td class="px-6 py-4 text-center border">
-                            <span class="px-2 py-1 rounded text-xs font-semibold {{ $movimiento->estado === 'pendiente' ? 'bg-yellow-200 text-yellow-800' : ($movimiento->estado === 'completado' ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-800') }}">
+                            @php
+                                $estadoClasses = match($movimiento->estado) {
+                                    'pendiente' => 'bg-yellow-200 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300',
+                                    'completado' => 'bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-300',
+                                    default => 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-300',
+                                };
+                            @endphp
+                            <span class="px-2 py-1 rounded text-xs font-semibold {{ $estadoClasses }}">
                                 {{ ucfirst($movimiento->estado) }}
                             </span>
                         </td>
@@ -191,11 +197,11 @@
 
                         <td class="px-6 py-4 text-center border">
                             @if($movimiento->producto)
-                                <a href="{{ route('productos.index', ['id' => $movimiento->producto->id]) }}" class="text-blue-500 hover:underline">
+                                <a href="{{ route('productos.index', ['id' => $movimiento->producto->id]) }}" class="text-blue-600 dark:text-blue-400 hover:underline">
                                     {{ $movimiento->producto->codigo }}
                                 </a>
                             @elseif($movimiento->paquete)
-                                <a href="{{ route('paquetes.index', ['id' => $movimiento->paquete->id]) }}" class="text-blue-500 hover:underline">
+                                <a href="{{ route('paquetes.index', ['id' => $movimiento->paquete->id]) }}" class="text-blue-600 dark:text-blue-400 hover:underline">
                                     {{ $movimiento->paquete->codigo }}
                                 </a>
                             @else
@@ -206,10 +212,10 @@
                         <td class="px-6 py-4 text-center border">
                             <x-tabla.boton-eliminar :action="route('movimientos.destroy', $movimiento->id)" />
                         </td>
-                    </tr>
+                    </x-tabla.row>
                 @empty
                     <tr>
-                        <td colspan="16" class="text-center py-4 text-gray-500">No hay movimientos registrados</td>
+                        <td colspan="16" class="text-center py-4 text-gray-500 dark:text-gray-400">No hay movimientos registrados</td>
                     </tr>
                 @endforelse
             </tbody>

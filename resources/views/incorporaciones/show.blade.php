@@ -6,29 +6,29 @@
         <div class="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
             <div>
                 <a href="{{ route('incorporaciones.index') }}"
-                    class="text-blue-600 hover:text-blue-800 flex items-center mb-2">
+                    class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center mb-2">
                     <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
                     Volver al listado
                 </a>
-                <h1 class="text-2xl font-bold text-gray-800">{{ $incorporacion->name }}
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ $incorporacion->name }}
                     {{ $incorporacion->primer_apellido }} {{ $incorporacion->segundo_apellido }}</h1>
                 <div class="flex flex-wrap gap-2 mt-2">
                     @php $badge = $incorporacion->estado_badge; @endphp
                     <span
                         class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
-                        bg-{{ $badge['color'] }}-100 text-{{ $badge['color'] }}-800">
+                        bg-{{ $badge['color'] }}-100 dark:bg-{{ $badge['color'] }}-900/50 text-{{ $badge['color'] }}-800 dark:text-{{ $badge['color'] }}-300">
                         {{ $badge['texto'] }}
                     </span>
                     <span
                         class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
-                        {{ $incorporacion->empresa_destino === 'hpr_servicios' ? 'bg-purple-100 text-purple-800' : 'bg-indigo-100 text-indigo-800' }}">
+                        {{ $incorporacion->empresa_destino === 'hpr_servicios' ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300' : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300' }}">
                         {{ $incorporacion->empresa_nombre }}
                     </span>
                     @if ($incorporacion->puesto)
                         <span
-                            class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                            class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
                             {{ $incorporacion->puesto }}
                         </span>
                     @endif
@@ -38,7 +38,7 @@
             <!-- Acciones -->
             <div class="flex gap-2">
                 <a href="{{ route('incorporaciones.verDescargarZip', $incorporacion) }}"
-                    class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition">
+                    class="inline-flex items-center px-4 py-2 bg-green-600 dark:bg-green-700 hover:bg-green-700 dark:hover:bg-green-600 text-white font-medium rounded-lg transition">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -46,19 +46,19 @@
                     Descargar ZIP
                 </a>
                 <button onclick="cambiarEstado()"
-                    class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition">
+                    class="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg transition">
                     Cambiar estado
                 </button>
             </div>
         </div>
 
         <!-- Sección de Aprobaciones -->
-        <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">Aprobaciones</h2>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6 mb-6">
+            <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Aprobaciones</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Aprobación RRHH -->
                 <div
-                    class="flex items-center justify-between p-4 rounded-lg border-2 {{ $incorporacion->aprobado_rrhh ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-gray-50' }}">
+                    class="flex items-center justify-between p-4 rounded-lg border-2 {{ $incorporacion->aprobado_rrhh ? 'border-green-300 dark:border-green-600 bg-green-50 dark:bg-green-900/30' : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700' }}">
                     <div class="flex items-center">
                         <div class="mr-4">
                             @if ($incorporacion->aprobado_rrhh)
@@ -71,22 +71,22 @@
                                     </svg>
                                 </div>
                             @else
-                                <div class="w-12 h-12 rounded-full border-4 border-gray-300 bg-white flex items-center justify-center cursor-pointer hover:border-green-400 hover:bg-green-50 transition"
+                                <div class="w-12 h-12 rounded-full border-4 border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-700 flex items-center justify-center cursor-pointer hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 transition"
                                     onclick="aprobarIncorporacion('rrhh')">
                                 </div>
                             @endif
                         </div>
                         <div>
-                            <p class="font-semibold text-gray-800">Aprobación RRHH</p>
+                            <p class="font-semibold text-gray-800 dark:text-gray-100">Aprobación RRHH</p>
                             @if ($incorporacion->aprobado_rrhh)
-                                <p class="text-sm text-green-600">
+                                <p class="text-sm text-green-600 dark:text-green-400">
                                     Aprobado el {{ $incorporacion->aprobado_rrhh_at?->format('d/m/Y H:i') }}
                                     @if ($incorporacion->aprobadorRrhh)
                                         por {{ $incorporacion->aprobadorRrhh->nombre_completo }}
                                     @endif
                                 </p>
                             @else
-                                <p class="text-sm text-gray-500">Pendiente de aprobación</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Pendiente de aprobación</p>
                             @endif
                         </div>
                     </div>
@@ -94,7 +94,7 @@
 
                 <!-- Aprobación CEO -->
                 <div
-                    class="flex items-center justify-between p-4 rounded-lg border-2 {{ $incorporacion->aprobado_ceo ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-gray-50' }}">
+                    class="flex items-center justify-between p-4 rounded-lg border-2 {{ $incorporacion->aprobado_ceo ? 'border-green-300 dark:border-green-600 bg-green-50 dark:bg-green-900/30' : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700' }}">
                     <div class="flex items-center">
                         <div class="mr-4">
                             @if ($incorporacion->aprobado_ceo)
@@ -107,25 +107,25 @@
                                     </svg>
                                 </div>
                             @else
-                                <div class="w-12 h-12 rounded-full border-4 border-gray-300 bg-white flex items-center justify-center cursor-pointer hover:border-green-400 hover:bg-green-50 transition {{ !$incorporacion->aprobado_rrhh ? 'opacity-50 pointer-events-none' : '' }}"
+                                <div class="w-12 h-12 rounded-full border-4 border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-700 flex items-center justify-center cursor-pointer hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 transition {{ !$incorporacion->aprobado_rrhh ? 'opacity-50 pointer-events-none' : '' }}"
                                     onclick="aprobarIncorporacion('ceo')"
                                     title="{{ !$incorporacion->aprobado_rrhh ? 'Requiere aprobación de RRHH primero' : 'Clic para aprobar' }}">
                                 </div>
                             @endif
                         </div>
                         <div>
-                            <p class="font-semibold text-gray-800">Aprobación CEO</p>
+                            <p class="font-semibold text-gray-800 dark:text-gray-100">Aprobación CEO</p>
                             @if ($incorporacion->aprobado_ceo)
-                                <p class="text-sm text-green-600">
+                                <p class="text-sm text-green-600 dark:text-green-400">
                                     Aprobado el {{ $incorporacion->aprobado_ceo_at?->format('d/m/Y H:i') }}
                                     @if ($incorporacion->aprobadorCeo)
                                         por {{ $incorporacion->aprobadorCeo->nombre_completo }}
                                     @endif
                                 </p>
                             @elseif(!$incorporacion->aprobado_rrhh)
-                                <p class="text-sm text-gray-400">Requiere aprobación de RRHH primero</p>
+                                <p class="text-sm text-gray-400 dark:text-gray-500">Requiere aprobación de RRHH primero</p>
                             @else
-                                <p class="text-sm text-gray-500">Pendiente de aprobación</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Pendiente de aprobación</p>
                             @endif
                         </div>
                     </div>
@@ -137,15 +137,15 @@
             <!-- Columna principal -->
             <div class="lg:col-span-2 space-y-6">
                 <!-- Enlace del formulario -->
-                <div class="bg-white rounded-lg shadow-sm border p-6">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Enlace del formulario</h2>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Enlace del formulario</h2>
                     <div class="flex items-center gap-2">
                         <input type="text" readonly value="{{ $incorporacion->url_formulario }}"
                             id="enlaceFormulario"
-                            class="flex-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-600
+                            class="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300
                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
                         <button onclick="copiarEnlace(this)"
-                            class="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 rounded-lg transition"
+                            class="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 rounded-lg transition"
                             title="Copiar al portapapeles">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -154,27 +154,27 @@
                         </button>
                     </div>
                     @if ($incorporacion->enlace_enviado_at)
-                        <p class="mt-2 text-sm text-green-600">
+                        <p class="mt-2 text-sm text-green-600 dark:text-green-400">
                             Enlace marcado como enviado el {{ $incorporacion->enlace_enviado_at->format('d/m/Y H:i') }}
                         </p>
                     @else
-                        <button onclick="marcarEnviado()" class="mt-2 text-sm text-blue-600 hover:underline">
+                        <button onclick="marcarEnviado()" class="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline">
                             Marcar como enviado
                         </button>
                     @endif
                 </div>
 
                 <!-- Datos del candidato -->
-                <div class="bg-white rounded-lg shadow-sm border p-6">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Datos Personales</h2>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Datos Personales</h2>
 
                     {{-- Siempre mostrar los campos, editables --}}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {{-- DNI (texto) --}}
                         <div>
-                            <label class="text-sm text-gray-500">DNI/NIE</label>
+                            <label class="text-sm text-gray-500 dark:text-gray-400">DNI/NIE</label>
                             <div class="flex items-center gap-2">
-                                <p class="font-medium" id="texto-dni">{{ $incorporacion->dni ?? 'No especificado' }}</p>
+                                <p class="font-medium dark:text-gray-200" id="texto-dni">{{ $incorporacion->dni ?? 'No especificado' }}</p>
                                 <button onclick="editarCampoTexto('dni', 'DNI/NIE', {{ json_encode($incorporacion->dni ?? '') }})"
                                     class="text-amber-500 hover:text-amber-700 p-1" title="Editar">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,7 +221,7 @@
                                     </div>
                                 @else
                                     <button onclick="abrirModalResubir('dni_frontal', 'DNI Frontal')"
-                                        class="text-blue-600 hover:text-blue-800 text-sm flex items-center">
+                                        class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm flex items-center">
                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -266,7 +266,7 @@
                                     </div>
                                 @else
                                     <button onclick="abrirModalResubir('dni_trasero', 'DNI Trasero')"
-                                        class="text-blue-600 hover:text-blue-800 text-sm flex items-center">
+                                        class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm flex items-center">
                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -280,9 +280,9 @@
 
                         {{-- N. Afiliación SS --}}
                         <div>
-                            <label class="text-sm text-gray-500">N. Afiliacion SS</label>
+                            <label class="text-sm text-gray-500 dark:text-gray-400">N. Afiliacion SS</label>
                             <div class="flex items-center gap-2">
-                                <p class="font-medium" id="texto-afiliacion-ss">
+                                <p class="font-medium dark:text-gray-200" id="texto-afiliacion-ss">
                                     {{ $incorporacion->numero_afiliacion_ss ?? 'No especificado' }}</p>
                                 <button onclick="editarAfiliacionSS()"
                                     class="text-amber-500 hover:text-amber-700 p-1" title="Editar">
@@ -297,9 +297,9 @@
 
                         {{-- Email --}}
                         <div>
-                            <label class="text-sm text-gray-500">Email</label>
+                            <label class="text-sm text-gray-500 dark:text-gray-400">Email</label>
                             <div class="flex items-center gap-2">
-                                <p class="font-medium" id="texto-email">{{ $incorporacion->email ?? 'No especificado' }}</p>
+                                <p class="font-medium dark:text-gray-200" id="texto-email">{{ $incorporacion->email ?? 'No especificado' }}</p>
                                 <button onclick="editarCampoTexto('email', 'Email', {{ json_encode($incorporacion->email ?? '') }})"
                                     class="text-amber-500 hover:text-amber-700 p-1" title="Editar">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -312,9 +312,9 @@
 
                         {{-- Teléfono --}}
                         <div>
-                            <label class="text-sm text-gray-500">Telefono</label>
+                            <label class="text-sm text-gray-500 dark:text-gray-400">Telefono</label>
                             <div class="flex items-center gap-2">
-                                <p class="font-medium" id="texto-telefono">{{ $incorporacion->telefono ?? 'No especificado' }}</p>
+                                <p class="font-medium dark:text-gray-200" id="texto-telefono">{{ $incorporacion->telefono ?? 'No especificado' }}</p>
                                 <button onclick="editarCampoTexto('telefono', 'Telefono', {{ json_encode($incorporacion->telefono ?? '') }})"
                                     class="text-amber-500 hover:text-amber-700 p-1" title="Editar">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -327,9 +327,9 @@
 
                         {{-- Nombre --}}
                         <div>
-                            <label class="text-sm text-gray-500">Nombre</label>
+                            <label class="text-sm text-gray-500 dark:text-gray-400">Nombre</label>
                             <div class="flex items-center gap-2">
-                                <p class="font-medium" id="texto-name">{{ $incorporacion->name ?? 'No especificado' }}</p>
+                                <p class="font-medium dark:text-gray-200" id="texto-name">{{ $incorporacion->name ?? 'No especificado' }}</p>
                                 <button onclick="editarCampoTexto('name', 'Nombre', {{ json_encode($incorporacion->name ?? '') }})"
                                     class="text-amber-500 hover:text-amber-700 p-1" title="Editar">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -342,9 +342,9 @@
 
                         {{-- Primer Apellido --}}
                         <div>
-                            <label class="text-sm text-gray-500">Primer Apellido</label>
+                            <label class="text-sm text-gray-500 dark:text-gray-400">Primer Apellido</label>
                             <div class="flex items-center gap-2">
-                                <p class="font-medium" id="texto-primer_apellido">{{ $incorporacion->primer_apellido ?? 'No especificado' }}</p>
+                                <p class="font-medium dark:text-gray-200" id="texto-primer_apellido">{{ $incorporacion->primer_apellido ?? 'No especificado' }}</p>
                                 <button onclick="editarCampoTexto('primer_apellido', 'Primer Apellido', {{ json_encode($incorporacion->primer_apellido ?? '') }})"
                                     class="text-amber-500 hover:text-amber-700 p-1" title="Editar">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -357,9 +357,9 @@
 
                         {{-- Segundo Apellido --}}
                         <div>
-                            <label class="text-sm text-gray-500">Segundo Apellido</label>
+                            <label class="text-sm text-gray-500 dark:text-gray-400">Segundo Apellido</label>
                             <div class="flex items-center gap-2">
-                                <p class="font-medium" id="texto-segundo_apellido">{{ $incorporacion->segundo_apellido ?? 'No especificado' }}</p>
+                                <p class="font-medium dark:text-gray-200" id="texto-segundo_apellido">{{ $incorporacion->segundo_apellido ?? 'No especificado' }}</p>
                                 <button onclick="editarCampoTexto('segundo_apellido', 'Segundo Apellido', {{ json_encode($incorporacion->segundo_apellido ?? '') }})"
                                     class="text-amber-500 hover:text-amber-700 p-1" title="Editar">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -372,11 +372,11 @@
 
                         {{-- Certificado bancario --}}
                         <div class="sm:col-span-2">
-                            <label class="text-sm text-gray-500">Certificado bancario</label>
+                            <label class="text-sm text-gray-500 dark:text-gray-400">Certificado bancario</label>
                             @if ($incorporacion->certificado_bancario)
                                 <div class="flex items-center gap-2">
                                     <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $incorporacion->certificado_bancario]) }}"
-                                        target="_blank" class="text-blue-600 hover:underline flex items-center">
+                                        target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline flex items-center">
                                         <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -405,7 +405,7 @@
                                 </div>
                             @else
                                 <button onclick="abrirModalResubir('certificado_bancario', 'Certificado Bancario')"
-                                    class="text-blue-600 hover:text-blue-800 flex items-center mt-1">
+                                    class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center mt-1">
                                     <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor"
                                         viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -418,12 +418,12 @@
                     </div>
 
                     @if ($incorporacion->datos_completados_at)
-                        <p class="mt-4 text-sm text-gray-500">
+                        <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">
                             Datos completados el {{ $incorporacion->datos_completados_at->format('d/m/Y H:i') }}
                         </p>
                     @else
-                        <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                            <p class="text-sm text-amber-700">
+                        <div class="mt-4 p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg">
+                            <p class="text-sm text-amber-700 dark:text-amber-300">
                                 <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -435,15 +435,15 @@
                 </div>
 
                 <!-- Documentos post-incorporación -->
-                <div class="bg-white rounded-lg shadow-sm border p-6">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-lg font-semibold text-gray-800">Documentos Post-Incorporación</h2>
-                        <span class="text-sm text-gray-500">{{ $incorporacion->porcentajeDocumentosPost() }}%
+                        <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Documentos Post-Incorporación</h2>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">{{ $incorporacion->porcentajeDocumentosPost() }}%
                             completado</span>
                     </div>
 
                     <!-- Barra de progreso -->
-                    <div class="w-full bg-gray-200 rounded-full h-3 mb-6">
+                    <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3 mb-6">
                         <div class="bg-green-500 h-3 rounded-full transition-all"
                             style="width: {{ $incorporacion->porcentajeDocumentosPost() }}%"></div>
                     </div>
@@ -453,18 +453,18 @@
                         @foreach ($documentosPost as $tipo => $item)
                             @if ($item['multiple'] ?? false)
                                 {{-- Caso especial: Tipos con múltiples archivos --}}
-                                <div class="p-4 border rounded-lg {{ $item['completado'] ? 'bg-green-50 border-green-200' : 'bg-white' }}"
+                                <div class="p-4 border rounded-lg {{ $item['completado'] ? 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700' : 'bg-white dark:bg-gray-800 dark:border-gray-600' }}"
                                     id="doc-{{ $tipo }}">
                                     @if ($tipo === 'contrato_trabajo')
-                                        <div class="mb-3 p-3 bg-blue-50/50 rounded border border-blue-100">
+                                        <div class="mb-3 p-3 bg-blue-50/50 dark:bg-blue-900/30 rounded border border-blue-100 dark:border-blue-800">
                                             <label
-                                                class="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1 block">Fecha
+                                                class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1 block">Fecha
                                                 de Incorporación</label>
                                             <div class="flex gap-2 items-center">
                                                 <input type="date"
                                                     value="{{ $incorporacion->fecha_incorporacion ? $incorporacion->fecha_incorporacion->format('Y-m-d') : '' }}"
                                                     onchange="actualizarFechaIncorporacion(this.value)"
-                                                    class="text-sm rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 px-3 py-1.5 w-auto">
+                                                    class="text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:ring-blue-500 focus:border-blue-500 px-3 py-1.5 w-auto">
                                                 <span id="fecha-status"
                                                     class="text-xs font-medium text-green-600 hidden transition-opacity duration-300">
                                                     <svg class="w-4 h-4 inline" fill="none" stroke="currentColor"
@@ -487,13 +487,13 @@
                                                         clip-rule="evenodd" />
                                                 </svg>
                                             @else
-                                                <div class="w-6 h-6 border-2 border-gray-300 rounded-full mr-3"></div>
+                                                <div class="w-6 h-6 border-2 border-gray-300 dark:border-gray-500 rounded-full mr-3"></div>
                                             @endif
                                             <div>
                                                 <p
-                                                    class="font-medium {{ $item['completado'] ? 'text-green-800' : 'text-gray-800' }}">
+                                                    class="font-medium {{ $item['completado'] ? 'text-green-800 dark:text-green-300' : 'text-gray-800 dark:text-gray-200' }}">
                                                     {{ $item['nombre'] }}</p>
-                                                <p class="text-sm text-gray-500">
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">
                                                     @if ($tipo === 'contrato_trabajo')
                                                         {{ $item['total_archivos'] }} archivos
                                                     @else
@@ -521,7 +521,7 @@
                                         <div class="space-y-2 ml-9">
                                             @foreach ($item['documentos'] as $index => $doc)
                                                 <div
-                                                    class="flex items-center justify-between py-2 px-3 bg-white rounded border">
+                                                    class="flex items-center justify-between py-2 px-3 bg-white dark:bg-gray-700 rounded border dark:border-gray-600">
                                                     <div class="flex items-center gap-2">
                                                         <svg class="w-5 h-5 text-red-500" fill="currentColor"
                                                             viewBox="0 0 20 20">
@@ -529,7 +529,7 @@
                                                                 d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
                                                                 clip-rule="evenodd" />
                                                         </svg>
-                                                        <span class="text-sm text-gray-700">
+                                                        <span class="text-sm text-gray-700 dark:text-gray-300">
                                                             @if ($tipo === 'contrato_trabajo')
                                                                 {{ $doc->created_at ? $doc->created_at->format('d/m/Y H:i') : 'Sin fecha' }}
                                                             @else
@@ -537,13 +537,13 @@
                                                             @endif
                                                         </span>
                                                         @if ($doc->notas)
-                                                            <span class="text-xs text-gray-400">-
+                                                            <span class="text-xs text-gray-400 dark:text-gray-500">-
                                                                 {{ $doc->notas }}</span>
                                                         @endif
                                                     </div>
                                                     <div class="flex items-center gap-2">
                                                         <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $doc->archivo]) }}"
-                                                            target="_blank" class="text-blue-600 hover:text-blue-800"
+                                                            target="_blank" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                                                             title="Ver">
                                                             <svg class="w-5 h-5" fill="none" stroke="currentColor"
                                                                 viewBox="0 0 24 24">
@@ -557,7 +557,7 @@
                                                         </a>
                                                         <button
                                                             onclick="eliminarDocumentoMultiple({{ $doc->id }}, '{{ $tipo }}')"
-                                                            class="text-red-600 hover:text-red-800" title="Eliminar">
+                                                            class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300" title="Eliminar">
                                                             <svg class="w-5 h-5" fill="none" stroke="currentColor"
                                                                 viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round"
@@ -570,7 +570,7 @@
                                             @endforeach
                                             @foreach ($item['formaciones'] as $index => $form)
                                                 <div
-                                                    class="flex items-center justify-between py-2 px-3 bg-white rounded border">
+                                                    class="flex items-center justify-between py-2 px-3 bg-white dark:bg-gray-700 rounded border dark:border-gray-600">
                                                     <div class="flex items-center gap-2">
                                                         <svg class="w-5 h-5 text-red-500" fill="currentColor"
                                                             viewBox="0 0 20 20">
@@ -578,15 +578,15 @@
                                                                 d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
                                                                 clip-rule="evenodd" />
                                                         </svg>
-                                                        <span class="text-sm text-gray-700">Archivo
+                                                        <span class="text-sm text-gray-700 dark:text-gray-300">Archivo
                                                             {{ $item['documentos']->count() + $index + 1 }}</span>
                                                         <span
-                                                            class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Por
+                                                            class="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-600 px-2 py-0.5 rounded">Por
                                                             candidato</span>
                                                     </div>
                                                     <div class="flex items-center gap-2">
                                                         <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $form->archivo]) }}"
-                                                            target="_blank" class="text-blue-600 hover:text-blue-800"
+                                                            target="_blank" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                                                             title="Ver">
                                                             <svg class="w-5 h-5" fill="none" stroke="currentColor"
                                                                 viewBox="0 0 24 24">
@@ -600,7 +600,7 @@
                                                         </a>
                                                         <button
                                                             onclick="eliminarArchivoFormacion({{ $form->id }}, 'Formación del puesto')"
-                                                            class="text-red-600 hover:text-red-800" title="Eliminar">
+                                                            class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300" title="Eliminar">
                                                             <svg class="w-5 h-5" fill="none" stroke="currentColor"
                                                                 viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round"
@@ -616,7 +616,7 @@
                                 </div>
                             @else
                                 {{-- Caso normal: documento único --}}
-                                <div class="flex items-center justify-between p-4 border rounded-lg {{ $item['completado'] ? 'bg-green-50 border-green-200' : 'bg-white' }}"
+                                <div class="flex items-center justify-between p-4 border rounded-lg {{ $item['completado'] ? 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700' : 'bg-white dark:bg-gray-800 dark:border-gray-600' }}"
                                     id="doc-{{ $tipo }}">
                                     <div class="flex items-center">
                                         @if ($item['completado'])
@@ -627,14 +627,14 @@
                                                     clip-rule="evenodd" />
                                             </svg>
                                         @else
-                                            <div class="w-6 h-6 border-2 border-gray-300 rounded-full mr-3"></div>
+                                            <div class="w-6 h-6 border-2 border-gray-300 dark:border-gray-500 rounded-full mr-3"></div>
                                         @endif
                                         <div>
                                             <p
-                                                class="font-medium {{ $item['completado'] ? 'text-green-800' : 'text-gray-800' }}">
+                                                class="font-medium {{ $item['completado'] ? 'text-green-800 dark:text-green-300' : 'text-gray-800 dark:text-gray-200' }}">
                                                 {{ $item['nombre'] }}</p>
                                             @if (($item['documento'] ?? null) && $item['documento']->notas)
-                                                <p class="text-sm text-gray-500">{{ $item['documento']->notas }}</p>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ $item['documento']->notas }}</p>
                                             @endif
                                         </div>
                                     </div>
@@ -642,7 +642,7 @@
                                         @if ($item['documento'] ?? false)
                                             {{-- Documento subido desde post-incorporación --}}
                                             <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $item['documento']->archivo]) }}"
-                                                target="_blank" class="text-blue-600 hover:text-blue-800"
+                                                target="_blank" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                                                 title="Ver documento">
                                                 <svg class="w-6 h-6" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
@@ -654,7 +654,7 @@
                                                 </svg>
                                             </a>
                                             <button onclick="eliminarDocumento('{{ $tipo }}')"
-                                                class="text-red-600 hover:text-red-800" title="Eliminar">
+                                                class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300" title="Eliminar">
                                                 <svg class="w-6 h-6" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -664,9 +664,9 @@
                                             </button>
                                         @elseif($item['formacion'] ?? false)
                                             {{-- Documento subido por el candidato desde formulario público --}}
-                                            <span class="text-xs text-gray-500 mr-2">Por candidato</span>
+                                            <span class="text-xs text-gray-500 dark:text-gray-400 mr-2">Por candidato</span>
                                             <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $item['formacion']->archivo]) }}"
-                                                target="_blank" class="text-blue-600 hover:text-blue-800"
+                                                target="_blank" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                                                 title="Ver documento">
                                                 <svg class="w-6 h-6" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
@@ -679,7 +679,7 @@
                                             </a>
                                             <button
                                                 onclick="eliminarArchivoFormacion({{ $item['formacion']->id }}, '{{ $item['nombre'] }}')"
-                                                class="text-red-600 hover:text-red-800" title="Eliminar documento">
+                                                class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300" title="Eliminar documento">
                                                 <svg class="w-6 h-6" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -705,12 +705,12 @@
             <!-- Columna lateral -->
             <div class="space-y-6">
                 <!-- Asignar Usuario -->
-                <div class="bg-white rounded-lg shadow-sm border p-6" x-data="userAssignment()">
-                    <h3 class="font-semibold text-gray-800 mb-4">Usuario Asignado</h3>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6" x-data="userAssignment()">
+                    <h3 class="font-semibold text-gray-800 dark:text-gray-100 mb-4">Usuario Asignado</h3>
 
                     <template x-if="selectedUser">
                         <div
-                            class="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+                            class="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-100 dark:border-blue-800">
                             <div class="flex items-center gap-3 overflow-hidden">
                                 <template x-if="selectedUser.imagen_url">
                                     <img :src="selectedUser.imagen_url"
@@ -718,7 +718,7 @@
                                 </template>
                                 <template x-if="!selectedUser.imagen_url">
                                     <div
-                                        class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 text-gray-500">
+                                        class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0 text-gray-500 dark:text-gray-400">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
                                             fill="currentColor" class="w-6 h-6">
                                             <path fill-rule="evenodd"
@@ -728,9 +728,9 @@
                                     </div>
                                 </template>
                                 <div class="min-w-0">
-                                    <p class="font-medium text-gray-900 truncate"
+                                    <p class="font-medium text-gray-900 dark:text-gray-100 truncate"
                                         x-text="selectedUser.nombre_completo"></p>
-                                    <p class="text-xs text-gray-500 truncate" x-text="selectedUser.email"></p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate" x-text="selectedUser.email"></p>
                                 </div>
                             </div>
                             <button @click="removeUser()" class="ml-2 text-red-500 hover:text-red-700 flex-shrink-0"
@@ -746,23 +746,23 @@
                     <template x-if="!selectedUser">
                         <div class="space-y-3">
                             <div class="relative">
-                                <label class="block text-sm text-gray-500 mb-1">Buscar usuario existente</label>
+                                <label class="block text-sm text-gray-500 dark:text-gray-400 mb-1">Buscar usuario existente</label>
                                 <input type="text" x-model="query" @input.debounce.300ms="search"
                                     placeholder="Nombre, DNI o email..."
-                                    class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                    class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 text-sm">
 
                                 <div x-show="suggestions.length > 0" @click.away="suggestions = []"
-                                    class="absolute z-10 w-full bg-white shadow-lg rounded-lg mt-1 border border-gray-200 max-h-60 overflow-y-auto">
+                                    class="absolute z-10 w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg mt-1 border border-gray-200 dark:border-gray-600 max-h-60 overflow-y-auto">
                                     <template x-for="user in suggestions" :key="user.id">
                                         <div @click="selectUser(user)"
-                                            class="p-2 hover:bg-gray-50 cursor-pointer flex items-center gap-2">
+                                            class="p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2">
                                             <template x-if="user.imagen_url">
                                                 <img :src="user.imagen_url"
                                                     class="w-8 h-8 rounded-full object-cover flex-shrink-0">
                                             </template>
                                             <template x-if="!user.imagen_url">
                                                 <div
-                                                    class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 text-gray-500">
+                                                    class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0 text-gray-500 dark:text-gray-400">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
                                                         fill="currentColor" class="w-5 h-5">
                                                         <path fill-rule="evenodd"
@@ -772,21 +772,21 @@
                                                 </div>
                                             </template>
                                             <div class="min-w-0">
-                                                <p class="text-sm font-medium text-gray-900 truncate"
+                                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate"
                                                     x-text="user.nombre_completo"></p>
-                                                <p class="text-xs text-gray-500" x-text="user.dni"></p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400" x-text="user.dni"></p>
                                             </div>
                                         </div>
                                     </template>
                                 </div>
-                                <p class="text-xs text-gray-400 mt-1">Vincula esta incorporación a un usuario del sistema.</p>
+                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Vincula esta incorporación a un usuario del sistema.</p>
                             </div>
 
                             <!-- Separador -->
                             <div class="flex items-center gap-2">
-                                <div class="flex-1 border-t border-gray-200"></div>
-                                <span class="text-xs text-gray-400">o</span>
-                                <div class="flex-1 border-t border-gray-200"></div>
+                                <div class="flex-1 border-t border-gray-200 dark:border-gray-600"></div>
+                                <span class="text-xs text-gray-400 dark:text-gray-500">o</span>
+                                <div class="flex-1 border-t border-gray-200 dark:border-gray-600"></div>
                             </div>
 
                             <!-- Botón crear usuario -->
@@ -797,28 +797,28 @@
                                 </svg>
                                 Crear Usuario
                             </button>
-                            <p class="text-xs text-gray-400 text-center">Crea un usuario con los datos de la incorporación o vincula uno existente por DNI.</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500 text-center">Crea un usuario con los datos de la incorporación o vincula uno existente por DNI.</p>
                         </div>
                     </template>
                 </div>
                 <!-- Info rápida -->
-                <div class="bg-white rounded-lg shadow-sm border p-6">
-                    <h3 class="font-semibold text-gray-800 mb-4">Información</h3>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
+                    <h3 class="font-semibold text-gray-800 dark:text-gray-100 mb-4">Información</h3>
                     <dl class="space-y-3 text-sm">
                         <div>
-                            <dt class="text-gray-500">Creada por</dt>
-                            <dd class="font-medium">{{ $incorporacion->creador?->nombre_completo ?? 'Sistema' }}
+                            <dt class="text-gray-500 dark:text-gray-400">Creada por</dt>
+                            <dd class="font-medium dark:text-gray-200">{{ $incorporacion->creador?->nombre_completo ?? 'Sistema' }}
                             </dd>
                         </div>
                         <div>
-                            <dt class="text-gray-500">Fecha de creación</dt>
-                            <dd class="font-medium">{{ $incorporacion->created_at?->format('d/m/Y H:i') ?? '-' }}
+                            <dt class="text-gray-500 dark:text-gray-400">Fecha de creación</dt>
+                            <dd class="font-medium dark:text-gray-200">{{ $incorporacion->created_at?->format('d/m/Y H:i') ?? '-' }}
                             </dd>
                         </div>
                         @if ($incorporacion->datos_completados_at)
                             <div>
-                                <dt class="text-gray-500">Datos completados</dt>
-                                <dd class="font-medium">
+                                <dt class="text-gray-500 dark:text-gray-400">Datos completados</dt>
+                                <dd class="font-medium dark:text-gray-200">
                                     {{ $incorporacion->datos_completados_at->format('d/m/Y H:i') }}
                                 </dd>
                             </div>
@@ -827,14 +827,14 @@
                 </div>
 
                 <!-- Historial -->
-                <div class="bg-white rounded-lg shadow-sm border p-6">
-                    <h3 class="font-semibold text-gray-800 mb-4">Historial</h3>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
+                    <h3 class="font-semibold text-gray-800 dark:text-gray-100 mb-4">Historial</h3>
                     <div class="space-y-4 max-h-96 overflow-y-auto">
                         @forelse($incorporacion->logs->sortByDesc('created_at') as $log)
-                            <div class="border-l-2 border-gray-200 pl-4 pb-4">
-                                <p class="text-sm font-medium text-gray-800">{{ $log->accion_texto }}</p>
+                            <div class="border-l-2 border-gray-200 dark:border-gray-600 pl-4 pb-4">
+                                <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ $log->accion_texto }}</p>
                                 @if ($log->descripcion)
-                                    <p class="text-sm text-gray-500">{{ $log->descripcion }}</p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ $log->descripcion }}</p>
                                 @endif
                                 <p class="text-xs text-gray-400 mt-1">
                                     {{ $log->created_at?->format('d/m/Y H:i') ?? '' }}
@@ -844,14 +844,14 @@
                                 </p>
                             </div>
                         @empty
-                            <p class="text-sm text-gray-500">Sin actividad registrada</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Sin actividad registrada</p>
                         @endforelse
                     </div>
                 </div>
 
                 <!-- Acciones peligrosas -->
-                <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <h3 class="font-semibold text-red-800 mb-2">Zona peligrosa</h3>
+                <div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg p-4">
+                    <h3 class="font-semibold text-red-800 dark:text-red-300 mb-2">Zona peligrosa</h3>
                     <form id="formEliminarIncorporacion" method="POST"
                         action="{{ route('incorporaciones.destroy', $incorporacion) }}">
                         @csrf
@@ -870,29 +870,29 @@
     <!-- Modal subir documento post-incorporación -->
     <div id="modalSubir"
         class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 class="text-lg font-semibold mb-4" id="modalTitulo">Subir documento</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 class="text-lg font-semibold mb-4 dark:text-gray-100" id="modalTitulo">Subir documento</h3>
             <form id="formSubir" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="tipo" id="modalTipo">
 
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Archivo</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Archivo</label>
                     <input type="file" name="archivo" accept=".pdf,.jpg,.jpeg,.png" required
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-700
+                        class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-700
                         file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0
-                        file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700
-                        hover:file:bg-blue-100 file:cursor-pointer
+                        file:text-sm file:font-medium file:bg-blue-50 dark:file:bg-blue-900/50 file:text-blue-700 dark:file:text-blue-300
+                        hover:file:bg-blue-100 dark:hover:file:bg-blue-800/50 file:cursor-pointer
                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                         transition-all duration-200">
-                    <p class="text-xs text-gray-500 mt-1.5">PDF, JPG o PNG. Máximo 10MB.</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">PDF, JPG o PNG. Máximo 10MB.</p>
                 </div>
 
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Notas (opcional)</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notas (opcional)</label>
                     <textarea name="notas" rows="2"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-700
-                        placeholder-gray-400 resize-none
+                        class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-700
+                        placeholder-gray-400 dark:placeholder-gray-500 resize-none
                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                         transition-all duration-200"
                         placeholder="Observaciones sobre el documento..."></textarea>
@@ -900,7 +900,7 @@
 
                 <div class="flex justify-end gap-3">
                     <button type="button" onclick="cerrarModal()"
-                        class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                        class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
                         Cancelar
                     </button>
                     <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
@@ -914,28 +914,28 @@
     <!-- Modal resubir documento candidato (DNI, certificado bancario) -->
     <div id="modalResubir"
         class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 class="text-lg font-semibold mb-4" id="modalResubirTitulo">Resubir documento</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 class="text-lg font-semibold mb-4 dark:text-gray-100" id="modalResubirTitulo">Resubir documento</h3>
             <form id="formResubir" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="campo" id="modalResubirCampo">
 
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Nuevo archivo</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nuevo archivo</label>
                     <input type="file" name="archivo" accept=".pdf,.jpg,.jpeg,.png" required
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-700
+                        class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-700
                         file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0
-                        file:text-sm file:font-medium file:bg-amber-50 file:text-amber-700
-                        hover:file:bg-amber-100 file:cursor-pointer
+                        file:text-sm file:font-medium file:bg-amber-50 dark:file:bg-amber-900/50 file:text-amber-700 dark:file:text-amber-300
+                        hover:file:bg-amber-100 dark:hover:file:bg-amber-800/50 file:cursor-pointer
                         focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500
                         transition-all duration-200">
-                    <p class="text-xs text-gray-500 mt-1.5">PDF, JPG o PNG. Máximo 5MB. El archivo anterior será
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">PDF, JPG o PNG. Máximo 5MB. El archivo anterior será
                         reemplazado.</p>
                 </div>
 
                 <div class="flex justify-end gap-3">
                     <button type="button" onclick="cerrarModalResubir()"
-                        class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                        class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
                         Cancelar
                     </button>
                     <button type="submit" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg">

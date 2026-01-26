@@ -15,6 +15,7 @@ use App\Services\Asistente\AccionService;
 use App\Services\Asistente\DiagnosticoService;
 use App\Services\Asistente\AgentService;
 use App\Services\Asistente\InterpreteInteligente;
+use App\Services\Asistente\ContextService;
 use App\Services\Asistente as Asistente;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -30,6 +31,7 @@ class AsistenteVirtualService
     protected ?AccionService $accionService = null;
     protected ?DiagnosticoService $diagnosticoService = null;
     protected ?AgentService $agentService = null;
+    protected ?ContextService $contextService = null;
 
     public function __construct(
         ?InformeService $informeService = null,
@@ -37,7 +39,8 @@ class AsistenteVirtualService
         ?InteligenciaService $inteligenciaService = null,
         ?AccionService $accionService = null,
         ?DiagnosticoService $diagnosticoService = null,
-        ?AgentService $agentService = null
+        ?AgentService $agentService = null,
+        ?ContextService $contextService = null
     ) {
         $this->informeService = $informeService;
         $this->pdfService = $pdfService;
@@ -45,6 +48,7 @@ class AsistenteVirtualService
         $this->accionService = $accionService;
         $this->diagnosticoService = $diagnosticoService;
         $this->agentService = $agentService;
+        $this->contextService = $contextService ?? new ContextService();
     }
 
     /**
@@ -109,6 +113,9 @@ class AsistenteVirtualService
         // Actualizar actividad de la conversación
         $conversacion->actualizarActividad();
         $conversacion->generarTituloAutomatico();
+
+        // Detectar y registrar entidades mencionadas (planillas, máquinas, clientes, etc.)
+        $this->procesarEntidadesMensaje($conversacion, $contenido);
 
         // Detectar comandos rápidos (empiezan con /)
         if (str_starts_with(trim($contenido), '/')) {
@@ -1308,15 +1315,39 @@ PROMPT;
     }
 
     /**
-     * Obtiene el historial de la conversación
+     * Obtiene el historial de la conversación optimizado
+     * Usa ContextService para resumir conversaciones largas y reducir tokens
      */
     private function obtenerHistorialConversacion(ChatConversacion $conversacion): array
     {
-        return $conversacion->mensajes()
-            ->select('role', 'contenido')
-            ->orderBy('created_at', 'asc')
-            ->get()
-            ->toArray();
+        // Usar contexto optimizado si hay muchos mensajes
+        $contexto = $this->contextService->getContextoOptimizado($conversacion);
+
+        // Log de ahorro de tokens si se usó resumen
+        if ($contexto['resumen_usado'] ?? false) {
+            Log::channel('asistente-virtual')->debug('Contexto optimizado', [
+                'conversacion_id' => $conversacion->id,
+                'tokens_ahorrados' => $contexto['tokens_ahorrados'] ?? 0,
+            ]);
+        }
+
+        return $contexto['historial'];
+    }
+
+    /**
+     * Obtiene el contexto completo incluyendo entidades y memoria
+     */
+    private function obtenerContextoCompleto(ChatConversacion $conversacion): array
+    {
+        return $this->contextService->getContextoOptimizado($conversacion);
+    }
+
+    /**
+     * Detecta y registra entidades mencionadas en el mensaje
+     */
+    private function procesarEntidadesMensaje(ChatConversacion $conversacion, string $mensaje): array
+    {
+        return $this->contextService->detectarEntidades($conversacion->id, $mensaje);
     }
 
     /**

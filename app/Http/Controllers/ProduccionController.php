@@ -990,15 +990,19 @@ class ProduccionController extends Controller
                 }
             }
 
-            return $fechaBase->toIso8601String();
+            // Normalizar al inicio del día y usar formato sin timezone
+            // para que JavaScript lo interprete como hora local
+            $fechaBase = $fechaBase->startOfDay();
+
+            return $fechaBase->format('Y-m-d\TH:i:s');
         } catch (\Exception $e) {
             Log::error('Error en calcularInitialDate', [
                 'error' => $e->getMessage()
             ]);
         }
 
-        // Fallback: fecha actual en formato ISO
-        return now()->toIso8601String();
+        // Fallback: fecha actual en formato sin timezone
+        return now()->startOfDay()->format('Y-m-d\TH:i:s');
     }
     /**
      * 🔧 Obtiene la fecha real de finalización según el tipo de máquina
@@ -1960,6 +1964,10 @@ class ProduccionController extends Controller
                             } else {
                                 // Pendiente: usar now()
                                 $fechaInicio = Carbon::now();
+                                Log::debug('EVT: Planilla pendiente primera en cola', [
+                                    'planillaId' => $planillaId,
+                                    'fechaInicioOriginal' => $fechaInicio->toIso8601String(),
+                                ]);
                             }
                         } else {
                             // No es primera: usar fin del evento anterior
@@ -1970,6 +1978,19 @@ class ProduccionController extends Controller
                         $esPrimeraEnCola = false;
 
                         $tramos = $this->finProgramadoService->generarTramosLaborales($fechaInicio, $duracionSegundos);
+
+                        // Debug: verificar si el tramo fue ajustado al siguiente turno
+                        if (!empty($tramos)) {
+                            $primerTramo = $tramos[0];
+                            $tramoStart = $primerTramo['start'] instanceof Carbon ? $primerTramo['start'] : Carbon::parse($primerTramo['start']);
+                            if ($tramoStart->gt($fechaInicio)) {
+                                Log::debug('EVT: Inicio ajustado al siguiente turno', [
+                                    'planillaId' => $planillaId,
+                                    'fechaInicioOriginal' => $fechaInicio->toIso8601String(),
+                                    'tramoStartAjustado' => $tramoStart->toIso8601String(),
+                                ]);
+                            }
+                        }
 
                         if (empty($tramos)) {
                             Log::warning('EVT H1: sin tramos', ['planillaId' => $planillaId, 'maquinaId' => $maquinaId, 'ordenKey' => $ordenKey]);
@@ -2011,7 +2032,7 @@ class ProduccionController extends Controller
                         // consideramos que hay un corte (turno desactivado, fin de semana, festivo)
                         $gruposTramos = [];
                         $grupoActual = [];
-                        $maxGapHoras = 2; // Gap máximo permitido entre tramos consecutivos (reducido de 12 a 2 para detectar turnos desactivados)
+                        $maxGapHoras = 2; // Gap máximo: 2 horas para detectar turnos desactivados
 
                         foreach ($tramos as $tramo) {
                             $tramoStart = $tramo['start'] instanceof Carbon ? $tramo['start'] : Carbon::parse($tramo['start']);

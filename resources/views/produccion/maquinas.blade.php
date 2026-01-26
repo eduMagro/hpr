@@ -2257,40 +2257,9 @@
                         }
                     },
 
-                    // Transformar fechas de eventos para vista de horas extendidas
+                    // Las fechas de eventos ya vienen correctas del backend en ISO8601
+                    // No transformar para evitar problemas de timezone
                     eventDataTransform: function(eventData) {
-                        // Usar initialDate del backend (ya tiene offset y hora del turno aplicados)
-                        const initialDateStr = "{{ $initialDate ?: now()->format('Y-m-d H:i:s') }}";
-                        if (!initialDateStr) return eventData;
-
-                        const initialDate = new Date(initialDateStr);
-                        if (isNaN(initialDate.getTime())) return eventData;
-
-                        // Parsear fechas del evento
-                        const startDate = new Date(eventData.start);
-                        const endDate = new Date(eventData.end);
-
-                        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return eventData;
-
-                        // Calcular horas desde el inicio del calendario
-                        const msStart = startDate.getTime() - initialDate.getTime();
-                        const msEnd = endDate.getTime() - initialDate.getTime();
-                        const horasStart = msStart / (1000 * 60 * 60);
-                        const horasEnd = msEnd / (1000 * 60 * 60);
-                        const horasMaximas = {{ $fechaMaximaCalendario['horas'] ?? 168 }};
-
-                        // Solo procesar eventos dentro del rango dinámico
-                        if (horasStart >= 0 && horasStart < horasMaximas) {
-                            const nuevoStart = new Date(initialDate);
-                            nuevoStart.setTime(initialDate.getTime() + msStart);
-
-                            const nuevoEnd = new Date(initialDate);
-                            nuevoEnd.setTime(initialDate.getTime() + msEnd);
-
-                            eventData.start = nuevoStart;
-                            eventData.end = nuevoEnd;
-                        }
-
                         return eventData;
                     },
 
@@ -3235,13 +3204,45 @@
                     calendarioContainer.addEventListener('mousemove', handleTooltipMove, true);
                     calendarioContainer.addEventListener('mouseleave', handleTooltipLeave, true);
                 }
+                // Hacer visible el contenedor ANTES de renderizar
+                const contenedor = document.getElementById('contenedor-calendario');
+                if (contenedor) {
+                    contenedor.style.opacity = '1';
+                    contenedor.style.transform = 'translateY(0)';
+                }
+
                 calendar.render();
                 window.calendar = calendar;
 
-                // Activar animación de carga fluida
+                // Fix para problema de posicionamiento: simular resize como al abrir F12
+                function forzarRecalculoPosiciones() {
+                    const calendario = document.getElementById('calendario');
+                    if (!calendario || !window.calendar) return;
+
+                    // Guardar ancho original
+                    const anchoOriginal = calendario.style.width;
+
+                    // Reducir ancho temporalmente (simula abrir F12)
+                    calendario.style.width = (calendario.offsetWidth - 1) + 'px';
+                    window.calendar.updateSize();
+
+                    // Restaurar ancho original
+                    requestAnimationFrame(() => {
+                        calendario.style.width = anchoOriginal || '';
+                        window.calendar.updateSize();
+                    });
+                }
+
+                // Ejecutar después de cargar eventos
+                calendar.on('eventsSet', function() {
+                    setTimeout(forzarRecalculoPosiciones, 100);
+                    setTimeout(forzarRecalculoPosiciones, 500);
+                });
+
+                // Activar clase loaded
                 setTimeout(() => {
-                    const contenedor = document.getElementById('contenedor-calendario');
                     if (contenedor) contenedor.classList.add('loaded');
+                    forzarRecalculoPosiciones();
                 }, 100);
 
                 // 🎯 Listener para calcular posición cuando se arrastra elemento del panel sobre el calendario

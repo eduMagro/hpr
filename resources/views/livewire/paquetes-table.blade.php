@@ -3,104 +3,70 @@
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
         <!-- Tabla con filtros Livewire -->
-        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
-            <table class="w-full min-w-[1600px] border border-gray-300 rounded-lg">
-                <thead class="bg-blue-500 text-white text-10">
-                    <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('id')">
-                            ID @if ($sort === 'id')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('codigo')">
-                            Código @if ($sort === 'codigo')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('planilla_id')">
-                            Planilla @if ($sort === 'planilla_id')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border">Cód. Obra</th>
-                        <th class="p-2 border">Obra</th>
-                        <th class="p-2 border">Cód. Cliente</th>
-                        <th class="p-2 border">Cliente</th>
-                        <th class="p-2 border">Nave</th>
-                        <th class="p-2 border">Ubicación</th>
-                        <th class="p-2 border">Localización</th>
-                        <th class="p-2 border">Usuario</th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('estado')">
-                            Estado @if ($sort === 'estado')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border">Elementos</th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('peso')">
-                            Peso (Kg) @if ($sort === 'peso')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('created_at')">
-                            Fecha Creación @if ($sort === 'created_at')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border">Fecha Límite Reparto</th>
-                        <th class="p-2 border">Acciones</th>
+        <div class="w-full overflow-x-auto bg-white dark:bg-gray-900 shadow-lg rounded-lg">
+            <table class="table-global w-full min-w-[1600px]">
+                <thead>
+                    <tr class="text-center">
+                        <x-tabla.encabezado-ordenable :sortActual="$sort" :orderActual="$order" campo="id" texto="ID" />
+                        <x-tabla.encabezado-ordenable :sortActual="$sort" :orderActual="$order" campo="codigo" texto="Código" />
+                        <x-tabla.encabezado-ordenable :sortActual="$sort" :orderActual="$order" campo="planilla_id" texto="Planilla" />
+                        <th>Cód. Obra</th>
+                        <th>Obra</th>
+                        <th>Cód. Cliente</th>
+                        <th>Cliente</th>
+                        <th>Nave</th>
+                        <th>Ubicación</th>
+                        <th>Localización</th>
+                        <th>Usuario</th>
+                        <x-tabla.encabezado-ordenable :sortActual="$sort" :orderActual="$order" campo="estado" texto="Estado" />
+                        <th>Elementos</th>
+                        <x-tabla.encabezado-ordenable :sortActual="$sort" :orderActual="$order" campo="peso" texto="Peso (Kg)" />
+                        <x-tabla.encabezado-ordenable :sortActual="$sort" :orderActual="$order" campo="created_at" texto="Fecha Creación" />
+                        <th>Fecha Límite Reparto</th>
+                        <th>Acciones</th>
                     </tr>
 
-                    <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border">
+                    <x-tabla.filtro-row>
+                        <th>
                             <input type="text" wire:model.live.debounce.300ms="paquete_id"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="ID...">
+                                class="inline-edit-input" placeholder="ID...">
                         </th>
-                        <th class="p-2 border">
+                        <th>
                             <input type="text" wire:model.live.debounce.300ms="codigo"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Código...">
+                                class="inline-edit-input" placeholder="Código...">
                         </th>
-                        <th class="p-2 border">
+                        <th>
                             <input type="text" wire:model.live.debounce.300ms="planilla"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Planilla...">
+                                class="inline-edit-input" placeholder="Planilla...">
                         </th>
-                        <th class="p-2 border">
+                        <th>
                             <input type="text" wire:model.live.debounce.300ms="cod_obra"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Cód. Obra...">
+                                class="inline-edit-input" placeholder="Cód. Obra...">
                         </th>
-                        <th class="p-2 border">
+                        <th>
                             <input type="text" wire:model.live.debounce.300ms="nom_obra"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Obra...">
+                                class="inline-edit-input" placeholder="Obra...">
                         </th>
-                        <th class="p-2 border">
+                        <th>
                             <input type="text" wire:model.live.debounce.300ms="codigo_cliente"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Cód. Cliente...">
+                                class="inline-edit-input" placeholder="Cód. Cliente...">
                         </th>
-                        <th class="p-2 border">
+                        <th>
                             <input type="text" wire:model.live.debounce.300ms="cliente"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Cliente...">
+                                class="inline-edit-input" placeholder="Cliente...">
                         </th>
-                        <th class="p-2 border">
+                        <th>
                             <input type="text" wire:model.live.debounce.300ms="nave"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Nave...">
+                                class="inline-edit-input" placeholder="Nave...">
                         </th>
-                        <th class="p-2 border">
+                        <th>
                             <input type="text" wire:model.live.debounce.300ms="ubicacion"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Ubicación...">
+                                class="inline-edit-input" placeholder="Ubicación...">
                         </th>
-                        <th class="p-2 border"></th> {{-- Localización (sin filtro) --}}
-                        <th class="p-2 border"></th> {{-- Usuario (sin filtro) --}}
-                        <th class="p-2 border">
-                            <select wire:model.live="estado"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                        <th></th> {{-- Localización (sin filtro) --}}
+                        <th></th> {{-- Usuario (sin filtro) --}}
+                        <th>
+                            <select wire:model.live="estado" class="inline-edit-select">
                                 <option value="">Todos</option>
                                 <option value="pendiente">Pendiente</option>
                                 <option value="asignado_a_salida">Asignado</option>
@@ -108,21 +74,20 @@
                                 <option value="enviado">Enviado</option>
                             </select>
                         </th>
-                        <th class="p-2 border"></th> {{-- Elementos --}}
-                        <th class="p-2 border"></th> {{-- Peso --}}
-                        <th class="p-2 border">
+                        <th></th> {{-- Elementos --}}
+                        <th></th> {{-- Peso --}}
+                        <th>
                             <input type="date" wire:model.live.debounce.300ms="created_at"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="inline-edit-input">
                         </th>
-                        <th class="p-2 border">
+                        <th>
                             <input type="date" wire:model.live.debounce.300ms="fecha_limite"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="inline-edit-input">
                         </th>
-                        <th class="p-2 border text-center align-middle">
+                        <th class="text-center align-middle">
                             <div class="flex justify-center gap-2 items-center h-full">
-                                {{-- ♻️ Botón reset --}}
                                 <button wire:click="limpiarFiltros"
-                                    class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
+                                    class="table-btn bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white"
                                     title="Restablecer filtros">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -132,18 +97,17 @@
                                 </button>
                             </div>
                         </th>
-                    </tr>
+                    </x-tabla.filtro-row>
                 </thead>
 
-                <tbody class="text-gray-700 text-sm">
+                <tbody>
                     @forelse ($paquetes as $paquete)
-                        <tr wire:key="paquete-{{ $paquete->id }}"
-                            class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 transition-colors text-xs uppercase">
+                        <x-tabla.row wire:key="paquete-{{ $paquete->id }}">
                             <td class="p-2 text-center border">{{ $paquete->id }}</td>
                             <td class="p-2 text-center border">{{ $paquete->codigo }}</td>
                             <td class="p-2 text-center border">
                                 <a href="{{ route('planillas.index', ['planilla_id' => $paquete->planilla->id]) }}"
-                                    wire:navigate class="text-blue-500 hover:underline">
+                                    wire:navigate class="text-blue-600 dark:text-blue-400 hover:underline">
                                     {{ $paquete->planilla->codigo_limpio }}
                                 </a>
                             </td>
@@ -155,11 +119,11 @@
                             <td class="p-2 text-center border">{{ $paquete->ubicacion->nombre ?? '-' }}</td>
                             <td class="p-2 text-center border">
                                 @if ($paquete->localizacionPaquete)
-                                    <span class="text-xs text-green-600 font-medium" title="X1:{{ $paquete->localizacionPaquete->x1 }} Y1:{{ $paquete->localizacionPaquete->y1 }} X2:{{ $paquete->localizacionPaquete->x2 }} Y2:{{ $paquete->localizacionPaquete->y2 }}">
+                                    <span class="text-xs text-green-600 dark:text-green-400 font-medium" title="X1:{{ $paquete->localizacionPaquete->x1 }} Y1:{{ $paquete->localizacionPaquete->y1 }} X2:{{ $paquete->localizacionPaquete->x2 }} Y2:{{ $paquete->localizacionPaquete->y2 }}">
                                         ({{ $paquete->localizacionPaquete->x1 }},{{ $paquete->localizacionPaquete->y1 }}) - ({{ $paquete->localizacionPaquete->x2 }},{{ $paquete->localizacionPaquete->y2 }})
                                     </span>
                                 @else
-                                    <span class="text-xs text-gray-400">Sin asignar</span>
+                                    <span class="text-xs text-gray-400 dark:text-gray-500">Sin asignar</span>
                                 @endif
                             </td>
                             <td class="p-2 text-center border">{{ $paquete->user->name ?? '-' }}</td>
@@ -167,32 +131,32 @@
                                 @php
                                     $estadoBadge = match ($paquete->estado) {
                                         'pendiente' => [
-                                            'bg' => 'bg-yellow-100',
-                                            'text' => 'text-yellow-800',
+                                            'bg' => 'bg-yellow-100 dark:bg-yellow-900/50',
+                                            'text' => 'text-yellow-800 dark:text-yellow-300',
                                             'label' => 'Pendiente',
                                             'icon' => '⏳',
                                         ],
                                         'asignado_a_salida' => [
-                                            'bg' => 'bg-blue-100',
-                                            'text' => 'text-blue-800',
+                                            'bg' => 'bg-blue-100 dark:bg-blue-900/50',
+                                            'text' => 'text-blue-800 dark:text-blue-300',
                                             'label' => 'Asignado',
                                             'icon' => '📦',
                                         ],
                                         'en_reparto' => [
-                                            'bg' => 'bg-purple-100',
-                                            'text' => 'text-purple-800',
+                                            'bg' => 'bg-purple-100 dark:bg-purple-900/50',
+                                            'text' => 'text-purple-800 dark:text-purple-300',
                                             'label' => 'En Reparto',
                                             'icon' => '🚚',
                                         ],
                                         'enviado' => [
-                                            'bg' => 'bg-green-100',
-                                            'text' => 'text-green-800',
+                                            'bg' => 'bg-green-100 dark:bg-green-900/50',
+                                            'text' => 'text-green-800 dark:text-green-300',
                                             'label' => 'Enviado',
                                             'icon' => '✅',
                                         ],
                                         default => [
-                                            'bg' => 'bg-gray-100',
-                                            'text' => 'text-gray-800',
+                                            'bg' => 'bg-gray-100 dark:bg-gray-700',
+                                            'text' => 'text-gray-800 dark:text-gray-300',
                                             'label' => ucfirst($paquete->estado ?? '-'),
                                             'icon' => '❓',
                                         ],
@@ -206,7 +170,7 @@
                             <td class="p-2 text-center border">
                                 @if ($paquete->etiquetas->isNotEmpty())
                                     @foreach ($paquete->etiquetas as $etiqueta)
-                                        <p class="font-semibold text-blue-700">
+                                        <p class="font-semibold text-blue-700 dark:text-blue-400">
                                             🏷️ <a href="{{ route('etiquetas.index', ['id' => $etiqueta->id]) }}"
                                                 wire:navigate class="hover:underline">
                                                 {{ $etiqueta->nombre }}{{ $etiqueta->etiqueta_sub_id }}
@@ -214,11 +178,11 @@
                                             {{ $etiqueta->peso_kg }}
                                         </p>
                                         @if ($etiqueta->elementos->isNotEmpty())
-                                            <ul class="ml-2 text-xs text-gray-700">
+                                            <ul class="ml-2 text-xs text-gray-700 dark:text-gray-300">
                                                 @foreach ($etiqueta->elementos as $elemento)
                                                     <li>
                                                         <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
-                                                            wire:navigate class="text-green-600 hover:underline">
+                                                            wire:navigate class="text-green-600 dark:text-green-400 hover:underline">
                                                             {{ $elemento->codigo }} – {{ $elemento->figura }}
                                                             – {{ $elemento->peso_kg }}
                                                         </a>
@@ -226,12 +190,12 @@
                                                 @endforeach
                                             </ul>
                                         @else
-                                            <p class="ml-2 text-gray-500 text-xs">Sin elementos registrados</p>
+                                            <p class="ml-2 text-gray-500 dark:text-gray-400 text-xs">Sin elementos registrados</p>
                                         @endif
-                                        <hr>
+                                        <hr class="dark:border-gray-700">
                                     @endforeach
                                 @else
-                                    <span class="text-gray-500">Vacío</span>
+                                    <span class="text-gray-500 dark:text-gray-400">Vacío</span>
                                 @endif
                             </td>
                             <td class="p-2 text-center border">{{ $paquete->peso }} Kg</td>
@@ -243,7 +207,7 @@
                                 <div class="flex flex-row justify-center items-center gap-3">
                                     {{-- Botón QR --}}
                                     <button
-                                        class="btn-qr-paquete w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                        class="btn-qr-paquete table-btn bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800"
                                         data-codigo="{{ $paquete->codigo }}"
                                         data-planilla="{{ $paquete->planilla->codigo_limpio ?? '' }}"
                                         data-cliente="{{ $paquete->planilla->cliente->empresa ?? '' }}"
@@ -263,7 +227,7 @@
 
                                     {{-- Botón Ver --}}
                                     <a href="#"
-                                        class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center abrir-modal-paquete"
+                                        class="table-btn bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800 abrir-modal-paquete"
                                         data-paquete-id="{{ $paquete->id }}" title="Ver dibujo del paquete">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -277,7 +241,7 @@
                                     {{-- Botón Ver ubicación en mapa --}}
                                     @if ($paquete->nave_id)
                                         <button type="button"
-                                            class="w-6 h-6 bg-purple-100 text-purple-600 rounded hover:bg-purple-200 flex items-center justify-center btn-ver-mapa-paquete"
+                                            class="table-btn bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-800 btn-ver-mapa-paquete"
                                             data-nave-id="{{ $paquete->nave_id }}"
                                             data-paquete-codigo="{{ $paquete->codigo }}"
                                             data-paquete-id="{{ $paquete->id }}"
@@ -294,10 +258,10 @@
                                     <x-tabla.boton-eliminar :action="route('paquetes.destroy', $paquete->id)" />
                                 </div>
                             </td>
-                        </tr>
+                        </x-tabla.row>
                     @empty
                         <tr>
-                            <td colspan="17" class="text-center py-4 text-gray-500">No hay paquetes registrados</td>
+                            <td colspan="17" class="text-center py-4 text-gray-500 dark:text-gray-400">No hay paquetes registrados</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -312,13 +276,13 @@
     <div id="modal-dibujo" class="hidden fixed inset-0 flex justify-center items-center p-4 pointer-events-none"
         wire:ignore>
         <div
-            class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-[800px] md:w-[900px] lg:w-[1000px] max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative pointer-events-auto border border-gray-300">
-            <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">✖</button>
+            class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg w-full sm:w-[800px] md:w-[900px] lg:w-[1000px] max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative pointer-events-auto border border-gray-300 dark:border-gray-600">
+            <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 rounded p-1">✖</button>
 
-            <h2 class="text-xl font-semibold mb-4 text-center">Elementos del paquete</h2>
+            <h2 class="text-xl font-semibold mb-4 text-center text-gray-800 dark:text-gray-200">Elementos del paquete</h2>
 
             <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh;">
-                <div id="canvas-dibujo" class="border max-w-full h-auto"></div>
+                <div id="canvas-dibujo" class="border dark:border-gray-600 max-w-full h-auto"></div>
             </div>
         </div>
     </div>
@@ -332,9 +296,9 @@
     <div id="modal-mapa-paquete" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4 bg-black/50"
         wire:ignore>
         <div
-            class="bg-white rounded-lg w-full max-w-[95vw] lg:max-w-[1200px] max-h-[90vh] flex flex-col shadow-2xl relative overflow-hidden">
+            class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-[95vw] lg:max-w-[1200px] max-h-[90vh] flex flex-col shadow-2xl relative overflow-hidden">
             {{-- Header del modal --}}
-            <div class="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white">
+            <div class="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 dark:from-purple-700 dark:to-purple-800 text-white">
                 <div>
                     <h2 class="text-lg font-bold">Ubicación del paquete</h2>
                     <p id="modal-mapa-paquete-info" class="text-sm text-purple-100"></p>
@@ -349,7 +313,7 @@
             </div>
 
             {{-- Contenedor del mapa con componente --}}
-            <div id="modal-mapa-container" class="flex-1 min-h-0 p-2 relative overflow-hidden" style="height: 70vh; min-height: 400px;">
+            <div id="modal-mapa-container" class="flex-1 min-h-0 p-2 relative overflow-hidden dark:bg-gray-900" style="height: 70vh; min-height: 400px;">
                 <x-mapa-simple :nave-id="1" :modo-edicion="false" class="h-full w-full" />
             </div>
         </div>

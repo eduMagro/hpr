@@ -11,10 +11,10 @@
         const obrasHierrosPacoReyes = @json($obrasHierrosPacoReyes);
     </script>
 
-    <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg mt-4">
-        <table class="w-full border border-gray-300 rounded-lg">
-            <thead class="bg-blue-500 text-white">
-                <tr class="text-center text-xs uppercase">
+    <div class="w-full max-w-full overflow-x-auto bg-white dark:bg-gray-900 shadow-lg rounded-lg mt-4">
+        <table class="table-global w-full min-w-[1400px]">
+            <thead>
+                <tr class="text-center">
                     <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
                     <x-tabla.encabezado-ordenable campo="nombre_completo" :sortActual="$sort" :orderActual="$order" texto="Nombre" />
                     <x-tabla.encabezado-ordenable campo="nombre_completo" :sortActual="$sort" :orderActual="$order" texto="Primer Apellido" />
@@ -34,92 +34,77 @@
                 </tr>
 
                 {{-- Filtros --}}
-                <tr class="text-center text-xs uppercase">
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="user_id" placeholder="ID"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                <x-tabla.filtro-row>
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="user_id" placeholder="ID">
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live="filtro_name" placeholder="Nombre" autocomplete="off"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                    <th>
+                        <input type="text" wire:model.live="filtro_name" placeholder="Nombre" autocomplete="off">
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live="filtro_primer_apellido" placeholder="Apellido 1" autocomplete="off"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                    <th>
+                        <input type="text" wire:model.live="filtro_primer_apellido" placeholder="Apellido 1" autocomplete="off">
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live="filtro_segundo_apellido" placeholder="Apellido 2" autocomplete="off"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                    <th>
+                        <input type="text" wire:model.live="filtro_segundo_apellido" placeholder="Apellido 2" autocomplete="off">
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="email" placeholder="Email"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="email" placeholder="Email">
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="movil_personal" placeholder="Móvil"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="movil_personal" placeholder="Móvil">
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="movil_empresa" placeholder="Móvil Emp."
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="movil_empresa" placeholder="Móvil Emp.">
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="numero_corto" placeholder="Nº Corp."
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="numero_corto" placeholder="Nº Corp.">
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live.debounce.300ms="dni" placeholder="DNI"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                    <th>
+                        <input type="text" wire:model.live.debounce.300ms="dni" placeholder="DNI">
                     </th>
-                    <th class="p-1 border">
-                        <select wire:model.live="empresa_id"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <select wire:model.live="empresa_id">
                             <option value="">Todas</option>
                             @foreach($empresas as $empresa)
                             <option value="{{ $empresa->id }}">{{ $empresa->nombre }}</option>
                             @endforeach
                         </select>
                     </th>
-                    <th class="p-1 border">
-                        <select wire:model.live="rol"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <select wire:model.live="rol">
                             <option value="">Todos</option>
                             @foreach($roles as $r)
                             <option value="{{ $r }}">{{ ucfirst($r) }}</option>
                             @endforeach
                         </select>
                     </th>
-                    <th class="p-1 border">
-                        <select wire:model.live="categoria_id"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <select wire:model.live="categoria_id">
                             <option value="">Todas</option>
                             @foreach($categorias as $categoria)
                             <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
                             @endforeach
                         </select>
                     </th>
-                    <th class="p-1 border">
-                        <select wire:model.live="maquina_id"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <select wire:model.live="maquina_id">
                             <option value="">Todas</option>
                             @foreach($maquinas as $maquina)
                             <option value="{{ $maquina->id }}">{{ $maquina->nombre }}</option>
                             @endforeach
                         </select>
                     </th>
-                    <th class="p-1 border">
-                        <select wire:model.live="estado"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                    <th>
+                        <select wire:model.live="estado">
                             <option value="">Todos</option>
                             <option value="activo">Activo</option>
                             <option value="inactivo">Inactivo</option>
                         </select>
                     </th>
-                    <th class="p-1 border"></th>
-
-                    <th class="p-1 border text-center align-middle">
+                    <th></th>
+                    <th class="text-center align-middle">
                         <div class="flex justify-center gap-2 items-center h-full">
-                            {{-- ♻️ Botón reset --}}
+                            {{-- Botón reset --}}
                             <button type="button" wire:click="limpiarFiltros"
                                 class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
                                 title="Restablecer filtros">
@@ -130,7 +115,7 @@
                                 </svg>
                             </button>
 
-                            {{-- 📤 Botón exportar Excel --}}
+                            {{-- Botón exportar Excel --}}
                             <a href="{{ route('users.verExportar', request()->query()) }}" title="Descarga los registros en Excel"
                                 class="bg-green-600 hover:bg-green-700 text-white rounded text-xs flex items-center justify-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="h-6 w-8">
@@ -144,17 +129,18 @@
                             </a>
                         </div>
                     </th>
-                </tr>
+                </x-tabla.filtro-row>
             </thead>
 
-            <tbody class="text-gray-700 text-sm">
+            <tbody class="text-gray-700 dark:text-gray-300">
                 @forelse ($registrosUsuarios as $user)
-                <tr tabindex="0"
+                <x-tabla.row
+                    tabindex="0"
                     wire:key="user-{{ $user->id }}"
                     x-data="{
                         id: {{ $user->id }},
-                        usuario: @js($user),
-                        original: JSON.parse(JSON.stringify(@js($user))),
+                        usuario: {{ Js::from($user) }},
+                        original: JSON.parse(JSON.stringify({{ Js::from($user) }})),
                         get editando() { return editandoUserId === this.id },
                         abrirEdicion() {
                             editandoUserId = this.id;
@@ -177,11 +163,9 @@
                         }
                     }"
                     @keydown.enter.stop="if(editando) { guardarCambios(usuario); cerrarEdicion(); }"
-                    :class="{
-                        'bg-yellow-100': editando,
-                        'hover:bg-blue-50': !editando
-                    }"
-                    class="border-b odd:bg-gray-100 even:bg-gray-50 cursor-pointer text-xs uppercase transition-colors">
+                    @keydown.escape.stop="if(editando) { cancelarEdicion(); }"
+                    x-bind:class="{ 'editing': editando }"
+                    class="uppercase">
 
                     <td class="px-2 py-3 text-center border">{{ $user->id }}</td>
 
@@ -277,9 +261,9 @@
 
                     <td class="px-2 py-3 text-center border">
                         @if ($user->isOnline())
-                        <span class="text-green-600">En línea</span>
+                        <span class="text-green-600 dark:text-green-400">En línea</span>
                         @else
-                        <span class="text-gray-500">Desconectado</span>
+                        <span class="text-gray-500 dark:text-gray-400">Desconectado</span>
                         @endif
                     </td>
 
@@ -292,19 +276,19 @@
                             <input type="hidden" name="obra_id" id="obra_id_input_{{ $user->id }}">
 
                             <button type="button"
-                                class="w-full bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded"
+                                class="w-full bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500 text-white text-xs px-2 py-1 rounded"
                                 onclick="confirmarGenerarTurnos({{ $user->id }}, obrasHierrosPacoReyes)">
                                 Turnos
                             </button>
                         </form>
                     </td>
 
-                    <td class="px-1 py-2 border text-xs font-bold">
+                    <td class="td-actions">
                         <div class="flex items-center space-x-2 justify-center">
                             <!-- Mostrar solo en modo edición -->
                             <button x-show="editando" style="display: none;"
                                 @click="guardarCambios(usuario); cerrarEdicion()"
-                                class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                class="table-btn bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800"
                                 title="Guardar cambios">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                     viewBox="0 0 24 24" stroke="currentColor">
@@ -314,7 +298,7 @@
                             </button>
                             <button x-show="editando" style="display: none;"
                                 @click="cancelarEdicion()"
-                                class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
+                                class="table-btn bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800"
                                 title="Cancelar edición">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                     viewBox="0 0 24 24" stroke="currentColor">
@@ -327,7 +311,7 @@
                             <template x-if="!editando">
                                 <div class="flex items-center space-x-2">
                                     <button @click="abrirEdicion()"
-                                        class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
+                                        class="table-btn bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800"
                                         title="Editar">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                             fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -338,7 +322,7 @@
                                     </button>
                                     <x-tabla.boton-ver :href="route('users.show', $user->id)" target="_self" rel="noopener" />
                                     <a href="{{ route('users.edit', $user->id) }}" wire:navigate title="Configuración"
-                                        class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center">
+                                        class="table-btn bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-800">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                             viewBox="0 0 24 24" fill="currentColor">
                                             <path fill-rule="evenodd"
@@ -350,11 +334,11 @@
                             </template>
                         </div>
                     </td>
-                </tr>
+                </x-tabla.row>
                 @empty
-                <tr>
-                    <td colspan="17" class="text-center py-4 text-gray-500">No hay usuarios disponibles.</td>
-                </tr>
+                <x-tabla.row :clickable="false">
+                    <td colspan="17" class="text-center py-4 text-gray-500 dark:text-gray-400">No hay usuarios disponibles.</td>
+                </x-tabla.row>
                 @endforelse
             </tbody>
         </table>

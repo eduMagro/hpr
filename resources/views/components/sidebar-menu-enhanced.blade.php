@@ -33,7 +33,7 @@
     }
 </script>
 
-@if(auth()->user()->esOficina())
+@if(auth()->user()?->esOficina())
 <div x-data="{
     open: window.innerWidth >= 768 ? (localStorage.getItem('sidebar_open') !== 'false') : false,
     activeSections: JSON.parse(localStorage.getItem('sidebar_active_sections') || '[]'),

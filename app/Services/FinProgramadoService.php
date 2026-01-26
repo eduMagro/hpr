@@ -284,11 +284,13 @@ class FinProgramadoService
     /**
      * Inicializa el servicio cargando festivos y turnos
      * Útil para ProduccionController que necesita usar los métodos públicos
+     * IMPORTANTE: Siempre recarga turnos para obtener el estado actual de la BD
      */
     public function init(): self
     {
         $this->cargarFestivos();
-        $this->cargarTurnos();
+        // Forzar recarga de turnos para obtener estado actual
+        $this->recargarTurnos();
         return $this;
     }
 
@@ -310,7 +312,7 @@ class FinProgramadoService
     }
 
     /**
-     * Carga los turnos activos en memoria
+     * Carga los turnos activos en memoria (con cache)
      */
     public function cargarTurnos(): void
     {
@@ -322,6 +324,15 @@ class FinProgramadoService
     }
 
     /**
+     * Fuerza la recarga de turnos desde la base de datos
+     * Útil después de que el usuario ha cambiado el estado de un turno
+     */
+    public function recargarTurnos(): void
+    {
+        $this->turnosActivos = Turno::where('activo', true)->get();
+    }
+
+    /**
      * Genera tramos laborales respetando turnos y festivos
      * FUENTE ÚNICA DE VERDAD - usado por ProduccionController
      */
@@ -329,6 +340,10 @@ class FinProgramadoService
     {
         $tramos = [];
         $restante = max(0, (int) $durSeg);
+
+        // Asegurar timezone correcta
+        $appTz = config('app.timezone') ?: 'Europe/Madrid';
+        $inicio = $inicio->copy()->setTimezone($appTz);
 
         // Verificar si el inicio está dentro de horario laborable
         // IMPORTANTE: también verificar segmentos del día anterior que se extiendan al día actual
@@ -346,7 +361,14 @@ class FinProgramadoService
 
         // Si el inicio NO está dentro de un segmento laborable, mover al siguiente
         if (!$dentroDeSegmento) {
+            $inicioOriginal = $inicio->copy();
             $inicio = $this->siguienteLaborableInicio($inicio);
+            Log::debug('FinProgramadoService: Inicio movido al siguiente turno', [
+                'inicioOriginal' => $inicioOriginal->toIso8601String(),
+                'inicioAjustado' => $inicio->toIso8601String(),
+                'turnosActivos' => $this->turnosActivos ? $this->turnosActivos->pluck('nombre', 'id')->all() : 'null',
+                'segmentosHoy' => count($segmentosInicio),
+            ]);
         }
 
         $cursor = $inicio->copy();
@@ -506,6 +528,8 @@ class FinProgramadoService
         $segmentos = [];
         $dayOfWeek = $dia->dayOfWeek;
 
+        $appTz = config('app.timezone') ?: 'Europe/Madrid';
+
         foreach ($this->turnosActivos as $turno) {
             if (empty($turno->hora_inicio) || empty($turno->hora_fin)) {
                 continue;
@@ -516,11 +540,18 @@ class FinProgramadoService
                 continue;
             }
 
-            $horaInicio = Carbon::parse($turno->hora_inicio);
-            $horaFin = Carbon::parse($turno->hora_fin);
+            // Extraer hora y minuto directamente del string para evitar problemas de timezone
+            // hora_inicio es formato "HH:MM:SS" o "HH:MM"
+            $partesInicio = explode(':', $turno->hora_inicio);
+            $partesFin = explode(':', $turno->hora_fin);
 
-            $inicio = $dia->copy()->setTime($horaInicio->hour, $horaInicio->minute, 0);
-            $fin = $dia->copy()->setTime($horaFin->hour, $horaFin->minute, 0);
+            $horaInicioNum = (int) ($partesInicio[0] ?? 0);
+            $minInicioNum = (int) ($partesInicio[1] ?? 0);
+            $horaFinNum = (int) ($partesFin[0] ?? 0);
+            $minFinNum = (int) ($partesFin[1] ?? 0);
+
+            $inicio = $dia->copy()->setTimezone($appTz)->setTime($horaInicioNum, $minInicioNum, 0);
+            $fin = $dia->copy()->setTimezone($appTz)->setTime($horaFinNum, $minFinNum, 0);
 
             // Si el turno termina al día siguiente (offset_dias_fin = 1)
             $esNocturno = ($turno->offset_dias_fin ?? 0) == 1;

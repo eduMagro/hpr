@@ -86,10 +86,10 @@
         @endif
 
         <!-- Tabla de elementos con scroll horizontal -->
-        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
-            <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
-                <thead class="bg-blue-500 text-white text-10">
-                    <tr class="text-center text-xs uppercase">
+        <div class="w-full overflow-x-auto bg-white dark:bg-gray-900 shadow-lg rounded-lg">
+            <table class="table-global w-full min-w-[1000px]">
+                <thead>
+                    <tr class="text-center">
                         <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order"
                             texto="ID" />
                         <x-tabla.encabezado-ordenable campo="codigo" :sortActual="$sort" :orderActual="$order"
@@ -123,85 +123,55 @@
                         <th class="p-2 border">Acciones</th>
                     </tr>
 
-                    <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="elemento_id"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="ID...">
+                    <x-tabla.filtro-row>
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="elemento_id" placeholder="ID...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="codigo"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Código...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="codigo" placeholder="Código...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="codigo_planilla"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Planilla...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="codigo_planilla" placeholder="Planilla...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="subetiqueta"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Subetiqueta...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="subetiqueta" placeholder="Subetiqueta...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="dimensiones"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Dimensiones...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="dimensiones" placeholder="Dimensiones...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="diametro"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Diámetro...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="diametro" placeholder="Diámetro...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="barras"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Barras...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="barras" placeholder="Barras...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="maquina"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Máquina...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="maquina" placeholder="Máquina...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="maquina_2"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Máquina 2...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="maquina_2" placeholder="Máquina 2...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="producto1"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Producto 1...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="producto1" placeholder="Producto 1...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="producto2"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Producto 2...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="producto2" placeholder="Producto 2...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="producto3"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Producto 3...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="producto3" placeholder="Producto 3...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="figura"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Figura...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="figura" placeholder="Figura...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="peso"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Peso...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="peso" placeholder="Peso...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="longitud"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Longitud...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="longitud" placeholder="Longitud...">
                         </th>
-                        <th class="p-2 border text-center align-middle">
+                        <th class="text-center align-middle">
                             <div class="flex justify-center gap-2 items-center h-full">
-                                {{-- ♻️ Botón reset --}}
+                                {{-- Botón reset --}}
                                 <button wire:click="limpiarFiltros"
                                     class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
                                     title="Restablecer filtros">
@@ -213,17 +183,20 @@
                                 </button>
                             </div>
                         </th>
-                    </tr>
+                    </x-tabla.filtro-row>
                 </thead>
 
-                <tbody class="text-gray-700 text-sm">
+                <tbody class="text-gray-700 dark:text-gray-300">
                     @forelse ($elementos as $elemento)
-                        <tr tabindex="0" wire:key="elemento-{{ $elemento->id }}" x-data="{
-                            editando: false,
-                            seleccionada: false,
-                            elemento: @js($elemento),
-                            original: JSON.parse(JSON.stringify(@js($elemento)))
-                        }"
+                        <x-tabla.row
+                            tabindex="0"
+                            wire:key="elemento-{{ $elemento->id }}"
+                            x-data="{
+                                editando: false,
+                                seleccionada: false,
+                                elemento: {{ Js::from($elemento) }},
+                                original: JSON.parse(JSON.stringify({{ Js::from($elemento) }}))
+                            }"
                             @dblclick="if(!$event.target.closest('input, select, button, a')) {
                                 if(!editando) {
                                     editando = true;
@@ -233,12 +206,9 @@
                                 }
                             }"
                             @keydown.enter.stop="if(editando) { guardarCambios(elemento); editando = false; }"
-                            :class="{
-                                'bg-yellow-100': editando,
-                                'bg-blue-100': seleccionada,
-                                'hover:bg-blue-50': !seleccionada && !editando
-                            }"
-                            class="border-b odd:bg-gray-100 even:bg-gray-50 cursor-pointer text-xs uppercase transition-colors">
+                            @keydown.escape.stop="if(editando) { elemento = JSON.parse(JSON.stringify(original)); editando = false; }"
+                            x-bind:class="{ 'editing': editando, '!bg-blue-100 dark:!bg-blue-900': seleccionada }"
+                            class="uppercase">
 
                             <!-- ID -->
                             <td class="px-1 py-3 text-center border">
@@ -246,7 +216,7 @@
                                     <span x-text="elemento.id"></span>
                                 </template>
                                 <input x-show="editando" style="display: none;" type="text" x-model="elemento.id"
-                                    class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- CODIGO -->
@@ -256,13 +226,13 @@
                                 </template>
                                 <input x-show="editando" style="display: none;" type="text"
                                     x-model="elemento.codigo"
-                                    class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- PLANILLA -->
                             <td class="px-2 py-2 text-center border">
                                 <a href="{{ route('planillas.index', ['codigo' => $elemento->planilla->codigo ?? '']) }}"
-                                    wire:navigate class="text-blue-500 hover:underline">
+                                    wire:navigate class="text-blue-500 dark:text-blue-400 hover:underline">
                                     {{ $elemento->planilla->codigo_limpio ?? 'N/A' }}
                                 </a>
                             </td>
@@ -270,7 +240,7 @@
                             <!-- SUBETIQUETA -->
                             <td class="px-2 py-2 text-center border">
                                 <a href="{{ route('etiquetas.index', ['etiqueta_sub_id' => $elemento->subetiqueta ?? '']) }}"
-                                    class="text-blue-500 hover:underline">
+                                    class="text-blue-500 dark:text-blue-400 hover:underline">
                                     {{ $elemento->subetiqueta ?? 'N/A' }}
                                 </a>
                             </td>
@@ -282,7 +252,7 @@
                                 </template>
                                 <input x-show="editando" style="display: none;" type="text"
                                     x-model="elemento.dimensiones"
-                                    class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- DIAMETRO_MM -->
@@ -292,7 +262,7 @@
                                 </template>
                                 <input x-show="editando" style="display: none;" type="number"
                                     x-model="elemento.diametro"
-                                    class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- BARRAS -->
@@ -302,14 +272,14 @@
                                 </template>
                                 <input x-show="editando" style="display: none;" type="number"
                                     x-model="elemento.barras"
-                                    class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- MAQUINA 1 -->
                             <td class="px-1 py-3 text-center border">
                                 <div class="flex items-center justify-center gap-1">
                                     <select
-                                        class="text-xs border rounded px-1 py-0.5 flex-1 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                        class="inline-edit-select flex-1"
                                         data-id="{{ $elemento->id }}" data-field="maquina_id"
                                         onchange="actualizarCampoElemento(this)">
                                         <option value="">N/A</option>
@@ -319,7 +289,7 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                    <div class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center abrir-modal-dibujo flex-shrink-0 cursor-pointer"
+                                    <div class="table-btn bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800 abrir-modal-dibujo flex-shrink-0 cursor-pointer"
                                         data-id="{{ $elemento->id }}" data-codigo="{{ $elemento->codigo }}"
                                         data-dimensiones="{{ $elemento->dimensiones }}"
                                         data-peso="{{ $elemento->peso_kg }}"
@@ -340,7 +310,7 @@
                             <!-- MAQUINA 2 -->
                             <td class="px-1 py-3 text-center border">
                                 <select
-                                    class="text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                    class="inline-edit-select"
                                     data-id="{{ $elemento->id }}" data-field="maquina_id_2"
                                     onchange="actualizarCampoElemento(this)">
                                     <option value="">N/A</option>
@@ -355,7 +325,7 @@
                             <!-- PRODUCTO 1 -->
                             <td class="px-2 py-2 text-center border">
                                 <a href="{{ route('productos.index', ['id' => $elemento->producto_id]) }}"
-                                    wire:navigate class="text-blue-500 hover:underline">
+                                    wire:navigate class="text-blue-500 dark:text-blue-400 hover:underline">
                                     {{ $elemento->producto?->codigo ?? 'N/A' }}
                                 </a>
                             </td>
@@ -363,7 +333,7 @@
                             <!-- PRODUCTO 2 -->
                             <td class="px-2 py-2 text-center border">
                                 <a href="{{ route('productos.index', ['id' => $elemento->producto_id_2]) }}"
-                                    wire:navigate class="text-blue-500 hover:underline">
+                                    wire:navigate class="text-blue-500 dark:text-blue-400 hover:underline">
                                     {{ $elemento->producto2?->codigo ?? 'N/A' }}
                                 </a>
                             </td>
@@ -371,7 +341,7 @@
                             <!-- PRODUCTO 3 -->
                             <td class="px-2 py-2 text-center border">
                                 <a href="{{ route('productos.index', ['id' => $elemento->producto_id_3]) }}"
-                                    wire:navigate class="text-blue-500 hover:underline">
+                                    wire:navigate class="text-blue-500 dark:text-blue-400 hover:underline">
                                     {{ $elemento->producto3?->codigo ?? 'N/A' }}
                                 </a>
                             </td>
@@ -383,7 +353,7 @@
                                 </template>
                                 <input x-show="editando" style="display: none;" type="text"
                                     x-model="elemento.figura"
-                                    class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- PESO_KG -->
@@ -393,7 +363,7 @@
                                 </template>
                                 <input x-show="editando" style="display: none;" type="number"
                                     x-model="elemento.peso"
-                                    class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- LONGITUD_M -->
@@ -403,16 +373,16 @@
                                 </template>
                                 <input x-show="editando" style="display: none;" type="number"
                                     x-model="elemento.longitud"
-                                    class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- BOTONES -->
-                            <td class="px-1 py-2 border text-xs font-bold">
+                            <td class="td-actions">
                                 <div class="flex items-center space-x-2 justify-center">
                                     <!-- Mostrar solo en modo edición -->
                                     <button x-show="editando" style="display: none;"
                                         @click="guardarCambios(elemento); editando = false"
-                                        class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                        class="table-btn bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800"
                                         title="Guardar cambios">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                             viewBox="0 0 24 24" stroke="currentColor">
@@ -422,7 +392,7 @@
                                     </button>
                                     <button x-show="editando" style="display: none;"
                                         @click="elemento = JSON.parse(JSON.stringify(original)); editando = false"
-                                        class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
+                                        class="table-btn bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800"
                                         title="Cancelar edición">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                             viewBox="0 0 24 24" stroke="currentColor">
@@ -435,7 +405,7 @@
                                     <template x-if="!editando">
                                         <div class="flex items-center space-x-2">
                                             <button @click="editando = true"
-                                                class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
+                                                class="table-btn bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800"
                                                 title="Editar">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                                     fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -450,7 +420,7 @@
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit"
-                                                    class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
+                                                    class="table-btn bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800"
                                                     title="Eliminar">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -464,22 +434,22 @@
                                     </template>
                                 </div>
                             </td>
-                        </tr>
+                        </x-tabla.row>
                     @empty
-                        <tr>
-                            <td colspan="18" class="text-center py-4 text-gray-500">
+                        <x-tabla.row :clickable="false">
+                            <td colspan="18" class="text-center py-4 text-gray-500 dark:text-gray-400">
                                 No hay elementos registrados
                             </td>
-                        </tr>
+                        </x-tabla.row>
                     @endforelse
                 </tbody>
 
                 <tfoot>
-                    <tr class="bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-300">
+                    <tr class="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-gray-700 dark:to-gray-800 border-t border-blue-300 dark:border-gray-600">
                         <td colspan="18" class="px-6 py-3">
-                            <div class="flex justify-end items-center gap-4 text-sm text-gray-700">
+                            <div class="flex justify-end items-center gap-4 text-sm text-gray-700 dark:text-gray-200">
                                 <span class="font-semibold">Total peso filtrado:</span>
-                                <span class="text-base font-bold text-blue-800">
+                                <span class="text-base font-bold text-blue-800 dark:text-blue-400">
                                     {{ number_format($totalPesoFiltrado, 2, ',', '.') }} kg
                                 </span>
                             </div>
@@ -498,11 +468,11 @@
         <div id="modal-dibujo" class="hidden fixed inset-0 justify-end items-center pr-96 pointer-events-none"
             wire:ignore @mouseenter="window.mantenerModalAbierto()" @mouseleave="window.cerrarModal()">
             <div
-                class="bg-white rounded-lg p-5 w-3/4 max-w-lg relative pointer-events-auto shadow-lg border border-gray-300">
-                <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100"
+                class="bg-white dark:bg-gray-800 rounded-lg p-5 w-3/4 max-w-lg relative pointer-events-auto shadow-lg border border-gray-300 dark:border-gray-600">
+                <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900 rounded p-1"
                     @click="document.getElementById('modal-dibujo').classList.add('hidden')">✖</button>
-                <h2 class="text-lg font-semibold mb-3" id="modal-titulo">Elemento</h2>
-                <canvas id="canvas-dibujo" class="border border-gray-300 w-full h-[300px]"></canvas>
+                <h2 class="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100" id="modal-titulo">Elemento</h2>
+                <canvas id="canvas-dibujo" class="border border-gray-300 dark:border-gray-600 w-full h-[300px] bg-white"></canvas>
             </div>
         </div>
     </div>
