@@ -82,6 +82,11 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
+            // Ignorar AuthenticationException - dejar que Laravel maneje la redirección a login
+            if ($e instanceof \Illuminate\Auth\AuthenticationException) {
+                return null;
+            }
+
             // Para peticiones AJAX/JSON
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
@@ -91,8 +96,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 500);
             }
 
-            // Para navegación normal: redirigir con session flash para SweetAlert
-            return redirect()->route('dashboard')->with('server_error', [
+            // Para navegación normal: redirigir según si el usuario está autenticado o no
+            $redirectRoute = auth()->check() ? 'dashboard' : 'login';
+            return redirect()->route($redirectRoute)->with('server_error', [
                 'title' => 'Error 500: Error del servidor',
                 'message' => 'Ha ocurrido un error interno en el servidor. Puedes reportar este error para que el equipo técnico lo revise.',
                 'url_origen' => $request->fullUrl(),

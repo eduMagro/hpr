@@ -102,7 +102,7 @@
             </thead>
             <tbody>
                 @forelse($productos as $producto)
-                    <tr wire:key="producto-{{ $producto->id }}" x-data="{
+                    <x-tabla.row wire:key="producto-{{ $producto->id }}" x-data="{
                         editando: false,
                         producto: @js($producto),
                         original: JSON.parse(JSON.stringify(@js($producto)))
@@ -117,8 +117,7 @@
                         }"
                         @keydown.enter.stop="if(editando) { guardarCambiosProducto(producto); editando = false; }"
                         @keydown.escape.stop="if(editando) { producto = JSON.parse(JSON.stringify(original)); editando = false; }"
-                        :class="{ 'editing': editando }"
-                        class="text-xs leading-none cursor-pointer">
+                        :class="{ 'editing': editando }">
                         <!-- ID -->
                         <td class="px-2 py-3" x-text="producto.id"></td>
 

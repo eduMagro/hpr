@@ -72,7 +72,7 @@
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <!-- Tabla con filtros Livewire -->
         <div class="w-full overflow-x-auto bg-white dark:bg-gray-900 shadow-lg rounded-lg">
-            <table class="w-full min-w-[2000px] border border-gray-300 dark:border-gray-700 rounded-lg">
+            <table class="table-global w-full min-w-[2000px] border border-gray-300 dark:border-gray-700 rounded-lg">
                 <x-tabla.header>
                     <x-tabla.header-row>
                         @if ($modoSeleccion)
@@ -318,7 +318,7 @@
                 <tbody class="text-gray-700 dark:text-gray-300">
                     @forelse ($planillas as $planilla)
                         <tr
-                            class="border-b border-gray-200 dark:border-gray-700 odd:bg-gray-50 even:bg-white dark:odd:bg-gray-800 dark:even:bg-gray-900 hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer text-xs leading-none uppercase transition-colors {{ in_array($planilla->id, $planillasSeleccionadas) ? '!bg-green-100 dark:!bg-green-900' : '' }}">
+                            class="cursor-pointer text-xs leading-none uppercase {{ in_array($planilla->id, $planillasSeleccionadas) ? '!bg-green-100 dark:!bg-green-900' : '' }}">
                             @if ($modoSeleccion)
                                 <td class="p-2 text-center border dark:border-gray-700">
                                     @if (!$planilla->aprobada)

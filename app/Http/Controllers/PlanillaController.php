@@ -1715,7 +1715,7 @@ class PlanillaController extends Controller
      * Resetear una planilla a su estado inicial
      * - Planilla: estado = pendiente, fechas = null, revisada = false
      * - Etiquetas: estado = pendiente, fechas = null, operarios = null
-     * - Elementos: estado = pendiente, fechas = null, operarios = null, maquina_id = null
+     * - Elementos: paquete_id = null, producto_id = null, maquina_id = null
      * - Paquetes: eliminar todos
      * - OrdenPlanillas: eliminar y recrear usando los servicios
      *

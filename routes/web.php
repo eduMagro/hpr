@@ -65,7 +65,7 @@ use App\Http\Controllers\InventarioBackupController;
 use App\Http\Controllers\IncidenciaController;
 use App\Http\Controllers\GastosController;
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('/incidencias', [IncidenciaController::class, 'index'])->name('incidencias.index');
     // AJAX List
     Route::get('/incidencias/ajax/list', [IncidenciaController::class, 'listAjax'])->name('incidencias.list.ajax');
@@ -78,7 +78,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/incidencias/{id}/actualizar-resolucion', [IncidenciaController::class, 'updateResolution'])->name('incidencias.update-resolution');
 });
 
-Route::get('/', [PageController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/', [PageController::class, 'index'])->middleware(['auth'])->name('dashboard');
 
 // Escaneo de albaranes (producción)
 Route::get('/albaranes/scan', [AlbaranesScanController::class, 'index'])->name('albaranes.scan.index');
@@ -97,18 +97,18 @@ Route::post('/pruebasScanAlbaran/buscar-pedido', [AlbaranesScanController::class
 Route::post('/pruebasScanAlbaran/simular', [AlbaranesScanController::class, 'simular'])->name('albaranes.scan.legacy.simular');
 
 // Rutas de secciones principales
-Route::get('/produccion', [PageController::class, 'produccion'])->middleware(['auth', 'verified'])->name('secciones.produccion');
-Route::get('/seccion-planificacion', [PageController::class, 'planificacionSeccion'])->middleware(['auth', 'verified'])->name('secciones.planificacion');
-Route::get('/logistica', [PageController::class, 'logistica'])->middleware(['auth', 'verified'])->name('secciones.logistica');
-Route::get('/recursos-humanos', [PageController::class, 'recursosHumanos'])->middleware(['auth', 'verified'])->name('secciones.recursos-humanos');
-Route::get('/comercial', [PageController::class, 'comercial'])->middleware(['auth', 'verified'])->name('secciones.comercial');
-Route::get('/sistema', [PageController::class, 'sistema'])->middleware(['auth', 'verified'])->name('secciones.sistema');
+Route::get('/produccion', [PageController::class, 'produccion'])->middleware(['auth'])->name('secciones.produccion');
+Route::get('/seccion-planificacion', [PageController::class, 'planificacionSeccion'])->middleware(['auth'])->name('secciones.planificacion');
+Route::get('/logistica', [PageController::class, 'logistica'])->middleware(['auth'])->name('secciones.logistica');
+Route::get('/recursos-humanos', [PageController::class, 'recursosHumanos'])->middleware(['auth'])->name('secciones.recursos-humanos');
+Route::get('/comercial', [PageController::class, 'comercial'])->middleware(['auth'])->name('secciones.comercial');
+Route::get('/sistema', [PageController::class, 'sistema'])->middleware(['auth'])->name('secciones.sistema');
 
 // Atajos de teclado
-Route::get('/atajos', [AtajosController::class, 'index'])->middleware(['auth', 'verified'])->name('atajos.index');
+Route::get('/atajos', [AtajosController::class, 'index'])->middleware(['auth'])->name('atajos.index');
 
 // EPIs (Equipos de Protección Individual) por trabajador
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('/epis', [EpisController::class, 'index'])->name('epis.index');
     Route::get('/epis/api/users', [EpisController::class, 'apiUsers'])->name('epis.api.users');
     Route::get('/epis/api/epis', [EpisController::class, 'apiEpis'])->name('epis.api.epis');
@@ -139,11 +139,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // Rutas antiguas redirigidas (compatibilidad)
 Route::get('/inventario', function () {
     return redirect()->route('secciones.produccion');
-})->middleware(['auth', 'verified'])->name('secciones.inventario');
+})->middleware(['auth'])->name('secciones.inventario');
 
 Route::get('/compras', function () {
     return redirect()->route('secciones.logistica');
-})->middleware(['auth', 'verified'])->name('secciones.compras');
+})->middleware(['auth'])->name('secciones.compras');
 
 // Ruta del Asistente Virtual
 use App\Http\Controllers\AsistenteVirtualController;
@@ -852,7 +852,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     });
 
     // === DEPARTAMENTOS Y SECCIONES ===
-    Route::put('/departamentos/alertas', [DepartamentoController::class, 'updateAlertSettings'])->name('departamentos.updateAlertSettings')->middleware(['auth', 'verified']);
+    Route::put('/departamentos/alertas', [DepartamentoController::class, 'updateAlertSettings'])->name('departamentos.updateAlertSettings')->middleware(['auth']);
     Route::get('/configuracion/alertas-planilla', [DepartamentoController::class, 'getAlertasPlanillaConfig'])->name('configuracion.alertas-planilla.get');
     Route::post('/configuracion/alertas-planilla', [DepartamentoController::class, 'updateAlertasPlanillaConfig'])->name('configuracion.alertas-planilla.update');
     Route::resource('departamentos', DepartamentoController::class)->names('departamentos');

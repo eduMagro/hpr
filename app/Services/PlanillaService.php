@@ -180,9 +180,9 @@ class PlanillaService
                     'paquete_id' => $paquete->id,
                 ]);
 
-                // Actualizar elementos
+                // Actualizar elementos - marcar como elaborados
                 Elemento::where('etiqueta_sub_id', $etiquetaSubId)->update([
-                    'estado' => 'completado',
+                    'elaborado' => 1,
                 ]);
 
                 // Eliminar orden de la planilla en cada máquina
