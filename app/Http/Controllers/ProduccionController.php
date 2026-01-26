@@ -601,6 +601,10 @@ class ProduccionController extends Controller
         // 🔹 5. Generar eventos del calendario
         try {
             $planillasEventos = $this->generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas);
+            Log::info('DEBUG: Eventos generados', [
+                'total_eventos' => count($planillasEventos),
+                'planillas_ids' => collect($planillasEventos)->pluck('extendedProps.planilla_id')->unique()->values(),
+            ]);
         } catch (\Throwable $e) {
             Log::error('❌ generarEventosMaquinas', ['msg' => $e->getMessage(), 'file' => $e->getFile() . ':' . $e->getLine()]);
             abort(500, $e->getMessage());
@@ -1846,9 +1850,19 @@ class ProduccionController extends Controller
             return $planillasEventos->values();
         }
 
+        Log::info('DEBUG generarEventosMaquinas: inicio', [
+            'total_planillas_agrupadas' => $agrupadasIndex->count(),
+            'total_maquinas_con_ordenes' => count($ordenes),
+            'claves_agrupadas' => $agrupadasIndex->keys()->take(10),
+        ]);
+
         // 4) Recorre máquinas
         $numMaquinas = is_array($ordenes) ? count($ordenes) : 0;
 
+        Log::info('DEBUG generarEventosMaquinas: ordenes por máquina', [
+            'num_maquinas' => $numMaquinas,
+            'maquinas_ids' => array_keys($ordenes),
+        ]);
 
         foreach ($ordenes as $maquinaId => $planillasOrdenadas) {
 
@@ -1907,6 +1921,7 @@ class ProduccionController extends Controller
 
                 try {
                     if (!$data) {
+                        Log::debug("EVT: Sin data para planilla {$planillaId} en máquina {$maquinaId}");
                         continue;
                     }
 
@@ -1914,7 +1929,10 @@ class ProduccionController extends Controller
                     $grupo    = Arr::get($data, 'elementos');
 
                     if (!$planilla || !$planilla->fecha_estimada_entrega) {
-
+                        Log::debug("EVT: Planilla {$planillaId} sin fecha_estimada_entrega o sin planilla object", [
+                            'tiene_planilla' => (bool)$planilla,
+                            'fecha' => $planilla?->fecha_estimada_entrega,
+                        ]);
                         continue;
                     }
 
@@ -2151,6 +2169,10 @@ class ProduccionController extends Controller
                 $prevEnd = Carbon::parse($evento['end']);
             }
         }
+
+        Log::info('DEBUG generarEventosMaquinas: FIN', [
+            'total_eventos_generados' => $planillasEventos->count(),
+        ]);
 
         return $planillasEventos->values();
     }

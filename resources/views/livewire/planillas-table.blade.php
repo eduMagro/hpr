@@ -318,7 +318,7 @@
                 <tbody class="text-gray-700 dark:text-gray-300">
                     @forelse ($planillas as $planilla)
                         <tr
-                            class="border-b border-gray-200 dark:border-gray-700 odd:bg-gray-100 even:bg-gray-50 dark:odd:bg-gray-800 dark:even:bg-gray-850 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer text-xs leading-none uppercase transition-colors {{ in_array($planilla->id, $planillasSeleccionadas) ? '!bg-green-100 dark:!bg-green-900' : '' }}">
+                            class="border-b border-gray-200 dark:border-gray-700 odd:bg-gray-50 even:bg-white dark:odd:bg-gray-800 dark:even:bg-gray-900 hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer text-xs leading-none uppercase transition-colors {{ in_array($planilla->id, $planillasSeleccionadas) ? '!bg-green-100 dark:!bg-green-900' : '' }}">
                             @if ($modoSeleccion)
                                 <td class="p-2 text-center border dark:border-gray-700">
                                     @if (!$planilla->aprobada)

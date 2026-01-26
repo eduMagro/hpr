@@ -1,7 +1,7 @@
 // Service Worker para PWA + Firebase Messaging
 // Este archivo DEBE estar en la raíz del dominio (public/)
 
-const CACHE_NAME = 'hpr-manager-v2';
+const CACHE_NAME = 'hpr-manager-v3';
 const STATIC_ASSETS = [
     // NO cachear rutas que requieren autenticación (como '/')
     '/imagenes/ico/android-chrome-192x192.png',
