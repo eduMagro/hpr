@@ -317,8 +317,7 @@
 
                 <tbody class="text-gray-700 dark:text-gray-300">
                     @forelse ($planillas as $planilla)
-                        <tr
-                            class="cursor-pointer text-xs leading-none uppercase {{ in_array($planilla->id, $planillasSeleccionadas) ? '!bg-green-100 dark:!bg-green-900' : '' }}">
+                        <x-tabla.row :selected="in_array($planilla->id, $planillasSeleccionadas)" class="uppercase">
                             @if ($modoSeleccion)
                                 <td class="p-2 text-center border dark:border-gray-700">
                                     @if (!$planilla->aprobada)
@@ -503,12 +502,12 @@
                                     <x-tabla.boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
                                 </div>
                             </td>
-                        </tr>
+                        </x-tabla.row>
                     @empty
-                        <tr>
+                        <x-tabla.row :clickable="false">
                             <td colspan="{{ $modoSeleccion ? 25 : 24 }}" class="text-center py-4 text-gray-500 dark:text-gray-400">No hay planillas registradas
                             </td>
-                        </tr>
+                        </x-tabla.row>
                     @endforelse
                 </tbody>
             </table>

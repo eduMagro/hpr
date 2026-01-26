@@ -95,8 +95,8 @@ class PlanillaService
         $errores = [];
         $omitidasPorFecha = 0;
 
-        // Base: planillas en estado pendiente o fabricando
-        $base = Planilla::query()->whereIn('estado', ['pendiente', 'fabricando']);
+        // Base: planillas en cualquier estado (incluye completadas para corregir inconsistencias)
+        $base = Planilla::query()->whereIn('estado', ['pendiente', 'fabricando', 'completada']);
 
         // Si hay planillas específicas, procesarlas sin filtro de fecha
         if (!empty($planillaIds)) {
@@ -167,12 +167,19 @@ class PlanillaService
                 $planillaId = $etiquetas->first()->planilla_id;
                 $pesoTotal = $etiquetas->sum('peso');
 
-                $paquete = Paquete::crearConCodigoUnico([
-                    'planilla_id'     => $planillaId,
-                    'etiqueta_sub_id' => $etiquetaSubId,
-                    'peso'            => $pesoTotal,
-                    'estado'          => 'pendiente',
-                ]);
+                // Verificar si ya existe un paquete para esta subetiqueta
+                $paqueteExistente = Paquete::where('etiqueta_sub_id', $etiquetaSubId)->first();
+
+                if ($paqueteExistente) {
+                    $paquete = $paqueteExistente;
+                } else {
+                    $paquete = Paquete::crearConCodigoUnico([
+                        'planilla_id'     => $planillaId,
+                        'etiqueta_sub_id' => $etiquetaSubId,
+                        'peso'            => $pesoTotal,
+                        'estado'          => 'pendiente',
+                    ]);
+                }
 
                 // Actualizar etiquetas
                 Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->update([

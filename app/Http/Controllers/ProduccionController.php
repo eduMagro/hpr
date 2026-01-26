@@ -1774,10 +1774,16 @@ class ProduccionController extends Controller
             $planillaId = $request->planilla_id;
 
             $elementos = Elemento::where('planilla_id', $planillaId)
-                ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones', 'maquina_id', 'barras')
-                ->with('maquina:id,nombre,codigo')
+                ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones', 'maquina_id', 'barras', 'etiqueta_id')
+                ->with(['maquina:id,nombre,codigo', 'etiqueta:id,estado'])
                 ->orderBy('maquina_id')
-                ->get();
+                ->get()
+                ->map(function ($elemento) {
+                    // Añadir estado de la etiqueta al elemento
+                    $elemento->estado_etiqueta = $elemento->etiqueta->estado ?? null;
+                    unset($elemento->etiqueta); // Limpiar la relación para no enviar datos duplicados
+                    return $elemento;
+                });
 
             // Obtener las máquinas que tienen elementos de esta planilla
             $maquinaIds = $elementos->pluck('maquina_id')->unique()->filter();

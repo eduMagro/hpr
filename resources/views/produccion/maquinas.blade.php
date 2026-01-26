@@ -1654,6 +1654,26 @@
                 z-index: 10;
             }
 
+            /* Elemento completado (etiqueta completada/fabricada) - Verde */
+            .elemento-drag.elemento-completado {
+                border-color: #22c55e;
+                background: #f0fdf4;
+            }
+            .elemento-drag.elemento-completado:hover {
+                border-color: #16a34a;
+                box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
+            }
+
+            /* Elemento en fabricación (etiqueta fabricando/doblando) - Amarillo */
+            .elemento-drag.elemento-fabricando {
+                border-color: #eab308;
+                background: #fefce8;
+            }
+            .elemento-drag.elemento-fabricando:hover {
+                border-color: #ca8a04;
+                box-shadow: 0 2px 4px rgba(234, 179, 8, 0.2);
+            }
+
             .elemento-drag canvas,
             .elemento-drag>div {
                 width: 100%;
@@ -3870,9 +3890,17 @@
                             const esGrupo = elementosDelGrupo.length > 1;
                             const idsDelGrupo = elementosDelGrupo.map(e => e.id);
 
+                            // Determinar estado de la etiqueta para colorear
+                            const estadoEtiqueta = primerElemento.estado_etiqueta || 'pendiente';
+                            let claseEstado = '';
+                            if (estadoEtiqueta === 'completada' || estadoEtiqueta === 'fabricada') {
+                                claseEstado = ' elemento-completado';
+                            } else if (estadoEtiqueta === 'fabricando' || estadoEtiqueta === 'doblando') {
+                                claseEstado = ' elemento-fabricando';
+                            }
+
                             const div = document.createElement('div');
-                            div.className = 'elemento-drag fc-event' + (esGrupo ? ' elemento-agrupado' :
-                                '');
+                            div.className = 'elemento-drag fc-event' + (esGrupo ? ' elemento-agrupado' : '') + claseEstado;
                             div.draggable = true;
                             div.title = ''; // Evitar tooltip nativo del navegador
 

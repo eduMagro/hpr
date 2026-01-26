@@ -104,8 +104,8 @@
                 @forelse($productos as $producto)
                     <x-tabla.row wire:key="producto-{{ $producto->id }}" x-data="{
                         editando: false,
-                        producto: @js($producto),
-                        original: JSON.parse(JSON.stringify(@js($producto)))
+                        producto: {{ Js::from($producto) }},
+                        original: JSON.parse(JSON.stringify({{ Js::from($producto) }}))
                     }"
                         @dblclick="if(!$event.target.closest('input, select, button, a')) {
                             if(!editando) {
@@ -117,7 +117,7 @@
                         }"
                         @keydown.enter.stop="if(editando) { guardarCambiosProducto(producto); editando = false; }"
                         @keydown.escape.stop="if(editando) { producto = JSON.parse(JSON.stringify(original)); editando = false; }"
-                        :class="{ 'editing': editando }">
+                        x-bind:class="{ 'editing': editando }">
                         <!-- ID -->
                         <td class="px-2 py-3" x-text="producto.id"></td>
 
@@ -352,12 +352,12 @@
                                 </template>
                             </div>
                         </td>
-                    </tr>
+                    </x-tabla.row>
                 @empty
-                    <tr>
+                    <x-tabla.row :clickable="false">
                         <td colspan="16" class="text-center py-4 text-gray-500 dark:text-gray-400">No hay productos con esa
                             descripción.</td>
-                    </tr>
+                    </x-tabla.row>
                 @endforelse
             </tbody>
             <tfoot>
