@@ -79,6 +79,11 @@ class PermissionService
             return true;
         }
 
+        // Rutas libres son permitidas también en verificación de acción
+        if ($this->isRutaLibre($routeName) && $this->isEmpresaConAcceso($user)) {
+            return true;
+        }
+
         // Determinar acción desde la ruta si no se especifica
         if (!$action) {
             $action = strtolower(Str::afterLast($routeName, '.'));
@@ -471,20 +476,26 @@ class PermissionService
     private function checkActionPermission($permisos, string $action): bool
     {
         // Acciones de VER
-        if (in_array($action, ['index', 'show']) ||
-            Str::startsWith($action, ['ver', 'show', 'get', 'list'])) {
+        if (
+            in_array($action, ['index', 'show']) ||
+            Str::startsWith($action, ['ver', 'show', 'get', 'list'])
+        ) {
             return (bool) $permisos->puede_ver;
         }
 
         // Acciones de CREAR
-        if (in_array($action, ['create', 'store']) ||
-            Str::startsWith($action, ['crear', 'store', 'new', 'add'])) {
+        if (
+            in_array($action, ['create', 'store']) ||
+            Str::startsWith($action, ['crear', 'store', 'new', 'add'])
+        ) {
             return (bool) $permisos->puede_crear;
         }
 
         // Acciones de EDITAR/ELIMINAR
-        if (in_array($action, ['edit', 'update', 'destroy', 'delete']) ||
-            Str::startsWith($action, ['editar', 'actualizar', 'update', 'destroy', 'delete', 'eliminar', 'activar', 'toggle'])) {
+        if (
+            in_array($action, ['edit', 'update', 'destroy', 'delete']) ||
+            Str::startsWith($action, ['editar', 'actualizar', 'update', 'destroy', 'delete', 'eliminar', 'activar', 'toggle'])
+        ) {
             return (bool) $permisos->puede_editar;
         }
 
