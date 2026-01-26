@@ -116,58 +116,114 @@ class PrioridadIAService
 
     /**
      * Recomienda un distribuidor de la lista basándose en los datos del albarán usando IA.
+     * Retorna array con keys: 'recomendacion', 'debug'
      */
-    public function recomendarDistribuidor(array $datosOCR, array $nombresDistribuidores): ?string
+    public function recomendarDistribuidor(array $datosOCR, array $nombresDistribuidores): array
     {
         try {
-            $prompt = json_encode([
-                'instruccion' => 'Analiza los datos extraídos del albarán y la lista de distribuidores disponibles en el sistema. Tu tarea es identificar si el proveedor del albarán corresponde a alguno de los distribuidores de la lista. Devuelve el nombre exacto de la lista.',
-                'datos_albaran' => [
-                    'proveedor_detectado' => $datosOCR['proveedor_texto'] ?? null, // Texto crudo tal cual lo leyó el OCR
-                    'encabezados_detectados' => $datosOCR['albaran'] ?? null, // Contexto extra
-                    'texto_raw_fragmento' => substr($datosOCR['raw_text'] ?? '', 0, 1000), // Primeros 1000 chars por si acaso
-                ],
-                'lista_distribuidores_conocidos' => $nombresDistribuidores
-            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            // Obtener direcciones conocidas de la BD
+            $direccionesConocidas = \App\Models\DistribuidorDireccion::with('distribuidor')
+                ->get()
+                ->map(function ($dir) {
+                    return [
+                        'direccion' => $dir->direccion_match,
+                        'distribuidor' => $dir->distribuidor->nombre ?? 'Desconocido',
+                    ];
+                })
+                ->toArray();
 
-            $response = Http::withToken(env('OPENAI_API_KEY'))
-                ->timeout(15) // Respuesta rápida
-                ->post('https://api.openai.com/v1/chat/completions', [
-                    'model' => 'gpt-4o-mini',
-                    'messages' => [
-                        [
-                            'role' => 'system',
-                            'content' => 'Eres un asistente administrativo experto. Debes normalizar el nombre del proveedor. Devuelve un JSON con la clave "distribuidor_encontrado" que contenga EL NOMBRE EXACTO de la lista proporcionada, o null si no coincide con ninguno.'
+            $proveedorTexto = $datosOCR['proveedor_texto'] ?? $datosOCR['proveedorTexto'] ?? null;
+
+            // Construir prompt para Gemini
+            $direccionesTexto = '';
+            if (!empty($direccionesConocidas)) {
+                $direccionesTexto = "\n\nDIRECCIONES CONOCIDAS:\n";
+                foreach ($direccionesConocidas as $dir) {
+                    $direccionesTexto .= "- {$dir['direccion']} → {$dir['distribuidor']}\n";
+                }
+            }
+
+            $distribuidoresTexto = implode(', ', $nombresDistribuidores);
+
+            $promptText = "TAREA: Identifica cual distribuidor de la lista corresponde al proveedor.
+
+PROVEEDOR: {$proveedorTexto}
+
+DISTRIBUIDORES DISPONIBLES:
+{$distribuidoresTexto}
+{$direccionesTexto}
+
+INSTRUCCIONES:
+1. Revisa DIRECCIONES CONOCIDAS primero. Si hay match, devuelve ese.
+2. Si no, BUSCA EN GOOGLE el proveedor (CIF, nombre empresa, ubicacion).
+3. Decide cual distribuidor de la lista es.
+4. NUNCA devuelvas null ni inventes nombres.
+5. Si no estas seguro, usa el primero de la lista.
+
+CRITICO: Responde SOLO con el JSON. SIN explicaciones. SIN texto adicional.
+
+Formato:
+{\"distribuidor_encontrado\": \"NombreExacto\"}";
+
+
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->timeout(30)->post('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=' . env('GEMINI_API_KEY'), [
+                        'contents' => [
+                            [
+                                'parts' => [
+                                    ['text' => $promptText]
+                                ]
+                            ]
                         ],
-                        [
-                            'role' => 'user',
-                            'content' => $prompt
+                        'tools' => [
+                            [
+                                'googleSearch' => new \stdClass() // Habilita búsqueda en Google
+                            ]
+                        ],
+                        'generationConfig' => [
+                            'temperature' => 0.3,
+                            'topP' => 0.95,
+                            'topK' => 40,
+                            'maxOutputTokens' => 150,
                         ]
-                    ],
-                    'response_format' => ['type' => 'json_object'],
-                    'temperature' => 0,
-                ]);
+                    ]);
 
             if (!$response->successful()) {
-                return null;
+                return ['recomendacion' => null, 'debug' => ['prompt' => $promptText, 'response' => 'ERROR: ' . $response->body()]];
             }
 
             $resultado = $response->json();
-            $nombre = $resultado['choices'][0]['message']['content'] ?? '{}';
-            $json = json_decode($nombre, true);
+
+            // Extraer el texto de la respuesta de Gemini
+            $responseText = $resultado['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
+
+            // Buscar JSON en la respuesta (puede venir con texto adicional)
+            if (preg_match('/\{[^}]*"distribuidor_encontrado"[^}]*\}/', $responseText, $matches)) {
+                $jsonText = $matches[0];
+                $json = json_decode($jsonText, true);
+            } else {
+                // Intentar parsear directamente
+                $json = json_decode($responseText, true);
+            }
 
             $match = $json['distribuidor_encontrado'] ?? null;
 
             // Validar que el match realmente existe en la lista original (seguridad)
             if ($match && in_array($match, $nombresDistribuidores)) {
-                return $match;
+                return ['recomendacion' => $match, 'debug' => ['prompt' => $promptText, 'response' => $responseText]];
             }
 
-            return null;
+            // Si la IA devolvió algo pero no está en la lista, devolver el primero como fallback
+            if (!empty($nombresDistribuidores)) {
+                return ['recomendacion' => $nombresDistribuidores[0], 'debug' => ['prompt' => $promptText, 'response' => $responseText, 'fallback' => true]];
+            }
+
+            return ['recomendacion' => null, 'debug' => ['prompt' => $promptText, 'response' => $responseText]];
 
         } catch (\Exception $e) {
             Log::error('Excepción en PrioridadIAService::recomendarDistribuidor: ' . $e->getMessage());
-            return null;
+            return ['recomendacion' => null, 'debug' => ['prompt' => $promptText ?? 'error', 'response' => $e->getMessage()]];
         }
     }
 
