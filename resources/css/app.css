@@ -233,21 +233,13 @@ table.table-global,
     @apply border-gray-700;
 }
 
-/* Filas alternas (zebra) */
-.table-global tbody tr:nth-child(odd) {
-    @apply bg-gray-50;
-}
-
-.table-global tbody tr:nth-child(even) {
+/* Filas - mismo color */
+.table-global tbody tr {
     @apply bg-white;
 }
 
-.dark .table-global tbody tr:nth-child(odd) {
+.dark .table-global tbody tr {
     @apply bg-gray-800;
-}
-
-.dark .table-global tbody tr:nth-child(even) {
-    @apply bg-gray-800/50;
 }
 
 /* Filas hover */

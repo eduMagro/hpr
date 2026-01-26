@@ -368,7 +368,7 @@ class AsignacionTurnoController extends Controller
             /* 1.1) Protección contra fichajes duplicados ------------------------------ */
             $cacheKey = "fichaje_pendiente_{$request->user_id}_{$request->tipo}";
             if (Cache::has($cacheKey)) {
-                Log::warning('🚫 Fichaje duplicado rechazado', [
+                Log::channel('fichajes_trabajadores')->warning('🚫 Fichaje duplicado rechazado', [
                     'user_id' => $request->user_id,
                     'tipo' => $request->tipo,
                 ]);
@@ -719,7 +719,7 @@ class AsignacionTurnoController extends Controller
         $horaActual = $ahora->format('H:i:s');
         $fechaHoy = $ahora->toDateString();
 
-        Log::info("🔍 detectarTurnoYFecha - Entrada", [
+        Log::channel('fichajes_trabajadores')->info("🔍 detectarTurnoYFecha - Entrada", [
             'ahora' => $ahora->toDateTimeString(),
             'horaActual' => $horaActual,
             'fechaHoy' => $fechaHoy,
@@ -740,7 +740,7 @@ class AsignacionTurnoController extends Controller
 
             $cruzaMedianoche = $turno->hora_inicio > $turno->hora_fin;
 
-            Log::info("🔍 Evaluando anticipación turno: {$turno->nombre}", [
+            Log::channel('fichajes_trabajadores')->info("🔍 Evaluando anticipación turno: {$turno->nombre}", [
                 'horaInicio' => $turno->hora_inicio,
                 'inicioMargen' => $inicioMargen->format('H:i:s'),
                 'horaActual' => $horaActual,
@@ -751,7 +751,7 @@ class AsignacionTurnoController extends Controller
                 // ¿Estamos en el margen de anticipación? (ej: 13:00-14:00 para turno tarde)
                 if ($horaActual >= $inicioMargen->format('H:i:s') && $horaActual < $turno->hora_inicio) {
                     $fechaAsignacion = $ahora->copy()->addDays(-$offsetInicio)->toDateString();
-                    Log::info("✅ Turno detectado (anticipación): {$turno->nombre}", [
+                    Log::channel('fichajes_trabajadores')->info("✅ Turno detectado (anticipación): {$turno->nombre}", [
                         'fechaAsignacion' => $fechaAsignacion,
                         'razon' => "Hora {$horaActual} está en margen de anticipación ({$inicioMargen->format('H:i')}-{$turno->hora_inicio})",
                     ]);

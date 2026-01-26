@@ -123,17 +123,22 @@ class PlanillaService
                 ->get();
         }
 
+        $planillasCompletadas = 0;
+
         foreach ($planillas as $planilla) {
             $subetiquetas = Etiqueta::where('planilla_id', $planilla->id)
                 ->whereNotNull('etiqueta_sub_id')
                 ->distinct()
                 ->pluck('etiqueta_sub_id');
 
+            $planillaProcesada = false;
+
             foreach ($subetiquetas as $subId) {
                 $res = $this->completarSubetiqueta($subId);
 
                 if ($res['success']) {
                     $ok++;
+                    $planillaProcesada = true;
                 } else {
                     $fail++;
                     $errores[] = [
@@ -143,14 +148,49 @@ class PlanillaService
                     ];
                 }
             }
+
+            // Si no tiene subetiquetas o ya se procesaron, completar la planilla directamente
+            if ($subetiquetas->isEmpty() || !$planillaProcesada) {
+                // Actualizar todas las etiquetas de la planilla a completada
+                Etiqueta::where('planilla_id', $planilla->id)
+                    ->where('estado', '!=', 'completada')
+                    ->update(['estado' => 'completada']);
+
+                // Eliminar de orden_planillas
+                $maquinasAfectadas = OrdenPlanilla::where('planilla_id', $planilla->id)
+                    ->pluck('maquina_id')
+                    ->unique()
+                    ->toArray();
+
+                OrdenPlanilla::where('planilla_id', $planilla->id)->delete();
+
+                // Reindexar posiciones de cada máquina afectada
+                foreach ($maquinasAfectadas as $maquinaId) {
+                    OrdenPlanilla::where('maquina_id', $maquinaId)
+                        ->orderBy('posicion')
+                        ->get()
+                        ->each(function ($orden, $index) {
+                            $orden->update(['posicion' => $index + 1]);
+                        });
+                }
+
+                // Marcar planilla como completada
+                $planilla->update(['estado' => 'completada']);
+                $planillaProcesada = true;
+            }
+
+            if ($planillaProcesada) {
+                $planillasCompletadas++;
+            }
         }
 
         return [
-            'success'         => $fail === 0,
-            'procesadas_ok'   => $ok,
-            'omitidas_fecha'  => $omitidasPorFecha,
-            'fallidas'        => $fail,
-            'errores'         => $errores,
+            'success'              => $fail === 0,
+            'procesadas_ok'        => $ok,
+            'planillas_completadas' => $planillasCompletadas,
+            'omitidas_fecha'       => $omitidasPorFecha,
+            'fallidas'             => $fail,
+            'errores'              => $errores,
         ];
     }
 
@@ -167,17 +207,18 @@ class PlanillaService
                 $planillaId = $etiquetas->first()->planilla_id;
                 $pesoTotal = $etiquetas->sum('peso');
 
-                // Verificar si ya existe un paquete para esta subetiqueta
-                $paqueteExistente = Paquete::where('etiqueta_sub_id', $etiquetaSubId)->first();
+                // Verificar si alguna etiqueta ya tiene paquete asignado
+                $paqueteExistenteId = $etiquetas->whereNotNull('paquete_id')->pluck('paquete_id')->first();
 
-                if ($paqueteExistente) {
-                    $paquete = $paqueteExistente;
-                } else {
+                if ($paqueteExistenteId) {
+                    $paquete = Paquete::find($paqueteExistenteId);
+                }
+
+                if (empty($paquete)) {
                     $paquete = Paquete::crearConCodigoUnico([
-                        'planilla_id'     => $planillaId,
-                        'etiqueta_sub_id' => $etiquetaSubId,
-                        'peso'            => $pesoTotal,
-                        'estado'          => 'pendiente',
+                        'planilla_id' => $planillaId,
+                        'peso'        => $pesoTotal,
+                        'estado'      => 'pendiente',
                     ]);
                 }
 

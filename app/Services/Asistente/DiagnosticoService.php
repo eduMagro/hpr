@@ -887,14 +887,17 @@ class DiagnosticoService
             return ['success' => false, 'mensaje' => 'No se especificó el elemento'];
         }
 
+        // Convertir estado textual a elaborado (0=pendiente, 1=fabricado)
+        $elaborado = in_array($nuevoEstado, ['fabricado', 'completado']) ? 1 : 0;
+
         DB::table('elementos')->where('id', $id)->update([
-            'estado' => $nuevoEstado,
+            'elaborado' => $elaborado,
             'updated_at' => now(),
         ]);
 
         return [
             'success' => true,
-            'mensaje' => "Elemento #{$id} revertido a estado '{$nuevoEstado}'",
+            'mensaje' => "Elemento #{$id} revertido a elaborado={$elaborado}",
         ];
     }
 
@@ -907,14 +910,17 @@ class DiagnosticoService
             return ['success' => false, 'mensaje' => 'No se especificaron elementos'];
         }
 
+        // Convertir estado textual a elaborado (0=pendiente, 1=fabricado)
+        $elaborado = in_array($nuevoEstado, ['fabricado', 'completado']) ? 1 : 0;
+
         $count = DB::table('elementos')->whereIn('id', $ids)->update([
-            'estado' => $nuevoEstado,
+            'elaborado' => $elaborado,
             'updated_at' => now(),
         ]);
 
         return [
             'success' => true,
-            'mensaje' => "{$count} elementos revertidos a estado '{$nuevoEstado}'",
+            'mensaje' => "{$count} elementos revertidos a elaborado={$elaborado}",
         ];
     }
 

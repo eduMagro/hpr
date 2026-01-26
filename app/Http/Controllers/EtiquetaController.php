@@ -2775,11 +2775,10 @@ class EtiquetaController extends Controller
         return DB::transaction(function () use ($etiqueta) {
             $cambios = [];
 
-            // 1. Restaurar elementos a estado pendiente y limpiar operarios
+            // 1. Restaurar elementos a pendiente (elaborado=0) y limpiar operarios
             $elementosActualizados = $etiqueta->elementos()
-                ->where('estado', 'fabricando')
                 ->update([
-                    'estado' => 'pendiente',
+                    'elaborado' => 0,
                     'users_id' => null,
                     'users_id_2' => null,
                 ]);

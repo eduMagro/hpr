@@ -135,9 +135,14 @@ class ElementoController extends Controller
             });
         }
 
-        // Estado
+        // Estado (ahora usa 'elaborado': 0=pendiente, 1=fabricado)
         if ($request->has('estado') && $request->estado) {
-            $query->where('estado', 'like', "%{$request->estado}%");
+            $estadoValor = strtolower($request->estado);
+            if (in_array($estadoValor, ['fabricado', 'completado', '1'])) {
+                $query->where('elaborado', 1);
+            } elseif (in_array($estadoValor, ['pendiente', '0'])) {
+                $query->where('elaborado', 0);
+            }
         }
         if ($request->filled('peso')) {
             $query->where('peso', 'like', "%{$request->peso}%");
@@ -1220,37 +1225,34 @@ class ElementoController extends Controller
         $tipoMaquina = optional($elemento->maquina)->tipo;
         $ahora = now();
 
-        // Según el estado y tipo de máquina, actualizar los campos correspondientes
-        switch ($elemento->estado) {
-            case 'fabricando':
-                // Registrar inicio de fabricación
-                if ($tipoMaquina === 'ensambladora') {
-                    if (!$etiqueta->fecha_inicio_ensamblado) {
-                        $etiqueta->fecha_inicio_ensamblado = $ahora;
-                    }
-                } elseif ($tipoMaquina === 'soldadora') {
-                    if (!$etiqueta->fecha_inicio_soldadura) {
-                        $etiqueta->fecha_inicio_soldadura = $ahora;
-                    }
-                } else {
-                    // dobladora/cortadora
-                    if (!$etiqueta->fecha_inicio) {
-                        $etiqueta->fecha_inicio = $ahora;
-                    }
+        // Según elaborado y tipo de máquina, actualizar los campos correspondientes
+        // elaborado=0 → pendiente/fabricando, elaborado=1 → fabricado
+        if ($elemento->elaborado == 1) {
+            // Registrar fin de fabricación
+            if ($tipoMaquina === 'ensambladora') {
+                $etiqueta->fecha_finalizacion_ensamblado = $ahora;
+            } elseif ($tipoMaquina === 'soldadora') {
+                $etiqueta->fecha_finalizacion_soldadura = $ahora;
+            } else {
+                // dobladora/cortadora
+                $etiqueta->fecha_finalizacion = $ahora;
+            }
+        } else {
+            // Registrar inicio de fabricación
+            if ($tipoMaquina === 'ensambladora') {
+                if (!$etiqueta->fecha_inicio_ensamblado) {
+                    $etiqueta->fecha_inicio_ensamblado = $ahora;
                 }
-                break;
-
-            case 'fabricado':
-                // Registrar fin de fabricación
-                if ($tipoMaquina === 'ensambladora') {
-                    $etiqueta->fecha_finalizacion_ensamblado = $ahora;
-                } elseif ($tipoMaquina === 'soldadora') {
-                    $etiqueta->fecha_finalizacion_soldadura = $ahora;
-                } else {
-                    // dobladora/cortadora
-                    $etiqueta->fecha_finalizacion = $ahora;
+            } elseif ($tipoMaquina === 'soldadora') {
+                if (!$etiqueta->fecha_inicio_soldadura) {
+                    $etiqueta->fecha_inicio_soldadura = $ahora;
                 }
-                break;
+            } else {
+                // dobladora/cortadora
+                if (!$etiqueta->fecha_inicio) {
+                    $etiqueta->fecha_inicio = $ahora;
+                }
+            }
         }
 
         $etiqueta->save();
@@ -1258,7 +1260,7 @@ class ElementoController extends Controller
             'etiqueta_id' => $etiqueta->id,
             'elemento_id' => $elemento->id,
             'tipo_maquina' => $tipoMaquina,
-            'estado' => $elemento->estado
+            'elaborado' => $elemento->elaborado
         ]);
     }
 

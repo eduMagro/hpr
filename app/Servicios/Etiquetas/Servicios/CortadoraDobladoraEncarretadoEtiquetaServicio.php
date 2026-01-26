@@ -308,14 +308,13 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                         });
 
                         if (!$quedanPendientes) {
-                            // No devuelvas JSON ni hagas rollBack: lanza excepción y que el controlador responda.
-                            throw new ServicioEtiquetaException(
-                                'Todos los elementos en la máquina ya han sido completados.',
-                                [
-                                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
-                                    'maquina_id'      => $maquina->id,
-                                ]
-                            );
+                            // Todos los elementos ya están elaborados, marcar etiqueta como completada si no lo está
+                            if (!in_array($etiqueta->estado, ['completada', 'fabricada'])) {
+                                $etiqueta->estado = 'completada';
+                                $etiqueta->fecha_finalizacion = now();
+                                $etiqueta->save();
+                            }
+                            break; // Continuar normalmente, la etiqueta ya está completada
                         }
 
                         // Segundo clic: Verificar si el producto/colada cambió desde el primer clic
@@ -830,7 +829,13 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
         });
 
         if (!$quedanPendientes) {
-            return false; // Ya está completada
+            // Todos los elementos ya están elaborados, marcar etiqueta como completada si no lo está
+            if (!in_array($etiqueta->estado, ['completada', 'fabricada'])) {
+                $etiqueta->estado = 'completada';
+                $etiqueta->fecha_finalizacion = now();
+                $etiqueta->save();
+            }
+            return true; // Procesada correctamente (ya estaba completada)
         }
 
         // Verificar si el producto cambió desde el primer clic

@@ -1071,7 +1071,8 @@ class PlanillaController extends Controller
         $planillaIds = $planillaId ? [(int) $planillaId] : null;
 
         $resultado = $svc->completarTodasPlanillas($planillaIds, $fechaCorte);
-        $mensaje = "Procesadas OK: {$resultado['procesadas_ok']} | Omitidas por fecha: {$resultado['omitidas_fecha']} | Fallidas: {$resultado['fallidas']}";
+        $planillasMsg = $resultado['planillas_completadas'] ?? 0;
+        $mensaje = "Planillas: {$planillasMsg} | Omitidas por fecha: {$resultado['omitidas_fecha']} | Fallidas: {$resultado['fallidas']}";
 
         if ($request->expectsJson() || $request->wantsJson()) {
             return response()->json([

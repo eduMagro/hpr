@@ -3,10 +3,10 @@
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
         <!-- Tabla con filtros Livewire -->
-        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
-            <table class="w-full min-w-[1200px] border border-gray-300 rounded-lg">
-                <thead class="bg-blue-500 text-white text-10">
-                    <tr class="text-center text-xs uppercase">
+        <div class="w-full overflow-x-auto bg-white dark:bg-gray-900 shadow-lg rounded-lg">
+            <table class="table-global w-full min-w-[1200px]">
+                <thead>
+                    <tr class="text-center">
                         <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
                         <x-tabla.encabezado-ordenable campo="codigo" :sortActual="$sort" :orderActual="$order" texto="Codigo" />
                         <x-tabla.encabezado-ordenable campo="etiqueta_sub_id" :sortActual="$sort" :orderActual="$order"
@@ -45,77 +45,56 @@
                         <th class="p-2 border">Acciones</th>
                     </tr>
 
-                    <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="etiqueta_id"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="ID...">
+                    <x-tabla.filtro-row>
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="etiqueta_id" placeholder="ID...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="codigo"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Código...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="codigo" placeholder="Código...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="etiqueta_sub_id"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="SubEtiqueta...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="etiqueta_sub_id" placeholder="SubEtiqueta...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="codigo_planilla"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Planilla...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="codigo_planilla" placeholder="Planilla...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="paquete"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Paquete...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="paquete" placeholder="Paquete...">
                         </th>
-                        <th class="p-2 border"></th> {{-- Op 1 --}}
-                        <th class="p-2 border"></th> {{-- Op 2 --}}
-                        <th class="p-2 border"></th> {{-- Ens 1 --}}
-                        <th class="p-2 border"></th> {{-- Ens 2 --}}
-                        <th class="p-2 border"></th> {{-- Sol 1 --}}
-                        <th class="p-2 border"></th> {{-- Sol 2 --}}
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="numero_etiqueta"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Número...">
+                        <th></th> {{-- Op 1 --}}
+                        <th></th> {{-- Op 2 --}}
+                        <th></th> {{-- Ens 1 --}}
+                        <th></th> {{-- Ens 2 --}}
+                        <th></th> {{-- Sol 1 --}}
+                        <th></th> {{-- Sol 2 --}}
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="numero_etiqueta" placeholder="Número...">
                         </th>
-                        <th class="p-2 border">
-                            <input type="text" wire:model.live.debounce.300ms="nombre"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Nombre...">
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="nombre" placeholder="Nombre...">
                         </th>
-                        <th class="p-2 border"></th> {{-- Marca --}}
-                        <th class="p-2 border"></th> {{-- Peso --}}
-                        <th class="p-2 border">
-                            <input type="date" wire:model.live.debounce.300ms="inicio_fabricacion"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                        <th></th> {{-- Marca --}}
+                        <th></th> {{-- Peso --}}
+                        <th>
+                            <input type="date" wire:model.live.debounce.300ms="inicio_fabricacion">
                         </th>
-                        <th class="p-2 border">
-                            <input type="date" wire:model.live.debounce.300ms="final_fabricacion"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                        <th>
+                            <input type="date" wire:model.live.debounce.300ms="final_fabricacion">
                         </th>
-                        <th class="p-2 border">
-                            <input type="date" wire:model.live.debounce.300ms="inicio_ensamblado"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                        <th>
+                            <input type="date" wire:model.live.debounce.300ms="inicio_ensamblado">
                         </th>
-                        <th class="p-2 border">
-                            <input type="date" wire:model.live.debounce.300ms="final_ensamblado"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                        <th>
+                            <input type="date" wire:model.live.debounce.300ms="final_ensamblado">
                         </th>
-                        <th class="p-2 border">
-                            <input type="date" wire:model.live.debounce.300ms="inicio_soldadura"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                        <th>
+                            <input type="date" wire:model.live.debounce.300ms="inicio_soldadura">
                         </th>
-                        <th class="p-2 border">
-                            <input type="date" wire:model.live.debounce.300ms="final_soldadura"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                        <th>
+                            <input type="date" wire:model.live.debounce.300ms="final_soldadura">
                         </th>
-                        <th class="p-2 border">
-                            <select wire:model.live="estado"
-                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                        <th>
+                            <select wire:model.live="estado">
                                 <option value="">Todos</option>
                                 <option value="pendiente">Pendiente</option>
                                 <option value="fabricando">Fabricando</option>
@@ -124,10 +103,9 @@
                                 <option value="completada">Completada</option>
                             </select>
                         </th>
-                        <th class="p-2 border text-center align-middle">
+                        <th class="text-center align-middle">
                             <div class="flex justify-center gap-2 items-center h-full">
-                                {{-- ♻️ Botón reset --}}
-                                <button wire:click="limpiarFiltros"
+                                <button type="button" wire:click="limpiarFiltros"
                                     class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
                                     title="Restablecer filtros">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
@@ -138,15 +116,15 @@
                                 </button>
                             </div>
                         </th>
-                    </tr>
+                    </x-tabla.filtro-row>
                 </thead>
 
-                <tbody class="text-gray-700 text-sm">
+                <tbody class="text-gray-700 dark:text-gray-300">
                     @forelse ($etiquetas as $etiqueta)
-                        <tr tabindex="0" wire:key="etiqueta-{{ $etiqueta->id }}" x-data="{
+                        <x-tabla.row wire:key="etiqueta-{{ $etiqueta->id }}" x-data="{
                             editando: false,
-                            etiqueta: @js($etiqueta),
-                            original: JSON.parse(JSON.stringify(@js($etiqueta)))
+                            etiqueta: {{ Js::from($etiqueta) }},
+                            original: JSON.parse(JSON.stringify({{ Js::from($etiqueta) }}))
                         }"
                             @dblclick="if(!$event.target.closest('input, select, button, a')) {
                                 if(!editando) {
@@ -157,11 +135,9 @@
                                 }
                             }"
                             @keydown.enter.stop="if(editando) { guardarCambios(etiqueta); editando = false; }"
-                            :class="{
-                                'bg-yellow-100': editando,
-                                'hover:bg-blue-50': !editando
-                            }"
-                            class="border-b odd:bg-gray-100 even:bg-gray-50 cursor-pointer text-xs uppercase transition-colors">
+                            @keydown.escape.stop="if(editando) { etiqueta = JSON.parse(JSON.stringify(original)); editando = false; }"
+                            x-bind:class="{ 'editing': editando }"
+                            class="uppercase">
 
                             <!-- ID (no editable) -->
                             <td class="p-2 text-center border">{{ $etiqueta->id }}</td>
@@ -176,7 +152,7 @@
                             <td class="p-2 text-center border">
                                 @if ($etiqueta->planilla_id)
                                     <a href="{{ route('planillas.index', ['planilla_id' => $etiqueta->planilla_id]) }}"
-                                        wire:navigate class="text-blue-500 hover:underline">
+                                        wire:navigate class="text-blue-500 dark:text-blue-400 hover:underline">
                                         {{ $etiqueta->planilla->codigo_limpio ?? 'N/A' }}
                                     </a>
                                 @else
@@ -188,7 +164,7 @@
                             <td class="p-2 text-center border">
                                 @if (isset($etiqueta->paquete->codigo))
                                     <a href="{{ route('paquetes.index', [$etiqueta->paquete_id => $etiqueta->paquete->codigo]) }}"
-                                        wire:navigate class="text-blue-500 hover:underline">
+                                        wire:navigate class="text-blue-500 dark:text-blue-400 hover:underline">
                                         {{ $etiqueta->paquete->codigo }}
                                     </a>
                                 @else
@@ -200,7 +176,7 @@
                             <td class="p-2 text-center border">
                                 @if ($etiqueta->operario1)
                                     <a href="{{ route('users.index', ['users_id' => $etiqueta->operario1]) }}"
-                                        wire:navigate class="text-blue-500 hover:underline">
+                                        wire:navigate class="text-blue-500 dark:text-blue-400 hover:underline">
                                         {{ $etiqueta->operario1->name }}
                                         {{ $etiqueta->operario1->primer_apellido }}
                                     </a>
@@ -213,7 +189,7 @@
                             <td class="p-2 text-center border">
                                 @if ($etiqueta->operario2)
                                     <a href="{{ route('users.index', ['users_id' => $etiqueta->operario2]) }}"
-                                        wire:navigate class="text-blue-500 hover:underline">
+                                        wire:navigate class="text-blue-500 dark:text-blue-400 hover:underline">
                                         {{ $etiqueta->operario2->name }}
                                     </a>
                                 @else
@@ -225,7 +201,7 @@
                             <td class="p-2 text-center border">
                                 @if ($etiqueta->ensamblador1)
                                     <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador1]) }}"
-                                        wire:navigate class="text-blue-500 hover:underline">
+                                        wire:navigate class="text-blue-500 dark:text-blue-400 hover:underline">
                                         {{ $etiqueta->ensamblador1->name }}
                                     </a>
                                 @else
@@ -237,7 +213,7 @@
                             <td class="p-2 text-center border">
                                 @if ($etiqueta->ensamblador2)
                                     <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador2]) }}"
-                                        wire:navigate class="text-blue-500 hover:underline">
+                                        wire:navigate class="text-blue-500 dark:text-blue-400 hover:underline">
                                         {{ $etiqueta->ensamblador2->name }}
                                     </a>
                                 @else
@@ -257,7 +233,7 @@
                                     <span x-text="etiqueta.numero_etiqueta"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="etiqueta.numero_etiqueta"
-                                    class="w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- Nombre (editable) -->
@@ -266,7 +242,7 @@
                                     <span x-text="etiqueta.nombre"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="etiqueta.nombre"
-                                    class="w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- Marca (editable) -->
@@ -275,7 +251,7 @@
                                     <span x-text="etiqueta.marca"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="etiqueta.marca"
-                                    class="w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- Peso (editable) -->
@@ -284,7 +260,7 @@
                                     <span x-text="etiqueta.peso"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="etiqueta.peso"
-                                    class="w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- Fecha Inicio Fabricación (editable) -->
@@ -295,7 +271,7 @@
                                 <input x-show="editando" type="datetime-local"
                                     :value="etiqueta.fecha_inicio ? etiqueta.fecha_inicio.replace(' ', 'T') : ''"
                                     @input="etiqueta.fecha_inicio = $event.target.value.replace('T', ' ')"
-                                    class="w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- Fecha Finalización Fabricación (editable) -->
@@ -307,7 +283,7 @@
                                 <input x-show="editando" type="datetime-local"
                                     :value="etiqueta.fecha_finalizacion ? etiqueta.fecha_finalizacion.replace(' ', 'T') : ''"
                                     @input="etiqueta.fecha_finalizacion = $event.target.value.replace('T', ' ')"
-                                    class="w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- Fecha Inicio Ensamblado (editable) -->
@@ -320,7 +296,7 @@
                                     :value="etiqueta.fecha_inicio_ensamblado ? etiqueta.fecha_inicio_ensamblado.replace(' ',
                                         'T') : ''"
                                     @input="etiqueta.fecha_inicio_ensamblado = $event.target.value.replace('T', ' ')"
-                                    class="w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- Fecha Finalización Ensamblado (editable) -->
@@ -333,7 +309,7 @@
                                     :value="etiqueta.fecha_finalizacion_ensamblado ? etiqueta.fecha_finalizacion_ensamblado
                                         .replace(' ', 'T') : ''"
                                     @input="etiqueta.fecha_finalizacion_ensamblado = $event.target.value.replace('T', ' ')"
-                                    class="w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- Fecha Inicio Soldadura (editable) -->
@@ -346,7 +322,7 @@
                                     :value="etiqueta.fecha_inicio_soldadura ? etiqueta.fecha_inicio_soldadura.replace(' ',
                                         'T') : ''"
                                     @input="etiqueta.fecha_inicio_soldadura = $event.target.value.replace('T', ' ')"
-                                    class="w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- Fecha Finalización Soldadura (editable) -->
@@ -359,7 +335,7 @@
                                     :value="etiqueta.fecha_finalizacion_soldadura ? etiqueta.fecha_finalizacion_soldadura
                                         .replace(' ', 'T') : ''"
                                     @input="etiqueta.fecha_finalizacion_soldadura = $event.target.value.replace('T', ' ')"
-                                    class="w-full text-xs border rounded px-1 py-0.5">
+                                    class="inline-edit-input">
                             </td>
 
                             <!-- Estado (editable mediante select) - Muestra estado/estado2 si tiene maquina_id_2 -->
@@ -377,7 +353,7 @@
                                 </template>
                                 <div x-show="editando" class="flex flex-col gap-1">
                                     <select x-model="etiqueta.estado"
-                                        class="w-full text-xs border rounded px-1 py-0.5">
+                                        class="inline-edit-input">
                                         <option value="pendiente">Pendiente</option>
                                         <option value="fabricando">Fabricando</option>
                                         <option value="fabricada">Fabricada</option>
@@ -387,7 +363,7 @@
                                     </select>
                                     @if($etiqueta->estado2)
                                     <select x-model="etiqueta.estado2"
-                                        class="w-full text-xs border rounded px-1 py-0.5">
+                                        class="inline-edit-input">
                                         <option value="pendiente">Pendiente</option>
                                         <option value="doblando">Doblando</option>
                                         <option value="completada">Completada</option>
@@ -401,7 +377,7 @@
                                 <div class="flex items-center space-x-2 justify-center">
                                     {{-- Botones visibles solo en edición --}}
                                     <button x-show="editando" @click="guardarCambios(etiqueta); editando = false"
-                                        class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                        class="w-6 h-6 bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-800 flex items-center justify-center"
                                         title="Guardar cambios">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                             viewBox="0 0 24 24" stroke="currentColor">
@@ -411,7 +387,7 @@
                                     </button>
                                     <button x-show="editando"
                                         @click="etiqueta = JSON.parse(JSON.stringify(original)); editando = false"
-                                        class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
+                                        class="w-6 h-6 bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-800 flex items-center justify-center"
                                         title="Cancelar edición">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                             viewBox="0 0 24 24" stroke="currentColor">
@@ -424,7 +400,7 @@
                                     <template x-if="!editando">
                                         <div class="flex items-center space-x-2">
                                             <button @click="editando = true"
-                                                class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
+                                                class="w-6 h-6 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-200 dark:hover:bg-blue-800 flex items-center justify-center"
                                                 title="Editar">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                                     fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -434,7 +410,7 @@
                                                 </svg>
                                             </button>
                                             <button @click="mostrar({{ $etiqueta->id }})" wire:navigate
-                                                class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
+                                                class="w-6 h-6 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-200 dark:hover:bg-blue-800 flex items-center justify-center"
                                                 title="Ver">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                                     fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -453,7 +429,7 @@
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit"
-                                                    class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
+                                                    class="w-6 h-6 bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-800 flex items-center justify-center"
                                                     title="Eliminar">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -467,30 +443,31 @@
                                     </template>
                                 </div>
                             </td>
-                        </tr>
+                        </x-tabla.row>
                     @empty
-                        <tr>
-                            <td colspan="23" class="text-center py-4 text-gray-500">No hay etiquetas registradas
+                        <x-tabla.row :clickable="false">
+                            <td colspan="23" class="text-center py-4 text-gray-500 dark:text-gray-400">
+                                No hay etiquetas registradas
                             </td>
-                        </tr>
+                        </x-tabla.row>
                     @endforelse
                 </tbody>
             </table>
         </div>
 
         <!-- Paginación Livewire -->
-        ${{ $etiquetas->links() }}
+        <x-tabla.paginacion-livewire :paginador="$etiquetas" />
 
         <!-- Modal para mostrar etiqueta -->
         <div id="modalEtiqueta" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50"
             wire:ignore>
 
-            <div class="relative bg-white p-4 rounded-lg max-w-4xl">
+            <div class="relative bg-white dark:bg-gray-800 p-4 rounded-lg max-w-4xl">
                 <!-- Botón de cierre -->
-                <button onclick="onclick="cerrarModal()" wire:navigate" aria-label="Cerrar" id="modalClose"
-                    class="absolute -top-3 -right-3 bg-white border border-black
+                <button onclick="cerrarModal()" aria-label="Cerrar" id="modalClose"
+                    class="absolute -top-3 -right-3 bg-white dark:bg-gray-700 border border-black dark:border-gray-500
                    rounded-full w-7 h-7 flex items-center justify-center
-                   text-xl leading-none hover:bg-red-100 z-10">
+                   text-xl leading-none hover:bg-red-100 dark:hover:bg-red-900 dark:text-gray-200 z-10">
                     &times;
                 </button>
 

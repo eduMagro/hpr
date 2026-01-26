@@ -34,7 +34,7 @@
                     <th class="p-2 border">Acciones</th>
                 </tr>
                 {{-- Fila de filtros --}}
-                <tr class="filters-row text-center">
+                <x-tabla.filtro-row>
                     <th>
                         <input type="text" wire:model.live.debounce.300ms="id" placeholder="ID">
                     </th>
@@ -86,7 +86,7 @@
                     <th></th>
                     <th class="text-center align-middle">
                         <div class="flex justify-center gap-2 items-center h-full">
-                            {{-- ♻️ Botón reset --}}
+                            {{-- Botón reset --}}
                             <button type="button" wire:click="limpiarFiltros"
                                 class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
                                 title="Restablecer filtros">
@@ -98,9 +98,9 @@
                             </button>
                         </div>
                     </th>
-                </tr>
+                </x-tabla.filtro-row>
             </thead>
-            <tbody>
+            <tbody class="text-gray-700 dark:text-gray-300">
                 @forelse($productos as $producto)
                     <x-tabla.row wire:key="producto-{{ $producto->id }}" x-data="{
                         editando: false,

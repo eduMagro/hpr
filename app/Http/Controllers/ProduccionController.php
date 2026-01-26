@@ -1774,14 +1774,14 @@ class ProduccionController extends Controller
             $planillaId = $request->planilla_id;
 
             $elementos = Elemento::where('planilla_id', $planillaId)
-                ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones', 'maquina_id', 'barras', 'etiqueta_id')
-                ->with(['maquina:id,nombre,codigo', 'etiqueta:id,estado'])
+                ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones', 'maquina_id', 'barras', 'etiqueta_sub_id')
+                ->with(['maquina:id,nombre,codigo', 'etiquetaRelacion:etiqueta_sub_id,estado'])
                 ->orderBy('maquina_id')
                 ->get()
                 ->map(function ($elemento) {
                     // Añadir estado de la etiqueta al elemento
-                    $elemento->estado_etiqueta = $elemento->etiqueta->estado ?? null;
-                    unset($elemento->etiqueta); // Limpiar la relación para no enviar datos duplicados
+                    $elemento->estado_etiqueta = $elemento->etiquetaRelacion->estado ?? null;
+                    unset($elemento->etiquetaRelacion); // Limpiar la relación para no enviar datos duplicados
                     return $elemento;
                 });
 

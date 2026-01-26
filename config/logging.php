@@ -202,6 +202,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'fichajes_trabajadores' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/fichajes_trabajadores/fichajes.log'),
+            'level' => 'info',
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];
