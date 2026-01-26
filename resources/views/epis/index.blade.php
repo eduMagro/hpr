@@ -5,7 +5,7 @@
         <div class="max-w-6xl mx-auto space-y-6">
             <div class="flex justify-center mb-10">
                 <div
-                    class="inline-flex p-1.5 bg-gray-100/80 backdrop-blur-md rounded-2xl border border-gray-200 shadow-inner">
+                    class="inline-flex gap-2 p-1.5 bg-gray-100/80 backdrop-blur-md rounded-2xl border border-gray-200 shadow-inner">
                     <button @click="activeView = 'agenda'" :class="activeView === 'agenda' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
                             'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
                         class="px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2">
@@ -276,6 +276,27 @@
                                                 </div>
                                             </div>
                                         </template>
+                                        <!-- Indicador de firmas pendientes -->
+                                        <template x-if="u.epis_sin_firmar > 0">
+                                            <div class="relative group/firma">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                    class="text-red-500">
+                                                    <path
+                                                        d="m21 17-2.156-1.868A.5.5 0 0 0 18 15.5v.5a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1c0-2.545-3.991-3.97-8.5-4a1 1 0 0 0 0 5c4.153 0 4.745-11.295 5.708-13.5a2.5 2.5 0 1 1 3.31 3.284" />
+                                                    <path d="M3 21h18" />
+                                                </svg>
+                                                <!-- Tooltip -->
+                                                <div
+                                                    class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 text-xs font-medium rounded-lg shadow-lg opacity-0 invisible group-hover/firma:opacity-100 group-hover/firma:visible transition-all duration-200 whitespace-nowrap z-50 bg-red-600 text-white">
+                                                    <span x-text="`Falta firmar: ${u.epis_sin_firmar}`"></span>
+                                                    <div
+                                                        class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-red-600">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
                                         <button type="button"
                                             class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 shadow-sm hover:shadow-md transition"
                                             @click="openUser(u)">
@@ -494,7 +515,7 @@
                                                         Últimos asignados
                                                     </button>
 
-                                                    <button type="button"
+                                                    <button type="button" x-show="userHasPendingSignature"
                                                         class="w-full mt-2 px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
                                                         @click="requestConsent()" :disabled="sendingConsent">
                                                         <span x-show="!sendingConsent">Solicitar firma</span>
@@ -591,19 +612,29 @@
                                                                     </div>
                                                                     <div class="min-w-0">
                                                                         <p class="font-semibold text-gray-900 truncate">
+                                                                        <div class="flex items-center gap-2">
                                                                             <span x-text="g.epi.nombre"></span>
-                                                                            <template x-if="g.epi.codigo">
-                                                                                <span class="text-sm text-gray-600"
-                                                                                    x-text="` (${g.epi.codigo})`"></span>
-                                                                            </template>
+                                                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                                                width="14" height="14"
+                                                                                viewBox="0 0 24 24" fill="none"
+                                                                                stroke="currentColor" stroke-width="2"
+                                                                                stroke-linecap="round"
+                                                                                stroke-linejoin="round"
+                                                                                :class="g.tiene_pendientes_firma ? 'text-red-500' : 'text-blue-500'">
+                                                                                <path
+                                                                                    d="m21 17-2.156-1.868A.5.5 0 0 0 18 15.5v.5a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1c0-2.545-3.991-3.97-8.5-4a1 1 0 0 0 0 5c4.153 0 4.745-11.295 5.708-13.5a2.5 2.5 0 1 1 3.31 3.284" />
+                                                                                <path d="M3 21h18" />
+                                                                            </svg>
+                                                                        </div>
+                                                                        <template x-if="g.epi.codigo">
+                                                                            <span class="text-sm text-gray-600"
+                                                                                x-text="` (${g.epi.codigo})`"></span>
+                                                                        </template>
                                                                         </p>
                                                                         <p class="text-sm text-gray-600">
                                                                             Cantidad: <span class="font-semibold"
                                                                                 x-text="g.total_en_posesion"></span>
                                                                         </p>
-                                                                        <p class="text-xs text-gray-500 mt-1">Click
-                                                                            para
-                                                                            ver historial</p>
                                                                     </div>
                                                                 </div>
 
@@ -2777,13 +2808,18 @@
                                     epi: a.epi,
                                     asignaciones: [],
                                     total_en_posesion: 0,
-                                    total_devueltos: 0
+                                    total_devueltos: 0,
+                                    tiene_pendientes_firma: false
                                 });
                             }
                             const g = map.get(key);
                             g.asignaciones.push(a);
-                            if (a.devuelto_en) g.total_devueltos += a.cantidad || 0;
-                            else g.total_en_posesion += a.cantidad || 0;
+                            if (a.devuelto_en) {
+                                g.total_devueltos += a.cantidad || 0;
+                            } else {
+                                g.total_en_posesion += a.cantidad || 0;
+                                if (!a.firmado) g.tiene_pendientes_firma = true;
+                            }
                         }
                         const groups = Array.from(map.values())
                             .filter(g => g.total_en_posesion > 0)
@@ -2800,6 +2836,11 @@
                         groups.sort((a, b) => (b.total_en_posesion - a.total_en_posesion) || (a.epi.nombre || '')
                             .localeCompare(b.epi.nombre || ''));
                         return groups;
+                    },
+
+                    get userHasPendingSignature() {
+                        if (!this.asignacionesAll) return false;
+                        return this.asignacionesAll.some(a => !a.devuelto_en && !a.firmado);
                     },
 
                     openEpiAssignSuggestions() {

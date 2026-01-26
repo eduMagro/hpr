@@ -208,6 +208,11 @@
                                 this.canvas.ontouchstart = (e) => { e.preventDefault(); this.startDrawing(e); };
                                 this.canvas.ontouchmove = (e) => { e.preventDefault(); this.draw(e); };
                                 this.canvas.ontouchend = () => this.stopDrawing();
+
+                                // Scroll automático al canvas tras la transición
+                                setTimeout(() => {
+                                    this.canvas.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }, 350);
                             });
                         },
                         

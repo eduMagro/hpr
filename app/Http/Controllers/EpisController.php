@@ -10,6 +10,7 @@ use App\Models\EpiUsuario;
 use App\Models\Empresa;
 use App\Models\User;
 use App\Models\Alerta;
+use App\Models\AlertaLeida;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -36,6 +37,7 @@ class EpisController extends Controller
             'entregado_en' => optional($asignacion->entregado_en)->toIso8601String(),
             'devuelto_en' => optional($fechaDevolucion)->toIso8601String(),
             'notas' => $asignacion->notas,
+            'firmado' => (bool) $asignacion->firmado,
             'epi' => $asignacion->epi ? [
                 'id' => $asignacion->epi->id,
                 'codigo' => $asignacion->epi->codigo,
@@ -159,6 +161,11 @@ class EpisController extends Controller
                 ],
                 'cantidad'
             )
+            ->withCount([
+                'episAsignaciones as epis_sin_firmar' => function ($query) {
+                    $query->whereNull('devuelto_en')->where('firmado', false);
+                }
+            ])
             ->orderByDesc('epis_en_posesion')
             ->orderBy('primer_apellido')
             ->orderBy('segundo_apellido')
@@ -186,6 +193,7 @@ class EpisController extends Controller
                     ] : null,
                     'ruta_imagen' => $user->ruta_imagen,
                     'epis_en_posesion' => (int) ($user->epis_en_posesion ?? 0),
+                    'epis_sin_firmar' => (int) ($user->epis_sin_firmar ?? 0),
                     'tiene_epis' => ((int) ($user->epis_en_posesion ?? 0)) > 0,
                     'epi_match' => $epiProvided ? (bool) ($user->epi_match ?? false) : true,
                     'tallas' => $user->tallas ? [
@@ -892,13 +900,19 @@ class EpisController extends Controller
 
     public function enviarConsentimiento(User $user)
     {
-        Alerta::create([
+        $alerta = Alerta::create([
             'user_id_1' => auth()->id(),
             'destinatario_id' => $user->id,
             'mensaje' => "Tiene EPIs pendientes de firmar. Por favor, firme el consentimiento en su perfil.",
             'tipo' => 'sistema',
             'created_at' => now(),
             'updated_at' => now(),
+        ]);
+
+        AlertaLeida::create([
+            'alerta_id' => $alerta->id,
+            'user_id' => $user->id,
+            'leida_en' => null,
         ]);
 
         return response()->json(['ok' => true]);
