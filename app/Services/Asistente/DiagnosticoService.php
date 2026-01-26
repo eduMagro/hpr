@@ -53,13 +53,6 @@ class DiagnosticoService
         // Usar IA para análisis profundo del mensaje
         $analisisIA = $this->iaService->analizarProblema($mensaje);
 
-        Log::debug('DiagnosticoService: Análisis IA', [
-            'mensaje' => substr($mensaje, 0, 100),
-            'es_problema' => $analisisIA['es_problema'] ?? false,
-            'confianza' => $analisisIA['confianza'] ?? 0,
-            'comprension' => $analisisIA['comprension'] ?? 'N/A',
-        ]);
-
         // Si la IA no detecta un problema
         if (empty($analisisIA['es_problema'])) {
             return null;

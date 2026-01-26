@@ -583,11 +583,9 @@ class PaqueteController extends Controller
 
     public function validarParaPaquete(Request $request, string $etiquetaSubId): JsonResponse
     {
-        $t0 = microtime(true);
         $etiqueta = Etiqueta::with('elementos')
             ->where('etiqueta_sub_id', $etiquetaSubId)
             ->first();
-        \Log::info("⏱️ [validarParaPaquete] {$etiquetaSubId}: " . round((microtime(true) - $t0) * 1000) . "ms");
 
         if (!$etiqueta) {
             return response()->json([

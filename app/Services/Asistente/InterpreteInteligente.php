@@ -146,17 +146,10 @@ class InterpreteInteligente
         $pregunta = trim($pregunta);
         $preguntaLower = mb_strtolower($pregunta);
 
-        Log::info("InterpreteInteligente: Analizando pregunta", ['pregunta' => $pregunta]);
-
         // Detectar intención
         foreach ($this->intenciones as $intencion => $config) {
             foreach ($config['patrones'] as $patron) {
                 if (preg_match($patron, $pregunta, $matches)) {
-                    Log::info("InterpreteInteligente: Intención detectada", [
-                        'intencion' => $intencion,
-                        'matches' => $matches
-                    ]);
-
                     $entidades = $this->extraerEntidades($preguntaLower, $matches);
 
                     // Si requiere máquina y no se encontró, no matchea

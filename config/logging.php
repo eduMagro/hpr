@@ -210,6 +210,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'asistente-virtual' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/asistente-virtual/asistente.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

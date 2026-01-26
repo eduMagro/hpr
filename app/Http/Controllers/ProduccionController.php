@@ -518,36 +518,13 @@ class ProduccionController extends Controller
         // Combinar
         $planillasACargarIds = array_unique(array_merge($planillasFabricandoIds, $planillasEnColaIds));
 
-        // DEBUG: Verificar si planilla 4982 está en la lista
-        if (in_array(4982, $planillasACargarIds)) {
-            Log::info('DEBUG: Planilla 4982 SÍ está en planillasACargarIds');
-        } else {
-            Log::warning('DEBUG: Planilla 4982 NO está en planillasACargarIds', [
-                'planillasEnColaIds' => $planillasEnColaIds,
-            ]);
-        }
-
         // Cargar elementos solo de esas planillas (sin etiquetaRelacion que no se usa aquí)
         $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2'])
             ->whereIn('planilla_id', $planillasACargarIds)
             ->get();
 
-        // DEBUG: Verificar elementos de planilla 4982
-        $elementos4982 = $elementos->where('planilla_id', 4982);
-        Log::info('DEBUG: Elementos de planilla 4982', [
-            'total' => $elementos4982->count(),
-            'maquinas' => $elementos4982->pluck('maquina_id')->unique()->values(),
-        ]);
-
         // Filtrar solo pendiente/fabricando para el calendario
         $elementosCalendario = $elementos->filter(fn($e) => in_array($e->planilla?->estado, ['pendiente', 'fabricando']));
-
-        // DEBUG: Verificar después del filtro
-        $elementosCalendario4982 = $elementosCalendario->where('planilla_id', 4982);
-        Log::info('DEBUG: Elementos calendario planilla 4982', [
-            'total' => $elementosCalendario4982->count(),
-            'estados_planilla' => $elementosCalendario4982->map(fn($e) => $e->planilla?->estado)->unique()->values(),
-        ]);
         // Máquina real: la más avanzada en el flujo (maquina_id_2 ?? maquina_id)
         $maquinaReal = function ($e) {
             return $e->maquina_id_2 ?? $e->maquina_id;
@@ -601,10 +578,6 @@ class ProduccionController extends Controller
         // 🔹 5. Generar eventos del calendario
         try {
             $planillasEventos = $this->generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas);
-            Log::info('DEBUG: Eventos generados', [
-                'total_eventos' => count($planillasEventos),
-                'planillas_ids' => collect($planillasEventos)->pluck('extendedProps.planilla_id')->unique()->values(),
-            ]);
         } catch (\Throwable $e) {
             Log::error('❌ generarEventosMaquinas', ['msg' => $e->getMessage(), 'file' => $e->getFile() . ':' . $e->getLine()]);
             abort(500, $e->getMessage());
@@ -1852,23 +1825,8 @@ class ProduccionController extends Controller
 
 
         if ($agrupadasIndex->isEmpty()) {
-            Log::warning('EVT E: índice vacío, devuelvo 0 eventos');
             return $planillasEventos->values();
         }
-
-        Log::info('DEBUG generarEventosMaquinas: inicio', [
-            'total_planillas_agrupadas' => $agrupadasIndex->count(),
-            'total_maquinas_con_ordenes' => count($ordenes),
-            'claves_agrupadas' => $agrupadasIndex->keys()->take(10),
-        ]);
-
-        // 4) Recorre máquinas
-        $numMaquinas = is_array($ordenes) ? count($ordenes) : 0;
-
-        Log::info('DEBUG generarEventosMaquinas: ordenes por máquina', [
-            'num_maquinas' => $numMaquinas,
-            'maquinas_ids' => array_keys($ordenes),
-        ]);
 
         foreach ($ordenes as $maquinaId => $planillasOrdenadas) {
 
@@ -1927,7 +1885,6 @@ class ProduccionController extends Controller
 
                 try {
                     if (!$data) {
-                        Log::debug("EVT: Sin data para planilla {$planillaId} en máquina {$maquinaId}");
                         continue;
                     }
 
@@ -1935,10 +1892,6 @@ class ProduccionController extends Controller
                     $grupo    = Arr::get($data, 'elementos');
 
                     if (!$planilla || !$planilla->fecha_estimada_entrega) {
-                        Log::debug("EVT: Planilla {$planillaId} sin fecha_estimada_entrega o sin planilla object", [
-                            'tiene_planilla' => (bool)$planilla,
-                            'fecha' => $planilla?->fecha_estimada_entrega,
-                        ]);
                         continue;
                     }
 
@@ -2053,12 +2006,12 @@ class ProduccionController extends Controller
                             $backgroundColor = ($fechaEntrega && $fechaFinReal->gt($fechaEntrega)) ? '#ef4444' : '#22c55e';
                         }
 
-                        // AGRUPAR TRAMOS CONSECUTIVOS (cortar solo en fines de semana/festivos)
-                        // Si hay más de 12 horas entre el fin de un tramo y el inicio del siguiente,
-                        // consideramos que hay un corte (fin de semana, festivo)
+                        // AGRUPAR TRAMOS CONSECUTIVOS (cortar en turnos desactivados, fines de semana y festivos)
+                        // Si hay más de 2 horas entre el fin de un tramo y el inicio del siguiente,
+                        // consideramos que hay un corte (turno desactivado, fin de semana, festivo)
                         $gruposTramos = [];
                         $grupoActual = [];
-                        $maxGapHoras = 12; // Gap máximo permitido entre tramos consecutivos
+                        $maxGapHoras = 2; // Gap máximo permitido entre tramos consecutivos (reducido de 12 a 2 para detectar turnos desactivados)
 
                         foreach ($tramos as $tramo) {
                             $tramoStart = $tramo['start'] instanceof Carbon ? $tramo['start'] : Carbon::parse($tramo['start']);
@@ -2175,10 +2128,6 @@ class ProduccionController extends Controller
                 $prevEnd = Carbon::parse($evento['end']);
             }
         }
-
-        Log::info('DEBUG generarEventosMaquinas: FIN', [
-            'total_eventos_generados' => $planillasEventos->count(),
-        ]);
 
         return $planillasEventos->values();
     }

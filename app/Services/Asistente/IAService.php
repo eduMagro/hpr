@@ -108,17 +108,12 @@ class IAService
             $respuesta = $this->llamarAPI($prompt);
 
             if (!$respuesta['success']) {
-                Log::warning('IAService: Error en API', [
-                    'modelo' => $this->modeloActual,
-                    'error' => $respuesta['error']
-                ]);
                 return $this->respuestaFallback($mensaje);
             }
 
             $analisis = $this->parsearRespuesta($respuesta['content']);
 
             if (!$this->validarAnalisis($analisis)) {
-                Log::warning('IAService: Análisis inválido', ['analisis' => $analisis]);
                 return $this->respuestaFallback($mensaje);
             }
 
@@ -129,7 +124,6 @@ class IAService
             return $analisis;
 
         } catch (\Exception $e) {
-            Log::error('IAService: Excepción', ['error' => $e->getMessage()]);
             return $this->respuestaFallback($mensaje);
         }
     }

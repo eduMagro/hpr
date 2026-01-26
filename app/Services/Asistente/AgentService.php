@@ -3,7 +3,6 @@
 namespace App\Services\Asistente;
 
 use App\Models\User;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -21,6 +20,7 @@ class AgentService
     protected User $user;
     protected array $herramientas = [];
     protected array $historialAcciones = [];
+    protected $log;
 
     /**
      * Definición de todas las herramientas disponibles
@@ -242,6 +242,7 @@ class AgentService
     public function __construct(?User $user = null, ?string $modelo = null)
     {
         $this->iaService = new IAService($modelo);
+        $this->log = \Illuminate\Support\Facades\Log::channel('asistente-virtual');
         if ($user) {
             $this->user = $user;
         }
@@ -264,7 +265,7 @@ class AgentService
         // 0. PRIMERO: Detectar si es una pregunta informativa (no una acción)
         // En ese caso, devolver null para que el flujo normal de OpenAI se encargue
         if ($this->esPreguntaInformativa($mensaje)) {
-            Log::debug('AgentService: Pregunta informativa detectada, delegando a OpenAI');
+            $this->log->debug('AgentService: Pregunta informativa detectada, delegando a OpenAI');
             return [
                 'tipo' => 'respuesta',
                 'contenido' => null, // null indica que debe pasar al flujo normal
@@ -275,7 +276,7 @@ class AgentService
         // 1. Analizar el mensaje con IA para entender la intención
         $analisis = $this->analizarIntencion($mensaje);
 
-        Log::debug('AgentService: Análisis de intención', [
+        $this->log->debug('AgentService: Análisis de intención', [
             'mensaje' => substr($mensaje, 0, 100),
             'herramienta' => $analisis['herramienta'] ?? 'ninguna',
             'confianza' => $analisis['confianza'] ?? 0,
@@ -292,7 +293,7 @@ class AgentService
 
         // 2.5 Si la confianza es menor a 70%, delegar a OpenAI
         if (($analisis['confianza'] ?? 0) < 70) {
-            Log::debug('AgentService: Confianza baja, delegando a OpenAI');
+            $this->log->debug('AgentService: Confianza baja, delegando a OpenAI');
             return [
                 'tipo' => 'respuesta',
                 'contenido' => null,
@@ -374,7 +375,7 @@ class AgentService
             return $this->detectarHerramienta($mensaje);
 
         } catch (\Exception $e) {
-            Log::error('AgentService: Error analizando intención', ['error' => $e->getMessage()]);
+            $this->log->error('AgentService: Error analizando intención', ['error' => $e->getMessage()]);
             return [
                 'herramienta' => null,
                 'respuesta_sugerida' => null,
@@ -431,6 +432,7 @@ Analiza el siguiente mensaje de un usuario de un sistema de gestión de ferralla
     "estado": "si menciona estado",
     "periodo": "hoy/semana/mes si aplica",
     "maquina": "nombre de máquina si pregunta por producción en máquina específica (ej: syntax, robomaster, schnell, ms16, ms20, etc.)",
+    "por_usuario": "true si pide producción por usuario/trabajador/operario/persona",
     "posicion_origen": "posición actual de la planilla a mover (número)",
     "posicion_destino": "posición destino donde mover la planilla (número)",
     "nueva_posicion": "sinónimo de posicion_destino"
@@ -443,7 +445,7 @@ PROMPT;
             $response = $this->llamarIA($prompt);
             return $this->parsearRespuestaIA($response);
         } catch (\Exception $e) {
-            Log::error('AgentService: Error detectando herramienta', ['error' => $e->getMessage()]);
+            $this->log->error('AgentService: Error detectando herramienta', ['error' => $e->getMessage()]);
             return ['herramienta' => null];
         }
     }
@@ -679,7 +681,7 @@ PROMPT;
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("AgentService: Error ejecutando {$herramienta}", [
+            $this->log->error("AgentService: Error ejecutando {$herramienta}", [
                 'error' => $e->getMessage(),
                 'parametros' => $parametros,
             ]);
@@ -707,7 +709,7 @@ PROMPT;
                 'updated_at' => now(),
             ]);
         } catch (\Exception $e) {
-            Log::warning('AgentService: Error registrando acción', ['error' => $e->getMessage()]);
+            $this->log->warning('AgentService: Error registrando acción', ['error' => $e->getMessage()]);
         }
     }
 
@@ -985,6 +987,7 @@ PROMPT;
     protected function ejecutarProduccionResumen(array $params): array
     {
         $periodo = $params['periodo'] ?? 'hoy';
+        $porUsuario = $params['por_usuario'] ?? $params['usuario'] ?? $params['trabajador'] ?? $params['operario'] ?? false;
 
         $desde = match ($periodo) {
             'hoy' => today(),
@@ -993,33 +996,118 @@ PROMPT;
             default => today(),
         };
 
-        $elementos = \App\Models\Elemento::fabricado()
-            ->where('updated_at', '>=', $desde)
-            ->get();
-
-        $pesoTotal = $elementos->sum('peso');
-        $cantidadTotal = $elementos->count();
-
-        // Por máquina
-        $porMaquina = DB::table('elementos')
-            ->select('maquinas.nombre', DB::raw('COUNT(*) as cantidad'), DB::raw('SUM(elementos.peso) as peso'))
+        // Obtener elementos fabricados con información de máquina, planilla y usuario
+        $elementosFabricados = DB::table('elementos')
+            ->select(
+                'elementos.*',
+                'maquinas.nombre as maquina_nombre',
+                'maquinas.id as maquina_id',
+                'planillas.codigo as planilla_codigo',
+                'planillas.id as planilla_id',
+                'clientes.empresa as cliente_nombre',
+                'users.name as usuario_nombre',
+                'users.id as usuario_id'
+            )
             ->leftJoin('maquinas', 'elementos.maquina_id', '=', 'maquinas.id')
+            ->leftJoin('planillas', 'elementos.planilla_id', '=', 'planillas.id')
+            ->leftJoin('clientes', 'planillas.cliente_id', '=', 'clientes.id')
+            ->leftJoin('users', 'elementos.users_id', '=', 'users.id')
             ->where('elementos.elaborado', 1)
             ->where('elementos.updated_at', '>=', $desde)
-            ->groupBy('maquinas.id', 'maquinas.nombre')
+            ->whereNull('elementos.deleted_at')
+            ->orderBy('maquinas.nombre')
+            ->orderBy('users.name')
+            ->orderBy('planillas.codigo')
             ->get();
 
-        $contenido = "**Resumen de producción ({$periodo}):**\n\n";
-        $contenido .= "- **Total fabricado:** " . number_format($pesoTotal, 0) . " kg\n";
-        $contenido .= "- **Elementos:** {$cantidadTotal}\n\n";
+        $pesoTotal = $elementosFabricados->sum('peso');
+        $cantidadTotal = $elementosFabricados->count();
 
-        if ($porMaquina->isNotEmpty()) {
-            $contenido .= "**Por máquina:**\n";
-            $contenido .= "| Máquina | Elementos | Peso |\n";
-            $contenido .= "|---------|-----------|------|\n";
-            foreach ($porMaquina as $m) {
-                $contenido .= "| " . ($m->nombre ?? 'Sin asignar') . " | {$m->cantidad} | " . number_format($m->peso, 0) . " kg |\n";
+        $contenido = "**Resumen de producción ({$periodo}):**\n\n";
+        $contenido .= "- **Total fabricado:** " . number_format($pesoTotal, 0, ',', '.') . " kg\n";
+        $contenido .= "- **Etiquetas fabricadas:** {$cantidadTotal}\n\n";
+
+        if ($elementosFabricados->isEmpty()) {
+            $contenido .= "_No hay producción registrada en este período._";
+            return [
+                'exito' => true,
+                'contenido' => $contenido,
+                'datos' => [],
+            ];
+        }
+
+        // Si se pide por usuario, mostrar esa vista
+        if ($porUsuario) {
+            return $this->formatearProduccionPorUsuario($elementosFabricados, $contenido, $pesoTotal, $cantidadTotal);
+        }
+
+        // Vista estándar por máquina y planilla
+        return $this->formatearProduccionPorMaquina($elementosFabricados, $contenido, $pesoTotal, $cantidadTotal);
+    }
+
+    /**
+     * Formatea el resumen de producción agrupado por usuario
+     */
+    protected function formatearProduccionPorUsuario($elementosFabricados, string $contenido, float $pesoTotal, int $cantidadTotal): array
+    {
+        // Agrupar por usuario
+        $porUsuario = $elementosFabricados->groupBy('usuario_nombre');
+
+        foreach ($porUsuario as $usuarioNombre => $elementosUsuario) {
+            $usuarioNombre = $usuarioNombre ?: 'Sin asignar';
+            $pesoUsuario = $elementosUsuario->sum('peso');
+            $cantidadUsuario = $elementosUsuario->count();
+
+            $contenido .= "---\n";
+            $contenido .= "### 👤 {$usuarioNombre}\n";
+            $contenido .= "**{$cantidadUsuario} etiquetas** | **" . number_format($pesoUsuario, 0, ',', '.') . " kg**\n\n";
+
+            // Agrupar por máquina dentro del usuario
+            $porMaquina = $elementosUsuario->groupBy('maquina_nombre');
+
+            $contenido .= "| Máquina | Planilla | Etiquetas | Peso |\n";
+            $contenido .= "|---------|----------|-----------|------|\n";
+
+            foreach ($porMaquina as $maquinaNombre => $elementosMaquina) {
+                $maquinaNombre = $maquinaNombre ?: 'Sin asignar';
+                $pesoMaquina = $elementosMaquina->sum('peso');
+                $cantidadMaquina = $elementosMaquina->count();
+
+                // Agrupar por planilla dentro de la máquina
+                $porPlanilla = $elementosMaquina->groupBy('planilla_codigo');
+                $primeraFila = true;
+
+                foreach ($porPlanilla as $planillaCodigo => $elementosPlanilla) {
+                    $planillaCodigo = $planillaCodigo ?: 'Sin planilla';
+                    $pesoPlanilla = $elementosPlanilla->sum('peso');
+                    $cantidadPlanilla = $elementosPlanilla->count();
+
+                    if ($primeraFila) {
+                        $contenido .= "| **{$maquinaNombre}** | {$planillaCodigo} | {$cantidadPlanilla} | " . number_format($pesoPlanilla, 0, ',', '.') . " kg |\n";
+                        $primeraFila = false;
+                    } else {
+                        $contenido .= "| | {$planillaCodigo} | {$cantidadPlanilla} | " . number_format($pesoPlanilla, 0, ',', '.') . " kg |\n";
+                    }
+                }
+
+                // Subtotal por máquina si hay múltiples planillas
+                if ($porPlanilla->count() > 1) {
+                    $contenido .= "| | _Subtotal {$maquinaNombre}_ | _{$cantidadMaquina}_ | _" . number_format($pesoMaquina, 0, ',', '.') . " kg_ |\n";
+                }
             }
+
+            $contenido .= "\n";
+        }
+
+        // Resumen rápido por usuario al final
+        $contenido .= "---\n";
+        $contenido .= "**Resumen por trabajador:**\n";
+        foreach ($porUsuario as $usuarioNombre => $elementosUsuario) {
+            $usuarioNombre = $usuarioNombre ?: 'Sin asignar';
+            $pesoUsuario = $elementosUsuario->sum('peso');
+            $cantidadUsuario = $elementosUsuario->count();
+            $maquinasCount = $elementosUsuario->unique('maquina_id')->count();
+            $contenido .= "- **{$usuarioNombre}:** {$cantidadUsuario} etiquetas en {$maquinasCount} máquina(s) → " . number_format($pesoUsuario, 0, ',', '.') . " kg\n";
         }
 
         return [
@@ -1028,7 +1116,103 @@ PROMPT;
             'datos' => [
                 'peso_total' => $pesoTotal,
                 'cantidad' => $cantidadTotal,
-                'por_maquina' => $porMaquina->toArray(),
+                'por_usuario' => $porUsuario->map(function ($elementos, $usuario) {
+                    return [
+                        'usuario' => $usuario ?: 'Sin asignar',
+                        'peso' => $elementos->sum('peso'),
+                        'cantidad' => $elementos->count(),
+                        'por_maquina' => $elementos->groupBy('maquina_nombre')->map(function ($elems, $maquina) {
+                            return [
+                                'maquina' => $maquina ?: 'Sin asignar',
+                                'peso' => $elems->sum('peso'),
+                                'cantidad' => $elems->count(),
+                            ];
+                        })->values()->toArray(),
+                    ];
+                })->values()->toArray(),
+            ],
+        ];
+    }
+
+    /**
+     * Formatea el resumen de producción agrupado por máquina (vista estándar)
+     */
+    protected function formatearProduccionPorMaquina($elementosFabricados, string $contenido, float $pesoTotal, int $cantidadTotal): array
+    {
+        // Agrupar por máquina
+        $porMaquina = $elementosFabricados->groupBy('maquina_nombre');
+
+        foreach ($porMaquina as $maquinaNombre => $elementosMaquina) {
+            $maquinaNombre = $maquinaNombre ?: 'Sin asignar';
+            $pesoMaquina = $elementosMaquina->sum('peso');
+            $cantidadMaquina = $elementosMaquina->count();
+
+            $contenido .= "---\n";
+            $contenido .= "### 🏭 {$maquinaNombre}\n";
+            $contenido .= "**{$cantidadMaquina} etiquetas** | **" . number_format($pesoMaquina, 0, ',', '.') . " kg**\n\n";
+
+            // Agrupar por planilla dentro de la máquina
+            $porPlanilla = $elementosMaquina->groupBy('planilla_codigo');
+
+            $contenido .= "| Planilla | Cliente | Etiquetas | Peso |\n";
+            $contenido .= "|----------|---------|-----------|------|\n";
+
+            foreach ($porPlanilla as $planillaCodigo => $elementosPlanilla) {
+                $planillaCodigo = $planillaCodigo ?: 'Sin planilla';
+                $clienteNombre = $elementosPlanilla->first()->cliente_nombre ?? 'N/A';
+                $pesoPlanilla = $elementosPlanilla->sum('peso');
+                $cantidadPlanilla = $elementosPlanilla->count();
+
+                // Obtener detalle de etiquetas (diámetros)
+                $diametros = $elementosPlanilla->groupBy('diametro')
+                    ->map(fn($items) => $items->count())
+                    ->filter()
+                    ->sortKeys();
+
+                $detalleEtiquetas = $diametros->map(fn($count, $d) => "Ø{$d}:{$count}")->implode(' ');
+
+                $contenido .= "| {$planillaCodigo} | {$clienteNombre} | {$cantidadPlanilla} | " . number_format($pesoPlanilla, 0, ',', '.') . " kg |\n";
+
+                // Mostrar detalle de diámetros si hay más de un tipo
+                if ($diametros->count() > 1) {
+                    $contenido .= "| | _Detalle:_ | {$detalleEtiquetas} | |\n";
+                }
+            }
+
+            $contenido .= "\n";
+        }
+
+        // Resumen rápido por máquina al final
+        $contenido .= "---\n";
+        $contenido .= "**Resumen por máquina:**\n";
+        foreach ($porMaquina as $maquinaNombre => $elementosMaquina) {
+            $maquinaNombre = $maquinaNombre ?: 'Sin asignar';
+            $pesoMaquina = $elementosMaquina->sum('peso');
+            $cantidadMaquina = $elementosMaquina->count();
+            $planillasCount = $elementosMaquina->unique('planilla_id')->count();
+            $contenido .= "- **{$maquinaNombre}:** {$cantidadMaquina} etiquetas en {$planillasCount} planilla(s) → " . number_format($pesoMaquina, 0, ',', '.') . " kg\n";
+        }
+
+        return [
+            'exito' => true,
+            'contenido' => $contenido,
+            'datos' => [
+                'peso_total' => $pesoTotal,
+                'cantidad' => $cantidadTotal,
+                'por_maquina' => $porMaquina->map(function ($elementos, $maquina) {
+                    return [
+                        'maquina' => $maquina ?: 'Sin asignar',
+                        'peso' => $elementos->sum('peso'),
+                        'cantidad' => $elementos->count(),
+                        'planillas' => $elementos->groupBy('planilla_codigo')->map(function ($elems, $planilla) {
+                            return [
+                                'codigo' => $planilla,
+                                'peso' => $elems->sum('peso'),
+                                'cantidad' => $elems->count(),
+                            ];
+                        })->values()->toArray(),
+                    ];
+                })->values()->toArray(),
             ],
         ];
     }
