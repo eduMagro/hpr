@@ -146,7 +146,7 @@ class InteligenciaService
             ->selectRaw('DATE(updated_at) as fecha')
             ->selectRaw('SUM(peso) as kilos')
             ->selectRaw('COUNT(*) as elementos')
-            ->where('estado', 'fabricado')
+            ->fabricado()
             ->whereBetween('updated_at', [$fechaInicio, $fechaFin->endOfDay()])
             ->groupBy(DB::raw('DATE(updated_at)'))
             ->orderBy('fecha')
@@ -331,13 +331,13 @@ class InteligenciaService
     protected function obtenerResumenProduccionHoy(): array
     {
         $hoy = Elemento::query()
-            ->where('estado', 'fabricado')
+            ->fabricado()
             ->whereDate('updated_at', today())
             ->selectRaw('SUM(peso) as kilos, COUNT(*) as elementos')
             ->first();
 
         $ayer = Elemento::query()
-            ->where('estado', 'fabricado')
+            ->fabricado()
             ->whereDate('updated_at', today()->subDay())
             ->sum('peso');
 
@@ -388,12 +388,12 @@ class InteligenciaService
     protected function obtenerDatosPeriodo(Carbon $inicio, Carbon $fin): array
     {
         $kilos = Elemento::query()
-            ->where('estado', 'fabricado')
+            ->fabricado()
             ->whereBetween('updated_at', [$inicio, $fin->endOfDay()])
             ->sum('peso');
 
         $elementos = Elemento::query()
-            ->where('estado', 'fabricado')
+            ->fabricado()
             ->whereBetween('updated_at', [$inicio, $fin->endOfDay()])
             ->count();
 

@@ -126,6 +126,27 @@ class Elemento extends Model
     {
         return $this->belongsTo(Etiqueta::class, 'etiqueta_sub_id', 'etiqueta_sub_id');
     }
+
+    /**
+     * Scope para filtrar elementos pendientes (cuya etiqueta esté pendiente o en proceso)
+     */
+    public function scopePendiente($query)
+    {
+        return $query->whereHas('etiquetaRelacion', function ($q) {
+            $q->whereIn('estado', ['pendiente', 'en_proceso']);
+        });
+    }
+
+    /**
+     * Scope para filtrar elementos fabricados (cuya etiqueta esté fabricada o completada)
+     */
+    public function scopeFabricado($query)
+    {
+        return $query->whereHas('etiquetaRelacion', function ($q) {
+            $q->whereIn('estado', ['fabricado', 'completada']);
+        });
+    }
+
     // En Etiqueta.php
     public function subetiquetas()
     {

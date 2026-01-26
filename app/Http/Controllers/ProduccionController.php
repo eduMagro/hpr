@@ -396,7 +396,7 @@ class ProduccionController extends Controller
         $planillasActualizadas = Planilla::where('updated_at', '>', $desde)
             ->whereIn('estado', ['pendiente', 'fabricando', 'completada'])
             ->with(['elementos' => function ($q) {
-                $q->select('id', 'planilla_id', 'estado', 'maquina_id', 'tiempo_fabricacion');
+                $q->select('id', 'planilla_id', 'elaborado', 'maquina_id', 'tiempo_fabricacion');
             }, 'obra'])
             ->get();
 

@@ -2,25 +2,6 @@
 
 
 use Illuminate\Support\Facades\Route;
-
-// TEMPORAL: Ruta de diagnóstico para problema de redirecciones
-Route::get('/diagnostico', function () {
-    return response()->json([
-        'status' => 'ok',
-        'https' => request()->secure(),
-        'url' => request()->url(),
-        'ip' => request()->ip(),
-        'user_agent' => request()->userAgent(),
-        'headers' => [
-            'x-forwarded-proto' => request()->header('X-Forwarded-Proto'),
-            'x-forwarded-for' => request()->header('X-Forwarded-For'),
-            'host' => request()->header('Host'),
-        ],
-        'session_driver' => config('session.driver'),
-        'app_env' => config('app.env'),
-        'app_url' => config('app.url'),
-    ]);
-});
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DocumentoEmpleadoController;
 use App\Http\Controllers\PerfilController;

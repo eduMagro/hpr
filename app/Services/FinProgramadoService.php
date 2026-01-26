@@ -40,7 +40,7 @@ class FinProgramadoService
         // Obtener elementos con sus planillas
         $elementos = Elemento::with(['planilla'])
             ->whereIn('id', $elementosIds)
-            ->where('estado', 'pendiente')
+            ->pendiente()
             ->get();
 
         if ($elementos->isEmpty()) {
@@ -78,7 +78,7 @@ class FinProgramadoService
         $planillasIdsOrdenes = $ordenes->flatten()->pluck('planilla_id')->unique()->toArray();
         $todosElementosPendientes = Elemento::whereIn('planilla_id', $planillasIdsOrdenes)
             ->whereIn('maquina_id', $maquinaIds)
-            ->where('estado', 'pendiente')
+            ->pendiente()
             ->get()
             ->groupBy(fn($e) => $e->planilla_id . '_' . $e->maquina_id);
 
@@ -680,7 +680,7 @@ class FinProgramadoService
         // Obtener elementos con sus planillas y obras
         $elementos = Elemento::with(['planilla.obra'])
             ->whereIn('id', $elementosIds)
-            ->where('estado', 'pendiente')
+            ->pendiente()
             ->get();
 
         if ($elementos->isEmpty()) {
@@ -763,7 +763,7 @@ class FinProgramadoService
         $todasPlanillasIds = $ordenes->flatten()->pluck('planilla_id')->unique()->toArray();
         $todosElementosCache = Elemento::whereIn('planilla_id', $todasPlanillasIds)
             ->whereIn('maquina_id', $maquinaIds)
-            ->where('estado', 'pendiente')
+            ->pendiente()
             ->get()
             ->groupBy(fn($e) => $e->maquina_id . '_' . $e->planilla_id);
 
@@ -956,7 +956,7 @@ class FinProgramadoService
         $planillasIds = $ordenesMaquina->pluck('planilla_id')->toArray();
         $elementosCache = Elemento::whereIn('planilla_id', $planillasIds)
             ->where('maquina_id', $maquinaId)
-            ->where('estado', 'pendiente')
+            ->pendiente()
             ->get()
             ->groupBy('planilla_id');
 
@@ -1258,7 +1258,7 @@ class FinProgramadoService
                     // Verificar si esta planilla tiene fecha de entrega y si se verá afectada
                     $elementosAfectados = Elemento::where('planilla_id', $afectada->planilla_id)
                         ->where('maquina_id', $maquinaId)
-                        ->where('estado', 'pendiente')
+                        ->pendiente()
                         ->get();
 
                     if ($elementosAfectados->isEmpty()) continue;
@@ -1465,7 +1465,7 @@ class FinProgramadoService
         // Obtener elementos con sus planillas y máquinas
         $elementos = Elemento::with(['planilla.obra'])
             ->whereIn('id', $elementosIds)
-            ->where('estado', 'pendiente')
+            ->pendiente()
             ->get();
 
         if ($elementos->isEmpty()) {
@@ -2119,7 +2119,7 @@ class FinProgramadoService
 
         $elementos = Elemento::with(['planilla'])
             ->whereIn('id', $elementosIds)
-            ->where('estado', 'pendiente')
+            ->pendiente()
             ->get();
 
         if ($elementos->isEmpty()) {
@@ -2152,7 +2152,7 @@ class FinProgramadoService
         $planillasIdsOrdenes = $ordenes->flatten()->pluck('planilla_id')->unique()->toArray();
         $todosElementosPendientes = Elemento::whereIn('planilla_id', $planillasIdsOrdenes)
             ->whereIn('maquina_id', $maquinaIds)
-            ->where('estado', 'pendiente')
+            ->pendiente()
             ->get()
             ->groupBy(fn($e) => $e->planilla_id . '_' . $e->maquina_id);
 
@@ -2381,7 +2381,7 @@ class FinProgramadoService
         $elementos = Elemento::with(['planilla.obra'])
             ->whereIn('id', $elementosIds)
             ->whereNotNull('fecha_entrega')
-            ->where('estado', 'pendiente')
+            ->pendiente()
             ->get();
 
         if ($elementos->isEmpty()) {
