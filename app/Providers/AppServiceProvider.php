@@ -12,6 +12,7 @@ use App\Observers\ProductoObserver;
 use App\Observers\PaqueteObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Http\Request;
 
 class AppServiceProvider extends ServiceProvider
@@ -29,6 +30,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Forzar HTTPS en producción para evitar bucles de redirección
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
+
         // 👀 Observadores de modelos
         User::observe(UserObserver::class);
         Producto::observe(ProductoObserver::class);
