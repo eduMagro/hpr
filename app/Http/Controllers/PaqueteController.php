@@ -603,7 +603,7 @@ class PaqueteController extends Controller
         $estadosOK  = ['fabricada', 'completada', 'ensamblada', 'soldada'];
         $total      = $etiqueta->elementos->count();
         $fabricados = $etiqueta->elementos
-            ->whereIn('estado', ['fabricado', 'completado', 'ensamblado', 'soldado'])
+            ->where('elaborado', 1)
             ->count();
 
         $motivos = [];

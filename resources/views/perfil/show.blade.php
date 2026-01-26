@@ -21,7 +21,7 @@
     @if(isset($episPorFirmar) && $episPorFirmar->count() > 0)
         <div class="container mx-auto px-4 pb-6" x-data="firmaEpisManager()">
             <!-- Alert de Aviso (Sin listado) -->
-            <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r shadow-sm">
+            <div class="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-4 rounded-r shadow-sm">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
                         <svg class="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -30,10 +30,10 @@
                         </svg>
                     </div>
                     <div class="ml-4 w-full">
-                        <h3 class="text-lg font-bold text-red-800">
+                        <h3 class="text-lg font-bold text-red-800 dark:text-red-300">
                             Firma de EPIs requerida
                         </h3>
-                        <p class="text-sm text-red-700 mt-1">
+                        <p class="text-sm text-red-700 dark:text-red-400 mt-1">
                             Tienes <strong>{{ $episPorFirmar->count() }}</strong> entrega(s) de EPIs pendientes de tu firma. Por favor, revísalas y firma la recepción.
                         </p>
                         <div class="mt-3">
@@ -52,42 +52,42 @@
                 role="dialog" aria-modal="true">
                 <!-- Backdrop -->
                 <div x-show="showModal" x-transition.opacity
-                    class="fixed inset-0 bg-white"></div>
+                    class="fixed inset-0 bg-white dark:bg-gray-900"></div>
 
                 <!-- Modal Container Fullscreen -->
                 <div x-show="showModal" x-transition
-                    class="fixed inset-0 flex flex-col bg-white">
+                    class="fixed inset-0 flex flex-col bg-white dark:bg-gray-900">
                     
                     <!-- Contenido Scrollable -->
                     <div class="flex-1 overflow-y-auto">
                         <div class="max-w-2xl mx-auto px-4 py-6">
                             <!-- Título -->
                             <div class="text-center mb-6">
-                                <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-                                    <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 dark:bg-blue-900/50 rounded-full mb-4">
+                                    <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                 </div>
-                                <h2 class="text-2xl font-bold text-gray-900">Confirmación de Recepción de EPIs</h2>
-                                <p class="text-gray-500 mt-2">Revisa los equipos entregados y firma para confirmar</p>
+                                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Confirmación de Recepción de EPIs</h2>
+                                <p class="text-gray-500 dark:text-gray-400 mt-2">Revisa los equipos entregados y firma para confirmar</p>
                             </div>
 
                             <!-- Listado de EPIs -->
                             <div class="mb-6">
-                                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Equipos entregados</h3>
+                                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-3">Equipos entregados</h3>
                                 <div class="space-y-3">
                                     @foreach($episPorFirmar as $epiUser)
-                                        <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-                                            <div class="h-16 w-16 flex-shrink-0 rounded-lg bg-white border border-gray-200 flex items-center justify-center overflow-hidden shadow-sm">
+                                        <div class="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                                            <div class="h-16 w-16 flex-shrink-0 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center overflow-hidden shadow-sm">
                                                 @if($epiUser->epi->imagen_path)
                                                     <img src="{{ route('epis.imagen', $epiUser->epi) }}" alt="{{ $epiUser->epi->nombre }}" class="h-full w-full object-cover">
                                                 @else
-                                                    <svg class="h-8 w-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                                    <svg class="h-8 w-8 text-gray-300 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                                 @endif
                                             </div>
                                             <div class="flex-1 min-w-0">
-                                                <p class="text-base font-semibold text-gray-900">
+                                                <p class="text-base font-semibold text-gray-900 dark:text-white">
                                                     {{ $epiUser->epi->nombre }}
                                                 </p>
-                                                <p class="text-sm text-gray-500">
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">
                                                     {{ $epiUser->epi->codigo ?? 'Sin código' }}
                                                 </p>
                                             </div>
@@ -104,28 +104,28 @@
                             <!-- Check confirmación -->
                             <div class="mb-6">
                                 <label class="flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all"
-                                    :class="confirmed ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'">
+                                    :class="confirmed ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'">
                                     <div class="flex items-center justify-center h-6 w-6 mt-0.5">
-                                        <input type="checkbox" x-model="confirmed" class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                        <input type="checkbox" x-model="confirmed" class="h-5 w-5 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700">
                                     </div>
                                     <div class="flex-1">
-                                        <span class="font-semibold text-gray-900 block">Confirmo la recepción</span>
-                                        <span class="text-sm text-gray-600">Declaro haber recibido los EPIs listados en buen estado y haber sido informado de sus instrucciones de uso.</span>
+                                        <span class="font-semibold text-gray-900 dark:text-white block">Confirmo la recepción</span>
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">Declaro haber recibido los EPIs listados en buen estado y haber sido informado de sus instrucciones de uso.</span>
                                     </div>
                                 </label>
                             </div>
 
                             <!-- Firma -->
                             <div x-show="confirmed" x-effect="if(confirmed) initCanvas()" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0">
-                                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Tu firma</h3>
-                                <div class="border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 relative touch-none select-none w-full" style="height: 200px;">
+                                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-3">Tu firma</h3>
+                                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-800 relative touch-none select-none w-full" style="height: 200px;">
                                     <canvas id="signature-pad" class="absolute inset-0 w-full h-full cursor-crosshair rounded-xl"></canvas>
                                     <div class="absolute inset-0 flex items-center justify-center pointer-events-none" x-show="!hasSignature && !drawing">
-                                        <span class="text-gray-400">Dibuja tu firma aquí</span>
+                                        <span class="text-gray-400 dark:text-gray-500">Dibuja tu firma aquí</span>
                                     </div>
                                 </div>
                                 <div class="flex justify-end mt-2">
-                                    <button @click="clearSignature()" type="button" class="text-sm text-red-600 hover:text-red-800 flex items-center gap-1">
+                                    <button @click="clearSignature()" type="button" class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 flex items-center gap-1">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                         Borrar
                                     </button>
@@ -135,7 +135,7 @@
                     </div>
 
                     <!-- Footer Fijo -->
-                    <div class="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-4 safe-area-bottom">
+                    <div class="flex-shrink-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 py-4 safe-area-bottom">
                         <div class="max-w-2xl mx-auto flex flex-col sm:flex-row gap-3">
                             <button type="button" @click="submitSignature()"
                                 class="flex-1 inline-flex justify-center items-center rounded-xl px-6 py-3 bg-blue-600 text-white font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -147,7 +147,7 @@
                                 <span x-text="saving ? 'Guardando...' : 'Firmar y Confirmar'"></span>
                             </button>
                             <button type="button" @click="closeModal()"
-                                class="flex-1 sm:flex-none inline-flex justify-center items-center rounded-xl px-6 py-3 bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
+                                class="flex-1 sm:flex-none inline-flex justify-center items-center rounded-xl px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
                                 Cancelar
                             </button>
                         </div>
@@ -353,22 +353,22 @@
                     x-transition:leave="ease-in duration-200"
                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                    class="inline-block align-top bg-white rounded-lg text-left shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full !max-h-[90vh] !overflow-y-auto">
-                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    class="inline-block align-top bg-white dark:bg-gray-900 rounded-lg text-left shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full !max-h-[90vh] !overflow-y-auto">
+                    <div class="bg-white dark:bg-gray-900 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <div class="sm:flex sm:items-start">
                             <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Contratos y
+                                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">Contratos y
                                     Documentos</h3>
                                 <!-- Fecha de Incorporación -->
-                                <div class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de
+                                <div class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha de
                                         Incorporación</label>
                                     <template x-if="hasIncorporacion">
                                         <div>
-                                            <div class="p-2 bg-white border border-gray-200 rounded-md text-gray-700 sm:text-sm"
+                                            <div class="p-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 sm:text-sm"
                                                 x-text="fechaIncorporacion ? formatDate(fechaIncorporacion) : 'No definida'">
                                             </div>
-                                            <p class="text-xs text-gray-500 mt-1">Vinculada a la incorporación (No
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Vinculada a la incorporación (No
                                                 modificable).</p>
                                         </div>
                                     </template>
@@ -377,45 +377,45 @@
                                             @if (auth()->user()->rol === 'oficina')
                                                 <div class="flex gap-2">
                                                     <input type="date" x-model="fechaIncorporacion"
-                                                        class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                                                        class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md">
                                                     <button @click="updateFechaIncorporacion()"
                                                         class="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 text-sm">Guardar</button>
                                                 </div>
                                             @else
-                                                <div class="p-2 bg-white border border-gray-200 rounded-md text-gray-700 sm:text-sm"
+                                                <div class="p-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 sm:text-sm"
                                                     x-text="fechaIncorporacion ? formatDate(fechaIncorporacion) : 'No definida'">
                                                 </div>
                                             @endif
-                                            <p class="text-xs text-gray-500 mt-1">Usada para el cálculo de vacaciones.
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Usada para el cálculo de vacaciones.
                                             </p>
                                         </div>
                                     </template>
                                 </div>
                                 <!-- Listado de Contratos de Incorporación -->
                                 <div class="mt-6 mb-6">
-                                    <h4 class="font-medium text-gray-900 mb-2">Contratos (Incorporación)</h4>
-                                    <div class="overflow-hidden border border-gray-200 rounded-lg bg-gray-50">
+                                    <h4 class="font-medium text-gray-900 dark:text-white mb-2">Contratos (Incorporación)</h4>
+                                    <div class="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
                                         <template x-if="!hasIncorporacion">
-                                            <p class="p-4 text-sm text-gray-500 italic">No hay incorporación vinculada.
+                                            <p class="p-4 text-sm text-gray-500 dark:text-gray-400 italic">No hay incorporación vinculada.
                                             </p>
                                         </template>
                                         <template x-if="hasIncorporacion && contratos.length === 0">
-                                            <p class="p-4 text-sm text-gray-500 italic">No hay contratos subidos.</p>
+                                            <p class="p-4 text-sm text-gray-500 dark:text-gray-400 italic">No hay contratos subidos.</p>
                                         </template>
-                                        <ul class="divide-y divide-gray-200 max-h-40 overflow-y-auto"
+                                        <ul class="divide-y divide-gray-200 dark:divide-gray-700 max-h-40 overflow-y-auto"
                                             x-show="hasIncorporacion && contratos.length > 0">
                                             <template x-for="doc in contratos" :key="doc.id">
-                                                <li class="p-3 hover:bg-gray-100 flex justify-between items-center">
+                                                <li class="p-3 hover:bg-gray-100 dark:hover:bg-gray-700 flex justify-between items-center">
                                                     <div class="flex-1 min-w-0">
-                                                        <p class="text-sm font-medium text-blue-800 truncate cursor-pointer"
+                                                        <p class="text-sm font-medium text-blue-800 dark:text-blue-400 truncate cursor-pointer"
                                                             @click="window.open(doc.download_url, '_blank')"
                                                             x-text="'Contrato de Trabajo'"></p>
-                                                        <p class="text-xs text-gray-500"
+                                                        <p class="text-xs text-gray-500 dark:text-gray-400"
                                                             x-text="'Subido: ' + formatDate(doc.created_at)"></p>
                                                     </div>
                                                     <div class="ml-4 flex-shrink-0">
                                                         <a :href="doc.download_url" target="_blank"
-                                                            class="text-blue-600 hover:text-blue-900" title="Ver">
+                                                            class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300" title="Ver">
                                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5"
                                                                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path stroke-linecap="round" stroke-linejoin="round"
@@ -435,9 +435,9 @@
                             </div>
                         </div>
                     </div>
-                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <div class="bg-gray-50 dark:bg-gray-800 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                         <button type="button" @click="closeModal()"
-                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Cerrar</button>
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Cerrar</button>
                     </div>
                 </div>
             </div>
@@ -598,6 +598,10 @@
             background: #f8fafc;
         }
 
+        .dark .fc .fc-col-header {
+            background: #1f2937;
+        }
+
         .fc .fc-col-header-cell {
             padding: 0.75rem 0;
             font-weight: 600;
@@ -608,14 +612,28 @@
             border-color: #e2e8f0 !important;
         }
 
+        .dark .fc .fc-col-header-cell {
+            color: #9ca3af;
+            border-color: #374151 !important;
+        }
+
         /* Celdas de dias */
         .fc .fc-daygrid-day {
             transition: background-color 0.15s ease;
             border-color: #e2e8f0 !important;
         }
 
+        .dark .fc .fc-daygrid-day {
+            border-color: #374151 !important;
+            background: #111827;
+        }
+
         .fc .fc-daygrid-day:hover {
             background-color: #f1f5f9;
+        }
+
+        .dark .fc .fc-daygrid-day:hover {
+            background-color: #1f2937;
         }
 
         .fc .fc-daygrid-day-number {
@@ -625,8 +643,16 @@
             font-size: 0.875rem;
         }
 
+        .dark .fc .fc-daygrid-day-number {
+            color: #d1d5db;
+        }
+
         .fc .fc-day-today {
             background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%) !important;
+        }
+
+        .dark .fc .fc-day-today {
+            background: linear-gradient(135deg, #1e3a5f 0%, #312e81 100%) !important;
         }
 
         .fc .fc-day-today .fc-daygrid-day-number {
@@ -644,6 +670,14 @@
         /* Dias de otros meses */
         .fc .fc-day-other .fc-daygrid-day-number {
             color: #94a3b8;
+        }
+
+        .dark .fc .fc-day-other .fc-daygrid-day-number {
+            color: #4b5563;
+        }
+
+        .dark .fc .fc-day-other {
+            background: #0d1117;
         }
 
         /* Eventos */
@@ -685,13 +719,25 @@
             border-radius: 3px;
         }
 
+        .dark .fc .fc-scroller::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+
         .fc .fc-scroller::-webkit-scrollbar-thumb {
             background: #cbd5e1;
             border-radius: 3px;
         }
 
+        .dark .fc .fc-scroller::-webkit-scrollbar-thumb {
+            background: #4b5563;
+        }
+
         .fc .fc-scroller::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
+        }
+
+        .dark .fc .fc-scroller::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
         }
 
         /* Seleccion de rango */
@@ -790,6 +836,11 @@
             font-weight: 600;
         }
 
+        .dark .hora-entrada {
+            background: #14532d;
+            color: #86efac;
+        }
+
         /* Hora de salida - rojo */
         .hora-salida {
             background: #fee2e2;
@@ -798,6 +849,11 @@
             border-radius: 3px;
             border-left: 2px solid #ef4444;
             font-weight: 600;
+        }
+
+        .dark .hora-salida {
+            background: #7f1d1d;
+            color: #fca5a5;
         }
 
         /* Contenedor de eventos */
@@ -847,8 +903,22 @@
             padding: 0.75rem 1rem;
         }
 
+        .dark .fc .fc-list-day-cushion {
+            background: #1f2937 !important;
+            color: #d1d5db;
+        }
+
         .fc .fc-list-event:hover td {
             background: #f1f5f9 !important;
+        }
+
+        .dark .fc .fc-list-event:hover td {
+            background: #374151 !important;
+        }
+
+        .dark .fc .fc-list-event td {
+            background: #111827;
+            color: #d1d5db;
         }
 
         /* Bordes redondeados del contenedor */
@@ -857,6 +927,10 @@
             overflow: hidden;
             border: 1px solid #e2e8f0;
             border-top: none;
+        }
+
+        .dark .fc .fc-view-harness {
+            border-color: #374151;
         }
 
         /* Responsive */
@@ -918,9 +992,18 @@
             overflow: hidden;
         }
 
+        .dark .swal-calendario-popup {
+            background: #1f2937 !important;
+            color: #d1d5db !important;
+        }
+
         .swal-calendario-popup .swal2-html-container {
             margin: 0 !important;
             padding: 0 !important;
+        }
+
+        .dark .swal-calendario-popup .swal2-html-container {
+            color: #d1d5db !important;
         }
 
         .swal-calendario-popup .swal2-actions {
@@ -952,9 +1035,35 @@
             font-size: 12px;
         }
 
+        .dark .swal-calendario-popup select optgroup {
+            color: #9ca3af;
+        }
+
         .swal-calendario-popup select option {
             padding: 8px;
             font-size: 14px;
+        }
+
+        .dark .swal-calendario-popup select {
+            background: #374151;
+            color: #d1d5db;
+            border-color: #4b5563;
+        }
+
+        .dark .swal-calendario-popup select option {
+            background: #374151;
+            color: #d1d5db;
+        }
+
+        .dark .swal-calendario-popup .swal2-title {
+            color: #f3f4f6 !important;
+        }
+
+        .dark .swal-calendario-popup .swal2-input,
+        .dark .swal-calendario-popup .swal2-textarea {
+            background: #374151 !important;
+            color: #d1d5db !important;
+            border-color: #4b5563 !important;
         }
     </style>
 

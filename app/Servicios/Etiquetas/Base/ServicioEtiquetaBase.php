@@ -580,9 +580,7 @@ abstract class ServicioEtiquetaBase
             // ✅ Si ya no quedan elementos de esta planilla en ESTA máquina, sacarla de la cola y compactar posiciones
             $quedanPendientesEnEstaMaquina = Elemento::where('planilla_id', $planilla->id)
                 ->where('maquina_id', $maquina->id)
-                ->where(function ($q) {
-                    $q->whereNull('estado')->orWhere('estado', '!=', 'fabricado');
-                })
+                ->where('elaborado', 0)
                 ->exists();
 
             // ❌ DESHABILITADO: La verificación automática de paquetes y eliminación de planilla

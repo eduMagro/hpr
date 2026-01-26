@@ -74,7 +74,6 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
 
                     // Primer clic: Asignar el producto actual a cada elemento
                     foreach ($elementosEnMaquina as $e) {
-                        $e->estado = 'fabricando';
                         $e->producto_id = $producto->id; // Guardar producto del primer clic
                         $e->save();
                     }

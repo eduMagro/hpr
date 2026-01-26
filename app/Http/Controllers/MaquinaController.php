@@ -355,7 +355,7 @@ class MaquinaController extends Controller
                     'id' => $e->id,
                     'codigo' => $e->codigo,
                     'dimensiones' => $e->dimensiones,
-                    'estado' => $e->estado,
+                    'estado' => $e->elaborado == 1 ? 'fabricado' : 'pendiente',
                     'peso' => $e->peso_kg,
                     'peso_numerico' => (float) $e->peso,
                     'diametro' => $e->diametro_mm,
@@ -535,7 +535,7 @@ class MaquinaController extends Controller
                     'id' => $e->id,
                     'codigo' => $e->codigo,
                     'dimensiones' => $e->dimensiones,
-                    'estado' => $e->estado,
+                    'estado' => $e->elaborado == 1 ? 'fabricado' : 'pendiente',
                     'peso' => $e->peso_kg,
                     'peso_numerico' => (float) $e->peso,
                     'diametro' => $e->diametro_mm,
@@ -574,7 +574,7 @@ class MaquinaController extends Controller
                     'id' => $e->id,
                     'codigo' => $e->codigo,
                     'dimensiones' => $e->dimensiones,
-                    'estado' => $e->estado,
+                    'estado' => $e->elaborado == 1 ? 'fabricado' : 'pendiente',
                     'peso' => $e->peso_kg,
                     'peso_numerico' => (float) $e->peso,
                     'diametro' => $e->diametro_mm,
@@ -952,7 +952,7 @@ class MaquinaController extends Controller
         // Elementos fabricados de las entidades activas
         $elementosFabricados = Elemento::with(['entidad', 'planilla'])
             ->whereIn('planilla_entidad_id', $entidadIds)
-            ->whereIn('estado', ['fabricado', 'completado'])
+            ->where('elaborado', 1)
             ->get();
 
         $elementosPorDiametro = $elementosFabricados->groupBy('diametro')->sortKeys();
@@ -1440,7 +1440,7 @@ class MaquinaController extends Controller
                     'id' => $e->id,
                     'codigo' => $e->codigo,
                     'dimensiones' => $e->dimensiones,
-                    'estado' => $e->estado,
+                    'estado' => $e->elaborado == 1 ? 'fabricado' : 'pendiente',
                     'peso' => $e->peso_kg,
                     'peso_numerico' => (float) $e->peso,
                     'diametro' => $e->diametro_mm,

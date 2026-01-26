@@ -85,7 +85,7 @@ class ProduccionController extends Controller
             WHERE elementos.maquina_id_2 = maquinas.id
         ) as elementos_ensambladora')
             ->withCount(['elementos as elementos_count' => function ($query) {
-                $query->where('estado', '!=', 'fabricado');
+                $query->where('elaborado', 0);
             }])
             ->get()
             ->mapWithKeys(function ($maquina) {
@@ -1031,8 +1031,8 @@ class ProduccionController extends Controller
     {
         $etiqueta = $e->etiquetaRelacion;
         if (!$etiqueta) {
-            // Fallback al updated_at si está fabricado
-            return $e->estado === 'fabricado' ? \Carbon\Carbon::parse($e->updated_at) : null;
+            // Fallback al updated_at si está elaborado
+            return $e->elaborado == 1 ? \Carbon\Carbon::parse($e->updated_at) : null;
         }
 
         $tipoMaquina = optional($e->maquina)->tipo;
@@ -1048,8 +1048,8 @@ class ProduccionController extends Controller
             return $fechaFin instanceof \Carbon\Carbon ? $fechaFin : \Carbon\Carbon::parse($fechaFin);
         }
 
-        // Fallback: si está fabricado pero no tiene fecha, usar updated_at
-        return $e->estado === 'fabricado' ? \Carbon\Carbon::parse($e->updated_at) : null;
+        // Fallback: si está elaborado pero no tiene fecha, usar updated_at
+        return $e->elaborado == 1 ? \Carbon\Carbon::parse($e->updated_at) : null;
     }
 
     /**
@@ -1212,10 +1212,10 @@ class ProduccionController extends Controller
 
         // Procesar todas las planillas en orden hasta llegar a la que buscamos
         foreach ($ordenesMaquina as $orden) {
-            // Obtener elementos de esta planilla-máquina
+            // Obtener elementos de esta planilla-máquina (pendientes = no elaborados)
             $elementos = Elemento::where('planilla_id', $orden->planilla_id)
                 ->where('maquina_id', $maquinaId)
-                ->where('estado', 'pendiente')
+                ->where('elaborado', 0)
                 ->get();
 
             if ($elementos->isEmpty()) {
@@ -1676,7 +1676,7 @@ class ProduccionController extends Controller
 
         $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'subetiquetas'])
             ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
-            ->where(fn($q) => $q->whereNull('estado')->orWhere('estado', '<>', 'fabricado'))
+            ->where('elaborado', 0)
             ->where(function ($q) use ($maquinaIds) {
                 $q->whereIn('maquina_id', $maquinaIds)
                     ->orWhereIn('maquina_id_2', $maquinaIds);
@@ -1943,7 +1943,7 @@ class ProduccionController extends Controller
                         $elementosFabricandoOCompletados = collect();
 
                         foreach ($subGrupo as $elem) {
-                            if ($elem->estado === 'pendiente') {
+                            if ($elem->elaborado == 0) {
                                 $elementosPendientes->push($elem);
                             } else {
                                 $elementosFabricandoOCompletados->push($elem);
@@ -2007,7 +2007,7 @@ class ProduccionController extends Controller
                         // Progreso (calculado por sub-grupo)
                         $progreso = null;
                         if ($primeraId !== null && $primeraId === $planilla->id) {
-                            $completados = $subGrupo->where('estado', 'fabricado')->count();
+                            $completados = $subGrupo->where('elaborado', 1)->count();
                             $total = $subGrupo->count();
                             $progreso = $total > 0 ? round(($completados / $total) * 100) : 0;
                         }
@@ -2414,7 +2414,7 @@ class ProduccionController extends Controller
 
             $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina'])
                 ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
-                ->where(fn($q) => $q->whereNull('estado')->orWhere('estado', '<>', 'fabricado'))
+                ->where('elaborado', 0)
                 ->get();
 
             // Máquina real: la más avanzada en el flujo (maquina_id_2 ?? maquina_id)
@@ -3292,7 +3292,7 @@ class ProduccionController extends Controller
     {
         // Obtener planillas aprobadas y revisadas con orden de fabricación
         $planillas = Planilla::with(['obra.cliente', 'cliente', 'elementos' => function ($q) {
-            $q->where('estado', 'pendiente');
+            $q->where('elaborado', 0);
         }])
             ->where('aprobada', true)
             ->where('revisada', true)
@@ -3419,7 +3419,7 @@ class ProduccionController extends Controller
 
         // Obtener planillas aprobadas y revisadas con orden de fabricación
         $planillas = Planilla::with(['obra.cliente', 'cliente', 'elementos' => function ($q) {
-            $q->where('estado', 'pendiente');
+            $q->where('elaborado', 0);
         }])
             ->where('aprobada', true)
             ->where('revisada', true)
@@ -3846,7 +3846,7 @@ class ProduccionController extends Controller
                     // Obtener elementos pendientes de esta planilla en esta máquina
                     $elementos = Elemento::where('planilla_id', $planillaId)
                         ->where('maquina_id', $maquinaId)
-                        ->where('estado', 'pendiente')
+                        ->where('elaborado', 0)
                         ->get();
 
                     if ($elementos->isEmpty()) {
@@ -4015,7 +4015,7 @@ class ProduccionController extends Controller
                         fn($q) => $q
                             ->whereIn('estado', ['pendiente', 'fabricando', 'programada'])
                     )
-                    ->where('estado', 'pendiente')
+                    ->where('elaborado', 0)
                     ->get();
 
                 // ELEMENTOS MOVIBLES: solo de planillas NO revisadas
@@ -4027,7 +4027,7 @@ class ProduccionController extends Controller
                             ->whereIn('estado', ['pendiente', 'fabricando', 'programada'])
                             ->where('revisada', false) // Solo no revisadas se pueden mover
                     )
-                    ->where('estado', 'pendiente')
+                    ->where('elaborado', 0)
                     ->get();
 
                 // Métricas de carga TOTAL (para balance)
@@ -4344,7 +4344,7 @@ class ProduccionController extends Controller
                         // Buscar hermanos: mismo etiqueta_id, mismo prefijo, misma máquina origen, pendientes
                         $hermanos = Elemento::where('etiqueta_id', $elemento->etiqueta_id)
                             ->where('maquina_id', $mov['maquina_actual_id'])
-                            ->where('estado', 'pendiente')
+                            ->where('elaborado', 0)
                             ->where('id', '!=', $elemento->id)
                             ->whereNotNull('etiqueta_sub_id')
                             ->where('etiqueta_sub_id', 'like', $codigoPadre . '.%')
@@ -4425,7 +4425,7 @@ class ProduccionController extends Controller
 
                             if ($ordenPlanillaOrigen) {
                                 $elementosRestantes = Elemento::where('orden_planilla_id', $ordenPlanillaOrigen->id)
-                                    ->whereNotIn('estado', ['completado', 'fabricado'])
+                                    ->where('elaborado', 0)
                                     ->count();
 
                                 if ($elementosRestantes == 0) {
@@ -4915,7 +4915,7 @@ class ProduccionController extends Controller
         // Solo guardamos los IDs de elementos con sus asignaciones de máquina
         $elementosData = DB::table('elementos')
             ->whereNull('deleted_at')
-            ->whereNotIn('estado', ['completado', 'fabricado'])
+            ->where('elaborado', 0)
             ->select('id', 'maquina_id', 'orden_planilla_id')
             ->get()
             ->map(fn($row) => (array) $row)

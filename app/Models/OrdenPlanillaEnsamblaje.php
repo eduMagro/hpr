@@ -122,7 +122,7 @@ class OrdenPlanillaEnsamblaje extends Model
 
         // Contar elementos fabricados
         $elementosFabricados = Elemento::where('planilla_entidad_id', $entidad->id)
-            ->whereIn('estado', ['fabricado', 'completado'])
+            ->where('elaborado', 1)
             ->count();
 
         return $elementosFabricados >= $totalElementos;
@@ -145,7 +145,7 @@ class OrdenPlanillaEnsamblaje extends Model
         }
 
         $elementosFabricados = Elemento::where('planilla_entidad_id', $entidad->id)
-            ->whereIn('estado', ['fabricado', 'completado'])
+            ->where('elaborado', 1)
             ->count();
 
         return round(($elementosFabricados / $totalElementos) * 100, 1);

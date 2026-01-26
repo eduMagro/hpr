@@ -304,7 +304,7 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                 case 'fabricando': {
                         // ¿Quedan elementos en esta máquina que NO estén completados/fabricados?
                         $quedanPendientes = $elementosEnMaquina->contains(function ($e) {
-                            return !in_array($e->estado, ['fabricado', 'completado'], true);
+                            return $e->elaborado != 1;
                         });
 
                         if (!$quedanPendientes) {
@@ -826,7 +826,7 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
     ): bool {
         // Verificar que hay elementos pendientes
         $quedanPendientes = $elementosEnMaquina->contains(function ($e) {
-            return !in_array($e->estado, ['fabricado', 'completado'], true);
+            return $e->elaborado != 1;
         });
 
         if (!$quedanPendientes) {

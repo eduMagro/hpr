@@ -71,8 +71,8 @@
 
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <!-- Tabla con filtros Livewire -->
-        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
-            <table class="w-full min-w-[2000px] border border-gray-300 rounded-lg">
+        <div class="w-full overflow-x-auto bg-white dark:bg-gray-900 shadow-lg rounded-lg">
+            <table class="w-full min-w-[2000px] border border-gray-300 dark:border-gray-700 rounded-lg">
                 <x-tabla.header>
                     <x-tabla.header-row>
                         @if ($modoSeleccion)
@@ -100,7 +100,7 @@
                             texto="Ensamblado" />
                         <x-tabla.encabezado-ordenable campo="comentario" :sortActual="$sort" :orderActual="$order"
                             texto="Comentario" />
-                        <th class="p-2 border">Peso Fabricado</th>
+                        <th class="p-2 border dark:border-gray-700">Peso Fabricado</th>
                         <x-tabla.encabezado-ordenable campo="peso_total" :sortActual="$sort" :orderActual="$order"
                             texto="Peso Total" />
                         <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order"
@@ -125,47 +125,47 @@
                             texto="Aprobada" />
                         <x-tabla.encabezado-ordenable campo="aprobada_at" :sortActual="$sort" :orderActual="$order"
                             texto="Fecha aprobación" />
-                        <th class="p-2 border">Acciones</th>
+                        <th class="p-2 border dark:border-gray-700">Acciones</th>
 
                     </x-tabla.header-row>
                     <x-tabla.filtro-row>
                         @if ($modoSeleccion)
-                            <th class="p-1 border"></th>
+                            <th class="p-1 border dark:border-gray-700"></th>
                         @endif
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700">
                             <input type="number" wire:model.live.debounce.300ms="id"
-                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="ID...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700">
                             <input type="text" wire:model.live.debounce.300ms="codigo"
-                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Código...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700">
                             <input type="text" wire:model.live.debounce.300ms="codigo_cliente"
-                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Cód. Cliente...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700">
                             <input type="text" wire:model.live.debounce.300ms="cliente"
-                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Cliente...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700">
                             <input type="text" wire:model.live.debounce.300ms="cod_obra"
-                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Cód. Obra...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700">
                             <input type="text" wire:model.live.debounce.300ms="nom_obra"
-                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Obra...">
                         </th>
                         <th class="p-1 border relative" x-data="{ open: false }" @click.outside="open = false">
                             <div class="relative">
                                 <button type="button" @click="open = !open"
-                                    class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none flex items-center justify-between gap-1 {{ count($secciones) > 0 || !empty($seccionTextoLibre) ? 'bg-blue-50 border-blue-400' : '' }}">
+                                    class="w-full text-xs px-2 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none flex items-center justify-between gap-1 {{ count($secciones) > 0 || !empty($seccionTextoLibre) ? 'bg-blue-50 border-blue-400' : '' }}">
                                     <span class="truncate">
                                         @if(count($secciones) > 0)
                                             {{ count($secciones) }} selec.
@@ -186,11 +186,11 @@
                                      x-transition:leave="transition ease-in duration-75"
                                      x-transition:leave-start="opacity-100 scale-100"
                                      x-transition:leave-end="opacity-0 scale-95"
-                                     class="absolute z-50 mt-1 w-56 bg-white border border-gray-300 rounded-lg shadow-lg"
+                                     class="absolute z-50 mt-1 w-56 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg"
                                      style="left: 0;" @click.stop>
                                     {{-- Header con título y limpiar --}}
-                                    <div class="sticky top-0 bg-gray-100 px-3 py-2 border-b flex justify-between items-center">
-                                        <span class="text-xs font-semibold text-gray-700">Secciones</span>
+                                    <div class="sticky top-0 bg-gray-100 dark:bg-gray-700 px-3 py-2 border-b dark:border-gray-600 flex justify-between items-center">
+                                        <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">Secciones</span>
                                         @if(count($secciones) > 0 || !empty($seccionTextoLibre))
                                             <button wire:click="limpiarSecciones" class="text-xs text-red-600 hover:text-red-800">
                                                 Limpiar
@@ -199,12 +199,12 @@
                                     </div>
 
                                     {{-- Input de texto libre --}}
-                                    <div class="px-3 py-2 border-b bg-gray-50">
-                                        <label class="text-xs text-gray-600 mb-1 block">Búsqueda libre:</label>
+                                    <div class="px-3 py-2 border-b dark:border-gray-600 bg-gray-50 dark:bg-gray-750">
+                                        <label class="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Búsqueda libre:</label>
                                         <input type="text"
                                             wire:model.live.debounce.300ms="seccionTextoLibre"
                                             placeholder="Escribir sección..."
-                                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none {{ !empty($seccionTextoLibre) ? 'bg-blue-50 border-blue-400' : '' }}"
+                                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none {{ !empty($seccionTextoLibre) ? 'bg-blue-50 border-blue-400' : '' }}"
                                             {{ count($secciones) > 0 ? 'disabled' : '' }}>
                                         @if(count($secciones) > 0)
                                             <p class="text-xs text-gray-400 mt-1">Deselecciona los checks para usar texto libre</p>
@@ -212,48 +212,48 @@
                                     </div>
 
                                     {{-- Separador --}}
-                                    <div class="px-3 py-1 bg-gray-100 border-b">
-                                        <span class="text-xs text-gray-500">O selecciona de la lista:</span>
+                                    <div class="px-3 py-1 bg-gray-100 dark:bg-gray-700 border-b dark:border-gray-600">
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">O selecciona de la lista:</span>
                                     </div>
 
                                     {{-- Lista de checkboxes --}}
                                     <div class="max-h-48 overflow-y-auto">
                                         @forelse($seccionesDisponibles as $seccionItem)
-                                            <label class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 {{ !empty($seccionTextoLibre) ? 'opacity-50' : '' }}">
+                                            <label class="flex items-center px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0 {{ !empty($seccionTextoLibre) ? 'opacity-50' : '' }}">
                                                 <input type="checkbox"
                                                     wire:click="toggleSeccion('{{ $seccionItem }}')"
                                                     {{ in_array($seccionItem, $secciones) ? 'checked' : '' }}
                                                     {{ !empty($seccionTextoLibre) ? 'disabled' : '' }}
                                                     class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
-                                                <span class="ml-2 text-xs text-gray-700">{{ $seccionItem }}</span>
+                                                <span class="ml-2 text-xs text-gray-700 dark:text-gray-300">{{ $seccionItem }}</span>
                                             </label>
                                         @empty
-                                            <div class="px-3 py-2 text-xs text-gray-500">No hay secciones</div>
+                                            <div class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">No hay secciones</div>
                                         @endforelse
                                     </div>
                                 </div>
                             </div>
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700">
                             <input type="text" wire:model.live.debounce.300ms="descripcion"
-                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Descripción...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700">
                             <input type="text" wire:model.live.debounce.300ms="ensamblado"
-                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Ensamblado...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700">
                             <input type="text" wire:model.live.debounce.300ms="comentario"
-                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Comentario...">
                         </th>
-                        <th class="p-1 border"></th> {{-- Peso Fabricado --}}
-                        <th class="p-1 border"></th> {{-- Peso Total --}}
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700"></th> {{-- Peso Fabricado --}}
+                        <th class="p-1 border dark:border-gray-700"></th> {{-- Peso Total --}}
+                        <th class="p-1 border dark:border-gray-700">
                             <select wire:model.live="estado"
-                                class="w-full text-xs px-1 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs px-1 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                                 <option value="">Todos</option>
                                 <option value="pendiente">Pendiente</option>
                                 <option value="fabricando">Fabricando</option>
@@ -261,46 +261,46 @@
                                 <option value="montaje">Montaje</option>
                             </select>
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700">
                             <input type="date" wire:model.live.debounce.300ms="fecha_inicio"
-                                class="w-full text-xs px-1 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs px-1 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700">
                             <input type="date" wire:model.live.debounce.300ms="fecha_finalizacion"
-                                class="w-full text-xs px-1 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs px-1 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700">
                             <input type="date" wire:model.live.debounce.300ms="fecha_importacion"
-                                class="w-full text-xs px-1 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs px-1 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700">
                             <input type="date" wire:model.live.debounce.300ms="fecha_estimada_entrega"
-                                class="w-full text-xs px-1 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs px-1 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700">
                             <input type="text" wire:model.live.debounce.300ms="usuario"
-                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs px-2 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Usuario...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700">
                             <select wire:model.live="revisada"
-                                class="w-full text-xs px-1 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs px-1 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                                 <option value="">Todas</option>
                                 <option value="1">Sí</option>
                                 <option value="0">No</option>
                             </select>
                         </th>
-                        <th class="p-1 border"></th>
-                        <th class="p-1 border"></th>
-                        <th class="p-1 border">
+                        <th class="p-1 border dark:border-gray-700"></th>
+                        <th class="p-1 border dark:border-gray-700"></th>
+                        <th class="p-1 border dark:border-gray-700">
                             <select wire:model.live="aprobada"
-                                class="w-full text-xs px-1 py-1 border rounded text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs px-1 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                                 <option value="">Aprobadas</option>
                                 <option value="todas">Todas</option>
                                 <option value="0">No aprobadas</option>
                             </select>
                         </th>
-                        <th class="p-1 border"></th>
+                        <th class="p-1 border dark:border-gray-700"></th>
                         <th class="p-1 border text-center align-middle">
                             <button wire:click="limpiarFiltros"
                                 class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center mx-auto"
@@ -315,12 +315,12 @@
                     </x-tabla.filtro-row>
                 </x-tabla.header>
 
-                <tbody class="text-gray-700">
+                <tbody class="text-gray-700 dark:text-gray-300">
                     @forelse ($planillas as $planilla)
                         <tr
-                            class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-gray-200 cursor-pointer text-xs leading-none uppercase transition-colors {{ in_array($planilla->id, $planillasSeleccionadas) ? '!bg-green-100' : '' }}">
+                            class="border-b border-gray-200 dark:border-gray-700 odd:bg-gray-100 even:bg-gray-50 dark:odd:bg-gray-800 dark:even:bg-gray-850 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer text-xs leading-none uppercase transition-colors {{ in_array($planilla->id, $planillasSeleccionadas) ? '!bg-green-100 dark:!bg-green-900' : '' }}">
                             @if ($modoSeleccion)
-                                <td class="p-2 text-center border">
+                                <td class="p-2 text-center border dark:border-gray-700">
                                     @if (!$planilla->aprobada)
                                         <input type="checkbox"
                                             wire:click="toggleSeleccion({{ $planilla->id }})"
@@ -331,15 +331,15 @@
                                     @endif
                                 </td>
                             @endif
-                            <td class="p-2 text-center border">{{ $planilla->id }}</td>
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border dark:border-gray-700">{{ $planilla->id }}</td>
+                            <td class="p-2 text-center border dark:border-gray-700">
                                 <a href="{{ route('planillas.show', $planilla->id) }}"
                                     class="text-blue-500 hover:underline">
                                     {{ $planilla->codigo_limpio }}
                                 </a>
                             </td>
-                            <td class="p-2 text-center border">{{ $planilla->cliente->codigo ?? 'N/A' }}</td>
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border dark:border-gray-700">{{ $planilla->cliente->codigo ?? 'N/A' }}</td>
+                            <td class="p-2 text-center border dark:border-gray-700">
                                 @if ($planilla->cliente_id)
                                     <a href="{{ route('clientes.index', ['id' => $planilla->cliente_id]) }}"
                                         class="text-blue-500 hover:underline">
@@ -349,8 +349,8 @@
                                     {{ $planilla->cliente->empresa ?? 'N/A' }}
                                 @endif
                             </td>
-                            <td class="p-2 text-center border">{{ $planilla->obra->cod_obra ?? 'N/A' }}</td>
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border dark:border-gray-700">{{ $planilla->obra->cod_obra ?? 'N/A' }}</td>
+                            <td class="p-2 text-center border dark:border-gray-700">
                                 @if ($planilla->cliente_id)
                                     <a href="{{ route('clientes.show', ['cliente' => $planilla->cliente_id]) }}"
                                         class="text-blue-500 hover:underline">
@@ -360,14 +360,14 @@
                                     {{ $planilla->obra->obra ?? 'N/A' }}
                                 @endif
                             </td>
-                            <td class="p-2 text-center border">{{ $planilla->seccion }}</td>
-                            <td class="p-2 text-center border">{{ $planilla->descripcion }}</td>
-                            <td class="p-2 text-center border">{{ $planilla->ensamblado }}</td>
-                            <td class="p-2 text-center border">{{ $planilla->comentario }}</td>
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border dark:border-gray-700">{{ $planilla->seccion }}</td>
+                            <td class="p-2 text-center border dark:border-gray-700">{{ $planilla->descripcion }}</td>
+                            <td class="p-2 text-center border dark:border-gray-700">{{ $planilla->ensamblado }}</td>
+                            <td class="p-2 text-center border dark:border-gray-700">{{ $planilla->comentario }}</td>
+                            <td class="p-2 text-center border dark:border-gray-700">
                                 {{ number_format($planilla->suma_peso_completados ?? 0, 2) }} kg</td>
-                            <td class="p-2 text-center border">{{ number_format($planilla->peso_total, 2) }} kg</td>
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border dark:border-gray-700">{{ number_format($planilla->peso_total, 2) }} kg</td>
+                            <td class="p-2 text-center border dark:border-gray-700">
                                 <span
                                     class="px-2 py-2 rounded text-xs font-semibold
                                     {{ $planilla->estado === 'completada' ? 'bg-green-200 text-green-800' : '' }}
@@ -377,36 +377,36 @@
                                     {{ ucfirst($planilla->estado) }}
                                 </span>
                             </td>
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border dark:border-gray-700">
                                 {{ $planilla->fecha_inicio ? Str::before($planilla->fecha_inicio, ' ') : '-' }}
                             </td>
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border dark:border-gray-700">
                                 {{ $planilla->fecha_finalizacion ? Str::before($planilla->fecha_finalizacion, ' ') : '-' }}
                             </td>
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border dark:border-gray-700">
                                 {{ $planilla->created_at->format('d/m/Y') }}
                             </td>
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border dark:border-gray-700">
                                 {{ $planilla->fecha_estimada_entrega ? Str::before($planilla->fecha_estimada_entrega, ' ') : '-' }}
                             </td>
-                            <td class="p-2 text-center border">{{ $planilla->user->name ?? '-' }}</td>
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border dark:border-gray-700">{{ $planilla->user->name ?? '-' }}</td>
+                            <td class="p-2 text-center border dark:border-gray-700">
                                 <span
                                     class="px-2 py-2 rounded text-xs font-semibold {{ $planilla->revisada ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-800' }}">
                                     {{ $planilla->revisada ? 'Sí' : 'No' }}
                                 </span>
                             </td>
-                            <td class="p-2 text-center border">{{ $planilla->revisor->name ?? '-' }}</td>
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border dark:border-gray-700">{{ $planilla->revisor->name ?? '-' }}</td>
+                            <td class="p-2 text-center border dark:border-gray-700">
                                 {{ $planilla->revisada_at ? $planilla->revisada_at->format('d/m/Y H:i') : '-' }}
                             </td>
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border dark:border-gray-700">
                                 <span
                                     class="px-2 py-2 rounded text-xs font-semibold {{ $planilla->aprobada ? 'bg-green-200 text-green-800' : 'bg-orange-200 text-orange-800' }}">
                                     {{ $planilla->aprobada ? 'Sí' : 'No' }}
                                 </span>
                             </td>
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border dark:border-gray-700">
                                 @if($planilla->aprobada && $planilla->aprobada_at)
                                     {{ $planilla->aprobada_at->format('d/m/Y H:i') }}
                                     @if($planilla->aprobador)
@@ -416,7 +416,7 @@
                                     -
                                 @endif
                             </td>
-                            <td class="px-2 py-2 border text-xs font-bold">
+                            <td class="px-2 py-2 border dark:border-gray-700 text-xs font-bold">
                                 <div class="flex items-center space-x-2 justify-center">
                                     <!-- Botón Reimportar -->
                                     <button onclick="abrirModalReimportar({{ $planilla->id }})"
@@ -506,7 +506,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $modoSeleccion ? 25 : 24 }}" class="text-center py-4 text-gray-500">No hay planillas registradas
+                            <td colspan="{{ $modoSeleccion ? 25 : 24 }}" class="text-center py-4 text-gray-500 dark:text-gray-400">No hay planillas registradas
                             </td>
                         </tr>
                     @endforelse
@@ -516,10 +516,10 @@
 
         <!-- Peso total filtrado -->
         @if ($totalPesoFiltrado > 0)
-            <div class="mt-4 bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 rounded-r-lg p-3">
-                <div class="flex justify-end items-center gap-4 text-sm text-gray-700">
+            <div class="mt-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 border-l-4 border-blue-500 rounded-r-lg p-3">
+                <div class="flex justify-end items-center gap-4 text-sm text-gray-700 dark:text-gray-300">
                     <span class="font-semibold">Total peso filtrado:</span>
-                    <span class="text-base font-bold text-blue-800">
+                    <span class="text-base font-bold text-blue-800 dark:text-blue-400">
                         {{ number_format($totalPesoFiltrado, 2, ',', '.') }} kg
                     </span>
                 </div>

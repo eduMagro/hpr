@@ -504,7 +504,7 @@ class PlanillaController extends Controller
                     'id'          => $e->id,
                     'codigo'      => $e->codigo ?? null,
                     'dimensiones' => $e->dimensiones ?? null,
-                    'estado'      => $e->estado,
+                    'estado'      => $e->elaborado == 1 ? 'fabricado' : 'pendiente',
                     'peso'        => $e->peso_kg ?? $e->peso,
                     'diametro'    => $e->diametro_mm ?? $e->diametro,
                     'longitud'    => $e->longitud_cm ?? ($e->longitud ?? null),

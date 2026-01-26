@@ -1233,7 +1233,7 @@ class MovimientoController extends Controller
                             'id'          => $e->id,
                             'codigo'      => $e->codigo,
                             'dimensiones' => $e->dimensiones,
-                            'estado'      => $e->estado,
+                            'estado'      => $e->elaborado == 1 ? 'fabricado' : 'pendiente',
                             'peso'        => $e->peso_kg,
                             'diametro'    => $e->diametro_mm,
                             'longitud'    => $e->longitud_cm,

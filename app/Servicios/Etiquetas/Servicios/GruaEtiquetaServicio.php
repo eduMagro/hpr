@@ -136,10 +136,7 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
                     $q->where('maquina_id', $maquina->id)
                       ->orWhereNull('maquina_id');
                 })
-                ->where(function ($q) {
-                    $q->whereNull('estado')
-                      ->orWhereNotIn('estado', ['fabricado', 'completado']);
-                })
+                ->where('elaborado', 0)
                 ->lockForUpdate()
                 ->get();
 
@@ -246,10 +243,7 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
             // Si todos los elementos de la planilla están fabricados, cerrar planilla
             if ($planilla) {
                 $todosElementosPlanillaCompletos = $planilla->elementos()
-                    ->where(function ($q) {
-                        $q->whereNull('estado')
-                          ->orWhere('estado', '!=', 'fabricado');
-                    })
+                    ->where('elaborado', 0)
                     ->doesntExist();
 
                 if ($todosElementosPlanillaCompletos) {

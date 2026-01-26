@@ -164,7 +164,7 @@ class PlanillaEntidad extends Model
         }
 
         $elementosFabricados = $this->elementos()
-            ->whereIn('estado', ['fabricado', 'completado'])
+            ->where('elaborado', 1)
             ->count();
 
         return $elementosFabricados >= $totalElementos;
@@ -177,7 +177,7 @@ class PlanillaEntidad extends Model
     {
         $total = $this->elementos()->count();
         $fabricados = $this->elementos()
-            ->whereIn('estado', ['fabricado', 'completado'])
+            ->where('elaborado', 1)
             ->count();
 
         return [
@@ -194,9 +194,9 @@ class PlanillaEntidad extends Model
     public function scopeListasParaEnsamblaje($query)
     {
         return $query->whereHas('elementos', function ($q) {
-            $q->whereIn('estado', ['fabricado', 'completado']);
+            $q->where('elaborado', 1);
         })->whereDoesntHave('elementos', function ($q) {
-            $q->whereNotIn('estado', ['fabricado', 'completado']);
+            $q->where('elaborado', 0);
         });
     }
 
@@ -206,7 +206,7 @@ class PlanillaEntidad extends Model
     public function scopeConElementosFabricados($query)
     {
         return $query->whereHas('elementos', function ($q) {
-            $q->whereIn('estado', ['fabricado', 'completado']);
+            $q->where('elaborado', 1);
         });
     }
 
@@ -363,11 +363,11 @@ class PlanillaEntidad extends Model
 
         // Obtener elementos vinculados a esta entidad agrupados por características
         $elementosDisponibles = $this->elementos()
-            ->select('diametro', 'longitud', 'dimensiones', 'figura', 'peso', 'estado')
+            ->select('diametro', 'longitud', 'dimensiones', 'figura', 'peso', 'elaborado')
             ->selectRaw('COUNT(*) as cantidad')
-            ->selectRaw('SUM(CASE WHEN estado IN ("fabricado", "completado") THEN 1 ELSE 0 END) as fabricados')
-            ->selectRaw('SUM(CASE WHEN estado = "pendiente" THEN 1 ELSE 0 END) as pendientes')
-            ->selectRaw('SUM(CASE WHEN estado = "fabricando" THEN 1 ELSE 0 END) as fabricando')
+            ->selectRaw('SUM(CASE WHEN elaborado = 1 THEN 1 ELSE 0 END) as fabricados')
+            ->selectRaw('SUM(CASE WHEN elaborado = 0 THEN 1 ELSE 0 END) as pendientes')
+            ->selectRaw('0 as fabricando')
             ->groupBy('diametro', 'longitud', 'dimensiones', 'figura', 'peso')
             ->get();
 

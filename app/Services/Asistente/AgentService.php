@@ -1172,9 +1172,9 @@ PROMPT;
             ->where('planilla_id', $planillaActual->id)
             ->selectRaw("
                 COUNT(*) as total,
-                SUM(CASE WHEN estado = 'fabricado' THEN 1 ELSE 0 END) as fabricados,
-                SUM(CASE WHEN estado = 'pendiente' THEN 1 ELSE 0 END) as pendientes,
-                SUM(CASE WHEN estado = 'asignado' THEN 1 ELSE 0 END) as asignados
+                SUM(CASE WHEN elaborado = 1 THEN 1 ELSE 0 END) as fabricados,
+                SUM(CASE WHEN elaborado = 0 THEN 1 ELSE 0 END) as pendientes,
+                0 as asignados
             ")
             ->first();
 
@@ -1250,7 +1250,7 @@ PROMPT;
             if ($planilla) {
                 $elementos = DB::table('elementos')
                     ->where('planilla_id', $planilla->id)
-                    ->selectRaw("COUNT(*) as total, SUM(CASE WHEN estado = 'fabricado' THEN 1 ELSE 0 END) as fabricados")
+                    ->selectRaw("COUNT(*) as total, SUM(CASE WHEN elaborado = 1 THEN 1 ELSE 0 END) as fabricados")
                     ->first();
                 $progreso = $elementos->total > 0 ? round(($elementos->fabricados / $elementos->total) * 100) . '%' : '0%';
                 $contenido .= "| {$maquina->nombre} | {$planilla->codigo} | " . ($planilla->cliente ?? 'N/A') . " | {$progreso} |\n";
