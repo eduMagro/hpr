@@ -993,8 +993,7 @@ PROMPT;
             default => today(),
         };
 
-        $elementos = DB::table('elementos')
-            ->where('estado', 'fabricado')
+        $elementos = \App\Models\Elemento::fabricado()
             ->where('updated_at', '>=', $desde)
             ->get();
 
@@ -1046,9 +1045,8 @@ PROMPT;
         $contenido .= "|---------|--------|--------|--------|\n";
 
         foreach ($maquinas as $m) {
-            $enCola = DB::table('elementos')
-                ->where('maquina_id', $m->id)
-                ->where('estado', 'asignado')
+            $enCola = \App\Models\Elemento::where('maquina_id', $m->id)
+                ->pendiente()
                 ->count();
 
             $contenido .= "| {$m->nombre} | {$m->codigo} | " . ($m->estado ?? 'activa') . " | {$enCola} |\n";

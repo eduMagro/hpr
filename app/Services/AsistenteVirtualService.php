@@ -1370,15 +1370,16 @@ PROMPT;
     {
         return <<<DICT
 ### PRODUCCIÓN Y FABRICACIÓN
-- "kilos/kg/peso a fabricar/por hacer" → SUM(peso) FROM elementos WHERE estado='pendiente'
-- "lo que hay que hacer/lo pendiente/la faena" → elementos con estado='pendiente'
-- "lo que queda/lo que falta" → elementos WHERE estado != 'fabricado'
-- "terminado/acabado/hecho/fabricado" → estado='fabricado'
-- "en proceso/fabricando/haciéndose" → estado='fabricando'
+- "kilos/kg/peso a fabricar/por hacer" → SUM(peso) FROM elementos e JOIN etiquetas et ON e.etiqueta_sub_id = et.etiqueta_sub_id WHERE et.estado IN ('pendiente','en_proceso')
+- "lo que hay que hacer/lo pendiente/la faena" → elementos con etiqueta en estado='pendiente' o 'en_proceso'
+- "lo que queda/lo que falta" → elementos cuya etiqueta tenga estado != 'fabricado' y != 'completada'
+- "terminado/acabado/hecho/fabricado" → etiquetas.estado IN ('fabricado','completada')
+- "en proceso/fabricando/haciéndose" → etiquetas.estado='en_proceso'
 - "la máquina X/la X" → buscar en maquinas WHERE LOWER(nombre) LIKE '%x%'
 - "la MSR/cortadora/dobladora/ensambladora/soldadora" → tipos de máquinas
-- "cuánto llevo/he hecho/hemos hecho" → elementos WHERE estado='fabricado' AND fecha hoy
-- "ritmo/producción del día" → SUM(peso) fabricado hoy
+- "cuánto llevo/he hecho/hemos hecho" → elementos cuya etiqueta tiene estado='fabricado' AND fecha hoy
+- "ritmo/producción del día" → SUM(peso) de etiquetas fabricadas hoy
+- IMPORTANTE: El estado de fabricación está en la tabla ETIQUETAS, no en elementos. Siempre hacer JOIN elementos e JOIN etiquetas et ON e.etiqueta_sub_id = et.etiqueta_sub_id
 
 ### MÁQUINAS - NOMBRES COMUNES
 - "MSR" / "la eme ese erre" → maquinas WHERE nombre LIKE '%msr%'
@@ -1514,16 +1515,16 @@ DICT;
 
 ### PRODUCCIÓN
 "¿Cuántos kilos hay pendientes en la MSR20?"
-→ {"requiere_sql": true, "consulta_sql": "SELECT SUM(e.peso) as kilos_pendientes, COUNT(*) as num_elementos FROM elementos e JOIN maquinas m ON e.maquina_id = m.id WHERE (LOWER(m.nombre) LIKE '%msr20%' OR LOWER(m.codigo) LIKE '%msr20%') AND e.estado = 'pendiente'", "explicacion": "Kilos y elementos pendientes en MSR20"}
+→ {"requiere_sql": true, "consulta_sql": "SELECT SUM(e.peso) as kilos_pendientes, COUNT(*) as num_elementos FROM elementos e JOIN maquinas m ON e.maquina_id = m.id JOIN etiquetas et ON e.etiqueta_sub_id = et.etiqueta_sub_id WHERE (LOWER(m.nombre) LIKE '%msr20%' OR LOWER(m.codigo) LIKE '%msr20%') AND et.estado IN ('pendiente','en_proceso') AND e.deleted_at IS NULL", "explicacion": "Kilos y elementos pendientes en MSR20"}
 
 "Kilos fabricados hoy"
-→ {"requiere_sql": true, "consulta_sql": "SELECT SUM(peso) as kilos_fabricados, COUNT(*) as elementos FROM elementos WHERE estado = 'fabricado' AND DATE(updated_at) = CURDATE()", "explicacion": "Producción de hoy"}
+→ {"requiere_sql": true, "consulta_sql": "SELECT SUM(e.peso) as kilos_fabricados, COUNT(*) as elementos FROM elementos e JOIN etiquetas et ON e.etiqueta_sub_id = et.etiqueta_sub_id WHERE et.estado IN ('fabricado','completada') AND DATE(et.updated_at) = CURDATE() AND e.deleted_at IS NULL", "explicacion": "Producción de hoy"}
 
 "¿Qué tiene pendiente la cortadora?"
-→ {"requiere_sql": true, "consulta_sql": "SELECT e.*, p.codigo as planilla FROM elementos e JOIN maquinas m ON e.maquina_id = m.id LEFT JOIN planillas p ON e.planilla_id = p.id WHERE LOWER(m.tipo) LIKE '%corte%' AND e.estado = 'pendiente' ORDER BY p.fecha_estimada_entrega LIMIT 50", "explicacion": "Elementos pendientes en cortadoras"}
+→ {"requiere_sql": true, "consulta_sql": "SELECT e.*, p.codigo as planilla FROM elementos e JOIN maquinas m ON e.maquina_id = m.id JOIN etiquetas et ON e.etiqueta_sub_id = et.etiqueta_sub_id LEFT JOIN planillas p ON e.planilla_id = p.id WHERE LOWER(m.tipo) LIKE '%corte%' AND et.estado IN ('pendiente','en_proceso') AND e.deleted_at IS NULL ORDER BY p.fecha_estimada_entrega LIMIT 50", "explicacion": "Elementos pendientes en cortadoras"}
 
 "Producción de esta semana por máquina"
-→ {"requiere_sql": true, "consulta_sql": "SELECT m.nombre as maquina, SUM(e.peso) as kilos, COUNT(*) as elementos FROM elementos e JOIN maquinas m ON e.maquina_id = m.id WHERE e.estado = 'fabricado' AND YEARWEEK(e.updated_at, 1) = YEARWEEK(CURDATE(), 1) GROUP BY m.id, m.nombre ORDER BY kilos DESC", "explicacion": "Resumen semanal por máquina"}
+→ {"requiere_sql": true, "consulta_sql": "SELECT m.nombre as maquina, SUM(e.peso) as kilos, COUNT(*) as elementos FROM elementos e JOIN maquinas m ON e.maquina_id = m.id JOIN etiquetas et ON e.etiqueta_sub_id = et.etiqueta_sub_id WHERE et.estado IN ('fabricado','completada') AND YEARWEEK(et.updated_at, 1) = YEARWEEK(CURDATE(), 1) AND e.deleted_at IS NULL GROUP BY m.id, m.nombre ORDER BY kilos DESC", "explicacion": "Resumen semanal por máquina"}
 
 ### PLANILLAS ESPECÍFICAS
 "Planillas pendientes ordenadas por urgencia"
@@ -1568,7 +1569,7 @@ DICT;
 
 ### RESPUESTAS A CLARIFICACIONES DEL USUARIO
 "Los pendientes" (después de preguntar sobre elementos)
-→ {"requiere_sql": true, "consulta_sql": "SELECT e.*, m.nombre as maquina, p.codigo as planilla FROM elementos e LEFT JOIN maquinas m ON e.maquina_id = m.id LEFT JOIN planillas p ON e.planilla_id = p.id WHERE e.estado = 'pendiente' ORDER BY p.fecha_estimada_entrega LIMIT 100", "explicacion": "Elementos pendientes"}
+→ {"requiere_sql": true, "consulta_sql": "SELECT e.*, m.nombre as maquina, p.codigo as planilla FROM elementos e JOIN etiquetas et ON e.etiqueta_sub_id = et.etiqueta_sub_id LEFT JOIN maquinas m ON e.maquina_id = m.id LEFT JOIN planillas p ON e.planilla_id = p.id WHERE et.estado IN ('pendiente','en_proceso') AND e.deleted_at IS NULL ORDER BY p.fecha_estimada_entrega LIMIT 100", "explicacion": "Elementos pendientes"}
 
 "Solo con existencias" (después de preguntar sobre stock)
 → {"requiere_sql": true, "consulta_sql": "SELECT p.codigo, pb.nombre, pb.diametro, p.peso_stock, pb.tipo FROM productos p JOIN productos_base pb ON p.producto_base_id = pb.id WHERE p.peso_stock > 0 ORDER BY pb.diametro, pb.nombre LIMIT 100", "explicacion": "Productos con stock"}

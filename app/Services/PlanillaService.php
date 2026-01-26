@@ -43,11 +43,6 @@ class PlanillaService
                         'paquete_id' => $paquete->id,
                     ]);
 
-                // ✅ Marcar todos sus elementos como completados
-                Elemento::where('planilla_id', $planillaId)->update(['estado' => 'completado']);
-
-
-
                 // ✅ Reajustar colas
                 $ordenes = OrdenPlanilla::lockForUpdate()
                     ->where('planilla_id', $planillaId)

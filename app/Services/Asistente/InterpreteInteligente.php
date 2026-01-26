@@ -308,7 +308,7 @@ class InterpreteInteligente
 
     private function sqlKilosPendientes(array $entidades): array
     {
-        $where = "e.estado IN ('pendiente', 'fabricando')";
+        $where = "et.estado IN ('pendiente', 'en_proceso') AND e.deleted_at IS NULL";
 
         if (!empty($entidades['maquina_id'])) {
             $where .= " AND e.maquina_id = {$entidades['maquina_id']}";
@@ -319,6 +319,7 @@ class InterpreteInteligente
                         COALESCE(SUM(e.peso), 0) as kilos_pendientes,
                         COUNT(*) as elementos_pendientes
                       FROM elementos e
+                      JOIN etiquetas et ON e.etiqueta_sub_id = et.etiqueta_sub_id
                       WHERE {$where}",
             'explicacion' => "Kilos pendientes de fabricar",
             'formato' => 'cantidad',
@@ -327,7 +328,7 @@ class InterpreteInteligente
 
     private function sqlKilosFabricados(array $entidades): array
     {
-        $where = "e.estado = 'fabricado'";
+        $where = "et.estado IN ('fabricado', 'completada') AND e.deleted_at IS NULL";
 
         if (!empty($entidades['maquina_id'])) {
             $where .= " AND e.maquina_id = {$entidades['maquina_id']}";
@@ -336,16 +337,16 @@ class InterpreteInteligente
         // Filtro temporal
         switch ($entidades['periodo'] ?? 'hoy') {
             case 'ayer':
-                $where .= " AND DATE(e.updated_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
+                $where .= " AND DATE(et.updated_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
                 break;
             case 'semana':
-                $where .= " AND YEARWEEK(e.updated_at, 1) = YEARWEEK(CURDATE(), 1)";
+                $where .= " AND YEARWEEK(et.updated_at, 1) = YEARWEEK(CURDATE(), 1)";
                 break;
             case 'mes':
-                $where .= " AND MONTH(e.updated_at) = MONTH(CURDATE()) AND YEAR(e.updated_at) = YEAR(CURDATE())";
+                $where .= " AND MONTH(et.updated_at) = MONTH(CURDATE()) AND YEAR(et.updated_at) = YEAR(CURDATE())";
                 break;
             default: // hoy
-                $where .= " AND DATE(e.updated_at) = CURDATE()";
+                $where .= " AND DATE(et.updated_at) = CURDATE()";
         }
 
         return [
@@ -353,6 +354,7 @@ class InterpreteInteligente
                         COALESCE(SUM(e.peso), 0) as kilos_fabricados,
                         COUNT(*) as elementos_fabricados
                       FROM elementos e
+                      JOIN etiquetas et ON e.etiqueta_sub_id = et.etiqueta_sub_id
                       WHERE {$where}",
             'explicacion' => "Kilos fabricados",
             'formato' => 'cantidad',
@@ -403,8 +405,8 @@ class InterpreteInteligente
             'sql' => "SELECT p.codigo, p.estado, p.revisada,
                         c.empresa as cliente, o.obra,
                         p.peso_total, p.fecha_estimada_entrega,
-                        (SELECT COUNT(*) FROM elementos e WHERE e.planilla_id = p.id AND e.estado = 'pendiente') as elementos_pendientes,
-                        (SELECT COUNT(*) FROM elementos e WHERE e.planilla_id = p.id AND e.estado = 'fabricado') as elementos_fabricados
+                        (SELECT COUNT(*) FROM elementos e JOIN etiquetas et ON e.etiqueta_sub_id = et.etiqueta_sub_id WHERE e.planilla_id = p.id AND et.estado IN ('pendiente', 'en_proceso') AND e.deleted_at IS NULL) as elementos_pendientes,
+                        (SELECT COUNT(*) FROM elementos e JOIN etiquetas et ON e.etiqueta_sub_id = et.etiqueta_sub_id WHERE e.planilla_id = p.id AND et.estado IN ('fabricado', 'completada') AND e.deleted_at IS NULL) as elementos_fabricados
                       FROM planillas p
                       JOIN obras o ON p.obra_id = o.id
                       JOIN clientes c ON o.cliente_id = c.id

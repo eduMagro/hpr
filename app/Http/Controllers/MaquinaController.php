@@ -1912,10 +1912,11 @@ class MaquinaController extends Controller
         $rutaFinal = null;
         $errores = [];
 
+        $usuarioNombre = auth()->user()?->nombre_completo ?? 'Usuario desconocido';
+        $maquinaNombre = $maquina->nombre ?? $maquina->codigo ?? 'Máquina sin nombre';
+
         foreach ($rutasAIntentar as $rutaBase) {
             $rutaCompleta = $rutaBase . $filename;
-
-            Log::info("Export BVBS: Intentando guardar en '{$rutaBase}' - is_dir: " . (is_dir($rutaBase) ? 'true' : 'false'));
 
             // Intentar escribir directamente (a veces is_dir falla pero la escritura funciona)
             $resultado = @file_put_contents($rutaCompleta, $contenido);
@@ -1928,18 +1929,16 @@ class MaquinaController extends Controller
                 if (file_exists($rutaCompleta) && filesize($rutaCompleta) > 0) {
                     $guardadoEnRed = true;
                     $rutaFinal = $rutaCompleta;
-                    Log::info("Export BVBS guardado exitosamente en: {$rutaFinal} para máquina {$maquina->id} con " . count($datos) . " líneas.");
+                    Log::channel('produccion_piezas')->info("Export BVBS: {$usuarioNombre} exportó {$maquinaNombre} a {$rutaFinal}");
                     break;
                 } else {
                     $errores[] = "{$rutaBase}: file_put_contents OK pero archivo no verificado (existe: " . (file_exists($rutaCompleta) ? 'sí' : 'no') . ")";
-                    Log::warning("Export BVBS: Escritura aparentemente OK pero archivo no verificado en '{$rutaCompleta}'");
                     continue;
                 }
             } else {
                 $error = error_get_last();
                 $errorMsg = $error ? $error['message'] : 'Error desconocido';
                 $errores[] = "{$rutaBase}: {$errorMsg}";
-                Log::warning("Export BVBS: Falló escribir en '{$rutaCompleta}': {$errorMsg}");
             }
         }
 
@@ -1948,15 +1947,11 @@ class MaquinaController extends Controller
             return redirect()->back()->with('success', "Archivo BVBS exportado correctamente a: {$rutaFinal}");
         }
 
-        // Log de todos los errores para diagnóstico
-        Log::warning("Export BVBS: No se pudo guardar en ninguna ruta de red. Errores: " . implode(' | ', $errores));
-
         // 7) Fallback: guardar en storage local y devolver descarga
-        Log::info("Export BVBS: No se pudo guardar en red, usando fallback de descarga");
         $path = "exports/bvbs/{$filename}";
         Storage::disk('local')->put($path, $contenido);
 
-        Log::info("Export BVBS guardado en storage local (fallback): {$path} para máquina {$maquina->id} con " . count($datos) . " líneas.");
+        Log::channel('produccion_piezas')->info("Export BVBS: {$usuarioNombre} exportó {$maquinaNombre} (descarga: {$filename})");
 
         return response()->download(
             Storage::disk('local')->path($path),

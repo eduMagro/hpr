@@ -546,9 +546,12 @@ class AsignarMaquinaService
     {
         Log::channel('planilla_import')->debug("📊 [AsignarMaquina] Calculando cargas pendientes por máquina (peso + tiempo)");
 
+        // Filtrar por estado de la etiqueta relacionada (pendiente o en_proceso)
         $cargas = Elemento::selectRaw('maquina_id, COALESCE(SUM(peso),0) as kilos, COALESCE(SUM(tiempo_fabricacion),0) as segundos, COUNT(*) as num')
             ->whereNotNull('maquina_id')
-            ->where('estado', 'pendiente')
+            ->whereHas('etiquetaRelacion', function ($q) {
+                $q->whereIn('estado', ['pendiente', 'en_proceso']);
+            })
             ->groupBy('maquina_id')
             ->get()
             ->mapWithKeys(fn($r) => [

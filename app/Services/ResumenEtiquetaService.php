@@ -665,8 +665,6 @@ class ResumenEtiquetaService
      */
     public function resumirMultiplanilla(int $maquinaId, ?int $usuarioId = null): array
     {
-        Log::info('📦 resumirMultiplanilla INICIO', ['maquina_id' => $maquinaId]);
-
         // 1. Obtener planillas de orden_planillas para esta máquina (REVISADAS)
         $planillasEnCola = DB::table('orden_planillas')
             ->join('planillas', 'orden_planillas.planilla_id', '=', 'planillas.id')
@@ -676,7 +674,6 @@ class ResumenEtiquetaService
             ->toArray();
 
         if (empty($planillasEnCola)) {
-            Log::info('📦 resumirMultiplanilla - No hay planillas en cola');
             return [
                 'success' => true,
                 'message' => 'No hay planillas en la cola de esta máquina',
@@ -684,8 +681,6 @@ class ResumenEtiquetaService
                 'stats' => ['grupos_creados' => 0, 'etiquetas_agrupadas' => 0, 'planillas_involucradas' => 0],
             ];
         }
-
-        Log::info('📦 resumirMultiplanilla - Planillas en cola: ' . count($planillasEnCola));
 
         // 2. Obtener etiquetas NO resumidas de esas planillas
         $etiquetas = Etiqueta::whereIn('planilla_id', $planillasEnCola)
@@ -700,8 +695,6 @@ class ResumenEtiquetaService
             }])
             ->limit(200) // Limitar para evitar timeouts
             ->get();
-
-        Log::info('📦 resumirMultiplanilla - Etiquetas no resumidas: ' . $etiquetas->count());
 
         if ($etiquetas->isEmpty()) {
             return [
@@ -808,7 +801,6 @@ class ResumenEtiquetaService
             if ($etiquetasNoAgrupadas->isNotEmpty()) {
                 Etiqueta::whereIn('id', $etiquetasNoAgrupadas->pluck('id'))
                     ->update(['resumida' => true]);
-                Log::info('📦 Etiquetas marcadas como resumidas (sin agrupar): ' . $etiquetasNoAgrupadas->count());
             }
 
             return [

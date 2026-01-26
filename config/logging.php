@@ -194,6 +194,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'produccion_piezas' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/produccion_piezas/produccion.log'),
+            'level' => 'info',
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

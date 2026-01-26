@@ -1,9 +1,9 @@
 // Service Worker para PWA + Firebase Messaging
 // Este archivo DEBE estar en la raíz del dominio (public/)
 
-const CACHE_NAME = 'hpr-manager-v1';
+const CACHE_NAME = 'hpr-manager-v2';
 const STATIC_ASSETS = [
-    '/',
+    // NO cachear rutas que requieren autenticación (como '/')
     '/imagenes/ico/android-chrome-192x192.png',
     '/imagenes/ico/android-chrome-512x512.png',
     '/imagenes/ico/favicon-32x32.png',
@@ -48,14 +48,22 @@ self.addEventListener('fetch', (event) => {
     // Ignorar requests a APIs externas
     if (!event.request.url.startsWith(self.location.origin)) return;
 
+    // NO interceptar navegación HTML - dejar que el servidor maneje la autenticación
+    if (event.request.mode === 'navigate') return;
+
+    // NO interceptar peticiones a rutas de la app (solo cachear assets estáticos)
+    const url = new URL(event.request.url);
+    const isStaticAsset = url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/);
+    if (!isStaticAsset) return;
+
     event.respondWith(
         fetch(event.request)
             .then((response) => {
                 // Clonar la respuesta para guardarla en cache
                 const responseClone = response.clone();
                 caches.open(CACHE_NAME).then((cache) => {
-                    // Solo cachear respuestas válidas
-                    if (response.status === 200) {
+                    // Solo cachear respuestas válidas (no redirecciones)
+                    if (response.status === 200 && response.type === 'basic') {
                         cache.put(event.request, responseClone);
                     }
                 });

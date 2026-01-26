@@ -294,7 +294,7 @@ class InformeService
         $semanaAnteriorFin = $fechaInicio->copy()->subDay();
 
         $kilosSemanaAnterior = Elemento::query()
-            ->where('estado', 'fabricado')
+            ->fabricado()
             ->whereBetween('updated_at', [$semanaAnteriorInicio, $semanaAnteriorFin->endOfDay()])
             ->sum('peso');
 
