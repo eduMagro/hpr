@@ -261,7 +261,7 @@ class FerrawinSyncController extends Controller
             }
 
             $elementos = \App\Models\Elemento::where('planilla_id', $planilla->id)
-                ->select('id', 'fila', 'ferrawin_id', 'diametro', 'longitud', 'barras', 'dobles_barra', 'peso', 'marca', 'figura', 'estado')
+                ->select('id', 'fila', 'ferrawin_id', 'diametro', 'longitud', 'barras', 'dobles_barra', 'peso', 'marca', 'figura', 'elaborado')
                 ->orderBy('fila')
                 ->orderBy('id')
                 ->get();

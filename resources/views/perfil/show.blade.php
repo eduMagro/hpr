@@ -697,6 +697,17 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
         }
 
+        /* Asegurar que el texto de eventos sea visible */
+        .fc .fc-event-title,
+        .fc .fc-event-time {
+            color: inherit;
+        }
+
+        /* En modo dark, forzar colores claros en eventos con fondo oscuro */
+        .dark .fc .fc-event {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
         .fc .fc-daygrid-event-dot {
             display: none;
         }
@@ -706,6 +717,10 @@
             color: #6366f1;
             font-weight: 600;
             font-size: 0.75rem;
+        }
+
+        .dark .fc .fc-daygrid-more-link {
+            color: #818cf8;
         }
 
         /* Scrollbar del calendario */

@@ -386,7 +386,7 @@ class PlanillaController extends Controller
             'elementos' => function ($q) {
                 $q->select([
                     'id', 'planilla_id', 'etiqueta_sub_id', 'maquina_id',
-                    'codigo', 'estado', 'peso', 'diametro', 'longitud',
+                    'codigo', 'elaborado', 'peso', 'diametro', 'longitud',
                     'barras', 'figura', 'dimensiones'
                 ]);
             },

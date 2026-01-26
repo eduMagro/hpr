@@ -26,7 +26,7 @@
                 </div>
             @endif
             <!-- Panel de filtros colapsable -->
-            <div class="mt-2 bg-white shadow rounded-lg overflow-hidden">
+            <div class="mt-2 bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
                 <!-- Header del panel (siempre visible) -->
                 <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-3 py-2 flex items-center justify-between cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all"
                     onclick="toggleFiltros()">
@@ -178,7 +178,7 @@
             </div>
             <!-- Por esta versión con transición -->
             <div id="contenedor-calendario"
-                class="bg-white shadow rounded-lg p-2 transition-all duration-300 relative pt-10">
+                class="bg-white dark:bg-gray-900 shadow rounded-lg p-2 transition-all duration-300 relative pt-10">
                 <!-- Botones en esquina superior izquierda -->
                 <div class="absolute top-4 left-4 z-10 flex gap-2">
                     <!-- Botón de optimizar planillas -->

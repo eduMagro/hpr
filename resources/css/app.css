@@ -496,3 +496,256 @@ table.table-global,
 .dark .inline-edit-select {
     @apply bg-gray-700 text-gray-100 border-gray-600;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔹 FULLCALENDAR - MODO DARK
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Contenedor principal del calendario */
+.dark .fc {
+    --fc-border-color: #374151;
+    --fc-page-bg-color: #111827;
+    --fc-neutral-bg-color: #1f2937;
+    --fc-list-event-hover-bg-color: #374151;
+    --fc-today-bg-color: rgba(59, 130, 246, 0.15);
+}
+
+/* Fondo general */
+.dark .fc,
+.dark .fc-theme-standard {
+    background-color: #111827;
+    color: #e5e7eb;
+}
+
+/* Toolbar (cabecera con botones y título) */
+.dark .fc .fc-toolbar {
+    background-color: #1f2937;
+    padding: 12px;
+    border-radius: 8px 8px 0 0;
+}
+
+.dark .fc .fc-toolbar-title {
+    color: #f3f4f6;
+}
+
+/* Botones de navegación */
+.dark .fc .fc-button {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+}
+
+.dark .fc .fc-button:hover {
+    background-color: #4b5563;
+    border-color: #6b7280;
+    color: #f9fafb;
+}
+
+.dark .fc .fc-button:disabled {
+    background-color: #1f2937;
+    border-color: #374151;
+    color: #6b7280;
+}
+
+.dark .fc .fc-button-primary:not(:disabled).fc-button-active,
+.dark .fc .fc-button-primary:not(:disabled):active {
+    background-color: #2563eb;
+    border-color: #3b82f6;
+    color: #ffffff;
+}
+
+/* Cabecera de días */
+.dark .fc .fc-col-header {
+    background-color: #1f2937;
+}
+
+.dark .fc .fc-col-header-cell {
+    background-color: #1f2937;
+    border-color: #374151;
+}
+
+.dark .fc .fc-col-header-cell-cushion {
+    color: #d1d5db;
+    padding: 8px 4px;
+}
+
+/* Celdas del grid */
+.dark .fc .fc-daygrid-day,
+.dark .fc .fc-timegrid-slot {
+    background-color: #111827;
+    border-color: #374151;
+}
+
+.dark .fc .fc-daygrid-day:hover,
+.dark .fc .fc-timegrid-slot:hover {
+    background-color: #1f2937;
+}
+
+/* Número del día */
+.dark .fc .fc-daygrid-day-number {
+    color: #d1d5db;
+}
+
+/* Día de hoy */
+.dark .fc .fc-day-today {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+.dark .fc .fc-day-today .fc-daygrid-day-number {
+    color: #60a5fa;
+    font-weight: 600;
+}
+
+/* Fin de semana */
+.dark .fc .fc-day-sat,
+.dark .fc .fc-day-sun {
+    background-color: #0f172a;
+}
+
+/* Eventos */
+.dark .fc .fc-event {
+    border-color: transparent;
+}
+
+.dark .fc .fc-event-main {
+    color: #f3f4f6;
+}
+
+/* Timeline / Resource view */
+.dark .fc .fc-resource-timeline,
+.dark .fc .fc-timeline {
+    background-color: #111827;
+}
+
+.dark .fc .fc-datagrid-cell {
+    background-color: #1f2937;
+    border-color: #374151;
+}
+
+.dark .fc .fc-datagrid-cell-frame {
+    background-color: #1f2937;
+}
+
+.dark .fc .fc-datagrid-cell-cushion {
+    color: #e5e7eb;
+}
+
+/* Resource labels (nombres de máquinas/recursos) */
+.dark .fc .fc-resource {
+    background-color: #1f2937;
+}
+
+.dark .fc .fc-resource-group {
+    background-color: #111827;
+}
+
+/* Scrollbar del calendario */
+.dark .fc .fc-scroller::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.dark .fc .fc-scroller::-webkit-scrollbar-track {
+    background: #1f2937;
+}
+
+.dark .fc .fc-scroller::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 4px;
+}
+
+.dark .fc .fc-scroller::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+/* Líneas de tiempo */
+.dark .fc .fc-timegrid-axis {
+    background-color: #1f2937;
+    border-color: #374151;
+}
+
+.dark .fc .fc-timegrid-slot-label {
+    color: #9ca3af;
+}
+
+.dark .fc .fc-timegrid-slot-lane {
+    border-color: #374151;
+}
+
+/* Línea de hora actual */
+.dark .fc .fc-timegrid-now-indicator-line {
+    border-color: #ef4444;
+}
+
+.dark .fc .fc-timegrid-now-indicator-arrow {
+    border-color: #ef4444;
+    border-top-color: transparent;
+    border-bottom-color: transparent;
+}
+
+/* Popover / More events */
+.dark .fc .fc-popover {
+    background-color: #1f2937;
+    border-color: #374151;
+}
+
+.dark .fc .fc-popover-header {
+    background-color: #374151;
+    color: #e5e7eb;
+}
+
+.dark .fc .fc-popover-body {
+    background-color: #1f2937;
+}
+
+/* Lista de eventos */
+.dark .fc .fc-list {
+    background-color: #111827;
+    border-color: #374151;
+}
+
+.dark .fc .fc-list-day-cushion {
+    background-color: #1f2937;
+}
+
+.dark .fc .fc-list-event:hover td {
+    background-color: #374151;
+}
+
+/* Bordes generales */
+.dark .fc .fc-scrollgrid {
+    border-color: #374151;
+}
+
+.dark .fc .fc-scrollgrid-section > td {
+    border-color: #374151;
+}
+
+.dark .fc td,
+.dark .fc th {
+    border-color: #374151;
+}
+
+/* Vista de recursos - encabezados */
+.dark .fc .fc-resource-timeline-divider {
+    background-color: #374151;
+}
+
+/* Celdas de lanes en timeline */
+.dark .fc .fc-timeline-lane {
+    background-color: #111827;
+}
+
+.dark .fc .fc-timeline-lane:hover {
+    background-color: #1f2937;
+}
+
+/* Highlighting durante drag */
+.dark .fc .fc-highlight {
+    background-color: rgba(59, 130, 246, 0.2);
+}
+
+/* Barra de progreso dentro de eventos */
+.dark .fc .fc-event .bg-gray-300 {
+    background-color: #4b5563;
+}
