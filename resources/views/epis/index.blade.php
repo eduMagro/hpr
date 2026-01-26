@@ -26,6 +26,18 @@
                         </svg>
                         Resumen Tallas
                     </button>
+                    <button @click="activeView = 'firmas'" :class="activeView === 'firmas' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
+                            'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
+                        class="px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="w-5 h-5">
+                            <path
+                                d="m21 17-2.156-1.868A.5.5 0 0 0 18 15.5v.5a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1c0-2.545-3.991-3.97-8.5-4a1 1 0 0 0 0 5c4.153 0 4.745-11.295 5.708-13.5a2.5 2.5 0 1 1 3.31 3.284" />
+                            <path d="M3 21h18" />
+                        </svg>
+                        Firmas
+                    </button>
                 </div>
             </div>
 
@@ -1490,6 +1502,75 @@
                 </div>
             </div>
 
+            <!-- Firmas View -->
+            <div x-show="activeView === 'firmas'" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+                class="space-y-6">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <h1 class="text-2xl font-semibold text-gray-900">Firmas de EPIs</h1>
+                        <p class="text-sm text-gray-600 mt-1">Usuarios que han firmado la recepción de equipos.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <template x-if="usersWithPendingSignatures.length > 0">
+                            <button type="button" @click="openBulkReminderModal()"
+                                class="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path
+                                        d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                                    <path d="M14.05 2a9 9 0 0 1 8 7.94" />
+                                    <path d="M14.05 6A5 5 0 0 1 18 10" />
+                                </svg>
+                                <span x-text="`Recordatorio (${usersWithPendingSignatures.length} pendientes)`"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <template x-for="u in allUsers.filter(x => x.epis_firmados > 0)" :key="u.id">
+                        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer group"
+                            @click="openFirmasModal(u)">
+                            <div class="flex items-center gap-4">
+                                <div class="relative">
+                                    <div
+                                        class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm group-hover:ring-blue-100 transition-all">
+                                        <template x-if="u.ruta_imagen">
+                                            <img :src="u.ruta_imagen" class="w-full h-full object-cover"
+                                                x-on:error="u.ruta_imagen = null">
+                                        </template>
+                                        <template x-if="!u.ruta_imagen">
+                                            <span class="text-lg font-bold text-gray-400"
+                                                x-text="u.nombre_completo.charAt(0)"></span>
+                                        </template>
+                                    </div>
+                                    <div
+                                        class="absolute -bottom-1 -right-1 bg-green-500 text-white rounded-full p-1 border-2 border-white">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M20 6 9 17l-5-5" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors"
+                                        x-text="u.nombre_completo"></p>
+                                    <p class="text-xs text-gray-500" x-text="u.epis_firmados + ' EPIs firmados'"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <template x-if="allUsers.filter(x => x.epis_firmados > 0).length === 0">
+                        <div class="col-span-full py-10 text-center text-gray-500">
+                            No hay firmas registradas.
+                        </div>
+                    </template>
+                </div>
+            </div>
+
             <div x-show="activeView === 'tallas'" x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0">
                 <!-- Summary Cards -->
@@ -1827,11 +1908,167 @@
                     </div>
                 </div>
             </div>
+            <!-- Modal Firmas -->
+            <div x-cloak x-show="firmasModalOpen" x-transition.opacity
+                class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/50" @click="firmasModalOpen = false"></div>
+                <div
+                    class="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                        <h3 class="font-bold text-lg text-gray-900">
+                            Firmas registradas
+                        </h3>
+                        <button class="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                            @click="firmasModalOpen = false">
+                            <svg class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="p-0 overflow-y-auto bg-gray-50">
+                        <template x-if="firmasLoading">
+                            <div class="p-8 text-center text-gray-500">Cargando firmas...</div>
+                        </template>
+                        <template x-if="!firmasLoading">
+                            <div class="divide-y divide-gray-100">
+                                <template x-for="g in firmasGroups" :key="g.firma_ruta">
+                                    <div
+                                        class="bg-white p-4 border-b border-gray-50 last:border-0 hover:bg-blue-50 transition-colors flex flex-col gap-2">
+                                        <div class="flex items-center justify-between w-full">
+                                            <div class="cursor-pointer flex-1" @click="g.expanded = !g.expanded">
+                                                <div class="flex items-center gap-2">
+                                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                                        class="w-4 h-4 text-gray-400 transition-transform duration-200"
+                                                        :class="g.expanded ? 'rotate-90' : ''" viewBox="0 0 24 24"
+                                                        fill="none" stroke="currentColor" stroke-width="2"
+                                                        stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="m9 18 6-6-6-6" />
+                                                    </svg>
+                                                    <div>
+                                                        <p class="font-semibold text-gray-900"
+                                                            x-text="`Firma del ${formatDateTime(g.firmado_dia)}`"></p>
+                                                        <p class="text-xs text-gray-500 mt-1"
+                                                            x-text="g.count + ' EPIs asociados'"></p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <a :href="'/epis/firma/' + g.firma_ruta.split('/').pop()" target="_blank"
+                                                class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600 shadow-sm transition-all flex items-center gap-2 z-10">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                                                    <circle cx="12" cy="12" r="3" />
+                                                </svg>
+                                                Ver firma
+                                            </a>
+                                        </div>
+                                        <div x-show="g.expanded" x-collapse class="pl-8 pr-4 py-2">
+                                            <div class="bg-gray-50 rounded-lg p-3 space-y-2">
+                                                <template x-for="item in g.items" :key="item.id">
+                                                    <div class="flex items-center justify-between text-sm">
+                                                        <span
+                                                            x-text="item.epi ? item.epi.nombre : 'EPI Desconocido'"></span>
+                                                        <span class="font-bold text-gray-700"
+                                                            x-text="'x' + item.cantidad"></span>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="firmasGroups.length === 0">
+                                    <div class="p-8 text-center text-gray-500">
+                                        No se encontraron firmas agrupadas.
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="p-4 border-t border-gray-100 bg-white flex justify-end">
+                        <button class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+                            @click="firmasModalOpen = false">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Modal Recordatorio Masivo -->
+        <div x-cloak x-show="bulkReminderModalOpen" class="fixed inset-0 z-[60] overflow-y-auto" role="dialog">
+            <div class="flex min-h-screen items-center justify-center p-4">
+                <div x-show="bulkReminderModalOpen" x-transition.opacity
+                    class="fixed inset-0 bg-black/40 backdrop-blur-sm" @click="bulkReminderModalOpen = false"></div>
+
+                <div x-show="bulkReminderModalOpen" x-transition.scale.origin.center
+                    class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                        <h3 class="font-bold text-lg text-gray-900">
+                            Enviar Recordatorios
+                        </h3>
+                        <button class="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                            @click="bulkReminderModalOpen = false">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" class="text-gray-500">
+                                <path d="M18 6 6 18" />
+                                <path d="m6 6 12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="p-6 overflow-y-auto bg-gray-50/50">
+                        <p class="text-sm text-gray-600 mb-4">Se enviará una notificación a los siguientes <strong><span
+                                    x-text="usersWithPendingSignatures.length"></span> usuarios</strong> recordando que
+                            tienen EPIs pendientes de firma:</p>
+
+                        <div
+                            class="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100 max-h-60 overflow-y-auto mb-4">
+                            <template x-for="u in usersWithPendingSignatures" :key="u.id">
+                                <div class="px-3 py-2 text-sm flex items-center justify-between">
+                                    <span class="font-medium text-gray-700" x-text="u.nombre_completo"></span>
+                                    <span
+                                        class="text-xs text-orange-600 flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded-full">
+                                        <span x-text="u.epis_sin_firmar"></span> sin firmar
+                                    </span>
+                                </div>
+                            </template>
+                        </div>
+
+                        <div class="flex justify-end gap-3 mt-4">
+                            <button @click="bulkReminderModalOpen = false"
+                                class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                                Cancelar
+                            </button>
+                            <button @click="sendBulkReminder()" :disabled="sendingBulk"
+                                class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2">
+                                <svg x-show="sendingBulk" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                        stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                    </path>
+                                </svg>
+                                <span x-text="sendingBulk ? 'Enviando...' : 'Enviar notificaciones'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <script data-navigate-once>
             function episPage() {
                 return {
+                    storageUrl: @js(asset('storage')),
+                    firmasModalOpen: false,
+                    bulkReminderModalOpen: false,
+                    sendingBulk: false,
+                    firmasModalUser: null,
+                    firmasLoading: false,
+                    firmasGroups: [],
                     query: '',
                     suggestionsOpen: false,
                     suggestions: [],
@@ -2296,6 +2533,49 @@
                         this.agendaEmpresaId = '';
                         this.agendaCategoriaId = '';
                         this.refreshUsers();
+                    },
+
+                    openFirmasModal(user) {
+                        this.firmasModalUser = user;
+                        this.firmasModalOpen = true;
+                        this.loadFirmasForUser(user.id);
+                    },
+
+                    async loadFirmasForUser(userId) {
+                        this.firmasLoading = true;
+                        this.firmasGroups = [];
+                        try {
+                            const url = @js(url('/epis/api/users/__ID__/asignaciones')).replace('__ID__', userId);
+                            const res = await this.api(url);
+                            const data = await res.json();
+
+                            const all = [...(data.en_posesion || []), ...(data.historial || [])];
+
+                            const signed = all.filter(a => a.firmado && a.firma_ruta);
+
+                            const groups = {};
+                            signed.forEach(a => {
+                                const key = a.firma_ruta;
+                                if (!groups[key]) {
+                                    groups[key] = {
+                                        firma_ruta: key,
+                                        firmado_dia: a.firmado_dia || a.created_at,
+                                        count: 0,
+                                        items: [],
+                                        expanded: false
+                                    };
+                                }
+                                groups[key].count++;
+                                groups[key].items.push(a);
+                            });
+
+                            this.firmasGroups = Object.values(groups).sort((a, b) => {
+                                return new Date(b.firmado_dia) - new Date(a.firmado_dia);
+                            });
+
+                        } finally {
+                            this.firmasLoading = false;
+                        }
                     },
 
                     async refreshUsers() {
@@ -2843,6 +3123,11 @@
                         return this.asignacionesAll.some(a => !a.devuelto_en && !a.firmado);
                     },
 
+                    get usersWithPendingSignatures() {
+                        if (!this.allUsers) return [];
+                        return this.allUsers.filter(u => u.epis_sin_firmar > 0);
+                    },
+
                     openEpiAssignSuggestions() {
                         this.epiAssignSuggestionsOpen = true;
                         this.updateEpiAssignSuggestions();
@@ -3015,6 +3300,47 @@
                             await this.refreshEpis();
                         } finally {
                             this.saving = false;
+                        }
+                    },
+
+                    openBulkReminderModal() {
+                        if (this.usersWithPendingSignatures.length === 0) {
+                            alert('No hay usuarios con firmas pendientes.');
+                            return;
+                        }
+                        this.bulkReminderModalOpen = true;
+                    },
+
+                    async sendBulkReminder() {
+                        const users = this.usersWithPendingSignatures.map(u => u.id);
+                        if (users.length === 0) return;
+
+                        this.sendingBulk = true;
+                        try {
+                            const url = @js(route('epis.usuarios.consentimiento-masivo'));
+                            const res = await this.api(url, {
+                                method: 'POST',
+                                body: JSON.stringify({ users }),
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+
+                            if (!res.ok) throw new Error('Error al enviar recordatorios.');
+
+                            const data = await res.json();
+                            Swal.fire({
+                                toast: true,
+                                position: 'top',
+                                icon: 'success',
+                                title: `Recordatorio enviado a ${data.count} usuarios.`,
+                                showConfirmButton: false,
+                                timer: 2000,
+                                timerProgressBar: true
+                            });
+                            this.bulkReminderModalOpen = false;
+                        } catch (e) {
+                            alert(e.message);
+                        } finally {
+                            this.sendingBulk = false;
                         }
                     },
                 }

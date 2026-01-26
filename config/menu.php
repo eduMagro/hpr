@@ -388,6 +388,15 @@ return [
                         ['label' => 'Gestionar permisos', 'route' => 'departamentos.index', 'permission' => 'ver'],
                     ]
                 ],
+                [
+                    'label' => 'Tareas',
+                    'route' => 'funciones.index',
+                    'icon' => '📋',
+                    'actions' => [
+                        ['label' => 'Ver solicitudes', 'route' => 'funciones.index', 'permission' => 'ver'],
+                        ['label' => 'Nueva solicitud', 'route' => 'funciones.create', 'permission' => 'crear'],
+                    ]
+                ],
             ]
         ],
     ],

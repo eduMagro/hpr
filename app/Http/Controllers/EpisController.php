@@ -38,6 +38,8 @@ class EpisController extends Controller
             'devuelto_en' => optional($fechaDevolucion)->toIso8601String(),
             'notas' => $asignacion->notas,
             'firmado' => (bool) $asignacion->firmado,
+            'firmado_dia' => optional($asignacion->firmado_dia)->toIso8601String(),
+            'firma_ruta' => $asignacion->firma_ruta,
             'epi' => $asignacion->epi ? [
                 'id' => $asignacion->epi->id,
                 'codigo' => $asignacion->epi->codigo,
@@ -164,6 +166,9 @@ class EpisController extends Controller
             ->withCount([
                 'episAsignaciones as epis_sin_firmar' => function ($query) {
                     $query->whereNull('devuelto_en')->where('firmado', false);
+                },
+                'episAsignaciones as epis_firmados' => function ($query) {
+                    $query->where('firmado', true);
                 }
             ])
             ->orderByDesc('epis_en_posesion')
@@ -194,6 +199,7 @@ class EpisController extends Controller
                     'ruta_imagen' => $user->ruta_imagen,
                     'epis_en_posesion' => (int) ($user->epis_en_posesion ?? 0),
                     'epis_sin_firmar' => (int) ($user->epis_sin_firmar ?? 0),
+                    'epis_firmados' => (int) ($user->epis_firmados ?? 0),
                     'tiene_epis' => ((int) ($user->epis_en_posesion ?? 0)) > 0,
                     'epi_match' => $epiProvided ? (bool) ($user->epi_match ?? false) : true,
                     'tallas' => $user->tallas ? [
@@ -918,6 +924,36 @@ class EpisController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function enviarConsentimientoMasivo(Request $request)
+    {
+        $data = $request->validate([
+            'users' => ['required', 'array', 'min:1'],
+            'users.*' => ['integer', 'exists:users,id'],
+        ]);
+
+        $senderId = auth()->id();
+        $now = now();
+
+        foreach ($data['users'] as $userId) {
+            $alerta = Alerta::create([
+                'user_id_1' => $senderId,
+                'destinatario_id' => $userId,
+                'mensaje' => "Tiene EPIs pendientes de firmar. Por favor, firme el consentimiento en su perfil.",
+                'tipo' => 'sistema',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            AlertaLeida::create([
+                'alerta_id' => $alerta->id,
+                'user_id' => $userId,
+                'leida_en' => null,
+            ]);
+        }
+
+        return response()->json(['ok' => true, 'count' => count($data['users'])]);
+    }
+
     public function firmarEpis(Request $request)
     {
         $data = $request->validate([
@@ -948,5 +984,17 @@ class EpisController extends Controller
             ]);
 
         return response()->json(['ok' => true]);
+    }
+
+    public function verFirma(string $filename)
+    {
+        $path = 'epis/firmas/' . basename($filename);
+        $disk = Storage::disk('public');
+
+        if (!$disk->exists($path)) {
+            abort(404);
+        }
+
+        return response()->file($disk->path($path));
     }
 }
