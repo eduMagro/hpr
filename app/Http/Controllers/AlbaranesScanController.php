@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Distribuidor;
+use App\Models\DistribuidorDireccion;
 use App\Models\PedidoProducto;
 use App\Models\PedidoProductoColada;
 use App\Models\IAAprendizajePrioridad;
@@ -101,7 +102,9 @@ class AlbaranesScanController extends Controller
                     $parsed['tipo_compra'] = isset($parsed['tipo_compra']) ? mb_strtolower($parsed['tipo_compra']) : null;
 
                     // IA Inteligente para Distribuidor
-                    $distribuidorRecomendado = $this->obtenerDistribuidorIA($parsed, $log->raw_text ?? '', $distribuidores);
+                    $iaResult = $this->obtenerDistribuidorIA($parsed, $log->raw_text ?? '', $distribuidores);
+                    $distribuidorRecomendado = $iaResult['recomendacion'] ?? null;
+                    $iaDebug = $iaResult['debug'] ?? null;
 
                     // Fallback
                     if (!$distribuidorRecomendado) {
@@ -123,6 +126,7 @@ class AlbaranesScanController extends Controller
                         'simulacion' => $simulacion,
                         'status_messages' => $statusMessages,
                         'ai_meta' => $aiMeta,
+                        'ia_debug' => $iaDebug, // Nueva key
                         'error' => null,
                     ];
 
@@ -212,8 +216,11 @@ class AlbaranesScanController extends Controller
 
                     // IA Inteligente para Distribuidor (SOLO SI es distribuidor)
                     $distribuidorRecomendado = null;
+                    $iaDebug = null;
                     if ($parsed['tipo_compra'] === 'distribuidor') {
-                        $distribuidorRecomendado = $this->obtenerDistribuidorIA($parsed, $log->raw_text ?? '', $distribuidores);
+                        $iaResult = $this->obtenerDistribuidorIA($parsed, $log->raw_text ?? '', $distribuidores);
+                        $distribuidorRecomendado = $iaResult['recomendacion'] ?? null;
+                        $iaDebug = $iaResult['debug'] ?? null;
                     }
 
                     // Fallback para distribuidor
@@ -228,6 +235,7 @@ class AlbaranesScanController extends Controller
                     // Si es directo, asegurarnos de que no haya distribuidor recomendado basura
                     if ($parsed['tipo_compra'] === 'directo') {
                         $distribuidorRecomendado = null;
+                        $iaDebug = null; // No queremos ensuciar el log si al final no aplica
                     }
 
                     $parsed['distribuidor_recomendado'] = $distribuidorRecomendado;
@@ -258,6 +266,7 @@ class AlbaranesScanController extends Controller
                         'simulacion' => $simulacion,
                         'status_messages' => $statusMessages,
                         'ai_meta' => $aiMeta,
+                        'ia_debug' => $iaDebug, // Nueva key
                         'error' => null,
                     ];
 
@@ -763,11 +772,12 @@ class AlbaranesScanController extends Controller
     /**
      * Helper para obtener la recomendación de distribuidor por IA (usado en procesar y procesarAjax).
      * Evita duplicación de código.
+     * Retorna array: ['recomendacion' => ?string, 'debug' => ?array]
      */
-    protected function obtenerDistribuidorIA(array $parsed, ?string $rawText, array $distribuidores): ?string
+    protected function obtenerDistribuidorIA(array $parsed, ?string $rawText, array $distribuidores): array
     {
         if (($parsed['tipo_compra'] ?? '') !== 'distribuidor') {
-            return null;
+            return ['recomendacion' => null, 'debug' => null];
         }
 
         try {
@@ -778,7 +788,7 @@ class AlbaranesScanController extends Controller
             return $aiService->recomendarDistribuidor($contexto, $distribuidores);
         } catch (\Throwable $e) {
             Log::warning('Fallo al recomendar distribuidor con IA: ' . $e->getMessage());
-            return null;
+            return ['recomendacion' => null, 'debug' => ['error' => $e->getMessage()]];
         }
     }
 
@@ -1116,6 +1126,9 @@ class AlbaranesScanController extends Controller
             // El estado de recepción de la línea se recalcula en el flujo de cierre (p.ej. EntradaController@cerrarAlbaranPorMovimiento).
             Log::info("Albaran scan activado. Entrada: {$entrada->id}. PedidoProducto ID: {$pedidoProducto->id}. Estado línea sin cambios: {$pedidoProducto->estado}");
 
+            // Registrar asociación dirección-distribuidor para aprendizaje de IA
+            $this->registrarDireccionDistribuidor($parsed, $pedidoProducto);
+
             DB::commit();
 
             return response()->json([
@@ -1131,6 +1144,69 @@ class AlbaranesScanController extends Controller
                 'success' => false,
                 'message' => 'Error al activar: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Registra o actualiza la asociación dirección-distribuidor para mejorar recomendaciones de IA.
+     * Si la dirección ya existe con otro distribuidor, borra el anterior y crea uno nuevo.
+     */
+    protected function registrarDireccionDistribuidor(array $parsed, PedidoProducto $pedidoProducto): void
+    {
+        try {
+            // Extraer proveedorTexto del payload
+            $proveedorTexto = $parsed['proveedorTexto'] ?? $parsed['proveedor_texto'] ?? null;
+
+            if (!$proveedorTexto) {
+                Log::info('No hay proveedorTexto en parsed payload, no se registra dirección-distribuidor');
+                return;
+            }
+
+            // Normalizar a minúsculas para comparación
+            $direccionMatch = mb_strtolower(trim($proveedorTexto));
+
+            if (strlen($direccionMatch) < 3) {
+                Log::info('proveedorTexto demasiado corto para registrar como dirección');
+                return;
+            }
+
+            // Determinar el distribuidor seleccionado (del pedido)
+            $distribuidorId = $pedidoProducto->pedido->distribuidor_id ?? null;
+
+            if (!$distribuidorId) {
+                Log::info('Pedido sin distribuidor_id, no se registra dirección-distribuidor');
+                return;
+            }
+
+            // Buscar si ya existe esta dirección
+            $existente = DistribuidorDireccion::where('direccion_match', $direccionMatch)->first();
+
+            if ($existente) {
+                if ($existente->distribuidor_id !== $distribuidorId) {
+                    // Caso 1: Existe pero con diferente distribuidor -> borrar y crear nuevo
+                    Log::info("Dirección '{$direccionMatch}' cambió de distribuidor {$existente->distribuidor_id} → {$distribuidorId}. Actualizando registro.");
+                    $existente->delete();
+
+                    DistribuidorDireccion::create([
+                        'distribuidor_id' => $distribuidorId,
+                        'direccion_match' => $direccionMatch,
+                    ]);
+                } else {
+                    // Ya existe con el mismo distribuidor, actualizar timestamp (touch)
+                    $existente->touch();
+                    Log::info("Dirección '{$direccionMatch}' ya registrada con distribuidor {$distribuidorId}");
+                }
+            } else {
+                // Caso 2: No existe -> crear nuevo
+                DistribuidorDireccion::create([
+                    'distribuidor_id' => $distribuidorId,
+                    'direccion_match' => $direccionMatch,
+                ]);
+                Log::info("Nueva dirección '{$direccionMatch}' registrada con distribuidor {$distribuidorId}");
+            }
+
+        } catch (\Throwable $e) {
+            Log::error('Error registrando dirección-distribuidor: ' . $e->getMessage());
         }
     }
 }

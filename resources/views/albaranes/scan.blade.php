@@ -76,6 +76,11 @@
             display: none !important;
         }
 
+        #processBtn-mobile.processing #processBtnLabel-mobile {
+            color: transparent !important;
+            opacity: 0 !important;
+        }
+
         .preview-zoom {
             position: relative;
             overflow: hidden;
@@ -730,7 +735,7 @@
                             this.maxStep = this.dataCache.lastStep || 2;
                         }
                     } catch (e) {
-                        console.error('Error cargando cache:', e);
+                        // Error cargando cache
                         localStorage.removeItem('lastScanMobileCache');
                     }
                 }
@@ -1097,7 +1102,7 @@
                         // console.log('Aprendizaje IA guardado');
                     }
                 })
-                .catch(err => console.error('Error al guardar aprendizaje IA:', err));
+                .catch(err => {/* Error al guardar aprendizaje IA */ });
         }
 
         // ========================================
@@ -1172,20 +1177,21 @@
         mobileCameraInput?.addEventListener('change', refreshMobileButton);
         refreshMobileButton();
 
-        const setProcessingState = (processing) => {
-            isProcessingMobile = processing;
-            if (!mobileProcessBtn) return;
-            if (processing) {
-                mobileProcessBtn.classList.remove(...activeButtonClasses);
-                mobileProcessBtn.classList.add('bg-blue-800', 'hover:bg-blue-900', 'ring-2', 'ring-blue-400/70');
-                mobileProcessBtn.disabled = true;
-                processingIndicator?.classList.remove('hidden');
-                // processLabel?.classList.add('hidden');
+        /**
+         * Controlar estado de procesamiento del botón
+         */
+        const setProcessingState = (isProcessing) => {
+            const btn = document.getElementById('processBtn-mobile');
+            const overlay = document.getElementById('processing-mobile');
+
+            if (isProcessing) {
+                btn?.classList.add('processing');
+                overlay?.classList.remove('hidden');
+                btn?.setAttribute('disabled', 'true');
             } else {
-                mobileProcessBtn.classList.remove('bg-blue-800', 'hover:bg-blue-900', 'ring-2', 'ring-blue-400/70');
-                processingIndicator?.classList.add('hidden');
-                // processLabel?.classList.remove('hidden');
-                refreshMobileButton();
+                btn?.classList.remove('processing');
+                overlay?.classList.add('hidden');
+                btn?.removeAttribute('disabled');
             }
         };
 
@@ -1203,7 +1209,7 @@
         };
 
         /**
-         * Procesar albarán via AJAX (móvil)
+           * Procesar albarán via AJAX (móvil)
          */
         async function procesarAlbaranMobile() {
             const form = document.getElementById('ocrForm-mobile');
@@ -1240,8 +1246,6 @@
 
                 const data = await response.json();
 
-                console.log('Respuesta AJAX Completa:', data);
-
                 if (data.success) {
                     const rawResultado = data.resultados?.[0] ?? data.data ?? data;
                     const parsedPayload =
@@ -1254,7 +1258,10 @@
                         parsed: parsedPayload,
                     };
 
-                    console.log('Datos recibidos correctamente. AI Response:', parsedPayload);
+                    if (resultadoParaVista.ia_debug) {
+                        console.log("====INFO A IA====\n", resultadoParaVista.ia_debug.prompt);
+                        console.log("====RESPUESTA====\n", resultadoParaVista.ia_debug.response);
+                    }
 
                     // Guardar datos en cache
                     const resultado = data.resultados[0];
@@ -1285,15 +1292,12 @@
                     // Guardar progreso en memoria después de procesar
                     localStorage.setItem('lastScanMobileCache', JSON.stringify(window.mobileStepManager.dataCache));
                 } else if (!data.success) {
-                    console.error('Error en respuesta:', data);
                     alert('Error al procesar el albar【n. Por favor, intenta de nuevo.');
                 } else {
-                    console.warn('Respuesta sin resultados detectados:', data);
                     alert('No se detectaron datos en el albar【n. Reintenta con otra imagen.');
                 }
 
             } catch (error) {
-                console.error('Error en petición AJAX:', error);
                 alert('Error de conexión. Por favor, verifica tu conexión a internet.');
             } finally {
                 setProcessingState(false);
@@ -1517,7 +1521,7 @@
             if (!container) return;
 
             const lineaPropuesta = simulacion.linea_propuesta;
-            console.log("🔍 [Mobile JS] Poblar Vista 3 con propuesta (Simulación):", lineaPropuesta);
+            // Poblar Vista 3 con propuesta (Simulación)
             window.mobileStepManager.dataCache.recommendedId = lineaPropuesta?.id || null;
             const fabricanteNombre = (lineaPropuesta?.fabricante || '').toString().trim();
             const distribuidorNombre = (lineaPropuesta?.distribuidor || '').toString().trim();
@@ -1975,7 +1979,7 @@
                 if (cache.resultado.parsed.data) cache.resultado.parsed.productos = newProducts;
             }
 
-            console.log('✅ [Sync] Productos sincronizados al caché:', newProducts.length);
+            // Productos sincronizados al caché
 
             // Persistir inmediatamente este cambio parcial
             localStorage.setItem('lastScanMobileCache', JSON.stringify(cache));
@@ -2417,7 +2421,7 @@
 
             try {
                 const diametrosCheck = (cache.parsed?.productos || []).map(p => p?.diametro).filter(Boolean);
-                console.log('🔍 [Mobile JS] Verificando Pedido Code:', codigo, 'Diametros:', diametrosCheck);
+                // Verificando Pedido Code
                 const response = await fetch("{{ route('albaranes.scan.pedido.lookup') }}", {
                     method: 'POST',
                     headers: {
@@ -2436,11 +2440,11 @@
                 const data = await response.json();
                 cache.pedidoDbInfo = data;
                 const best = (data?.lineas || []).find(l => l.id === data?.best_linea_id) || data?.lineas?.[0];
-                console.log('Línea BD (estado real):', best?.estado ?? '(no encontrado)', best, data);
+                // Línea BD encontrada
                 renderPedidoDbBannerMobile(data, codigo);
             } catch (error) {
                 cache.pedidoDbInfo = null;
-                console.log('Línea BD (estado real): (error/no encontrado)', error);
+                // Error/no encontrado
                 renderPedidoDbBannerMobile(null, codigo);
             }
         }
@@ -2456,7 +2460,7 @@
                 proveedor,
                 parsed: cache.parsed,
             };
-            console.log("🔍 [Mobile JS] Recalculando Simulación. Enviando payload:", payload);
+            // Recalculando Simulación
 
             try {
                 const response = await fetch("{{ route('albaranes.scan.simular') }}", {
@@ -2471,8 +2475,6 @@
                 });
                 const data = await response.json();
                 if (data?.success && data?.simulacion) {
-                    console.log("🔍 [Mobile JS] Candidatos recibidos del Backend (Todos):", data.simulacion
-                        .lineas_pendientes);
                     cache.simulacion = data.simulacion;
                     if (cache.resultado) {
                         cache.resultado.simulacion = data.simulacion;
@@ -2956,8 +2958,6 @@
          * Actualizar Vista 3 con línea seleccionada
          */
         function actualizarVista3ConLineaSeleccionada(linea) {
-            console.log("🔍 [Mobile JS] actualizarVista3ConLineaSeleccionada called. Data:", linea,
-                "Source matches Cache?", window.mobileStepManager.dataCache.lineaSeleccionada === linea);
             const container = document.getElementById('mobile-pedido-card');
             if (!container) return;
 
@@ -3167,7 +3167,7 @@
                     }
                 })
                 .catch(err => {
-                    console.error('Error activation:', err);
+                    // Error activation
                     let msg = err.message;
                     try {
                         const jsonErr = JSON.parse(msg);
