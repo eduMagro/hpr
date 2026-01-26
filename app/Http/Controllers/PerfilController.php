@@ -39,10 +39,6 @@ class PerfilController extends Controller
             'movimientos',
             'elementos1',
             'elementos2',
-            'etiquetasComoSoldador1',
-            'etiquetasComoSoldador2',
-            'etiquetasComoEnsamblador1',
-            'etiquetasComoEnsamblador2',
             'permisosAcceso',
             'tallas',
         ])->findOrFail($user->id);
