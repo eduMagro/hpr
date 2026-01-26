@@ -841,16 +841,7 @@ class AsignarMaquinasExcelCommand extends Command
                     'estado'     => 'completada',
                     'paquete_id' => $paquete->id,
                 ]);
-
-                Elemento::where('etiqueta_sub_id', $subId)->update([
-                    'estado' => 'completado',
-                ]);
             }
-
-            // Marcar elementos restantes como completados
-            Elemento::where('planilla_id', $planilla->id)
-                ->where('estado', '!=', 'completado')
-                ->update(['estado' => 'completado']);
 
             // Marcar planilla como completada y revisada
             $planilla->estado = 'completada';

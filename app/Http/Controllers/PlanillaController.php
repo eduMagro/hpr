@@ -1859,7 +1859,6 @@ class PlanillaController extends Controller
             foreach (array_chunk($elementoIds, 200) as $chunk) {
                 \App\Models\Elemento::whereIn('id', $chunk)
                     ->update([
-                        'estado' => 'pendiente',
                         'paquete_id' => null,
                         'producto_id' => null,
                         'producto_id_2' => null,
