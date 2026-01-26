@@ -17,8 +17,7 @@
     seccionSesiones: false,
     seccionTallas: false,
     faltanTallas: {{ !($user->tallas && $user->tallas->talla_guante && $user->tallas->talla_zapato && $user->tallas->talla_pantalon && $user->tallas->talla_chaqueta) ? 'true' : 'false' }},
-}" @tallas-updated.window="faltanTallas = $event.detail.faltanTallas"
-    @justificante-guardado-success.window="
+}" @tallas-updated.window="faltanTallas = $event.detail.faltanTallas" @justificante-guardado-success.window="
     seccionJustificante = false;
     Swal.fire({
         icon: 'success',
@@ -78,7 +77,8 @@
                         {{-- Nombre y categoría --}}
                         <div class="flex-1 w-full sm:w-auto">
                             <h1 class="text-lg sm:text-xl md:text-2xl font-bold text-white drop-shadow-lg break-words">
-                                {{ $user->nombre_completo }}</h1>
+                                {{ $user->nombre_completo }}
+                            </h1>
                             <p class="text-xs sm:text-sm text-gray-300 mt-1">{{ $user->categoria->nombre ?? 'N/A' }}</p>
                         </div>
 
@@ -86,17 +86,20 @@
                         <div class="flex gap-3 sm:gap-4 max-sm:w-full">
                             <div class="text-center px-3 py-1.5 bg-white/10 rounded-lg max-sm:w-full sm:min-w-[6rem]">
                                 <p class="text-lg sm:text-xl font-bold text-green-400">
-                                    {{ $resumen['diasVacaciones'] }}</p>
+                                    {{ $resumen['diasVacaciones'] }}
+                                </p>
                                 <p class="text-[10px] text-gray-300">Vacaciones</p>
                             </div>
                             <div class="text-center px-3 py-1.5 bg-white/10 rounded-lg max-sm:w-full sm:min-w-[6rem]">
                                 <p class="text-lg sm:text-xl font-bold text-red-400">
-                                    {{ $resumen['faltasInjustificadas'] }}</p>
+                                    {{ $resumen['faltasInjustificadas'] }}
+                                </p>
                                 <p class="text-[10px] text-gray-300">Injustif.</p>
                             </div>
                             <div class="text-center px-3 py-1.5 bg-white/10 rounded-lg max-sm:w-full sm:min-w-[6rem]">
                                 <p class="text-lg sm:text-xl font-bold text-yellow-400">
-                                    {{ $resumen['faltasJustificadas'] }}</p>
+                                    {{ $resumen['faltasJustificadas'] }}
+                                </p>
                                 <p class="text-[10px] text-gray-300">Justif.</p>
                             </div>
                         </div>
@@ -119,7 +122,7 @@
                     <svg x-show="faltanTallas" x-cloak xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                         stroke-linejoin="round"
-                        class="lucide lucide-badge-alert-icon lucide-badge-alert text-orange-400 w-5 h-5 absolute -top-7 left-1/2 -translate-x-1/2">
+                        class="lucide lucide-badge-alert-icon lucide-badge-alert text-orange-400 w-5 h-5 absolute md:-top-7 -bottom-6 left-1/2 -translate-x-1/2">
                         <path
                             d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
                         <line x1="12" x2="12" y1="8" y2="12" />
@@ -159,8 +162,7 @@
                 <div x-cloak x-show="seccionContacto" x-collapse>
                     <div class="px-3 pb-3 space-y-2">
                         <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
@@ -171,8 +173,7 @@
                         </div>
                         @if ($user->movil_empresa)
                             <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                                 </svg>
@@ -184,8 +185,7 @@
                         @endif
                         @if ($user->movil_personal)
                             <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                 </svg>
@@ -205,8 +205,7 @@
                     class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
                     <div class="flex items-center gap-2">
                         <div class="bg-purple-100 rounded-lg p-1.5">
-                            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
@@ -214,8 +213,7 @@
                         <span class="text-sm font-semibold text-gray-900">Información laboral</span>
                     </div>
                     <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
-                        :class="{ 'rotate-180': seccionLaboral }" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
+                        :class="{ 'rotate-180': seccionLaboral }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
                         </path>
                     </svg>
@@ -237,7 +235,8 @@
                                 class="p-2 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-l-3 border-green-500">
                                 <p class="text-[10px] text-gray-500">Especialidad</p>
                                 <p class="text-xs font-semibold text-gray-900">
-                                    {{ optional($user->maquina)->nombre ?? 'N/A' }}</p>
+                                    {{ optional($user->maquina)->nombre ?? 'N/A' }}
+                                </p>
                             </div>
                         @endif
                     </div>
@@ -245,7 +244,8 @@
             </div>
 
             {{-- Sección de Tallas (Mis Tallas de EPIs) --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" x-data="tallasManager({{ $user->id }}, {{ $user->tallas ? $user->tallas->toJson() : '{}' }})">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+                x-data="tallasManager({{ $user->id }}, {{ $user->tallas ? $user->tallas->toJson() : '{}' }})">
                 <button @click="seccionTallas = !seccionTallas"
                     class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
                     <div class="flex items-center gap-2">
@@ -259,9 +259,9 @@
                         </div>
                         <span class="text-sm font-semibold text-gray-900">Mis tallas de EPIs</span>
 
-                        <svg x-show="faltanTallas" x-cloak xmlns="http://www.w3.org/2000/svg" width="24"
-                            height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        <svg x-show="faltanTallas" x-cloak xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round"
                             class="lucide lucide-badge-alert-icon lucide-badge-alert text-orange-400 w-5 h-5">
                             <path
                                 d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
@@ -271,8 +271,7 @@
 
                     </div>
                     <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
-                        :class="{ 'rotate-180': seccionTallas }" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
+                        :class="{ 'rotate-180': seccionTallas }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
                         </path>
                     </svg>
@@ -315,8 +314,8 @@
                                 @click="saveTallas()" :disabled="saving">
                                 <svg x-show="saving" class="animate-spin -ml-1 h-3 w-3 text-white"
                                     xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10"
-                                        stroke="currentColor" stroke-width="4"></circle>
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                        stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor"
                                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                                     </path>
@@ -335,8 +334,7 @@
                         class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
                         <div class="flex items-center gap-2">
                             <div class="bg-indigo-100 rounded-lg p-1.5">
-                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                 </svg>
@@ -376,8 +374,7 @@
                         class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
                         <div class="flex items-center gap-2">
                             <div class="bg-green-100 rounded-lg p-1.5">
-                                <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
@@ -385,8 +382,7 @@
                             <span class="text-sm font-semibold text-gray-900">Solicitar Nómina</span>
                         </div>
                         <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
-                            :class="{ 'rotate-180': seccionNomina }" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
+                            :class="{ 'rotate-180': seccionNomina }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
                             </path>
                         </svg>
@@ -430,8 +426,7 @@
                         class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
                         <div class="flex items-center gap-2">
                             <div class="bg-indigo-100 rounded-lg p-1.5">
-                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
@@ -449,8 +444,7 @@
                         <div class="px-3 pb-3 space-y-3">
                             @if ($user->fecha_incorporacion_efectiva)
                                 <div class="flex items-center gap-2 text-xs text-gray-600">
-                                    <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
@@ -481,8 +475,7 @@
                         class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
                         <div class="flex items-center gap-2">
                             <div class="bg-orange-100 rounded-lg p-1.5">
-                                <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
@@ -513,8 +506,7 @@
                         class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
                         <div class="flex items-center gap-2">
                             <div class="bg-red-100 rounded-lg p-1.5">
-                                <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                 </svg>
@@ -542,29 +534,25 @@
                                             @if (($sesion['dispositivo']['icono'] ?? 'desktop') === 'mobile')
                                                 <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-green-600' : 'text-gray-500' }}"
                                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                         d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                                 </svg>
                                             @elseif (($sesion['dispositivo']['icono'] ?? 'desktop') === 'tablet')
                                                 <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-green-600' : 'text-gray-500' }}"
                                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                         d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                                 </svg>
                                             @elseif (($sesion['dispositivo']['icono'] ?? 'desktop') === 'bot')
                                                 <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-green-600' : 'text-gray-500' }}"
                                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                         d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                                 </svg>
                                             @else
                                                 <svg class="w-5 h-5 {{ $sesion['actual'] ? 'text-green-600' : 'text-gray-500' }}"
                                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                         d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                                 </svg>
                                             @endif
@@ -599,19 +587,16 @@
                                         </div>
                                         {{-- Botón cerrar sesión individual --}}
                                         @if (!$sesion['actual'])
-                                            <form method="POST"
-                                                action="{{ route('perfil.cerrarSesion', $sesion['id']) }}"
-                                                onsubmit="return confirm('¿Cerrar esta sesión?')"
-                                                class="flex-shrink-0">
+                                            <form method="POST" action="{{ route('perfil.cerrarSesion', $sesion['id']) }}"
+                                                onsubmit="return confirm('¿Cerrar esta sesión?')" class="flex-shrink-0">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit"
                                                     class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
                                                     title="Cerrar esta sesión">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                        viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M6 18L18 6M6 6l12 12" />
                                                     </svg>
                                                 </button>
                                             </form>
@@ -622,8 +607,7 @@
 
                             @if ($sesiones->where('actual', false)->count() > 0)
                                 <form method="POST" action="{{ route('perfil.cerrarMisSesiones') }}"
-                                    onsubmit="return confirm('¿Cerrar todas las sesiones en otros dispositivos?')"
-                                    class="pt-2">
+                                    onsubmit="return confirm('¿Cerrar todas las sesiones en otros dispositivos?')" class="pt-2">
                                     @csrf
                                     <button type="submit"
                                         class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg text-xs transition-colors">

@@ -24,6 +24,7 @@ class Entrada extends Model
         'usuario_id',
         'estado',
         'otros',
+        'pdf_albaran',
     ];
 
     public $timestamps = true;

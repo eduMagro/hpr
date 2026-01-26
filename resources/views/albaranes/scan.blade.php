@@ -292,9 +292,8 @@
                                 </svg>
                             </div>
                             <span class="text-xs font-semibold text-gray-700">Subir Archivo</span>
-                            <input type="file" name="imagenes[]" id="imagenes-mobile"
-                                accept="image/*,application/pdf" class="hidden"
-                                onchange="handleMobileFileSelection(this)">
+                            <input type="file" name="imagenes[]" id="imagenes-mobile" accept="image/*,application/pdf"
+                                class="hidden" onchange="handleMobileFileSelection(this)">
                         </label>
                     </div>
 
@@ -310,8 +309,7 @@
                             <span class="text-sm text-green-800 font-medium truncate"
                                 id="mobile-file-name">NombreArchivo.jpg</span>
                         </div>
-                        <button type="button" onclick="clearMobileSelection()"
-                            class="text-gray-400 hover:text-red-500">
+                        <button type="button" onclick="clearMobileSelection()" class="text-gray-400 hover:text-red-500">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                                 stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -329,16 +327,16 @@
                                 <svg class="processing-circle" width="60" height="60" viewBox="0 0 50 50">
                                     <g fill="none" stroke="#ffffff" stroke-width="2">
                                         <path d="M15 10h15l5 5v20H15V10">
-                                            <animate attributeName="stroke-dasharray" values="0,100;100,0"
-                                                dur="2s" repeatCount="indefinite"></animate>
+                                            <animate attributeName="stroke-dasharray" values="0,100;100,0" dur="2s"
+                                                repeatCount="indefinite"></animate>
                                         </path>
                                         <path d="M30 10v5h5">
                                             <animate attributeName="opacity" values="0;1;0" dur="2s"
                                                 repeatCount="indefinite"></animate>
                                         </path>
                                         <path d="M20 20h10M20 25h10M20 30h10">
-                                            <animate attributeName="stroke-dasharray" values="0,60;60,0"
-                                                dur="2s" repeatCount="indefinite"></animate>
+                                            <animate attributeName="stroke-dasharray" values="0,60;60,0" dur="2s"
+                                                repeatCount="indefinite"></animate>
                                         </path>
                                     </g>
                                 </svg>
@@ -469,13 +467,11 @@
                         </label>
                         <label class="hidden">
                             <span class="text-sm font-medium text-gray-700">Pedido HPR</span>
-                            <input type="text" id="edit-pedido-cliente"
-                                class="mt-1 w-full rounded-lg border-gray-300">
+                            <input type="text" id="edit-pedido-cliente" class="mt-1 w-full rounded-lg border-gray-300">
                         </label>
                         <label class="block hidden">
                             <span class="text-sm font-medium text-gray-700">Pedido Código</span>
-                            <input type="text" id="edit-pedido-codigo"
-                                class="mt-1 w-full rounded-lg border-gray-300">
+                            <input type="text" id="edit-pedido-codigo" class="mt-1 w-full rounded-lg border-gray-300">
                         </label>
                         <div class="grid grid-cols-2 gap-3 hidden">
                             <label class="block">
@@ -571,8 +567,7 @@
                     <h3 class="text-lg font-semibold text-gray-900">Seleccionar Pedido</h3>
                     <div id="mobilePedidosModalScanned" class="text-xs text-gray-500 truncate"></div>
                 </div>
-                <button type="button" onclick="cerrarModalPedidosMobile()"
-                    class="text-gray-400 hover:text-gray-600">
+                <button type="button" onclick="cerrarModalPedidosMobile()" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M6 18L18 6M6 6l12 12" />
@@ -713,7 +708,7 @@
             dataCache: {},
             initialized: false,
 
-            init: function() {
+            init: function () {
                 if (this.initialized) return;
                 this.initialized = true;
 
@@ -750,7 +745,7 @@
                 }
             },
 
-            goToStep: function(stepNumber, forceAdvance = false) {
+            goToStep: function (stepNumber, forceAdvance = false) {
                 if (stepNumber < 1 || stepNumber > this.totalSteps) return;
 
                 // Permitir: retroceder, avanzar 1 paso, o avance forzado desde AJAX
@@ -815,7 +810,7 @@
                 }
             },
 
-            next: function(forceAdvance = false) {
+            next: function (forceAdvance = false) {
                 if (this.currentStep < this.totalSteps) {
                     if (!this.validateCurrentStep()) {
                         return;
@@ -824,14 +819,14 @@
                 }
             },
 
-            back: function() {
+            back: function () {
                 // console.log('Retrocediendo paso...', this.currentStep);
                 if (this.currentStep > 1) {
                     this.goToStep(this.currentStep - 1);
                 }
             },
 
-            updateNavigation: function() {
+            updateNavigation: function () {
                 // Mostrar/ocultar botón retroceder
                 const backBtn = document.getElementById('mobile-back-btn');
                 const title = document.getElementById('mobile-step-title');
@@ -862,7 +857,7 @@
                 }
             },
 
-            updateProgressBar: function() {
+            updateProgressBar: function () {
                 const progressBar = document.getElementById('mobile-progress-bar');
                 if (progressBar) {
                     const percentage = (this.currentStep / this.totalSteps) * 100;
@@ -870,7 +865,7 @@
                 }
             },
 
-            attachEventListeners: function() {
+            attachEventListeners: function () {
                 // Botón retroceder
                 const backBtn = document.getElementById('mobile-back-btn');
                 if (backBtn && !backBtn.dataset.mobileBound) {
@@ -886,7 +881,7 @@
                 });
             },
 
-            validateCurrentStep: function() {
+            validateCurrentStep: function () {
                 const cache = this.dataCache || {};
 
                 // Paso 1: Validar proveedor e imagen
@@ -965,7 +960,7 @@
         document.addEventListener('livewire:navigated', initAlbaranesScanMobileWizard);
 
         // Re-inicializar si cambia el tamaño de ventana
-        window.addEventListener('resize', function() {
+        window.addEventListener('resize', function () {
             const isMobile = window.innerWidth < 768;
             if (window.mobileStepManager && isMobile && !window.mobileStepManager.initialized) {
                 // console.log('Cambiado a móvil - inicializando...');
@@ -1015,14 +1010,14 @@
             };
 
             fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload),
-                })
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            })
                 .then(async (res) => {
                     const data = await res.json().catch(() => ({}));
                     if (!res.ok || !data?.success) {
@@ -1088,14 +1083,14 @@
             };
 
             fetch("{{ route('albaranes.scan.aprendizaje.guardar') }}", {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
-                })
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
@@ -1138,7 +1133,7 @@
         };
 
         // Handlers para selección de archivo móvil
-        window.handleMobileFileSelection = function(input) {
+        window.handleMobileFileSelection = function (input) {
             const isCamera = input.id === 'camera-mobile';
             const otherInputId = isCamera ? 'imagenes-mobile' : 'camera-mobile';
             const otherInput = document.getElementById(otherInputId);
@@ -1160,7 +1155,7 @@
             refreshMobileButton();
         };
 
-        window.clearMobileSelection = function() {
+        window.clearMobileSelection = function () {
             if (mobileImageInput) mobileImageInput.value = '';
             if (mobileCameraInput) mobileCameraInput.value = '';
             document.getElementById('mobile-file-feedback').classList.add('hidden');
@@ -2160,7 +2155,7 @@
             return -1;
         }
 
-        window.setMobileNave = function(obraId) {
+        window.setMobileNave = function (obraId) {
             const value = (obraId || '').toString();
             const input = document.getElementById('edit-obra-id');
             if (input) input.value = value;
@@ -2191,7 +2186,7 @@
         };
 
         // Función simplificada para manejo de cambio de tipo
-        window.setMobileTipoCompra = function(tipo) {
+        window.setMobileTipoCompra = function (tipo) {
             const input = document.getElementById('edit-tipo-compra');
             if (input) input.value = tipo;
 
@@ -3107,6 +3102,7 @@
                 linea_seleccionada: cache.lineaSeleccionada,
                 simulacion: cache.simulacion,
                 coladas,
+                ocr_log_id: ocrLogId,  // Ensure it's passed at root level too
             };
 
             const pedidoId = cache.lineaSeleccionada?.pedido_id || cache.lineaSeleccionada?.pedidoId || cache
@@ -3126,13 +3122,13 @@
             const url = `{{ url('/pedidos') }}/${pedidoId}/lineas/${lineaId}/activar-con-coladas`;
 
             fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify(payload)
-                })
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify(payload)
+            })
                 .then(res => {
                     if (!res.ok) {
                         return res.text().then(text => {
@@ -3176,7 +3172,7 @@
                     try {
                         const jsonErr = JSON.parse(msg);
                         if (jsonErr.message) msg = jsonErr.message;
-                    } catch (e) {}
+                    } catch (e) { }
 
                     Swal.fire('Error', 'No se pudo activar: ' + msg, 'error');
                     if (btn) {
@@ -3188,7 +3184,7 @@
     </script>
 
     <script>
-        (function() {
+        (function () {
             if (window.__albaranesScanPaddingBound) return;
             window.__albaranesScanPaddingBound = true;
 

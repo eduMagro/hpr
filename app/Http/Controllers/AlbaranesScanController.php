@@ -1074,8 +1074,10 @@ class AlbaranesScanController extends Controller
             }
 
             // Actualizar OCR Log
-            if (!empty($parsed['ocr_log_id'])) {
-                $log = EntradaImportLog::find($parsed['ocr_log_id']);
+            $ocrLogId = $parsed['ocr_log_id'] ?? $request->input('ocr_log_id');
+
+            if (!empty($ocrLogId)) {
+                $log = EntradaImportLog::find($ocrLogId);
                 if ($log) {
                     $log->update([
                         'entrada_id' => $entrada->id,
@@ -1094,11 +1096,18 @@ class AlbaranesScanController extends Controller
                             Storage::disk('private')->copy($log->file_path, $destPath);
                             $entrada->pdf_albaran = $destName;
                             $entrada->save();
+                            Log::info("PDF albarán copiado exitosamente: {$destPath}");
+                        } else {
+                            Log::warning("No se encontró archivo original para copiar: {$log->file_path}");
                         }
                     } catch (\Throwable $e2) {
                         Log::warning("No se pudo copiar archivo albarán: " . $e2->getMessage());
                     }
+                } else {
+                    Log::warning("No se encontró EntradaImportLog con ID: {$ocrLogId}");
                 }
+            } else {
+                Log::warning("Se activó albarán sin ocr_log_id. No se pudo adjuntar PDF.");
             }
 
             // IMPORTANTE:

@@ -15,11 +15,16 @@ class EpiUsuario extends Model
         'entregado_en',
         'devuelto_en',
         'notas',
+        'firmado',
+        'firmado_dia',
+        'firma_ruta',
     ];
 
     protected $casts = [
         'entregado_en' => 'datetime',
         'devuelto_en' => 'datetime',
+        'firmado_dia' => 'datetime',
+        'firmado' => 'boolean',
     ];
 
     public function usuario()

@@ -18,6 +18,300 @@
         </div>
     </div>
 
+    @if(isset($episPorFirmar) && $episPorFirmar->count() > 0)
+        <div class="container mx-auto px-4 pb-6" x-data="firmaEpisManager()">
+            <!-- Alert de Aviso (Sin listado) -->
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r shadow-sm">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div class="ml-4 w-full">
+                        <h3 class="text-lg font-bold text-red-800">
+                            Firma de EPIs requerida
+                        </h3>
+                        <p class="text-sm text-red-700 mt-1">
+                            Tienes <strong>{{ $episPorFirmar->count() }}</strong> entrega(s) de EPIs pendientes de tu firma. Por favor, revísalas y firma la recepción.
+                        </p>
+                        <div class="mt-3">
+                            <button type="button" @click="openModal()"
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-semibold rounded-lg shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                Revisar y firmar ahora
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Firma (Fullscreen) -->
+            <div x-show="showModal" x-cloak class="fixed z-[1000] inset-0" aria-labelledby="modal-title"
+                role="dialog" aria-modal="true">
+                <!-- Backdrop -->
+                <div x-show="showModal" x-transition.opacity
+                    class="fixed inset-0 bg-white"></div>
+
+                <!-- Modal Container Fullscreen -->
+                <div x-show="showModal" x-transition
+                    class="fixed inset-0 flex flex-col bg-white">
+                    
+                    <!-- Contenido Scrollable -->
+                    <div class="flex-1 overflow-y-auto">
+                        <div class="max-w-2xl mx-auto px-4 py-6">
+                            <!-- Título -->
+                            <div class="text-center mb-6">
+                                <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                                    <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                </div>
+                                <h2 class="text-2xl font-bold text-gray-900">Confirmación de Recepción de EPIs</h2>
+                                <p class="text-gray-500 mt-2">Revisa los equipos entregados y firma para confirmar</p>
+                            </div>
+
+                            <!-- Listado de EPIs -->
+                            <div class="mb-6">
+                                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Equipos entregados</h3>
+                                <div class="space-y-3">
+                                    @foreach($episPorFirmar as $epiUser)
+                                        <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                                            <div class="h-16 w-16 flex-shrink-0 rounded-lg bg-white border border-gray-200 flex items-center justify-center overflow-hidden shadow-sm">
+                                                @if($epiUser->epi->imagen_path)
+                                                    <img src="{{ route('epis.imagen', $epiUser->epi) }}" alt="{{ $epiUser->epi->nombre }}" class="h-full w-full object-cover">
+                                                @else
+                                                    <svg class="h-8 w-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                                @endif
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-base font-semibold text-gray-900">
+                                                    {{ $epiUser->epi->nombre }}
+                                                </p>
+                                                <p class="text-sm text-gray-500">
+                                                    {{ $epiUser->epi->codigo ?? 'Sin código' }}
+                                                </p>
+                                            </div>
+                                            <div class="text-right">
+                                                <span class="inline-flex items-center justify-center w-10 h-10 rounded-full text-lg font-bold bg-blue-600 text-white">
+                                                    {{ $epiUser->cantidad }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                            <!-- Check confirmación -->
+                            <div class="mb-6">
+                                <label class="flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all"
+                                    :class="confirmed ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'">
+                                    <div class="flex items-center justify-center h-6 w-6 mt-0.5">
+                                        <input type="checkbox" x-model="confirmed" class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                    </div>
+                                    <div class="flex-1">
+                                        <span class="font-semibold text-gray-900 block">Confirmo la recepción</span>
+                                        <span class="text-sm text-gray-600">Declaro haber recibido los EPIs listados en buen estado y haber sido informado de sus instrucciones de uso.</span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Firma -->
+                            <div x-show="confirmed" x-effect="if(confirmed) initCanvas()" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0">
+                                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Tu firma</h3>
+                                <div class="border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 relative touch-none select-none w-full" style="height: 200px;">
+                                    <canvas id="signature-pad" class="absolute inset-0 w-full h-full cursor-crosshair rounded-xl"></canvas>
+                                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none" x-show="!hasSignature && !drawing">
+                                        <span class="text-gray-400">Dibuja tu firma aquí</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-end mt-2">
+                                    <button @click="clearSignature()" type="button" class="text-sm text-red-600 hover:text-red-800 flex items-center gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                        Borrar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer Fijo -->
+                    <div class="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-4 safe-area-bottom">
+                        <div class="max-w-2xl mx-auto flex flex-col sm:flex-row gap-3">
+                            <button type="button" @click="submitSignature()"
+                                class="flex-1 inline-flex justify-center items-center rounded-xl px-6 py-3 bg-blue-600 text-white font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                :disabled="!confirmed || !hasSignature || saving">
+                                <svg x-show="saving" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span x-text="saving ? 'Guardando...' : 'Firmar y Confirmar'"></span>
+                            </button>
+                            <button type="button" @click="closeModal()"
+                                class="flex-1 sm:flex-none inline-flex justify-center items-center rounded-xl px-6 py-3 bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                function firmaEpisManager() {
+                    return {
+                        showModal: false,
+                        canvas: null,
+                        ctx: null,
+                        drawing: false,
+                        hasSignature: false,
+                        confirmed: false,
+                        saving: false,
+
+                        init() {
+                        },
+
+                        openModal() {
+                            this.showModal = true;
+                            this.$nextTick(() => this.initCanvas());
+                        },
+
+                        closeModal() {
+                            this.showModal = false;
+                            this.confirmed = false;
+                            this.hasSignature = false;
+                        },
+
+                        initCanvas() {
+                            if (!this.confirmed) return;
+                            
+                            this.$nextTick(() => {
+                                this.canvas = document.getElementById('signature-pad');
+                                if (!this.canvas) return;
+                                
+                                this.ctx = this.canvas.getContext('2d');
+
+                                const rect = this.canvas.parentElement.getBoundingClientRect();
+                                this.canvas.width = rect.width;
+                                this.canvas.height = rect.height;
+                                
+                                // Configurar estilo de línea
+                                this.ctx.lineWidth = 2;
+                                this.ctx.lineCap = 'round';
+                                this.ctx.lineJoin = 'round';
+                                this.ctx.strokeStyle = '#000000';
+
+                                // Event listeners
+                                this.canvas.onmousedown = (e) => this.startDrawing(e);
+                                this.canvas.onmousemove = (e) => this.draw(e);
+                                this.canvas.onmouseup = () => this.stopDrawing();
+                                this.canvas.onmouseleave = () => this.stopDrawing();
+                                
+                                this.canvas.ontouchstart = (e) => { e.preventDefault(); this.startDrawing(e); };
+                                this.canvas.ontouchmove = (e) => { e.preventDefault(); this.draw(e); };
+                                this.canvas.ontouchend = () => this.stopDrawing();
+
+                                // Scroll automático al canvas tras la transición
+                                setTimeout(() => {
+                                    this.canvas.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }, 350);
+                            });
+                        },
+                        
+                        resizeCanvas() {
+                            // Ajustar a resolución real para evitar borrosidad
+                            const rect = this.canvas.parentElement.getBoundingClientRect();
+                            this.canvas.width = rect.width;
+                            this.canvas.height = rect.height;
+                            
+                            // Re-aplicar estilos tras resize
+                            if(this.ctx) {
+                                this.ctx.lineWidth = 2;
+                                this.ctx.lineCap = 'round';
+                                this.ctx.strokeStyle = '#000000';
+                            }
+                        },
+
+                        getPos(e) {
+                            const rect = this.canvas.getBoundingClientRect();
+                            let clientX = e.clientX;
+                            let clientY = e.clientY;
+
+                            if (e.touches && e.touches.length > 0) {
+                                clientX = e.touches[0].clientX;
+                                clientY = e.touches[0].clientY;
+                            }
+
+                            return {
+                                x: clientX - rect.left,
+                                y: clientY - rect.top
+                            };
+                        },
+
+                        startDrawing(e) {
+                            this.drawing = true;
+                            this.hasSignature = true;
+                            const pos = this.getPos(e);
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(pos.x, pos.y);
+                        },
+
+                        draw(e) {
+                            if (!this.drawing) return;
+                            const pos = this.getPos(e);
+                            this.ctx.lineTo(pos.x, pos.y);
+                            this.ctx.stroke();
+                        },
+
+                        stopDrawing() {
+                            this.drawing = false;
+                            this.ctx.closePath();
+                        },
+
+                        clearSignature() {
+                            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                            this.hasSignature = false;
+                        },
+
+                        async submitSignature() {
+                            if (!this.hasSignature) {
+                                alert('Por favor firma primero.');
+                                return;
+                            }
+
+                            this.saving = true;
+                            const dataUrl = this.canvas.toDataURL('image/png');
+
+                            try {
+                                const res = await fetch("{{ route('epis.firmar') }}", {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Accept': 'application/json'
+                                    },
+                                    body: JSON.stringify({ firma: dataUrl })
+                                });
+
+                                const data = await res.json();
+                                if (res.ok) {
+                                    Swal.fire('Firmado', 'Has firmado correctamente la recepción.', 'success').then(() => {
+                                        window.location.reload();
+                                    });
+                                    this.closeModal();
+                                } else {
+                                    throw new Error(data.message || 'Error al guardar');
+                                }
+                            } catch (e) {
+                                alert(e.message);
+                            } finally {
+                                this.saving = false;
+                            }
+                        }
+                    }
+                }
+            </script>
+        </div>
+    @endif
+
     <div class="container mx-auto sm:px-4">
         <x-ficha-trabajador :user="$user" :resumen="$resumen" :sesiones="$sesiones" />
     </div>
@@ -41,7 +335,8 @@
         }
     @endphp
 
-    <div class="container mx-auto px-4 pb-4" x-data="documentosManager({{ $user->id }})" @open-docs-modal.window="openModal()">
+    <div class="container mx-auto px-4 pb-4" x-data="documentosManager({{ $user->id }})"
+        @open-docs-modal.window="openModal()">
         <!-- Modal -->
         <div x-show="showModal" x-cloak class="fixed max-h-screen inset-0 z-[900]" aria-labelledby="modal-title"
             role="dialog" aria-modal="true">
@@ -122,8 +417,7 @@
                                                         <a :href="doc.download_url" target="_blank"
                                                             class="text-blue-600 hover:text-blue-900" title="Ver">
                                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5"
-                                                                fill="none" viewBox="0 0 24 24"
-                                                                stroke="currentColor">
+                                                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path stroke-linecap="round" stroke-linejoin="round"
                                                                     stroke-width="2"
                                                                     d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -228,7 +522,8 @@
     {{-- Calendario a ancho completo --}}
     <div class="calendario-full-width">
         <div class="">
-            <div id="calendario" class="fc-calendario" data-config='@json($config, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT)'></div>
+            <div id="calendario" class="fc-calendario"
+                data-config='@json($config, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT)'></div>
         </div>
     </div>
 
@@ -708,12 +1003,12 @@
             bloquearBotonesFichaje(true, boton);
 
             navigator.geolocation.getCurrentPosition(
-                function(position) {
+                function (position) {
                     const latitud = position.coords.latitude;
                     const longitud = position.coords.longitude;
                     procesarFichaje(tipo, latitud, longitud, boton, textoOriginal);
                 },
-                function(error) {
+                function (error) {
                     window._fichajePendiente = false;
                     bloquearBotonesFichaje(false, boton, textoOriginal);
                     Swal.fire({
@@ -722,10 +1017,10 @@
                         text: `${error.message}`
                     });
                 }, {
-                    enableHighAccuracy: false,
-                    timeout: 8000,
-                    maximumAge: 60000
-                }
+                enableHighAccuracy: false,
+                timeout: 8000,
+                maximumAge: 60000
+            }
             );
         }
 
@@ -749,13 +1044,13 @@
                     };
 
                     fetch("{{ url('/fichar') }}", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                                "X-CSRF-TOKEN": "{{ csrf_token() }}"
-                            },
-                            body: JSON.stringify(payload)
-                        })
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                        },
+                        body: JSON.stringify(payload)
+                    })
                         .then(r => r.json())
                         .then(data => {
                             // Caso especial: Turno partido requiere confirmación
@@ -781,13 +1076,13 @@
                                         };
 
                                         fetch("{{ url('/fichar') }}", {
-                                                method: "POST",
-                                                headers: {
-                                                    "Content-Type": "application/json",
-                                                    "X-CSRF-TOKEN": "{{ csrf_token() }}"
-                                                },
-                                                body: JSON.stringify(payloadConfirmado)
-                                            })
+                                            method: "POST",
+                                            headers: {
+                                                "Content-Type": "application/json",
+                                                "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                                            },
+                                            body: JSON.stringify(payloadConfirmado)
+                                        })
                                             .then(r => r.json())
                                             .then(dataConfirmado => {
                                                 window._fichajePendiente = false;
