@@ -598,7 +598,7 @@ class ResumenEtiquetaService
                     }
                 }
 
-                $etiqueta->save();
+                // No guardamos aquí, lo hacemos en batch después
 
                 $etiquetasActualizadas[] = [
                     'id' => $etiqueta->id,
@@ -609,18 +609,66 @@ class ResumenEtiquetaService
             }
 
             // ══════════════════════════════════════════════════════════════════════
-            // OPTIMIZACIÓN: Guardar elementos y productos en batch
+            // OPTIMIZACIÓN: Guardar etiquetas en batch usando upsert
             // ══════════════════════════════════════════════════════════════════════
-            foreach ($elementosParaActualizar as $elemento) {
-                $elemento->save();
+            $etiquetasData = $etiquetas->map(fn($e) => [
+                'id' => $e->id,
+                'estado' => $e->estado,
+                'fecha_inicio' => $e->fecha_inicio,
+                'fecha_finalizacion' => $e->fecha_finalizacion,
+                'operario1_id' => $e->operario1_id,
+                'producto_id' => $e->producto_id,
+                'producto_id_2' => $e->producto_id_2,
+                'impresa' => $e->impresa,
+                'updated_at' => now(),
+            ])->toArray();
+
+            Etiqueta::upsert(
+                $etiquetasData,
+                ['id'],
+                ['estado', 'fecha_inicio', 'fecha_finalizacion', 'operario1_id', 'producto_id', 'producto_id_2', 'impresa', 'updated_at']
+            );
+
+            // ══════════════════════════════════════════════════════════════════════
+            // OPTIMIZACIÓN: Guardar elementos en batch usando upsert
+            // ══════════════════════════════════════════════════════════════════════
+            if (!empty($elementosParaActualizar)) {
+                $elementosData = collect($elementosParaActualizar)->map(fn($e) => [
+                    'id' => $e->id,
+                    'users_id' => $e->users_id,
+                    'producto_id' => $e->producto_id,
+                    'producto_id_2' => $e->producto_id_2,
+                    'producto_id_3' => $e->producto_id_3,
+                    'elaborado' => $e->elaborado,
+                    'updated_at' => now(),
+                ])->toArray();
+
+                Elemento::upsert(
+                    $elementosData,
+                    ['id'],
+                    ['users_id', 'producto_id', 'producto_id_2', 'producto_id_3', 'elaborado', 'updated_at']
+                );
             }
 
-            // Guardar productos afectados (solo los que cambiaron)
+            // Guardar productos afectados en batch
+            $productosParaGuardar = [];
             foreach ($productosAfectados as $prodData) {
                 $prod = $todosProductos->firstWhere('id', $prodData['id']);
                 if ($prod && $prod->isDirty()) {
-                    $prod->save();
+                    $productosParaGuardar[] = [
+                        'id' => $prod->id,
+                        'peso_stock' => $prod->peso_stock,
+                        'estado' => $prod->estado,
+                        'updated_at' => now(),
+                    ];
                 }
+            }
+            if (!empty($productosParaGuardar)) {
+                \App\Models\Producto::upsert(
+                    $productosParaGuardar,
+                    ['id'],
+                    ['peso_stock', 'estado', 'updated_at']
+                );
             }
 
             // Desagrupar si se completó

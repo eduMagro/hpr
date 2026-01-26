@@ -433,6 +433,8 @@ abstract class ServicioEtiquetaBase
         }
 
         // 2) Asignar productos a elementos (pool compartido por diámetro)
+        $elementosParaBatchUpdate = [];
+
         foreach ($elementosEnMaquina as $elemento) {
             $d = (int) $elemento->diametro;
             if (!isset($consumos[$d])) {
@@ -465,22 +467,9 @@ abstract class ServicioEtiquetaBase
                 $nuevosProductos = array_values($nuevosProductos); // Reindexar
 
                 if (!empty($nuevosProductos)) {
-                    // Verificar si hay producto intermedio consumido entre primer clic y ahora
-                    $productoIntermedio = Producto::where('producto_base_id', Producto::find($productoOriginal)?->producto_base_id)
-                        ->where('id', '!=', $productoOriginal)
-                        ->whereNotIn('id', $nuevosProductos)
-                        ->where('estado', 'consumido')
-                        ->where('fecha_consumido', '>=', $etiqueta->fecha_inicio ?? now()->subDay())
-                        ->orderBy('fecha_consumido', 'asc')
-                        ->first();
-
-                    if ($productoIntermedio) {
-                        $elemento->producto_id_2 = $productoIntermedio->id;
-                        $elemento->producto_id_3 = $nuevosProductos[0] ?? null;
-                    } else {
-                        $elemento->producto_id_2 = $nuevosProductos[0] ?? null;
-                        $elemento->producto_id_3 = $nuevosProductos[1] ?? null;
-                    }
+                    // Simplificado: asignar directamente sin buscar intermedios
+                    $elemento->producto_id_2 = $nuevosProductos[0] ?? null;
+                    $elemento->producto_id_3 = $nuevosProductos[1] ?? null;
                 }
             } else {
                 // No tenía producto del primer clic (caso legacy)
@@ -489,15 +478,30 @@ abstract class ServicioEtiquetaBase
                 $elemento->producto_id_3 = $asignados[2] ?? null;
             }
 
-            $elemento->save();
+            // Acumular para batch update
+            $elementosParaBatchUpdate[] = [
+                'id' => $elemento->id,
+                'producto_id' => $elemento->producto_id,
+                'producto_id_2' => $elemento->producto_id_2,
+                'producto_id_3' => $elemento->producto_id_3,
+                'updated_at' => now(),
+            ];
         }
 
-        // LOG DETALLADO: Asignación de coladas a elementos
-        // Convertir $productosAfectados de array asociativo a indexado
-        $this->logAsignacionColadasDetallada($elementosEnMaquina, $etiqueta, $maquina, array_values($productosAfectados), $warnings);
+        // Batch update de elementos
+        if (!empty($elementosParaBatchUpdate)) {
+            Elemento::upsert(
+                $elementosParaBatchUpdate,
+                ['id'],
+                ['producto_id', 'producto_id_2', 'producto_id_3', 'updated_at']
+            );
+        }
 
-        // LOG DETALLADO: Consumo de stock por diámetro (usar la copia guardada)
-        $this->logConsumoStockDetallado($consumosParaLog, $etiqueta, $maquina);
+        // LOG DETALLADO: Asignación de coladas a elementos (asíncrono)
+        $this->logAsignacionColadasAsync($elementosEnMaquina, $etiqueta, $maquina, array_values($productosAfectados), $warnings);
+
+        // LOG DETALLADO: Consumo de stock por diámetro (asíncrono)
+        $this->logConsumoStockAsync($consumosParaLog, $etiqueta, $maquina);
 
         // ACTUALIZAR PESO TOTAL DE LA ETIQUETA SIEMPRE
         $this->actualizarPesoEtiqueta($etiqueta);
@@ -705,6 +709,63 @@ abstract class ServicioEtiquetaBase
             $maquina,
             $consumos
         );
+    }
+
+    /**
+     * Log asíncrono de asignación de coladas (se ejecuta después de la respuesta HTTP)
+     */
+    protected function logAsignacionColadasAsync(
+        $elementosEnMaquina,
+        Etiqueta $etiqueta,
+        Maquina $maquina,
+        array $productosAfectados,
+        array $warnings
+    ): void {
+        // Preparar datos serializables
+        $elementosColadas = [];
+        foreach ($elementosEnMaquina as $elemento) {
+            $coladas = [];
+            foreach (['producto_id', 'producto_id_2', 'producto_id_3'] as $campo) {
+                if ($elemento->$campo) {
+                    $productoInfo = collect($productosAfectados)->firstWhere('id', $elemento->$campo);
+                    if ($productoInfo) {
+                        $coladas[] = [
+                            'producto_id' => $elemento->$campo,
+                            'producto_codigo' => $productoInfo['codigo'] ?? 'N/A',
+                            'n_colada' => $productoInfo['n_colada'] ?? 'N/A',
+                        ];
+                    }
+                }
+            }
+            $elementosColadas[] = [
+                'elemento_id' => $elemento->id,
+                'codigo' => $elemento->codigo,
+                'coladas' => $coladas,
+            ];
+        }
+
+        // Dispatch después de la respuesta HTTP para no bloquear
+        \App\Jobs\LogProduccionJob::dispatchAfterResponse('coladas', [
+            'etiqueta_id' => $etiqueta->id,
+            'maquina_id' => $maquina->id,
+            'elementos_coladas' => $elementosColadas,
+            'warnings' => $warnings,
+        ]);
+    }
+
+    /**
+     * Log asíncrono de consumo de stock (se ejecuta después de la respuesta HTTP)
+     */
+    protected function logConsumoStockAsync(
+        array $consumos,
+        Etiqueta $etiqueta,
+        Maquina $maquina
+    ): void {
+        \App\Jobs\LogProduccionJob::dispatchAfterResponse('consumo', [
+            'etiqueta_id' => $etiqueta->id,
+            'maquina_id' => $maquina->id,
+            'consumos' => $consumos,
+        ]);
     }
 
     // ============================================================================

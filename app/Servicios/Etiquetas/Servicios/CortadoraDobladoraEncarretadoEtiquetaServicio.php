@@ -280,14 +280,10 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                         ->sortBy('peso_stock')
                         ->first();
 
-                    foreach ($elementosEnMaquina as $elemento) {
-                                                if ($productoActual) {
-                            $elemento->producto_id = $productoActual->id; // Guardar producto del primer clic
-                        }
-                        $elemento->save();
-                    }
-
+                    // Batch update de elementos
                     if ($productoActual) {
+                        Elemento::whereIn('id', $elementosEnMaquina->pluck('id'))
+                            ->update(['producto_id' => $productoActual->id, 'updated_at' => now()]);
                         $etiqueta->producto_id = $productoActual->id;
                     }
 
@@ -790,15 +786,10 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
             ->sortBy('peso_stock')
             ->first();
 
-        foreach ($elementosEnMaquina as $elemento) {
-                        if ($productoActual) {
-                $elemento->producto_id = $productoActual->id;
-            }
-            $elemento->save();
-        }
-
-        // Actualizar etiqueta
+        // Batch update de elementos
         if ($productoActual) {
+            Elemento::whereIn('id', $elementosEnMaquina->pluck('id'))
+                ->update(['producto_id' => $productoActual->id, 'updated_at' => now()]);
             $etiqueta->producto_id = $productoActual->id;
         }
 

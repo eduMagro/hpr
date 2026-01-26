@@ -418,7 +418,7 @@ class AsignacionTurnoController extends Controller
                 return $this->procesarSalida($user, $ahora, $horaActual, $obraEncontrada);
             }
         } catch (\Throwable $e) {
-            Log::error('❌ Error en fichaje', ['exception' => $e]);
+            Log::channel('fichajes_trabajadores')->error('❌ Error en fichaje', ['exception' => $e]);
             return response()->json(['error' => 'Error al registrar el fichaje: ' . $e->getMessage()], 500);
         }
     }
@@ -763,7 +763,7 @@ class AsignacionTurnoController extends Controller
                 // Margen de anticipación para noche (ej: 21:00-22:00)
                 if ($horaActual >= $inicioMargen->format('H:i:s') && $horaActual < $turno->hora_inicio) {
                     $fechaAsignacion = $ahora->copy()->addDays(-$offsetInicio)->toDateString();
-                    Log::info("✅ Turno detectado (anticipación noche): {$turno->nombre}", [
+                    Log::channel('fichajes_trabajadores')->info("✅ Turno detectado (anticipación noche): {$turno->nombre}", [
                         'fechaAsignacion' => $fechaAsignacion,
                     ]);
                     return [$turno->nombre, $fechaAsignacion];
@@ -784,7 +784,7 @@ class AsignacionTurnoController extends Controller
             if (!$cruzaMedianoche) {
                 if ($horaActual >= $horaInicio && $horaActual < $horaFin) {
                     $fechaAsignacion = $ahora->copy()->addDays(-$offsetInicio)->toDateString();
-                    Log::info("✅ Turno detectado (dentro del turno): {$turno->nombre}", [
+                    Log::channel('fichajes_trabajadores')->info("✅ Turno detectado (dentro del turno): {$turno->nombre}", [
                         'fechaAsignacion' => $fechaAsignacion,
                     ]);
                     return [$turno->nombre, $fechaAsignacion];
@@ -795,7 +795,7 @@ class AsignacionTurnoController extends Controller
                 // Estamos en la parte de la noche ANTES de medianoche (22:00-23:59)
                 if ($horaActual >= $horaInicio) {
                     $fechaAsignacion = $ahora->copy()->addDays(-$offsetInicio)->toDateString();
-                    Log::info("✅ Turno detectado (noche antes medianoche): {$turno->nombre}", [
+                    Log::channel('fichajes_trabajadores')->info("✅ Turno detectado (noche antes medianoche): {$turno->nombre}", [
                         'fechaAsignacion' => $fechaAsignacion,
                     ]);
                     return [$turno->nombre, $fechaAsignacion];
@@ -803,7 +803,7 @@ class AsignacionTurnoController extends Controller
                 // Estamos en la parte de la noche DESPUÉS de medianoche (00:00-06:00)
                 elseif ($horaActual < $horaFin) {
                     $fechaAsignacion = $ahora->copy()->addDays(-$offsetFin)->toDateString();
-                    Log::info("✅ Turno detectado (noche después medianoche): {$turno->nombre}", [
+                    Log::channel('fichajes_trabajadores')->info("✅ Turno detectado (noche después medianoche): {$turno->nombre}", [
                         'fechaAsignacion' => $fechaAsignacion,
                     ]);
                     return [$turno->nombre, $fechaAsignacion];
@@ -812,7 +812,7 @@ class AsignacionTurnoController extends Controller
         }
 
         // Si no coincide con ningún turno definido
-        Log::warning("No se detectó turno para hora: {$horaActual}");
+        Log::channel('fichajes_trabajadores')->warning("No se detectó turno para hora: {$horaActual}");
         return [null, null];
     }
 
@@ -887,7 +887,7 @@ class AsignacionTurnoController extends Controller
 
             return $hora->between($limiteAntes, $limiteDespues);
         } catch (\Exception $e) {
-            Log::error("Error validando hora entrada: {$e->getMessage()}");
+            Log::channel('fichajes_trabajadores')->error("Error validando hora entrada: {$e->getMessage()}");
             return false;
         }
     }
@@ -922,7 +922,7 @@ class AsignacionTurnoController extends Controller
 
             return $hora->between($limiteAntes, $limiteDespues);
         } catch (\Exception $e) {
-            Log::error("Error validando hora salida: {$e->getMessage()}");
+            Log::channel('fichajes_trabajadores')->error("Error validando hora salida: {$e->getMessage()}");
             return false;
         }
     }
