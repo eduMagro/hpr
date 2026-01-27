@@ -66,7 +66,7 @@ class ColadasTable extends Component
         if (!empty($this->producto_base)) {
             $query->whereHas('productoBase', function ($q) {
                 $q->where('tipo', 'like', '%' . $this->producto_base . '%')
-                  ->orWhere('diametro', 'like', '%' . $this->producto_base . '%');
+                    ->orWhere('diametro', 'like', '%' . $this->producto_base . '%');
             });
         }
 
@@ -124,8 +124,13 @@ class ColadasTable extends Component
     public function limpiarFiltros()
     {
         $this->reset([
-            'colada_id', 'numero_colada', 'producto_base', 'fabricante',
-            'codigo_adherencia', 'sort', 'order'
+            'colada_id',
+            'numero_colada',
+            'producto_base',
+            'fabricante',
+            'codigo_adherencia',
+            'sort',
+            'order'
         ]);
         $this->resetPage();
     }
@@ -171,7 +176,7 @@ class ColadasTable extends Component
 
     public function render()
     {
-        $query = Colada::with(['productoBase', 'fabricante']);
+        $query = Colada::with(['productoBase', 'fabricante', 'dioDeAltaPor', 'ultimoModificadoPor']);
 
         $query = $this->aplicarFiltros($query);
         $query = $this->aplicarOrdenamiento($query);

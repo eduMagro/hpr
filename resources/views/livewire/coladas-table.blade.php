@@ -12,7 +12,7 @@
                     </svg>
                     Volver a Materiales
                 </a>
-                <h1 class="text-2xl font-bold text-gray-800">Gestion de Coladas</h1>
+                <h1 class="text-2xl font-bold text-gray-800">Gestión de coladas</h1>
             </div>
             <button onclick="abrirModalCrear()"
                 class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 flex items-center gap-2">
@@ -66,46 +66,54 @@
                             texto="Fabricante" />
                         <x-tabla.encabezado-ordenable campo="codigo_adherencia" :sortActual="$sort" :orderActual="$order"
                             texto="Cod. Adherencia" />
-                        <th class="p-2 border">Documento</th>
+                        <th class="p-2 border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors">Dió de alta</th>
+                        <th class="p-2 border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors">Última mod.</th>
+                        <th class="p-2 border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors">Documento</th>
                         <x-tabla.encabezado-ordenable campo="created_at" :sortActual="$sort" :orderActual="$order"
                             texto="Fecha Creacion" />
-                        <th class="p-2 border">Acciones</th>
+                        <th class="p-2 border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors">Acciones</th>
                     </tr>
 
                     <!-- Fila de filtros -->
                     <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border">
+                        <th class="p-2 border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors">
                             <input type="text" wire:model.live.debounce.300ms="colada_id"
                                 class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="ID...">
                         </th>
-                        <th class="p-2 border">
+                        <th class="p-2 border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors">
                             <input type="text" wire:model.live.debounce.300ms="numero_colada"
                                 class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="N Colada...">
                         </th>
-                        <th class="p-2 border">
+                        <th class="p-2 border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors">
                             <input type="text" wire:model.live.debounce.300ms="producto_base"
                                 class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Tipo/Diametro...">
                         </th>
-                        <th class="p-2 border">
+                        <th class="p-2 border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors">
                             <input type="text" wire:model.live.debounce.300ms="fabricante"
                                 class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Fabricante...">
                         </th>
-                        <th class="p-2 border">
+                        <th class="p-2 border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors">
                             <input type="text" wire:model.live.debounce.300ms="codigo_adherencia"
                                 class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Cod. Adher...">
                         </th>
-                        <th class="p-2 border">
+                        <th class="p-2 border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors">
+                            <!-- Sin filtro para quien dio de alta -->
+                        </th>
+                        <th class="p-2 border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors">
+                            <!-- Sin filtro para ultima mod -->
+                        </th>
+                        <th class="p-2 border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors">
                             <!-- Sin filtro para documento -->
                         </th>
-                        <th class="p-2 border">
+                        <th class="p-2 border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors">
                             <!-- Sin filtro para fecha -->
                         </th>
-                        <th class="p-2 border text-center align-middle">
+                        <th class="p-2 border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors text-center align-middle">
                             <div class="flex justify-center gap-2 items-center h-full">
                                 <button wire:click="limpiarFiltros"
                                     class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
@@ -147,6 +155,12 @@
                             <td class="px-4 py-3 text-center text-gray-700">
                                 {{ $colada->codigo_adherencia ?? '-' }}
                             </td>
+                            <td class="px-4 py-3 text-center text-gray-700">
+                                <span class="capitalize">{{ $colada->dioDeAltaPor->name ?? 'Sistema' }}</span>
+                            </td>
+                            <td class="px-4 py-3 text-center text-gray-700">
+                                <span class="capitalize">{{ $colada->ultimoModificadoPor->name ?? '-' }}</span>
+                            </td>
                             <td class="px-4 py-3 text-center">
                                 @if ($colada->documento)
                                     <a href="{{ route('coladas.descargar', $colada) }}"
@@ -187,7 +201,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center py-8">
+                            <td colspan="10" class="text-center py-8">
                                 <div class="flex flex-col items-center gap-2">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400"
                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
