@@ -1964,10 +1964,6 @@ class ProduccionController extends Controller
                             } else {
                                 // Pendiente: usar now()
                                 $fechaInicio = Carbon::now();
-                                Log::debug('EVT: Planilla pendiente primera en cola', [
-                                    'planillaId' => $planillaId,
-                                    'fechaInicioOriginal' => $fechaInicio->toIso8601String(),
-                                ]);
                             }
                         } else {
                             // No es primera: usar fin del evento anterior
@@ -1978,19 +1974,6 @@ class ProduccionController extends Controller
                         $esPrimeraEnCola = false;
 
                         $tramos = $this->finProgramadoService->generarTramosLaborales($fechaInicio, $duracionSegundos);
-
-                        // Debug: verificar si el tramo fue ajustado al siguiente turno
-                        if (!empty($tramos)) {
-                            $primerTramo = $tramos[0];
-                            $tramoStart = $primerTramo['start'] instanceof Carbon ? $primerTramo['start'] : Carbon::parse($primerTramo['start']);
-                            if ($tramoStart->gt($fechaInicio)) {
-                                Log::debug('EVT: Inicio ajustado al siguiente turno', [
-                                    'planillaId' => $planillaId,
-                                    'fechaInicioOriginal' => $fechaInicio->toIso8601String(),
-                                    'tramoStartAjustado' => $tramoStart->toIso8601String(),
-                                ]);
-                            }
-                        }
 
                         if (empty($tramos)) {
                             Log::warning('EVT H1: sin tramos', ['planillaId' => $planillaId, 'maquinaId' => $maquinaId, 'ordenKey' => $ordenKey]);

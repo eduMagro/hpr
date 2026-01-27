@@ -361,14 +361,7 @@ class FinProgramadoService
 
         // Si el inicio NO está dentro de un segmento laborable, mover al siguiente
         if (!$dentroDeSegmento) {
-            $inicioOriginal = $inicio->copy();
             $inicio = $this->siguienteLaborableInicio($inicio);
-            Log::debug('FinProgramadoService: Inicio movido al siguiente turno', [
-                'inicioOriginal' => $inicioOriginal->toIso8601String(),
-                'inicioAjustado' => $inicio->toIso8601String(),
-                'turnosActivos' => $this->turnosActivos ? $this->turnosActivos->pluck('nombre', 'id')->all() : 'null',
-                'segmentosHoy' => count($segmentosInicio),
-            ]);
         }
 
         $cursor = $inicio->copy();
