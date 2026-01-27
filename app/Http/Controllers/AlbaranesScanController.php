@@ -487,6 +487,10 @@ class AlbaranesScanController extends Controller
     /**
      * Genera una simulación sugiriendo qué línea de pedido de COMPRA activar
      */
+    /**
+     * Genera una simulación sugiriendo qué línea de pedido de COMPRA activar
+     * Implementando Lógica Multi-Nave con Prioridad "Golden Match" (Pleno)
+     */
     protected function generarSimulacion(array $parsed): array
     {
         // 1. NORMALIZACIÓN DE DATOS
@@ -500,12 +504,14 @@ class AlbaranesScanController extends Controller
         $tipoCompra = mb_strtolower($source['tipo_compra'] ?? 'directo');
         $nombreFabricante = $source['proveedor_texto'] ?? null;
         $nombreDistribuidor = $source['distribuidor_seleccionado'] ?? ($source['distribuidor_recomendado'] ?? null);
-        $obraId = $source['obra_id'] ?? null;
-        if (is_string($obraId) && trim($obraId) === '') {
-            $obraId = null;
+
+        // Nave Seleccionada por el usuario (Input Principal)
+        $obraIdSeleccionada = $source['obra_id'] ?? null;
+        if (is_string($obraIdSeleccionada) && trim($obraIdSeleccionada) === '') {
+            $obraIdSeleccionada = null;
         }
-        if (is_string($obraId) && is_numeric($obraId)) {
-            $obraId = (int) $obraId;
+        if (is_string($obraIdSeleccionada) && is_numeric($obraIdSeleccionada)) {
+            $obraIdSeleccionada = (int) $obraIdSeleccionada;
         }
 
         // 2. RESOLVER IDs DE EMPRESA
@@ -526,7 +532,7 @@ class AlbaranesScanController extends Controller
             }
         }
 
-        // 3. IDENTIFICAR PRODUCTOS BASE y BUSCAR CANDIDATOS
+        // 3. IDENTIFICAR PRODUCTOS BASE y BUSCAR CANDIDATOS (EN TODAS LAS NAVES)
         $candidatos = collect();
         $bultosTotal = 0;
         $pesoTotal = 0;
@@ -535,7 +541,7 @@ class AlbaranesScanController extends Controller
             if (!is_array($prod))
                 continue;
 
-            // Calcular totales
+            // Calcular totales para simulación posterior
             $items = $prod['line_items'] ?? $prod['lineItems'] ?? [];
             foreach ($items as $item) {
                 $bultosTotal += (float) ($item['bultos'] ?? 0);
@@ -572,17 +578,14 @@ class AlbaranesScanController extends Controller
                 continue;
             }
 
-            // Buscar Líneas de Pedido
+            // Buscar Líneas de Pedido (SIN FILTRAR POR OBRA AÚN)
+            // Se busca en AMBAS naves para poder detectar conflictos
             $queryLineas = \App\Models\PedidoProducto::query()
                 ->whereIn('producto_base_id', $productoBasesIds)
                 ->whereIn('estado', ['pendiente', 'parcial'])
                 ->with(['pedido.fabricante', 'pedido.distribuidor', 'productoBase', 'obra']);
 
-            if ($obraId) {
-                $queryLineas->where('obra_id', $obraId);
-            }
-
-            $queryLineas->whereHas('pedido', function ($q) use ($tipoCompra, $fabricanteId, $distribuidorId, $pedidoCodigo) {
+            $queryLineas->whereHas('pedido', function ($q) use ($tipoCompra, $fabricanteId, $distribuidorId) {
                 if ($tipoCompra === 'directo' && $fabricanteId) {
                     $q->where('fabricante_id', $fabricanteId);
                 } elseif ($tipoCompra === 'distribuidor' && $distribuidorId) {
@@ -593,10 +596,6 @@ class AlbaranesScanController extends Controller
             $lineasEncontradas = $queryLineas->get();
 
             foreach ($lineasEncontradas as $linea) {
-                $score = 100;
-                $linea->razones = [];
-
-                // Score calculation removed - using Date Sorting
                 $pendiente = $linea->cantidad - $linea->cantidad_recepcionada;
 
                 // Formatear para frontend
@@ -607,24 +606,110 @@ class AlbaranesScanController extends Controller
                 $lineaFmt['distribuidor'] = $linea->pedido->distribuidor->nombre ?? null;
                 $lineaFmt['obra'] = $linea->obra?->obra ?? ($linea->obra_manual ?? '—');
 
-                // Fecha de entrega para ordenamiento
+                // Asegurar que obra_id viaja explícitamente
+                $lineaFmt['obra_id'] = $linea->obra_id;
+
+                // Fecha de entrega para ordenamiento y "Plenos"
                 $fechaEntrega = $linea->fecha_estimada_entrega ?? $linea->pedido->fecha_estimada_entrega ?? null;
                 $lineaFmt['fecha_estimada_entrega'] = $fechaEntrega;
                 $lineaFmt['fecha_entrega'] = $fechaEntrega;
 
-                $lineaFmt['score'] = $score;
+                // Calcular si es PLENO (Golden Match)
+                // Fecha +/- 3 días respecto a HOY
+                $esPleno = false;
+                if ($fechaEntrega) {
+                    try {
+                        $f = Carbon::parse($fechaEntrega);
+                        $hoy = Carbon::today();
+                        $diff = $f->diffInDays($hoy, false); // Positivo si hoy es posterior, etc. Valor absoluto es la clave.
+                        if (abs($diff) <= 3) {
+                            $esPleno = true;
+                        }
+                    } catch (\Throwable $e) {
+                    }
+                }
+                $lineaFmt['es_pleno'] = $esPleno;
                 $lineaFmt['cantidad_pendiente'] = $pendiente;
 
+                // Evitar duplicados si multiple products mapping to same line? No, aqui iteramos candiidatos. 
+                // Mejor usar push y luego unificar, pero en este contexto cada producto escaneado puede machear N lineas.
+                // Asumimos que el usuario selecciona UN pedido para todo el albarán o el albarán es monopedido.
+                // Para simplificar, añadimos todos y luego elegimos uno.
                 $candidatos->push($lineaFmt);
             }
         }
 
-        // 4. SELECCIÓN MEJOR CANDIDATO (Por Fecha Entrega Ascendente)
-        $candidatosSorted = $candidatos->sortBy(function ($v) {
-            return $v['fecha_estimada_entrega'] ?? '9999-12-31';
-        })->values();
-        $mejorCandidato = $candidatosSorted->first();
+        // Unificar candidatos por ID (si el albaran tiene 3 lineas y las 3 machean el mismo pedido, sale 3 veces)
+        $candidatosUnicos = $candidatos->unique('id');
 
+        // 4. LÓGICA DE DECISIÓN JERÁRQUICA (Nave vs Fecha)
+
+        $candidatosNaveActual = $candidatosUnicos->where('obra_id', $obraIdSeleccionada);
+        $candidatosOtraNave = $candidatosUnicos->where('obra_id', '!=', $obraIdSeleccionada);
+
+        $plenosNaveActual = $candidatosNaveActual->where('es_pleno', true);
+        $plenosOtraNave = $candidatosOtraNave->where('es_pleno', true);
+
+        $mejorCandidato = null;
+        $tipoRecomendacion = null; // pleno_nave_actual, pleno_otra_nave, normal_nave_actual, fallback_otra_nave
+        $alertaConflicto = false;
+        $bloquearActivacion = false;
+        $contactosProduccion = [];
+        $pedidoConflictoCodigo = null; // Para mostrar en el mensaje de error: "Existe el pedido #XYZ..."
+
+        // --- ALGORITMO ---
+
+        // Escenario A: Hay Pleno en Nave Seleccionada
+        if ($plenosNaveActual->isNotEmpty()) {
+            // Gana el Pleno de Nave Actual. Desempate por antiguedad
+            $mejorCandidato = $plenosNaveActual->sortBy('fecha_estimada_entrega')->first();
+            $tipoRecomendacion = 'pleno_nave_actual';
+        }
+        // Escenario B: NO hay Pleno en Nave Seleccionada, pero SÍ en Otra Nave
+        elseif ($plenosOtraNave->isNotEmpty()) {
+            $mejorPlenoOtra = $plenosOtraNave->sortBy('fecha_estimada_entrega')->first();
+
+            // Si hay pedidos en nave actual (aunque no sean plenos), los mostramos pero bloqueamos
+            if ($candidatosNaveActual->isNotEmpty()) {
+                // Seleccionamos el "menos malo" de la nave actual para mostrarlo de fondo
+                $mejorCandidato = $candidatosNaveActual->sortBy('fecha_estimada_entrega')->first();
+                $tipoRecomendacion = 'normal_nave_actual'; // Pero con warning critico
+
+                $alertaConflicto = true;
+                $bloquearActivacion = true;
+                $contactosProduccion = $this->obtenerContactosProduccion();
+                $pedidoConflictoCodigo = $mejorPlenoOtra['codigo'] ?? null;
+            } else {
+                // No hay nada en nave actual. Recomendamos directamente el de la otra nave.
+                $mejorCandidato = $mejorPlenoOtra;
+                $tipoRecomendacion = 'pleno_otra_nave';
+
+                // Bloqueo estricto solicitado por usuario
+                $alertaConflicto = true;
+                $bloquearActivacion = true;
+                $contactosProduccion = $this->obtenerContactosProduccion();
+                // En este caso el conflicto es el propio pedido recomendado, no hace falta pasar otro codigo extra
+            }
+        }
+        // Escenario C: No hay Plenos en ninguna parte
+        else {
+            if ($candidatosNaveActual->isNotEmpty()) {
+                // Prioridad Nave Actual Standard (fecha mas antigua primero)
+                $mejorCandidato = $candidatosNaveActual->sortBy('fecha_estimada_entrega')->first();
+                $tipoRecomendacion = 'normal_nave_actual';
+            } elseif ($candidatosOtraNave->isNotEmpty()) {
+                // Fallback: Solo hay en la otra nave
+                $mejorCandidato = $candidatosOtraNave->sortBy('fecha_estimada_entrega')->first();
+                $tipoRecomendacion = 'fallback_otra_nave';
+
+                // Bloqueo estricto solicitado si es de otra nave
+                $alertaConflicto = true;
+                $bloquearActivacion = true;
+                $contactosProduccion = $this->obtenerContactosProduccion();
+            }
+        }
+
+        // Preparar respuesta final
         $datosLinea = $mejorCandidato;
         $estadoFinalSimulado = null;
 
@@ -638,7 +723,15 @@ class AlbaranesScanController extends Controller
                 'estado_nuevo' => $nuevoEstado,
                 'progreso' => ($datosLinea['cantidad'] > 0) ? round(($nuevaCantidadRecepcionada / $datosLinea['cantidad']) * 100, 1) : 0,
             ];
-            $datosLinea['tipo_recomendacion'] = 'exacta_bd';
+
+            // Inyectar metadatos de decisión en el objeto línea para el frontend
+            $datosLinea['tipo_recomendacion'] = $tipoRecomendacion;
+            $datosLinea['es_pleno'] = $datosLinea['es_pleno'] ?? false;
+
+            // Si el candidato es de otra nave, añadir esa info explícita en warning si no lo tiene ya
+            if ($datosLinea['obra_id'] != $obraIdSeleccionada && $tipoRecomendacion !== 'pleno_otra_nave' && $tipoRecomendacion !== 'fallback_otra_nave') {
+                // Caso raro donde se fuerce algo mixto
+            }
         }
 
         return [
@@ -647,13 +740,49 @@ class AlbaranesScanController extends Controller
             'pedido_codigo' => $pedidoCodigo,
             'fabricante' => $nombreFabricante,
             'peso_total' => $pesoTotal,
-            'lineas_pendientes' => $candidatosSorted->toArray(), // Para IA / Debug
-            'todas_las_lineas' => $candidatosSorted->toArray(), // Para lista "otros compatibles"
+            // Lista completa para "Ver otros pedidos"
+            'lineas_pendientes' => $candidatosUnicos->sortBy('fecha_estimada_entrega')->values()->toArray(),
+            'todas_las_lineas' => $candidatosUnicos->values()->toArray(),
+
             'linea_propuesta' => $datosLinea,
             'estado_final_simulado' => $estadoFinalSimulado,
             'hay_coincidencias' => $datosLinea !== null,
             'bultos_albaran' => $bultosTotal,
+
+            // Nuevos flags para UI
+            'alerta_conflicto' => $alertaConflicto,
+            'bloquear_activacion' => $bloquearActivacion,
+            'contactos_produccion' => $contactosProduccion,
+            'obra_id_seleccionada' => $obraIdSeleccionada,
+            'pedido_conflicto_codigo' => $pedidoConflictoCodigo,
         ];
+    }
+
+    /**
+     * Obtiene los contactos del departamento de Producción para escalado
+     */
+    protected function obtenerContactosProduccion(): array
+    {
+        try {
+            return DB::table('users')
+                ->join('departamento_user', 'users.id', '=', 'departamento_user.user_id')
+                ->join('departamentos', 'departamentos.id', '=', 'departamento_user.departamento_id')
+                ->where('departamentos.nombre', 'Producción')
+                ->where('users.estado', 'activo') // Asumimos campo estado activo, si falla quitar esta linea
+                ->select('users.name', 'users.primer_apellido', 'users.movil_empresa')
+                ->get()
+                ->map(function ($user) {
+                    return [
+                        'nombre' => $user->name,
+                        'apellido' => $user->primer_apellido,
+                        'movil' => $user->movil_empresa ?? '-',
+                    ];
+                })
+                ->toArray();
+        } catch (\Throwable $e) {
+            Log::error('Error obteniendo contactos producción: ' . $e->getMessage());
+            return [];
+        }
     }
 
     protected function extractNumber($val)
