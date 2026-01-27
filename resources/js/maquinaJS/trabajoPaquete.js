@@ -148,7 +148,7 @@
             document.getElementById("ubicacion-id")?.value || window.ubicacionId
         );
 
-        // Detectar si es máquina tipo grúa
+        // Detectar si es máquina tipo grúa (única que no requiere ubicación previa)
         const esGrua = (window.MAQUINA_TIPO_NOMBRE || "").toLowerCase() === "grua";
 
         // Para grúa: no requerimos ubicacionId, se asignará después en el mapa
@@ -161,20 +161,13 @@
             return;
         }
 
-        if (!esGrua && !ubicacionId) {
-            await Swal.fire(
-                "Faltan datos",
-                "Debe especificarse la ubicación.",
-                "error"
-            );
-            return;
-        }
-
+        // Para máquinas que no son grúa: ubicacionId puede venir del DOM o ser null
+        // El backend buscará la ubicación por código de máquina si no viene
         const payload = {
             items: items.map((i) => ({ id: i.id, type: i.type })),
             maquina_id: maquinaId,
-            ubicacion_id: esGrua ? null : ubicacionId, // Para grúa: null, se asigna después
-            sin_ubicacion: esGrua, // Flag para indicar que se ubicará después
+            ubicacion_id: esGrua ? null : (ubicacionId || null),
+            sin_ubicacion: esGrua, // Solo grúa ubica después manualmente
         };
 
         const confirmarCreacion = async (extra = {}) => {

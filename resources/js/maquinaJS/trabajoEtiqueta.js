@@ -70,16 +70,25 @@ function initTrabajoEtiqueta() {
             const estadoActual = (
                 elementoEtiqueta.dataset.estado || ""
             ).toLowerCase();
+            const estado2Actual = (
+                elementoEtiqueta.dataset.estado2 || ""
+            ).toLowerCase();
 
-            if (
-                ["completada", "en-paquete", "empaquetada"].includes(
-                    estadoActual
-                )
-            ) {
+            // Obtener IDs de máquinas de la etiqueta
+            const etiquetaMaquinaId = elementoEtiqueta.dataset.maquinaId || "";
+            const etiquetaMaquinaId2 = elementoEtiqueta.dataset.maquinaId2 || "";
+
+            // Determinar si la máquina actual es la secundaria para esta etiqueta
+            const esMaquinaSecundaria = etiquetaMaquinaId2 && etiquetaMaquinaId2 === maquinaId;
+
+            // Determinar qué estado verificar según la máquina
+            const estadoAVerificar = esMaquinaSecundaria ? estado2Actual : estadoActual;
+
+            if (["completada", "en-paquete", "empaquetada"].includes(estadoAVerificar)) {
                 await Swal.fire({
                     icon: "info",
                     title: "Etiqueta ya completada",
-                    text: `La etiqueta ${etiquetaId} ya está en estado ${estadoActual}.`,
+                    text: `La etiqueta ${etiquetaId} ya está en estado ${estadoAVerificar}${esMaquinaSecundaria ? ' en esta máquina' : ''}.`,
                     timer: 2500,
                     showConfirmButton: false,
                 });

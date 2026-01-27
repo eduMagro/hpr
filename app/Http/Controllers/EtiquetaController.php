@@ -2587,7 +2587,8 @@ class EtiquetaController extends Controller
                 'fecha_finalizacion_ensamblado' => 'nullable|date',
                 'fecha_inicio_soldadura'   => 'nullable|date',
                 'fecha_finalizacion_soldadura' => 'nullable|date',
-                'estado'                   => 'nullable|string|in:pendiente,fabricando,ensamblando,soldando,completada,empaquetada'
+                'estado'                   => 'nullable|string|in:pendiente,fabricando,fabricada,ensamblando,soldando,completada,empaquetada',
+                'estado2'                  => 'nullable|string|in:pendiente,doblando,completada'
             ], [
                 'numero_etiqueta.string'   => 'El campo Número de Etiqueta debe ser una cadena de texto.',
                 'numero_etiqueta.max'      => 'El campo Número de Etiqueta no debe exceder 50 caracteres.',
@@ -2603,7 +2604,8 @@ class EtiquetaController extends Controller
                 'fecha_finalizacion_ensamblado.date' => 'El campo Fecha Finalización Ensamblado no es una fecha válida.',
                 'fecha_inicio_soldadura.date'     => 'El campo Fecha Inicio Soldadura no es una fecha válida.',
                 'fecha_finalizacion_soldadura.date' => 'El campo Fecha Finalización Soldadura no es una fecha válida.',
-                'estado.in'              => 'El campo Estado no es válido.'
+                'estado.in'              => 'El campo Estado no es válido.',
+                'estado2.in'             => 'El campo Estado2 no es válido.'
             ]);
 
             // Convertir peso_kg a peso para el modelo

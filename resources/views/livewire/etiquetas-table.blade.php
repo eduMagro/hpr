@@ -134,7 +134,7 @@
                                     editando = false;
                                 }
                             }"
-                            @keydown.enter.stop="if(editando) { guardarCambios(etiqueta); editando = false; }"
+                            @keydown.enter.stop="if(editando) { guardarCambios(etiqueta, () => { original = JSON.parse(JSON.stringify(etiqueta)); }); editando = false; }"
                             @keydown.escape.stop="if(editando) { etiqueta = JSON.parse(JSON.stringify(original)); editando = false; }"
                             x-bind:class="{ 'editing': editando }"
                             class="uppercase">
@@ -341,15 +341,7 @@
                             <!-- Estado (editable mediante select) - Muestra estado/estado2 si tiene maquina_id_2 -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span>
-                                        @php
-                                            $estadoDisplay = ucfirst($etiqueta->estado ?? 'pendiente');
-                                            if ($etiqueta->estado2) {
-                                                $estadoDisplay .= '/' . ucfirst($etiqueta->estado2);
-                                            }
-                                        @endphp
-                                        {{ $estadoDisplay }}
-                                    </span>
+                                    <span x-text="(etiqueta.estado ? etiqueta.estado.charAt(0).toUpperCase() + etiqueta.estado.slice(1) : 'Pendiente') + (etiqueta.estado2 ? '/' + etiqueta.estado2.charAt(0).toUpperCase() + etiqueta.estado2.slice(1) : '')"></span>
                                 </template>
                                 <div x-show="editando" class="flex flex-col gap-1">
                                     <select x-model="etiqueta.estado"
@@ -361,14 +353,14 @@
                                         <option value="soldando">Soldando</option>
                                         <option value="completada">Completada</option>
                                     </select>
-                                    @if($etiqueta->estado2)
-                                    <select x-model="etiqueta.estado2"
-                                        class="inline-edit-input">
-                                        <option value="pendiente">Pendiente</option>
-                                        <option value="doblando">Doblando</option>
-                                        <option value="completada">Completada</option>
-                                    </select>
-                                    @endif
+                                    <template x-if="etiqueta.estado2 !== null && etiqueta.estado2 !== undefined">
+                                        <select x-model="etiqueta.estado2"
+                                            class="inline-edit-input">
+                                            <option value="pendiente">Pendiente</option>
+                                            <option value="doblando">Doblando</option>
+                                            <option value="completada">Completada</option>
+                                        </select>
+                                    </template>
                                 </div>
                             </td>
 
@@ -376,7 +368,7 @@
                             <td class="px-2 py-2 border text-xs font-bold">
                                 <div class="flex items-center space-x-2 justify-center">
                                     {{-- Botones visibles solo en edición --}}
-                                    <button x-show="editando" @click="guardarCambios(etiqueta); editando = false"
+                                    <button x-show="editando" @click="guardarCambios(etiqueta, () => { original = JSON.parse(JSON.stringify(etiqueta)); }); editando = false"
                                         class="w-6 h-6 bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-800 flex items-center justify-center"
                                         title="Guardar cambios">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
@@ -897,7 +889,7 @@
             }
         </script>
         <script>
-            function guardarCambios(etiqueta) {
+            function guardarCambios(etiqueta, onSuccess) {
                 fetch(`/etiquetas/${etiqueta.id}`, {
                         method: 'PUT',
                         headers: {
@@ -919,6 +911,8 @@
                                 timer: 2000,
                                 timerProgressBar: true
                             });
+                            // Ejecutar callback de éxito si existe
+                            if (onSuccess) onSuccess();
                         } else {
                             let errorMsg = data.message || "Ha ocurrido un error inesperado.";
                             if (data.errors) {

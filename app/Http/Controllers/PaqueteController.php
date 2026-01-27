@@ -441,6 +441,7 @@ class PaqueteController extends Controller
             //    - Si viene sin_ubicacion=true (grúa), no se asigna ubicación ahora
             //    - Si contiene 'idea 5' en el nombre → Sector Final
             //    - Si no → ubicación que contenga el código de la máquina
+            //    - Fallback: ubicación de la obra de la máquina
             $sinUbicacion = $request->boolean('sin_ubicacion', false);
             $ubicacion = null;
 
@@ -448,15 +449,27 @@ class PaqueteController extends Controller
                 if (stripos($maquina->nombre, 'idea 5') !== false) {
                     $ubicacion = Ubicacion::where('descripcion', 'LIKE', '%Sector Final%')->first();
                 } else {
+                    // Buscar por código de máquina
                     $ubicacion = Ubicacion::where('descripcion', 'LIKE', "%{$codigoMaquina}%")->first();
                 }
 
+                // Fallback: buscar ubicación por obra_id de la máquina
+                if (!$ubicacion && $maquina->obra_id) {
+                    $ubicacion = Ubicacion::where('obra_id', $maquina->obra_id)->first();
+                }
+
+                // Fallback final: usar ubicación por defecto (id=1 o primera disponible)
                 if (!$ubicacion) {
-                    DB::rollBack();
-                    return response()->json([
-                        'success' => false,
-                        'message' => "No se encontró una ubicación con el nombre de la máquina: {$codigoMaquina}.",
-                    ], 400);
+                    $ubicacion = Ubicacion::first();
+                }
+
+                // Si aún no hay ubicación, loguear warning pero continuar (localización se asignará igual)
+                if (!$ubicacion) {
+                    Log::warning("No se encontró ubicación para paquete, continuando sin ubicación", [
+                        'maquina_id' => $maquina->id,
+                        'codigo_maquina' => $codigoMaquina,
+                        'obra_id' => $maquina->obra_id,
+                    ]);
                 }
             }
 

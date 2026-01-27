@@ -9,8 +9,13 @@
     $estadoPrincipal = strtolower($etiqueta->estado ?? 'pendiente');
     $estado2 = $etiqueta->estado2 ? strtolower($etiqueta->estado2) : null;
 
+    // Obtener maquina_id y maquina_id_2 del primer elemento (todos los elementos de una etiqueta comparten las mismas máquinas)
+    $primerElemento = $etiqueta->elementos()->first();
+    $maquinaId1 = $primerElemento?->maquina_id;
+    $maquinaId2 = $primerElemento?->maquina_id_2;
+
     // Verificar si la etiqueta tiene elementos con maquina_id_2 (proceso secundario)
-    $tieneMaquina2 = $etiqueta->elementos()->whereNotNull('maquina_id_2')->exists();
+    $tieneMaquina2 = !is_null($maquinaId2);
 
     // El estado para el color depende de si tiene maquina_id_2
     // Si tiene maquina_id_2, el color se basa en estado2
@@ -163,6 +168,8 @@
         data-estado="{{ $estadoPrincipal }}"
         data-estado2="{{ $estado2 ?? '' }}"
         data-tiene-maquina2="{{ $tieneMaquina2 ? 'true' : 'false' }}"
+        data-maquina-id="{{ $maquinaId1 ?? '' }}"
+        data-maquina-id-2="{{ $maquinaId2 ?? '' }}"
         data-en-paquete="{{ $etiqueta->paquete_id ? 'true' : 'false' }}"
         data-planilla-codigo="{{ $planilla->codigo_limpio ?? '' }}"
         data-planilla-id="{{ $planilla->id ?? '' }}">
