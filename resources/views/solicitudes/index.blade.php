@@ -8,35 +8,36 @@
         }
 
         .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f8fafc;
+            background: rgba(248, 250, 252, 0.05);
             border-radius: 10px;
         }
 
         .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
+            background: #475569;
             border-radius: 10px;
-            border: 2px solid #f8fafc;
+            border: 2px solid transparent;
         }
 
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
+            background: #64748b;
         }
 
         /* Para Firefox */
         .custom-scrollbar {
             scrollbar-width: thin;
-            scrollbar-color: #cbd5e1 #f8fafc;
+            scrollbar-color: #475569 transparent;
         }
     </style>
 
-    <div class="px-4 py-6 max-w-[1920px] mx-auto" x-data="solicitudesApp(@js($solicitudes), @js($users), @js($estados), @js($prioridades))" x-init="initPage()">
+    <div class="px-4 py-6 max-w-[1920px] mx-auto"
+        x-data="solicitudesApp(@js($solicitudes), @js($users), @js($estados), @js($prioridades))" x-init="initPage()">
 
         <!-- Header con gradiente -->
         <div
-            class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 p-6 rounded-2xl bg-gradient-to-tr lg:h-[75px] from-gray-800 to-gray-900 shadow-lg">
+            class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 p-6 rounded-2xl bg-gradient-to-tr lg:h-[75px] from-gray-800 to-gray-900 shadow-lg dark:from-gray-700 dark:to-gray-800">
             <div class="flex items-center gap-4">
                 <div
-                    class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white shadow-inner">
+                    class="w-12 h-12 rounded-xl bg-gradient-to-tr from-gray-600 to-gray-700 dark:from-gray-500 dark:to-gray-600 backdrop-blur-sm flex items-center justify-center text-white shadow-inner">
                     <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -50,7 +51,7 @@
 
             <div class="flex items-center gap-3">
                 <button @click="openCreateModal()"
-                    class="bg-white hover:bg-gray-50 text-indigo-600 px-5 py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 hover:scale-105 active:scale-95">
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 hover:scale-105 active:scale-95">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
@@ -62,8 +63,8 @@
         <!-- Notion-like Tabs -->
         <div class="flex items-center gap-6 mb-4 text-sm pb-1 overflow-x-auto ml-4 custom-scrollbar">
             <button @click="boardView = 'table'"
-                :class="boardView === 'table' ? 'text-gray-900 border-b-2 border-gray-900 font-medium' :
-                    'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'"
+                :class="boardView === 'table' ? 'text-gray-900 dark:text-white border-b-2 border-gray-900 dark:border-white font-medium' :
+                    'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border-b-2 border-transparent'"
                 class="flex items-center gap-2 px-2 py-2 whitespace-nowrap transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -73,8 +74,8 @@
             </button>
 
             <button @click="boardView = 'estado'; $nextTick(() => syncKanbanCounts())"
-                :class="boardView === 'estado' ? 'text-gray-900 border-b-2 border-gray-900 font-medium' :
-                    'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'"
+                :class="boardView === 'estado' ? 'text-gray-900 dark:text-white border-b-2 border-gray-900 dark:border-white font-medium' :
+                    'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border-b-2 border-transparent'"
                 class="flex items-center gap-2 px-2 py-2 whitespace-nowrap transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -88,7 +89,8 @@
         <div x-show="boardView === 'table'"
             class="h-[calc(100vh-35vh-20px)] overflow-y-auto select-none custom-scrollbar">
             <div class="overflow-x-auto min-h-[400px] h-full p-1">
-                <table class="w-full text-sm hpr-solicitudes-table bg-white rounded-2xl overflow-hidden shadow">
+                <table
+                    class="w-full text-sm hpr-solicitudes-table bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow">
                     <colgroup>
                         <col data-column-key="id">
                         <col data-column-key="titulo">
@@ -99,10 +101,10 @@
                         <col data-column-key="fecha">
                     </colgroup>
                     <thead>
-                        <tr class="bg-gray-50 border-b border-gray-200">
+                        <tr class="bg-gray-50 border-b border-gray-200 dark:bg-gray-700 dark:border-gray-700">
                             <!-- ID Column -->
                             <th data-column-key="id"
-                                class="relative px-2 py-2 text-left font-medium text-gray-500 w-16 border-r border-gray-200 group">
+                                class="relative px-2 py-2 text-left font-medium text-gray-500 w-16 border-r border-gray-200 dark:border-gray-500 group">
                                 <div class="resizable-column-wrapper">
                                     <div class="resizable-column-content flex items-center justify-center gap-1">
                                         <span class="resizable-column-label uppercase text-[10px]">#</span>
@@ -113,7 +115,7 @@
 
                             <!-- Title Column -->
                             <th data-column-key="titulo"
-                                class="relative px-2 py-2 text-left font-medium text-gray-500 min-w-[20px] border-r border-gray-200 group">
+                                class="relative px-2 py-2 text-left font-medium text-gray-500 min-w-[20px] border-r border-gray-200 dark:border-gray-500 group">
                                 <div class="resizable-column-wrapper">
                                     <div class="resizable-column-content flex items-center gap-1">
                                         <svg class="w-5 h-5 min-w-5 min-h-5 text-gray-400" fill="none"
@@ -130,7 +132,7 @@
 
                             <!-- Comentario -->
                             <th data-column-key="comentario"
-                                class="relative px-2 py-2 text-left font-medium text-gray-500 w-64 border-r border-gray-200 group">
+                                class="relative px-2 py-2 text-left font-medium text-gray-500 w-64 border-r border-gray-200 dark:border-gray-500 group">
                                 <div class="resizable-column-wrapper">
                                     <div class="resizable-column-content flex items-center gap-1">
                                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
@@ -146,7 +148,7 @@
 
                             <!-- Estado -->
                             <th data-column-key="estado"
-                                class="relative px-2 py-2 text-left font-medium text-gray-500 w-40 border-r border-gray-200 group">
+                                class="relative px-2 py-2 text-left font-medium text-gray-500 w-40 border-r border-gray-200 dark:border-gray-500 group">
                                 <div class="resizable-column-wrapper">
                                     <div class="resizable-column-content flex items-center gap-1">
                                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
@@ -162,7 +164,7 @@
 
                             <!-- Prioridad -->
                             <th data-column-key="prioridad"
-                                class="relative px-2 py-2 text-left font-medium text-gray-500 w-32 border-r border-gray-200 group">
+                                class="relative px-2 py-2 text-left font-medium text-gray-500 w-32 border-r border-gray-200 dark:border-gray-500 group">
                                 <div class="resizable-column-wrapper">
                                     <div class="resizable-column-content flex items-center gap-1">
                                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
@@ -178,7 +180,7 @@
 
                             <!-- Asignado -->
                             <th data-column-key="asignado_a"
-                                class="relative px-2 py-2 text-left font-medium text-gray-500 w-48 border-r border-gray-200 group">
+                                class="relative px-2 py-2 text-left font-medium text-gray-500 w-48 border-r border-gray-200 dark:border-gray-500 group">
                                 <div class="resizable-column-wrapper">
                                     <div class="resizable-column-content flex items-center gap-1">
                                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
@@ -194,7 +196,7 @@
 
                             <!-- Fecha -->
                             <th data-column-key="fecha"
-                                class="relative px-2 py-2 text-left font-medium text-gray-500 w-48 border-r border-gray-200 group">
+                                class="relative px-2 py-2 text-left font-medium text-gray-500 w-48 group">
                                 <div class="resizable-column-wrapper">
                                     <div class="resizable-column-content flex items-center gap-1">
                                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
@@ -209,21 +211,20 @@
                             </th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100">
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                         <template x-for="solicitud in solicitudes" :key="solicitud.id">
-                            <tr
-                                class="group hover:bg-gradient-to-r hover:from-indigo-50/50 hover:to-purple-50/50 transition-all duration-200 relative">
+                            <tr class="group hover:bg-gray-700 transition-all duration-200 relative">
                                 <!-- ID -->
-                                <td class="px-2 py-1 border-r border-gray-200 text-gray-400 text-xs font-mono w-16 text-center"
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 text-xs font-mono w-16 text-center"
                                     x-text="solicitud.id">
                                 </td>
 
                                 <!-- Titulo & Open Button -->
-                                <td class="px-2 py-1 border-r border-gray-200 relative group/cell">
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 relative group/cell">
                                     <div class="relative flex items-center h-8">
                                         <input type="text" :value="solicitud.titulo"
                                             @change="updateField(solicitud.id, 'titulo', $event.target.value); solicitud.titulo = $event.target.value"
-                                            class="w-full h-full bg-transparent border-none focus:ring-1 focus:ring-blue-500 rounded text-sm text-gray-900 font-medium placeholder-gray-400 px-1"
+                                            class="w-full h-full bg-transparent border-none focus:ring-1 focus:ring-blue-500 rounded text-sm text-gray-900 dark:text-white font-medium placeholder-gray-400 px-1"
                                             placeholder="Sin título">
 
                                         <button @click="openViewModal(solicitud)"
@@ -239,15 +240,15 @@
                                 </td>
 
                                 <!-- Comentario -->
-                                <td class="px-2 py-1 border-r border-gray-200">
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700">
                                     <input type="text" :value="solicitud.comentario"
                                         @change="updateField(solicitud.id, 'comentario', $event.target.value); solicitud.comentario = $event.target.value"
-                                        class="w-full h-8 px-2 bg-transparent border-none focus:ring-1 focus:ring-blue-500 rounded text-sm text-gray-600 placeholder-gray-300 truncate"
+                                        class="w-full h-8 px-2 bg-transparent border-none focus:ring-1 focus:ring-blue-500 rounded text-sm text-gray-600 dark:text-gray-300 placeholder-gray-300 dark:placeholder-gray-600 truncate"
                                         placeholder="Vacío">
                                 </td>
 
                                 <!-- Estado -->
-                                <td class="px-2 py-1 border-r border-gray-200 has-dropdown">
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 has-dropdown">
                                     <div x-data="{ open: false }" class="relative">
                                         <button @click="open = !open" type="button"
                                             class="flex items-center gap-2 h-7 w-full px-2 rounded text-[11px] font-bold transition-all border border-transparent hover:border-gray-200 shadow-sm"
@@ -256,20 +257,20 @@
                                             <span class="w-2 h-2 rounded-full shrink-0"
                                                 :class="getColorEstado(solicitud.estado).dot"></span>
                                             <span class="flex-1 text-left" x-text="solicitud.estado"></span>
-                                            <svg class="w-3 h-3 opacity-40 shrink-0" fill="none"
-                                                stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg class="w-3 h-3 opacity-40 shrink-0" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
                                                 <path d="M19 9l-7 7-7-7" stroke-width="2" stroke-linecap="round"
                                                     stroke-linejoin="round" />
                                             </svg>
                                         </button>
                                         <div x-show="open" @click.away="open = false"
-                                            class="absolute z-10 mt-1 w-40 bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden left-0"
+                                            class="absolute z-10 mt-1 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 overflow-hidden left-0"
                                             x-cloak style="display: none;">
                                             <template x-for="est in estados">
                                                 <button
                                                     @click="solicitud.estado = est; open = false; updateField(solicitud.id, 'estado', est)"
                                                     type="button"
-                                                    class="flex items-center gap-2 w-full px-3 py-1.5 text-[11px] font-bold hover:bg-gray-50 transition-colors"
+                                                    class="flex items-center gap-2 w-full px-3 py-1.5 text-[11px] font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                                                     :class="getColorEstado(est).text">
                                                     <span class="w-2 h-2 rounded-full shrink-0"
                                                         :class="getColorEstado(est).dot"></span>
@@ -281,7 +282,7 @@
                                 </td>
 
                                 <!-- Prioridad -->
-                                <td class="px-2 py-1 border-r border-gray-200 has-dropdown">
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 has-dropdown">
                                     <div x-data="{ open: false }" class="relative">
                                         <button @click="open = !open" type="button"
                                             class="flex items-center gap-2 h-7 w-full px-2 rounded text-[11px] font-bold transition-all border border-transparent hover:border-gray-200 shadow-sm"
@@ -290,20 +291,20 @@
                                             <span class="w-2 h-2 rounded-full shrink-0"
                                                 :class="getColorPrioridad(solicitud.prioridad).dot"></span>
                                             <span class="flex-1 text-left" x-text="solicitud.prioridad"></span>
-                                            <svg class="w-3 h-3 opacity-40 shrink-0" fill="none"
-                                                stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg class="w-3 h-3 opacity-40 shrink-0" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
                                                 <path d="M19 9l-7 7-7-7" stroke-width="2" stroke-linecap="round"
                                                     stroke-linejoin="round" />
                                             </svg>
                                         </button>
                                         <div x-show="open" @click.away="open = false"
-                                            class="absolute z-10 mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 overflow-hidden left-0"
+                                            class="absolute z-10 mt-1 w-32 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 overflow-hidden left-0"
                                             x-cloak style="display: none;">
                                             <template x-for="pri in prioridades">
                                                 <button
                                                     @click="solicitud.prioridad = pri; open = false; updateField(solicitud.id, 'prioridad', pri)"
                                                     type="button"
-                                                    class="flex items-center gap-2 w-full px-3 py-1.5 text-[11px] font-bold hover:bg-gray-50 transition-colors"
+                                                    class="flex items-center gap-2 w-full px-3 py-1.5 text-[11px] font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                                                     :class="getColorPrioridad(pri).text">
                                                     <span class="w-2 h-2 rounded-full shrink-0"
                                                         :class="getColorPrioridad(pri).dot"></span>
@@ -315,7 +316,7 @@
                                 </td>
 
                                 <!-- Asignado -->
-                                <td class="px-2 py-1 border-r border-gray-200">
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700">
                                     <div class="flex items-center gap-2 h-full">
                                         <div x-show="solicitud.asignado_a" x-cloak
                                             class="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-[9px] font-bold text-indigo-600 shrink-0 shadow-sm border border-indigo-200"
@@ -327,10 +328,10 @@
                                         </div>
                                         <select :value="solicitud.asignado_a || ''"
                                             @change="updateField(solicitud.id, 'asignado_a', $event.target.value); solicitud.asignado_a = $event.target.value"
-                                            class="w-full h-7 pl-0 pr-6 py-0 bg-transparent border-none focus:ring-0 rounded text-[11px] font-bold text-gray-600 cursor-pointer text-ellipsis overflow-hidden">
-                                            <option value="">Sin asignar</option>
+                                            class="w-full h-7 pl-0 pr-6 py-0 bg-transparent border-none focus:ring-0 rounded text-[11px] font-bold text-gray-600 dark:text-gray-300 cursor-pointer text-ellipsis overflow-hidden">
+                                            <option value="" class="dark:bg-gray-800">Sin asignar</option>
                                             <template x-for="user in users">
-                                                <option :value="user.id" x-text="user.name"
+                                                <option :value="user.id" x-text="user.name" class="dark:bg-gray-800"
                                                     :selected="solicitud.asignado_a == user.id"></option>
                                             </template>
                                         </select>
@@ -338,8 +339,7 @@
                                 </td>
 
                                 <!-- Fecha -->
-                                <td class="px-2 py-1 border-r border-gray-200 text-xs text-gray-500"
-                                    x-text="formatDate(solicitud.created_at)">
+                                <td class="px-2 py-1 text-xs text-gray-500" x-text="formatDate(solicitud.created_at)">
                                 </td>
                             </tr>
                         </template>
@@ -359,23 +359,23 @@
 
         <!-- Kanban Board View -->
         <div x-show="boardView === 'estado'" class="pb-24" x-cloak>
-            <div class="flex gap-4 overflow-x-auto items-start">
+            <div class="flex gap-4 overflow-x-auto pb-4 items-start kanban-scrollbar">
                 <template x-for="est in estados" :key="est">
                     <div
-                        class="w-80 shrink-0 rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col group/col">
+                        class="w-80 shrink-0 rounded-2xl border overflow-hidden border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm flex flex-col group/col">
                         <!-- Column Header -->
-                        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3"
+                        <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-3"
                             :class="getColorEstado(est).bg">
                             <div class="flex items-center gap-2 min-w-0">
-                                <span class="w-2.5 h-2.5 rounded-full shrink-0"
-                                    :class="getColorEstado(est).dot"></span>
+                                <span class="w-2.5 h-2.5 rounded-full shrink-0" :class="getColorEstado(est).dot"></span>
                                 <div class="min-w-0">
                                     <div class="text-sm font-bold truncate" :class="getColorEstado(est).text"
                                         x-text="est">
                                     </div>
                                 </div>
                             </div>
-                            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-white/70 border border-gray-200"
+                            <span
+                                class="text-xs font-bold px-2 py-0.5 rounded-full bg-white/70 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400"
                                 x-text="solicitudes.filter(s => s.estado === est).length"></span>
                         </div>
 
@@ -383,18 +383,18 @@
                             <template x-for="solicitud in solicitudes.filter(s => s.estado === est)"
                                 :key="solicitud.id">
                                 <div :data-solicitud-id="solicitud.id" :data-estado="solicitud.estado"
-                                    class="group rounded-xl border border-gray-200 bg-white hover:shadow-md transition-shadow">
+                                    class="group rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-md transition-shadow">
                                     <button type="button" @click="openViewModal(solicitud)"
                                         class="w-full text-left p-3">
                                         <div class="flex items-start gap-2">
                                             <div class="w-2 h-2 rounded-full mt-1.5 shrink-0"
                                                 :class="getColorEstado(est).dot"></div>
                                             <div class="min-w-0 flex-1">
-                                                <div class="text-sm font-semibold text-gray-900 line-clamp-2"
+                                                <div class="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2"
                                                     x-text="solicitud.titulo">
                                                 </div>
                                                 <div x-show="solicitud.comentario"
-                                                    class="text-xs text-gray-500 mt-1 line-clamp-2"
+                                                    class="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2"
                                                     x-text="solicitud.comentario">
                                                 </div>
                                             </div>
@@ -404,7 +404,7 @@
                             </template>
 
                             <button type="button" @click="openCreateModal(); form.estado = est"
-                                class="w-full rounded-xl border border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-600 transition-colors flex items-center justify-center gap-2">
+                                class="w-full rounded-xl border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 px-3 py-2 text-sm font-semibold text-gray-600 dark:text-gray-400 transition-colors flex items-center justify-center gap-2">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 4v16m8-8H4" />
@@ -422,7 +422,7 @@
         <div x-show="isModalOpen" x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
             x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0" class="fixed inset-0 z-30 overflow-hidden" style="display: none;"
+            x-transition:leave-end="opacity-0" class="fixed inset-0 z-[70] overflow-hidden" style="display: none;"
             aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
             <div class="absolute inset-0 overflow-hidden">
                 <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="closeModal()">
@@ -432,12 +432,12 @@
                         x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
                         x-transition:leave="transform transition ease-in duration-200"
                         x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
-                        class="pointer-events-auto w-screen max-w-2xl bg-white shadow-2xl flex flex-col h-full rounded-l-2xl">
+                        class="pointer-events-auto w-screen max-w-2xl bg-white dark:bg-gray-800 shadow-2xl flex flex-col h-full rounded-l-2xl">
 
-                        <!-- Header -->
                         <div
-                            class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white z-20">
-                            <div class="flex items-center gap-2 text-gray-400 hover:text-gray-600 cursor-pointer">
+                            class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 dark:bg-gray-800 flex items-center justify-between bg-white z-20">
+                            <div
+                                class="flex items-center gap-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-pointer">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
@@ -446,7 +446,7 @@
                             </div>
                             <div class="flex items-center gap-4">
                                 <button @click="closeModal()"
-                                    class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md p-1.5 transition-colors"
+                                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md p-1.5 transition-colors"
                                     title="Cerrar">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"
                                         stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
@@ -459,7 +459,7 @@
                         </div>
 
                         <!-- Content -->
-                        <div class="flex-1 overflow-y-auto bg-white custom-scrollbar">
+                        <div class="flex-1 overflow-y-auto bg-white dark:bg-gray-800 custom-scrollbar">
                             <form :action="isEditing ? '/funciones/' + form.id : '{{ route('funciones.store') }}'"
                                 method="POST" id="solicitudForm" class="h-full flex flex-col">
                                 @csrf
@@ -471,18 +471,20 @@
                                 <div class="px-10 pt-10 pb-4">
                                     <!-- Title -->
                                     <div class="relative">
-                                        <textarea x-ref="tituloTextarea" name="titulo" x-model="form.titulo" placeholder="Nombre de la función"
-                                            :disabled="isCreating" @input.debounce.1000ms="autoSaveField('titulo', form.titulo)"
+                                        <textarea x-ref="tituloTextarea" name="titulo" x-model="form.titulo"
+                                            placeholder="Nombre de la función" :disabled="isCreating"
+                                            @input.debounce.1000ms="autoSaveField('titulo', form.titulo)"
                                             @keydown.enter.prevent="$el.blur()"
-                                            class="w-full text-4xl font-bold border-none focus:ring-0 placeholder-gray-300 px-0 mb-6 text-gray-900 leading-tight resize-none overflow-hidden"
-                                            rows="1" @input="$el.style.height = ''; $el.style.height = $el.scrollHeight + 'px'"></textarea>
+                                            class="w-full text-4xl font-bold border-none bg-transparent focus:ring-0 placeholder-gray-300 dark:placeholder-gray-600 px-0 mb-6 text-gray-900 dark:text-white leading-tight resize-none overflow-hidden"
+                                            rows="1"
+                                            @input="$el.style.height = ''; $el.style.height = $el.scrollHeight + 'px'"></textarea>
 
                                         <!-- Creating indicator overlay -->
                                         <div x-show="isCreating"
-                                            class="absolute inset-0 bg-white/50 backdrop-blur-[1px] flex items-center justify-start gap-3 text-gray-400 font-medium">
+                                            class="absolute inset-0 bg-white/50 dark:bg-gray-800/50 backdrop-blur-[1px] flex items-center justify-start gap-3 text-gray-400 dark:text-gray-500 font-medium">
                                             <svg class="animate-spin h-6 w-6" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10"
-                                                    stroke="currentColor" stroke-width="4"></circle>
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                                    stroke-width="4"></circle>
                                                 <path class="opacity-75" fill="currentColor"
                                                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                                                 </path>
@@ -495,7 +497,8 @@
                                     <div class="space-y-1 mb-8">
                                         <!-- Estado -->
                                         <div class="flex items-center gap-4 py-1.5">
-                                            <div class="w-36 text-gray-500 flex items-center gap-2 text-sm">
+                                            <div
+                                                class="w-36 text-gray-500 dark:text-gray-400 flex items-center gap-2 text-sm">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -507,9 +510,9 @@
                                             <div class="flex-1">
                                                 <select name="estado" x-model="form.estado"
                                                     @change="autoSaveField('estado', form.estado)"
-                                                    class="border-none text-gray-700 text-sm rounded px-2 py-1 pr-8 cursor-pointer focus:ring-0 w-auto transition-colors">
+                                                    class="border-none bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded px-2 py-1 pr-8 cursor-pointer focus:ring-0 w-auto transition-colors">
                                                     @foreach ($estados as $estado)
-                                                        <option value="{{ $estado }}">{{ $estado }}
+                                                        <option value="{{ $estado }}" class="dark:bg-gray-800">{{ $estado }}
                                                         </option>
                                                     @endforeach
                                                 </select>
@@ -518,7 +521,8 @@
 
                                         <!-- Prioridad -->
                                         <div class="flex items-center gap-4 py-1.5">
-                                            <div class="w-36 text-gray-500 flex items-center gap-2 text-sm">
+                                            <div
+                                                class="w-36 text-gray-500 dark:text-gray-400 flex items-center gap-2 text-sm">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -529,9 +533,10 @@
                                             <div class="flex-1">
                                                 <select name="prioridad" x-model="form.prioridad"
                                                     @change="autoSaveField('prioridad', form.prioridad)"
-                                                    class="border-none bg-transparent hover:bg-gray-100 text-gray-700 text-sm rounded px-2 py-1 pr-8 cursor-pointer focus:ring-0 w-auto transition-colors">
+                                                    class="border-none bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded px-2 py-1 pr-8 cursor-pointer focus:ring-0 w-auto transition-colors">
                                                     @foreach ($prioridades as $prioridad)
-                                                        <option value="{{ $prioridad }}">{{ $prioridad }}
+                                                        <option value="{{ $prioridad }}" class="dark:bg-gray-800">
+                                                            {{ $prioridad }}
                                                         </option>
                                                     @endforeach
                                                 </select>
@@ -540,7 +545,8 @@
 
                                         <!-- Asignado -->
                                         <div class="flex items-center gap-4 py-1.5">
-                                            <div class="w-36 text-gray-500 flex items-center gap-2 text-sm">
+                                            <div
+                                                class="w-36 text-gray-500 dark:text-gray-400 flex items-center gap-2 text-sm">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -552,10 +558,11 @@
                                             <div class="flex-1">
                                                 <select name="asignado_a" x-model="form.asignado_a"
                                                     @change="autoSaveField('asignado_a', form.asignado_a)"
-                                                    class="border-none bg-transparent hover:bg-gray-100 text-gray-700 text-sm rounded px-2 py-1 pr-8 cursor-pointer focus:ring-0 w-auto transition-colors">
-                                                    <option value="">Sin asignar</option>
+                                                    class="border-none bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded px-2 py-1 pr-8 cursor-pointer focus:ring-0 w-auto transition-colors">
+                                                    <option value="" class="dark:bg-gray-800">Sin asignar</option>
                                                     @foreach ($users as $user)
-                                                        <option value="{{ $user->id }}">{{ $user->name }}
+                                                        <option value="{{ $user->id }}" class="dark:bg-gray-800">
+                                                            {{ $user->name }}
                                                         </option>
                                                     @endforeach
                                                 </select>
@@ -564,7 +571,8 @@
 
                                         <!-- Comentario (in Modal) -->
                                         <div class="flex items-center gap-4 py-1.5">
-                                            <div class="w-36 text-gray-500 flex items-center gap-2 text-sm">
+                                            <div
+                                                class="w-36 text-gray-500 dark:text-gray-400 flex items-center gap-2 text-sm">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -576,23 +584,24 @@
                                             <div class="flex-1">
                                                 <input type="text" name="comentario" x-model="form.comentario"
                                                     @input="scheduleAutoSave('comentario')"
-                                                    class="w-full border-none bg-transparent hover:bg-gray-50 focus:bg-white text-gray-700 text-sm rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
+                                                    class="w-full border-none bg-transparent hover:bg-gray-50 dark:hover:bg-gray-700 focus:bg-white dark:focus:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-600"
                                                     placeholder="Añadir un comentario...">
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div class="h-px bg-gray-200 w-full mb-8"></div>
+                                    <div class="h-px bg-gray-200 dark:bg-gray-700 w-full mb-8"></div>
                                 </div>
 
                                 <!-- Markdown Editor/Viewer -->
                                 <div class="px-10 pb-10 flex-1 flex flex-col">
-                                    <div class="flex items-center gap-4 mb-4 border-b border-gray-100 pb-2">
+                                    <div
+                                        class="flex items-center gap-4 mb-4 border-b border-gray-100 dark:border-gray-700 pb-2">
                                         <button type="button" @click="viewMode = 'edit'"
-                                            :class="{ 'text-gray-900 font-semibold': viewMode === 'edit', 'text-gray-500 hover:text-gray-700': viewMode !== 'edit' }"
+                                            :class="{ 'text-gray-900 dark:text-white font-semibold': viewMode === 'edit', 'text-gray-500 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300': viewMode !== 'edit' }"
                                             class="pb-2 text-sm transition-colors">Editar</button>
                                         <button type="button" @click="renderMarkdown()"
-                                            :class="{ 'text-gray-900 font-semibold': viewMode === 'preview', 'text-gray-500 hover:text-gray-700': viewMode !== 'preview' }"
+                                            :class="{ 'text-gray-900 dark:text-white font-semibold': viewMode === 'preview', 'text-gray-500 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300': viewMode !== 'preview' }"
                                             class="pb-2 text-sm transition-colors">Vista Previa</button>
 
                                         <!-- Autosave indicator (icons only) -->
@@ -607,8 +616,8 @@
                                                 class="flex items-center justify-center w-6 h-6">
                                                 <!-- Saving spinner -->
                                                 <svg x-show="autoSaveStatus === 'saving'"
-                                                    class="w-4 h-4 text-gray-400 animate-spin" fill="none"
-                                                    viewBox="0 0 24 24">
+                                                    class="w-4 h-4 text-gray-400 dark:text-gray-500 animate-spin"
+                                                    fill="none" viewBox="0 0 24 24">
                                                     <circle class="opacity-25" cx="12" cy="12" r="10"
                                                         stroke="currentColor" stroke-width="3"></circle>
                                                     <path class="opacity-75" fill="currentColor"
@@ -620,7 +629,7 @@
                                                     x-transition:enter="transition ease-out duration-300"
                                                     x-transition:enter-start="scale-0"
                                                     x-transition:enter-end="scale-100"
-                                                    class="w-4 h-4 text-emerald-500" fill="none"
+                                                    class="w-4 h-4 text-emerald-500 dark:text-emerald-400" fill="none"
                                                     stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         d="M5 13l4 4L19 7" />
@@ -629,9 +638,9 @@
                                                 <svg x-show="autoSaveStatus === 'error'"
                                                     x-transition:enter="transition ease-out duration-200"
                                                     x-transition:enter-start="scale-0"
-                                                    x-transition:enter-end="scale-100" class="w-4 h-4 text-red-500"
-                                                    fill="none" stroke="currentColor" stroke-width="2.5"
-                                                    viewBox="0 0 24 24">
+                                                    x-transition:enter-end="scale-100"
+                                                    class="w-4 h-4 text-red-500 dark:text-red-400" fill="none"
+                                                    stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         d="M6 18L18 6M6 6l12 12" />
                                                 </svg>
@@ -641,14 +650,15 @@
 
                                     <!-- Edit Mode -->
                                     <div x-show="viewMode === 'edit'" class="flex-1 flex flex-col min-h-0">
-                                        <textarea name="descripcion" x-model="form.descripcion" @input="scheduleAutoSave()"
-                                            class="w-full flex-1 min-h-[200px] border-0 focus:ring-0 text-gray-800 text-base resize-none p-0 leading-relaxed"
+                                        <textarea name="descripcion" x-model="form.descripcion"
+                                            @input="scheduleAutoSave()"
+                                            class="w-full flex-1 min-h-[200px] border-0 focus:ring-0 text-gray-800 dark:text-gray-200 bg-transparent text-base resize-none p-0 leading-relaxed"
                                             placeholder="Escribe aquí los detalles de la función..."></textarea>
                                     </div>
 
                                     <!-- Preview Mode -->
                                     <div x-show="viewMode === 'preview'" x-ref="mdPreview"
-                                        class="flex-1 min-h-0 overflow-y-auto markdown-preview text-gray-800"
+                                        class="flex-1 min-h-0 overflow-y-auto markdown-preview text-gray-800 dark:text-gray-200"
                                         x-html="renderedHtml">
                                     </div>
 
@@ -663,6 +673,51 @@
     </div>
 
     <style>
+        /* Estilos para la barra de desplazamiento de Kanban */
+        .kanban-scrollbar::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+
+        .kanban-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+        }
+
+        html.dark .kanban-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .kanban-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.5);
+            border-radius: 10px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+        }
+
+        html.dark .kanban-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(75, 85, 99, 0.5);
+        }
+
+        .kanban-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(107, 114, 128, 0.8);
+            background-clip: content-box;
+        }
+
+        html.dark .kanban-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(156, 163, 175, 0.8);
+        }
+
+        /* Firefox */
+        .kanban-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(156, 163, 175, 0.5) rgba(0, 0, 0, 0.05);
+        }
+
+        html.dark .kanban-scrollbar {
+            scrollbar-color: rgba(75, 85, 99, 0.5) rgba(255, 255, 255, 0.05);
+        }
+
         .resizable-column-wrapper {
             display: flex;
             align-items: center;
@@ -807,6 +862,12 @@
             border: 1px solid rgb(229 231 235);
         }
 
+        html.dark .markdown-preview :not(pre)>code {
+            background: rgb(31 41 55);
+            border-color: rgb(55 65 81);
+            color: rgb(209 213 219);
+        }
+
         .markdown-preview pre {
             position: relative;
             background: rgb(15 23 42);
@@ -906,6 +967,11 @@
             margin: 0.9rem 0;
         }
 
+        html.dark .markdown-preview blockquote {
+            border-left-color: rgb(55 65 81);
+            color: rgb(156 163 175);
+        }
+
         .markdown-preview table {
             width: 100%;
             max-width: 100%;
@@ -920,6 +986,10 @@
             background: rgb(249 250 251);
         }
 
+        html.dark .markdown-preview thead {
+            background: rgb(31 41 55);
+        }
+
         .markdown-preview th,
         .markdown-preview td {
             padding: 0.5rem 0.75rem;
@@ -927,6 +997,11 @@
             border-right: 1px solid rgb(229 231 235);
             vertical-align: top;
             white-space: nowrap;
+        }
+
+        html.dark .markdown-preview th,
+        html.dark .markdown-preview td {
+            border-color: rgb(55 65 81);
         }
 
         .markdown-preview th:last-child,
@@ -942,10 +1017,18 @@
             background: rgb(249 250 251);
         }
 
+        html.dark .markdown-preview tbody tr:nth-child(even) td {
+            background: rgb(31 41 55);
+        }
+
         .markdown-preview hr {
             border: 0;
             border-top: 1px solid rgb(229 231 235);
             margin: 1.25rem 0;
+        }
+
+        html.dark .markdown-preview hr {
+            border-top-color: rgb(55 65 81);
         }
     </style>
 
@@ -968,20 +1051,20 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         // Define functions globally so they are available immediately for Alpine
-        window.updateField = function(id, field, value) {
+        window.updateField = function (id, field, value) {
             fetch(`/funciones/${id}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({
-                        _method: 'PUT',
-                        [field]: value
-                    })
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    _method: 'PUT',
+                    [field]: value
                 })
+            })
                 .then(async (response) => {
                     const contentType = response.headers.get('content-type') || '';
                     if (!response.ok) {
@@ -1008,7 +1091,7 @@
                 .catch(error => console.error('Error:', error));
         }
 
-        window.solicitudesApp = function(initialSolicitudes, allUsers, allEstados, allPrioridades) {
+        window.solicitudesApp = function (initialSolicitudes, allUsers, allEstados, allPrioridades) {
             return {
                 solicitudes: initialSolicitudes,
                 users: allUsers,
@@ -1039,38 +1122,38 @@
                     const v = (val || '').toLowerCase();
                     if (v === 'nueva') return {
                         dot: 'bg-gray-400',
-                        bg: 'bg-gray-100',
-                        text: 'text-gray-700'
+                        bg: 'bg-gray-100 dark:bg-gray-800/60',
+                        text: 'text-gray-700 dark:text-gray-300'
                     };
                     if (v === 'lanzada') return {
                         dot: 'bg-blue-500',
-                        bg: 'bg-blue-100',
-                        text: 'text-blue-700'
+                        bg: 'bg-blue-100 dark:bg-blue-900/40',
+                        text: 'text-blue-700 dark:text-blue-300'
                     };
                     if (v === 'en progreso') return {
                         dot: 'bg-purple-500',
-                        bg: 'bg-purple-100',
-                        text: 'text-purple-700'
+                        bg: 'bg-purple-100 dark:bg-purple-900/40',
+                        text: 'text-purple-700 dark:text-purple-300'
                     };
                     if (v === 'en revisión' || v === 'en revision') return {
                         dot: 'bg-amber-500',
-                        bg: 'bg-amber-100',
-                        text: 'text-amber-700'
+                        bg: 'bg-amber-100 dark:bg-amber-900/40',
+                        text: 'text-amber-700 dark:text-amber-300'
                     };
                     if (v === 'merged') return {
                         dot: 'bg-emerald-500',
-                        bg: 'bg-emerald-100',
-                        text: 'text-emerald-700'
+                        bg: 'bg-emerald-100 dark:bg-emerald-900/40',
+                        text: 'text-emerald-700 dark:text-emerald-300'
                     };
                     if (v === 'completada') return {
                         dot: 'bg-green-600',
-                        bg: 'bg-green-100',
-                        text: 'text-green-700'
+                        bg: 'bg-green-100 dark:bg-green-900/40',
+                        text: 'text-green-700 dark:text-green-300'
                     };
                     return {
                         dot: 'bg-gray-300',
-                        bg: 'bg-gray-50',
-                        text: 'text-gray-600'
+                        bg: 'bg-gray-50 dark:bg-gray-800/40',
+                        text: 'text-gray-600 dark:text-gray-400'
                     };
                 },
 
@@ -1079,23 +1162,23 @@
                     const v = (val || '').toLowerCase();
                     if (v === 'alta') return {
                         dot: 'bg-red-500',
-                        bg: 'bg-red-100',
-                        text: 'text-red-700'
+                        bg: 'bg-red-100 dark:bg-red-900/40',
+                        text: 'text-red-700 dark:text-red-300'
                     };
                     if (v === 'media') return {
                         dot: 'bg-yellow-500',
-                        bg: 'bg-yellow-100',
-                        text: 'text-yellow-700'
+                        bg: 'bg-yellow-100 dark:bg-yellow-900/40',
+                        text: 'text-yellow-700 dark:text-yellow-300'
                     };
                     if (v === 'baja') return {
                         dot: 'bg-sky-400',
-                        bg: 'bg-sky-100',
-                        text: 'text-sky-700'
+                        bg: 'bg-sky-100 dark:bg-sky-900/40',
+                        text: 'text-sky-700 dark:text-sky-300'
                     };
                     return {
                         dot: 'bg-gray-300',
-                        bg: 'bg-gray-50',
-                        text: 'text-gray-600'
+                        bg: 'bg-gray-50 dark:bg-gray-800/40',
+                        text: 'text-gray-600 dark:text-gray-400'
                     };
                 },
 
@@ -1168,7 +1251,16 @@
 
                     window.addEventListener('solicitud:updated', (e) => {
                         const detail = e?.detail || {};
-                        if (!detail || detail.field !== 'estado') return;
+                        if (!detail.id || !detail.field) return;
+
+                        // 1. Sincronizar el array local de solicitudes para que el modal y otras vistas tengan datos frescos
+                        const index = this.solicitudes.findIndex(s => s.id == detail.id);
+                        if (index !== -1) {
+                            this.solicitudes[index][detail.field] = detail.value;
+                        }
+
+                        // 2. Lógica específica para mover tarjetas en el tablero Kanban (solo si el campo es estado)
+                        if (detail.field !== 'estado') return;
 
                         const id = String(detail.id ?? '');
                         const estado = String(detail.value ?? '');
@@ -1452,7 +1544,7 @@
             console.log('Livewire Navigated - Solicitudes Ready');
         });
 
-        window.hprEnhanceMarkdown = function(container) {
+        window.hprEnhanceMarkdown = function (container) {
             if (!container) return;
 
             const links = container.querySelectorAll('a[href]');
@@ -1563,18 +1655,18 @@
             }
         };
 
-        window.preventDefault = function(e) {
+        window.preventDefault = function (e) {
             e.preventDefault();
         };
 
         // Based on the logic from: https://dev.to/gohomewho/table-make-columns-resizable-2l3h
-        window.makeColumnsResizable = function(columnsContainer, options = {}) {
+        window.makeColumnsResizable = function (columnsContainer, options = {}) {
             const {
                 elementsToPatch = [],
-                    columnsMinWidth = {},
-                    DEFAULT_MIN_COLUMN_WIDTH = 100,
-                    onResizeEnd = null,
-                    patchWidthByIndex = null,
+                columnsMinWidth = {},
+                DEFAULT_MIN_COLUMN_WIDTH = 100,
+                onResizeEnd = null,
+                patchWidthByIndex = null,
             } = options;
 
             columnsContainer.classList.add('resizable-columns-container');
@@ -1647,12 +1739,12 @@
                                 });
                             }
                         }, {
-                            once: true
-                        }
+                        once: true
+                    }
                     );
                 }, {
-                    capture: true
-                }
+                capture: true
+            }
             );
         };
     </script>

@@ -1,14 +1,14 @@
 <x-app-layout>
     <div class="py-4 lg:py-12 ">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="bg-white dark:bg-gradient-to-br from-gray-800 via-gray-800 to-gray-700 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
                     <div
                         class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 px-6 justify-items-center">
 
                         @foreach ($items as $index => $item)
                             <a href="{{ $item['route'] ? route($item['route']) : '#' }}" wire:navigate
-                                class="dashboard-icon w-32 h-32 bg-white dark:bg-gray-700 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl hover:scale-105 hover:-translate-y-1 transition-all duration-300 ease-out relative group"
+                                class="dashboard-icon w-32 h-32 bg-white dark:bg-gray-900 rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl hover:scale-105 hover:-translate-y-1 transition-all duration-300 ease-out relative group"
                                 style="animation-delay: {{ 0.05 * $index }}s">
 
                                 <div class="relative">
