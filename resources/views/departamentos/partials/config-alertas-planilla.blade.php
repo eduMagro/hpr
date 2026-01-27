@@ -2,9 +2,9 @@
      CONFIGURACIÓN DE ALERTAS DE APROBACIÓN DE PLANILLAS
 ═══════════════════════════════════════════════════════════════════════════════ -->
 @php
-    $usuariosParaAlertas = $todosUsuarios->filter(function($u) {
+    $usuariosParaAlertas = $todosUsuarios->filter(function ($u) {
         return $u->rol === 'oficina';
-    })->map(function($u) {
+    })->map(function ($u) {
         return [
             'id' => $u->id,
             'name' => $u->name,
@@ -16,9 +16,8 @@
         ];
     })->values()->toArray();
 @endphp
-<div class="mt-12 bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200"
-     x-data="alertasPlanillaConfig()"
-     x-init="cargarConfiguracion()">
+<div class="mt-12 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700"
+    x-data="alertasPlanillaConfig()" x-init="cargarConfiguracion()">
     <div class="bg-gradient-to-r from-blue-500 to-indigo-500 px-6 py-4">
         <h3 class="text-xl font-bold text-white flex items-center gap-2">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -37,7 +36,7 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
             </svg>
-            <span class="ml-2 text-gray-600">Cargando configuracion...</span>
+            <span class="ml-2 text-gray-600 dark:text-gray-400">Cargando configuracion...</span>
         </div>
 
         <!-- Contenido principal -->
@@ -45,7 +44,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Lista de usuarios disponibles -->
                 <div>
-                    <h4 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <h4 class="font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                         <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -55,32 +54,35 @@
 
                     <!-- Buscador -->
                     <div class="mb-3">
-                        <input type="text"
-                               x-model="busqueda"
-                               placeholder="Buscar usuario..."
-                               class="w-full text-sm border-gray-300 rounded-lg focus:border-blue-500 focus:ring-blue-500">
+                        <input type="text" x-model="busqueda" placeholder="Buscar usuario..."
+                            class="w-full text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-lg focus:border-blue-500 focus:ring-blue-500">
                     </div>
 
                     <!-- Lista de usuarios -->
-                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 max-h-80 overflow-y-auto space-y-2">
+                    <div
+                        class="bg-gray-50 dark:bg-black/20 p-4 pr-2 rounded-lg border border-gray-200 dark:border-gray-700 max-h-80 overflow-y-auto space-y-2 custom-scrollbar">
                         <template x-for="usuario in usuariosFiltrados" :key="usuario.id">
-                            <label class="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer">
-                                <input type="checkbox"
-                                       :value="usuario.id"
-                                       :checked="usuariosSeleccionados.includes(usuario.id)"
-                                       @change="toggleUsuario(usuario.id)"
-                                       class="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold text-sm overflow-hidden">
+                            <label
+                                class="flex items-center gap-3 p-2 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all cursor-pointer">
+                                <input type="checkbox" :value="usuario.id"
+                                    :checked="usuariosSeleccionados.includes(usuario.id)"
+                                    @change="toggleUsuario(usuario.id)"
+                                    class="w-5 h-5 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-blue-600 focus:ring-blue-500">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold text-sm overflow-hidden">
                                     <template x-if="usuario.imagen">
-                                        <img :src="'/perfil/imagen/' + usuario.imagen" class="w-full h-full object-cover" :alt="usuario.name">
+                                        <img :src="'/perfil/imagen/' + usuario.imagen"
+                                            class="w-full h-full object-cover" :alt="usuario.name">
                                     </template>
                                     <template x-if="!usuario.imagen">
                                         <span x-text="usuario.name.charAt(0).toUpperCase()"></span>
                                     </template>
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <p class="font-medium text-gray-900 truncate" x-text="usuario.nombre_completo"></p>
-                                    <p class="text-xs text-gray-500 uppercase" x-text="usuario.rol"></p>
+                                    <p class="font-medium text-gray-900 dark:text-white truncate"
+                                        x-text="usuario.nombre_completo"></p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase" x-text="usuario.rol">
+                                    </p>
                                 </div>
                             </label>
                         </template>
@@ -94,7 +96,7 @@
 
                 <!-- Usuarios seleccionados -->
                 <div>
-                    <h4 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <h4 class="font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                         <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -105,10 +107,12 @@
                         </span>
                     </h4>
 
-                    <div class="bg-green-50 p-3 rounded-lg border border-green-200 min-h-[200px]">
+                    <div
+                        class="bg-green-50 dark:bg-green-500/5 p-3 rounded-lg border border-green-200 dark:border-green-800/50 min-h-[200px]">
                         <template x-if="usuariosSeleccionados.length === 0">
                             <div class="flex flex-col items-center justify-center h-40 text-gray-500">
-                                <svg class="w-12 h-12 mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-12 h-12 mb-2 text-gray-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                                 </svg>
@@ -119,13 +123,15 @@
 
                         <div class="flex flex-wrap gap-2">
                             <template x-for="userId in usuariosSeleccionados" :key="userId">
-                                <span class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-green-300 rounded-full text-sm">
-                                    <span x-text="getNombreUsuario(userId)" class="font-medium text-gray-700"></span>
-                                    <button type="button"
-                                            @click="toggleUsuario(userId)"
-                                            class="text-gray-400 hover:text-red-500 transition-colors">
+                                <span
+                                    class="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 border border-green-300 dark:border-green-800 rounded-full text-sm">
+                                    <span x-text="getNombreUsuario(userId)"
+                                        class="font-medium text-gray-700 dark:text-gray-200"></span>
+                                    <button type="button" @click="toggleUsuario(userId)"
+                                        class="text-gray-400 hover:text-red-500 transition-colors">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                     </button>
                                 </span>
@@ -133,7 +139,8 @@
                         </div>
                     </div>
 
-                    <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                    <div
+                        class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700 dark:text-blue-300">
                         <strong>Nota:</strong> El usuario que aprueba la planilla NO recibira su propia alerta.
                     </div>
                 </div>
@@ -141,17 +148,17 @@
 
             <!-- Boton guardar -->
             <div class="mt-6 flex justify-end">
-                <button type="button"
-                        @click="guardarConfiguracion()"
-                        :disabled="guardando"
-                        class="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold py-2.5 px-6 rounded-lg shadow-lg flex items-center gap-2 transition-all">
+                <button type="button" @click="guardarConfiguracion()" :disabled="guardando"
+                    class="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold py-2.5 px-6 rounded-lg shadow-lg flex items-center gap-2 transition-all">
                     <svg x-show="!guardando" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                     </svg>
                     <svg x-show="guardando" class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                        </circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z">
+                        </path>
                     </svg>
                     <span x-text="guardando ? 'Guardando...' : 'Guardar Configuracion'"></span>
                 </button>
@@ -161,88 +168,88 @@
 </div>
 
 <script>
-function alertasPlanillaConfig() {
-    return {
-        cargando: true,
-        guardando: false,
-        busqueda: '',
-        todosUsuarios: @json($usuariosParaAlertas),
-        usuariosSeleccionados: [],
+    function alertasPlanillaConfig() {
+        return {
+            cargando: true,
+            guardando: false,
+            busqueda: '',
+            todosUsuarios: @json($usuariosParaAlertas),
+            usuariosSeleccionados: [],
 
-        get usuariosFiltrados() {
-            if (!this.busqueda) return this.todosUsuarios;
-            const termino = this.busqueda.toLowerCase();
-            return this.todosUsuarios.filter(u =>
-                u.nombre_completo.toLowerCase().includes(termino) ||
-                u.rol?.toLowerCase().includes(termino)
-            );
-        },
+            get usuariosFiltrados() {
+                if (!this.busqueda) return this.todosUsuarios;
+                const termino = this.busqueda.toLowerCase();
+                return this.todosUsuarios.filter(u =>
+                    u.nombre_completo.toLowerCase().includes(termino) ||
+                    u.rol?.toLowerCase().includes(termino)
+                );
+            },
 
-        async cargarConfiguracion() {
-            try {
-                const response = await fetch('{{ route("configuracion.alertas-planilla.get") }}');
-                const data = await response.json();
-                if (data.success) {
-                    this.usuariosSeleccionados = data.destinatarios_ids || [];
+            async cargarConfiguracion() {
+                try {
+                    const response = await fetch('{{ route("configuracion.alertas-planilla.get") }}');
+                    const data = await response.json();
+                    if (data.success) {
+                        this.usuariosSeleccionados = data.destinatarios_ids || [];
+                    }
+                } catch (error) {
+                    console.error('Error cargando configuracion:', error);
+                } finally {
+                    this.cargando = false;
                 }
-            } catch (error) {
-                console.error('Error cargando configuracion:', error);
-            } finally {
-                this.cargando = false;
-            }
-        },
+            },
 
-        toggleUsuario(userId) {
-            const index = this.usuariosSeleccionados.indexOf(userId);
-            if (index > -1) {
-                this.usuariosSeleccionados.splice(index, 1);
-            } else {
-                this.usuariosSeleccionados.push(userId);
-            }
-        },
-
-        getNombreUsuario(userId) {
-            const usuario = this.todosUsuarios.find(u => u.id === userId);
-            return usuario ? usuario.nombre_completo : 'Usuario #' + userId;
-        },
-
-        async guardarConfiguracion() {
-            this.guardando = true;
-            try {
-                const response = await fetch('{{ route("configuracion.alertas-planilla.update") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({
-                        usuarios: this.usuariosSeleccionados
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Configuracion guardada',
-                        text: data.message,
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
+            toggleUsuario(userId) {
+                const index = this.usuariosSeleccionados.indexOf(userId);
+                if (index > -1) {
+                    this.usuariosSeleccionados.splice(index, 1);
                 } else {
-                    throw new Error(data.message || 'Error al guardar');
+                    this.usuariosSeleccionados.push(userId);
                 }
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: error.message || 'No se pudo guardar la configuracion.'
-                });
-            } finally {
-                this.guardando = false;
+            },
+
+            getNombreUsuario(userId) {
+                const usuario = this.todosUsuarios.find(u => u.id === userId);
+                return usuario ? usuario.nombre_completo : 'Usuario #' + userId;
+            },
+
+            async guardarConfiguracion() {
+                this.guardando = true;
+                try {
+                    const response = await fetch('{{ route("configuracion.alertas-planilla.update") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            usuarios: this.usuariosSeleccionados
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Configuracion guardada',
+                            text: data.message,
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        throw new Error(data.message || 'Error al guardar');
+                    }
+                } catch (error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message || 'No se pudo guardar la configuracion.'
+                    });
+                } finally {
+                    this.guardando = false;
+                }
             }
         }
     }
-}
 </script>

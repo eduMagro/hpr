@@ -6,7 +6,7 @@
         </h2>
     </x-slot>
 
-    <div class="px-2 sm:px-6 py-4 relative" x-data="{
+    <div class="py-4 relative" x-data="{
         openModal: false,
         openModalSecciones: false,
         openModalRutas: false,
@@ -115,7 +115,7 @@
         @endif
 
         <!-- Tabla Responsive -->
-        <div class="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
+        <div class="bg-white dark:bg-gray-900 shadow-lg rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800">
             <!-- Vista Desktop -->
             <div class="hidden md:block overflow-x-auto">
                 <table class="w-full table-auto border-collapse">
@@ -138,10 +138,10 @@
                             </th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
+                    <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
                         @forelse ($departamentos as $departamento)
-                    <tbody x-data="{ isExpanded: false }" class="divide-y divide-gray-200">
-                        <tr class="hover:bg-blue-50 transition-colors duration-150">
+                    <tbody x-data="{ isExpanded: false }" class="divide-y divide-gray-200 dark:divide-gray-800">
+                        <tr class="hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors duration-150">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <button @click="isExpanded = !isExpanded"
                                     class="flex items-center gap-2 text-left font-semibold text-blue-600 hover:text-blue-800 transition-colors">
@@ -270,10 +270,10 @@
             <!-- Vista Mobile -->
             <div class="md:hidden space-y-3 p-3">
                 @forelse ($departamentos as $departamento)
-                    <div class="border-2 border-gray-200 rounded-xl shadow-md bg-white hover:shadow-lg transition-shadow duration-200"
+                    <div class="border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-md bg-white dark:bg-gray-900 hover:shadow-lg transition-shadow duration-200"
                         x-data="{ isExpanded: false }">
                         <!-- Cabecera del card -->
-                        <div class="p-4 bg-blue-50 rounded-t-xl">
+                        <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-t-xl">
                             <button @click="isExpanded = !isExpanded" class="w-full text-left">
                                 <div class="flex items-start justify-between gap-2">
                                     <div class="flex-1">
@@ -295,8 +295,8 @@
                                     </div>
                                 </div>
                                 <div class="flex gap-3 mt-3">
-                                    <span
-                                        class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {{ $departamento->usuarios->count() > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' }}">
+                                     <span
+                                        class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {{ $departamento->usuarios->count() > 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' }}">
                                         <svg class="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                             <path
                                                 d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
@@ -304,7 +304,7 @@
                                         {{ $departamento->usuarios->count() }} usuarios
                                     </span>
                                     <span
-                                        class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {{ $departamento->secciones->count() > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600' }}">
+                                        class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {{ $departamento->secciones->count() > 0 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' }}">
                                         <svg class="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                             <path
                                                 d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
@@ -431,43 +431,43 @@
                             @dblclick="$dispatch('cerrar-edicion-dep'); $nextTick(() => editando = true)"
                             @keydown.enter.stop.prevent="guardarDepartamento(departamento); editando = false; original = JSON.parse(JSON.stringify(departamento))"
                             @keydown.escape="departamento = JSON.parse(JSON.stringify(original)); editando = false"
-                            :class="{ 'bg-yellow-100': editando }"
-                            class="border-t cursor-pointer hover:bg-blue-50 focus:outline-none" tabindex="0">
+                            :class="{ 'bg-yellow-100 dark:bg-yellow-900/30': editando }"
+                            class="border-t dark:border-gray-700 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 focus:outline-none dark:text-gray-200" tabindex="0">
 
 
                             <!-- Nombre -->
-                            <td class="px-4 py-2 border">
+                            <td class="px-4 py-2 border dark:border-gray-700">
                                 <template x-if="!editando">
                                     <span x-text="departamento.nombre"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="departamento.nombre"
-                                    class="form-control form-control-sm">
+                                    class="form-control form-control-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
                             </td>
 
                             <!-- Descripción -->
-                            <td class="px-4 py-2 border">
+                            <td class="px-4 py-2 border dark:border-gray-700">
                                 <template x-if="!editando">
                                     <span x-text="departamento.descripcion ?? '—'"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="departamento.descripcion"
-                                    class="form-control form-control-sm">
+                                    class="form-control form-control-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
                             </td>
 
                             <!-- Usuarios asignados -->
-                            <td class="px-4 py-2 border text-center">
+                            <td class="px-4 py-2 border dark:border-gray-700 text-center">
                                 {{ $dep->usuarios->count() }} usuario{{ $dep->usuarios->count() === 1 ? '' : 's' }}
                             </td>
 
                             <!-- Secciones visibles -->
-                            <td class="px-4 py-2 border text-center">
+                            <td class="px-4 py-2 border dark:border-gray-700 text-center">
                                 {{ $dep->secciones->count() }} sección{{ $dep->secciones->count() === 1 ? '' : 'es' }}
                             </td>
 
                             <!-- Acciones -->
-                            <td class="px-4 py-2 border text-center">
+                            <td class="px-4 py-2 border dark:border-gray-700 text-center">
                                 <button type="button"
                                     @click.stop="eliminarDepartamento({{ $dep->id }}, '{{ $dep->nombre }}')"
-                                    class="text-red-600 hover:text-red-800 hover:bg-red-100 p-1 rounded"
+                                    class="text-red-600 hover:text-red-800 hover:bg-red-100 dark:hover:bg-red-900/30 p-1 rounded"
                                     title="Eliminar departamento">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -599,15 +599,15 @@
         <!-- Tabla resumen de todas las secciones -->
         <!-- Botones para secciones -->
         <div class="mt-12 flex flex-col sm:flex-row justify-start items-start sm:items-center mb-4 gap-2 sm:gap-4">
-            <h3 class="text-lg font-semibold text-gray-700">Resumen Secciones</h3>
+            <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">Resumen Secciones</h3>
             <button @click="openNuevaSeccionModal = true"
                 class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow">
                 + Nueva Sección
             </button>
         </div>
 
-        <div class="w-full mt-4 overflow-x-auto bg-white shadow-lg rounded-lg">
-            <table id="tabla-secciones" class="w-full min-w-[600px] border border-gray-300 rounded-lg">
+        <div class="w-full mt-4 overflow-x-auto bg-white dark:bg-gray-900 shadow-lg rounded-lg">
+            <table id="tabla-secciones" class="w-full min-w-[600px] border border-gray-300 dark:border-gray-700 rounded-lg">
                 <thead class="bg-blue-500 text-white">
                     <tr class="text-center text-xs uppercase">
                         <th class="px-4 py-2 text-left">Nombre</th>
@@ -640,55 +640,55 @@
                             class="border-t cursor-pointer hover:bg-blue-50 focus:outline-none" tabindex="0">
 
                             <!-- Nombre -->
-                            <td class="px-4 py-2 border">
+                            <td class="px-4 py-2 border dark:border-gray-700">
                                 <template x-if="!editando">
                                     <span x-text="seccion.nombre"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="seccion.nombre"
-                                    class="form-control form-control-sm">
+                                    class="form-control form-control-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
                             </td>
 
                             <!-- Ruta -->
-                            <td class="px-4 py-2 border">
+                            <td class="px-4 py-2 border dark:border-gray-700">
                                 <template x-if="!editando">
                                     <span x-text="seccion.ruta"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="seccion.ruta"
-                                    class="form-control form-control-sm">
+                                    class="form-control form-control-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
                             </td>
 
                             <!-- Icono -->
-                            <td class="px-4 py-2 border text-center">
+                            <td class="px-4 py-2 border dark:border-gray-700 text-center">
                                 <template x-if="!editando">
                                     <template x-if="seccion.icono">
                                         <img :src="'{{ asset('') }}' + seccion.icono" alt="Icono"
                                             class="h-6 mx-auto">
                                     </template>
                                     <template x-if="!seccion.icono">
-                                        <span class="text-gray-400 italic">Sin icono</span>
+                                        <span class="text-gray-400 dark:text-gray-500 italic">Sin icono</span>
                                     </template>
                                 </template>
                                 <input x-show="editando" type="text" x-model="seccion.icono"
-                                    class="form-control form-control-sm">
+                                    class="form-control form-control-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
                             </td>
 
                             <!-- Departamentos asociados -->
-                            <td class="px-4 py-2 border text-center">
+                            <td class="px-4 py-2 border dark:border-gray-700 text-center">
                                 {{ $sec->departamentos->pluck('nombre')->join(', ') ?: 'Ninguno' }}
                             </td>
 
                             <!-- Mostrar en dashboard -->
-                            <td class="px-4 py-2 border text-center">
+                            <td class="px-4 py-2 border dark:border-gray-700 text-center">
                                 <input type="checkbox" :checked="seccion.mostrar_en_dashboard"
                                     @change="seccion.mostrar_en_dashboard = $event.target.checked; toggleMostrarDashboard(seccion.id, $event.target.checked)"
-                                    class="form-checkbox h-5 w-5 text-blue-600 cursor-pointer">
+                                    class="form-checkbox h-5 w-5 text-blue-600 cursor-pointer dark:bg-gray-800 dark:border-gray-700">
                             </td>
 
                             <!-- Acciones -->
-                            <td class="px-4 py-2 border text-center">
+                            <td class="px-4 py-2 border dark:border-gray-700 text-center">
                                 <button type="button"
                                     @click.stop="eliminarSeccion({{ $sec->id }}, '{{ $sec->nombre }}')"
-                                    class="text-red-600 hover:text-red-800 hover:bg-red-100 p-1 rounded"
+                                    class="text-red-600 hover:text-red-800 hover:bg-red-100 dark:hover:bg-red-900/30 p-1 rounded"
                                     title="Eliminar sección">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -917,7 +917,7 @@
 
                     <div id="sortable-secciones" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         @foreach ($seccionesDashboard as $seccion)
-                            <div class="seccion-item flex items-center gap-3 p-3 bg-gray-50 border-2 border-gray-200 rounded-lg cursor-move hover:border-orange-400 hover:bg-orange-50 transition-all group"
+                            <div class="seccion-item flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg cursor-move hover:border-orange-400 dark:hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all group"
                                 data-id="{{ $seccion->id }}">
                                 <div class="drag-handle text-gray-400 group-hover:text-orange-500">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -926,7 +926,7 @@
                                     </svg>
                                 </div>
                                 <span
-                                    class="w-8 h-8 flex items-center justify-center bg-orange-100 text-orange-600 rounded-lg font-bold text-sm orden-numero">
+                                    class="w-8 h-8 flex items-center justify-center bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 rounded-lg font-bold text-sm orden-numero">
                                     {{ $loop->iteration }}
                                 </span>
                                 @if ($seccion->icono)
@@ -937,8 +937,8 @@
                                         {{ strtoupper(substr($seccion->nombre, 0, 1)) }}
                                     </div>
                                 @endif
-                                <span class="font-medium text-gray-700 flex-1">{{ $seccion->nombre }}</span>
-                                <span class="text-xs text-gray-400">{{ $seccion->ruta }}</span>
+                                <span class="font-medium text-gray-700 dark:text-gray-200 flex-1">{{ $seccion->nombre }}</span>
+                                <span class="text-xs text-gray-400 dark:text-gray-500">{{ $seccion->ruta }}</span>
                             </div>
                         @endforeach
                     </div>
@@ -966,35 +966,35 @@
                 <!-- Configuración de Secciones para Operarios -->
                 @if ($departamentoOperarios)
                     <div class="border-t pt-6 mt-6">
-                        <h4 class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                        <h4 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
                             <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                             </svg>
                             Secciones visibles para Operarios
-                            <span class="text-sm font-normal text-gray-500">(Departamento:
+                            <span class="text-sm font-normal text-gray-500 dark:text-gray-400">(Departamento:
                                 {{ $departamentoOperarios->nombre }})</span>
                         </h4>
 
-                        <p class="text-sm text-gray-600 mb-4">
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
                             Las secciones marcadas serán visibles en el dashboard de los usuarios con rol "operario".
                             <a href="#"
                                 @click.prevent="openModalSecciones = true; departamentoId = {{ $departamentoOperarios->id }}"
-                                class="text-blue-600 hover:underline">Editar secciones</a>
+                                class="text-blue-600 dark:text-blue-400 hover:underline">Editar secciones</a>
                         </p>
 
                         <div class="flex flex-wrap gap-2">
                             @forelse ($departamentoOperarios->secciones as $seccion)
                                 <span
-                                    class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                                    class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-full text-sm font-medium">
                                     @if ($seccion->icono)
                                         <img src="{{ asset($seccion->icono) }}" alt="" class="w-4 h-4">
                                     @endif
                                     {{ $seccion->nombre }}
                                 </span>
                             @empty
-                                <span class="text-gray-500 italic">No hay secciones asignadas al departamento
+                                <span class="text-gray-500 dark:text-gray-400 italic">No hay secciones asignadas al departamento
                                     {{ $departamentoOperarios->nombre }}</span>
                             @endforelse
                         </div>
@@ -1030,7 +1030,27 @@
         <!-- ═══════════════════════════════════════════════════════════════════════════════
              CONFIGURACIÓN DE ALERTAS DE AVERÍAS
         ═══════════════════════════════════════════════════════════════════════════════ -->
-        <div class="mt-12 bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
+        <style>
+            .custom-scrollbar::-webkit-scrollbar {
+                width: 5px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-track {
+                background: transparent;
+                margin: 4px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-thumb {
+                background: rgba(156, 163, 175, 0.5);
+                border-radius: 10px;
+            }
+            .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+                background: rgba(156, 163, 175, 0.3);
+            }
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                background: rgba(156, 163, 175, 0.8);
+            }
+        </style>
+
+        <div class="mt-12 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
             <div class="bg-gradient-to-r from-red-500 to-rose-500 px-6 py-4">
                 <h3 class="text-xl font-bold text-white flex items-center gap-2">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1051,7 +1071,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <!-- Roles -->
                         <div>
-                            <h4 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                            <h4 class="font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                                 <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -1060,14 +1080,14 @@
                                 Por Rol
                             </h4>
                             <div
-                                class="space-y-2 bg-gray-50 p-4 rounded-lg border border-gray-200 max-h-60 overflow-y-auto">
+                                class="space-y-1 bg-gray-50 dark:bg-black/20 p-4 pr-2 rounded-lg border border-gray-200 dark:border-gray-700 max-h-60 overflow-y-auto custom-scrollbar">
                                 @foreach ($roles as $rol)
                                     <label
-                                        class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
+                                        class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 p-1 rounded">
                                         <input type="checkbox" name="roles[]" value="{{ $rol }}"
-                                            class="text-red-600 rounded focus:ring-transparent"
+                                            class="text-red-600 rounded focus:ring-transparent dark:bg-gray-700 dark:border-gray-600"
                                             {{ in_array($rol, $alertasConfig['roles'] ?? []) ? 'checked' : '' }}>
-                                        <span class="text-sm text-gray-700 uppercase">{{ $rol }}</span>
+                                        <span class="text-sm text-gray-700 dark:text-gray-300 uppercase">{{ $rol }}</span>
                                     </label>
                                 @endforeach
                             </div>
@@ -1075,7 +1095,7 @@
 
                         <!-- Departamentos -->
                         <div>
-                            <h4 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                            <h4 class="font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                                 <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -1084,14 +1104,14 @@
                                 Por Departamento
                             </h4>
                             <div
-                                class="space-y-2 bg-gray-50 p-4 rounded-lg border border-gray-200 max-h-60 overflow-y-auto">
+                                class="space-y-1 bg-gray-50 dark:bg-black/20 p-4 pr-2 rounded-lg border border-gray-200 dark:border-gray-700 max-h-60 overflow-y-auto custom-scrollbar">
                                 @foreach ($departamentos as $dep)
                                     <label
-                                        class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
+                                        class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 p-1 rounded">
                                         <input type="checkbox" name="departamentos[]" value="{{ $dep->nombre }}"
-                                            class="text-red-600 rounded focus:ring-transparent"
+                                            class="text-red-600 rounded focus:ring-transparent dark:bg-gray-700 dark:border-gray-600"
                                             {{ in_array($dep->nombre, $alertasConfig['departamentos'] ?? []) ? 'checked' : '' }}>
-                                        <span class="text-sm text-gray-700">{{ $dep->nombre }}</span>
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">{{ $dep->nombre }}</span>
                                     </label>
                                 @endforeach
                             </div>
@@ -1099,7 +1119,7 @@
 
                         <!-- Usuarios Específicos -->
                         <div>
-                            <h4 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                            <h4 class="font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                                 <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -1108,23 +1128,23 @@
                                 Usuarios Específicos
                             </h4>
                             <div
-                                class="space-y-2 bg-gray-50 p-4 rounded-lg border border-gray-200 max-h-60 overflow-y-auto">
+                                class="space-y-1 bg-gray-50 dark:bg-black/20 p-4 pr-2 rounded-lg border border-gray-200 dark:border-gray-700 max-h-60 overflow-y-auto custom-scrollbar">
                                 <input type="text" placeholder="Buscar usuario..."
-                                    class="w-full text-xs border-gray-300 rounded mb-2 focus:border-red-500 focus:ring-transparent"
+                                    class="w-full text-xs border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded mb-2 focus:border-red-500 focus:ring-transparent"
                                     onkeyup="filtrarUsuarios(this)">
                                 <div id="lista-usuarios-alertas">
                                     @foreach ($todosUsuarios as $usuario)
                                         <label
-                                            class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1 rounded usuario-item">
+                                            class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 p-1 rounded usuario-item">
                                             <input type="checkbox" name="usuarios[]" value="{{ $usuario->id }}"
-                                                class="text-red-600 rounded focus:ring-transparent"
+                                                class="text-red-600 rounded focus:ring-transparent dark:bg-gray-700 dark:border-gray-600"
                                                 {{ in_array($usuario->id, $alertasConfig['usuarios'] ?? []) ? 'checked' : '' }}>
                                             <img src="{{ $usuario->ruta_imagen }}"
                                                 class="w-8 h-8 rounded-full object-cover" alt=""
                                                 onerror="this.onerror=null; this.outerHTML=`<svg xmlns='' width='28' height='28'
         viewBox='0 0 24 24' fill='none' stroke='currentColor'
         stroke-width='1' stroke-linecap='round' stroke-linejoin='round'
-        class='lucide lucide-circle-user-round-icon lucide-circle-user-round w-8 h-8 text-neutral-800'>
+        class='lucide lucide-circle-user-round-icon lucide-circle-user-round w-8 h-8 text-neutral-800 dark:text-gray-200'>
         <path d='M18 20a6 6 0 0 0-12 0' />
         <circle cx='12' cy='10' r='4' />
         <circle cx='12' cy='12' r='10' />
@@ -1132,10 +1152,10 @@
 
 
                                             <div class="text-xs">
-                                                <div class="font-medium text-gray-800">{{ $usuario->name }}
+                                                <div class="font-medium text-gray-800 dark:text-gray-200">{{ $usuario->name }}
                                                     {{ $usuario->primer_apellido }} {{ $usuario->segundo_apellido }}
                                                 </div>
-                                                <div class="text-gray-500">{{ $usuario->rol }}</div>
+                                                <div class="text-gray-500 dark:text-gray-400">{{ $usuario->rol }}</div>
                                             </div>
                                         </label>
                                     @endforeach
@@ -1418,38 +1438,38 @@
         <template x-if="openNuevaSeccionModal">
             <div class="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4">
                 <div
-                    class="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-md z-50 max-h-[90vh] overflow-y-auto">
-                    <h3 class="text-lg font-semibold mb-4">Crear nueva sección</h3>
+                    class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-md z-50 max-h-[90vh] overflow-y-auto">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Crear nueva sección</h3>
 
                     <form method="POST" action="{{ route('secciones.store') }}">
                         @csrf
 
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700">Nombre</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre</label>
                             <input type="text" name="nombre" required
-                                class="w-full p-2 border border-gray-300 rounded-lg">
+                                class="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
                         </div>
 
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700">Ruta (route name)</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Ruta (route name)</label>
                             <input type="text" name="ruta" required
-                                class="w-full p-2 border border-gray-300 rounded-lg"
+                                class="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="ej: productos.index">
                         </div>
 
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700">Ruta del icono</label>
-                            <input type="text" name="icono" class="w-full p-2 border border-gray-300 rounded-lg"
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Ruta del icono</label>
+                            <input type="text" name="icono" class="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="imagenes/iconos/nombre.png">
                         </div>
 
                         <div class="mt-4 flex justify-end space-x-2">
                             <button type="button" @click="openNuevaSeccionModal = false"
-                                class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+                                class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded transition-colors">
                                 Cancelar
                             </button>
                             <button type="submit"
-                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">
+                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition-colors">
                                 Crear
                             </button>
                         </div>
@@ -1463,7 +1483,7 @@
             <div
                 class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
                 <div
-                    class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+                    class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
                     <!-- Header del modal -->
                     <div
                         class="bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-4 flex justify-between items-center">
@@ -1494,16 +1514,16 @@
                         class="flex flex-col flex-1 overflow-hidden">
                         @csrf
 
-                        <div class="flex-1 overflow-y-auto p-6">
+                        <div class="flex-1 overflow-y-auto p-6 pr-4 custom-scrollbar">
                             <div class="mb-4">
                                 <div class="flex items-center justify-between mb-3">
-                                    <p class="text-sm text-gray-600">
-                                        <span class="font-semibold">{{ count($usuariosOficina) }}</span> usuarios
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                                        <span class="font-semibold" x-text="{{ count($usuariosOficina) }}"></span> usuarios
                                         disponibles
                                     </p>
                                     <button type="button"
                                         @click="$el.closest('form').querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = !cb.checked)"
-                                        class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                                        class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium">
                                         Invertir selección
                                     </button>
                                 </div>
@@ -1512,10 +1532,10 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 @forelse ($usuariosOficina as $usuario)
                                     <label
-                                        class="flex items-start space-x-3 p-4 border-2 border-gray-200 rounded-xl hover:border-green-400 hover:bg-green-50 transition-all cursor-pointer group">
+                                        class="flex items-start space-x-3 p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all cursor-pointer group">
                                         <input type="checkbox" name="usuarios[]" :value="'{{ $usuario->id }}'"
                                             :checked="usuariosMarcados.includes({{ $usuario->id }})"
-                                            class="mt-1 w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500 focus:ring-2 cursor-pointer">
+                                            class="mt-1 w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-green-600 dark:bg-gray-700 focus:ring-green-500 dark:focus:ring-offset-gray-800 focus:ring-2 cursor-pointer">
                                         <div class="flex-1 min-w-0">
                                             <div class="flex items-center gap-2">
                                                 <div
@@ -1524,10 +1544,10 @@
                                                 </div>
                                                 <div class="flex-1 min-w-0">
                                                     <p
-                                                        class="font-semibold text-gray-900 truncate group-hover:text-green-700 transition-colors">
+                                                        class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-green-700 dark:group-hover:text-green-400 transition-colors">
                                                         {{ $usuario->nombre_completo }}
                                                     </p>
-                                                    <p class="text-sm text-gray-500 truncate">{{ $usuario->email }}
+                                                    <p class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ $usuario->email }}
                                                     </p>
                                                 </div>
                                             </div>
@@ -1535,27 +1555,27 @@
                                     </label>
                                 @empty
                                     <div class="col-span-2 text-center py-12">
-                                        <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none"
+                                        <svg class="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" fill="none"
                                             stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                                         </svg>
-                                        <p class="text-gray-500 font-medium">No hay usuarios con rol oficina</p>
+                                        <p class="text-gray-500 dark:text-gray-400 font-medium">No hay usuarios con rol oficina</p>
                                     </div>
                                 @endforelse
                             </div>
                         </div>
 
                         <!-- Footer del modal -->
-                        <div class="border-t bg-gray-50 px-6 py-4 flex justify-between items-center gap-3">
-                            <p class="text-sm text-gray-600">
+                        <div class="border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80 px-6 py-4 flex justify-between items-center gap-3">
+                            <p class="text-sm text-gray-600 dark:text-gray-400">
                                 <span
                                     x-text="$el.closest('form').querySelectorAll('input[type=checkbox]:checked').length"></span>
                                 seleccionado(s)
                             </p>
                             <div class="flex gap-3">
                                 <button type="button" @click="openModal = false"
-                                    class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors">
+                                    class="px-5 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-semibold rounded-lg transition-colors">
                                     Cancelar
                                 </button>
                                 <button type="submit"
@@ -1580,29 +1600,31 @@
         <template x-if="openNuevoDepartamentoModal">
             <div class="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4">
                 <div
-                    class="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-md z-50 max-h-[90vh] overflow-y-auto">
-                    <h3 class="text-lg font-semibold mb-4">Crear nuevo departamento</h3>
+                    class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-md z-50 max-h-[90vh] overflow-y-auto">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Crear nuevo departamento</h3>
 
                     <form method="POST" action="{{ route('departamentos.store') }}">
                         @csrf
 
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700">Nombre</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre</label>
                             <input type="text" name="nombre" required
-                                class="w-full p-2 border border-gray-300 rounded-lg">
+                                class="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-blue-500 focus:border-blue-500">
                         </div>
 
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700">Descripción</label>
-                            <textarea name="descripcion" rows="3" class="w-full p-2 border border-gray-300 rounded-lg"></textarea>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Descripción</label>
+                            <textarea name="descripcion" rows="3"
+                                class="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
                         </div>
 
                         <div class="mt-4 flex justify-end space-x-2">
                             <button type="button" @click="openNuevoDepartamentoModal = false"
-                                class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+                                class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded transition-colors">
                                 Cancelar
                             </button>
-                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                            <button type="submit"
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors">
                                 Crear
                             </button>
                         </div>
@@ -1647,7 +1669,7 @@
                         class="flex flex-col flex-1 overflow-hidden">
                         @csrf
 
-                        <div class="flex-1 overflow-y-auto p-6">
+                        <div class="flex-1 overflow-y-auto p-6 pr-4 custom-scrollbar">
                             <div class="mb-4">
                                 <div class="flex items-center justify-between mb-3">
                                     <p class="text-sm text-gray-600">
@@ -1774,8 +1796,7 @@
                         </button>
                     </div>
 
-                    <!-- Body del modal -->
-                    <div class="flex-1 overflow-y-auto p-6">
+                    <div class="flex-1 overflow-y-auto p-6 pr-4 custom-scrollbar">
                         <!-- Formulario para agregar nueva ruta -->
                         <div class="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-xl">
                             <h4 class="font-semibold text-gray-800 mb-3">Agregar nueva ruta</h4>
