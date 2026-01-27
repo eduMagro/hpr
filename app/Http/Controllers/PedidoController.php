@@ -1689,15 +1689,32 @@ class PedidoController extends Controller
             $obraId = $request->obra_id_hpr ?: $request->obra_id_externa;
             $obraManual = $request->obra_manual;
 
-            // Crear pedido principal (SIN obra_id ni obra_manual)
-            $pedido = Pedido::create([
-                'codigo' => Pedido::generarCodigo(),
-                'estado' => 'pendiente',
-                'fabricante_id' => $request->fabricante_id,
-                'distribuidor_id' => $request->distribuidor_id,
-                'fecha_pedido' => now(),
-                'created_by' => auth()->id(),
-            ]);
+            // Crear pedido principal con reintento en caso de colisión de código
+            $pedido = null;
+            $intentos = 0;
+            $maxIntentos = 3;
+            while ($intentos < $maxIntentos) {
+                try {
+                    $pedido = Pedido::create([
+                        'codigo' => Pedido::generarCodigo(),
+                        'estado' => 'pendiente',
+                        'fabricante_id' => $request->fabricante_id,
+                        'distribuidor_id' => $request->distribuidor_id,
+                        'fecha_pedido' => now(),
+                        'created_by' => auth()->id(),
+                    ]);
+                    break;
+                } catch (\Illuminate\Database\QueryException $e) {
+                    if ($e->errorInfo[1] == 1062) { // Duplicate entry
+                        $intentos++;
+                        if ($intentos >= $maxIntentos) {
+                            throw $e;
+                        }
+                        continue;
+                    }
+                    throw $e;
+                }
+            }
 
             $pesoTotal = 0;
             $pgIdsAfectados = [];
