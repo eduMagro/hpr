@@ -16,7 +16,7 @@
         ];
     })->values()->toArray();
 @endphp
-<div class="mt-12 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700"
+<div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700"
     x-data="alertasPlanillaConfig()" x-init="cargarConfiguracion()">
     <div class="bg-gradient-to-r from-blue-500 to-indigo-500 px-6 py-4">
         <h3 class="text-xl font-bold text-white flex items-center gap-2">
