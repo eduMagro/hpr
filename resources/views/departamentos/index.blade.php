@@ -115,7 +115,7 @@
         @endif
 
         <!-- Tabla Responsive -->
-        <div class="bg-white dark:bg-gray-900 shadow-lg rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800">
+        <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
             <!-- Vista Desktop -->
             <div class="hidden md:block overflow-x-auto">
                 <table class="w-full table-auto border-collapse">
@@ -138,9 +138,9 @@
                             </th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                         @forelse ($departamentos as $departamento)
-                    <tbody x-data="{ isExpanded: false }" class="divide-y divide-gray-200 dark:divide-gray-800">
+                    <tbody x-data="{ isExpanded: false }" class="divide-y divide-gray-200 dark:divide-gray-700">
                         <tr class="hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors duration-150">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <button @click="isExpanded = !isExpanded"
@@ -240,7 +240,7 @@
                             </td>
                         </tr>
 
-                        <tr x-show="isExpanded" class="bg-gray-50" x-cloak>
+                        <tr x-show="isExpanded" class="bg-gray-50 dark:bg-gray-700/50" x-cloak>
                             <td colspan="5" class="px-6 py-4">
                                 @include('departamentos.partials.detalle-departamento', [
                                     'departamento' => $departamento,
@@ -270,7 +270,7 @@
             <!-- Vista Mobile -->
             <div class="md:hidden space-y-3 p-3">
                 @forelse ($departamentos as $departamento)
-                    <div class="border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-md bg-white dark:bg-gray-900 hover:shadow-lg transition-shadow duration-200"
+                    <div class="border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-md bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow duration-200"
                         x-data="{ isExpanded: false }">
                         <!-- Cabecera del card -->
                         <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-t-xl">
@@ -597,25 +597,36 @@
         </script>
 
         <!-- Tabla resumen de todas las secciones -->
-        <!-- Botones para secciones -->
-        <div class="mt-12 flex flex-col sm:flex-row justify-start items-start sm:items-center mb-4 gap-2 sm:gap-4">
-            <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">Resumen Secciones</h3>
-            <button @click="openNuevaSeccionModal = true"
-                class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow">
-                + Nueva Sección
-            </button>
-        </div>
+        <div class="mt-12 bg-white dark:bg-gray-800 shadow-xl rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                        </svg>
+                        Resumen Secciones
+                    </h3>
+                    <p class="text-indigo-100 text-sm mt-1">Gestiona todos los módulos del sistema y su visibilidad global</p>
+                </div>
+                <button @click="openNuevaSeccionModal = true"
+                    class="w-full sm:w-auto bg-white hover:bg-indigo-50 text-indigo-600 font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Nueva Sección
+                </button>
+            </div>
 
-        <div class="w-full mt-4 overflow-x-auto bg-white dark:bg-gray-900 shadow-lg rounded-lg">
-            <table id="tabla-secciones" class="w-full min-w-[600px] border border-gray-300 dark:border-gray-700 rounded-lg">
-                <thead class="bg-blue-500 text-white">
-                    <tr class="text-center text-xs uppercase">
-                        <th class="px-4 py-2 text-left">Nombre</th>
-                        <th class="px-4 py-2 text-left">Ruta</th>
-                        <th class="px-4 py-2 text-left">Icono</th>
-                        <th class="px-4 py-2 text-left">Departamentos asociados</th>
-                        <th class="px-4 py-2 text-left">Pagina Principal</th>
-                        <th class="px-4 py-2 text-center">Acciones</th>
+            <div class="w-full overflow-x-auto custom-scrollbar pr-1">
+                <table id="tabla-secciones" class="w-full min-w-[800px] border-collapse">
+                <thead>
+                    <tr class="bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 text-xs uppercase tracking-wider border-b dark:border-gray-700">
+                        <th class="px-6 py-4 text-left font-bold">Nombre</th>
+                        <th class="px-6 py-4 text-left font-bold">Ruta</th>
+                        <th class="px-6 py-4 text-center font-bold">Icono</th>
+                        <th class="px-6 py-4 text-left font-bold">Departamentos asociados</th>
+                        <th class="px-6 py-4 text-center font-bold">Pág. Dashboard</th>
+                        <th class="px-6 py-4 text-center font-bold">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -636,64 +647,88 @@
                             @dblclick="$dispatch('cerrar-edicion-sec'); $nextTick(() => editando = true)"
                             @keydown.enter.stop.prevent="guardarSeccion(seccion); editando = false; original = JSON.parse(JSON.stringify(seccion))"
                             @keydown.escape="seccion = JSON.parse(JSON.stringify(original)); editando = false"
-                            :class="{ 'bg-yellow-100': editando }"
-                            class="border-t cursor-pointer hover:bg-blue-50 focus:outline-none" tabindex="0">
+                            :class="{ 'bg-yellow-100/50 dark:bg-yellow-900/20': editando }"
+                            class="border-b dark:border-gray-700 last:border-0 cursor-pointer hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 focus:outline-none transition-colors" tabindex="0">
 
                             <!-- Nombre -->
-                            <td class="px-4 py-2 border dark:border-gray-700">
+                            <td class="px-6 py-4">
                                 <template x-if="!editando">
-                                    <span x-text="seccion.nombre"></span>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                                        <span class="font-semibold text-gray-900 dark:text-gray-100" x-text="seccion.nombre"></span>
+                                    </div>
                                 </template>
                                 <input x-show="editando" type="text" x-model="seccion.nombre"
-                                    class="form-control form-control-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
+                                    class="w-full px-3 py-1 text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
                             </td>
 
                             <!-- Ruta -->
-                            <td class="px-4 py-2 border dark:border-gray-700">
+                            <td class="px-6 py-4">
                                 <template x-if="!editando">
-                                    <span x-text="seccion.ruta"></span>
+                                    <code class="text-xs font-mono bg-gray-100 dark:bg-gray-900/50 px-2 py-1 rounded text-indigo-600 dark:text-indigo-400" x-text="seccion.ruta"></code>
                                 </template>
                                 <input x-show="editando" type="text" x-model="seccion.ruta"
-                                    class="form-control form-control-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
+                                    class="w-full px-3 py-1 text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
                             </td>
 
                             <!-- Icono -->
-                            <td class="px-4 py-2 border dark:border-gray-700 text-center">
+                            <td class="px-6 py-4 text-center">
                                 <template x-if="!editando">
-                                    <template x-if="seccion.icono">
-                                        <img :src="'{{ asset('') }}' + seccion.icono" alt="Icono"
-                                            class="h-6 mx-auto">
-                                    </template>
-                                    <template x-if="!seccion.icono">
-                                        <span class="text-gray-400 dark:text-gray-500 italic">Sin icono</span>
-                                    </template>
+                                    <div class="flex justify-center">
+                                        <template x-if="seccion.icono">
+                                            <div class="p-1.5 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                                                <img :src="'{{ asset('') }}' + seccion.icono" alt="Icono" class="h-6 w-6 object-contain">
+                                            </div>
+                                        </template>
+                                        <template x-if="!seccion.icono">
+                                            <span class="text-gray-400 dark:text-gray-500 italic text-xs">Sin icono</span>
+                                        </template>
+                                    </div>
                                 </template>
                                 <input x-show="editando" type="text" x-model="seccion.icono"
-                                    class="form-control form-control-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white">
+                                    class="w-full px-3 py-1 text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
                             </td>
 
                             <!-- Departamentos asociados -->
-                            <td class="px-4 py-2 border dark:border-gray-700 text-center">
-                                {{ $sec->departamentos->pluck('nombre')->join(', ') ?: 'Ninguno' }}
+                            <td class="px-6 py-4">
+                                <div class="flex flex-wrap gap-1">
+                                    @php
+                                        $deps = $sec->departamentos->pluck('nombre');
+                                    @endphp
+                                    @forelse($deps as $dName)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
+                                            {{ $dName }}
+                                        </span>
+                                    @empty
+                                        <span class="text-gray-400 dark:text-gray-500 italic text-xs">Ninguno</span>
+                                    @endforelse
+                                </div>
                             </td>
 
                             <!-- Mostrar en dashboard -->
-                            <td class="px-4 py-2 border dark:border-gray-700 text-center">
-                                <input type="checkbox" :checked="seccion.mostrar_en_dashboard"
-                                    @change="seccion.mostrar_en_dashboard = $event.target.checked; toggleMostrarDashboard(seccion.id, $event.target.checked)"
-                                    class="form-checkbox h-5 w-5 text-blue-600 cursor-pointer dark:bg-gray-800 dark:border-gray-700">
+                            <td class="px-6 py-4 text-center">
+                                <div class="flex justify-center">
+                                    <label class="relative inline-flex items-center cursor-pointer group">
+                                        <input type="checkbox" :checked="seccion.mostrar_en_dashboard"
+                                            @change="seccion.mostrar_en_dashboard = $event.target.checked; toggleMostrarDashboard(seccion.id, $event.target.checked)"
+                                            class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                    </label>
+                                </div>
                             </td>
 
                             <!-- Acciones -->
-                            <td class="px-4 py-2 border dark:border-gray-700 text-center">
-                                <button type="button"
-                                    @click.stop="eliminarSeccion({{ $sec->id }}, '{{ $sec->nombre }}')"
-                                    class="text-red-600 hover:text-red-800 hover:bg-red-100 dark:hover:bg-red-900/30 p-1 rounded"
-                                    title="Eliminar sección">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
-                                </button>
+                            <td class="px-6 py-4 text-center">
+                                <div class="flex justify-center gap-2">
+                                    <button type="button"
+                                        @click.stop="eliminarSeccion({{ $sec->id }}, '{{ $sec->nombre }}')"
+                                        class="p-2 text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                        title="Eliminar sección">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                    </button>
+                                </div>
                             </td>
 
                         </tr>
@@ -706,7 +741,7 @@
              AUTO-DETECCIÓN DE SECCIONES - Módulos sin configurar
         ═══════════════════════════════════════════════════════════════════════════════ -->
         @if(count($seccionesComparacion['sin_seccion']) > 0)
-        <div class="mt-12 bg-white shadow-lg rounded-lg overflow-hidden border border-amber-300"
+        <div class="mt-12 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden border border-amber-300 dark:border-amber-800/50"
              x-data="seccionesAutoDetect()"
              x-show="seccionesFaltantes.length > 0"
              x-transition:leave="transition ease-in duration-300"
@@ -714,18 +749,16 @@
              x-transition:leave-end="opacity-0">
             <div class="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4">
                 <div class="flex items-center justify-between flex-wrap gap-3">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-white/20 p-2 rounded-lg">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div>
+                        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                             </svg>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-bold text-white">Módulos Sin Sección</h3>
-                            <p class="text-amber-100 text-sm">
-                                <span x-text="seccionesFaltantes.length"></span> módulos detectados que los usuarios de oficina NO pueden acceder
-                            </p>
-                        </div>
+                            Módulos Sin Sección
+                        </h3>
+                        <p class="text-amber-100 text-sm mt-1">
+                            <span x-text="seccionesFaltantes.length"></span> módulos detectados que los usuarios de oficina NO pueden acceder
+                        </p>
                     </div>
                     <button @click="sincronizarTodas()" :disabled="sincronizando || seccionesFaltantes.length === 0"
                             class="inline-flex items-center px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-semibold rounded-lg transition disabled:opacity-50">
@@ -744,9 +777,9 @@
             <div class="p-4">
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
                     <template x-for="item in seccionesFaltantes" :key="item.prefijo">
-                        <div class="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition">
+                        <div class="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/20 transition">
                             <div class="flex-1 min-w-0 mr-2">
-                                <div class="font-medium text-gray-900 truncate" x-text="item.nombre_sugerido"></div>
+                                <div class="font-medium text-gray-900 dark:text-gray-200 truncate" x-text="item.nombre_sugerido"></div>
                                 <div class="text-xs text-gray-500 font-mono">
                                     <span x-text="item.prefijo + '.*'"></span>
                                     <span class="text-amber-600" x-text="'(' + item.total_rutas + ')'"></span>
@@ -767,15 +800,15 @@
                     </template>
                 </div>
 
-                <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700" x-show="seccionesFaltantes.length > 0">
+                <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 rounded-lg text-sm text-blue-700 dark:text-blue-300" x-show="seccionesFaltantes.length > 0">
                     <strong>Siguiente paso:</strong> Después de crear las secciones, asígnalas a los departamentos correspondientes usando el botón "Secciones" de cada departamento.
                 </div>
 
-                <div class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg text-center" x-show="seccionesFaltantes.length === 0" x-cloak>
-                    <svg class="w-12 h-12 mx-auto text-green-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="mt-4 p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/50 rounded-lg text-center" x-show="seccionesFaltantes.length === 0" x-cloak>
+                    <svg class="w-12 h-12 mx-auto text-green-500 dark:text-green-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
-                    <p class="text-green-700 font-medium">Todos los módulos tienen sección asignada</p>
+                    <p class="text-green-700 dark:text-green-400 font-medium">Todos los módulos tienen sección asignada</p>
                 </div>
             </div>
         </div>
@@ -887,7 +920,7 @@
         <!-- ═══════════════════════════════════════════════════════════════════════════════
              CONFIGURACIÓN DEL DASHBOARD - Orden de secciones y acceso de operarios
         ═══════════════════════════════════════════════════════════════════════════════ -->
-        <div class="mt-12 bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
+        <div class="mt-12 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
             <div class="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-4">
                 <h3 class="text-xl font-bold text-white flex items-center gap-2">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -905,7 +938,7 @@
             <div class="p-6">
                 <!-- Secciones del Dashboard con Drag & Drop -->
                 <div class="mb-6">
-                    <h4 class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                    <h4 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
                         <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -917,7 +950,7 @@
 
                     <div id="sortable-secciones" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         @foreach ($seccionesDashboard as $seccion)
-                            <div class="seccion-item flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg cursor-move hover:border-orange-400 dark:hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all group"
+                            <div class="seccion-item flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 border-2 border-gray-200 dark:border-gray-700 rounded-lg cursor-move hover:border-orange-400 dark:hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-500/10 transition-all group"
                                 data-id="{{ $seccion->id }}">
                                 <div class="drag-handle text-gray-400 group-hover:text-orange-500">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -965,7 +998,7 @@
 
                 <!-- Configuración de Secciones para Operarios -->
                 @if ($departamentoOperarios)
-                    <div class="border-t pt-6 mt-6">
+                    <div class="border-t dark:border-gray-700 pt-6 mt-6">
                         <h4 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
                             <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
@@ -1000,8 +1033,8 @@
                         </div>
                     </div>
                 @else
-                    <div class="border-t pt-6 mt-6">
-                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div class="border-t dark:border-gray-700 pt-6 mt-6">
+                        <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50 rounded-lg p-4">
                             <div class="flex items-start gap-3">
                                 <svg class="w-5 h-5 text-yellow-500 mt-0.5" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
@@ -1009,14 +1042,14 @@
                                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                                 <div>
-                                    <h5 class="font-semibold text-yellow-800">Departamento "Operario" no encontrado
+                                    <h5 class="font-semibold text-yellow-800 dark:text-yellow-500">Departamento "Operario" no encontrado
                                     </h5>
-                                    <p class="text-sm text-yellow-700 mt-1">
+                                    <p class="text-sm text-yellow-700 dark:text-yellow-400/80 mt-1">
                                         Para configurar las secciones visibles para operarios, primero crea un
                                         departamento llamado exactamente "Operario".
                                     </p>
                                     <button type="button" @click="openNuevoDepartamentoModal = true"
-                                        class="mt-2 text-sm text-yellow-800 hover:text-yellow-900 font-medium underline">
+                                        class="mt-2 text-sm text-yellow-800 dark:text-yellow-500 hover:text-yellow-900 dark:hover:text-yellow-400 font-medium underline">
                                         + Crear departamento Operario
                                     </button>
                                 </div>
@@ -1637,7 +1670,7 @@
             <div
                 class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
                 <div
-                    class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
+                    class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
                     <!-- Header del modal -->
                     <div
                         class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 flex justify-between items-center">
@@ -1672,13 +1705,13 @@
                         <div class="flex-1 overflow-y-auto p-6 pr-4 custom-scrollbar">
                             <div class="mb-4">
                                 <div class="flex items-center justify-between mb-3">
-                                    <p class="text-sm text-gray-600">
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">
                                         <span class="font-semibold" x-text="todasLasSecciones.length"></span> secciones
                                         disponibles
                                     </p>
                                     <button type="button"
                                         @click="$el.closest('form').querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = !cb.checked)"
-                                        class="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+                                        class="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 font-medium">
                                         Invertir selección
                                     </button>
                                 </div>
@@ -1687,10 +1720,10 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                 <template x-for="seccion in todasLasSecciones" :key="seccion.id">
                                     <label
-                                        class="flex items-start space-x-3 p-4 border-2 border-gray-200 rounded-xl hover:border-indigo-400 hover:bg-indigo-50 transition-all cursor-pointer group">
+                                        class="flex items-start space-x-3 p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all cursor-pointer group">
                                         <input type="checkbox" name="secciones[]" :value="seccion.id"
                                             :checked="(seccion.departamentos || []).map(d => d.id).includes(departamentoId)"
-                                            class="mt-1 w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2 cursor-pointer">
+                                            class="mt-1 w-5 h-5 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-indigo-600 focus:ring-indigo-500 focus:ring-2 cursor-pointer">
                                         <div class="flex-1 min-w-0">
                                             <div class="flex items-start gap-2">
                                                 <template x-if="seccion.icono">
@@ -1705,12 +1738,12 @@
                                                 </template>
                                                 <div class="flex-1 min-w-0">
                                                     <p
-                                                        class="font-semibold text-gray-900 truncate group-hover:text-indigo-700 transition-colors"
+                                                        class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-indigo-700 dark:group-hover:text-indigo-400 transition-colors"
                                                         x-text="seccion.nombre">
                                                     </p>
-                                                    <p class="text-xs text-gray-500 truncate" x-text="seccion.ruta"></p>
+                                                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate" x-text="seccion.ruta"></p>
                                                     <span x-show="seccion.mostrar_en_dashboard"
-                                                            class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-1">
+                                                            class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 mt-1">
                                                             <svg class="w-3 h-3 mr-1" fill="currentColor"
                                                                 viewBox="0 0 20 20">
                                                                 <path fill-rule="evenodd"
@@ -1726,15 +1759,15 @@
                                 </template>
                                 <!-- Empty state -->
                                 <div x-show="todasLasSecciones.length === 0" class="col-span-3 text-center py-12">
-                                    <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none"
+                                    <svg class="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" fill="none"
                                         stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
-                                    <p class="text-gray-500 font-medium">No hay secciones registradas</p>
+                                    <p class="text-gray-500 dark:text-gray-400 font-medium">No hay secciones registradas</p>
                                     <button type="button"
                                         @click="openModalSecciones = false; openNuevaSeccionModal = true"
-                                        class="mt-3 text-indigo-600 hover:text-indigo-700 font-medium text-sm">
+                                        class="mt-3 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium text-sm">
                                         + Crear primera sección
                                     </button>
                                 </div>
@@ -1742,15 +1775,15 @@
                         </div>
 
                         <!-- Footer del modal -->
-                        <div class="border-t bg-gray-50 px-6 py-4 flex justify-between items-center gap-3">
-                            <p class="text-sm text-gray-600">
+                        <div class="border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80 px-6 py-4 flex justify-between items-center gap-3">
+                            <p class="text-sm text-gray-600 dark:text-gray-400">
                                 <span
                                     x-text="$el.closest('form').querySelectorAll('input[type=checkbox]:checked').length"></span>
                                 seleccionada(s)
                             </p>
                             <div class="flex gap-3">
                                 <button type="button" @click="openModalSecciones = false"
-                                    class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors">
+                                    class="px-5 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-semibold rounded-lg transition-colors">
                                     Cancelar
                                 </button>
                                 <button type="submit"
@@ -1774,7 +1807,7 @@
         <!-- Modal Gestionar Rutas -->
         <template x-if="openModalRutas">
             <div class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
                     <!-- Header del modal -->
                     <div class="bg-gradient-to-r from-orange-500 to-amber-600 px-6 py-4 flex justify-between items-center">
                         <div class="flex items-center gap-3">
@@ -1798,17 +1831,17 @@
 
                     <div class="flex-1 overflow-y-auto p-6 pr-4 custom-scrollbar">
                         <!-- Formulario para agregar nueva ruta -->
-                        <div class="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-xl">
-                            <h4 class="font-semibold text-gray-800 mb-3">Agregar nueva ruta</h4>
+                        <div class="mb-6 p-4 bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800/50 rounded-xl">
+                            <h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-3">Agregar nueva ruta</h4>
                             <div class="flex flex-col sm:flex-row gap-3">
                                 <div class="flex-1">
                                     <input type="text" x-model="nuevaRuta.ruta" placeholder="Ej: usuarios.* o vacaciones.eliminarSolicitud"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
                                         @keydown.enter.prevent="agregarRuta()">
                                 </div>
                                 <div class="flex-1">
                                     <input type="text" x-model="nuevaRuta.descripcion" placeholder="Descripción (opcional)"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
                                         @keydown.enter.prevent="agregarRuta()">
                                 </div>
                                 <button @click="agregarRuta()"
@@ -1816,16 +1849,16 @@
                                     + Agregar
                                 </button>
                             </div>
-                            <p class="mt-2 text-xs text-gray-500">
-                                Usa <code class="bg-gray-200 px-1 rounded">.*</code> al final para permitir todas las subrutas. Ej: <code class="bg-gray-200 px-1 rounded">usuarios.*</code>
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                Usa <code class="bg-gray-200 dark:bg-gray-700 px-1 rounded">.*</code> al final para permitir todas las subrutas. Ej: <code class="bg-gray-200 dark:bg-gray-700 px-1 rounded">usuarios.*</code>
                             </p>
                         </div>
 
                         <!-- Lista de rutas -->
                         <div class="space-y-2">
                             <div class="flex items-center justify-between mb-3">
-                                <h4 class="font-semibold text-gray-800">Rutas configuradas</h4>
-                                <span class="text-sm text-gray-500" x-text="rutasDepartamento.length + ' ruta(s)'"></span>
+                                <h4 class="font-semibold text-gray-800 dark:text-gray-200">Rutas configuradas</h4>
+                                <span class="text-sm text-gray-500 dark:text-gray-400" x-text="rutasDepartamento.length + ' ruta(s)'"></span>
                             </div>
 
                             <!-- Loading state -->
@@ -1838,24 +1871,24 @@
                             </div>
 
                             <!-- Empty state -->
-                            <div x-show="!cargandoRutas && rutasDepartamento.length === 0" class="text-center py-8 bg-gray-50 rounded-xl">
-                                <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div x-show="!cargandoRutas && rutasDepartamento.length === 0" class="text-center py-8 bg-gray-50 dark:bg-gray-900/30 rounded-xl">
+                                <svg class="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                                 </svg>
-                                <p class="text-gray-500 font-medium">No hay rutas configuradas</p>
-                                <p class="text-sm text-gray-400 mt-1">Los usuarios de este departamento no tendrán acceso especial</p>
+                                <p class="text-gray-500 dark:text-gray-400 font-medium">No hay rutas configuradas</p>
+                                <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Los usuarios de este departamento no tendrán acceso especial</p>
                             </div>
 
                             <!-- Lista de rutas -->
                             <template x-for="ruta in rutasDepartamento" :key="ruta.id">
-                                <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-orange-300 transition-colors group">
+                                <div class="flex items-center justify-between p-3 bg-white dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg hover:border-orange-300 dark:hover:border-orange-500 transition-colors group">
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center gap-2">
-                                            <code class="text-sm font-mono text-orange-700 bg-orange-50 px-2 py-0.5 rounded" x-text="ruta.ruta"></code>
-                                            <span x-show="ruta.ruta.endsWith('.*')" class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Prefijo</span>
+                                            <code class="text-sm font-mono text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 px-2 py-0.5 rounded" x-text="ruta.ruta"></code>
+                                            <span x-show="ruta.ruta.endsWith('.*')" class="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full">Prefijo</span>
                                         </div>
-                                        <p x-show="ruta.descripcion" class="text-xs text-gray-500 mt-1" x-text="ruta.descripcion"></p>
+                                        <p x-show="ruta.descripcion" class="text-xs text-gray-500 dark:text-gray-400 mt-1" x-text="ruta.descripcion"></p>
                                     </div>
                                     <button @click="eliminarRuta(ruta.id)"
                                         class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
@@ -1870,9 +1903,9 @@
                     </div>
 
                     <!-- Footer del modal -->
-                    <div class="border-t bg-gray-50 px-6 py-4 flex justify-end">
+                    <div class="border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80 px-6 py-4 flex justify-end">
                         <button type="button" @click="openModalRutas = false"
-                            class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors">
+                            class="px-5 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-semibold rounded-lg transition-colors">
                             Cerrar
                         </button>
                     </div>
