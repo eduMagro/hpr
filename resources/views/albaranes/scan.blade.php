@@ -248,14 +248,14 @@
         <div id="step-1" class="flex-shrink-0 px-4 py-6" style="width: 33.33%;">
             <!-- (Contenido de VISTA 1 sin cambios) -->
             <div class="max-w-lg mx-auto space-y-3">
-                <p class="text-sm text-gray-600">Selecciona el proveedor y sube una foto del albarán</p>
+                <p class="text-sm text-gray-600">Selecciona el fabricante y sube una foto del albarán</p>
 
                 <!-- Formulario móvil -->
                 <form id="ocrForm-mobile" class="space-y-4">
                     @csrf
                     <!-- Selector de proveedor -->
                     <label class="block">
-                        <span class="text-sm font-medium text-gray-700">Proveedor</span>
+                        <span class="text-sm font-medium text-gray-700">Fabricante</span>
                         <select name="proveedor" id="proveedor-mobile" required
                             class="mt-1 w-full rounded-lg border-gray-300 shadow-sm">
                             <option value="">Selecciona fabricante</option>
@@ -351,7 +351,7 @@
 
                         <!-- Botón: continuar manualmente (sin OCR) -->
                         <button type="button" id="mobile-step1-manual-btn hidden" onclick="iniciarRellenoManualMobile()"
-                            class="w-full px-4 py-3 bg-white text-gray-900 rounded-lg font-semibold border border-gray-300 shadow-sm hover:bg-gray-50 transition">
+                            class="w-full px-4 py-3 bg-white text-gray-900 rounded-lg font-semibold border border-gray-300 shadow-sm hover:bg-gray-50 transition hidden">
                             Rellenar manualmente (sin procesar)
                         </button>
 
@@ -405,7 +405,7 @@
                     </label>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <label class="block">
+                        <label class="block hidden">
                             <span class="text-sm font-medium text-gray-700">Tipo de compra</span>
                             <input type="hidden" id="edit-tipo-compra">
                             <div class="mt-1 flex rounded-lg border border-gray-300 overflow-hidden shadow-sm">
@@ -426,10 +426,10 @@
 
                         <!-- Contenedor Fabricante (Solo visible en DIRECTO) -->
                         <label class="block" id="container-fabricante-mobile">
-                            <span class="text-sm font-medium text-gray-700">Fabricante</span>
+                            <span class="text-sm font-medium text-gray-700 hidden">Fabricante</span>
 
                             <!-- Select de fabricantes -->
-                            <select id="edit-proveedor-select" class="mt-1 w-full rounded-lg border-gray-300">
+                            <select id="edit-proveedor-select" class="mt-1 w-full rounded-lg border-gray-300 hidden">
                                 <option value="">Selecciona fabricante</option>
                                 @if (isset($fabricantes))
                                     @foreach ($fabricantes as $fab)
@@ -1516,6 +1516,9 @@
         /**
          * Poblar Vista 3 con información del pedido
          */
+        /**
+         * Poblar Vista 3 con información del pedido (NUEVA LÓGICA MULTI-NAVE + PLENOS)
+         */
         function poblarVista3ConPedido(simulacion) {
             const container = document.getElementById('mobile-pedido-card');
             if (!container) return;
@@ -1525,70 +1528,198 @@
             window.mobileStepManager.dataCache.recommendedId = lineaPropuesta?.id || null;
             const fabricanteNombre = (lineaPropuesta?.fabricante || '').toString().trim();
             const distribuidorNombre = (lineaPropuesta?.distribuidor || '').toString().trim();
-            const pedidoHprEscaneado = (window.mobileStepManager?.dataCache?.parsed?.pedido_cliente || '').toString()
-                .trim();
+            const pedidoHprEscaneado = (window.mobileStepManager?.dataCache?.parsed?.pedido_cliente || '').toString().trim();
+
+            // Flags de conflicto nuevas
+            const alertaConflicto = simulacion.alerta_conflicto || false;
+            const bloquearActivacion = simulacion.bloquear_activacion || false;
+            const contactos = simulacion.contactos_produccion || [];
+
+            // Gestionar bloqueo de botón de activacion
+            const btnActivar = document.getElementById('mobile-btn-activar');
+            const labelActivar = document.getElementById('mobile-activar-label');
+
+            if (btnActivar) {
+                if (bloquearActivacion) {
+                    btnActivar.disabled = true;
+                    btnActivar.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-400', 'hover:bg-gray-400');
+                    btnActivar.classList.remove('bg-emerald-600', 'hover:bg-emerald-700', 'hover:shadow-xl');
+                    labelActivar.textContent = 'Activación Bloqueada (Conflicto)';
+                } else {
+                    btnActivar.disabled = false;
+                    btnActivar.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-gray-400', 'hover:bg-gray-400');
+                    btnActivar.classList.add('bg-emerald-600', 'hover:bg-emerald-700', 'hover:shadow-xl');
+                    labelActivar.textContent = 'Confirmar y Activar Albarán';
+                }
+            }
 
             if (!lineaPropuesta) {
                 container.innerHTML = `
                     <div class="text-center py-4">
                         <p class="text-gray-500">No se encontró pedido sugerido</p>
-                        <p class="text-sm text-gray-400 mt-1">Puedes seleccionar uno manualmente</p>
+                        <p class="text-sm text-gray-400 mt-1">Nave seleccionada: ${simulacion.obra_id_seleccionada || '?'}</p>
+                        <p class="text-sm text-gray-400 mt-1">Busque manualmente o cambie de nave.</p>
                     </div>
                 `;
                 return;
             }
 
-            // Tipo de recomendación
+            // --- LÓGICA DE BADGES Y ESTILOS ---
+
             let badgeClass = 'bg-blue-100 text-blue-700';
             let badgeText = 'RECOMENDADO';
+            let containerClasses = ['bg-white', 'rounded-lg', 'p-4', 'border'];
+            let extraAlertHtml = '';
 
-            if (lineaPropuesta.tipo_recomendacion === 'exacta') {
-                badgeClass = 'bg-green-100 text-green-700';
-                badgeText = 'COINCIDENCIA EXACTA';
-            } else if (lineaPropuesta.tipo_recomendacion === 'parcial') {
-                badgeClass = 'bg-yellow-100 text-yellow-700';
-                badgeText = 'COINCIDENCIA PARCIAL';
+            const tipoRec = lineaPropuesta.tipo_recomendacion;
+            const esPleno = lineaPropuesta.es_pleno;
+
+            // Helper para renderizar botón de contacto
+            const renderContactoBtn = (c) => {
+                const movilLimpio = c.movil.replace(/\s/g, '');
+                const esInvalido = !movilLimpio || movilLimpio === '-' || movilLimpio === 'null';
+
+                if (esInvalido) {
+                    return `
+                        <span class="flex items-center gap-1.5 bg-gray-50 border border-red-200 px-3 py-2 rounded-lg text-xs font-bold text-red-400 cursor-not-allowed opacity-75">
+                            <svg class="w-3.5 h-3.5 text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                            ${c.nombre}
+                        </span>`;
+                }
+
+                return `
+                    <a href="tel:${movilLimpio}" class="flex items-center gap-1.5 bg-white border border-gray-200 px-3 py-2 rounded-lg text-xs font-bold text-gray-700 shadow-sm hover:bg-gray-50 active:bg-gray-100 transition">
+                        <svg class="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                        ${c.nombre}
+                    </a>`;
+            };
+
+            // 1. PLENO (Golden Match)
+            if (tipoRec === 'pleno_nave_actual' || (esPleno && !bloquearActivacion)) {
+                // ESTILO DORADO / PREMIUM
+                badgeClass = 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+                badgeText = '★ COINCIDENCIA EXACTA (PLENO)';
+                containerClasses.push('ring-2', 'ring-yellow-400', 'shadow-yellow-100');
+            }
+            // 2. PLENO OTRA NAVE (Directo)
+            else if (tipoRec === 'pleno_otra_nave') {
+                badgeClass = 'bg-orange-100 text-orange-800 border border-orange-200';
+                badgeText = '⚠ OTRA NAVE (PLENO)';
+                containerClasses.push('ring-2', 'ring-orange-300');
+
+                // Renderizar contactos
+                const contactosHtml = contactos.length > 0
+                    ? `<div class="flex flex-wrap gap-2 mt-2 justify-around">` + contactos.map(renderContactoBtn).join('') + `</div>`
+                    : '';
+
+                extraAlertHtml = `
+                    <div class="mt-3 p-3 bg-white rounded  shadow-sm text-center">
+                        <div class="text-xs text-orange-800 font-bold mb-2">
+                           ⚠️ Este pedido es de la OTRA NAVE
+                        </div>
+                        <p class="text-[0.7rem] text-gray-500 mb-2">Contacta a producción o desbloquea:</p>
+                        ${contactosHtml}
+                        <div class="mt-3">
+                            <button type="button" onclick="desbloquearActivacionManual()" class="text-xs font-bold text-orange-700 border-b border-orange-300 pb-0.5 hover:text-orange-900">
+                                Desbloquear manualmente
+                            </button>
+                        </div>
+                    </div>
+                 `;
+            }
+            // 3. CONFLICTO CRÍTICO (Bloqueado por Pleno en otra nave)
+            else if (bloquearActivacion) {
+                badgeClass = 'bg-red-100 text-red-800';
+                badgeText = '⚠ RECOMENDADO C/ AVISO';
+                containerClasses.push('ring-2', 'ring-red-500', 'bg-red-50');
+
+                const codigoConflicto = simulacion.pedido_conflicto_codigo ? `#${simulacion.pedido_conflicto_codigo}` : '';
+
+                const contactosHtml = contactos.length > 0
+                    ? `<div class="flex flex-wrap justify-center gap-2 mt-2">` + contactos.map(renderContactoBtn).join('') + `</div>`
+                    : '';
+
+                extraAlertHtml = `
+                    <div class="mt-3 p-3 bg-white rounded shadow-sm text-center">
+                        <div class="text-xs text-red-700 mb-1">
+                            <p>¡ALERTA! Mejor opción en otra nave: </p>
+                            <p class="font-bold">${codigoConflicto}</p>
+                        </div>
+                        <p class="text-[0.7rem] text-gray-500 mb-2">El pedido de la otra nave coincide en fecha.</p>
+                        <p>Llama a producción:</p>
+                        ${contactosHtml}
+                        <div class="mt-3">
+                            <button type="button" onclick="desbloquearActivacionManual()" class="text-xs font-bold text-red-600 border-b border-red-300 pb-0.5 hover:text-red-800">
+                                Asumir riesgo y desbloquear
+                            </button>
+                        </div>
+                    </div>
+                 `;
+            }
+            // 4. FALLBACK OTRA NAVE
+            else if (tipoRec === 'fallback_otra_nave') {
+                badgeClass = 'bg-gray-100 text-gray-800';
+                badgeText = 'Sugerencia (Otra Nave)';
+
+                const contactosHtml = contactos.length > 0
+                    ? `<div class="flex flex-wrap justify-center gap-2 mt-2">` + contactos.map(renderContactoBtn).join('') + `</div>`
+                    : '';
+
+                extraAlertHtml = `
+                    <div class="mt-3 p-3 bg-white rounded border border-gray-300 shadow-sm text-center">
+                        <div class="text-xs text-gray-600 font-semibold mb-1">Sin pedidos aquí. Sugerencia de otra nave.</div>
+                        ${contactosHtml}
+                        <div class="mt-3">
+                            <button type="button" onclick="desbloquearActivacionManual()" class="text-xs font-bold text-gray-500 border-b border-gray-300 pb-0.5 hover:text-gray-700">
+                                Desbloquear
+                            </button>
+                        </div>
+                    </div>`;
             }
 
+            // Código extra badges
             let codeMatchBadge = '';
             if (lineaPropuesta.coincide_codigo) {
-                codeMatchBadge = `
-                    <div class="absolute top-3 right-3 bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
-                        <span class="flex items-center gap-1">★ CÓDIGO</span>
-                    </div>
-                `;
-                container.classList.add('relative', 'ring-2', 'ring-emerald-500', 'bg-emerald-50/30');
-            } else {
-                container.classList.remove('relative', 'ring-2', 'ring-emerald-500', 'bg-emerald-50/30');
+                codeMatchBadge = `<span class="bg-cyan-100 text-cyan-800 text-[10px] font-bold px-2 py-0.5 rounded ml-2">CÓDIGO</span>`;
             }
 
-
+            // Renderizar Card
+            container.className = containerClasses.join(' ');
             container.innerHTML = `
-                ${codeMatchBadge}
-                <div class="space-y-3">
-                    <span class="inline-block px-3 py-1 rounded-full text-xs font-bold ${badgeClass}">
-                        ${badgeText}
-                    </span>
+                ${extraAlertHtml}
+                
+                <div class="space-y-3 ${extraAlertHtml ? 'mt-4 pt-4 border-t border-gray-200' : ''}">
+                    <div class="flex items-center justify-between">
+                        <span class="inline-block px-3 py-1 rounded-full text-xs font-bold ${badgeClass}">
+                            ${badgeText}
+                        </span>
+                        ${codeMatchBadge}
+                    </div>
 
                     <div class="space-y-3 pt-2">
                         <div class="flex items-center gap-2 text-sm">
                             <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
-                            <span class="font-bold text-gray-900 text-base">${lineaPropuesta.codigo || '—'}</span>
+                            <span class="font-bold text-gray-900 text-base">
+                                ${lineaPropuesta.codigo || '—'}
+                            </span>
                         </div>
+                        
                         ${lineaPropuesta.fabricante ? `
-                                                                                                    <div class="flex items-center gap-2 text-sm">
-                                                                                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                                                                                                        <span class="font-medium text-gray-700">${lineaPropuesta.fabricante}</span>
-                                                                                                    </div>` : ''}
+                            <div class="flex items-center gap-2 text-sm">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                                <span class="font-medium text-gray-700">${lineaPropuesta.fabricante}</span>
+                            </div>` : ''}
+
                         ${lineaPropuesta.distribuidor ? `
-                                                                                                    <div class="flex items-center gap-2 text-sm">
-                                                                                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" /></svg>
-                                                                                                        <span class="font-medium text-gray-700">${lineaPropuesta.distribuidor}</span>
-                                                                                                    </div>` : ''}
+                            <div class="flex items-center gap-2 text-sm">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" /></svg>
+                                <span class="font-medium text-gray-700">${lineaPropuesta.distribuidor}</span>
+                            </div>` : ''}
                         
                         <div class="flex items-center gap-2 text-sm">
                             <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                             <span class="font-semibold text-gray-900">${formatFechaEntrega(lineaPropuesta.fecha_entrega)}</span>
+                            ${esPleno ? '<span class="text-[10px] bg-yellow-100 text-yellow-800 px-1 rounded border border-yellow-200 ml-1">PLENO</span>' : ''}
                         </div>
 
                         ${renderProductChips(lineaPropuesta)}
@@ -1600,6 +1731,18 @@
             // Guardar línea seleccionada en cache
             window.mobileStepManager.dataCache.lineaSeleccionada = lineaPropuesta;
         }
+
+        // Función auxiliar para desbloquear manualmente
+        window.desbloquearActivacionManual = function () {
+            const btn = document.getElementById('mobile-btn-activar');
+            const label = document.getElementById('mobile-activar-label');
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-gray-400', 'hover:bg-gray-400');
+                btn.classList.add('bg-red-600', 'hover:bg-red-700'); // Rojo para indicar peligro/manual
+                if (label) label.textContent = 'Confirmar y Activar (Forzado)';
+            }
+        };
 
         function obtenerColadasValidadas() {
             const cache = window.mobileStepManager.dataCache;
@@ -2351,6 +2494,12 @@
                     });
                     return;
                 }
+                // Ocultar banner si no hay líneas en BD
+                banner.classList.add('hidden');
+                return;
+            }
+
+            /*
                 setBanner({
                     bg: 'bg-red-50',
                     border: 'border-red-200',
@@ -2363,6 +2512,7 @@
                 });
                 return;
             }
+            */
 
             const lineas = payload.lineas || [];
             const cache = window.mobileStepManager.dataCache || {};
@@ -2552,11 +2702,12 @@
                                 ${colada.descargar !== false ? 'checked' : ''} 
                              >
                         </div>
-                        <div class="col-span-4">
+                        <div class="col-span-6">
                             <span class="text-[0.65rem] text-gray-500">Colada</span>
                             <input type="text" class="mt-1 w-full rounded-lg border-gray-300 text-sm px-2 py-1.5" data-colada-field="colada" value="${colada.colada || ''}">
                         </div>
-                        <div class="col-span-2">
+                        
+                        <div class="col-span-2 hidden">
                             <span class="text-[0.65rem] text-gray-500">Bultos</span>
                             <input type="number" min="0" step="1" class="mt-1 w-full rounded-lg border-gray-300 text-sm px-2 py-1.5" data-colada-field="bultos" value="${colada.bultos || ''}">
                         </div>
