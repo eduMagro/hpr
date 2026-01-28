@@ -390,7 +390,7 @@
 
             <!-- Catálogo de Productos Base -->
             <div x-data="{ open: false }" class="mb-6">
-                <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg shadow-md border border-gray-200 p-4">
+                <div class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-lg shadow-md border border-gray-200 dark:border-gray-600 p-4">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center gap-3">
                             <div class="bg-blue-600 p-2 rounded-lg">
@@ -401,8 +401,8 @@
                                 </svg>
                             </div>
                             <div>
-                                <h2 class="text-lg font-bold text-gray-800">Catálogo de Productos Base</h2>
-                                <p class="text-xs text-gray-600">Listado de productos disponibles</p>
+                                <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">Catálogo de Productos Base</h2>
+                                <p class="text-xs text-gray-600 dark:text-gray-400">Listado de productos disponibles</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
@@ -436,7 +436,7 @@
                     x-transition:leave="transition ease-in duration-150"
                     x-transition:leave-start="opacity-100 transform scale-100"
                     x-transition:leave-end="opacity-0 transform scale-95"
-                    class="mt-3 bg-white shadow-lg rounded-lg border border-gray-200 p-4">
+                    class="mt-3 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-600 p-4">
                     @if ($productosBase->count() > 0)
                         @php
                             $barras = $productosBase->where('tipo', 'barra')->sortBy('diametro');
@@ -446,9 +446,9 @@
 
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {{-- Barras --}}
-                            <div class="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-100 dark:border-blue-800">
                                 <h4
-                                    class="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2 border-b border-blue-200 pb-2">
+                                    class="text-sm font-bold text-blue-800 dark:text-blue-300 mb-3 flex items-center gap-2 border-b border-blue-200 dark:border-blue-800 pb-2">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                                         viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -456,20 +456,20 @@
                                     </svg>
                                     BARRAS
                                     <span
-                                        class="ml-auto text-xs font-normal text-blue-600">({{ $barras->count() }})</span>
+                                        class="ml-auto text-xs font-normal text-blue-600 dark:text-blue-400">({{ $barras->count() }})</span>
                                 </h4>
                                 @if ($barras->count() > 0)
                                     <div class="space-y-2">
                                         @foreach ($barrasAgrupadas as $diametro => $barrasPorDiametro)
                                             <div class="flex items-center gap-2">
                                                 <span
-                                                    class="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded min-w-[50px] text-center">
+                                                    class="bg-blue-600 dark:bg-blue-700 text-white text-xs font-bold px-2 py-1 rounded min-w-[50px] text-center">
                                                     Ø{{ $diametro }}
                                                 </span>
                                                 <div class="flex flex-wrap gap-1">
                                                     @foreach ($barrasPorDiametro->sortBy('longitud') as $barra)
                                                         <span
-                                                            class="bg-white border border-blue-300 text-blue-700 text-xs px-2 py-0.5 rounded cursor-pointer hover:bg-red-100 hover:border-red-400 hover:text-red-700 transition-colors"
+                                                            class="bg-white dark:bg-gray-700 border border-blue-300 dark:border-blue-600 text-blue-700 dark:text-blue-200 text-xs px-2 py-0.5 rounded cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/50 hover:border-red-400 dark:hover:border-red-500 hover:text-red-700 dark:hover:text-red-300 transition-colors"
                                                             title="ID: {{ $barra->id }} - Click para eliminar"
                                                             onclick="eliminarProductoBase({{ $barra->id }}, 'Barra Ø{{ $diametro }} {{ $barra->longitud ? $barra->longitud . 'm' : 'S/L' }}')">
                                                             {{ $barra->longitud ? $barra->longitud . 'm' : 'S/L' }}
@@ -480,14 +480,14 @@
                                         @endforeach
                                     </div>
                                 @else
-                                    <p class="text-blue-400 text-xs text-center py-2">Sin barras registradas</p>
+                                    <p class="text-blue-400 dark:text-blue-300 text-xs text-center py-2">Sin barras registradas</p>
                                 @endif
                             </div>
 
                             {{-- Encarretados --}}
-                            <div class="bg-green-50 rounded-lg p-3 border border-green-100">
+                            <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-100 dark:border-green-800">
                                 <h4
-                                    class="text-sm font-bold text-green-800 mb-3 flex items-center gap-2 border-b border-green-200 pb-2">
+                                    class="text-sm font-bold text-green-800 dark:text-green-300 mb-3 flex items-center gap-2 border-b border-green-200 dark:border-green-800 pb-2">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                                         viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -495,13 +495,13 @@
                                     </svg>
                                     ENCARRETADOS
                                     <span
-                                        class="ml-auto text-xs font-normal text-green-600">({{ $encarretados->count() }})</span>
+                                        class="ml-auto text-xs font-normal text-green-600 dark:text-green-400">({{ $encarretados->count() }})</span>
                                 </h4>
                                 @if ($encarretados->count() > 0)
                                     <div class="flex flex-wrap gap-2">
                                         @foreach ($encarretados as $enc)
                                             <span
-                                                class="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded cursor-pointer hover:bg-red-600 transition-colors"
+                                                class="bg-green-600 dark:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded cursor-pointer hover:bg-red-600 dark:hover:bg-red-500 transition-colors"
                                                 title="ID: {{ $enc->id }} - Click para eliminar"
                                                 onclick="eliminarProductoBase({{ $enc->id }}, 'Encarretado Ø{{ $enc->diametro }}')">
                                                 Ø{{ $enc->diametro }}
@@ -509,12 +509,12 @@
                                         @endforeach
                                     </div>
                                 @else
-                                    <p class="text-green-400 text-xs text-center py-2">Sin encarretados registrados</p>
+                                    <p class="text-green-400 dark:text-green-300 text-xs text-center py-2">Sin encarretados registrados</p>
                                 @endif
                             </div>
                         </div>
                     @else
-                        <p class="text-center text-gray-500 py-4">No hay productos base registrados</p>
+                        <p class="text-center text-gray-500 dark:text-gray-400 py-4">No hay productos base registrados</p>
                     @endif
                 </div>
             </div>

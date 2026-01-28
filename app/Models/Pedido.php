@@ -55,20 +55,19 @@ class Pedido extends Model
         $año = now()->format('y');
         $prefix = "PC{$año}/";
 
-        // Obtener todos los códigos con el prefijo y extraer el número más alto
-        $ultimoNumero = self::where('codigo', 'like', "{$prefix}%")
-            ->get()
-            ->map(function ($pedido) {
-                $partes = explode('/', $pedido->codigo);
-                return isset($partes[1]) ? intval($partes[1]) : 0;
-            })
-            ->max();
+        // Incluir soft-deleted para evitar colisiones con registros eliminados
+        // Usar lockForUpdate para evitar condiciones de carrera en peticiones concurrentes
+        $ultimoNumero = self::withTrashed()
+            ->where('codigo', 'like', "{$prefix}%")
+            ->lockForUpdate()
+            ->selectRaw("MAX(CAST(SUBSTRING_INDEX(codigo, '/', -1) AS UNSIGNED)) as max_num")
+            ->value('max_num');
 
         $siguiente = $ultimoNumero ? $ultimoNumero + 1 : 1;
 
-        $númeroFormateado = str_pad($siguiente, 4, '0', STR_PAD_LEFT);
+        $numeroFormateado = str_pad($siguiente, 4, '0', STR_PAD_LEFT);
 
-        return $prefix . $númeroFormateado;
+        return $prefix . $numeroFormateado;
     }
 
     public function fabricante()
