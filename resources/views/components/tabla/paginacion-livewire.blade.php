@@ -4,9 +4,8 @@
 <div class="m-4 text-center">
     <div class="inline-flex items-center justify-center gap-2 text-sm">
         <label for="perPageSelect" class="text-gray-600 dark:text-gray-400">Mostrar</label>
-        <select wire:model.live="perPage"
-                id="perPageSelect"
-                class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        <select wire:model.live="perPage" id="perPageSelect"
+            class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             @foreach ($perPageOptions as $option)
                 <option value="{{ $option }}">{{ $option }}</option>
             @endforeach
@@ -40,10 +39,8 @@
                             &laquo;
                         </span>
                     @else
-                        <button type="button"
-                                wire:click="previousPage"
-                                wire:loading.attr="disabled"
-                                class="px-3 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-gray-700 rounded transition disabled:opacity-50">
+                        <button type="button" wire:click="previousPage" wire:loading.attr="disabled"
+                            class="px-3 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-gray-700 rounded transition disabled:opacity-50">
                             &laquo;
                         </button>
                     @endif
@@ -85,10 +82,8 @@
                                 {{ $page }}
                             </span>
                         @else
-                            <button type="button"
-                                    wire:click="gotoPage({{ $page }})"
-                                    wire:loading.attr="disabled"
-                                    class="px-3 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-gray-700 rounded transition disabled:opacity-50">
+                            <button type="button" wire:click="gotoPage({{ $page }})" wire:loading.attr="disabled"
+                                class="px-3 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-gray-700 rounded transition disabled:opacity-50">
                                 {{ $page }}
                             </button>
                         @endif
@@ -98,10 +93,8 @@
 
                     {{-- Botón siguiente --}}
                     @if ($paginador->hasMorePages())
-                        <button type="button"
-                                wire:click="nextPage"
-                                wire:loading.attr="disabled"
-                                class="px-3 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-gray-700 rounded transition disabled:opacity-50">
+                        <button type="button" wire:click="nextPage" wire:loading.attr="disabled"
+                            class="px-3 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-gray-700 rounded transition disabled:opacity-50">
                             &raquo;
                         </button>
                     @else
