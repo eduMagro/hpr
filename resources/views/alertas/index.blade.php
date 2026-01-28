@@ -1220,7 +1220,7 @@
                                 <button onclick="corregirFichajes(${solicitudId})" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors">
                                     Corregir Fichajes
                                 </button>
-                                <a href="/mi-perfil/${userId}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors inline-block">
+                                <a href="/users/${userId}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors inline-block">
                                     Ver Perfil
                                 </a>
                             </div>
@@ -1454,7 +1454,7 @@
                             <button onclick="corregirFichajes(${solicitudId})" class="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors">
                                 Corregir Fichajes
                             </button>
-                            <a href="/mi-perfil/${userId}" class="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors text-center">
+                            <a href="/users/${userId}" class="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors text-center">
                                 Ver Perfil
                             </a>
                         </div>
