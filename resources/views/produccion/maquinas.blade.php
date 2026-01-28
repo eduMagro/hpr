@@ -7055,7 +7055,7 @@
                                             </div>
                                             <div class="text-right ml-4">
                                                 <div class="text-xs text-gray-500">Elementos</div>
-                                                <div class="text-2xl font-bold text-gray-700">${p.elementos_pendientes}</div>
+                                                <div class="text-2xl font-bold text-gray-700">${p.elementos_total}</div>
                                             </div>
                                         </div>
                                     </div>

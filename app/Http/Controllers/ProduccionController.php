@@ -3271,13 +3271,11 @@ class ProduccionController extends Controller
      */
     public function planillasConRetraso(Request $request)
     {
-        // Obtener planillas aprobadas y revisadas con orden de fabricación
-        $planillas = Planilla::with(['obra.cliente', 'cliente', 'elementos' => function ($q) {
-            $q->where('elaborado', 0);
-        }])
-            ->where('aprobada', true)
+        // Obtener planillas pendiente/fabricando, revisadas, con orden de fabricación
+        // Misma lógica que el calendario para determinar retrasos
+        $planillas = Planilla::with(['obra.cliente', 'cliente', 'elementos'])
             ->where('revisada', true)
-            ->where('estado', '!=', 'completada')
+            ->whereIn('estado', ['pendiente', 'fabricando'])
             ->whereNotNull('fecha_estimada_entrega')
             ->whereHas('ordenProduccion')
             ->orderBy('fecha_estimada_entrega')
@@ -3288,34 +3286,100 @@ class ProduccionController extends Controller
                 'success' => true,
                 'planillas' => [],
                 'total' => 0,
-                'mensaje' => 'No hay planillas aprobadas y revisadas con orden de fabricación',
+                'mensaje' => 'No hay planillas revisadas pendientes/fabricando con orden de fabricación',
             ]);
         }
 
         $finProgramadoService = app(FinProgramadoService::class);
         $finProgramadoService->init();
 
+        // Obtener todas las órdenes agrupadas por máquina (igual que calendario)
+        $maquinaIds = OrdenPlanilla::whereIn('planilla_id', $planillas->pluck('id'))
+            ->pluck('maquina_id')
+            ->unique()
+            ->toArray();
+
+        $ordenesPorMaquina = OrdenPlanilla::whereIn('maquina_id', $maquinaIds)
+            ->orderBy('maquina_id')
+            ->orderBy('posicion')
+            ->get()
+            ->groupBy('maquina_id');
+
+        // Calcular colas iniciales por máquina (igual que calendario)
+        $colasMaquinas = [];
+        foreach ($maquinaIds as $maquinaId) {
+            $colasMaquinas[$maquinaId] = Carbon::now();
+        }
+
+        // Pre-cargar elementos por planilla-máquina
+        $elementosPorPlanillaMaquina = Elemento::whereIn('planilla_id', $planillas->pluck('id'))
+            ->whereIn('maquina_id', $maquinaIds)
+            ->get()
+            ->groupBy(fn($e) => $e->planilla_id . '_' . $e->maquina_id);
+
+        // Calcular fin programado para cada planilla (igual que calendario)
+        $finProgramadoPorPlanilla = [];
+
+        foreach ($maquinaIds as $maquinaId) {
+            $ordenesMaquina = $ordenesPorMaquina->get($maquinaId, collect());
+            $inicioCola = $colasMaquinas[$maquinaId]->copy();
+
+            foreach ($ordenesMaquina as $orden) {
+                $planillaId = $orden->planilla_id;
+                $clave = $planillaId . '_' . $maquinaId;
+
+                $elementosGrupo = $elementosPorPlanillaMaquina->get($clave, collect());
+                if ($elementosGrupo->isEmpty()) {
+                    continue;
+                }
+
+                // Calcular duración total
+                $duracionSegundos = $elementosGrupo->sum('tiempo_fabricacion') ?: 0;
+                if ($duracionSegundos <= 0) {
+                    continue;
+                }
+
+                // Generar tramos laborales (igual que calendario)
+                $tramos = $finProgramadoService->generarTramosLaborales($inicioCola, $duracionSegundos);
+
+                if (!empty($tramos)) {
+                    $ultimoTramo = end($tramos);
+                    $fechaFinReal = $ultimoTramo['end'] instanceof Carbon
+                        ? $ultimoTramo['end']->copy()
+                        : Carbon::parse($ultimoTramo['end']);
+
+                    // Guardar el fin más tardío para esta planilla
+                    if (!isset($finProgramadoPorPlanilla[$planillaId]) || $fechaFinReal->gt($finProgramadoPorPlanilla[$planillaId])) {
+                        $finProgramadoPorPlanilla[$planillaId] = $fechaFinReal;
+                    }
+
+                    $inicioCola = $fechaFinReal->copy();
+                }
+            }
+        }
+
         $planillasConRetraso = [];
+        $appTz = config('app.timezone') ?: 'Europe/Madrid';
 
         foreach ($planillas as $planilla) {
-            $elementosIds = $planilla->elementos->pluck('id')->toArray();
-
-            if (empty($elementosIds)) {
-                continue;
-            }
-
             $fechaEntregaRaw = $planilla->getRawOriginal('fecha_estimada_entrega');
             if (!$fechaEntregaRaw) {
                 continue;
             }
 
-            $fechaEntrega = Carbon::parse($fechaEntregaRaw);
+            $fechaEntrega = $this->parseFechaEntregaFlexible($fechaEntregaRaw, $appTz);
+            if (!$fechaEntrega) {
+                continue;
+            }
 
-            // Calcular fin programado
-            $resultado = $finProgramadoService->calcularFinProgramadoElementos($elementosIds, $fechaEntrega);
+            $finProgramado = $finProgramadoPorPlanilla[$planilla->id] ?? null;
+            if (!$finProgramado) {
+                continue;
+            }
 
-            if ($resultado['hay_retraso'] && $resultado['fin_programado']) {
-                $diasRetraso = (int) ceil($fechaEntrega->diffInDays($resultado['fin_programado'], false));
+            // Comparar fin programado con fecha entrega (igual que calendario)
+            if ($finProgramado->gt($fechaEntrega)) {
+                $diasRetraso = (int) ceil($fechaEntrega->diffInDays($finProgramado, false));
 
                 $cliente = $planilla->cliente ?? $planilla->obra?->cliente;
 
@@ -3337,9 +3401,9 @@ class ProduccionController extends Controller
                     'cod_obra' => $planilla->obra?->cod_obra ?? '',
                     'cliente' => $cliente?->empresa ?? 'Sin cliente',
                     'fecha_entrega' => $fechaEntrega->format('d/m/Y'),
-                    'fin_programado' => $resultado['fin_programado']->format('d/m/Y H:i'),
+                    'fin_programado' => $finProgramado->format('d/m/Y H:i'),
                     'dias_retraso' => $diasRetraso,
-                    'elementos_pendientes' => count($elementosIds),
+                    'elementos_total' => $planilla->elementos->count(),
                     'maquinas' => $maquinas,
                 ];
             }
