@@ -14,7 +14,7 @@
         {{-- ===== Menú móvil ===== --}}
         <div class="sm:hidden relative">
             <button @click="open = !open"
-                class="w-full px-4 py-2 rounded-lg bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900 text-white font-semibold shadow hover:bg-gray-800 transition">
+                class="w-full px-4 py-2 sm:rounded-lg bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900 text-white font-semibold shadow hover:bg-gray-800 transition">
                 Naves
             </button>
 
@@ -26,11 +26,10 @@
                         $active = $obra->id == $obraActualId;
                         $ruta = rutaNave($obra);
                     @endphp
-                    <a href="{{ $ruta }}"
-                        class="block px-3 py-3 text-sm font-medium transition
-                            {{ $active
-                                ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
-                                : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/70' }}">
+                    <a href="{{ $ruta }}" class="block px-3 py-3 text-sm font-medium transition
+                                    {{ $active
+                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
+                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/70' }}">
                         🏭 {{ $obra->obra }}
                     </a>
                 @endforeach
@@ -46,9 +45,9 @@
                 @endphp
                 <a href="{{ $ruta }}"
                     class="flex-1 text-center px-4 py-2 font-semibold rounded-lg border transition-colors duration-200 ease-out
-                    {{ $active
-                        ? 'bg-gray-900 text-white border-gray-900 shadow'
-                        : 'bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-400 dark:hover:border-gray-600' }}">
+                            {{ $active
+                    ? 'bg-gray-900 text-white border-gray-900 shadow'
+                    : 'bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-400 dark:hover:border-gray-600' }}">
                     {{ $obra->obra }}
                 </a>
             @endforeach

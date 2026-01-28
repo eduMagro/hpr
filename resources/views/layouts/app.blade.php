@@ -124,6 +124,43 @@
             text-rendering: optimizeLegibility;
         }
 
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        /* Light Mode Scrollbar */
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            /* border-radius: 4px; */
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        /* Dark Mode Scrollbar */
+        html.dark ::-webkit-scrollbar-track {
+            background: #1f2937;
+            /* gray-800 */
+        }
+
+        html.dark ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            /* gray-600 */
+            /* border-radius: 4px; */
+        }
+
+        html.dark ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+            /* gray-500 */
+        }
+
         /* Personalizar barra de progreso de Livewire Navigate */
         .livewire-progress-bar {
             position: fixed;

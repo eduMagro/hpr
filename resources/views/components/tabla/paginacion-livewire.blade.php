@@ -5,7 +5,7 @@
     <div class="inline-flex items-center justify-center gap-2 text-sm">
         <label for="perPageSelect" class="text-gray-600 dark:text-gray-400">Mostrar</label>
         <select wire:model.live="perPage" id="perPageSelect"
-            class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded px-2 pr-7 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             @foreach ($perPageOptions as $option)
                 <option value="{{ $option }}">{{ $option }}</option>
             @endforeach
