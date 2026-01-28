@@ -281,7 +281,7 @@ data-user-id="{{ auth()->id() }}" @endauth>
                     @isset($header)
                         <header class="mb-6">
                             <div
-                                class="bg-white dark:bg-gray-800 shadow-sm rounded-lg px-6 py-4 border border-gray-200 dark:border-gray-700 transition-colors">
+                                class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg px-6 py-4 border border-gray-200 dark:border-gray-700 transition-colors">
                                 {{ $header }}
                             </div>
                         </header>

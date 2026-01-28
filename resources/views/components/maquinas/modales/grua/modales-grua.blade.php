@@ -10,106 +10,126 @@
 @endphp
 
 {{-- 🔄 MODAL MOVIMIENTO GENERAL --}}
-<div id="modalMovimientoLibre"
-    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
-    <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-lg">
-        <h2 class="text-lg sm:text-xl font-bold mb-4 text-center text-gray-800">
-            ➕ Nuevo Movimiento
-        </h2>
+<form method="POST" action="{{ route('movimientos.store') }}" id="form-movimiento-general">
+    <div id="modalMovimientoLibre"
+        class="fixed inset-0 bg-black bg-opacity-50 z-[999] hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div
+            class="bg-white dark:bg-gray-800  sm:rounded-t-2xl sm:rounded-2xl shadow-xl h-screen w-screen sm:h-auto sm:max-w-lg flex flex-col justify-between overflow-y-auto">
+            <h2
+                class="text-lg sm:text-xl font-bold text-center text-gray-800 dark:text-white w-full p-6 border-b border-gray-200 dark:border-gray-600">
+                <div class="flex justify-center items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-move3d-icon lucide-move-3d">
+                        <path d="M5 3v16h16" />
+                        <path d="m5 19 6-6" />
+                        <path d="m2 6 3-3 3 3" />
+                        <path d="m18 16 3 3-3 3" />
+                    </svg>
+                    <p>Nuevo Movimiento</p>
+                </div>
+            </h2>
 
-        <form method="POST" action="{{ route('movimientos.store') }}"
-            id="form-movimiento-general">
             @csrf
             <input type="hidden" name="tipo" value="movimiento libre">
 
             <!-- Producto -->
-            <x-tabla.input-movil type="text" id="codigo_general_general"
-                label="Escanear Producto o Paquete"
-                placeholder="Escanea QR Ferralla" autocomplete="off"
-                inputmode="text" />
+            <div class="p-6 max-sm:h-full">
+                <x-tabla.input-movil type="text" id="codigo_general_general" label="Escanear Producto o Paquete"
+                    placeholder="Escanea QR Ferralla" autocomplete="off" inputmode="text"
+                    class="dark:bg-gray-700 dark:text-gray-200" />
 
-            <div id="mostrar_qrs"
-                data-api-info-url="{{ route('api.codigos.info') }}"></div>
-            <input type="hidden" name="lista_qrs" id="lista_qrs">
+                <div id="mostrar_qrs" data-api-info-url="{{ route('api.codigos.info') }}" class="my-2"></div>
+                <input type="hidden" name="lista_qrs" id="lista_qrs">
 
 
-            <!-- Ubicación destino (select de sector + ubicación) -->
-            <div class="mt-4" id="ubicacion-destino-container">
-                <!-- Select de Sector -->
-                <label for="sector_destino" class="block text-sm font-medium text-gray-700 mb-1">
-                    Sector <span class="text-red-500">*</span>
-                </label>
-                <select name="sector_destino" id="sector_destino"
-                    class="w-full border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
-                    style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;">
-                    @foreach ($sectores ?? [] as $sector)
-                        <option value="{{ $sector }}" {{ $sector === ($sectorPorDefecto ?? '') ? 'selected' : '' }}>
-                            {{ $sector }}
-                        </option>
-                    @endforeach
-                </select>
+                <!-- Selector de Tipo de Destino (Tabs) -->
+                <div class="grid grid-cols-2 gap-2 mb-4 min-h-16 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
+                    <button type="button" id="btn-tab-ubicacion"
+                        class="py-2 px-4 rounded-md text-sm font-medium transition-all shadow bg-white dark:bg-gray-600 text-gray-800 dark:text-white">
+                        A Ubicación
+                    </button>
+                    <button type="button" id="btn-tab-maquina"
+                        class="py-2 px-4 rounded-md text-sm font-medium transition-all text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                        A Máquina
+                    </button>
+                </div>
 
-                <!-- Select de Ubicación -->
-                <label for="ubicacion_destino_select" class="block text-sm font-medium text-gray-700 mb-1">
-                    Ubicación <span class="text-red-500">*</span>
-                </label>
-                <select name="ubicacion_destino" id="ubicacion_destino_select"
-                    class="w-full border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
-                    style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;">
-                    @php
-                        $sectorInicial = $sectorPorDefecto ?? (count($sectores ?? []) > 0 ? $sectores[0] : null);
-                        $ubicacionesIniciales = $sectorInicial && isset($ubicacionesPorSector[$sectorInicial])
-                            ? $ubicacionesPorSector[$sectorInicial]
-                            : collect();
-                    @endphp
-                    @foreach ($ubicacionesIniciales as $ubicacion)
-                        <option value="{{ $ubicacion->id }}">{{ $ubicacion->nombre_sin_prefijo }}</option>
-                    @endforeach
-                </select>
+                <!-- Ubicación destino (select de sector + ubicación) -->
+                <div class="mt-4" id="ubicacion-destino-container">
+                    <!-- Select de Sector -->
+                    <label for="sector_destino" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Sector <span class="text-red-500">*</span>
+                    </label>
+                    <select name="sector_destino" id="sector_destino"
+                        class="w-full border border-gray-300 dark:border-gray-600 rounded text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+                        style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;">
+                        @foreach ($sectores ?? [] as $sector)
+                            <option value="{{ $sector }}" {{ $sector === ($sectorPorDefecto ?? '') ? 'selected' : '' }}>
+                                {{ $sector }}
+                            </option>
+                        @endforeach
+                    </select>
 
-                <!-- Checkbox para escanear ubicación -->
-                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                    <input type="checkbox" id="scan_ubicacion_checkbox" class="w-5 h-5 cursor-pointer">
-                    <span>Escanear ubicación en su lugar</span>
-                </label>
+                    <!-- Select de Ubicación -->
+                    <label for="ubicacion_destino_select"
+                        class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Ubicación <span class="text-red-500">*</span>
+                    </label>
+                    <select name="ubicacion_destino" id="ubicacion_destino_select"
+                        class="w-full border border-gray-300 dark:border-gray-600 rounded text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+                        style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;">
+                        @php
+                            $sectorInicial = $sectorPorDefecto ?? (count($sectores ?? []) > 0 ? $sectores[0] : null);
+                            $ubicacionesIniciales = $sectorInicial && isset($ubicacionesPorSector[$sectorInicial])
+                                ? $ubicacionesPorSector[$sectorInicial]
+                                : collect();
+                        @endphp
+                        @foreach ($ubicacionesIniciales as $ubicacion)
+                            <option value="{{ $ubicacion->id }}">{{ $ubicacion->nombre_sin_prefijo }}</option>
+                        @endforeach
+                    </select>
 
-                <!-- Input de escaneo (oculto por defecto) -->
-                <div id="scan_ubicacion_wrapper" class="hidden mt-2">
-                    <x-tabla.input-movil name="ubicacion_destino_scan"
-                        id="ubicacion_destino_scan"
-                        label=""
-                        placeholder="Escanea el código de ubicación"
-                        autocomplete="off" />
+                    <!-- Checkbox para escanear ubicación -->
+                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                        <input type="checkbox" id="scan_ubicacion_checkbox" class="w-5 h-5 cursor-pointer">
+                        <span>Escanear ubicación en su lugar</span>
+                    </label>
+
+                    <!-- Input de escaneo (oculto por defecto) -->
+                    <div id="scan_ubicacion_wrapper" class="hidden mt-2">
+                        <x-tabla.input-movil name="ubicacion_destino_scan" id="ubicacion_destino_scan" label=""
+                            placeholder="Escanea el código de ubicación" autocomplete="off" />
+                    </div>
+                </div>
+
+                <!-- Máquina destino (select filtrado por obra_id de la grúa) -->
+                <div class="mt-4 hidden" id="maquina-destino-container">
+                    <label for="maquina_destino"
+                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Máquina
+                        destino</label>
+                    <select name="maquina_destino" id="maquina_destino"
+                        class="w-full border border-gray-300 dark:border-gray-600 rounded text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;">
+                        <option value="">-- Selecciona máquina --</option>
+                        @foreach ($maquinasDisponibles as $maq)
+                            <option value="{{ $maq->id }}">
+                                {{ $maq->nombre }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
             </div>
 
-            <!-- Máquina destino (select filtrado por obra_id de la grúa) -->
-            <div class="mt-4">
-                <label for="maquina_destino"
-                    class="block text-sm font-medium text-gray-700">Máquina
-                    destino</label>
-                <select name="maquina_destino" id="maquina_destino"
-                    class="w-full border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;">
-                    <option value="">-- Selecciona máquina --</option>
-                    @foreach ($maquinasDisponibles as $maq)
-                        <option value="{{ $maq->id }}">
-                            {{ $maq->nombre }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
             <!-- Botones -->
-            <div class="flex justify-end gap-3 mt-6">
-                <button id="cancelar_btn" type="button"
-                    onclick="cerrarModalMovimientoLibre()"
-                    class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
+            <div class="flex justify-end gap-3 mt-6 p-6">
+                <button id="cancelar_btn" type="button" onclick="cerrarModalMovimientoLibre()"
+                    class="px-4 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-white rounded-lg">Cancelar</button>
                 <button type="submit"
                     class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Registrar</button>
             </div>
-        </form>
-    </div>
+</form>
+</div>
 </div>
 <script>
     // Datos de ubicaciones por sector para el modal de movimiento libre
@@ -136,7 +156,7 @@
         inputs.forEach(input => {
             if (input.dataset.enterBlocked !== 'true') {
                 input.dataset.enterBlocked = 'true';
-                input.addEventListener('keydown', function(e) {
+                input.addEventListener('keydown', function (e) {
                     if (e.key === 'Enter') {
                         e.preventDefault();
                     }
@@ -169,7 +189,7 @@
         }
 
         // Evento change del selector de sector
-        sectorSelect.addEventListener('change', function() {
+        sectorSelect.addEventListener('change', function () {
             actualizarUbicacionesPorSector(this.value);
         });
 
@@ -180,7 +200,7 @@
 
         if (scanCheckbox && scanWrapper && scanCheckbox.dataset.checkboxInitialized !== 'true') {
             scanCheckbox.dataset.checkboxInitialized = 'true';
-            scanCheckbox.addEventListener('change', function() {
+            scanCheckbox.addEventListener('change', function () {
                 if (this.checked) {
                     sectorSelect.style.display = 'none';
                     sectorSelect.previousElementSibling.style.display = 'none';
@@ -206,6 +226,72 @@
                 }
             });
         }
+
+        // ===== Lógica para Tabs (Ubicación vs Máquina) =====
+        const btnUbicacion = document.getElementById('btn-tab-ubicacion');
+        const btnMaquina = document.getElementById('btn-tab-maquina');
+        const containerUbicacion = document.getElementById('ubicacion-destino-container');
+        const containerMaquina = document.getElementById('maquina-destino-container');
+        const maquinaSelect = document.getElementById('maquina_destino');
+
+        function setDestino(tipo) {
+            if (!containerUbicacion || !containerMaquina || !maquinaSelect) return;
+
+            // Función auxiliar para habilitar/deshabilitar inputs
+            const toggleInputs = (container, enable) => {
+                const elements = container.querySelectorAll('input, select, textarea, button');
+                elements.forEach(el => {
+                    el.disabled = !enable;
+                });
+            };
+
+            if (tipo === 'ubicacion') {
+                // Mostrar Ubicación
+                containerUbicacion.style.display = 'block';
+                containerMaquina.style.display = 'none';
+
+                // Habilitar Ubicación, Deshabilitar Máquina
+                toggleInputs(containerUbicacion, true);
+                toggleInputs(containerMaquina, false);
+
+                // Estilos Tabs (Activo Ubicación)
+                btnUbicacion.classList.add('bg-white', 'dark:bg-gray-600', 'shadow', 'text-gray-800', 'dark:text-white');
+                btnUbicacion.classList.remove('text-gray-500', 'dark:text-gray-400', 'hover:text-gray-700', 'dark:hover:text-gray-200');
+
+                btnMaquina.classList.remove('bg-white', 'dark:bg-gray-600', 'shadow', 'text-gray-800', 'dark:text-white');
+                btnMaquina.classList.add('text-gray-500', 'dark:text-gray-400', 'hover:text-gray-700', 'dark:hover:text-gray-200');
+
+                // Borrar selección de máquina
+                maquinaSelect.value = "";
+            } else {
+                // Mostrar Máquina
+                containerUbicacion.style.display = 'none';
+                containerMaquina.style.display = 'block';
+
+                // Habilitar Máquina, Deshabilitar Ubicación
+                toggleInputs(containerMaquina, true);
+                toggleInputs(containerUbicacion, false);
+
+                // Estilos Tabs (Activo Máquina)
+                btnMaquina.classList.add('bg-white', 'dark:bg-gray-600', 'shadow', 'text-gray-800', 'dark:text-white');
+                btnMaquina.classList.remove('text-gray-500', 'dark:text-gray-400', 'hover:text-gray-700', 'dark:hover:text-gray-200');
+
+                btnUbicacion.classList.remove('bg-white', 'dark:bg-gray-600', 'shadow', 'text-gray-800', 'dark:text-white');
+                btnUbicacion.classList.add('text-gray-500', 'dark:text-gray-400', 'hover:text-gray-700', 'dark:hover:text-gray-200');
+
+                // Borrar selección de ubicación
+                if (sectorSelect) sectorSelect.value = "";
+                if (ubicacionSelect) ubicacionSelect.value = "";
+            }
+        }
+
+        if (btnUbicacion && btnMaquina) {
+            btnUbicacion.addEventListener('click', () => setDestino('ubicacion'));
+            btnMaquina.addEventListener('click', () => setDestino('maquina'));
+
+            // Inicializar estado (seleccionar ubicación por defecto)
+            setDestino('ubicacion');
+        }
     }
 
     // Inicializar en carga normal y navegación Livewire
@@ -219,7 +305,7 @@
             initModalMovimientoLibre();
         }
 
-        document.addEventListener('livewire:navigated', function() {
+        document.addEventListener('livewire:navigated', function () {
             // Después de navegación Livewire, los elementos son nuevos, limpiar flags
             const sectorSelect = document.getElementById('sector_destino');
             if (sectorSelect) {
@@ -252,19 +338,17 @@
             <input type="hidden" name="paquete_id" id="paquete_id">
             <input type="hidden" name="ubicacion_origen" id="ubicacion_origen">
             <!-- Escanear paquete -->
-            <x-tabla.input-movil id="codigo_general" name="codigo_general"
-                placeholder="ESCANEA PAQUETE" inputmode="none"
-                autocomplete="off" />
+            <x-tabla.input-movil id="codigo_general" name="codigo_general" placeholder="ESCANEA PAQUETE"
+                inputmode="none" autocomplete="off" />
             <p id="estado_verificacion" class="text-sm mt-1"></p>
 
             <!-- Ubicación destino -->
-            <x-tabla.input-movil id="ubicacion_destino" name="ubicacion_destino"
-                placeholder="ESCANEA UBICACIÓN" required />
+            <x-tabla.input-movil id="ubicacion_destino" name="ubicacion_destino" placeholder="ESCANEA UBICACIÓN"
+                required />
 
             <!-- Botones -->
             <div class="flex justify-end gap-3 mt-6">
-                <button type="button" id="cancelar_btn"
-                    onclick="cerrarModalBajadaPaquete()"
+                <button type="button" id="cancelar_btn" onclick="cerrarModalBajadaPaquete()"
                     class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
                 <button type="submit"
                     class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Registrar</button>
@@ -273,45 +357,37 @@
     </div>
 </div>
 {{-- 🔄 MODAL RECARGA MP --}}
-<div id="modalMovimiento"
-    class="fixed inset-0 z-50 bg-black bg-opacity-50 hidden items-center justify-center">
-    <div
-        class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md mx-0 sm:mx-0">
+<div id="modalMovimiento" class="fixed inset-0 z-50 bg-black bg-opacity-50 hidden items-center justify-center">
+    <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md mx-0 sm:mx-0">
 
         <h2 class="text-lg sm:text-xl font-bold mb-4 text-center text-gray-800">
             RECARGAR MÁQUINA
         </h2>
 
         <!-- Información tipo tabla -->
-        <div
-            class="grid grid-cols-2 gap-3 mb-4 text-sm sm:text-base text-gray-700">
+        <div class="grid grid-cols-2 gap-3 mb-4 text-sm sm:text-base text-gray-700">
             <div class="bg-gray-100 rounded-lg p-3 shadow-sm">
-                <p class="font-semibold text-gray-600 text-xs sm:text-sm"><i
-                        class="fas fa-industry"></i>
+                <p class="font-semibold text-gray-600 text-xs sm:text-sm"><i class="fas fa-industry"></i>
                     {{-- fa-industry --}}
                 </p>
-                <p id="maquina-nombre-destino"
-                    class="text-green-700 font-bold text-lg sm:text-xl mt-1">
+                <p id="maquina-nombre-destino" class="text-green-700 font-bold text-lg sm:text-xl mt-1">
                 </p>
             </div>
             <div class="bg-gray-100 rounded-lg p-3 shadow-sm">
                 <p class="font-semibold text-gray-600 text-xs sm:text-sm">🧱
                     Tipo</p>
-                <p id="producto-tipo"
-                    class="text-gray-800 font-bold text-xl mt-1"></p>
+                <p id="producto-tipo" class="text-gray-800 font-bold text-xl mt-1"></p>
             </div>
             <div class="bg-gray-100 rounded-lg p-3 shadow-sm">
                 <p class="font-semibold text-gray-600 text-xs sm:text-sm">⌀
                     Diámetro</p>
-                <p id="producto-diametro"
-                    class="text-gray-800 font-bold text-lg sm:text-xl mt-1">
+                <p id="producto-diametro" class="text-gray-800 font-bold text-lg sm:text-xl mt-1">
                 </p>
             </div>
             <div class="bg-gray-100 rounded-lg p-3 shadow-sm">
                 <p class="font-semibold text-gray-600 text-xs sm:text-sm">📏
                     Longitud</p>
-                <p id="producto-longitud"
-                    class="text-gray-800 font-bold text-lg sm:text-xl mt-1">
+                <p id="producto-longitud" class="text-gray-800 font-bold text-lg sm:text-xl mt-1">
                 </p>
             </div>
         </div>
@@ -319,35 +395,28 @@
         <!-- Ubicaciones sugeridas -->
         <div id="ubicaciones-actuales" class="mb-4 hidden">
             <div class="border-t pt-3">
-                <label
-                    class="font-semibold block mb-2 text-gray-700 text-sm sm:text-base">
+                <label class="font-semibold block mb-2 text-gray-700 text-sm sm:text-base">
                     📍 Ubicaciones con producto disponible
                 </label>
-                <ul id="ubicaciones-lista"
-                    class="list-disc list-inside text-gray-700 text-sm pl-4 space-y-1">
+                <ul id="ubicaciones-lista" class="list-disc list-inside text-gray-700 text-sm pl-4 space-y-1">
                 </ul>
             </div>
         </div>
 
         <!-- Formulario -->
-        <form method="POST" action="{{ route('movimientos.store') }}"
-            id="form-ejecutar-movimiento">
+        <form method="POST" action="{{ route('movimientos.store') }}" id="form-ejecutar-movimiento">
             @csrf
             <input type="hidden" name="tipo" id="modal_tipo">
-            <input type="hidden" name="producto_base_id"
-                id="modal_producto_base_id">
-            <input type="hidden" name="maquina_destino"
-                id="modal_maquina_id">
+            <input type="hidden" name="producto_base_id" id="modal_producto_base_id">
+            <input type="hidden" name="maquina_destino" id="modal_maquina_id">
 
-            <x-tabla.input-movil type="text" name="codigo_general"
-                id="modal_producto_id" placeholder="ESCANEA QR MATERIA PRIMA"
-                inputmode="none" autocomplete="off" required />
+            <x-tabla.input-movil type="text" name="codigo_general" id="modal_producto_id"
+                placeholder="ESCANEA QR MATERIA PRIMA" inputmode="none" autocomplete="off" required />
             <input type="hidden" name="lista_qrs" id="modal_lista_qrs">
 
             <!-- Botones -->
             <div class="flex justify-end gap-3 mt-6">
-                <button type="button"
-                    onclick="cerrarModalRecargaMateriaPrima()"
+                <button type="button" onclick="cerrarModalRecargaMateriaPrima()"
                     class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
                 <button type="submit"
                     class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Registrar</button>
@@ -380,8 +449,7 @@
 
 </div>
 {{-- 🔄 MODAL DESCARGA MATERIA PRIMA --}}
-<div id="modal-ver-pedido"
-    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+<div id="modal-ver-pedido" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
     <div class="bg-white w-full max-w-2xl rounded shadow-lg p-6 relative">
         <button onclick="cerrarModalPedido()"
             class="absolute top-2 right-2 text-gray-500 hover:text-black text-xl">&times;</button>
@@ -486,13 +554,13 @@
     }
 
     // Mostrar/ocultar campos según tipo
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const tipoSelect = document.getElementById('tipo');
         const productoSection = document.getElementById('producto-section');
         const paqueteSection = document.getElementById('paquete-section');
 
         if (tipoSelect && productoSection && paqueteSection) {
-            tipoSelect.addEventListener('change', function() {
+            tipoSelect.addEventListener('change', function () {
                 if (this.value === 'producto') {
                     productoSection.classList.remove('hidden');
                     paqueteSection.classList.add('hidden');
@@ -681,16 +749,13 @@
 {{-- 📦 MODAL MOVER PAQUETE (3 pasos: escanear, validar, ubicar en mapa) --}}
 <div id="modal-mover-paquete"
     class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div
-        class="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-6xl max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
+    <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-6xl max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
         data-modal-ajustable-grid="true">
         {{-- Header --}}
-        <div
-            class="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex justify-between items-center">
+        <div class="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex justify-between items-center">
             <h2 class="text-lg sm:text-xl font-bold">📦 Mover Paquete a Nueva
                 Ubicación</h2>
-            <button onclick="cerrarModalMoverPaquete()"
-                class="text-white hover:text-gray-200 text-2xl">&times;</button>
+            <button onclick="cerrarModalMoverPaquete()" class="text-white hover:text-gray-200 text-2xl">&times;</button>
         </div>
 
         {{-- Contenido --}}
@@ -705,25 +770,22 @@
 
                     <div class="flex flex-col gap-2">
                         <div class="flex-1">
-                            <x-tabla.input-movil type="text"
-                                id="codigo_paquete_mover" label="Código de Etiqueta o Paquete"
-                                placeholder="Escanea código de etiqueta (ETQ...) o paquete (PAQ...)"
-                                autocomplete="off" inputmode="text" />
+                            <x-tabla.input-movil type="text" id="codigo_paquete_mover"
+                                label="Código de Etiqueta o Paquete"
+                                placeholder="Escanea código de etiqueta (ETQ...) o paquete (PAQ...)" autocomplete="off"
+                                inputmode="text" />
                         </div>
-                        <button onclick="buscarPaqueteParaMover()" 
+                        <button onclick="buscarPaqueteParaMover()"
                             class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow mb-[2px]">
                             Buscar
                         </button>
                     </div>
 
-                    <div id="error-paquete-mover"
-                        class="hidden mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+                    <div id="error-paquete-mover" class="hidden mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
                     </div>
-                    <div id="loading-paquete-mover"
-                        class="hidden mt-2 text-sm text-gray-600">
+                    <div id="loading-paquete-mover" class="hidden mt-2 text-sm text-gray-600">
                         <div class="flex items-center gap-2">
-                            <div
-                                class="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600">
+                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600">
                             </div>
                             <span>Buscando paquete...</span>
                         </div>
@@ -731,28 +793,27 @@
                 </div>
 
                 {{-- Info del paquete (se muestra despuÃ©s de validar) --}}
-                <div id="info-paquete-validado"
-                    class="hidden bg-green-50 border border-green-200 rounded-lg p-4">
+                <div id="info-paquete-validado" class="hidden bg-green-50 border border-green-200 rounded-lg p-4">
                     <h3 class="font-semibold text-green-800 mb-3">✓ Paquete
                         Encontrado</h3>
-                    <div
-                        class="flex flex-col md:flex-row justify-start gap-3 text-sm">
+                    <div class="flex flex-col md:flex-row justify-start gap-3 text-sm">
                         <div class="bg-white p-2 rounded border">
                             <p class="text-gray-600 text-xs">Código Paquete</p>
-                            <p id="paquete-codigo-info"
-                                class="font-bold text-gray-800"></p>
+                            <p id="paquete-codigo-info" class="font-bold text-gray-800"></p>
                         </div>
                         <div class="bg-white p-2 rounded border">
                             <p class="text-gray-600 text-xs">Etiquetas /
                                 Elementos</p>
-                            <p id="paquete-peso-info"
-                                class="font-bold text-gray-800"></p>
+                            <p id="paquete-peso-info" class="font-bold text-gray-800"></p>
                         </div>
                     </div>
                     {{-- Mensaje de advertencia si no tiene localización --}}
-                    <div id="warning-sin-localizacion" class="hidden mt-3 p-3 bg-blue-50 border border-blue-300 rounded-lg">
-                        <p class="text-blue-800 text-sm font-medium">📍 Este paquete no tiene ubicación asignada en el mapa.</p>
-                        <p class="text-blue-700 text-xs mt-1">Se mostrará un ghost para que puedas arrastrarlo a la ubicación deseada.</p>
+                    <div id="warning-sin-localizacion"
+                        class="hidden mt-3 p-3 bg-blue-50 border border-blue-300 rounded-lg">
+                        <p class="text-blue-800 text-sm font-medium">📍 Este paquete no tiene ubicación asignada en el
+                            mapa.</p>
+                        <p class="text-blue-700 text-xs mt-1">Se mostrará un ghost para que puedas arrastrarlo a la
+                            ubicación deseada.</p>
                     </div>
                     <button onclick="mostrarPasoMapa()"
                         class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow">
@@ -779,7 +840,8 @@
                 </div>
 
                 {{-- Componente de mapa simplificado --}}
-                <div class="bg-white p-2 rounded-lg border flex-1 overflow-hidden relative" style="height: calc(100% - 70px);">
+                <div class="bg-white p-2 rounded-lg border flex-1 overflow-hidden relative"
+                    style="height: calc(100% - 70px);">
                     <x-mapa-simple :nave-id="$naveIdMapa" :modo-edicion="true" class="h-full w-full" />
                 </div>
             </div>
@@ -910,11 +972,11 @@
         window.paqueteMoverData = null;
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const inputCodigo = document.getElementById(
             'codigo_paquete_mover');
         if (inputCodigo) {
-            inputCodigo.addEventListener('keydown', function(e) {
+            inputCodigo.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     buscarPaqueteParaMover();
@@ -942,7 +1004,7 @@
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector(
-                            'meta[name="csrf-token"]')?.content ||
+                        'meta[name="csrf-token"]')?.content ||
                         '',
                     'Accept': 'application/json'
                 },
@@ -1109,11 +1171,23 @@
 {{-- 🚛 MODAL EJECUTAR SALIDA (con mapa y escaneo de paquetes) --}}
 <div id="modal-ejecutar-salida"
     class="fixed inset-x-0 top-14 bottom-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
-    <div class="bg-white sm:rounded-2xl shadow-xl w-full h-full sm:w-[90vw] sm:max-h-[calc(100vh-5rem)] overflow-hidden flex flex-col">
+    <div
+        class="bg-white dark:bg-gray-900 sm:rounded-2xl shadow-xl w-full h-full sm:w-[90vw] sm:max-h-[calc(100vh-5rem)] overflow-hidden flex flex-col">
         {{-- Header --}}
         <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-4 flex justify-between items-center">
             <div>
-                <h2 class="text-lg sm:text-xl font-bold">🚛 Ejecutar Salida</h2>
+                <h2 class="text-lg sm:text-xl font-bold flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-truck-icon lucide-truck">
+                        <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
+                        <path d="M15 18H9" />
+                        <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14" />
+                        <circle cx="17" cy="18" r="2" />
+                        <circle cx="7" cy="18" r="2" />
+                    </svg>
+                    <p>Ejecutar Salida</p>
+                </h2>
                 <p class="text-sm text-purple-100" id="salida-codigo-header">Cargando...</p>
             </div>
             <button onclick="cerrarModalEjecutarSalida()"
@@ -1121,21 +1195,22 @@
         </div>
 
         {{-- Barra de escaneo --}}
-        <div class="bg-gray-50 border-b p-4">
+        <div class="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700 p-4">
             <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
                 <div class="flex-1 w-full">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Escanear Etiqueta / Subetiqueta
                     </label>
                     <input type="text" id="codigo_etiqueta_salida"
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                        placeholder="Escanea el código de la etiqueta..."
-                        autocomplete="off">
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                        placeholder="Escanea el código de la etiqueta..." autocomplete="off">
                 </div>
                 <div class="flex items-end gap-2">
                     <div class="text-sm">
-                        <p class="text-gray-600">Paquetes validados: <span id="contador-escaneadas" class="font-bold text-purple-600">0</span></p>
-                        <p class="text-gray-600">Total paquetes: <span id="contador-total" class="font-bold">0</span></p>
+                        <p class="text-gray-600 dark:text-gray-400">Paquetes validados: <span id="contador-escaneadas"
+                                class="font-bold text-purple-600 dark:text-purple-400">0</span></p>
+                        <p class="text-gray-600 dark:text-gray-400">Total paquetes: <span id="contador-total"
+                                class="font-bold text-gray-800 dark:text-gray-200">0</span></p>
                     </div>
                 </div>
             </div>
@@ -1145,8 +1220,9 @@
         {{-- Contenido principal: Mapa + Lista --}}
         <div class="flex-1 overflow-hidden flex flex-col lg:flex-row relative">
             {{-- MAPA (Izquierda) --}}
-            <div id="contenedor-mapa-ejecutar-salida" class="hidden lg:block w-full lg:flex-1 h-full p-4 overflow-hidden bg-white absolute inset-0 lg:static z-20 lg:z-auto">
-                <button onclick="ocultarMapaMovil()" 
+            <div id="contenedor-mapa-ejecutar-salida"
+                class="hidden lg:block w-full lg:flex-1 h-full p-4 overflow-hidden bg-white dark:bg-gray-900 absolute inset-0 lg:static z-20 lg:z-auto">
+                <button onclick="ocultarMapaMovil()"
                     class="lg:hidden absolute top-5 right-5 bg-white text-gray-800 px-4 py-2 rounded-full shadow-lg border z-50 font-bold flex items-center gap-2 hover:bg-gray-50">
                     <span>✕</span> Volver
                 </button>
@@ -1154,25 +1230,28 @@
             </div>
 
             {{-- LISTA DE PAQUETES (Derecha) --}}
-            <div id="contenedor-lista-paquetes" class="w-full lg:w-96 border-t lg:border-t-0 lg:border-l bg-gray-50 flex flex-col h-full overflow-hidden">
-                <div class="p-4 border-b bg-white">
-                    <h3 class="font-semibold text-gray-800">Paquetes de la Salida</h3>
-                    <p class="text-xs text-gray-500 mt-1">Haz clic para ver ubicación en el mapa</p>
+            <div id="contenedor-lista-paquetes"
+                class="w-full lg:w-96 border-t lg:border-t-0 lg:border-l dark:border-gray-700 bg-gray-50 flex flex-col h-full overflow-hidden">
+                <div class="p-4 border-b bg-white dark:bg-gray-800 dark:border-gray-700">
+                    <h3 class="font-semibold text-gray-800 dark:text-gray-200">Paquetes de la Salida</h3>
+                    <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">Haz clic para ver ubicación en el mapa</p>
                 </div>
-                <div class="flex-1 overflow-y-auto p-4 space-y-2" id="lista-paquetes-salida">
+                <div class="flex-1 overflow-y-auto p-4 space-y-2 dark:bg-gray-800" id="lista-paquetes-salida">
                     {{-- Los paquetes se cargarán aquí dinámicamente --}}
                 </div>
             </div>
         </div>
 
         {{-- Footer con botones --}}
-        <div class="border-t p-4 bg-gray-50 flex flex-col sm:flex-row justify-between gap-3">
-            <div class="text-sm text-gray-600">
+        {{-- Footer con botones --}}
+        <div
+            class="border-t dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800 flex flex-col sm:flex-row justify-between gap-3">
+            <div class="text-sm text-gray-600 dark:text-gray-400">
                 <p id="mensaje-validacion" class="hidden"></p>
             </div>
             <div class="flex gap-3">
                 <button onclick="cerrarModalEjecutarSalida()"
-                    class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg font-medium">
+                    class="px-4 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white rounded-lg font-medium">
                     Cancelar
                 </button>
                 <button onclick="completarSalida()" id="btn-completar-salida"
@@ -1233,7 +1312,7 @@
             inputEscaneo.replaceWith(inputEscaneo.cloneNode(true));
             const newInput = document.getElementById('codigo_etiqueta_salida');
 
-            newInput.addEventListener('keypress', async function(e) {
+            newInput.addEventListener('keypress', async function (e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     const codigo = this.value.trim();
@@ -1333,9 +1412,9 @@
 
             const div = document.createElement('div');
             const isSeleccionado = paqueteSeleccionadoId === paquete.id;
-            let claseEstado = 'bg-white border-gray-200 hover:border-purple-300';
-            if (isLocalizado) claseEstado = 'bg-purple-50 border-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.2)]';
-            if (isSeleccionado) claseEstado = 'bg-purple-50 border-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.2)]';
+            let claseEstado = 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-500';
+            if (isLocalizado) claseEstado = 'bg-purple-50 dark:bg-purple-900/20 border-purple-500 dark:border-purple-500/50 shadow-[0_0_10px_rgba(126,34,206,0.2)]';
+            if (isSeleccionado) claseEstado = 'bg-purple-50 dark:bg-purple-900/20 border-purple-500 dark:border-purple-500/50 shadow-[0_0_10px_rgba(126,34,206,0.2)]';
 
             div.className = `p-3 rounded-lg border-2 cursor-pointer transition-all ${claseEstado}`;
             // Click en paquete → mostrar/centrar y ocultar otros en el mapa, marcar selección
@@ -1357,21 +1436,20 @@
                 <div class="flex items-start justify-between gap-2">
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
-                            <span class="w-3 h-3 inline-block rounded-full ${isLocalizado ? 'bg-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.45)]' : 'bg-gray-300'}"></span>
-                            <p class="font-semibold text-gray-800 truncate">${paquete.codigo}</p>
+                            <span class="w-3 h-3 inline-block rounded-full ${isLocalizado ? 'bg-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.45)]' : 'bg-gray-300 dark:bg-gray-600'}"></span>
+                            <p class="font-semibold text-gray-800 dark:text-gray-200 truncate">${paquete.codigo}</p>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">${paquete.obra}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${paquete.obra}</p>
                         <div class="flex items-center gap-2 mt-1">
-                            <span class="text-xs px-2 py-0.5 rounded ${
-                                paquete.tipo === 'barras' ? 'bg-blue-100 text-blue-700' :
-                                paquete.tipo === 'estribos' ? 'bg-orange-100 text-orange-700' :
-                                'bg-purple-100 text-purple-700'
-                            }">${paquete.tipo}</span>
-                            <span class="text-xs text-gray-500">${paquete.peso} kg</span>
+                            <span class="text-xs px-2 py-0.5 rounded ${paquete.tipo === 'barras' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200' :
+                    paquete.tipo === 'estribos' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-200' :
+                        'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-200'
+                }">${paquete.tipo}</span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">${paquete.peso} kg</span>
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-xs font-medium ${isLocalizado ? 'text-purple-600' : 'text-gray-500'}">
+                        <p class="text-xs font-medium ${isLocalizado ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400'}">
                             ${paquete.num_etiquetas} etiquetas
                         </p>
                     </div>
@@ -1433,12 +1511,11 @@
         if (!div) return;
 
         div.textContent = mensaje;
-        div.className = `mt-2 p-2 rounded-lg text-sm ${
-            tipo === 'success' ? 'bg-green-100 text-green-800' :
-            tipo === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-            tipo === 'error' ? 'bg-red-100 text-red-800' :
-            'bg-gray-100 text-gray-800'
-        }`;
+        div.className = `mt-2 p-2 rounded-lg text-sm ${tipo === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200' :
+            tipo === 'warning' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200' :
+                tipo === 'error' ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200' :
+                    'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+            }`;
         div.classList.remove('hidden');
 
         setTimeout(() => {

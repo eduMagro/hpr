@@ -169,18 +169,18 @@ class Movimiento extends Model
         if (preg_match($reProducto, $d, $m)) {
             [, $verbo, $tipo, $codigo, $diam, $long, $origen, $destTipo, $destNombre] = $m;
 
-            $tipoLower       = mb_strtolower(trim($tipo), 'UTF-8');
-            $tipoUpper       = mb_strtoupper($tipoLower, 'UTF-8'); // ← para mostrar
-            $esEncarretado   = preg_match('/\bencarretado\b/u', $tipoLower) === 1;
+            $tipoLower = mb_strtolower(trim($tipo), 'UTF-8');
+            $tipoUpper = mb_strtoupper($tipoLower, 'UTF-8'); // ← para mostrar
+            $esEncarretado = preg_match('/\bencarretado\b/u', $tipoLower) === 1;
 
 
 
             // Chips
             $chips = [];
-            $chips[] = '<span style="background:#e5e7eb;border-radius:9999px;padding:2px 10px;display:inline-block;margin-right:6px;">' . e($codigo) . '</span>';
-            $chips[] = '<span style="background:#eef;border-radius:6px;padding:2px 8px;display:inline-block;margin-right:6px;">Ø' . e($diam) . ' mm</span>';
+            $chips[] = '<span class="bg-gray-200 dark:bg-gray-700" style="border-radius:9999px;padding:2px 10px;display:inline-block;margin-right:6px;">' . e($codigo) . '</span>';
+            $chips[] = '<span class="bg-gray-200 dark:bg-gray-700" style="border-radius:6px;padding:2px 8px;display:inline-block;margin-right:6px;">Ø' . e($diam) . ' mm</span>';
             if (!$esEncarretado && !empty($long)) {
-                $chips[] = '<span style="background:#eef;border-radius:6px;padding:2px 8px;display:inline-block;margin-right:6px;">L:' . e($long) . ' mm</span>';
+                $chips[] = '<span class="bg-gray-200 dark:bg-gray-700" style="border-radius:6px;padding:2px 8px;display:inline-block;margin-right:6px;">L:' . e($long) . ' mm</span>';
             }
 
             // 🔸 Origen formateado (si tiene patrón de Almacén/Sector/Ubicación)
@@ -188,8 +188,8 @@ class Movimiento extends Model
 
             // 🔹 Destino: si es máquina, normal; si es ubicación, aplicar formateo al nombre
             $destTipoNorm = mb_strtolower($destTipo, 'UTF-8');
-            $esMaquina    = in_array($destTipoNorm, ['máquina', 'maquina'], true);
-            $destColor    = $esMaquina ? '#1d4ed8' : '#047857';
+            $esMaquina = in_array($destTipoNorm, ['máquina', 'maquina'], true);
+            $destColor = $esMaquina ? '#1d4ed8' : '#047857';
             $destNombreHtml = $esMaquina
                 ? '<strong>' . e($destNombre) . '</strong>'
                 : $fmtUbicacion($destNombre);
@@ -207,13 +207,13 @@ class Movimiento extends Model
             [, $verbo, $codigo, $origen, $destTipo, $destNombre] = $m;
 
             $chips = [];
-            $chips[] = '<span style="background:#e5e7eb;border-radius:9999px;padding:2px 10px;display:inline-block;margin-right:6px;">' . e($codigo) . '</span>';
+            $chips[] = '<span class="bg-gray-200 dark:bg-gray-700" style="border-radius:9999px;padding:2px 10px;display:inline-block;margin-right:6px;">' . e($codigo) . '</span>';
 
             $origenHtml = '<span style="color:#b45309;">' . $fmtUbicacion($origen) . '</span>';
 
             $destTipoNorm = mb_strtolower($destTipo, 'UTF-8');
-            $esMaquina    = in_array($destTipoNorm, ['máquina', 'maquina'], true);
-            $destColor    = $esMaquina ? '#1d4ed8' : '#047857';
+            $esMaquina = in_array($destTipoNorm, ['máquina', 'maquina'], true);
+            $destColor = $esMaquina ? '#1d4ed8' : '#047857';
             $destNombreHtml = $esMaquina ? '<strong>' . e($destNombre) . '</strong>' : $fmtUbicacion($destNombre);
 
             $destinoHtml = '<span style="color:' . $destColor . ';">' . $destNombreHtml . '</span>';
@@ -246,15 +246,16 @@ class Movimiento extends Model
             if (!empty($tail)) {
                 $partes = array_map('trim', explode('|', $tail));
                 foreach ($partes as $p) {
-                    if ($p === '') continue;
+                    if ($p === '')
+                        continue;
 
                     // Normaliza "Label: Valor"
                     if (strpos($p, ':') !== false) {
                         [$label, $valor] = array_map('trim', explode(':', $p, 2));
                     } else {
                         $trozos = preg_split('/\s+/', $p, 2);
-                        $label  = $trozos[0] ?? '';
-                        $valor  = $trozos[1] ?? '';
+                        $label = $trozos[0] ?? '';
+                        $valor = $trozos[1] ?? '';
                     }
 
                     $k = mb_strtolower($label, 'UTF-8');

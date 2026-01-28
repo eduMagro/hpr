@@ -2,8 +2,8 @@
     <x-slot name="title">{{ $maquina->nombre }} - {{ config('app.name') }}</x-slot>
 
     <x-slot name="header">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-300 leading-tight">
                 <strong>{{ $maquina->nombre }}</strong>,
                 {{ $usuario1->name }}
                 @if ($usuario2)
@@ -508,7 +508,7 @@
                     @endif
                 @endif
 
-                <form method="POST" action="{{ route('turno.cambiarMaquina') }}" id="form-cambiar-maquina">
+                <form method="POST" class="w-full" action="{{ route('turno.cambiarMaquina') }}" id="form-cambiar-maquina">
                     @csrf
                     <input type="hidden" name="asignacion_id" value="{{ $turnoHoy->id ?? '' }}">
                     <input type="hidden" name="nueva_maquina_id" id="hidden-nueva-maquina-id" value="">
@@ -516,7 +516,7 @@
                     <div class="relative">
                         <select id="select-cambiar-maquina"
                             onchange="cambiarMaquinaSelect(this, {{ $maquina->id }})"
-                            class="appearance-none bg-white border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
+                            class="max-md:w-full appearance-none bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
                             @foreach ($maquinas as $m)
                                 <option value="{{ $m->id }}" {{ $m->id == $maquina->id ? 'selected' : '' }}>
                                     {{ $m->nombre }}
@@ -524,7 +524,7 @@
                             @endforeach
                         </select>
                         <div
-                            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                            class="pointer-events-none hidden absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M19 9l-7 7-7-7" />
