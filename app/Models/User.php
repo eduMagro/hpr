@@ -117,11 +117,6 @@ class User extends Authenticatable
      */
     public function getVacacionesCorrespondientesAttribute()
     {
-        // 1. Si tiene un manual override, usarlo
-        if ($this->vacaciones_totales) {
-            return $this->vacaciones_totales;
-        }
-
         $diasPorAnio = 22; // Base estándar
 
         // 2. Determinar la fecha de incorporación efectiva

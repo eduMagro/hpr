@@ -437,17 +437,38 @@ class VacacionesController extends Controller
             $diasNuevos = 0;
             $fechasAsignables = [];
 
-            // Obtener festivos del rango de la solicitud
-            $festivos = Festivo::whereBetween('fecha', [$solicitud->fecha_inicio, $solicitud->fecha_fin])
+            // Obtener festivos del año
+            $inicioAño = Carbon::now()->startOfYear();
+            $finAño = Carbon::now()->endOfYear();
+            $festivos = Festivo::whereBetween('fecha', [$inicioAño, $finAño])
                 ->pluck('fecha')
                 ->map(fn($f) => Carbon::parse($f)->format('Y-m-d'))
                 ->toArray();
 
-            $inicioAño = Carbon::now()->startOfYear();
             $diasYaAsignados = $user->asignacionesTurnos()
                 ->where('estado', 'vacaciones')
                 ->where('fecha', '>=', $inicioAño)
                 ->count();
+
+            // Días en otras solicitudes pendientes (excluyendo la actual)
+            $otrasSolicitudesPendientes = VacacionesSolicitud::where('user_id', $user->id)
+                ->where('estado', 'pendiente')
+                ->where('id', '!=', $solicitud->id)
+                ->get();
+
+            $diasEnOtrasPendientes = 0;
+            foreach ($otrasSolicitudesPendientes as $sol) {
+                $rangoPendiente = CarbonPeriod::create($sol->fecha_inicio, $sol->fecha_fin);
+                foreach ($rangoPendiente as $fechaPend) {
+                    if (in_array($fechaPend->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
+                        continue;
+                    }
+                    if (in_array($fechaPend->format('Y-m-d'), $festivos)) {
+                        continue;
+                    }
+                    $diasEnOtrasPendientes++;
+                }
+            }
 
             foreach ($rango as $fecha) {
                 $fechaStr = $fecha->format('Y-m-d');
@@ -474,9 +495,10 @@ class VacacionesController extends Controller
             }
 
             $tope = $user->vacaciones_correspondientes;
+            $totalConEsta = $diasYaAsignados + $diasEnOtrasPendientes + $diasNuevos;
 
-            if (($diasYaAsignados + $diasNuevos) > $tope) {
-                $errorMsg = "No se puede aprobar. El usuario ya tiene {$diasYaAsignados} días asignados y esta solicitud añade {$diasNuevos}, superando el tope de {$tope} días.";
+            if ($totalConEsta > $tope) {
+                $errorMsg = "No se puede aprobar. El usuario tiene {$diasYaAsignados} días asignados, {$diasEnOtrasPendientes} en otras solicitudes pendientes y esta solicitud añade {$diasNuevos} días, superando el tope de {$tope} días.";
                 if ($isAjax) {
                     return response()->json(['success' => false, 'error' => $errorMsg], 400);
                 }
@@ -757,7 +779,7 @@ class VacacionesController extends Controller
         $inicioAño = Carbon::now()->startOfYear();
 
         $query = User::where('estado', 'activo')
-            ->select('id', 'name', 'primer_apellido', 'segundo_apellido', 'rol', 'maquina_id', 'vacaciones_totales');
+            ->select('id', 'name', 'primer_apellido', 'segundo_apellido', 'rol', 'maquina_id', 'fecha_incorporacion');
 
         // Filtrar por grupo
         if ($grupo === 'maquinistas') {

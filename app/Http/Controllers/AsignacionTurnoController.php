@@ -1077,7 +1077,7 @@ class AsignacionTurnoController extends Controller
                         $tempDate->addDay();
                     }
 
-                    $totalPermitido = $user->vacaciones_totales ?? 22;
+                    $totalPermitido = $user->vacaciones_correspondientes;
 
                     // Validar cada año por separado
                     foreach ($diasPorAnio as $anio => $diasEnAnio) {
