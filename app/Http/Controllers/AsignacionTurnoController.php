@@ -396,25 +396,27 @@ class AsignacionTurnoController extends Controller
                 }
             }
 
-            /* 3) Hora actual + detección de turno/fecha ------------------------------ */
+            /* 3) Hora actual ------------------------------------------------------------- */
             $ahora = now();
             $horaActual = $ahora->format('H:i:s');
 
-            [$turnoDetectado, $fechaTurnoDetectado] = $this->detectarTurnoYFecha($ahora);
-            if (!$turnoDetectado || !$fechaTurnoDetectado) {
-                return response()->json(['error' => 'No se pudo determinar el turno para esta hora.'], 403);
-            }
-
-            $turnoModelo = Turno::where('nombre', $turnoDetectado)->first();
-            if (!$turnoModelo) {
-                return response()->json(['error' => "No existe configurado el turno '{$turnoDetectado}'."], 500);
-            }
-
             /* 4) Rama por tipo de fichaje -------------------------------------------- */
             if ($request->tipo === 'entrada') {
+                // Para ENTRADAS: detectar turno y fecha
+                [$turnoDetectado, $fechaTurnoDetectado] = $this->detectarTurnoYFecha($ahora);
+                if (!$turnoDetectado || !$fechaTurnoDetectado) {
+                    return response()->json(['error' => 'No se pudo determinar el turno para esta hora.'], 403);
+                }
+
+                $turnoModelo = Turno::where('nombre', $turnoDetectado)->first();
+                if (!$turnoModelo) {
+                    return response()->json(['error' => "No existe configurado el turno '{$turnoDetectado}'."], 500);
+                }
+
                 $confirmarTurnoPartido = $request->boolean('confirmar_turno_partido', false);
                 return $this->procesarEntrada($user, $fechaTurnoDetectado, $turnoModelo, $turnoDetectado, $horaActual, $obraEncontrada, $confirmarTurnoPartido);
             } else {
+                // Para SALIDAS: no necesita detectar turno, busca asignación abierta
                 return $this->procesarSalida($user, $ahora, $horaActual, $obraEncontrada);
             }
         } catch (\Throwable $e) {
