@@ -22,9 +22,12 @@ class RevisionFichajeController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'fecha_inicio' => 'required|date',
-            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+            'fecha_inicio' => 'required|date|before_or_equal:today',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio|before_or_equal:today',
             'observaciones' => 'nullable|string|max:500',
+        ], [
+            'fecha_inicio.before_or_equal' => 'No puedes solicitar revisión de fechas futuras.',
+            'fecha_fin.before_or_equal' => 'No puedes solicitar revisión de fechas futuras.',
         ]);
 
         $user = Auth::user();

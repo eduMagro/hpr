@@ -531,6 +531,22 @@
 
         // Solicitar revisión de fichajes
         async function solicitarRevisionFichaje(fechaInicio, fechaFin, calendar) {
+            // Validar que no sean fechas futuras
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            const fechaInicioDate = new Date(fechaInicio);
+            const fechaFinDate = new Date(fechaFin);
+
+            if (fechaInicioDate > hoy || fechaFinDate > hoy) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Fechas no válidas',
+                    text: 'No puedes solicitar revisión de fichajes para fechas futuras.',
+                    confirmButtonColor: '#1e3a5f',
+                });
+                return;
+            }
+
             const esMismoDia = fechaInicio === fechaFin;
             const rangoTexto = esMismoDia
                 ? fechaInicio
@@ -727,6 +743,11 @@
                                         style="width: 100%; padding: 10px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 15px; font-family: monospace; transition: border-color 0.2s;">
                                 </div>
                             </div>
+                            <button type="button" id="btn-eliminar-horas" style="margin-top: 12px; padding: 8px 12px; font-size: 12px; color: #dc2626; background: white; border: 1px solid #fca5a5; border-radius: 6px; cursor: pointer; width: 100%; transition: all 0.2s;"
+                                onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#f87171';"
+                                onmouseout="this.style.background='white'; this.style.borderColor='#fca5a5';">
+                                🗑️ Eliminar horas
+                            </button>
                             ${!esMismoDia ? `
                                 <p style="margin: 12px 0 0 0; font-size: 12px; color: #6b7280; display: flex; align-items: center; gap: 6px;">
                                     <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -764,6 +785,11 @@
                         input.addEventListener('focus', () => input.style.borderColor = '#3b82f6');
                         input.addEventListener('blur', () => input.style.borderColor = '#e5e7eb');
                     });
+                    // Botón eliminar horas
+                    document.getElementById('btn-eliminar-horas').addEventListener('click', () => {
+                        document.getElementById('hora-entrada').value = '';
+                        document.getElementById('hora-salida').value = '';
+                    });
                 }
             });
 
@@ -775,20 +801,14 @@
 
             // --- Solo actualizar horas (sin cambiar turno/estado) ---
             if (!tipoSeleccionado) {
-                // Validar que al menos una hora esté especificada
-                if (!horaEntrada && !horaSalida) {
-                    Swal.fire("Aviso", "Debes especificar al menos una hora para actualizar.", "warning");
-                    return;
-                }
-
                 const body = {
                     user_id: userId,
                     fecha_inicio: fechaInicio,
                     fecha_fin: fechaFin,
                     tipo: "soloHoras",
+                    entrada: horaEntrada || null,
+                    salida: horaSalida || null,
                 };
-                if (horaEntrada) body.entrada = horaEntrada;
-                if (horaSalida) body.salida = horaSalida;
 
                 fetch(routes.storeUrl, {
                     method: "POST",

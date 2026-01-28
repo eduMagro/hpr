@@ -1,3 +1,4 @@
+<!-- COMPONENTE DIVIDIR-ELEMENTO CARGADO -->
 <div id="modalDividirElemento"
     class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center z-50">
 
@@ -100,6 +101,8 @@
 </div>
 
 <script>
+    console.log('✅ Script dividir-elemento.blade.php cargado');
+
     // Variable para almacenar las máquinas cargadas
     let maquinasDisponiblesCache = null;
 
@@ -416,9 +419,11 @@
         }
     });
 
-    async function enviarAccionEtiqueta() {
+    window.enviarAccionEtiqueta = async function() {
+        console.log('🚀 enviarAccionEtiqueta() llamada');
         const elementoId = document.getElementById('dividir_elemento_id').value;
         const accion = document.querySelector('input[name="accion_etiqueta"]:checked').value;
+        console.log('📋 elementoId:', elementoId, 'accion:', accion);
 
         if (!elementoId) {
             alert('Falta el ID del elemento.');

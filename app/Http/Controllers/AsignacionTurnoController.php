@@ -991,11 +991,12 @@ class AsignacionTurnoController extends Controller
 
                     if ($asignacion) {
                         $datos = [];
-                        if ($request->filled('entrada')) {
-                            $datos['entrada'] = $request->entrada;
+                        // Permitir establecer null para eliminar horas
+                        if ($request->has('entrada')) {
+                            $datos['entrada'] = $request->entrada ?: null;
                         }
-                        if ($request->filled('salida')) {
-                            $datos['salida'] = $request->salida;
+                        if ($request->has('salida')) {
+                            $datos['salida'] = $request->salida ?: null;
                         }
                         if (!empty($datos)) {
                             $asignacion->update($datos);
