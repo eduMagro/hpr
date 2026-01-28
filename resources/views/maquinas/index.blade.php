@@ -68,6 +68,7 @@
                             @if ($maquina->imagen)
                                 <div class="w-full h-full bg-center bg-cover bg-no-repeat transition-transform hover:scale-105 duration-500"
                                     style="background-image: url('{{ asset($maquina->imagen) }}');">
+                                    <div class="h-full w-full dark:bg-gradient-to-br dark:from-black/50 dark:to-black/10"></div>
                                 </div>
                             @else
                                 <div class="text-center">
