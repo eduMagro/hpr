@@ -482,7 +482,7 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar el cambio.' });
+                window.mostrarErrorConReporte('No se pudo guardar el cambio.', 'Error', error.message);
             });
         }
 
@@ -510,7 +510,7 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar el cambio.' });
+                window.mostrarErrorConReporte('No se pudo guardar el cambio.', 'Error', error.message);
             });
         }
 

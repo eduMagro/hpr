@@ -662,7 +662,7 @@
                         campos.forEach(c => item[c] = this.editando[c]);
                         this.cancelarEdicion();
                         Swal.fire({ icon: 'success', text: 'Turno actualizado', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
-                    }).catch(() => Swal.fire({ icon: 'error', text: 'Error al actualizar' }));
+                    }).catch(() => window.mostrarErrorConReporte('Error al actualizar'));
                 },
                 crear() {
                     if (!this.nuevo.nombre?.trim() || this.enviando) return;
@@ -676,9 +676,9 @@
                             this.items.push(data.turno);
                             this.nuevo = { nombre: '', hora_entrada: '', entrada_offset: 0, hora_salida: '', salida_offset: 0, color: '#3b82f6' };
                             Swal.fire({ icon: 'success', text: 'Turno creado', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
-                        } else Swal.fire({ icon: 'error', text: data.message });
+                        } else window.mostrarErrorConReporte(data.message);
                         this.enviando = false;
-                    }).catch(() => { Swal.fire({ icon: 'error', text: 'Error al crear' }); this.enviando = false; });
+                    }).catch(() => { window.mostrarErrorConReporte('Error al crear'); this.enviando = false; });
                 },
                 eliminar(item) {
                     Swal.fire({ title: '¿Eliminar turno?', text: `Se eliminará "${item.nombre}"`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar' }).then(result => {
@@ -691,7 +691,7 @@
                                 if (data.success) {
                                     this.items = this.items.filter(i => i.id !== item.id);
                                     Swal.fire({ icon: 'success', text: 'Turno eliminado', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
-                                } else Swal.fire({ icon: 'error', text: data.message });
+                                } else window.mostrarErrorConReporte(data.message);
                             });
                         }
                     });
@@ -725,7 +725,7 @@
                         campos.forEach(c => item[c] = this.editando[c]);
                         this.cancelarEdicion();
                         Swal.fire({ icon: 'success', text: 'Porcentaje actualizado', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
-                    }).catch(() => Swal.fire({ icon: 'error', text: 'Error al actualizar' }));
+                    }).catch(() => window.mostrarErrorConReporte('Error al actualizar'));
                 },
                 crear() {
                     if (!this.nuevo.tipo_aportacion?.trim() || this.enviando) return;
@@ -739,9 +739,9 @@
                             this.items.push(data.porcentaje);
                             this.nuevo = { tipo_aportacion: '', porcentaje: 0 };
                             Swal.fire({ icon: 'success', text: 'Porcentaje creado', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
-                        } else Swal.fire({ icon: 'error', text: data.message });
+                        } else window.mostrarErrorConReporte(data.message);
                         this.enviando = false;
-                    }).catch(() => { Swal.fire({ icon: 'error', text: 'Error al crear' }); this.enviando = false; });
+                    }).catch(() => { window.mostrarErrorConReporte('Error al crear'); this.enviando = false; });
                 },
                 eliminar(item) {
                     Swal.fire({ title: '¿Eliminar porcentaje?', text: `Se eliminará "${item.tipo_aportacion}"`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar' }).then(result => {
@@ -754,7 +754,7 @@
                                 if (data.success) {
                                     this.items = this.items.filter(i => i.id !== item.id);
                                     Swal.fire({ icon: 'success', text: 'Porcentaje eliminado', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
-                                } else Swal.fire({ icon: 'error', text: data.message });
+                                } else window.mostrarErrorConReporte(data.message);
                             });
                         }
                     });
@@ -787,7 +787,7 @@
                         campos.forEach(c => item[c] = this.editando[c]);
                         this.cancelarEdicion();
                         Swal.fire({ icon: 'success', text: 'Tramo actualizado', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
-                    }).catch(() => Swal.fire({ icon: 'error', text: 'Error al actualizar' }));
+                    }).catch(() => window.mostrarErrorConReporte('Error al actualizar'));
                 },
                 crear() {
                     if (!this.nuevo.tramo_inicial || !this.nuevo.porcentaje || this.enviando) return;
@@ -801,9 +801,9 @@
                             this.items.push(data.tramo);
                             this.nuevo = { tramo_inicial: '', tramo_final: '', porcentaje: '' };
                             Swal.fire({ icon: 'success', text: 'Tramo creado', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
-                        } else Swal.fire({ icon: 'error', text: data.message });
+                        } else window.mostrarErrorConReporte(data.message);
                         this.enviando = false;
-                    }).catch(() => { Swal.fire({ icon: 'error', text: 'Error al crear' }); this.enviando = false; });
+                    }).catch(() => { window.mostrarErrorConReporte('Error al crear'); this.enviando = false; });
                 },
                 eliminar(item) {
                     Swal.fire({ title: '¿Eliminar tramo?', text: `Se eliminará el tramo ${item.tramo_inicial} - ${item.tramo_final || 'Sin límite'}`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar' }).then(result => {
@@ -816,7 +816,7 @@
                                 if (data.success) {
                                     this.items = this.items.filter(i => i.id !== item.id);
                                     Swal.fire({ icon: 'success', text: 'Tramo eliminado', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
-                                } else Swal.fire({ icon: 'error', text: data.message });
+                                } else window.mostrarErrorConReporte(data.message);
                             });
                         }
                     });
@@ -853,7 +853,7 @@
                         }
                         this.cancelarEdicion();
                         Swal.fire({ icon: 'success', text: 'Convenio actualizado', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
-                    }).catch(() => Swal.fire({ icon: 'error', text: 'Error al actualizar' }));
+                    }).catch(() => window.mostrarErrorConReporte('Error al actualizar'));
                 },
                 crear() {
                     if (!this.nuevo.categoria_id || this.enviando) { Swal.fire({ icon: 'warning', text: 'Selecciona una categoría' }); return; }
@@ -867,9 +867,9 @@
                             this.items.push(data.convenio);
                             this.nuevo = { categoria_id: '', salario_base: 0, liquido_minimo_pactado: 0, plus_asistencia: 0, plus_actividad: 0, plus_productividad: 0, plus_absentismo: 0, plus_transporte: 0, prorrateo_pagasextras: 0 };
                             Swal.fire({ icon: 'success', text: 'Convenio creado', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
-                        } else Swal.fire({ icon: 'error', text: data.message });
+                        } else window.mostrarErrorConReporte(data.message);
                         this.enviando = false;
-                    }).catch(() => { Swal.fire({ icon: 'error', text: 'Error al crear' }); this.enviando = false; });
+                    }).catch(() => { window.mostrarErrorConReporte('Error al crear'); this.enviando = false; });
                 },
                 eliminar(item) {
                     Swal.fire({ title: '¿Eliminar convenio?', text: `Se eliminará el convenio de "${item.categoria?.nombre || 'Sin categoría'}"`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar' }).then(result => {
@@ -882,7 +882,7 @@
                                 if (data.success) {
                                     this.items = this.items.filter(i => i.id !== item.id);
                                     Swal.fire({ icon: 'success', text: 'Convenio eliminado', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
-                                } else Swal.fire({ icon: 'error', text: data.message });
+                                } else window.mostrarErrorConReporte(data.message);
                             });
                         }
                     });
@@ -912,8 +912,8 @@
                             item.nombre = this.editando.nombre.trim();
                             this.cancelarEdicion();
                             Swal.fire({ icon: 'success', text: 'Categoría actualizada', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
-                        } else Swal.fire({ icon: 'error', text: data.message });
-                    }).catch(() => Swal.fire({ icon: 'error', text: 'Error al actualizar' }));
+                        } else window.mostrarErrorConReporte(data.message);
+                    }).catch(() => window.mostrarErrorConReporte('Error al actualizar'));
                 },
                 crear() {
                     if (!this.nuevo.nombre?.trim() || this.enviando) return;
@@ -927,9 +927,9 @@
                             this.items.push(data.categoria);
                             this.nuevo = { nombre: '' };
                             Swal.fire({ icon: 'success', text: 'Categoría creada', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
-                        } else Swal.fire({ icon: 'error', text: data.message });
+                        } else window.mostrarErrorConReporte(data.message);
                         this.enviando = false;
-                    }).catch(() => { Swal.fire({ icon: 'error', text: 'Error al crear' }); this.enviando = false; });
+                    }).catch(() => { window.mostrarErrorConReporte('Error al crear'); this.enviando = false; });
                 },
                 eliminar(item) {
                     Swal.fire({ title: '¿Eliminar categoría?', text: `Se eliminará "${item.nombre}"`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar' }).then(result => {
@@ -942,7 +942,7 @@
                                 if (data.success) {
                                     this.items = this.items.filter(i => i.id !== item.id);
                                     Swal.fire({ icon: 'success', text: 'Categoría eliminada', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
-                                } else Swal.fire({ icon: 'error', text: data.message });
+                                } else window.mostrarErrorConReporte(data.message);
                             });
                         }
                     });
@@ -994,7 +994,7 @@
                         this.cancelarEdicion();
                         Swal.fire({ icon: 'success', text: 'Empresa actualizada', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
                     }).catch(() => {
-                        Swal.fire({ icon: 'error', text: 'Error al actualizar' });
+                        window.mostrarErrorConReporte('Error al actualizar');
                     });
                 },
 
@@ -1017,12 +1017,12 @@
                             this.nueva = { nombre: '', direccion: '', localidad: '', provincia: '', codigo_postal: '', telefono: '', email: '', nif: '', numero_ss: '' };
                             Swal.fire({ icon: 'success', text: 'Empresa creada', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
                         } else {
-                            Swal.fire({ icon: 'error', text: data.message });
+                            window.mostrarErrorConReporte(data.message);
                         }
                         this.enviando = false;
                     })
                     .catch(() => {
-                        Swal.fire({ icon: 'error', text: 'Error al crear' });
+                        window.mostrarErrorConReporte('Error al crear');
                         this.enviando = false;
                     });
                 },
@@ -1054,7 +1054,7 @@
                                     this.empresas = this.empresas.filter(e => e.id !== emp.id);
                                     Swal.fire({ icon: 'success', text: 'Empresa eliminada', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
                                 } else {
-                                    Swal.fire({ icon: 'error', text: data.message });
+                                    window.mostrarErrorConReporte(data.message);
                                 }
                             });
                         }

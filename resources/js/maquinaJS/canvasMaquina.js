@@ -919,9 +919,6 @@ function planMasonryOptimal(medidas, svgW, svgH, opts = {}) {
             const legendTop = Math.min(...window.__legendBoxesGroup.map(box => box.top));
             const maxYForThisCol = legendTop - 15; // 15px de margen de seguridad para evitar que elementos toquen la leyenda
             availableHeight = Math.max(10, maxYForThisCol - padding);
-            console.log(`📏 Columna ${c}: X=${colLeftX.toFixed(0)}-${colRightX.toFixed(0)}, legendWidth=${legendWidth.toFixed(0)}, solape=${(overlapPercentage*100).toFixed(0)}%, altura reducida a ${availableHeight.toFixed(0)}px`);
-        } else {
-            console.log(`📏 Columna ${c}: X=${colLeftX.toFixed(0)}-${colRightX.toFixed(0)}, legendWidth=${legendWidth.toFixed(0)}, solape=${(overlapPercentage*100).toFixed(0)}%, altura completa ${availableHeight.toFixed(0)}px`);
         }
 
         // Si solo hay un elemento, centrarlo verticalmente
@@ -2226,7 +2223,19 @@ window.enviarDivision = async function enviarDivision() {
             (tokenMeta ? tokenMeta.getAttribute("content") : null);
         const headers = token ? { "X-CSRF-TOKEN": token } : {};
         const res = await fetch(url, { method: "POST", headers, body: fd });
-        const data = await res.json();
+        const text = await res.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (parseError) {
+            const preview = text.substring(0, 200) + (text.length > 200 ? '...' : '');
+            if (typeof window.mostrarErrorConReporte === 'function') {
+                window.mostrarErrorConReporte('El servidor devolvió una respuesta inválida', 'Error de respuesta', `${parseError.message}\n\nRespuesta: ${preview}`);
+            } else if (window.Swal) {
+                window.Swal.fire("Error", parseError.message, "error");
+            }
+            return;
+        }
         if (!res.ok || !data.success)
             throw new Error(data.message || "Error al dividir");
         form.reset();
@@ -2235,8 +2244,43 @@ window.enviarDivision = async function enviarDivision() {
         if (window.Swal) window.Swal.fire("Hecho", data.message, "success");
         else alert(data.message);
     } catch (e) {
-        if (window.Swal)
+        if (typeof window.mostrarErrorConReporte === 'function') {
+            window.mostrarErrorConReporte((e && e.message) || "Error", "Error");
+        } else if (window.Swal) {
             window.Swal.fire("Error", (e && e.message) || "Error", "error");
-        else alert((e && e.message) || "Error");
+        } else {
+            alert((e && e.message) || "Error");
+        }
+    }
+}
+
+// Función para manejar la acción de ver dimensiones desde el modal
+window.enviarAccionEtiqueta = async function() {
+    const elementoId = document.getElementById('dividir_elemento_id')?.value;
+    const accionRadio = document.querySelector('input[name="accion_etiqueta"]:checked');
+    const accion = accionRadio?.value;
+
+    if (!elementoId) {
+        alert('Falta el ID del elemento.');
+        return;
+    }
+
+    if (accion === 'ver_dimensiones') {
+        // Cerrar el modal actual
+        document.getElementById('modalDividirElemento')?.classList.add('hidden');
+
+        // Abrir el modal de ver dimensiones
+        if (typeof window.abrirModalVerDimensiones === 'function') {
+            window.abrirModalVerDimensiones(elementoId);
+        } else {
+            alert('La función de ver dimensiones no está disponible');
+        }
+        return;
+    }
+
+    // Para otras acciones, usar el formulario original si existe
+    const form = document.getElementById('formDividirElemento');
+    if (form && typeof form.requestSubmit === 'function') {
+        // Trigger the original form logic
     }
 }

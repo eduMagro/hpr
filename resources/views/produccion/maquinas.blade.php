@@ -25,92 +25,200 @@
                     </ul>
                 </div>
             @endif
-            <!-- Panel de filtros colapsable -->
+            <!-- Panel de herramientas y filtros -->
             <div class="mt-2 bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
-                <!-- Header del panel (siempre visible) -->
-                <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-3 py-2 flex items-center justify-between cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all"
-                    onclick="toggleFiltros()">
-                    <div class="flex items-center gap-2 text-white">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path
-                                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                        </svg>
-                        <span class="font-semibold text-sm">Filtros de planillas</span>
-                        <!-- Indicador de filtros activos -->
-                        <span id="filtrosActivosBadge"
-                            class="hidden bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-0.5 rounded-full"></span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <!-- Botón resetear -->
-                        <button type="button" id="limpiarResaltado"
-                            class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
-                            title="Restablecer filtros" onclick="event.stopPropagation()">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
-                            </svg>
-                        </button>
-                        <!-- Flecha de expandir/colapsar -->
-                        <svg id="filtrosChevron" class="w-5 h-5 text-white transform transition-transform duration-200"
-                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
+                <!-- Header con acciones rápidas (siempre visible) -->
+                <div class="bg-gradient-to-r from-slate-700 to-slate-800 dark:from-slate-800 dark:to-slate-900 px-3 py-2">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <!-- Botones de acción -->
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <!-- Botón de optimizar planillas -->
+                            <button onclick="abrirModalOptimizar()" id="optimizar-btn"
+                                title="Optimizar planillas con retraso"
+                                class="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-all duration-200 flex items-center gap-1.5 text-xs font-medium">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                                <span class="hidden sm:inline">Optimizar</span>
+                            </button>
+
+                            <!-- Botón de balancear carga -->
+                            <button onclick="abrirModalBalanceo()" id="balancear-btn" title="Balancear carga entre máquinas"
+                                class="px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md transition-all duration-200 flex items-center gap-1.5 text-xs font-medium">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3">
+                                    </path>
+                                </svg>
+                                <span class="hidden sm:inline">Balancear</span>
+                            </button>
+
+                            <!-- Botón de priorizar obra -->
+                            <button onclick="abrirModalPriorizarObra()" id="priorizar-obra-btn"
+                                title="Priorizar todas las planillas de una obra"
+                                class="px-2.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-md transition-all duration-200 flex items-center gap-1.5 text-xs font-medium">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z">
+                                    </path>
+                                </svg>
+                                <span class="hidden sm:inline">Priorizar</span>
+                            </button>
+
+                            <!-- Botón de resumen -->
+                            <button onclick="abrirModalResumen()" id="resumen-btn" title="Ver resumen del calendario"
+                                class="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-all duration-200 flex items-center gap-1.5 text-xs font-medium">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                    </path>
+                                </svg>
+                                <span class="hidden sm:inline">Resumen</span>
+                            </button>
+
+                            <!-- Botón de planillas con retraso -->
+                            <button onclick="abrirModalRetrasos()" id="retrasos-btn" title="Ver planillas con retraso"
+                                class="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md transition-all duration-200 flex items-center gap-1.5 text-xs font-medium">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z">
+                                    </path>
+                                </svg>
+                                <span class="hidden sm:inline">Retrasos</span>
+                            </button>
+
+                            <!-- Enlace a vista tabla de ordenes -->
+                            <a href="{{ route('produccion.ordenesPlanillasTabla') }}" title="Ver ordenes en formato tabla"
+                                class="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-all duration-200 flex items-center gap-1.5 text-xs font-medium">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                                </svg>
+                                <span class="hidden sm:inline">Tabla</span>
+                            </a>
+
+                            <!-- Separador visual -->
+                            <div class="w-px h-6 bg-slate-500 mx-1 hidden sm:block"></div>
+
+                            <!-- Botón de deshacer última operación -->
+                            <button onclick="deshacerUltimaOperacion()" id="deshacer-btn" title="Deshacer última operación"
+                                class="px-2.5 py-1.5 bg-slate-600 hover:bg-slate-500 text-white rounded-md transition-all duration-200 flex items-center gap-1.5 text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                                disabled>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                                </svg>
+                                <span class="hidden sm:inline">Deshacer</span>
+                            </button>
+
+                            <!-- Botón de logs de planificación -->
+                            <button onclick="abrirVentanaLogs()" id="logs-btn" title="Ver historial de cambios"
+                                class="px-2.5 py-1.5 bg-slate-600 hover:bg-slate-500 text-white rounded-md transition-all duration-200 flex items-center gap-1.5 text-xs font-medium">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                                </svg>
+                                <span class="hidden sm:inline">Historial</span>
+                            </button>
+                        </div>
+
+                        <!-- Controles de la derecha -->
+                        <div class="flex items-center gap-2">
+                            <!-- Botón de pantalla completa -->
+                            <button onclick="toggleFullScreen()" id="fullscreen-btn" title="Pantalla completa (F11)"
+                                class="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-all duration-200 flex items-center gap-1.5 text-xs font-medium">
+                                <svg id="fullscreen-icon-expand" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4">
+                                    </path>
+                                </svg>
+                                <svg id="fullscreen-icon-collapse" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25">
+                                    </path>
+                                </svg>
+                                <span id="fullscreen-text" class="hidden sm:inline">Expandir</span>
+                            </button>
+
+                            <!-- Botón de filtros -->
+                            <button type="button" onclick="toggleFiltros()"
+                                class="px-2.5 py-1.5 bg-slate-600 hover:bg-slate-500 text-white rounded-md transition-all duration-200 flex items-center gap-1.5 text-xs font-medium">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                </svg>
+                                <span class="hidden sm:inline">Filtros</span>
+                                <span id="filtrosActivosBadge" class="hidden bg-yellow-400 text-yellow-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full"></span>
+                                <svg id="filtrosChevron" class="w-4 h-4 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+
+                            <!-- Botón resetear filtros -->
+                            <button type="button" id="limpiarResaltado"
+                                class="px-2.5 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md transition-all duration-200 flex items-center gap-1.5 text-xs font-medium"
+                                title="Restablecer filtros">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Contenido del panel (colapsable) -->
                 <div id="panelFiltros" class="overflow-hidden transition-all duration-300" style="max-height: 0;">
-                    <div class="p-3 bg-gray-50">
+                    <div class="p-3 bg-gray-50 dark:bg-gray-800/50">
                         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-2">
                             <!-- Filtro por Cliente -->
                             <div>
-                                <label class="block text-gray-700 font-medium mb-1 text-xs">Cliente</label>
+                                <label class="block text-gray-700 dark:text-gray-300 font-medium mb-1 text-xs">Cliente</label>
                                 <input type="text" id="filtroCliente" placeholder="Buscar..."
-                                    class="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
                             </div>
 
                             <!-- Filtro por Código Cliente -->
                             <div>
-                                <label class="block text-gray-700 font-medium mb-1 text-xs">Cód. Cliente</label>
+                                <label class="block text-gray-700 dark:text-gray-300 font-medium mb-1 text-xs">Cód. Cliente</label>
                                 <input type="text" id="filtroCodCliente" placeholder="Buscar..."
-                                    class="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
                             </div>
 
                             <!-- Filtro por Obra -->
                             <div>
-                                <label class="block text-gray-700 font-medium mb-1 text-xs">Obra</label>
+                                <label class="block text-gray-700 dark:text-gray-300 font-medium mb-1 text-xs">Obra</label>
                                 <input type="text" id="filtroObra" placeholder="Buscar..."
-                                    class="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
                             </div>
 
                             <!-- Filtro por Código Obra -->
                             <div>
-                                <label class="block text-gray-700 font-medium mb-1 text-xs">Cód. Obra</label>
+                                <label class="block text-gray-700 dark:text-gray-300 font-medium mb-1 text-xs">Cód. Obra</label>
                                 <input type="text" id="filtroCodObra" placeholder="Buscar..."
-                                    class="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
                             </div>
 
                             <!-- Filtro por Código Planilla -->
                             <div>
-                                <label class="block text-gray-700 font-medium mb-1 text-xs">Cód.
+                                <label class="block text-gray-700 dark:text-gray-300 font-medium mb-1 text-xs">Cód.
                                     Planilla</label>
                                 <input type="text" id="filtroCodigoPlanilla" placeholder="Buscar..."
-                                    class="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
                             </div>
 
                             <!-- Filtro por fecha de entrega -->
                             <div>
-                                <label class="block text-gray-700 font-medium mb-1 text-xs">F. Entrega</label>
+                                <label class="block text-gray-700 dark:text-gray-300 font-medium mb-1 text-xs">F. Entrega</label>
                                 <input type="date" id="filtroFechaEntrega"
-                                    class="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:[color-scheme:dark]">
                             </div>
 
                             <!-- Filtro por estado -->
                             <div>
-                                <label class="block text-gray-700 font-medium mb-1 text-xs">Estado</label>
+                                <label class="block text-gray-700 dark:text-gray-300 font-medium mb-1 text-xs">Estado</label>
                                 <select id="filtroEstado"
-                                    class="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
                                     <option value="">Todos</option>
                                     <option value="pendiente">Pendiente</option>
                                     <option value="fabricando">Fabricando</option>
@@ -120,9 +228,9 @@
 
                             <!-- Filtro por planilla (select con fechas) -->
                             <div class="col-span-2">
-                                <label class="block text-gray-700 font-medium mb-1 text-xs">Planilla</label>
+                                <label class="block text-gray-700 dark:text-gray-300 font-medium mb-1 text-xs">Planilla</label>
                                 <select id="filtroPlanillaSelect"
-                                    class="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
                                     <option value="">-- Seleccionar planilla --</option>
                                     @foreach($obrasConPlanillas as $obra)
                                         <optgroup label="{{ $obra->obra }}">
@@ -142,16 +250,16 @@
                         </div>
 
                         <!-- Control de Turnos -->
-                        <div class="mt-3 pt-3 border-t border-gray-200">
+                        <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
                             <div class="flex items-center justify-between mb-2">
-                                <label class="block text-gray-700 font-semibold text-xs">⏰ Turnos Activos</label>
-                                <span class="text-xs text-gray-500">Haz clic para activar/desactivar</span>
+                                <label class="block text-gray-700 dark:text-gray-300 font-semibold text-xs">⏰ Turnos Activos</label>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">Haz clic para activar/desactivar</span>
                             </div>
                             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
                                 @foreach ($turnosLista as $turno)
                                     <button type="button" data-turno-id="{{ $turno->id }}"
                                         data-turno-nombre="{{ $turno->nombre }}"
-                                        class="turno-toggle-btn px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 border-2 {{ $turno->activo ? 'bg-green-500 text-white border-green-600 hover:bg-green-600' : 'bg-gray-200 text-gray-600 border-gray-300 hover:bg-gray-300' }}"
+                                        class="turno-toggle-btn px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 border-2 {{ $turno->activo ? 'bg-green-500 text-white border-green-600 hover:bg-green-600' : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-500 hover:bg-gray-300 dark:hover:bg-gray-500' }}"
                                         onclick="toggleTurno({{ $turno->id }}, '{{ $turno->nombre }}')"
                                         title="{{ $turno->activo ? 'Desactivar' : 'Activar' }} turno {{ $turno->nombre }}">
                                         <div class="flex items-center justify-center gap-1">
@@ -169,133 +277,38 @@
                         </div>
 
                         <!-- Indicador de resultados -->
-                        <div id="filtrosActivos" class="mt-2 text-xs text-blue-700 hidden">
+                        <div id="filtrosActivos" class="mt-2 text-xs text-blue-600 dark:text-blue-400 hidden">
                             <span class="font-semibold">📊</span>
                             <span id="textoFiltrosActivos"></span>
                         </div>
                     </div>
                 </div>
             </div>
-            <!-- Por esta versión con transición -->
+            <!-- Contenedor del calendario -->
             <div id="contenedor-calendario"
-                class="bg-white dark:bg-gray-900 shadow rounded-lg p-2 transition-all duration-300 relative pt-10">
-                <!-- Botones en esquina superior izquierda -->
-                <div class="absolute top-4 left-4 z-10 flex gap-2">
-                    <!-- Botón de optimizar planillas -->
-                    <button onclick="abrirModalOptimizar()" id="optimizar-btn"
-                        title="Optimizar planillas con retraso"
-                        class="px-3 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
-                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
-                        <span class="text-sm font-medium hidden md:inline">Optimizar Planillas</span>
-                    </button>
-
-                    <!-- Botón de balancear carga -->
-                    <button onclick="abrirModalBalanceo()" id="balancear-btn" title="Balancear carga entre máquinas"
-                        class="px-3 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
-                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3">
-                            </path>
-                        </svg>
-                        <span class="text-sm font-medium hidden md:inline">Balancear Carga</span>
-                    </button>
-
-                    <!-- Botón de priorizar obra -->
-                    <button onclick="abrirModalPriorizarObra()" id="priorizar-obra-btn"
-                        title="Priorizar todas las planillas de una obra"
-                        class="px-3 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
-                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z">
-                            </path>
-                        </svg>
-                        <span class="text-sm font-medium hidden md:inline">Priorizar Obra</span>
-                    </button>
-
-                    <!-- Botón de resumen -->
-                    <button onclick="abrirModalResumen()" id="resumen-btn" title="Ver resumen del calendario"
-                        class="px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
-                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                            </path>
-                        </svg>
-                        <span class="text-sm font-medium hidden md:inline">Resumen</span>
-                    </button>
-
-                    <!-- Botón de planillas con retraso -->
-                    <button onclick="abrirModalRetrasos()" id="retrasos-btn" title="Ver planillas con retraso"
-                        class="px-3 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
-                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z">
-                            </path>
-                        </svg>
-                        <span class="text-sm font-medium hidden md:inline">Retrasos</span>
-                    </button>
-
-                    <!-- Enlace a vista tabla de ordenes -->
-                    <a href="{{ route('produccion.ordenesPlanillasTabla') }}" title="Ver ordenes en formato tabla"
-                        class="px-3 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
-                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
-                        </svg>
-                        <span class="text-sm font-medium hidden md:inline">Vista Tabla</span>
-                    </a>
-
-                    <!-- Botón de deshacer última operación -->
-                    <button onclick="deshacerUltimaOperacion()" id="deshacer-btn" title="Deshacer última operación"
-                        class="px-3 py-2 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled>
-                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
-                        </svg>
-                        <span class="text-sm font-medium hidden md:inline">Deshacer</span>
-                    </button>
-
-                    <!-- Botón de logs de planificación -->
-                    <button onclick="abrirVentanaLogs()" id="logs-btn" title="Ver historial de cambios"
-                        class="px-3 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
-                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
-                        </svg>
-                        <span class="text-sm font-medium hidden md:inline">Historial</span>
-                    </button>
+                class="bg-white dark:bg-gray-900 shadow rounded-lg transition-all duration-300 relative group/fullscreen">
+                <!-- Barra flotante para salir de pantalla completa (oculta por defecto) -->
+                <div id="fullscreen-btn-float"
+                    class="hidden absolute top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/60 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300">
+                    <div class="flex items-center justify-between px-4 py-3">
+                        <div class="flex items-center gap-3 text-white/90">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                            </svg>
+                            <span class="text-sm font-medium">Modo pantalla completa</span>
+                        </div>
+                        <button onclick="toggleFullScreen()"
+                            class="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-lg transition-all duration-200 text-sm font-medium border border-white/20">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"></path>
+                            </svg>
+                            <span>Salir</span>
+                            <kbd class="ml-1 px-1.5 py-0.5 text-xs bg-white/20 rounded">ESC</kbd>
+                        </button>
+                    </div>
                 </div>
-
-                <!-- Botón de pantalla completa en esquina superior derecha -->
-                <button onclick="toggleFullScreen()" id="fullscreen-btn" title="Pantalla completa (F11)"
-                    class="absolute top-4 right-4 z-10 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
-                    <svg id="fullscreen-icon-expand" class="w-5 h-5 transition-transform group-hover:scale-110"
-                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4">
-                        </path>
-                    </svg>
-                    <svg id="fullscreen-icon-collapse"
-                        class="w-5 h-5 hidden transition-transform group-hover:scale-110" fill="none"
-                        stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25">
-                        </path>
-                    </svg>
-                    <span id="fullscreen-text" class="text-sm font-medium hidden md:inline">Expandir</span>
-                </button>
-
                 <div id="calendario" data-calendar-type="maquinas" class="w-full"></div>
             </div>
         </div>
@@ -306,24 +319,42 @@
             style="top: 40px;">
 
             <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 shadow-md">
-                <div class="flex justify-between items-center mb-3">
-                    <div>
+                <div class="flex justify-between items-start mb-2">
+                    <div class="flex-1 min-w-0">
                         <h3 class="font-bold text-lg flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
-                            Elementos
+                            <span id="panel_codigo" class="truncate"></span>
                         </h3>
-                        <p class="text-sm opacity-90" id="panel_codigo"></p>
                     </div>
                     <button id="cerrar_panel"
-                        class="hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-all duration-200 transform hover:scale-110">
+                        class="hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-all duration-200 transform hover:scale-110 flex-shrink-0">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
+                </div>
+                <!-- Info de la planilla -->
+                <div class="text-xs space-y-1 mb-3 bg-white bg-opacity-10 rounded-lg p-2">
+                    <div>
+                        <span class="opacity-75">Obra:</span>
+                        <span id="panel_obra" class="font-medium">-</span>
+                    </div>
+                    <div>
+                        <span class="opacity-75">Desc:</span>
+                        <span id="panel_descripcion" class="font-medium">-</span>
+                    </div>
+                    <div>
+                        <span class="opacity-75">Ensamblado:</span>
+                        <span id="panel_ensamblado" class="font-medium">-</span>
+                    </div>
+                    <div id="panel_comentario_wrapper" class="hidden">
+                        <span class="opacity-75">Comentario:</span>
+                        <span id="panel_comentario" class="font-medium">-</span>
+                    </div>
                 </div>
                 <button id="btn_marcar_revisada"
                     class="w-full bg-white hover:bg-gray-100 text-blue-700 font-semibold py-2 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-md">
@@ -2717,12 +2748,11 @@
                             const response = await fetch(`/elementos/por-ids?planilla_id=${planillaId}`);
                             const data = await response.json();
                             cerrarSpinner();
-                            // Nueva estructura: {elementos, posiciones, maxPosiciones}
                             const elementos = data.elementos || data;
                             const posiciones = data.posiciones || {};
                             const maxPosiciones = data.maxPosiciones || {};
-                            console.log('✅ Elementos cargados:', elementos.length);
-                            mostrarPanelElementos(elementos, planillaId, codigoPlanilla, posiciones, maxPosiciones);
+                            const infoPlanilla = data.planilla || {};
+                            mostrarPanelElementos(elementos, planillaId, codigoPlanilla, posiciones, maxPosiciones, infoPlanilla);
                         } catch (error) {
                             cerrarSpinner();
                             console.error('❌ Error al cargar elementos:', error);
@@ -2884,7 +2914,7 @@
                             } catch (error) {
                                 cerrarSpinner();
                                 info.revert();
-                                Swal.fire({ icon: 'error', title: 'Error', text: error.message });
+                                window.mostrarErrorConReporte(error.message);
                             }
                             return;
                         }
@@ -3071,7 +3101,7 @@
                         } catch (error) {
                             cerrarSpinner();
                             info.revert();
-                            Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'No se pudo mover' });
+                            window.mostrarErrorConReporte(error.message || 'No se pudo mover');
                         }
                     },
 
@@ -3413,33 +3443,51 @@
                 window.isFullScreen = window.isFullScreen || false;
 
                 window.toggleFullScreen = function() {
-                    const container = document.getElementById('produccion-maquinas-container');
+                    const calendarioContainer = document.getElementById('contenedor-calendario');
+                    const toolbarPanel = calendarioContainer?.previousElementSibling; // Panel de herramientas/filtros
+                    const mainContainer = document.getElementById('produccion-maquinas-container');
                     const sidebar = document.querySelector('[class*="sidebar"]') || document.querySelector('aside');
                     const header = document.querySelector('nav');
                     const breadcrumbs = document.querySelector('[class*="breadcrumb"]');
+                    const fullscreenBtnFloat = document.getElementById('fullscreen-btn-float');
+                    const fullscreenText = document.getElementById('fullscreen-text');
                     const expandIcon = document.getElementById('fullscreen-icon-expand');
                     const collapseIcon = document.getElementById('fullscreen-icon-collapse');
-                    const fullscreenBtn = document.getElementById('fullscreen-btn');
-                    const fullscreenText = document.getElementById('fullscreen-text');
 
                     // Verificar que existen los elementos necesarios
-                    if (!container || !expandIcon || !collapseIcon || !fullscreenBtn) {
-                        console.warn('Elementos de fullscreen no encontrados');
+                    if (!calendarioContainer) {
+                        console.warn('Contenedor de calendario no encontrado');
                         return;
                     }
 
                     if (!isFullScreen) {
-                        // Entrar en pantalla completa
+                        // Entrar en pantalla completa - solo el calendario
                         if (sidebar) sidebar.style.display = 'none';
                         if (header) header.style.display = 'none';
                         if (breadcrumbs) breadcrumbs.style.display = 'none';
+                        if (toolbarPanel) toolbarPanel.style.display = 'none';
+                        if (mainContainer) {
+                            mainContainer.classList.add('fixed', 'inset-0', 'z-50', 'overflow-hidden');
+                            mainContainer.style.padding = '0';
+                        }
 
-                        container.classList.add('fixed', 'inset-0', 'z-50', 'bg-gray-50', 'overflow-auto');
-                        container.style.padding = '1rem';
+                        // Hacer el calendario ocupar toda la pantalla
+                        calendarioContainer.classList.add('h-screen', 'rounded-none');
+                        calendarioContainer.classList.remove('shadow', 'rounded-lg');
 
-                        expandIcon.classList.add('hidden');
-                        collapseIcon.classList.remove('hidden');
-                        fullscreenBtn.title = 'Salir de pantalla completa (ESC)';
+                        // Mostrar barra flotante de salir
+                        if (fullscreenBtnFloat) {
+                            fullscreenBtnFloat.classList.remove('hidden');
+                            // Mostrar brevemente la barra al entrar
+                            fullscreenBtnFloat.classList.add('opacity-100');
+                            setTimeout(() => {
+                                fullscreenBtnFloat.classList.remove('opacity-100');
+                            }, 2000);
+                        }
+
+                        // Actualizar botón de la toolbar
+                        if (expandIcon) expandIcon.classList.add('hidden');
+                        if (collapseIcon) collapseIcon.classList.remove('hidden');
                         if (fullscreenText) fullscreenText.textContent = 'Contraer';
 
                         window.isFullScreen = true;
@@ -3451,13 +3499,22 @@
                         if (sidebar) sidebar.style.display = '';
                         if (header) header.style.display = '';
                         if (breadcrumbs) breadcrumbs.style.display = '';
+                        if (toolbarPanel) toolbarPanel.style.display = '';
+                        if (mainContainer) {
+                            mainContainer.classList.remove('fixed', 'inset-0', 'z-50', 'overflow-hidden');
+                            mainContainer.style.padding = '';
+                        }
 
-                        container.classList.remove('fixed', 'inset-0', 'z-50', 'bg-gray-50', 'overflow-auto');
-                        container.style.padding = '';
+                        // Restaurar el calendario
+                        calendarioContainer.classList.remove('h-screen', 'rounded-none');
+                        calendarioContainer.classList.add('shadow', 'rounded-lg');
 
-                        expandIcon.classList.remove('hidden');
-                        collapseIcon.classList.add('hidden');
-                        fullscreenBtn.title = 'Pantalla completa (F11)';
+                        // Ocultar barra flotante
+                        if (fullscreenBtnFloat) fullscreenBtnFloat.classList.add('hidden');
+
+                        // Actualizar botón de la toolbar
+                        if (expandIcon) expandIcon.classList.remove('hidden');
+                        if (collapseIcon) collapseIcon.classList.add('hidden');
                         if (fullscreenText) fullscreenText.textContent = 'Expandir';
 
                         window.isFullScreen = false;
@@ -3676,25 +3733,17 @@
                         const elementos = data.elementos || data;
                         const posiciones = data.posiciones || {};
                         const maxPosiciones = data.maxPosiciones || {};
-                        mostrarPanelElementos(elementos, planillaIdActualPanel, codigoPlanillaActualPanel, posiciones, maxPosiciones);
+                        const infoPlanilla = data.planilla || {};
+                        mostrarPanelElementos(elementos, planillaIdActualPanel, codigoPlanillaActualPanel, posiciones, maxPosiciones, infoPlanilla);
                     } catch (error) {
                         console.error('Error al refrescar panel:', error);
                     }
                 }
 
                 // Función para mostrar panel de elementos
-                function mostrarPanelElementos(elementos, planillaId, codigo, posiciones = {}, maxPosiciones = {}) {
-                    console.log('📋 mostrarPanelElementos llamado con:', {
-                        elementos: elementos?.length || 0,
-                        planillaId,
-                        codigo,
-                        posiciones,
-                        maxPosiciones
-                    });
-
+                function mostrarPanelElementos(elementos, planillaId, codigo, posiciones = {}, maxPosiciones = {}, infoPlanilla = {}) {
                     // Validar planillaId
                     if (!planillaId) {
-                        console.error('❌ planillaId es undefined o null');
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
@@ -3708,6 +3757,11 @@
                     const lista = document.getElementById('panel_lista');
                     const contenedorCalendario = document.getElementById('contenedor-calendario');
                     const panelCodigo = document.getElementById('panel_codigo');
+                    const panelObra = document.getElementById('panel_obra');
+                    const panelDescripcion = document.getElementById('panel_descripcion');
+                    const panelEnsamblado = document.getElementById('panel_ensamblado');
+                    const panelComentario = document.getElementById('panel_comentario');
+                    const panelComentarioWrapper = document.getElementById('panel_comentario_wrapper');
 
                     // Verificar que existen los elementos necesarios
                     if (!panel || !overlay || !lista || !contenedorCalendario) {
@@ -3718,9 +3772,19 @@
                     // Guardar el planillaId y codigo actual
                     planillaIdActualPanel = planillaId;
                     codigoPlanillaActualPanel = codigo;
-                    console.log('✅ planillaIdActualPanel establecido:', planillaIdActualPanel);
 
                     if (panelCodigo) panelCodigo.textContent = codigo;
+                    if (panelObra) panelObra.textContent = infoPlanilla.obra || '-';
+                    if (panelDescripcion) panelDescripcion.textContent = infoPlanilla.descripcion || '-';
+                    if (panelEnsamblado) panelEnsamblado.textContent = infoPlanilla.ensamblado || '-';
+                    if (panelComentarioWrapper) {
+                        if (infoPlanilla.comentario) {
+                            panelComentario.textContent = infoPlanilla.comentario;
+                            panelComentarioWrapper.classList.remove('hidden');
+                        } else {
+                            panelComentarioWrapper.classList.add('hidden');
+                        }
+                    }
                     lista.innerHTML = '';
 
                     // Agrupar elementos por maquina_id
@@ -3850,7 +3914,7 @@
                                 } catch (error) {
                                     cerrarSpinner();
                                     this.value = posActual; // Revertir
-                                    Swal.fire({ icon: 'error', title: 'Error', text: error.message });
+                                    window.mostrarErrorConReporte(error.message);
                                 }
                             });
 
@@ -4555,10 +4619,10 @@
                         const elementos = data.elementos || data;
                         const posiciones = data.posiciones || {};
                         const maxPosiciones = data.maxPosiciones || {};
-                        console.log('✅ Elementos cargados automáticamente:', elementos.length);
-                        mostrarPanelElementos(elementos, planillaId, codigoPlanilla, posiciones, maxPosiciones);
+                        const infoPlanilla = data.planilla || {};
+                        mostrarPanelElementos(elementos, planillaId, codigoPlanilla, posiciones, maxPosiciones, infoPlanilla);
                     } catch (error) {
-                        console.error('❌ Error al cargar elementos automáticamente:', error);
+                        console.error('Error al cargar elementos automáticamente:', error);
                     }
                 }
                 /**
@@ -5082,6 +5146,16 @@
             // ============================================================
             // FUNCIONES GLOBALES (fuera de inicializarCalendarioMaquinas)
             // ============================================================
+
+            // Listener para redimensionar calendario cuando se abre/cierra el sidebar
+            window.addEventListener('sidebar-toggled', function(e) {
+                if (window.calendar) {
+                    // Esperar a que termine la transición del sidebar
+                    setTimeout(() => {
+                        window.calendar.updateSize();
+                    }, 350);
+                }
+            });
 
             // Función para mostrar notificaciones toast
             function mostrarNotificacion(mensaje, tipo = 'info') {

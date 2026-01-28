@@ -73,6 +73,48 @@
         if (window._error500InterceptorInit) return;
         window._error500InterceptorInit = true;
 
+        // Función genérica para mostrar errores con opción de reportar
+        window.mostrarErrorConReporte = function(mensaje, titulo = 'Error', detalles = null) {
+            const urlActual = window.location.href;
+            let mensajeReporte = `Error en: ${urlActual}\nFecha: ${new Date().toLocaleString('es-ES')}\n\nMensaje: ${mensaje}`;
+            if (detalles) {
+                mensajeReporte += `\n\nDetalles: ${detalles}`;
+            }
+
+            Swal.fire({
+                icon: 'error',
+                title: titulo,
+                html: `<p>${mensaje}</p>${detalles ? `<p class="text-sm text-gray-500 mt-2">${detalles}</p>` : ''}`,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Aceptar',
+                showCancelButton: true,
+                cancelButtonText: 'Reportar Error',
+                cancelButtonColor: '#6b7280'
+            }).then((result) => {
+                if (result.dismiss === Swal.DismissReason.cancel) {
+                    if (typeof notificarProgramador === 'function') {
+                        notificarProgramador(mensajeReporte, titulo);
+                    }
+                }
+            });
+        };
+
+        // Helper global para parsear JSON de forma segura con reporte de errores
+        window.parseJsonSafe = async function(response, contexto = '') {
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                const preview = text.substring(0, 300) + (text.length > 300 ? '...' : '');
+                window.mostrarErrorConReporte(
+                    'El servidor devolvió una respuesta inválida',
+                    'Error de respuesta',
+                    `${contexto ? contexto + ': ' : ''}${e.message}\n\nRespuesta del servidor:\n${preview}`
+                );
+                throw e;
+            }
+        };
+
         // Función para mostrar error 500 con SweetAlert
         window.mostrarError500 = function(detalles = null) {
             const urlActual = window.location.href;

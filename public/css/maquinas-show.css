@@ -1,0 +1,208 @@
+/**
+ * Estilos para la vista maquinas/show
+ * Separado del HTML para mejor cacheo del navegador
+ */
+
+/* ===================================
+   SELECTORES DE PLANILLA
+   =================================== */
+
+/* Contenedor con layout fijo */
+.contenedor-selectores-planilla {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    border-radius: 6px;
+    padding: 6px 12px;
+    border: 1px solid #d1d5db;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    /* Dimensiones fijas para evitar recalculos */
+    min-width: 280px;
+    height: 40px;
+    box-sizing: border-box;
+    /* Alineación vertical con otros controles */
+    vertical-align: middle;
+    /* Evitar que se mueva por cambios de layout */
+    will-change: auto;
+    contain: layout style;
+}
+
+.contenedor-selectores-planilla select {
+    width: 120px;
+    height: 30px;
+    padding: 4px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    background: white;
+    flex-shrink: 0;
+    /* Sin transiciones ni transformaciones */
+    transition: none !important;
+    transform: none !important;
+    box-sizing: border-box;
+    /* Aislar del layout */
+    isolation: isolate;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    /* Flecha personalizada */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23374151' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 28px;
+}
+
+.contenedor-selectores-planilla select:focus {
+    outline: none !important;
+    border-color: #3b82f6 !important;
+    box-shadow: none !important;
+    /* Mantener dimensiones exactas */
+    width: 120px !important;
+    height: 30px !important;
+}
+
+.contenedor-selectores-planilla select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.contenedor-selectores-planilla .separador {
+    color: #9ca3af;
+    flex-shrink: 0;
+}
+
+.contenedor-selectores-planilla .spinner-loading {
+    flex-shrink: 0;
+}
+
+/* ===================================
+   OVERLAY CAMBIAR MÁQUINA
+   =================================== */
+
+#overlay-cambiar-maquina {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+#overlay-cambiar-maquina.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+#overlay-cambiar-maquina .overlay-bg {
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+#overlay-cambiar-maquina.active .overlay-bg {
+    opacity: 1;
+}
+
+#overlay-cambiar-maquina .loader-card {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+    transition: opacity 0.4s ease 0.1s, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s;
+}
+
+#overlay-cambiar-maquina.active .loader-card {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+}
+
+@keyframes spin-smooth {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinner-ring {
+    animation: spin-smooth 1s linear infinite;
+}
+
+/* ===================================
+   FULLSCREEN ETIQUETA OVERLAY
+   (Inyectado dinámicamente por JS)
+   =================================== */
+
+#fullscreen-etiqueta-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #1a1a2e;
+    z-index: 99999;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#fullscreen-etiqueta-overlay.visible {
+    display: flex;
+    opacity: 1;
+}
+
+#fullscreen-etiqueta-container {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#fullscreen-etiqueta-container .etiqueta-card {
+    width: 95vw !important;
+    height: auto !important;
+    max-height: 85vh !important;
+    aspect-ratio: 126 / 71;
+}
+
+#fullscreen-etiqueta-container.changing {
+    opacity: 0;
+    transform: scale(0.95);
+}
+
+#fullscreen-contador {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
+    padding: 0.75rem 2rem;
+    border-radius: 2rem;
+    color: white;
+    font-size: 1.25rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+#fullscreen-contador .actual {
+    color: #a78bfa;
+    font-size: 1.5rem;
+}
+
+#fullscreen-instrucciones {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
+    padding: 1rem 1.5rem;
+    border-radius: 1rem;
+    color: rgba(255,255,255,0.7);
+    font-size: 0.85rem;
+}
+
+#fullscreen-instrucciones kbd {
+    background: rgba(255,255,255,0.2);
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.25rem;
+    font-family: monospace;
+}

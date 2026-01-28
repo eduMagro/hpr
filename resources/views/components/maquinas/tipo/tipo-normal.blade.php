@@ -279,7 +279,10 @@
                                         @foreach ($gruposDePlanilla as $grupo)
                                             @foreach ($grupo['etiquetas'] ?? [] as $etData)
                                                 @php
-                                                    $etOculta = \App\Models\Etiqueta::with(['planilla', 'elementos'])->find($etData['id']);
+                                                    // Intentar usar pre-carga, fallback a consulta
+                                                    $etOculta = isset($etiquetasPreCargadas[$etData['id']])
+                                                        ? $etiquetasPreCargadas[$etData['id']]
+                                                        : \App\Models\Etiqueta::with(['planilla'])->find($etData['id']);
                                                 @endphp
                                                 @if ($etOculta)
                                                     <x-etiqueta.etiqueta :etiqueta="$etOculta" :planilla="$etOculta->planilla" :maquina-tipo="$maquina->tipo" />

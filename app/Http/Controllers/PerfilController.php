@@ -25,38 +25,29 @@ class PerfilController extends Controller
             return back()->with('error', 'No tienes permiso para ver este perfil.');
         }
 
-        // Recarga el usuario con todas sus relaciones necesarias
+        // ✅ OPTIMIZADO: Solo cargar relaciones que realmente se usan en la vista
         $user = User::with([
             'empresa',
             'categoria',
-            'convenio',
-            'maquina',
-            'departamentos',
-            'alertasLeidas',
-            'asignacionesTurnos.turno',
-            'entradas',
-            'salidas',
-            'movimientos',
-            'elementos1',
-            'elementos2',
-            'permisosAcceso',
+            'maquina',           // Solo para operarios
+            'departamentos',     // Solo para oficina
             'tallas',
+            'incorporacion.documentos' => function ($query) {
+                $query->where('tipo', 'contrato_trabajo');
+            },
         ])->findOrFail($user->id);
 
-        // Turnos disponibles para mostrarlos si hace falta
-        $turnos = Turno::all();
+        // ✅ OPTIMIZADO: Solo cargar nombre de turnos para el dropdown
+        $turnos = Turno::select('id', 'nombre')->get();
 
-        // Resumen de asistencias
+        // Resumen de asistencias y vacaciones (optimizado en una sola consulta)
         $resumen = $this->getResumenAsistencia($user);
-
-        // Información de vacaciones
         $resumenVacaciones = $this->getResumenVacaciones($user);
 
         // Horas trabajadas del mes
         $horasMensuales = $this->getHorasMensuales($user);
 
         // Configuración del calendario (para fichajes y visualización)
-        $esOficina = Auth::user()->rol === 'oficina';
         $config = [
             'userId' => $user->id,
             'locale' => 'es',
@@ -75,7 +66,6 @@ class PerfilController extends Controller
             'enableListMonth' => true,
             'mobileBreakpoint' => 768,
             'permissions' => [
-                // Todos pueden solicitar vacaciones desde su perfil
                 'canRequestVacations' => true,
                 'canEditHours' => false,
                 'canAssignShifts' => false,
@@ -83,9 +73,8 @@ class PerfilController extends Controller
             ],
             'turnos' => $turnos->map(fn($t) => ['nombre' => $t->nombre])->values()->toArray(),
             'fechaIncorporacion' => $user->fecha_incorporacion_efectiva ? $user->fecha_incorporacion_efectiva->format('Y-m-d') : null,
-            'diasVacacionesAsignados' => $user->asignacionesTurnos()
-                ->where('estado', 'vacaciones')
-                ->count(),
+            // ✅ OPTIMIZADO: Reusar dato ya calculado en getResumenVacaciones
+            'diasVacacionesAsignados' => $resumenVacaciones['diasUsados'] ?? 0,
         ];
 
         // Sesiones activas del usuario
@@ -112,6 +101,20 @@ class PerfilController extends Controller
             ->with('epi')
             ->get();
 
+        // ✅ OPTIMIZADO: Preparar datos de contratos para la vista (antes estaba en la vista)
+        $contratosIncorporacion = collect([]);
+        $hasIncorporacion = false;
+        if ($user->incorporacion) {
+            $hasIncorporacion = true;
+            $contratosIncorporacion = $user->incorporacion->documentos->map(function ($doc) use ($user) {
+                $doc->download_url = route('incorporaciones.verArchivo', [
+                    'incorporacion' => $user->incorporacion->id,
+                    'archivo' => $doc->archivo,
+                ]);
+                return $doc;
+            });
+        }
+
         return view('perfil.show', compact(
             'user',
             'turnos',
@@ -120,7 +123,9 @@ class PerfilController extends Controller
             'horasMensuales',
             'config',
             'sesiones',
-            'episPorFirmar'
+            'episPorFirmar',
+            'contratosIncorporacion',
+            'hasIncorporacion'
         ));
     }
     private function getResumenAsistencia(User $user): array
@@ -151,7 +156,6 @@ class PerfilController extends Controller
 
         // Calcular días que corresponden este año según fecha de incorporación
         if ($fechaIncorporacion && $fechaIncorporacion->year == $añoActual) {
-            // Si se incorporó este año, calcular proporcionalmente
             $diasDelAño = Carbon::now()->isLeapYear() ? 366 : 365;
             $diasTrabajados = $fechaIncorporacion->diffInDays(Carbon::now()->endOfYear()) + 1;
             $diasCorresponden = (int) round(($diasTrabajados / $diasDelAño) * $diasPorAño);
@@ -159,8 +163,8 @@ class PerfilController extends Controller
             $diasCorresponden = $diasPorAño;
         }
 
-        // Días de vacaciones usados este año
-        $diasUsados = $user->asignacionesTurnos()
+        // ✅ OPTIMIZADO: Días de vacaciones usados este año
+        $diasUsados = AsignacionTurno::where('user_id', $user->id)
             ->where('estado', 'vacaciones')
             ->whereYear('fecha', $añoActual)
             ->count();
@@ -168,26 +172,18 @@ class PerfilController extends Controller
         // Días restantes
         $diasRestantes = max(0, $diasCorresponden - $diasUsados);
 
-        // Solicitudes de vacaciones pendientes
-        $solicitudesPendientes = VacacionesSolicitud::where('user_id', $user->id)
+        // ✅ OPTIMIZADO: Obtener count y suma de días en UNA sola consulta SQL
+        $solicitudesData = VacacionesSolicitud::where('user_id', $user->id)
             ->where('estado', 'pendiente')
-            ->count();
-
-        // Días en solicitudes pendientes (suma de días de todas las solicitudes pendientes)
-        $diasEnSolicitudesPendientes = VacacionesSolicitud::where('user_id', $user->id)
-            ->where('estado', 'pendiente')
-            ->get()
-            ->sum(function ($solicitud) {
-                return Carbon::parse($solicitud->fecha_inicio)
-                    ->diffInDays(Carbon::parse($solicitud->fecha_fin)) + 1;
-            });
+            ->selectRaw('COUNT(*) as total, COALESCE(SUM(DATEDIFF(fecha_fin, fecha_inicio) + 1), 0) as dias_totales')
+            ->first();
 
         return [
             'diasCorresponden' => $diasCorresponden,
             'diasUsados' => $diasUsados,
             'diasRestantes' => $diasRestantes,
-            'solicitudesPendientes' => $solicitudesPendientes,
-            'diasEnSolicitudesPendientes' => $diasEnSolicitudesPendientes,
+            'solicitudesPendientes' => $solicitudesData->total ?? 0,
+            'diasEnSolicitudesPendientes' => $solicitudesData->dias_totales ?? 0,
             'añoActual' => $añoActual,
         ];
     }
@@ -197,19 +193,19 @@ class PerfilController extends Controller
         $hoy = Carbon::now()->toDateString();
         $finMes = Carbon::now()->endOfMonth();
 
-        // Todas las asignaciones activas del mes
-        $asignacionesMes = $user->asignacionesTurnos()
+        // ✅ OPTIMIZADO: Solo seleccionar campos necesarios
+        $asignacionesMes = AsignacionTurno::where('user_id', $user->id)
             ->whereBetween('fecha', [$inicioMes->toDateString(), $finMes->toDateString()])
             ->where('estado', 'activo')
+            ->select('fecha', 'entrada', 'salida')
             ->get();
 
         $horasTrabajadas = 0;
         $diasConErrores = 0;
         $diasHastaHoy = 0;
-        $totalAsignacionesMes = $asignacionesMes->count(); // todas las asignaciones activas del mes
+        $totalAsignacionesMes = $asignacionesMes->count();
 
         foreach ($asignacionesMes as $asignacion) {
-            // Solo para horas hasta hoy
             if ($asignacion->fecha <= $hoy) {
                 $diasHastaHoy++;
             }
@@ -224,17 +220,13 @@ class PerfilController extends Controller
                 }
                 $horasTrabajadas += $horasDia;
             } else {
-                // 👉 Sólo contar error si la fecha ya pasó o es hoy
                 if ($asignacion->fecha < $hoy) {
                     $diasConErrores++;
                 }
             }
         }
 
-        // Horas que debería llevar hasta hoy
         $horasDeberiaLlevar = ($diasHastaHoy) * 8;
-
-        // Horas planificadas en el mes completo (todas las asignaciones activas × 8)
         $horasPlanificadasMes = $totalAsignacionesMes * 8;
 
         return [

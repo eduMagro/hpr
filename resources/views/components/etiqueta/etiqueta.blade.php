@@ -9,8 +9,11 @@
     $estadoPrincipal = strtolower($etiqueta->estado ?? 'pendiente');
     $estado2 = $etiqueta->estado2 ? strtolower($etiqueta->estado2) : null;
 
+    // ✅ OPTIMIZADO: Usar la colección ya cargada en lugar de hacer consulta
     // Obtener maquina_id y maquina_id_2 del primer elemento (todos los elementos de una etiqueta comparten las mismas máquinas)
-    $primerElemento = $etiqueta->elementos()->first();
+    $primerElemento = $etiqueta->relationLoaded('elementos')
+        ? $etiqueta->elementos->first()
+        : $etiqueta->elementos()->first();
     $maquinaId1 = $primerElemento?->maquina_id;
     $maquinaId2 = $primerElemento?->maquina_id_2;
 

@@ -108,7 +108,9 @@
       "Bash(cmd //c \"dir /s /b \"\"C:\\\\Users\\\\jjdc1\\\\OneDrive\\\\Escritorio\\\\MSR20\"\"\")",
       "Bash(type:*)",
       "Bash(cd:*)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(Get-Content storagelogslaravel.log -Tail 50)",
+      "Bash(Select-String -Pattern \"error|exception\" -CaseSensitive:$false)"
     ],
     "deny": [],
     "ask": []

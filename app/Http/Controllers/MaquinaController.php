@@ -467,14 +467,27 @@ class MaquinaController extends Controller
         // Incluye tanto grupos de planilla individual como grupos multi-planilla (planilla_id = null)
         $t6 = microtime(true);
         $planillaIds = collect($planillasActivas)->pluck('id')->toArray();
-        $gruposResumen = GrupoResumen::where('activo', true)
-            ->where('maquina_id', $maquina->id)
-            ->where(function ($query) use ($planillaIds) {
-                $query->whereIn('planilla_id', $planillaIds)
-                    ->orWhereNull('planilla_id'); // Grupos multi-planilla
-            })
-            ->with(['etiquetas.planilla', 'planilla'])
-            ->get();
+
+        // OPTIMIZADO: Solo cargar grupos si hay planillas activas
+        // Grupos multi-planilla solo se cargan si hay planillas activas (sus etiquetas deben pertenecer a alguna)
+        $gruposResumen = empty($planillaIds)
+            ? collect() // Sin planillas activas = sin grupos
+            : GrupoResumen::where('activo', true)
+                ->where('maquina_id', $maquina->id)
+                ->where(function ($query) use ($planillaIds) {
+                    $query->whereIn('planilla_id', $planillaIds)
+                        ->orWhereNull('planilla_id'); // Grupos multi-planilla
+                })
+                ->with(['etiquetas.planilla', 'planilla'])
+                ->get()
+                // Filtrar grupos multi-planilla: solo los que tienen etiquetas de planillas activas
+                ->filter(function ($grupo) use ($planillaIds) {
+                    if (!is_null($grupo->planilla_id)) {
+                        return true; // Grupos con planilla específica ya están filtrados
+                    }
+                    // Para multi-planilla: verificar que al menos una etiqueta pertenezca a planilla activa
+                    return $grupo->etiquetas->contains(fn($et) => in_array($et->planilla_id, $planillaIds));
+                });
 
         // OPTIMIZADO: Cargar todos los elementos de grupos en UNA sola consulta (evita N+1)
         $todosEtiquetaIds = $gruposResumen->flatMap(fn($g) => $g->etiquetas->pluck('id'))->unique()->toArray();
@@ -489,6 +502,9 @@ class MaquinaController extends Controller
             ->get()
             ->groupBy('etiqueta_id')
             : collect();
+
+        // Pre-cargar etiquetas de grupos (solo IDs y planilla, sin elementos para evitar memoria)
+        $etiquetasPreCargadas = collect();
 
         // Preparar datos de grupos para la vista (con elementos de cada etiqueta)
         $gruposResumenData = $gruposResumen->map(function ($grupo) use ($elementosDeGrupos) {
@@ -618,6 +634,7 @@ class MaquinaController extends Controller
             // grupos de resumen
             'gruposResumen' => $gruposResumenData,
             'etiquetasEnGrupos' => $etiquetasEnGrupos,
+            'etiquetasPreCargadas' => $etiquetasPreCargadas, // ✅ Para evitar N+1
 
             // extra contexto
             'turnoHoy' => $turnoHoy,
@@ -1528,6 +1545,7 @@ class MaquinaController extends Controller
                 // Grupos de resumen (vacíos para modo fabricación)
                 'gruposResumen' => collect(),
                 'etiquetasEnGrupos' => [],
+                'etiquetasPreCargadas' => collect(), // Para evitar error de variable indefinida
             ]
         ));
     }

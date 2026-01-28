@@ -1750,6 +1750,11 @@ class ProduccionController extends Controller
         if ($request->has('planilla_id')) {
             $planillaId = $request->planilla_id;
 
+            // Obtener datos de la planilla con su obra
+            $planilla = Planilla::with('obra:id,obra')
+                ->select('id', 'codigo', 'descripcion', 'ensamblado', 'comentario', 'obra_id')
+                ->find($planillaId);
+
             $elementos = Elemento::where('planilla_id', $planillaId)
                 ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones', 'maquina_id', 'barras', 'etiqueta_sub_id')
                 ->with(['maquina:id,nombre,codigo', 'etiquetaRelacion:etiqueta_sub_id,estado'])
@@ -1781,7 +1786,13 @@ class ProduccionController extends Controller
             return response()->json([
                 'elementos' => $elementos,
                 'posiciones' => $posiciones,
-                'maxPosiciones' => $maxPosiciones
+                'maxPosiciones' => $maxPosiciones,
+                'planilla' => [
+                    'descripcion' => $planilla->descripcion ?? null,
+                    'ensamblado' => $planilla->ensamblado ?? null,
+                    'comentario' => $planilla->comentario ?? null,
+                    'obra' => $planilla->obra->obra ?? null,
+                ]
             ]);
         } else {
             // Comportamiento original para compatibilidad

@@ -1069,7 +1069,7 @@
                         }
                     })
                     .catch(error => {
-                        Swal.fire({ icon: "error", title: "Error", html: error.message });
+                        window.mostrarErrorConReporte(error.message);
                     });
             };
 
@@ -1098,10 +1098,10 @@
                                     if (fila) fila.remove();
                                     Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1500, showConfirmButton: false });
                                 } else {
-                                    Swal.fire({ icon: 'error', title: 'Error', text: data.message });
+                                    window.mostrarErrorConReporte(data.message);
                                 }
                             })
-                            .catch(() => Swal.fire({ icon: 'error', title: 'Error', text: 'Error de conexión' }));
+                            .catch(() => window.mostrarErrorConReporte('Error de conexión'));
                     }
                 });
             };
@@ -1132,7 +1132,7 @@
                                 this.seccionesFaltantes = [];
                                 Swal.fire({ icon: 'success', title: 'Éxito', text: data.message, timer: 1500 });
                             }
-                        } catch (e) { Swal.fire({ icon: 'error', title: 'Error' }); }
+                        } catch (e) { window.mostrarErrorConReporte(e.message || 'Error al sincronizar'); }
                         finally { this.sincronizando = false; }
                     },
                     async crearSeccion(prefijo, nombre) {
@@ -1148,7 +1148,7 @@
                                 this.seccionesFaltantes = this.seccionesFaltantes.filter(s => s.prefijo !== prefijo);
                                 this.agregarSeccionATabla(data.seccion);
                             }
-                        } catch (e) { Swal.fire({ icon: 'error', title: 'Error' }); }
+                        } catch (e) { window.mostrarErrorConReporte(e.message || 'Error al crear sección'); }
                         finally { this.creandoPrefijo = null; }
                     },
                     agregarSeccionATabla(seccion) {
@@ -1166,7 +1166,7 @@
                 })
                     .then(r => r.json())
                     .then(data => { if (!data.success) throw new Error(data.message); })
-                    .catch(e => Swal.fire({ icon: "error", title: "Error", text: e.message }));
+                    .catch(e => window.mostrarErrorConReporte(e.message));
             };
 
             window.guardarSeccion = function (seccion) {

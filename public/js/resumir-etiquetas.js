@@ -3,6 +3,31 @@
  * Agrupa visualmente etiquetas con mismo diámetro y dimensiones
  */
 
+// Helper para mostrar errores con opción de reportar
+function _mostrarError(mensaje, titulo = 'Error', detalles = null) {
+    if (typeof window.mostrarErrorConReporte === 'function') {
+        window.mostrarErrorConReporte(mensaje, titulo, detalles);
+    } else {
+        Swal.fire({ icon: 'error', title: titulo, text: mensaje });
+    }
+}
+
+// Helper para parsear JSON de forma segura
+async function _parseJsonResponse(response, contexto = '') {
+    const text = await response.text();
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        const preview = text.substring(0, 200) + (text.length > 200 ? '...' : '');
+        _mostrarError(
+            'El servidor devolvió una respuesta inválida',
+            'Error de respuesta',
+            `${contexto ? contexto + ': ' : ''}${e.message}\n\nRespuesta: ${preview}`
+        );
+        throw e;
+    }
+}
+
 /**
  * Ejecuta el proceso de resumen de etiquetas
  * @param {number|null} planillaId - ID de la planilla
@@ -32,7 +57,7 @@ window.resumirEtiquetas = async function(planillaId, maquinaId) {
         if (maquinaId) params.set('maquina_id', maquinaId);
 
         const response = await fetch(`/api/etiquetas/resumir/preview?${params}`);
-        const preview = await response.json();
+        const preview = await _parseJsonResponse(response, 'Preview resumen');
 
         if (!preview.grupos || preview.grupos.length === 0) {
             return Swal.fire({
@@ -170,7 +195,7 @@ window.resumirEtiquetas = async function(planillaId, maquinaId) {
             })
         });
 
-        const resultado = await execResponse.json();
+        const resultado = await _parseJsonResponse(execResponse, 'Ejecutar resumen');
 
         if (resultado.success) {
             await Swal.fire({
@@ -192,20 +217,12 @@ window.resumirEtiquetas = async function(planillaId, maquinaId) {
                 location.reload();
             }
         } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: resultado.message || 'No se pudo completar el resumen',
-            });
+            _mostrarError(resultado.message || 'No se pudo completar el resumen');
         }
 
     } catch (error) {
         console.error('Error al resumir etiquetas:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error de conexión',
-            text: 'No se pudo conectar con el servidor',
-        });
+        _mostrarError('No se pudo conectar con el servidor', 'Error de conexión', error.message);
     }
 };
 
@@ -258,7 +275,7 @@ window.desagruparGrupo = async function(grupoId) {
             }
         });
 
-        const resultado = await response.json();
+        const resultado = await _parseJsonResponse(response, 'Desagrupar grupo');
 
         if (resultado.success) {
             await Swal.fire({
@@ -276,19 +293,11 @@ window.desagruparGrupo = async function(grupoId) {
                 location.reload();
             }
         } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: resultado.message,
-            });
+            _mostrarError(resultado.message);
         }
     } catch (error) {
         console.error('Error al desagrupar:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error de conexión',
-            text: 'No se pudo conectar con el servidor',
-        });
+        _mostrarError('No se pudo conectar con el servidor', 'Error de conexión', error.message);
     }
 };
 
@@ -313,11 +322,11 @@ window.imprimirTodasEtiquetasGrupo = async function(grupoId) {
         // 1. Obtener datos del grupo antes de desagrupar (para poder reagrupar después)
         console.log('📋 Paso 1: Obteniendo datos del grupo...');
         const dataResponse = await fetch(`/api/etiquetas/resumir/${grupoId}/imprimir`);
-        const dataInfo = await dataResponse.json();
+        const dataInfo = await _parseJsonResponse(dataResponse, 'Obtener datos para imprimir');
         console.log('📋 Datos obtenidos:', dataInfo);
 
         if (!dataInfo.success || !dataInfo.etiquetas || dataInfo.etiquetas.length === 0) {
-            Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron obtener las etiquetas' });
+            _mostrarError('No se pudieron obtener las etiquetas');
             return;
         }
 
@@ -346,10 +355,10 @@ window.imprimirTodasEtiquetasGrupo = async function(grupoId) {
             },
         });
 
-        const desagruparResult = await desagruparResponse.json();
+        const desagruparResult = await _parseJsonResponse(desagruparResponse, 'Desagrupar para imprimir');
         console.log('🔓 Resultado desagrupar:', desagruparResult);
         if (!desagruparResult.success) {
-            Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo desagrupar: ' + (desagruparResult.message || '') });
+            _mostrarError('No se pudo desagrupar: ' + (desagruparResult.message || ''));
             return;
         }
 
@@ -389,7 +398,7 @@ window.imprimirTodasEtiquetasGrupo = async function(grupoId) {
             await window.imprimirEtiquetas(etiquetasSubIds, modo);
         } else {
             console.error('❌ La función imprimirEtiquetas no está disponible');
-            Swal.fire({ icon: 'error', title: 'Error', text: 'Función de impresión no disponible' });
+            _mostrarError('Función de impresión no disponible');
             return;
         }
 
@@ -419,7 +428,7 @@ window.imprimirTodasEtiquetasGrupo = async function(grupoId) {
                 }),
             });
 
-            const resumirResult = await resumirResponse.json();
+            const resumirResult = await _parseJsonResponse(resumirResponse, 'Reagrupar después de imprimir');
             console.log('🔒 Resultado reagrupar:', resumirResult);
 
             // 8. Refrescar la vista final
@@ -437,11 +446,7 @@ window.imprimirTodasEtiquetasGrupo = async function(grupoId) {
 
     } catch (error) {
         console.error('❌ Error al imprimir etiquetas del grupo:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Ocurrió un error: ' + error.message,
-        });
+        _mostrarError('Ocurrió un error al imprimir', 'Error', error.message);
     }
 };
 
@@ -500,7 +505,7 @@ window.desagruparTodos = async function(planillaId, maquinaId = null) {
             })
         });
 
-        const resultado = await response.json();
+        const resultado = await _parseJsonResponse(response, 'Desagrupar todos');
 
         if (resultado.success) {
             await Swal.fire({
@@ -517,19 +522,11 @@ window.desagruparTodos = async function(planillaId, maquinaId = null) {
                 location.reload();
             }
         } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: resultado.message,
-            });
+            _mostrarError(resultado.message);
         }
     } catch (error) {
         console.error('Error al desagrupar todos:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error de conexión',
-            text: 'No se pudo conectar con el servidor',
-        });
+        _mostrarError('No se pudo conectar con el servidor', 'Error de conexión', error.message);
     }
 };
 
@@ -562,7 +559,7 @@ window.resumirEtiquetasMultiplanilla = async function(maquinaId) {
         params.set('maquina_id', maquinaId);
 
         const response = await fetch(`/api/etiquetas/resumir/multiplanilla/preview?${params}`);
-        const preview = await response.json();
+        const preview = await _parseJsonResponse(response, 'Preview multiplanilla');
 
         if (!preview.grupos || preview.grupos.length === 0) {
             return Swal.fire({
@@ -712,7 +709,7 @@ window.resumirEtiquetasMultiplanilla = async function(maquinaId) {
             })
         });
 
-        const resultado = await execResponse.json();
+        const resultado = await _parseJsonResponse(execResponse, 'Ejecutar resumen multiplanilla');
 
         if (resultado.success) {
             await Swal.fire({
@@ -734,20 +731,12 @@ window.resumirEtiquetasMultiplanilla = async function(maquinaId) {
                 location.reload();
             }
         } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: resultado.message || 'No se pudo completar el resumen multi-planilla',
-            });
+            _mostrarError(resultado.message || 'No se pudo completar el resumen multi-planilla');
         }
 
     } catch (error) {
         console.error('Error al resumir etiquetas multi-planilla:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error de conexión',
-            text: 'No se pudo conectar con el servidor',
-        });
+        _mostrarError('No se pudo conectar con el servidor', 'Error de conexión', error.message);
     }
 };
 
@@ -787,7 +776,7 @@ window.desagruparTodosMultiplanilla = async function(maquinaId) {
             })
         });
 
-        const resultado = await response.json();
+        const resultado = await _parseJsonResponse(response, 'Desagrupar todos multiplanilla');
 
         if (resultado.success) {
             await Swal.fire({
@@ -804,19 +793,11 @@ window.desagruparTodosMultiplanilla = async function(maquinaId) {
                 location.reload();
             }
         } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: resultado.message,
-            });
+            _mostrarError(resultado.message);
         }
     } catch (error) {
         console.error('Error al desagrupar todos multi-planilla:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error de conexión',
-            text: 'No se pudo conectar con el servidor',
-        });
+        _mostrarError('No se pudo conectar con el servidor', 'Error de conexión', error.message);
     }
 };
 
@@ -859,7 +840,7 @@ window.deshacerEstadoGrupo = async function(grupoId) {
             }
         });
 
-        const resultado = await response.json();
+        const resultado = await _parseJsonResponse(response, 'Deshacer estado grupo');
 
         if (resultado.success) {
             await Swal.fire({
@@ -883,19 +864,11 @@ window.deshacerEstadoGrupo = async function(grupoId) {
                 location.reload();
             }
         } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: resultado.message || 'No se pudo deshacer el estado',
-            });
+            _mostrarError(resultado.message || 'No se pudo deshacer el estado');
         }
     } catch (error) {
         console.error('Error al deshacer estado del grupo:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error de conexión',
-            text: 'No se pudo conectar con el servidor',
-        });
+        _mostrarError('No se pudo conectar con el servidor', 'Error de conexión', error.message);
     }
 };
 

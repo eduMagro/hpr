@@ -427,6 +427,14 @@ class EtiquetaHistorial extends Model
                 'cambios' => $resultado['cambios'],
             ]);
 
+            // Registrar log de producción para el deshacer
+            \App\Jobs\LogProduccionJob::dispatchAfterResponse('cambio_estado', [
+                'etiqueta_id' => $this->etiqueta_id,
+                'maquina_id' => $this->maquina_id,
+                'estado_anterior' => $this->estado_nuevo,
+                'estado_nuevo' => $snapshot['estado'] . ' (deshacer)',
+            ]);
+
             return $resultado;
         });
     }

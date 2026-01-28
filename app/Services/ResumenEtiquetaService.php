@@ -609,45 +609,17 @@ class ResumenEtiquetaService
             }
 
             // ══════════════════════════════════════════════════════════════════════
-            // OPTIMIZACIÓN: Guardar etiquetas en batch usando upsert
+            // Guardar etiquetas (ya existen, solo actualizamos)
             // ══════════════════════════════════════════════════════════════════════
-            $etiquetasData = $etiquetas->map(fn($e) => [
-                'id' => $e->id,
-                'estado' => $e->estado,
-                'fecha_inicio' => $e->fecha_inicio,
-                'fecha_finalizacion' => $e->fecha_finalizacion,
-                'operario1_id' => $e->operario1_id,
-                'producto_id' => $e->producto_id,
-                'producto_id_2' => $e->producto_id_2,
-                'impresa' => $e->impresa,
-                'updated_at' => now(),
-            ])->toArray();
-
-            Etiqueta::upsert(
-                $etiquetasData,
-                ['id'],
-                ['estado', 'fecha_inicio', 'fecha_finalizacion', 'operario1_id', 'producto_id', 'producto_id_2', 'impresa', 'updated_at']
-            );
+            foreach ($etiquetas as $etiqueta) {
+                $etiqueta->save();
+            }
 
             // ══════════════════════════════════════════════════════════════════════
-            // OPTIMIZACIÓN: Guardar elementos en batch usando upsert
+            // Guardar elementos (ya existen, solo actualizamos)
             // ══════════════════════════════════════════════════════════════════════
-            if (!empty($elementosParaActualizar)) {
-                $elementosData = collect($elementosParaActualizar)->map(fn($e) => [
-                    'id' => $e->id,
-                    'users_id' => $e->users_id,
-                    'producto_id' => $e->producto_id,
-                    'producto_id_2' => $e->producto_id_2,
-                    'producto_id_3' => $e->producto_id_3,
-                    'elaborado' => $e->elaborado,
-                    'updated_at' => now(),
-                ])->toArray();
-
-                Elemento::upsert(
-                    $elementosData,
-                    ['id'],
-                    ['users_id', 'producto_id', 'producto_id_2', 'producto_id_3', 'elaborado', 'updated_at']
-                );
+            foreach ($elementosParaActualizar as $elemento) {
+                $elemento->save();
             }
 
             // Guardar productos afectados en batch
@@ -669,6 +641,18 @@ class ResumenEtiquetaService
                     ['id'],
                     ['peso_stock', 'estado', 'updated_at']
                 );
+            }
+
+            // ══════════════════════════════════════════════════════════════════════
+            // Registrar logs de producción para cada etiqueta del grupo
+            // ══════════════════════════════════════════════════════════════════════
+            foreach ($etiquetas as $etiqueta) {
+                \App\Jobs\LogProduccionJob::dispatchAfterResponse('cambio_estado', [
+                    'etiqueta_id' => $etiqueta->id,
+                    'maquina_id' => $maquinaId,
+                    'estado_anterior' => $etiqueta->getOriginal('estado') ?? 'pendiente',
+                    'estado_nuevo' => $siguienteEstado,
+                ]);
             }
 
             // Desagrupar si se completó
@@ -1067,10 +1051,49 @@ class ResumenEtiquetaService
         }
 
         $nuevoEstado = $estadosReversos[$estadoActual];
+        $etiquetaIds = $grupo->etiquetas->pluck('id')->toArray();
+
+        // Preparar campos a actualizar según el estado destino
+        $updateData = ['estado' => $nuevoEstado];
+
+        if ($nuevoEstado === 'pendiente') {
+            // Volver a pendiente: limpiar toda la info de fabricación
+            $updateData['producto_id'] = null;
+            $updateData['producto_id_2'] = null;
+            $updateData['operario1_id'] = null;
+            $updateData['fecha_inicio'] = null;
+            $updateData['fecha_finalizacion'] = null;
+
+            // También limpiar los elementos
+            Elemento::whereIn('etiqueta_id', $etiquetaIds)
+                ->update([
+                    'producto_id' => null,
+                    'producto_id_2' => null,
+                    'producto_id_3' => null,
+                    'users_id' => null,
+                    'elaborado' => 0,
+                ]);
+        } elseif ($nuevoEstado === 'fabricando') {
+            // Volver a fabricando: limpiar solo fecha_finalizacion
+            $updateData['fecha_finalizacion'] = null;
+
+            // Los elementos vuelven a no elaborados
+            Elemento::whereIn('etiqueta_id', $etiquetaIds)
+                ->update(['elaborado' => 0]);
+        }
 
         // Actualizar todas las etiquetas del grupo
-        $etiquetaIds = $grupo->etiquetas->pluck('id')->toArray();
-        Etiqueta::whereIn('id', $etiquetaIds)->update(['estado' => $nuevoEstado]);
+        Etiqueta::whereIn('id', $etiquetaIds)->update($updateData);
+
+        // Registrar log de producción para cada etiqueta
+        foreach ($grupo->etiquetas as $etiqueta) {
+            \App\Jobs\LogProduccionJob::dispatchAfterResponse('cambio_estado', [
+                'etiqueta_id' => $etiqueta->id,
+                'maquina_id' => $grupo->maquina_id,
+                'estado_anterior' => $estadoActual,
+                'estado_nuevo' => $nuevoEstado . ' (deshacer)',
+            ]);
+        }
 
         Log::info('Estado de grupo revertido', [
             'grupo_id' => $grupoId,
