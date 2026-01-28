@@ -1,4 +1,4 @@
-@props(['user', 'resumen', 'sesiones' => collect([])])
+@props(['user', 'resumen', 'resumenVacaciones' => [], 'sesiones' => collect([])])
 
 <style>
     [x-cloak] {
@@ -80,28 +80,6 @@
                                 {{ $user->nombre_completo }}
                             </h1>
                             <p class="text-xs sm:text-sm text-gray-300 mt-1">{{ $user->categoria->nombre ?? 'N/A' }}</p>
-                        </div>
-
-                        {{-- Estadísticas en el header --}}
-                        <div class="flex gap-3 sm:gap-4 max-sm:w-full">
-                            <div class="text-center px-3 py-1.5 bg-white/10 rounded-lg max-sm:w-full sm:min-w-[6rem]">
-                                <p class="text-lg sm:text-xl font-bold text-green-400">
-                                    {{ $resumen['diasVacaciones'] }}
-                                </p>
-                                <p class="text-[10px] text-gray-300">Vacaciones</p>
-                            </div>
-                            <div class="text-center px-3 py-1.5 bg-white/10 rounded-lg max-sm:w-full sm:min-w-[6rem]">
-                                <p class="text-lg sm:text-xl font-bold text-red-400">
-                                    {{ $resumen['faltasInjustificadas'] }}
-                                </p>
-                                <p class="text-[10px] text-gray-300">Injustif.</p>
-                            </div>
-                            <div class="text-center px-3 py-1.5 bg-white/10 rounded-lg max-sm:w-full sm:min-w-[6rem]">
-                                <p class="text-lg sm:text-xl font-bold text-yellow-400">
-                                    {{ $resumen['faltasJustificadas'] }}
-                                </p>
-                                <p class="text-[10px] text-gray-300">Justif.</p>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -239,6 +217,49 @@
                                 </p>
                             </div>
                         @endif
+
+                        {{-- Separador --}}
+                        <div class="border-t border-gray-200 dark:border-gray-600 my-2"></div>
+
+                        {{-- Título de sección de vacaciones y ausencias --}}
+                        <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vacaciones y Ausencias {{ $resumenVacaciones['añoActual'] ?? date('Y') }}</p>
+
+                        {{-- Vacaciones --}}
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="p-2 bg-gradient-to-r from-green-50 to-teal-50 dark:from-green-900/30 dark:to-teal-900/30 rounded-lg border-l-3 border-green-500">
+                                <p class="text-[10px] text-gray-500 dark:text-gray-400">Días disponibles este año</p>
+                                <p class="text-sm font-bold text-green-600 dark:text-green-400">{{ $resumenVacaciones['diasCorresponden'] ?? 22 }}</p>
+                            </div>
+                            <div class="p-2 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/30 rounded-lg border-l-3 border-blue-500">
+                                <p class="text-[10px] text-gray-500 dark:text-gray-400">Días disfrutados</p>
+                                <p class="text-sm font-bold text-blue-600 dark:text-blue-400">{{ $resumenVacaciones['diasUsados'] ?? 0 }}</p>
+                            </div>
+                            <div class="p-2 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/30 rounded-lg border-l-3 border-amber-500">
+                                <p class="text-[10px] text-gray-500 dark:text-gray-400">Días restantes</p>
+                                <p class="text-sm font-bold text-amber-600 dark:text-amber-400">{{ $resumenVacaciones['diasRestantes'] ?? 0 }}</p>
+                            </div>
+                            <div class="p-2 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/30 dark:to-red-900/30 rounded-lg border-l-3 border-orange-500">
+                                <p class="text-[10px] text-gray-500 dark:text-gray-400">Solicitudes pendientes</p>
+                                <p class="text-sm font-bold text-orange-600 dark:text-orange-400">
+                                    {{ $resumenVacaciones['solicitudesPendientes'] ?? 0 }}
+                                    @if(($resumenVacaciones['diasEnSolicitudesPendientes'] ?? 0) > 0)
+                                        <span class="text-[10px] font-normal">({{ $resumenVacaciones['diasEnSolicitudesPendientes'] }} días)</span>
+                                    @endif
+                                </p>
+                            </div>
+                        </div>
+
+                        {{-- Ausencias --}}
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <div class="p-2 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/30 dark:to-orange-900/30 rounded-lg border-l-3 border-yellow-500">
+                                <p class="text-[10px] text-gray-500 dark:text-gray-400">Faltas justificadas</p>
+                                <p class="text-sm font-bold text-yellow-600 dark:text-yellow-400">{{ $resumen['faltasJustificadas'] ?? 0 }}</p>
+                            </div>
+                            <div class="p-2 bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/30 dark:to-rose-900/30 rounded-lg border-l-3 border-red-500">
+                                <p class="text-[10px] text-gray-500 dark:text-gray-400">Faltas injustificadas</p>
+                                <p class="text-sm font-bold text-red-600 dark:text-red-400">{{ $resumen['faltasInjustificadas'] ?? 0 }}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

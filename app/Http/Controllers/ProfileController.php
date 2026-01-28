@@ -375,6 +375,7 @@ class ProfileController extends Controller
         $turnos = Turno::all();
 
         $resumen = $this->getResumenAsistencia($user);
+        $resumenVacaciones = $this->getResumenVacaciones($user);
         $horasMensuales = $this->getHorasMensuales($user);
 
         $esOficina = $auth->rol === 'oficina';
@@ -412,6 +413,7 @@ class ProfileController extends Controller
             'user',
             'turnos',
             'resumen',
+            'resumenVacaciones',
             'horasMensuales',
             'config'
         ));
@@ -1466,6 +1468,57 @@ class ProfileController extends Controller
             'faltasInjustificadas' => $conteos['injustificada'] ?? 0,
             'faltasJustificadas' => $conteos['justificada'] ?? 0,
             'diasBaja' => $conteos['baja'] ?? 0,
+        ];
+    }
+
+    private function getResumenVacaciones(User $user): array
+    {
+        $añoActual = Carbon::now()->year;
+        $fechaIncorporacion = $user->fecha_incorporacion_efectiva;
+
+        // Días de vacaciones por convenio (por defecto 22)
+        $diasPorAño = 22;
+
+        // Calcular días que corresponden este año según fecha de incorporación
+        if ($fechaIncorporacion && $fechaIncorporacion->year == $añoActual) {
+            // Si se incorporó este año, calcular proporcionalmente
+            $diasDelAño = Carbon::now()->isLeapYear() ? 366 : 365;
+            $diasTrabajados = $fechaIncorporacion->diffInDays(Carbon::now()->endOfYear()) + 1;
+            $diasCorresponden = (int) round(($diasTrabajados / $diasDelAño) * $diasPorAño);
+        } else {
+            $diasCorresponden = $diasPorAño;
+        }
+
+        // Días de vacaciones usados este año
+        $diasUsados = $user->asignacionesTurnos()
+            ->where('estado', 'vacaciones')
+            ->whereYear('fecha', $añoActual)
+            ->count();
+
+        // Días restantes
+        $diasRestantes = max(0, $diasCorresponden - $diasUsados);
+
+        // Solicitudes de vacaciones pendientes
+        $solicitudesPendientes = VacacionesSolicitud::where('user_id', $user->id)
+            ->where('estado', 'pendiente')
+            ->count();
+
+        // Días en solicitudes pendientes (suma de días de todas las solicitudes pendientes)
+        $diasEnSolicitudesPendientes = VacacionesSolicitud::where('user_id', $user->id)
+            ->where('estado', 'pendiente')
+            ->get()
+            ->sum(function ($solicitud) {
+                return Carbon::parse($solicitud->fecha_inicio)
+                    ->diffInDays(Carbon::parse($solicitud->fecha_fin)) + 1;
+            });
+
+        return [
+            'diasCorresponden' => $diasCorresponden,
+            'diasUsados' => $diasUsados,
+            'diasRestantes' => $diasRestantes,
+            'solicitudesPendientes' => $solicitudesPendientes,
+            'diasEnSolicitudesPendientes' => $diasEnSolicitudesPendientes,
+            'añoActual' => $añoActual,
         ];
     }
 

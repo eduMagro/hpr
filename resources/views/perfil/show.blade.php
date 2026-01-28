@@ -313,7 +313,7 @@
     @endif
 
     <div class="container mx-auto sm:px-4">
-        <x-ficha-trabajador :user="$user" :resumen="$resumen" :sesiones="$sesiones" />
+        <x-ficha-trabajador :user="$user" :resumen="$resumen" :resumenVacaciones="$resumenVacaciones" :sesiones="$sesiones" />
     </div>
 
     @php
