@@ -2100,10 +2100,11 @@ window.abrirModalDividirElemento = function abrirModalDividirElemento(elementoId
         }
     }
 
-    // Verificar si el elemento está fabricado o pertenece a un paquete
-    const esFabricado = elementoData && elementoData.estado === 'fabricado';
+    // Verificar si la etiqueta está en proceso/completada o el elemento pertenece a un paquete
+    const estadoEtiqueta = elementoData?.estado;
+    const etiquetaEnProcesoOCompletada = estadoEtiqueta === 'fabricando' || estadoEtiqueta === 'completada';
     const tienePaquete = elementoData && elementoData.paquete_id;
-    const deshabilitarCambioMaquina = esFabricado || tienePaquete;
+    const deshabilitarCambioMaquina = etiquetaEnProcesoOCompletada || tienePaquete;
 
     // Actualizar estado del radio button "cambiar_maquina"
     const radioCambiarMaquina = document.querySelector('input[name="accion_etiqueta"][value="cambiar_maquina"]');
@@ -2117,7 +2118,7 @@ window.abrirModalDividirElemento = function abrirModalDividirElemento(elementoId
             if (deshabilitarCambioMaquina) {
                 labelCambiarMaquina.classList.add('opacity-50', 'cursor-not-allowed');
                 // Añadir tooltip explicativo
-                let motivo = esFabricado ? 'El elemento ya está fabricado' : 'El elemento pertenece a un paquete';
+                let motivo = etiquetaEnProcesoOCompletada ? 'La etiqueta está en proceso o completada' : 'El elemento pertenece a un paquete';
                 labelCambiarMaquina.setAttribute('title', motivo);
             } else {
                 labelCambiarMaquina.classList.remove('opacity-50', 'cursor-not-allowed');

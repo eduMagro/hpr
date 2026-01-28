@@ -427,13 +427,17 @@
 
         try {
             if (accion === 'ver_dimensiones') {
+                console.log('📐 Acción ver_dimensiones, elementoId:', elementoId);
+
                 // Cerrar el modal actual
                 document.getElementById('modalDividirElemento').classList.add('hidden');
 
                 // Abrir el modal de ver dimensiones
+                console.log('🔍 window.abrirModalVerDimensiones existe?', typeof window.abrirModalVerDimensiones);
                 if (typeof window.abrirModalVerDimensiones === 'function') {
                     window.abrirModalVerDimensiones(elementoId);
                 } else {
+                    console.error('❌ abrirModalVerDimensiones no está definida');
                     alert('La función de ver dimensiones no está disponible');
                 }
                 return;

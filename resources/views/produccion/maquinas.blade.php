@@ -1656,22 +1656,26 @@
 
             /* Elemento completado (etiqueta completada/fabricada) - Verde */
             .elemento-drag.elemento-completado {
-                border-color: #22c55e;
-                background: #f0fdf4;
+                border-color: #16a34a;
+                border-width: 2px;
+                background: rgba(34, 197, 94, 0.25);
             }
             .elemento-drag.elemento-completado:hover {
-                border-color: #16a34a;
-                box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
+                border-color: #15803d;
+                background: rgba(34, 197, 94, 0.35);
+                box-shadow: 0 2px 4px rgba(34, 197, 94, 0.3);
             }
 
             /* Elemento en fabricación (etiqueta fabricando/doblando) - Amarillo */
             .elemento-drag.elemento-fabricando {
-                border-color: #eab308;
-                background: #fefce8;
+                border-color: #ca8a04;
+                border-width: 2px;
+                background: rgba(234, 179, 8, 0.25);
             }
             .elemento-drag.elemento-fabricando:hover {
-                border-color: #ca8a04;
-                box-shadow: 0 2px 4px rgba(234, 179, 8, 0.2);
+                border-color: #a16207;
+                background: rgba(234, 179, 8, 0.35);
+                box-shadow: 0 2px 4px rgba(234, 179, 8, 0.3);
             }
 
             .elemento-drag canvas,
@@ -2873,7 +2877,8 @@
                                     throw new Error(data.message || 'Error al reordenar');
                                 }
 
-                                calendar.refetchEvents();
+                                await calendar.refetchEvents();
+                                await refrescarPanelElementos();
                                 Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 })
                                     .fire({ icon: 'success', title: 'Planilla reordenada' });
                             } catch (error) {
@@ -3054,7 +3059,8 @@
                                 throw new Error(data.message || 'Error al mover planilla');
                             }
 
-                            calendar.refetchEvents();
+                            await calendar.refetchEvents();
+                            await refrescarPanelElementos();
 
                             const mensajeExito = decision === 'juntar' ? 'Planilla juntada' :
                                 decision === 'nueva_posicion' ? 'Nueva posición creada' : 'Posicionada por fecha';
@@ -3662,7 +3668,7 @@
                     if (!planillaIdActualPanel) return;
 
                     const panel = document.getElementById('panel_elementos');
-                    if (!panel || panel.classList.contains('translate-x-full')) return;
+                    if (!panel || !panel.classList.contains('abierto')) return;
 
                     try {
                         const response = await fetch(`/elementos/por-ids?planilla_id=${planillaIdActualPanel}`);
@@ -3670,10 +3676,9 @@
                         const elementos = data.elementos || data;
                         const posiciones = data.posiciones || {};
                         const maxPosiciones = data.maxPosiciones || {};
-                        console.log('🔄 Panel refrescado con', elementos.length, 'elementos');
                         mostrarPanelElementos(elementos, planillaIdActualPanel, codigoPlanillaActualPanel, posiciones, maxPosiciones);
                     } catch (error) {
-                        console.error('❌ Error al refrescar panel:', error);
+                        console.error('Error al refrescar panel:', error);
                     }
                 }
 

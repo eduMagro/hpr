@@ -214,12 +214,12 @@ class AlertaController extends Controller
             ->with(['respuestas', 'usuario1']) // Cargar respuestas y usuario
             ->withCount('respuestas') // Contar respuestas
             // Ordenar: primero no leídas, luego por última actividad
-            ->leftJoin('alerta_leidas', function($join) use ($user) {
-                $join->on('alertas.id', '=', 'alerta_leidas.alerta_id')
-                    ->where('alerta_leidas.user_id', '=', $user->id);
+            ->leftJoin('alertas_users', function($join) use ($user) {
+                $join->on('alertas.id', '=', 'alertas_users.alerta_id')
+                    ->where('alertas_users.user_id', '=', $user->id);
             })
             ->select('alertas.*')
-            ->orderByRaw('CASE WHEN alerta_leidas.leida_en IS NULL AND alertas.user_id_1 != ? THEN 0 ELSE 1 END', [$user->id])
+            ->orderByRaw('CASE WHEN alertas_users.leida_en IS NULL AND alertas.user_id_1 != ? THEN 0 ELSE 1 END', [$user->id])
             ->orderBy('alertas.updated_at', 'desc')
             ->paginate($perPage);
 

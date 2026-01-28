@@ -355,7 +355,7 @@ class MaquinaController extends Controller
                     'id' => $e->id,
                     'codigo' => $e->codigo,
                     'dimensiones' => $e->dimensiones,
-                    'estado' => $e->elaborado == 1 ? 'fabricado' : 'pendiente',
+                    'estado' => $etiqueta?->estado ?? 'pendiente',
                     'peso' => $e->peso_kg,
                     'peso_numerico' => (float) $e->peso,
                     'diametro' => $e->diametro_mm,
@@ -479,7 +479,7 @@ class MaquinaController extends Controller
         // OPTIMIZADO: Cargar todos los elementos de grupos en UNA sola consulta (evita N+1)
         $todosEtiquetaIds = $gruposResumen->flatMap(fn($g) => $g->etiquetas->pluck('id'))->unique()->toArray();
         $elementosDeGrupos = $todosEtiquetaIds
-            ? Elemento::with(['producto', 'producto2', 'producto3'])
+            ? Elemento::with(['producto', 'producto2', 'producto3', 'etiquetaRelacion'])
             ->whereIn('etiqueta_id', $todosEtiquetaIds)
             ->where(function ($query) use ($maquina) {
                 // CORREGIDO: Buscar en cualquier campo de máquina
@@ -535,7 +535,7 @@ class MaquinaController extends Controller
                     'id' => $e->id,
                     'codigo' => $e->codigo,
                     'dimensiones' => $e->dimensiones,
-                    'estado' => $e->elaborado == 1 ? 'fabricado' : 'pendiente',
+                    'estado' => $e->etiquetaRelacion?->estado ?? 'pendiente',
                     'peso' => $e->peso_kg,
                     'peso_numerico' => (float) $e->peso,
                     'diametro' => $e->diametro_mm,
@@ -574,7 +574,7 @@ class MaquinaController extends Controller
                     'id' => $e->id,
                     'codigo' => $e->codigo,
                     'dimensiones' => $e->dimensiones,
-                    'estado' => $e->elaborado == 1 ? 'fabricado' : 'pendiente',
+                    'estado' => $etiqueta?->estado ?? 'pendiente',
                     'peso' => $e->peso_kg,
                     'peso_numerico' => (float) $e->peso,
                     'diametro' => $e->diametro_mm,
@@ -1440,7 +1440,7 @@ class MaquinaController extends Controller
                     'id' => $e->id,
                     'codigo' => $e->codigo,
                     'dimensiones' => $e->dimensiones,
-                    'estado' => $e->elaborado == 1 ? 'fabricado' : 'pendiente',
+                    'estado' => $etiqueta?->estado ?? 'pendiente',
                     'peso' => $e->peso_kg,
                     'peso_numerico' => (float) $e->peso,
                     'diametro' => $e->diametro_mm,

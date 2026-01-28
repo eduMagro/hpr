@@ -1280,16 +1280,19 @@ class ElementoController extends Controller
             $diametro = (int) $elemento->diametro;
             $maquinaActualId = $elemento->maquina_id;
 
-            // Obtener todas las máquinas y filtrar por diámetro
-            // Una máquina soporta el diámetro si:
-            // - diametro_min es null O diametro >= diametro_min
-            // - diametro_max es null O diametro <= diametro_max
-            $maquinas = Maquina::orderBy('codigo')
+            // Solo máquinas de fabricación (cortadora_dobladora, estribadora)
+            // Filtrar por diámetro: la máquina debe tener rango definido y el diámetro debe estar dentro
+            $tiposFabricacion = ['cortadora_dobladora', 'estribadora'];
+
+            $maquinas = Maquina::whereIn('tipo', $tiposFabricacion)
+                ->orderBy('codigo')
                 ->get()
                 ->filter(function ($m) use ($diametro) {
-                    $minOk = is_null($m->diametro_min) || $diametro >= (int) $m->diametro_min;
-                    $maxOk = is_null($m->diametro_max) || $diametro <= (int) $m->diametro_max;
-                    return $minOk && $maxOk;
+                    // Si no tiene rango definido, no es válida para este elemento
+                    if (is_null($m->diametro_min) || is_null($m->diametro_max)) {
+                        return false;
+                    }
+                    return $diametro >= (int) $m->diametro_min && $diametro <= (int) $m->diametro_max;
                 })
                 ->map(function ($m) use ($maquinaActualId) {
                     return [

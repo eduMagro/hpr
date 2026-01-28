@@ -149,22 +149,48 @@ window.cerrarPanelInfoElemento = function() {
 // Funcion para abrir el modal de ver dimensiones
 window.abrirModalVerDimensiones = function(elementoId) {
     try {
-        // Buscar el elemento
+        console.log('🔍 Buscando elemento:', elementoId);
+        console.log('📦 elementosAgrupadosScript:', window.elementosAgrupadosScript?.length || 0, 'grupos');
+        console.log('📦 gruposResumenData:', window.gruposResumenData?.length || 0, 'grupos');
+
+        // Buscar el elemento en elementosAgrupadosScript
         let elemento = null;
         if (window.elementosAgrupadosScript) {
             for (const grupo of window.elementosAgrupadosScript) {
                 const found = grupo.elementos?.find(e => e.id == elementoId);
                 if (found) {
                     elemento = found;
+                    console.log('✅ Encontrado en elementosAgrupadosScript:', elemento);
                     break;
                 }
             }
         }
 
-        if (!elemento || !elemento.dimensiones) {
+        // Si no se encontró, buscar en gruposResumenData
+        if (!elemento && window.gruposResumenData) {
+            for (const grupo of window.gruposResumenData) {
+                const found = grupo.elementos?.find(e => e.id == elementoId);
+                if (found) {
+                    elemento = found;
+                    console.log('✅ Encontrado en gruposResumenData:', elemento);
+                    break;
+                }
+            }
+        }
+
+        if (!elemento) {
+            console.error('❌ Elemento no encontrado:', elementoId);
+            alert('Elemento no encontrado');
+            return;
+        }
+
+        if (!elemento.dimensiones) {
+            console.error('❌ Elemento sin dimensiones:', elemento);
             alert('No hay dimensiones disponibles para este elemento');
             return;
         }
+
+        console.log('📐 Dimensiones:', elemento.dimensiones);
 
         // Parsear las dimensiones
         const dimensionesStr = elemento.dimensiones;
