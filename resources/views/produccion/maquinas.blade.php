@@ -26,7 +26,7 @@
                 </div>
             @endif
             <!-- Panel de filtros colapsable -->
-            <div class="mt-2 bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+            <div class="mt-2 bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden mb-6">
                 <!-- Header del panel (siempre visible) -->
                 <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-3 py-2 flex items-center justify-between cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all"
                     onclick="toggleFiltros()">
@@ -131,7 +131,8 @@
                                                     $fechaRaw = $planilla->getRawOriginal('fecha_estimada_entrega');
                                                     $fechaDisplay = $fechaRaw ? \Carbon\Carbon::parse($fechaRaw)->format('d/m/Y') : '-';
                                                 @endphp
-                                                <option value="{{ $planilla->codigo_limpio }}" data-planilla-id="{{ $planilla->id }}">
+                                                <option value="{{ $planilla->codigo_limpio }}"
+                                                    data-planilla-id="{{ $planilla->id }}">
                                                     {{ $planilla->codigo_limpio }} - {{ $fechaDisplay }}
                                                 </option>
                                             @endforeach
@@ -182,8 +183,7 @@
                 <!-- Botones en esquina superior izquierda -->
                 <div class="absolute top-4 left-4 z-10 flex gap-2">
                     <!-- Botón de optimizar planillas -->
-                    <button onclick="abrirModalOptimizar()" id="optimizar-btn"
-                        title="Optimizar planillas con retraso"
+                    <button onclick="abrirModalOptimizar()" id="optimizar-btn" title="Optimizar planillas con retraso"
                         class="px-3 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
                         <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
                             stroke="currentColor" viewBox="0 0 24 24">
@@ -271,7 +271,8 @@
                         <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none"
                             stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
+                            </path>
                         </svg>
                         <span class="text-sm font-medium hidden md:inline">Historial</span>
                     </button>
@@ -286,9 +287,8 @@
                             d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4">
                         </path>
                     </svg>
-                    <svg id="fullscreen-icon-collapse"
-                        class="w-5 h-5 hidden transition-transform group-hover:scale-110" fill="none"
-                        stroke="currentColor" viewBox="0 0 24 24">
+                    <svg id="fullscreen-icon-collapse" class="w-5 h-5 hidden transition-transform group-hover:scale-110"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25">
                         </path>
@@ -343,8 +343,7 @@
                 </select>
             </div>
 
-            <div id="panel_lista"
-                class="flex-1 overflow-y-auto p-3 space-y-1
+            <div id="panel_lista" class="flex-1 overflow-y-auto p-3 space-y-1
                    [&::-webkit-scrollbar]:w-2
                    [&::-webkit-scrollbar-track]:bg-gray-200
                    [&::-webkit-scrollbar-thumb]:bg-blue-600
@@ -352,8 +351,7 @@
             </div>
         </div>
 
-        <div id="panel_overlay"
-            class="fixed inset-0 bg-black bg-opacity-50 hidden transition-opacity duration-300 z-40"
+        <div id="panel_overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden transition-opacity duration-300 z-40"
             style="pointer-events: none;"></div>
 
         <!-- Indicador de posición al arrastrar -->
@@ -370,8 +368,8 @@
                 class="bg-white rounded-lg p-5 w-3/4 max-w-4xl max-h-[90vh] overflow-auto relative shadow-lg border border-gray-300 m-4">
                 <button id="cerrar-modal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 z-10">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
                     </svg>
                 </button>
                 <h3 class="text-lg font-semibold mb-4">Figura del Elemento</h3>
@@ -413,7 +411,7 @@
             // Actualizar variables cuando se abre el panel (hook para el código existente)
             var originalAbrirPanel = window.abrirPanelElementos;
             if (typeof originalAbrirPanel === 'function' && !originalAbrirPanel.isMyWrapper) {
-                window.abrirPanelElementos = function(planillaId, maquinaId, ...args) {
+                window.abrirPanelElementos = function (planillaId, maquinaId, ...args) {
                     window.panelPlanillaActual = planillaId;
                     window.panelMaquinaActual = maquinaId;
                     return originalAbrirPanel(planillaId, maquinaId, ...args);
@@ -500,8 +498,8 @@
                     <div class="space-y-2">
                         <button onclick="redistribuir('limitado')"
                             class="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-lg flex items-center justify-start gap-3 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                                viewBox="0 0 24 24" stroke="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 5l7 7-7 7" />
                             </svg>
@@ -636,8 +634,7 @@
         <!-- Modal Selector de Máquina -->
         <div id="modalSelectorMaquina"
             class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-            <div
-                class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-hidden flex flex-col">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-hidden flex flex-col">
                 <div id="selectorHeader" class="bg-blue-600 text-white px-6 py-4 rounded-t-lg">
                     <h3 class="text-lg font-semibold" id="selectorTitulo">Seleccionar Máquina</h3>
                     <p class="text-sm opacity-90">Elige la máquina sobre la que quieres realizar la acción</p>
@@ -700,8 +697,7 @@
                     <!-- Tabla de elementos -->
                     <div class="p-6">
                         <h4 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
                                 </path>
@@ -924,8 +920,7 @@
                 <!-- Empty state -->
                 <div id="balanceoEmpty" class="hidden p-16 text-center">
                     <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 flex items-center justify-center">
-                        <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
+                        <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
                             </path>
                         </svg>
@@ -964,7 +959,8 @@
         <div id="modalRetrasos" onclick="if(event.target === this) cerrarModalRetrasos()"
             class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
             <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
-                <div class="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 rounded-t-xl flex justify-between items-center">
+                <div
+                    class="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 rounded-t-xl flex justify-between items-center">
                     <h3 class="text-lg font-semibold flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -975,7 +971,8 @@
                     </h3>
                     <button onclick="cerrarModalRetrasos()" class="text-white hover:text-gray-200 transition">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
@@ -985,8 +982,11 @@
                 <div id="retrasos-contenido" class="flex-1 overflow-y-auto p-4">
                     <div class="flex items-center justify-center py-12">
                         <svg class="animate-spin h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
                         </svg>
                         <span class="ml-3 text-gray-600">Calculando retrasos...</span>
                     </div>
@@ -996,7 +996,8 @@
                         class="px-5 py-2.5 rounded-lg bg-amber-500 text-white font-medium hover:bg-amber-600 transition-colors flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                            </path>
                         </svg>
                         Simular Turno Sábado
                     </button>
@@ -1012,18 +1013,21 @@
         <div id="modalSimularSabado" onclick="if(event.target === this) cerrarModalSimularSabado()"
             class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
             <div class="bg-white rounded-xl shadow-2xl w-full max-w-6xl mx-4 max-h-[90vh] flex flex-col">
-                <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-6 py-4 rounded-t-xl flex justify-between items-center">
+                <div
+                    class="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-6 py-4 rounded-t-xl flex justify-between items-center">
                     <h3 class="text-lg font-semibold flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                            </path>
                         </svg>
                         <span>Simulación: Turno de Sábado</span>
                         <span id="simulacion-turno" class="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-sm"></span>
                     </h3>
                     <button onclick="cerrarModalSimularSabado()" class="text-white hover:text-gray-200 transition">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
@@ -1032,7 +1036,8 @@
                 <div class="p-4 bg-amber-50 border-b border-amber-100">
                     <div class="flex flex-col gap-3">
                         <div class="flex items-center justify-between">
-                            <h4 class="text-sm font-semibold text-gray-700">Selecciona los sábados y turnos a simular:</h4>
+                            <h4 class="text-sm font-semibold text-gray-700">Selecciona los sábados y turnos a simular:
+                            </h4>
                             <div class="flex items-center gap-2">
                                 <button onclick="seleccionarTodosSabados(true)"
                                     class="px-3 py-1 text-xs bg-amber-100 text-amber-700 rounded hover:bg-amber-200 transition">
@@ -1046,7 +1051,8 @@
                         </div>
 
                         <!-- Grid de sábados -->
-                        <div id="sabados-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-48 overflow-y-auto p-2 bg-white rounded border">
+                        <div id="sabados-grid"
+                            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-48 overflow-y-auto p-2 bg-white rounded border">
                             <!-- Se llena dinámicamente -->
                         </div>
 
@@ -1057,7 +1063,9 @@
                             <button onclick="ejecutarSimulacionSabado()"
                                 class="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 text-sm font-medium flex items-center gap-2 shadow-sm">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                                    </path>
                                 </svg>
                                 Ejecutar Simulación
                             </button>
@@ -1068,7 +1076,9 @@
                 <div id="simulacion-contenido" class="flex-1 overflow-y-auto p-4">
                     <div class="flex flex-col items-center justify-center py-12 text-gray-400">
                         <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                            </path>
                         </svg>
                         <p class="text-lg font-medium">Selecciona sábados y turnos</p>
                         <p class="text-sm">Luego pulsa "Ejecutar Simulación" para ver los resultados</p>
@@ -1091,29 +1101,37 @@
                     <h3 class="text-lg font-semibold flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
+                            </path>
                         </svg>
                         Historial de Cambios
                     </h3>
                     <button onclick="cerrarVentanaLogs()" class="text-white hover:text-gray-200">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
                 <div class="px-6 py-4 flex-1 overflow-y-auto" id="logs-container">
                     <div id="logs-loading" class="flex justify-center py-8">
                         <svg class="animate-spin h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
                         </svg>
                     </div>
                     <div id="logs-list" class="space-y-3 hidden">
                         <!-- Los logs se cargarán aquí dinámicamente -->
                     </div>
                     <div id="logs-empty" class="hidden text-center py-8 text-gray-500">
-                        <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                            </path>
                         </svg>
                         <p>No hay registros de cambios</p>
                     </div>
@@ -1121,7 +1139,8 @@
                 <div class="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
                     <span id="logs-total" class="text-sm text-gray-500"></span>
                     <div class="flex gap-3">
-                        <button onclick="cargarMasLogs()" id="logs-cargar-mas" class="hidden px-4 py-2 text-sm bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors">
+                        <button onclick="cargarMasLogs()" id="logs-cargar-mas"
+                            class="hidden px-4 py-2 text-sm bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors">
                             Cargar más
                         </button>
                         <button onclick="cerrarVentanaLogs()"
@@ -1148,7 +1167,8 @@
                     </h3>
                     <button onclick="cerrarModalInfoPlanilla()" class="text-white hover:text-gray-200">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
@@ -1203,8 +1223,10 @@
                         </div>
                         <!-- Elementos -->
                         <div class="col-span-2 bg-gray-50 rounded-lg p-3">
-                            <label class="text-xs text-gray-500 uppercase tracking-wide">Elementos (<span id="modalInfo-numElementos">0</span>)</label>
-                            <p id="modalInfo-elementos" class="text-sm text-gray-600 max-h-24 overflow-y-auto font-mono"></p>
+                            <label class="text-xs text-gray-500 uppercase tracking-wide">Elementos (<span
+                                    id="modalInfo-numElementos">0</span>)</label>
+                            <p id="modalInfo-elementos"
+                                class="text-sm text-gray-600 max-h-24 overflow-y-auto font-mono"></p>
                         </div>
                     </div>
                 </div>
@@ -1342,8 +1364,7 @@
                     </div>
 
                     <!-- Resumen de selección -->
-                    <div id="infoPriorizacion"
-                        class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg hidden">
+                    <div id="infoPriorizacion" class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg hidden">
                         <div class="flex items-center gap-2 text-orange-800 mb-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -1459,8 +1480,7 @@
                     <!-- Sección de Planillas Fuera de Tiempo -->
                     <div class="p-6 border-b border-gray-200">
                         <h4 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
@@ -1482,8 +1502,7 @@
                     <!-- Sección de Carga por Máquina -->
                     <div class="p-6">
                         <h4 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
                                 </path>
@@ -1659,6 +1678,7 @@
                 border-color: #22c55e;
                 background: #f0fdf4;
             }
+
             .elemento-drag.elemento-completado:hover {
                 border-color: #16a34a;
                 box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
@@ -1669,6 +1689,7 @@
                 border-color: #eab308;
                 background: #fefce8;
             }
+
             .elemento-drag.elemento-fabricando:hover {
                 border-color: #ca8a04;
                 box-shadow: 0 2px 4px rgba(234, 179, 8, 0.2);
@@ -2083,7 +2104,7 @@
             };
 
             // Hacer la función global para que el layout pueda llamarla
-            window.inicializarCalendarioMaquinas = function() {
+            window.inicializarCalendarioMaquinas = function () {
                 // Verificar que el elemento del calendario existe
                 const calendarioEl = document.getElementById('calendario');
                 if (!calendarioEl) {
@@ -2153,7 +2174,7 @@
                 window.tooltipsDeshabilitados = false;
 
                 // 🎯 Listener GLOBAL de mousemove para el indicador
-                document.addEventListener('mousemove', function(e) {
+                document.addEventListener('mousemove', function (e) {
                     if (mostrarIndicador && indicadorPosicion) {
                         indicadorPosicion.style.left = (e.clientX + 20) + 'px';
                         indicadorPosicion.style.top = (e.clientY - 20) + 'px';
@@ -2169,7 +2190,7 @@
                     initialView: 'resourceTimeGrid7Days',
                     nextDayThreshold: '00:00:00',
                     allDaySlot: false,
-                    resourceLabelContent: function(arg) {
+                    resourceLabelContent: function (arg) {
                         return {
                             html: `
                             <div class="flex flex-col justify-between h-full w-full py-1">
@@ -2212,12 +2233,12 @@
                             slotMinTime: '00:00:00',
                             slotMaxTime: '{{ $fechaMaximaCalendario['horas'] ?? 168 }}:00:00',
                             slotDuration: '01:00:00',
-                            dayHeaderContent: function(arg) {
+                            dayHeaderContent: function (arg) {
                                 return '';
                             },
                             buttonText: '{{ $fechaMaximaCalendario['dias'] ?? 7 }} días',
                             // Extender el rango visible hasta el último fin programado
-                            visibleRange: function(currentDate) {
+                            visibleRange: function (currentDate) {
                                 // Usar initialDate del backend (ya tiene offset y hora del turno aplicados)
                                 const initialDateStr = "{{ $initialDate ?: now()->format('Y-m-d H:i:s') }}";
                                 const start = new Date(initialDateStr);
@@ -2251,7 +2272,7 @@
                     resourceOrder: false,
                     events: {
                         url: '{{ route('api.produccion.eventos') }}',
-                        failure: function(error) {
+                        failure: function (error) {
                             console.error('❌ Error al cargar eventos:', error);
                             alert('Error al cargar los eventos. Revisa la consola.');
                         }
@@ -2259,7 +2280,7 @@
 
                     // Las fechas de eventos ya vienen correctas del backend en ISO8601
                     // No transformar para evitar problemas de timezone
-                    eventDataTransform: function(eventData) {
+                    eventDataTransform: function (eventData) {
                         return eventData;
                     },
 
@@ -2280,7 +2301,7 @@
                     },
 
                     // 🎯 CLAVE: Configurar recepción de elementos externos
-                    eventReceive: async function(info) {
+                    eventReceive: async function (info) {
                         try {
                             // Ocultar indicador al soltar
                             mostrarIndicador = false;
@@ -2555,7 +2576,7 @@
                         }
                     },
 
-                    slotLaneClassNames: function(arg) {
+                    slotLaneClassNames: function (arg) {
                         // Usar arg.text para obtener la hora (arg.date devuelve 1970 con slotMaxTime extendido)
                         const horaSlot = parseInt(arg.text, 10) || 0;
                         const hour = horaSlot % 24;
@@ -2565,7 +2586,7 @@
                         return [];
                     },
 
-                    slotLabelContent: function(arg) {
+                    slotLabelContent: function (arg) {
                         // Obtener la fecha inicial del calendario
                         const initialDateStr = "{{ $initialDate }}";
                         // Parsear la fecha correctamente (puede venir como "Y-m-d", "Y-m-d H:i:s" o ISO8601 "Y-m-dTH:i:s+00:00")
@@ -2668,7 +2689,7 @@
                             html: contenido
                         };
                     },
-                    eventClick: async function(info) {
+                    eventClick: async function (info) {
                         console.log('🔍 Event clicked:', info.event);
                         console.log('🔍 Event ID:', info.event.id);
                         console.log('🔍 Event extendedProps:', info.event.extendedProps);
@@ -2730,7 +2751,7 @@
                         }
                     },
 
-                    eventContent: function(arg) {
+                    eventContent: function (arg) {
                         const progreso = arg.event.extendedProps.progreso;
                         const eventId = arg.event.id || arg.event._def.publicId;
 
@@ -2757,7 +2778,7 @@
                     },
 
                     // 🎯 Eventos para mostrar indicador de posición al arrastrar
-                    eventDragStart: function(info) {
+                    eventDragStart: function (info) {
                         eventoArrastrandose = info.event;
                         mostrarIndicador = true;
                         window.tooltipsDeshabilitados = true;
@@ -2787,7 +2808,7 @@
                         }
                     },
 
-                    eventAllow: function(dropInfo, draggedEvent) {
+                    eventAllow: function (dropInfo, draggedEvent) {
                         // Este se ejecuta constantemente mientras arrastras
                         if (mostrarIndicador && draggedEvent) {
                             const recursoId = dropInfo.resource?.id;
@@ -2818,7 +2839,7 @@
                         return true; // Permitir el drop
                     },
 
-                    eventDragStop: function(info) {
+                    eventDragStop: function (info) {
                         eventoArrastrandose = null;
                         mostrarIndicador = false;
                         window.tooltipsDeshabilitados = false;
@@ -2831,7 +2852,7 @@
                         document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
                     },
 
-                    eventDrop: async function(info) {
+                    eventDrop: async function (info) {
                         // Limpiar tooltips residuales
                         document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
 
@@ -3069,7 +3090,7 @@
                         }
                     },
 
-                    eventDidMount: function(info) {
+                    eventDidMount: function (info) {
                         const props = info.event.extendedProps;
 
                         // 🔧 OPTIMIZACIÓN: Usar un único tooltip global en lugar de uno por evento
@@ -3101,14 +3122,14 @@
                         };
 
                         // 🖱️ Menú contextual con clic derecho - información detallada de la planilla
-                        info.el.addEventListener('contextmenu', function(e) {
+                        info.el.addEventListener('contextmenu', function (e) {
                             e.preventDefault();
                             mostrarInfoPlanilla(props, info.event.title, maquinaId);
                         });
                     },
 
                     // 🔧 OPTIMIZACIÓN: Limpiar datos del tooltip cuando el evento se desmonta
-                    eventWillUnmount: function(info) {
+                    eventWillUnmount: function (info) {
                         if (info.el._tooltipData) {
                             delete info.el._tooltipData;
                         }
@@ -3234,7 +3255,7 @@
                 }
 
                 // Ejecutar después de cargar eventos
-                calendar.on('eventsSet', function() {
+                calendar.on('eventsSet', function () {
                     setTimeout(forzarRecalculoPosiciones, 100);
                     setTimeout(forzarRecalculoPosiciones, 500);
                 });
@@ -3248,7 +3269,7 @@
                 // 🎯 Listener para calcular posición cuando se arrastra elemento del panel sobre el calendario
                 const calendarDragTarget = document.getElementById('calendario');
                 if (calendarDragTarget) {
-                    calendarDragTarget.addEventListener('dragover', function(e) {
+                    calendarDragTarget.addEventListener('dragover', function (e) {
                         // Solo procesar si estamos arrastrando un elemento del panel
                         if (!elementoArrastrandose || !mostrarIndicador) return;
 
@@ -3310,7 +3331,7 @@
                 }
 
                 // 🎯 Aplicar líneas separadoras de turnos dinámicamente
-                window.aplicarLineasTurnos = function() {
+                window.aplicarLineasTurnos = function () {
                     // Limpiar líneas anteriores
                     document.querySelectorAll('.fc-timegrid-slot.turno-inicio').forEach(el => {
                         el.classList.remove('turno-inicio');
@@ -3338,7 +3359,7 @@
                 }, 100);
 
                 // Re-aplicar cuando cambie la vista
-                calendar.on('datesSet', function() {
+                calendar.on('datesSet', function () {
                     setTimeout(() => {
                         window.aplicarLineasTurnos();
                     }, 100);
@@ -3406,7 +3427,7 @@
                 // 🎯 PANTALLA COMPLETA
                 window.isFullScreen = window.isFullScreen || false;
 
-                window.toggleFullScreen = function() {
+                window.toggleFullScreen = function () {
                     const container = document.getElementById('produccion-maquinas-container');
                     const sidebar = document.querySelector('[class*="sidebar"]') || document.querySelector('aside');
                     const header = document.querySelector('nav');
@@ -3474,7 +3495,7 @@
                 }
 
                 // También permitir F11 como alternativa
-                document.addEventListener('keydown', function(e) {
+                document.addEventListener('keydown', function (e) {
                     if (e.key === 'F11') {
                         e.preventDefault();
                         toggleFullScreen();
@@ -3745,7 +3766,7 @@
                         });
 
                         // Event listener para navegar a la sección seleccionada
-                        selectFiltro.onchange = function() {
+                        selectFiltro.onchange = function () {
                             const maquinaSeleccionada = this.value;
                             if (maquinaSeleccionada === 'todas') {
                                 // Mostrar todas las secciones y scroll al inicio
@@ -3808,7 +3829,7 @@
                             }
 
                             // Handler para cambiar posición
-                            selectPos.addEventListener('change', async function() {
+                            selectPos.addEventListener('change', async function () {
                                 const nuevaPos = parseInt(this.value);
                                 if (nuevaPos === posActual) return;
 
@@ -3939,14 +3960,14 @@
                             seccionElementos.appendChild(div);
 
                             // ✅ Evento de clic para selección múltiple
-                            div.addEventListener('click', function(e) {
+                            div.addEventListener('click', function (e) {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 window.MultiSelectElementos.toggleSeleccion(div);
                             });
 
                             // ✅ Evento de dragstart en cada elemento
-                            div.addEventListener('dragstart', function(e) {
+                            div.addEventListener('dragstart', function (e) {
                                 // Ocultar ghost nativo del navegador
                                 const img = new Image();
                                 img.src =
@@ -3974,7 +3995,7 @@
                                 div.classList.add('dragging-original');
                             });
 
-                            div.addEventListener('dragend', function() {
+                            div.addEventListener('dragend', function () {
                                 elementoArrastrandose = null;
                                 mostrarIndicador = false;
                                 window.tooltipsDeshabilitados = false;
@@ -4020,7 +4041,7 @@
 
                         const draggable = new FullCalendar.Draggable(lista, {
                             itemSelector: '.elemento-drag',
-                            eventData: function(eventEl) {
+                            eventData: function (eventEl) {
                                 return JSON.parse(eventEl.dataset.event);
                             }
                         });
@@ -4079,7 +4100,7 @@
                     }
 
                     // Usar transitionend para detectar cuando el panel está visible
-                    const onTransitionEnd = function(e) {
+                    const onTransitionEnd = function (e) {
                         // Solo procesar si es la transición de transform del panel
                         if (e.propertyName === 'transform' && e.target === panel) {
                             panel.removeEventListener('transitionend', onTransitionEnd);
@@ -4136,7 +4157,7 @@
                 // Evento para marcar planilla como revisada
                 const btnMarcarRevisada = document.getElementById('btn_marcar_revisada');
                 if (btnMarcarRevisada) {
-                    btnMarcarRevisada.addEventListener('click', async function() {
+                    btnMarcarRevisada.addEventListener('click', async function () {
                         console.log('🔍 planillaIdActualPanel:', planillaIdActualPanel);
 
                         if (!planillaIdActualPanel) {
@@ -4167,14 +4188,14 @@
                         try {
                             const response = await fetch(
                                 `/planillas/${planillaIdActualPanel}/marcar-revisada`, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'Accept': 'application/json',
-                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                            .content
-                                    }
-                                });
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                        .content
+                                }
+                            });
 
                             const data = await response.json();
 
@@ -4677,7 +4698,7 @@
                 }
 
                 // Función para abrir/cerrar panel de filtros
-                window.toggleFiltros = function() {
+                window.toggleFiltros = function () {
                     const panel = document.getElementById('panelFiltros');
                     const chevron = document.getElementById('filtrosChevron');
 
@@ -4703,13 +4724,13 @@
                 document.getElementById('filtroEstado').addEventListener('change', capturarYAplicarFiltros);
 
                 // Listener para el select de planillas - actualiza el input de código y aplica filtros
-                document.getElementById('filtroPlanillaSelect').addEventListener('change', function() {
+                document.getElementById('filtroPlanillaSelect').addEventListener('change', function () {
                     const codigoPlanilla = this.value;
                     document.getElementById('filtroCodigoPlanilla').value = codigoPlanilla;
                     capturarYAplicarFiltros();
                 });
 
-                document.getElementById('limpiarResaltado').addEventListener('click', function() {
+                document.getElementById('limpiarResaltado').addEventListener('click', function () {
                     // Limpiar los valores de los inputs
                     document.getElementById('filtroCliente').value = '';
                     document.getElementById('filtroCodCliente').value = '';
@@ -4728,7 +4749,7 @@
                  * 🔧 FUNCIÓN DE DEBUG - Inspeccionar un evento específico
                  * Úsala en la consola: debugEvento('nombre-del-evento')
                  */
-                window.debugEvento = function(nombreEvento) {
+                window.debugEvento = function (nombreEvento) {
                     console.clear();
                     console.log('%c🔍 DEBUG DE EVENTO ESPECÍFICO',
                         'font-size: 16px; font-weight: bold; color: #8b5cf6;');
@@ -4767,7 +4788,7 @@
                 };
 
                 // Añade también esta función para listar todos los eventos
-                window.listarEventos = function() {
+                window.listarEventos = function () {
                     console.clear();
                     console.log('%c📋 LISTA DE TODOS LOS EVENTOS',
                         'font-size: 16px; font-weight: bold; color: #059669;');
@@ -5273,8 +5294,8 @@
                 estadoEl.textContent = props.estado || '—';
                 estadoEl.className = 'font-semibold ' + (
                     props.estado === 'fabricando' ? 'text-blue-600' :
-                    props.estado === 'pendiente' ? 'text-yellow-600' :
-                    props.estado === 'completada' ? 'text-green-600' : 'text-gray-600'
+                        props.estado === 'pendiente' ? 'text-yellow-600' :
+                            props.estado === 'completada' ? 'text-green-600' : 'text-gray-600'
                 );
 
                 document.getElementById('modalInfo-fechaEntrega').textContent = props.fecha_entrega || '—';
@@ -5311,7 +5332,7 @@
             }
 
             // Cerrar modal con Escape
-            document.addEventListener('keydown', function(e) {
+            document.addEventListener('keydown', function (e) {
                 if (e.key === 'Escape') {
                     cerrarModalInfoPlanilla();
                 }
@@ -6208,7 +6229,7 @@
                             <div class="h-6 rounded bg-slate-200 overflow-hidden shadow-inner">
                                 <div class="h-full rounded transition-all duration-500 ease-out flex items-center justify-end pr-3"
                                      style="${colores.bar} width: ${Math.max(porcentaje, peso > 0 ? 5 : 1)}%; min-width: ${peso > 0 ? '30px' : '4px'};">
-                                    <span class="text-xs font-bold text-white drop-shadow-sm whitespace-nowrap">${peso > 0 ? (peso >= 1000 ? Math.round(peso/1000) + 'T' : Math.round(peso) + 'kg') : ''}</span>
+                                    <span class="text-xs font-bold text-white drop-shadow-sm whitespace-nowrap">${peso > 0 ? (peso >= 1000 ? Math.round(peso / 1000) + 'T' : Math.round(peso) + 'kg') : ''}</span>
                                 </div>
                             </div>
                             <div class="text-right min-w-0">
@@ -7920,7 +7941,7 @@
             // ============================================================
 
             // Función para cargar scripts de FullCalendar dinámicamente
-            window.cargarFullCalendarScripts = function() {
+            window.cargarFullCalendarScripts = function () {
                 return new Promise((resolve, reject) => {
                     // Si ya está cargado y disponible, resolver inmediatamente
                     if (typeof FullCalendar !== 'undefined' && FullCalendar.Calendar) {
@@ -7987,7 +8008,7 @@
                 });
             };
 
-            window.initProduccionMaquinasPage = async function(retryCount = 0) {
+            window.initProduccionMaquinasPage = async function (retryCount = 0) {
                 const MAX_RETRIES = 5;
                 const RETRY_DELAY = 100;
 
@@ -8048,7 +8069,7 @@
 
             // Ejecutar en navegación SPA con pequeño delay para asegurar DOM listo
             if (!window._maquinasListenerAdded) {
-                document.addEventListener('livewire:navigated', function() {
+                document.addEventListener('livewire:navigated', function () {
                     // Pequeño delay para asegurar que el DOM esté completamente actualizado
                     setTimeout(() => window.initProduccionMaquinasPage(), 50);
                 });

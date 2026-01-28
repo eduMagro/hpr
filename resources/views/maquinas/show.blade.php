@@ -633,7 +633,7 @@
         </div>
     </x-slot>
 
-    <div class="w-full sm:px-4">
+    <div class="w-full">
         <!-- Grid principal -->
         <div class="w-full">
             @if ($maquina->tipo === 'grua' && !($modoFabricacionGrua ?? false))

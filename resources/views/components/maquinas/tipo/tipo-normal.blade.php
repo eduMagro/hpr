@@ -53,7 +53,7 @@
     <!-- ============================================================
          GRID PRINCIPAL (3 COLUMNAS ADAPTATIVAS)
          ============================================================ -->
-    <div class="max-w-screen-2xl mx-auto px-4">
+    <div class="max-w-screen-2xl mx-auto">
         <div id="grid-maquina" class="grid grid-cols-12 gap-2 {{ count($planillasActivas) >= 2 ? 'dos-planillas' : 'una-planilla' }}"
              style="opacity: 0; visibility: hidden; transition: opacity 0.3s ease-in, visibility 0s 0.3s;">
 
@@ -346,26 +346,35 @@
                         <button @click="tabActivo = 'crear'"
                             :class="tabActivo === 'crear' ? 'bg-white dark:bg-gray-900/80 border-b-2 border-blue-500 text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
                             class="flex-1 py-3 px-4 text-sm transition">
-                            📦 Crear Paquete
+                            <div class="flex flex-col items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package-plus-icon lucide-package-plus"><path d="M16 16h6"/><path d="M19 13v6"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/></svg>
+                                <p>Crear paquete</p>
+                            </div>
                         </button>
                         <button @click="tabActivo = 'gestion'"
                             :class="tabActivo === 'gestion' ? 'bg-white dark:bg-gray-900/80 border-b-2 border-blue-500 text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
                             class="flex-1 py-3 px-4 text-sm transition">
-                            🗂️ Gestión
+                            <div class="flex flex-col items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-open-icon lucide-folder-open"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg>
+                                <p>Gestión</p>
+                            </div>
                         </button>
                     </div>
 
                     <div id="maquina-info" data-maquina-id="{{ $maquina->id }}" class="hidden"></div>
 
                     {{-- Tab: Crear Paquete --}}
-                    <div x-show="tabActivo === 'crear'" class="p-4">
-                        <div class="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-blue-500/30 rounded-lg p-4 shadow-md">
-                            <h3 class="font-bold text-lg mb-3 text-blue-600 dark:text-blue-400">Crear Paquete</h3>
+                    <div x-show="tabActivo === 'crear'" class="">
+                        <div class="p-4">
+                            <h3 class="font-bold text-lg mb-3 text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package-open-icon lucide-package-open"><path d="M12 22v-9"/><path d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"/><path d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"/><path d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"/></svg>
+                                <p>Crear Paquete</p>
+                            </h3>
 
                             <div class="mb-3">
                                 <input type="text" id="qrItem"
                                     class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-3 placeholder-gray-400 dark:placeholder-gray-500"
-                                    placeholder="🔍 Escanear etiqueta" autocomplete="off">
+                                    placeholder="Escanear etiqueta" autocomplete="off">
                             </div>
 
                             <div class="mb-4 bg-gray-100 dark:bg-gray-900/50 rounded-lg p-3 border border-gray-200 dark:border-gray-700/50">
@@ -377,13 +386,16 @@
 
                             <button id="crearPaqueteBtn"
                                 class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition transform hover:scale-105">
-                                📦 Crear Paquete
+                                <div class="flex gap-2 items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package-check-icon lucide-package-check"><path d="m16 16 2 2 4-4"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/></svg>
+                                    <p>Crear paquete</p>
+                                </div>
                             </button>
                         </div>
                     </div>
 
                     {{-- Tab: Gestión de Paquetes --}}
-                    <div x-show="tabActivo === 'gestion'" class="p-4">
+                    <div x-show="tabActivo === 'gestion'">
                         @include('components.maquinas.partes.gestionPaquetes')
                     </div>
                 </div>

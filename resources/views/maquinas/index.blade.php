@@ -95,7 +95,7 @@
                             </div>
 
                             {{-- Grid de información --}}
-                            <div class="grid grid-cols-1 gap-2 text-sm flex-1">
+                            <div class="flex gap-6 text-sm">
                                 {{-- Nave --}}
                                 <div class="flex items-start flex-col">
                                     <span class="font-semibold text-blue-600 dark:text-blue-400 text-xs">Nave:</span>

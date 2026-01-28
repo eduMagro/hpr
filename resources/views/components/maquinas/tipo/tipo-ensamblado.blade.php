@@ -22,7 +22,7 @@
 }" class="w-full">
 
     <!-- GRID PRINCIPAL (3 COLUMNAS) -->
-    <div class="max-w-screen-2xl mx-auto px-4">
+    <div class="max-w-screen-2xl mx-auto">
         <div id="grid-ensamblado" class="grid grid-cols-12 gap-3">
 
             <!-- COLUMNA IZQUIERDA - ELEMENTOS FABRICADOS -->
@@ -63,15 +63,14 @@
 
                 <div class="p-3 border-t bg-gray-50">
                     <a href="{{ route('ensamblaje.planificacion', ['maquina_id' => $maquina->id]) }}"
-                       class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition flex items-center justify-center gap-2">
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition flex items-center justify-center gap-2">
                         📋 Planificación
                     </a>
                 </div>
             </div>
 
             <!-- COLUMNA CENTRAL - ETIQUETAS DE ENSAMBLAJE -->
-            <div class="bg-white border border-gray-200 shadow-lg rounded-lg overflow-hidden"
-                :class="{
+            <div class="bg-white border border-gray-200 shadow-lg rounded-lg overflow-hidden" :class="{
                     'col-span-12 lg:col-span-8': showLeft && showRight,
                     'col-span-12 lg:col-span-10': (showLeft && !showRight) || (!showLeft && showRight),
                     'col-span-12': !showLeft && !showRight
@@ -99,7 +98,8 @@
                     $enProceso = $todasEtiquetas->where('estado', 'en_proceso')->count();
                 @endphp
 
-                <div class="p-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white flex items-center justify-between">
+                <div
+                    class="p-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white flex items-center justify-between">
                     <div>
                         <h3 class="font-bold text-base flex items-center gap-2">
                             <span>🏗️</span> Cola de Ensamblaje
@@ -113,14 +113,15 @@
                     </div>
                 </div>
 
-                <div class="p-4 overflow-y-auto" style="min-height: calc(100vh - 200px); max-height: calc(100vh - 150px);">
+                <div class="p-4 overflow-y-auto"
+                    style="min-height: calc(100vh - 200px); max-height: calc(100vh - 150px);">
                     @if($todasEtiquetas->isEmpty())
                         <div class="text-center py-12 text-gray-500">
                             <div class="text-6xl mb-4">📭</div>
                             <h4 class="text-lg font-bold text-gray-700 mb-2">Cola vacía</h4>
                             <p class="text-sm mb-4">No hay etiquetas en la cola de ensamblaje</p>
                             <a href="{{ route('ensamblaje.planificacion', ['maquina_id' => $maquina->id]) }}"
-                               class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium">
+                                class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium">
                                 📋 Ir a Planificación
                             </a>
                         </div>
@@ -196,8 +197,10 @@
                                     </div>
                                     @if($elementosComp->isNotEmpty())
                                         <button @click="expanded = !expanded" class="text-green-600 hover:text-green-800 p-1">
-                                            <svg class="w-4 h-4 transform transition-transform" :class="{ 'rotate-180': expanded }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                            <svg class="w-4 h-4 transform transition-transform" :class="{ 'rotate-180': expanded }"
+                                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 9l-7 7-7-7" />
                                             </svg>
                                         </button>
                                     @endif
@@ -342,7 +345,7 @@
         ventana.document.close();
 
         // Esperar a que cargue y luego imprimir
-        ventana.onload = function() {
+        ventana.onload = function () {
             setTimeout(() => {
                 ventana.print();
             }, 250);
@@ -604,10 +607,10 @@
     }
 
     // Observar cambios en el DOM para dibujar figuras cuando se expanden las secciones
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         // Usar MutationObserver para detectar cuando se muestran las secciones de elementos
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
+        const observer = new MutationObserver(function (mutations) {
+            mutations.forEach(function (mutation) {
                 if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
                     // Cuando cambia el estilo (x-show), intentar dibujar las figuras
                     setTimeout(dibujarFigurasElementos, 100);
