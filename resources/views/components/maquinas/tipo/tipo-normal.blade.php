@@ -61,7 +61,7 @@
                  COLUMNA IZQUIERDA - MATERIA PRIMA
                  ============================================================ -->
             <div x-show="showLeft" x-cloak
-                class="col-span-12 lg:col-span-2 h-[calc(100vh-140px)] bg-white dark:bg-gray-900/95 border border-gray-200 dark:border-blue-500/40 shadow-lg rounded-xl self-start lg:sticky lg:top-2 dark:backdrop-blur-sm">
+                class="col-span-12 lg:col-span-2 h-[calc(100vh-140px)] overflow-hidden bg-white dark:bg-gray-900/95 border border-gray-200 dark:border-blue-500/40 shadow-lg rounded-xl self-start lg:sticky lg:top-2 dark:backdrop-blur-sm">
 
                 <div id="materia-prima-container" class="p-1.5 h-[85%] overflow-y-auto border-b-2 border-gray-300 dark:border-blue-500/40" style="max-height: calc(100vh - 60px);">
                     @if($productosBaseCompatibles->isEmpty())
@@ -152,7 +152,7 @@
                 </div>
 
                 {{-- Botones de acciones --}}
-                <div class="p-3 border-t border-gray-200 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50 space-y-2">
+                <div class="p-3 border-t border-gray-200 dark:border-gray-700/50 space-y-2">
                     @if ($elementosAgrupados->isNotEmpty())
                         <div id="datos-lote" data-lote='@json($elementosAgrupados->keys()->values())' class="hidden"></div>
 
