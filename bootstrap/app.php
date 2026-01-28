@@ -98,6 +98,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
             // Para navegación normal: redirigir según si el usuario está autenticado o no
             $redirectRoute = auth()->check() ? 'dashboard' : 'login';
+
+            // Si ya estamos en la ruta de destino (evitar bucle infinito de redirecciones)
+            if ($request->routeIs($redirectRoute)) {
+                return null; // Dejar que Laravel muestre la página de error por defecto
+            }
+
             return redirect()->route($redirectRoute)->with('server_error', [
                 'title' => 'Error 500: Error del servidor',
                 'message' => 'Ha ocurrido un error interno en el servidor. Puedes reportar este error para que el equipo técnico lo revise.',

@@ -1171,18 +1171,23 @@ class PedidoController extends Controller
                 $editado = !$this->jsonArraysEquivalent($jsonOriginal, $jsonResultante);
             }
 
-            DB::table('activacion_pedido_automatizada')->insert([
-                'ocr_log_id' => $ocrLogId,
-                'user_id' => auth()->id(),
-                'json_original' => $jsonOriginal ? json_encode($jsonOriginal, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
-                'json_resultante' => $jsonResultante ? json_encode($jsonResultante, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
-                'editado' => (bool) ($editado ?? false),
-                'seleccion_pedido' => $seleccion,
-                'id_pedido_productos_recomendado' => $idRecomendado,
-                'id_pedido_productos_seleccion_manual' => $idManual,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            try {
+                DB::table('activacion_pedido_automatizada')->insert([
+                    'ocr_log_id' => $ocrLogId,
+                    'user_id' => auth()->id(),
+                    'json_original' => $jsonOriginal ? json_encode($jsonOriginal, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
+                    'json_resultante' => $jsonResultante ? json_encode($jsonResultante, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
+                    'editado' => (bool) ($editado ?? false),
+                    'seleccion_pedido' => $seleccion,
+                    'id_pedido_productos_recomendado' => $idRecomendado,
+                    'id_pedido_productos_seleccion_manual' => $idManual,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            } catch (\Throwable $e) {
+                // Si falla el log de analítica (p.ej. tabla no existe), no abortamos la operación principal
+                Log::warning('Fallo al insertar en activacion_pedido_automatizada: ' . $e->getMessage());
+            }
 
             DB::commit();
 
