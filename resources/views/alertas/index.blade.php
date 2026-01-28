@@ -1321,10 +1321,32 @@
                         .then(data => {
                             console.log('Respuesta del servidor:', data);
                             if (elemento) {
-                                elemento.classList.remove('bg-yellow-50', 'border-l-4', 'border-yellow-400');
-                                elemento.classList.add('bg-white');
+                                // Remover clases de no leída (desktop y mobile)
+                                elemento.classList.remove(
+                                    'bg-yellow-50', 'dark:bg-yellow-900/30',
+                                    'border-l-4', 'border-yellow-400',
+                                    'ring-2', 'ring-yellow-400'
+                                );
+                                elemento.classList.add('bg-white', 'dark:bg-gray-800');
                                 const badgeNuevo = elemento.querySelector('.animate-pulse');
                                 if (badgeNuevo) badgeNuevo.remove();
+
+                                // Mover el elemento después de las alertas no leídas
+                                const esTabla = elemento.tagName === 'TR';
+                                const contenedor = esTabla ? elemento.closest('tbody') : elemento.parentElement;
+
+                                if (contenedor) {
+                                    const selector = esTabla ? 'tr[data-alerta-id]' : 'div[data-alerta-id]';
+                                    const elementos = Array.from(contenedor.querySelectorAll(selector));
+                                    const noLeidas = elementos.filter(el =>
+                                        el.classList.contains('bg-yellow-50') || el.classList.contains('ring-yellow-400')
+                                    );
+
+                                    if (noLeidas.length > 0) {
+                                        const ultimaNoLeida = noLeidas[noLeidas.length - 1];
+                                        ultimaNoLeida.after(elemento);
+                                    }
+                                }
                             }
                             actualizarContadorAlertas();
                         })

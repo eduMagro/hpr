@@ -10,15 +10,10 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        try {
+        if (Schema::hasColumn('asignaciones_turnos', 'anio_cargo')) {
             Schema::table('asignaciones_turnos', function (Blueprint $table) {
                 $table->dropColumn('anio_cargo');
             });
-        } catch (\Illuminate\Database\QueryException $e) {
-            // Code 42S22: Column not found in MySQL
-            if ($e->getCode() != '42S22') {
-                throw $e;
-            }
         }
     }
 

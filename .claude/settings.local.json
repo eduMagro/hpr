@@ -106,7 +106,8 @@
       "Bash(cmd //c \"dir /s /b C:\\\\Users\\\\jjdc1\\\\*msr* 2>nul\")",
       "Bash(cmd //c \"dir \"\"C:\\\\Users\\\\jjdc1\\\\OneDrive\\\\Escritorio\\\\MSR20\"\"\")",
       "Bash(cmd //c \"dir /s /b \"\"C:\\\\Users\\\\jjdc1\\\\OneDrive\\\\Escritorio\\\\MSR20\"\"\")",
-      "Bash(type:*)"
+      "Bash(type:*)",
+      "Bash(cd:*)"
     ],
     "deny": [],
     "ask": []
