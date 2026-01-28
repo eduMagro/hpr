@@ -60,18 +60,19 @@
                 @forelse($registrosMaquina as $maquina)
                     <div id="maquina-{{ $maquina->id }}" data-machine-id="{{ $maquina->id }}"
                         data-obra-id="{{ $maquina->obra_id }}"
-                        class="machine-card bg-white dark:bg-gray-900/95 border border-gray-200 dark:border-blue-500/40 rounded-xl shadow-lg overflow-hidden flex flex-col h-full dark:backdrop-blur-sm">
+                        class="machine-card bg-white dark:bg-gray-900/95 border border-gray-300 dark:border-blue-500/40 rounded-xl shadow-lg overflow-hidden flex flex-col h-full dark:backdrop-blur-sm">
 
                         {{-- Imagen responsive --}}
                         <div
                             class="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center flex-shrink-0">
                             @if ($maquina->imagen)
-                                <img src="{{ asset($maquina->imagen) }}" alt="Imagen de {{ $maquina->nombre }}"
-                                    class="object-contain h-full w-full p-4">
+                                <div class="w-full h-full bg-center bg-cover bg-no-repeat transition-transform hover:scale-105 duration-500"
+                                    style="background-image: url('{{ asset($maquina->imagen) }}');">
+                                </div>
                             @else
                                 <div class="text-center">
-                                    <svg class="mx-auto h-16 w-16 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
+                                    <svg class="mx-auto h-16 w-16 text-gray-400 dark:text-gray-600" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
                                         </path>
@@ -88,7 +89,8 @@
                                 <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 line-clamp-2">
                                     <span class="text-blue-600 dark:text-blue-400">{{ $maquina->codigo }}</span>
                                     <span class="text-gray-400 dark:text-gray-600 text-sm">—</span>
-                                    <span class="text-sm text-gray-600 dark:text-gray-300 font-normal">{{ $maquina->nombre }}</span>
+                                    <span
+                                        class="text-sm text-gray-600 dark:text-gray-300 font-normal">{{ $maquina->nombre }}</span>
                                 </h3>
                             </div>
 
@@ -113,7 +115,8 @@
 
                             {{-- Subir imagen --}}
                             <form action="{{ route('maquinas.imagen', $maquina->id) }}" method="POST"
-                                enctype="multipart/form-data" class="border-t border-gray-200 dark:border-gray-700/50 pt-3 mt-auto">
+                                enctype="multipart/form-data"
+                                class="border-t border-gray-200 dark:border-gray-700/50 pt-3 mt-auto">
                                 @csrf
                                 @method('PUT')
 
@@ -141,7 +144,8 @@
                         </div>
 
                         {{-- Acciones --}}
-                        <div class="bg-gray-50 dark:bg-gray-800/50 px-3 py-3 border-t border-gray-200 dark:border-gray-700/50 flex flex-col gap-2 mt-auto">
+                        <div
+                            class="bg-gray-50 dark:bg-gray-800/50 px-3 py-3 border-t border-gray-200 dark:border-gray-700/50 flex flex-col gap-2 mt-auto">
                             <a href="{{ route('maquinas.show', $maquina->id) }}" wire:navigate
                                 class="w-full inline-flex items-center justify-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
                                 <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -168,13 +172,16 @@
                         </div>
                     </div>
                 @empty
-                    <div class="col-span-full bg-white dark:bg-gray-900/95 rounded-xl border border-dashed border-gray-300 dark:border-blue-500/40 p-12 text-center">
-                        <svg class="mx-auto h-16 w-16 text-blue-500/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div
+                        class="col-span-full bg-white dark:bg-gray-900/95 rounded-xl border border-dashed border-gray-300 dark:border-blue-500/40 p-12 text-center">
+                        <svg class="mx-auto h-16 w-16 text-blue-500/60" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
                             </path>
                         </svg>
-                        <h3 class="mt-4 text-lg font-medium text-gray-800 dark:text-gray-200">No hay máquinas disponibles</h3>
+                        <h3 class="mt-4 text-lg font-medium text-gray-800 dark:text-gray-200">No hay máquinas disponibles
+                        </h3>
                         <p class="mt-2 text-sm text-gray-500">Comienza creando una nueva máquina.</p>
                     </div>
                 @endforelse
@@ -192,8 +199,9 @@
 
         {{-- Modal de edición --}}
         <div id="editModal"
-            class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 justify-center items-center p-4 overflow-y-auto">
-            <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl my-8 mx-auto transform transition-all">
+            class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] justify-center items-center p-2 overflow-y-auto">
+            <div
+                class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl my-8 mx-auto transform transition-all border border-gray-200 dark:border-gray-700">
                 <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 rounded-t-xl">
                     <h2 class="text-xl font-bold text-white">Editar Máquina</h2>
                 </div>
@@ -205,23 +213,24 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto pr-2">
                         <div>
                             <label for="edit-codigo"
-                                class="block text-sm font-semibold text-gray-700 mb-2">Código</label>
+                                class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Código</label>
                             <input id="edit-codigo" name="codigo" type="text"
-                                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                                class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                         </div>
 
                         <div>
                             <label for="edit-nombre"
-                                class="block text-sm font-semibold text-gray-700 mb-2">Nombre</label>
+                                class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Nombre</label>
                             <input id="edit-nombre" name="nombre" type="text"
-                                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                                class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                         </div>
 
                         <div>
-                            <label for="edit-obra_id" class="block text-sm font-semibold text-gray-700 mb-2">Obra
+                            <label for="edit-obra_id"
+                                class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Obra
                                 asignada</label>
                             <select id="edit-obra_id" name="obra_id"
-                                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white">
+                                class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                                 <option value="">Sin asignar</option>
                                 @foreach ($obras as $obra)
                                     <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
@@ -230,9 +239,10 @@
                         </div>
 
                         <div>
-                            <label for="edit-tipo" class="block text-sm font-semibold text-gray-700 mb-2">Tipo</label>
+                            <label for="edit-tipo"
+                                class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Tipo</label>
                             <select id="edit-tipo" name="tipo"
-                                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white">
+                                class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                                 <option value="">— Selecciona tipo —</option>
                                 <option value="cortadora_dobladora">Cortadora-Dobladora</option>
                                 <option value="ensambladora">Ensambladora</option>
@@ -245,52 +255,57 @@
 
                         <div>
                             <label for="edit-diametro_min"
-                                class="block text-sm font-semibold text-gray-700 mb-2">Diámetro
+                                class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Diámetro
                                 mínimo (mm)</label>
                             <input id="edit-diametro_min" name="diametro_min" type="number"
-                                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                                class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                         </div>
 
                         <div>
                             <label for="edit-diametro_max"
-                                class="block text-sm font-semibold text-gray-700 mb-2">Diámetro
+                                class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Diámetro
                                 máximo (mm)</label>
                             <input id="edit-diametro_max" name="diametro_max" type="number"
-                                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                                class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                         </div>
 
                         <div>
-                            <label for="edit-peso_min" class="block text-sm font-semibold text-gray-700 mb-2">Peso
+                            <label for="edit-peso_min"
+                                class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Peso
                                 mínimo</label>
                             <input id="edit-peso_min" name="peso_min" type="number"
-                                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                                class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                         </div>
 
                         <div>
-                            <label for="edit-peso_max" class="block text-sm font-semibold text-gray-700 mb-2">Peso
+                            <label for="edit-peso_max"
+                                class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Peso
                                 máximo</label>
                             <input id="edit-peso_max" name="peso_max" type="number"
-                                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                                class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                         </div>
 
                         <div>
-                            <label for="edit-ancho_m" class="block text-sm font-semibold text-gray-700 mb-2">Ancho
+                            <label for="edit-ancho_m"
+                                class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Ancho
                                 (m)</label>
                             <input id="edit-ancho_m" name="ancho_m" type="number" step="0.01"
-                                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                                class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                         </div>
 
                         <div>
-                            <label for="edit-largo_m" class="block text-sm font-semibold text-gray-700 mb-2">Largo
+                            <label for="edit-largo_m"
+                                class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Largo
                                 (m)</label>
                             <input id="edit-largo_m" name="largo_m" type="number" step="0.01"
-                                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                                class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                         </div>
                     </div>
 
-                    <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+                    <div
+                        class="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                         <button type="button" id="closeModal"
-                            class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors border border-gray-300">
+                            class="px-6 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition-colors border border-gray-300 dark:border-gray-600">
                             Cancelar
                         </button>
                         <button type="submit"
