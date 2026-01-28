@@ -11,119 +11,52 @@
                 @endif
             </h2>
 
-            <div class="flex flex-wrap items-center gap-4">
+            <div class="flex items-center gap-3">
                 @if ($maquina->tipo !== 'grua' && $maquina->tipo !== 'ensambladora')
-                    {{-- Selectores de posiciones de planillas --}}
-                    <div class="contenedor-selectores-planilla">
-                        <select id="posicion_1" name="posicion_1" onchange="cambiarPosicionesPlanillas()">
-                            <option value="0" data-planilla-id="" data-planilla-codigo="">0</option>
-                            @foreach ($posicionesDisponibles as $pos)
-                                <option value="{{ $pos }}"
-                                    data-planilla-id="{{ $planillaIdsPorPosicion[$pos] ?? '' }}"
-                                    data-planilla-codigo="{{ $codigosPorPosicion[$pos] ?? '' }}"
-                                    {{ $posicion1 == $pos ? 'selected' : '' }}>
-                                    {{ $pos }} - {{ $codigosPorPosicion[$pos] ?? '' }}
-                                </option>
-                            @endforeach
-                        </select>
+                    {{-- Material 3 Selector de Posiciones (Segmented Button Style) --}}
+                    <div class="flex items-center bg-gray-100 dark:bg-gray-700 rounded-full p-1 shadow-sm">
+                        <div class="relative">
+                            <select id="posicion_1" name="posicion_1" onchange="cambiarPosicionesPlanillas()"
+                                class="pr-8 appearance-none bg-transparent border-none py-1.5 text-sm font-medium text-gray-700 dark:text-[#E3E3E3] focus:ring-0 cursor-pointer hover:text-blue-600 dark:hover:text-blue-300 transition-colors">
+                                <option value="0" data-planilla-id="" data-planilla-codigo="" class="bg-white dark:bg-gray-700">0</option>
+                                @foreach ($posicionesDisponibles as $pos)
+                                    <option value="{{ $pos }}"
+                                        data-planilla-id="{{ $planillaIdsPorPosicion[$pos] ?? '' }}"
+                                        data-planilla-codigo="{{ $codigosPorPosicion[$pos] ?? '' }}"
+                                        class="bg-white dark:bg-gray-700"
+                                        {{ $posicion1 == $pos ? 'selected' : '' }}>
+                                        {{ $pos }} - {{ $codigosPorPosicion[$pos] ?? '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
 
-                        <span class="separador">+</span>
+                        <div class="h-5 w-px bg-gray-300 dark:bg-gray-600"></div>
 
-                        <select id="posicion_2" name="posicion_2" onchange="cambiarPosicionesPlanillas()">
-                            <option value="0" data-planilla-id="" data-planilla-codigo="">0</option>
-                            @foreach ($posicionesDisponibles as $pos)
-                                <option value="{{ $pos }}"
-                                    data-planilla-id="{{ $planillaIdsPorPosicion[$pos] ?? '' }}"
-                                    data-planilla-codigo="{{ $codigosPorPosicion[$pos] ?? '' }}"
-                                    {{ $posicion2 == $pos ? 'selected' : '' }}>
-                                    {{ $pos }} - {{ $codigosPorPosicion[$pos] ?? '' }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <div class="relative">
+                            <select id="posicion_2" name="posicion_2" onchange="cambiarPosicionesPlanillas()"
+                                class="pr-8 appearance-none bg-transparent border-none py-1.5 text-sm font-medium text-gray-700 dark:text-[#E3E3E3] focus:ring-0 cursor-pointer hover:text-blue-600 dark:hover:text-blue-300 transition-colors">
+                                <option value="0" data-planilla-id="" data-planilla-codigo="" class="bg-white dark:bg-[#303030]">0</option>
+                                @foreach ($posicionesDisponibles as $pos)
+                                    <option value="{{ $pos }}"
+                                        data-planilla-id="{{ $planillaIdsPorPosicion[$pos] ?? '' }}"
+                                        data-planilla-codigo="{{ $codigosPorPosicion[$pos] ?? '' }}"
+                                        class="bg-white dark:bg-[#303030]"
+                                        {{ $posicion2 == $pos ? 'selected' : '' }}>
+                                        {{ $pos }} - {{ $codigosPorPosicion[$pos] ?? '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
 
                         {{-- Indicador de carga --}}
-                        <span id="loading-planillas" class="spinner-loading" style="display: none;">
-                            <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg"
-                                fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                    stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                </path>
+                        <div id="loading-planillas" style="display: none;" class="px-2 animate-fade-in">
+                             <svg class="animate-spin h-4 w-4 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                        </span>
+                        </div>
                     </div>
-
-                    <style>
-                        /* Contenedor con layout fijo */
-                        .contenedor-selectores-planilla {
-                            display: inline-flex;
-                            align-items: center;
-                            gap: 8px;
-                            background: white;
-                            border-radius: 6px;
-                            padding: 6px 12px;
-                            border: 1px solid #d1d5db;
-                            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-                            /* CRÍTICO: Dimensiones fijas para evitar recalculos */
-                            min-width: 280px;
-                            height: 40px;
-                            box-sizing: border-box;
-                            /* Alineación vertical con otros controles */
-                            vertical-align: middle;
-                            /* NUEVO: Evitar que se mueva por cambios de layout */
-                            will-change: auto;
-                            contain: layout style;
-                        }
-
-                        .contenedor-selectores-planilla select {
-                            width: 120px;
-                            height: 30px;
-                            padding: 4px 8px;
-                            border: 1px solid #d1d5db;
-                            border-radius: 4px;
-                            font-size: 0.8rem;
-                            background: white;
-                            flex-shrink: 0;
-                            /* CRÍTICO: Sin transiciones ni transformaciones */
-                            transition: none !important;
-                            transform: none !important;
-                            box-sizing: border-box;
-                            /* NUEVO: Aislar del layout */
-                            isolation: isolate;
-                            -webkit-appearance: none;
-                            -moz-appearance: none;
-                            appearance: none;
-                            /* Agregar flecha personalizada */
-                            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23374151' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-                            background-repeat: no-repeat;
-                            background-position: right 8px center;
-                            padding-right: 28px;
-                        }
-
-                        .contenedor-selectores-planilla select:focus {
-                            outline: none !important;
-                            border-color: #3b82f6 !important;
-                            box-shadow: none !important;
-                            /* Mantener dimensiones exactas */
-                            width: 120px !important;
-                            height: 30px !important;
-                        }
-
-                        .contenedor-selectores-planilla select:disabled {
-                            opacity: 0.5;
-                            cursor: not-allowed;
-                        }
-
-                        .contenedor-selectores-planilla .separador {
-                            color: #9ca3af;
-                            flex-shrink: 0;
-                        }
-
-                        .contenedor-selectores-planilla .spinner-loading {
-                            flex-shrink: 0;
-                        }
-                    </style>
 
                     <script>
                         // Variable global para evitar múltiples ejecuciones simultáneas
@@ -385,14 +318,14 @@
                         {{-- Filtros de estado de etiquetas - Select personalizado --}}
                         <div class="relative" x-data="{ open: false }">
                             <button @click="open = !open" @click.away="open = false" type="button"
-                                class="px-3 py-1.5 rounded-lg text-sm font-medium border shadow-sm transition-all duration-200 flex items-center gap-2 min-w-[130px] justify-between"
+                                class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-2 min-w-[140px] justify-between shadow-sm border border-gray-300 dark:border-gray-700"
                                 :class="{
-                                    'bg-white border-gray-300 text-gray-800': filtroEstado === 'todos',
-                                    'bg-purple-500 border-purple-600 text-white': filtroEstado === 'sin-paquete',
-                                    'bg-blue-500 border-blue-600 text-white': filtroEstado === 'en-paquete',
-                                    'bg-gray-500 border-gray-600 text-white': filtroEstado === 'pendiente',
-                                    'bg-yellow-500 border-yellow-600 text-white': filtroEstado === 'fabricando',
-                                    'bg-green-500 border-green-600 text-white': filtroEstado === 'completada'
+                                    'bg-white dark:bg-gray-700 text-gray-700 dark:text-[#E3E3E3] hover:bg-gray-50 dark:hover:bg-[#404040]': filtroEstado === 'todos',
+                                    'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-200': filtroEstado === 'sin-paquete',
+                                    'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200': filtroEstado === 'en-paquete',
+                                    'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300': filtroEstado === 'pendiente',
+                                    'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-200': filtroEstado === 'fabricando',
+                                    'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-200': filtroEstado === 'completada'
                                 }">
                                 <span
                                     x-text="{
@@ -415,29 +348,29 @@
                                 x-transition:leave="transition ease-in duration-75"
                                 x-transition:leave-start="opacity-100 scale-100"
                                 x-transition:leave-end="opacity-0 scale-95"
-                                class="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                                class="absolute z-50 mt-2 w-full bg-white dark:bg-[#202020] rounded-xl shadow-xl overflow-hidden py-1 border border-gray-100 dark:border-gray-800">
                                 <button @click="setFiltroEstado('todos'); open = false" type="button"
-                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-white hover:bg-gray-100 text-gray-800 border-b border-gray-100">
+                                    class="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-gray-50 dark:hover:bg-[#303030] text-gray-700 dark:text-[#E3E3E3] transition-colors">
                                     Todas
                                 </button>
                                 <button @click="setFiltroEstado('sin-paquete'); open = false" type="button"
-                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-purple-500 hover:bg-purple-600 text-white border-b border-purple-400">
+                                    class="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-700 dark:text-purple-300 transition-colors">
                                     Sin paquete
                                 </button>
                                 <button @click="setFiltroEstado('en-paquete'); open = false" type="button"
-                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white border-b border-blue-400">
+                                    class="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-700 dark:text-blue-300 transition-colors">
                                     En paquete
                                 </button>
                                 <button @click="setFiltroEstado('pendiente'); open = false" type="button"
-                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-gray-500 hover:bg-gray-600 text-white border-b border-gray-400">
+                                    class="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700/30 text-gray-700 dark:text-gray-300 transition-colors">
                                     Pendientes
                                 </button>
                                 <button @click="setFiltroEstado('fabricando'); open = false" type="button"
-                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-yellow-500 hover:bg-yellow-600 text-white border-b border-yellow-400">
+                                    class="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-yellow-50 dark:hover:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 transition-colors">
                                     Fabricando
                                 </button>
                                 <button @click="setFiltroEstado('completada'); open = false" type="button"
-                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-green-500 hover:bg-green-600 text-white">
+                                    class="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-green-50 dark:hover:bg-green-900/20 text-green-700 dark:text-green-300 transition-colors">
                                     Completadas
                                 </button>
                             </div>
@@ -473,33 +406,27 @@
                     @endif
 
                     {{-- Botones Comprimir/Descomprimir/Resumir Etiquetas --}}
-                    <div class="flex items-center gap-1">
+                    <div class="flex items-center gap-2">
                         <button type="button" onclick="comprimirEtiquetas()"
-                            class="px-3 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
-                            title="Comprimir: Agrupa elementos hermanos en mismas etiquetas (máx 5 por etiqueta)">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                            </svg>
-                            Comprimir
+                            class="px-4 py-2 group bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-full text-sm font-medium transition-colors flex items-center gap-2"
+                            title="Comprimir (Agrupar elementos)">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shrink-icon lucide-shrink w-5 h-5 group-hover:scale-75 transition-all duration-200 ease-in-out"><path d="m15 15 6 6m-6-6v4.8m0-4.8h4.8"/><path d="M9 19.8V15m0 0H4.2M9 15l-6 6"/><path d="M15 4.2V9m0 0h4.8M15 9l6-6"/><path d="M9 4.2V9m0 0H4.2M9 9 3 3"/></svg>
+                            <span class="hidden sm:inline">Comprimir</span>
                         </button>
                         <button type="button" onclick="descomprimirEtiquetas()"
-                            class="px-3 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
-                            title="Descomprimir: Separa elementos en etiquetas individuales (1 elemento = 1 etiqueta)">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                            </svg>
-                            Descomprimir
+                            class="px-4 py-2 group bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-full text-sm font-medium transition-colors flex items-center gap-2"
+                            title="Descomprimir (Separar elementos)">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-expand-icon lucide-expand w-4 h-4 group-hover:scale-125 transition-all duration-200 ease-in-out"><path d="m15 15 6 6"/><path d="m15 9 6-6"/><path d="M21 16v5h-5"/><path d="M21 8V3h-5"/><path d="M3 16v5h5"/><path d="m3 21 6-6"/><path d="M3 8V3h5"/><path d="M9 9 3 3"/></svg>
+                            <span class="hidden sm:inline">Descomprimir</span>
                         </button>
                     </div>
 
                     {{-- Botón Planilla Completada --}}
                     @if ($maquina->tipo !== 'grua')
                         <button type="button" onclick="completarPlanillaActual()"
-                            class="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
-                            title="Marcar planilla como completada y pasar a la siguiente">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            class="px-5 py-2 w-full bg-purple-200 dark:bg-purple-700 text-purple-900 dark:text-purple-100 hover:bg-purple-300 dark:hover:bg-purple-600 rounded-full text-sm font-bold shadow-sm transition-all duration-200 flex items-center gap-2"
+                            title="Marcar planilla como completada">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -513,7 +440,7 @@
                     <input type="hidden" name="asignacion_id" value="{{ $turnoHoy->id ?? '' }}">
                     <input type="hidden" name="nueva_maquina_id" id="hidden-nueva-maquina-id" value="">
 
-                    <div class="relative">
+                    <div class="relative w-full border-l border-gray-200 dark:border-gray-600 pl-4">
                         <select id="select-cambiar-maquina"
                             onchange="cambiarMaquinaSelect(this, {{ $maquina->id }})"
                             class="max-md:w-full appearance-none bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">

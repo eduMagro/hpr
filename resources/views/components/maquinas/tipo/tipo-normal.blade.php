@@ -61,9 +61,9 @@
                  COLUMNA IZQUIERDA - MATERIA PRIMA
                  ============================================================ -->
             <div x-show="showLeft" x-cloak
-                class="col-span-12 lg:col-span-2 bg-white dark:bg-gray-900/95 border border-gray-200 dark:border-blue-500/40 shadow-lg rounded-xl self-start lg:sticky lg:top-2 overflow-hidden dark:backdrop-blur-sm">
+                class="col-span-12 lg:col-span-2 h-[calc(100vh-140px)] bg-white dark:bg-gray-900/95 border border-gray-200 dark:border-blue-500/40 shadow-lg rounded-xl self-start lg:sticky lg:top-2 dark:backdrop-blur-sm">
 
-                <div id="materia-prima-container" class="p-1.5 overflow-y-auto" style="max-height: calc(100vh - 60px);">
+                <div id="materia-prima-container" class="p-1.5 h-[85%] overflow-y-auto border-b-2 border-gray-300 dark:border-blue-500/40" style="max-height: calc(100vh - 60px);">
                     @if($productosBaseCompatibles->isEmpty())
                         <div class="text-center text-gray-500 dark:text-gray-400 py-4">
                             <p class="text-xs">No hay productos base compatibles</p>
@@ -178,15 +178,17 @@
                     @endif
 
                     <button onclick="document.getElementById('modalIncidencia').classList.remove('hidden')"
-                        class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow-md transition">
-                        🚨 Reportar Incidencia
+                        class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow-md transition flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-siren-icon lucide-siren"><path d="M7 18v-6a5 5 0 1 1 10 0v6"/><path d="M5 21a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2z"/><path d="M21 12h1"/><path d="M18.5 4.5 18 5"/><path d="M2 12h1"/><path d="M12 2v1"/><path d="m4.929 4.929.707.707"/><path d="M12 12v6"/></svg>
+                        <p>Reportar incidencia</p>
                     </button>
 
             <!-- Botón Realizar Chequeo de Máquina -->
             <button
                 onclick="document.getElementById('modalCheckeo').classList.remove('hidden')"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md w-full sm:w-auto transition">
-                🛠️ Chequeo
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow-md transition flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wrench-icon lucide-wrench"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"/></svg>
+                <p>Realizar chequeo</p>
             </button>
         </div>
     </div>
@@ -194,7 +196,7 @@
             <!-- ============================================================
                  COLUMNA CENTRAL - PLANILLAS DE TRABAJO
                  ============================================================ -->
-            <div class="bg-white dark:bg-gray-900/95 border border-gray-200 dark:border-blue-500/40 shadow-lg rounded-xl overflow-hidden dark:backdrop-blur-sm"
+            <div class="h-[calc(100vh-140px)] overflow-y-auto bg-white dark:bg-gray-900/95 border border-gray-200 dark:border-blue-500/40 shadow-lg rounded-xl dark:backdrop-blur-sm"
                 :class="{
                     'col-span-12 lg:col-span-8': showLeft && showRight,
                     'col-span-12 lg:col-span-10': (showLeft && !showRight) || (!showLeft && showRight),
@@ -220,7 +222,7 @@
                     <div id="element-info-body" class="text-xs text-gray-600 dark:text-gray-300 space-y-1"></div>
                 </div>
 
-                <div class="flex items-center justify-center" style="min-height: calc(100vh - 70px);">
+                <div class="flex items-center justify-center min-h-full">
                     <div class="grid grid-cols-1 gap-2 {{ count($planillasActivas) >= 2 ? 'md:grid-cols-2' : '' }} w-full">
                         @forelse($planillasActivas as $planilla)
                             @php
@@ -324,8 +326,8 @@
                                 </div>
                             </section>
                         @empty
-                            <div class="col-span-2 text-center p-6 bg-gray-100 dark:bg-gray-800/50 border border-gray-200 dark:border-blue-500/30 rounded-xl shadow-md">
-                                <div class="text-6xl mb-3">📋</div>
+                            <div class="flex flex-col items-center justify-center gap-2 p-6 bg-gray-100 dark:bg-gray-800/50 border border-gray-200 dark:border-blue-500/30 rounded-xl shadow-md max-w-[400px] mx-auto">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="82" height="82" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-x-icon lucide-list-x text-gray-500 dark:text-gray-400 text-center"><path d="M16 5H3"/><path d="M11 12H3"/><path d="M16 19H3"/><path d="m15.5 9.5 5 5"/><path d="m20.5 9.5-5 5"/></svg>
                                 <p class="text-lg font-bold text-gray-700 dark:text-gray-300 mb-1">No hay planillas en cola</p>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">Selecciona una posición en los controles superiores</p>
                             </div>
@@ -387,7 +389,7 @@
                             <button id="crearPaqueteBtn"
                                 class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition transform hover:scale-105">
                                 <div class="flex gap-2 items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package-check-icon lucide-package-check"><path d="m16 16 2 2 4-4"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package-check-icon lucide-package-check"><path d="m16 16 2 2 4-4"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/></svg>
                                     <p>Crear paquete</p>
                                 </div>
                             </button>
