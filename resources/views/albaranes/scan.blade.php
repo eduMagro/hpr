@@ -1,11 +1,8 @@
 <x-app-layout>
     <x-slot name="title">Escanear Albarán</x-slot>
 
-    <x-page-header
-        title="Escanear Albarán"
-        subtitle="Digitalización y procesamiento de albaranes"
-        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>'
-    />
+    <x-page-header title="Escanear Albarán" subtitle="Digitalización y procesamiento de albaranes"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>' />
 
     <style>
         html,
@@ -248,318 +245,328 @@
     </div>
 
     <!-- Step wrapper con 3 vistas -->
-    <div id="stepWrapper"
-        class="flex transition-transform duration-300 ease-in-out h-[calc(100vh-162px)] overflow-y-auto"
-        style="width: 300%; transform: translateX(0%)">
+    <div id="mobileStepContainer" class="w-full overflow-x-hidden relative">
+        <div id="stepWrapper"
+            class="flex transition-transform duration-300 ease-in-out h-[calc(100vh-162px)] overflow-y-auto"
+            style="width: 300%; transform: translateX(0%)">
 
-        <!-- ===== VISTA 1: SUBIR FOTO ===== -->
-        <div id="step-1" class="flex-shrink-0 px-4 py-6" style="width: 33.33%;">
-            <!-- (Contenido de VISTA 1 sin cambios) -->
-            <div class="max-w-lg mx-auto space-y-3">
-                <p class="text-sm text-gray-600">Selecciona el fabricante y sube una foto del albarán</p>
+            <!-- ===== VISTA 1: SUBIR FOTO ===== -->
+            <div id="step-1" class="flex-shrink-0 px-4 py-6" style="width: 33.33%;">
+                <!-- (Contenido de VISTA 1 sin cambios) -->
+                <div class="max-w-lg mx-auto space-y-3">
+                    <p class="text-sm text-gray-600">Selecciona el fabricante y sube una foto del albarán</p>
 
-                <!-- Formulario móvil -->
-                <form id="ocrForm-mobile" class="space-y-4">
-                    @csrf
-                    <!-- Selector de proveedor -->
-                    <label class="block">
-                        <span class="text-sm font-medium text-gray-700">Fabricante</span>
-                        <select name="proveedor" id="proveedor-mobile" required
-                            class="mt-1 w-full rounded-lg border-gray-300 shadow-sm">
-                            <option value="">Selecciona fabricante</option>
-                            <option value="siderurgica">Siderúrgica Sevillana (SISE)</option>
-                            <option value="megasa">Megasa</option>
-                            <option value="balboa">Balboa</option>
-                            <option value="otro">Otro / No listado</option>
-                        </select>
-                    </label>
-
-                    <!-- Input de archivo (Dual: Cámara o Galería) -->
-                    <label class="block mb-2 text-sm font-medium text-gray-700">Foto del albarán</label>
-                    <div class="grid grid-cols-2 gap-3 mb-2">
-                        <!-- Opción Cámara -->
-                        <label
-                            class="relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-indigo-200 rounded-xl bg-indigo-50/50 hover:bg-indigo-50 transition cursor-pointer text-center group">
-                            <div class="p-2 bg-indigo-100 rounded-full mb-2 group-hover:scale-110 transition-transform">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                            </div>
-                            <span class="text-xs font-semibold text-indigo-900">Usar Cámara</span>
-                            <input type="file" name="imagenes[]" id="camera-mobile" accept="image/*"
-                                capture="environment" class="hidden" onchange="handleMobileFileSelection(this)">
-                        </label>
-
-                        <!-- Opción Galería -->
-                        <label
-                            class="relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 hover:bg-gray-100 transition cursor-pointer text-center group">
-                            <div class="p-2 bg-gray-200 rounded-full mb-2 group-hover:scale-110 transition-transform">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 8l-3-3m3 3l3-3" />
-                                </svg>
-                            </div>
-                            <span class="text-xs font-semibold text-gray-700">Subir Archivo</span>
-                            <input type="file" name="imagenes[]" id="imagenes-mobile" accept="image/*,application/pdf"
-                                class="hidden" onchange="handleMobileFileSelection(this)">
-                        </label>
-                    </div>
-
-                    <!-- Feedback de selección -->
-                    <div id="mobile-file-feedback"
-                        class="hidden p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
-                        <div class="flex items-center gap-2 overflow-hidden">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 flex-shrink-0"
-                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7" />
-                            </svg>
-                            <span class="text-sm text-green-800 font-medium truncate"
-                                id="mobile-file-name">NombreArchivo.jpg</span>
-                        </div>
-                        <button type="button" onclick="clearMobileSelection()" class="text-gray-400 hover:text-red-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- Botón procesar -->
-                    <div class="space-y-3">
-                        <button type="button" id="processBtn-mobile" onclick="procesarAlbaranMobile()"
-                            class="relative w-full px-4 py-3 bg-indigo-600 text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition overflow-hidden flex items-center justify-center">
-                            <span id="processBtnLabel-mobile">Procesar albarán</span>
-                            <span id="processing-mobile" class="processing-overlay hidden">
-                                <svg class="processing-circle" width="60" height="60" viewBox="0 0 50 50">
-                                    <g fill="none" stroke="#ffffff" stroke-width="2">
-                                        <path d="M15 10h15l5 5v20H15V10">
-                                            <animate attributeName="stroke-dasharray" values="0,100;100,0" dur="2s"
-                                                repeatCount="indefinite"></animate>
-                                        </path>
-                                        <path d="M30 10v5h5">
-                                            <animate attributeName="opacity" values="0;1;0" dur="2s"
-                                                repeatCount="indefinite"></animate>
-                                        </path>
-                                        <path d="M20 20h10M20 25h10M20 30h10">
-                                            <animate attributeName="stroke-dasharray" values="0,60;60,0" dur="2s"
-                                                repeatCount="indefinite"></animate>
-                                        </path>
-                                    </g>
-                                </svg>
-                                <span>Procesando</span>
-                            </span>
-                        </button>
-
-                        <!-- Botón: continuar manualmente (sin OCR) -->
-                        <button type="button" id="mobile-step1-manual-btn hidden" onclick="iniciarRellenoManualMobile()"
-                            class="w-full px-4 py-3 bg-white text-gray-900 rounded-lg font-semibold border border-gray-300 shadow-sm hover:bg-gray-50 transition hidden">
-                            Rellenar manualmente (sin procesar)
-                        </button>
-
-                        <!-- Botón continuar (solo si ya tenemos datos) -->
-                        <button type="button" id="mobile-step1-continue-btn" data-mobile-next
-                            class="hidden w-full px-4 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium border border-gray-300 transition">
-                            Continuar con datos actuales
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- ===== VISTA 2: CONFIRMAR DATOS (EDICIÓN DIRECTA) ===== -->
-        <div id="step-2" class="flex-shrink-0 px-4 py-6" style="width: 33.33%;">
-            <!-- (Contenido de VISTA 2 sin cambios) -->
-            <div class="max-w-lg mx-auto space-y-4">
-                <h3 class="text-xl font-semibold text-gray-900">Revisar y Confirmar Datos</h3>
-
-                {{-- <!-- Preview de imagen --> --}}
-
-                <!-- Estado de las IA -->
-                <div id="mobile-status-banner"
-                    class="hidden items-center gap-2 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-2 text-sm text-indigo-900">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-500" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M13 16h-1v-4h-1m1-4h.01M12 18a9 9 0 110-18 9 9 0 010 18z" />
-                    </svg>
-                    <span id="mobile-status-text" class="font-medium"></span>
-                </div>
-
-                <!-- Formulario de Edición (Integrado) -->
-                <form id="mobile-step2-form" class="space-y-4">
-                    <label class="block">
-                        <span class="text-sm font-medium text-gray-700">Nave</span>
-                        <input type="hidden" id="edit-obra-id">
-                        <div class="mt-1 flex rounded-lg border border-gray-300 overflow-hidden shadow-sm">
-                            <button type="button" id="btn-nave-a"
-                                class="flex-1 py-2 text-sm font-bold transition-colors bg-white text-gray-600 hover:bg-gray-50"
-                                onclick="setMobileNave('{{ $naves['Nave A'] ?? '' }}')">
-                                Nave A
-                            </button>
-                            <div class="w-px bg-gray-300"></div>
-                            <button type="button" id="btn-nave-b"
-                                class="flex-1 py-2 text-sm font-bold transition-colors bg-white text-gray-600 hover:bg-gray-50"
-                                onclick="setMobileNave('{{ $naves['Nave B'] ?? '' }}')">
-                                Nave B
-                            </button>
-                        </div>
-                    </label>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <label class="block hidden">
-                            <span class="text-sm font-medium text-gray-700">Tipo de compra</span>
-                            <input type="hidden" id="edit-tipo-compra">
-                            <div class="mt-1 flex rounded-lg border border-gray-300 overflow-hidden shadow-sm">
-                                <button type="button" id="btn-tipo-directo"
-                                    class="flex-1 py-2 text-sm font-bold transition-colors bg-white text-gray-600 hover:bg-gray-50"
-                                    onclick="setMobileTipoCompra('directo')">
-                                    DIRECTO
-                                </button>
-                                <div class="w-px bg-gray-300"></div>
-                                <button type="button" id="btn-tipo-distribuidor"
-                                    class="flex-1 py-2 text-sm font-bold transition-colors bg-white text-gray-600 hover:bg-gray-50"
-                                    onclick="setMobileTipoCompra('distribuidor')">
-                                    DISTRIBUIDOR
-                                </button>
-                            </div>
-                        </label>
-                        </label>
-
-                        <!-- Contenedor Fabricante (Solo visible en DIRECTO) -->
-                        <label class="block" id="container-fabricante-mobile">
-                            <span class="text-sm font-medium text-gray-700 hidden">Fabricante</span>
-
-                            <!-- Select de fabricantes -->
-                            <select id="edit-proveedor-select" class="mt-1 w-full rounded-lg border-gray-300 hidden">
+                    <!-- Formulario móvil -->
+                    <form id="ocrForm-mobile" class="space-y-4">
+                        @csrf
+                        <!-- Selector de proveedor -->
+                        <label class="block">
+                            <span class="text-sm font-medium text-gray-700">Fabricante</span>
+                            <select name="proveedor" id="proveedor-mobile" required
+                                class="mt-1 w-full rounded-lg border-gray-300 shadow-sm">
                                 <option value="">Selecciona fabricante</option>
-                                @if (isset($fabricantes))
-                                    @foreach ($fabricantes as $fab)
-                                        <option value="{{ $fab }}">{{ $fab }}</option>
-                                    @endforeach
-                                @endif
+                                <option value="siderurgica">Siderúrgica Sevillana (SISE)</option>
+                                <option value="megasa">Megasa</option>
+                                <option value="balboa">Balboa</option>
                                 <option value="otro">Otro / No listado</option>
                             </select>
-
-                            <!-- Hidden input para compatibilidad -->
-                            <input type="hidden" id="edit-proveedor">
                         </label>
 
-                        <!-- Contenedor Distribuidor (Solo visible en DISTRIBUIDOR) -->
-                        <div id="container-distribuidor-mobile" class="hidden">
-                            <label class="block">
-                                <span class="text-sm font-medium text-gray-700">Distribuidor</span>
-                                <!-- Select de Distribuidores -->
-                                <select id="edit-distribuidor-select" class="mt-1 w-full rounded-lg border-gray-300">
-                                    <option value="">Selecciona distribuidor</option>
-                                    @if (isset($distribuidores))
-                                        @foreach ($distribuidores as $dist)
-                                            <option value="{{ $dist }}">{{ $dist }}</option>
+                        <!-- Input de archivo (Dual: Cámara o Galería) -->
+                        <label class="block mb-2 text-sm font-medium text-gray-700">Foto del albarán</label>
+                        <div class="grid grid-cols-2 gap-3 mb-2">
+                            <!-- Opción Cámara -->
+                            <label
+                                class="relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-indigo-200 rounded-xl bg-indigo-50/50 hover:bg-indigo-50 transition cursor-pointer text-center group">
+                                <div
+                                    class="p-2 bg-indigo-100 rounded-full mb-2 group-hover:scale-110 transition-transform">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </div>
+                                <span class="text-xs font-semibold text-indigo-900">Usar Cámara</span>
+                                <input type="file" name="imagenes[]" id="camera-mobile" accept="image/*"
+                                    capture="environment" class="hidden" onchange="handleMobileFileSelection(this)">
+                            </label>
+
+                            <!-- Opción Galería -->
+                            <label
+                                class="relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 hover:bg-gray-100 transition cursor-pointer text-center group">
+                                <div
+                                    class="p-2 bg-gray-200 rounded-full mb-2 group-hover:scale-110 transition-transform">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 8l-3-3m3 3l3-3" />
+                                    </svg>
+                                </div>
+                                <span class="text-xs font-semibold text-gray-700">Subir Archivo</span>
+                                <input type="file" name="imagenes[]" id="imagenes-mobile"
+                                    accept="image/*,application/pdf" class="hidden"
+                                    onchange="handleMobileFileSelection(this)">
+                            </label>
+                        </div>
+
+                        <!-- Feedback de selección -->
+                        <div id="mobile-file-feedback"
+                            class="hidden p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+                            <div class="flex items-center gap-2 overflow-hidden">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 flex-shrink-0"
+                                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span class="text-sm text-green-800 font-medium truncate"
+                                    id="mobile-file-name">NombreArchivo.jpg</span>
+                            </div>
+                            <button type="button" onclick="clearMobileSelection()"
+                                class="text-gray-400 hover:text-red-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Botón procesar -->
+                        <div class="space-y-3">
+                            <button type="button" id="processBtn-mobile" onclick="procesarAlbaranMobile()"
+                                class="relative w-full px-4 py-3 bg-indigo-600 text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition overflow-hidden flex items-center justify-center">
+                                <span id="processBtnLabel-mobile">Procesar albarán</span>
+                                <span id="processing-mobile" class="processing-overlay hidden">
+                                    <svg class="processing-circle" width="60" height="60" viewBox="0 0 50 50">
+                                        <g fill="none" stroke="#ffffff" stroke-width="2">
+                                            <path d="M15 10h15l5 5v20H15V10">
+                                                <animate attributeName="stroke-dasharray" values="0,100;100,0" dur="2s"
+                                                    repeatCount="indefinite"></animate>
+                                            </path>
+                                            <path d="M30 10v5h5">
+                                                <animate attributeName="opacity" values="0;1;0" dur="2s"
+                                                    repeatCount="indefinite"></animate>
+                                            </path>
+                                            <path d="M20 20h10M20 25h10M20 30h10">
+                                                <animate attributeName="stroke-dasharray" values="0,60;60,0" dur="2s"
+                                                    repeatCount="indefinite"></animate>
+                                            </path>
+                                        </g>
+                                    </svg>
+                                    <span>Procesando</span>
+                                </span>
+                            </button>
+
+                            <!-- Botón: continuar manualmente (sin OCR) -->
+                            <button type="button" id="mobile-step1-manual-btn hidden"
+                                onclick="iniciarRellenoManualMobile()"
+                                class="w-full px-4 py-3 bg-white text-gray-900 rounded-lg font-semibold border border-gray-300 shadow-sm hover:bg-gray-50 transition hidden">
+                                Rellenar manualmente (sin procesar)
+                            </button>
+
+                            <!-- Botón continuar (solo si ya tenemos datos) -->
+                            <button type="button" id="mobile-step1-continue-btn" data-mobile-next
+                                class="hidden w-full px-4 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium border border-gray-300 transition">
+                                Continuar con datos actuales
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ===== VISTA 2: CONFIRMAR DATOS (EDICIÓN DIRECTA) ===== -->
+            <div id="step-2" class="flex-shrink-0 px-4 py-6" style="width: 33.33%;">
+                <!-- (Contenido de VISTA 2 sin cambios) -->
+                <div class="max-w-lg mx-auto space-y-4">
+                    <h3 class="text-xl font-semibold text-gray-900">Revisar y Confirmar Datos</h3>
+
+                    {{-- <!-- Preview de imagen --> --}}
+
+                    <!-- Estado de las IA -->
+                    <div id="mobile-status-banner"
+                        class="hidden items-center gap-2 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-2 text-sm text-indigo-900">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-500" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M12 18a9 9 0 110-18 9 9 0 010 18z" />
+                        </svg>
+                        <span id="mobile-status-text" class="font-medium"></span>
+                    </div>
+
+                    <!-- Formulario de Edición (Integrado) -->
+                    <form id="mobile-step2-form" class="space-y-4">
+                        <label class="block">
+                            <span class="text-sm font-medium text-gray-700">Nave</span>
+                            <input type="hidden" id="edit-obra-id">
+                            <div class="mt-1 flex rounded-lg border border-gray-300 overflow-hidden shadow-sm">
+                                <button type="button" id="btn-nave-a"
+                                    class="flex-1 py-2 text-sm font-bold transition-colors bg-white text-gray-600 hover:bg-gray-50"
+                                    onclick="setMobileNave('{{ $naves['Nave A'] ?? '' }}')">
+                                    Nave A
+                                </button>
+                                <div class="w-px bg-gray-300"></div>
+                                <button type="button" id="btn-nave-b"
+                                    class="flex-1 py-2 text-sm font-bold transition-colors bg-white text-gray-600 hover:bg-gray-50"
+                                    onclick="setMobileNave('{{ $naves['Nave B'] ?? '' }}')">
+                                    Nave B
+                                </button>
+                            </div>
+                        </label>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <label class="block hidden">
+                                <span class="text-sm font-medium text-gray-700">Tipo de compra</span>
+                                <input type="hidden" id="edit-tipo-compra">
+                                <div class="mt-1 flex rounded-lg border border-gray-300 overflow-hidden shadow-sm">
+                                    <button type="button" id="btn-tipo-directo"
+                                        class="flex-1 py-2 text-sm font-bold transition-colors bg-white text-gray-600 hover:bg-gray-50"
+                                        onclick="setMobileTipoCompra('directo')">
+                                        DIRECTO
+                                    </button>
+                                    <div class="w-px bg-gray-300"></div>
+                                    <button type="button" id="btn-tipo-distribuidor"
+                                        class="flex-1 py-2 text-sm font-bold transition-colors bg-white text-gray-600 hover:bg-gray-50"
+                                        onclick="setMobileTipoCompra('distribuidor')">
+                                        DISTRIBUIDOR
+                                    </button>
+                                </div>
+                            </label>
+                            </label>
+
+                            <!-- Contenedor Fabricante (Solo visible en DIRECTO) -->
+                            <label class="block" id="container-fabricante-mobile">
+                                <span class="text-sm font-medium text-gray-700 hidden">Fabricante</span>
+
+                                <!-- Select de fabricantes -->
+                                <select id="edit-proveedor-select"
+                                    class="mt-1 w-full rounded-lg border-gray-300 hidden">
+                                    <option value="">Selecciona fabricante</option>
+                                    @if (isset($fabricantes))
+                                        @foreach ($fabricantes as $fab)
+                                            <option value="{{ $fab }}">{{ $fab }}</option>
                                         @endforeach
                                     @endif
                                     <option value="otro">Otro / No listado</option>
                                 </select>
-                                <!-- Hidden input si fuera necesario -->
-                                <input type="hidden" id="edit-distribuidor-input">
-                            </label>
-                        </div>
 
-                        <label class="hidden">
-                            <span class="text-sm font-medium text-gray-700">Albarán</span>
-                            <input type="text" id="edit-albaran" class="mt-1 w-full rounded-lg border-gray-300">
-                        </label>
-                        <label class="hidden">
-                            <span class="text-sm font-medium text-gray-700">Fecha</span>
-                            <input type="date" id="edit-fecha" class="mt-1 w-full rounded-lg border-gray-300">
-                        </label>
-                        <label class="hidden">
-                            <span class="text-sm font-medium text-gray-700">Pedido HPR</span>
-                            <input type="text" id="edit-pedido-cliente" class="mt-1 w-full rounded-lg border-gray-300">
-                        </label>
-                        <label class="block hidden">
-                            <span class="text-sm font-medium text-gray-700">Pedido Código</span>
-                            <input type="text" id="edit-pedido-codigo" class="mt-1 w-full rounded-lg border-gray-300">
-                        </label>
-                        <div class="grid grid-cols-2 gap-3 hidden">
-                            <label class="block">
-                                <span class="text-sm font-medium text-gray-700">Peso (kg)</span>
-                                <input type="number" id="edit-peso-total" step="0.01"
+                                <!-- Hidden input para compatibilidad -->
+                                <input type="hidden" id="edit-proveedor">
+                            </label>
+
+                            <!-- Contenedor Distribuidor (Solo visible en DISTRIBUIDOR) -->
+                            <div id="container-distribuidor-mobile" class="hidden">
+                                <label class="block">
+                                    <span class="text-sm font-medium text-gray-700">Distribuidor</span>
+                                    <!-- Select de Distribuidores -->
+                                    <select id="edit-distribuidor-select"
+                                        class="mt-1 w-full rounded-lg border-gray-300">
+                                        <option value="">Selecciona distribuidor</option>
+                                        @if (isset($distribuidores))
+                                            @foreach ($distribuidores as $dist)
+                                                <option value="{{ $dist }}">{{ $dist }}</option>
+                                            @endforeach
+                                        @endif
+                                        <option value="otro">Otro / No listado</option>
+                                    </select>
+                                    <!-- Hidden input si fuera necesario -->
+                                    <input type="hidden" id="edit-distribuidor-input">
+                                </label>
+                            </div>
+
+                            <label class="hidden">
+                                <span class="text-sm font-medium text-gray-700">Albarán</span>
+                                <input type="text" id="edit-albaran" class="mt-1 w-full rounded-lg border-gray-300">
+                            </label>
+                            <label class="hidden">
+                                <span class="text-sm font-medium text-gray-700">Fecha</span>
+                                <input type="date" id="edit-fecha" class="mt-1 w-full rounded-lg border-gray-300">
+                            </label>
+                            <label class="hidden">
+                                <span class="text-sm font-medium text-gray-700">Pedido HPR</span>
+                                <input type="text" id="edit-pedido-cliente"
                                     class="mt-1 w-full rounded-lg border-gray-300">
                             </label>
-                            <label class="block">
-                                <span class="text-sm font-medium text-gray-700">Bultos</span>
-                                <input type="number" id="edit-bultos-total"
-                                    class="mt-1 w-full rounded-lg border-gray-300 bg-gray-50 cursor-not-allowed"
-                                    readonly>
+                            <label class="block hidden">
+                                <span class="text-sm font-medium text-gray-700">Pedido Código</span>
+                                <input type="text" id="edit-pedido-codigo"
+                                    class="mt-1 w-full rounded-lg border-gray-300">
                             </label>
+                            <div class="grid grid-cols-2 gap-3 hidden">
+                                <label class="block">
+                                    <span class="text-sm font-medium text-gray-700">Peso (kg)</span>
+                                    <input type="number" id="edit-peso-total" step="0.01"
+                                        class="mt-1 w-full rounded-lg border-gray-300">
+                                </label>
+                                <label class="block">
+                                    <span class="text-sm font-medium text-gray-700">Bultos</span>
+                                    <input type="number" id="edit-bultos-total"
+                                        class="mt-1 w-full rounded-lg border-gray-300 bg-gray-50 cursor-not-allowed"
+                                        readonly>
+                                </label>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="space-y-3 pt-2">
-                        <div class="flex items-center justify-between">
-                            <h4 class="text-base font-semibold text-gray-900">Productos escaneados</h4>
-                            <button type="button" onclick="agregarProductoMobile()"
-                                class="px-3 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-semibold hover:bg-indigo-200">
-                                + Añadir producto
+                        <div class="space-y-3 pt-2">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-base font-semibold text-gray-900">Productos escaneados</h4>
+                                <button type="button" onclick="agregarProductoMobile()"
+                                    class="px-3 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-semibold hover:bg-indigo-200">
+                                    + Añadir producto
+                                </button>
+                            </div>
+                            <!-- Aquí se inyectarán las coladas con sus checks en Step 2 -->
+                            <div id="mobile-edit-products" class="space-y-4"></div>
+                        </div>
+
+                        <!-- Botón de acción -->
+                        <div class="pt-4">
+                            <button type="button" id="mobile-step2-confirm-btn" onclick="guardarYContinuarStep2()"
+                                class="w-full px-4 py-3 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white rounded-lg font-bold text-lg shadow-md hover:shadow-lg transition mb-12">
+                                <span id="mobile-step2-confirm-label">Confirmar y Continuar</span>
+                                <span id="mobile-step2-confirm-loading" class="hidden ml-2 align-middle">
+                                    <span class="ia-spinner inline-block align-middle"></span>
+                                </span>
                             </button>
                         </div>
-                        <!-- Aquí se inyectarán las coladas con sus checks en Step 2 -->
-                        <div id="mobile-edit-products" class="space-y-4"></div>
-                    </div>
-
-                    <!-- Botón de acción -->
-                    <div class="pt-4">
-                        <button type="button" id="mobile-step2-confirm-btn" onclick="guardarYContinuarStep2()"
-                            class="w-full px-4 py-3 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white rounded-lg font-bold text-lg shadow-md hover:shadow-lg transition mb-12">
-                            <span id="mobile-step2-confirm-label">Confirmar y Continuar</span>
-                            <span id="mobile-step2-confirm-loading" class="hidden ml-2 align-middle">
-                                <span class="ia-spinner inline-block align-middle"></span>
-                            </span>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- ===== VISTA 3: PEDIDO SELECCIONADO Y ACTIVACIÓN ===== -->
-        <div id="step-3" class="flex-shrink-0 px-4 py-6" style="width: 33.33%;">
-            <div class="max-w-md mx-auto space-y-3">
-                <h3 class="text-xl font-semibold text-gray-900">Confirmar Pedido y Activar</h3>
-                <div id="mobile-pedido-db-banner" class="hidden rounded-lg border px-3 py-2 text-sm"></div>
-                <p class="text-sm text-gray-600">Verifica el pedido y confirma la activación</p>
-
-                <!-- Card del pedido -->
-                <div id="mobile-pedido-card" class="bg-white rounded-lg p-4">
-                    <p class="text-gray-500">Cargando...</p>
+                    </form>
                 </div>
-
-                <div class="h-4"></div>
-
-                <!-- Botón para ver otros pedidos -->
-                <button type="button" id="mobile-ver-otros-pedidos"
-                    class="w-full px-4 py-3 bg-gray-600 text-white rounded-lg shadow-lg hover:shadows-xl hover:bg-gray-700 transition">
-                    Ver otros pedidos compatibles
-                </button>
-
-
-                <!-- Botón de Activación Final -->
-                <button type="button" id="mobile-btn-activar" onclick="activarAlbaranMobile()"
-                    class="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg font-bold text-lg shadow-lg hover:shadow-xl hover:bg-emerald-700 transition">
-                    <span id="mobile-activar-label">Confirmar y Activar Albarán</span>
-                    <span id="mobile-activar-loading" class="hidden ml-2 align-middle">
-                        <span class="ia-spinner inline-block align-middle"></span>
-                    </span>
-                </button>
             </div>
-        </div>
 
-    </div> <!-- Fin stepWrapper -->
+            <!-- ===== VISTA 3: PEDIDO SELECCIONADO Y ACTIVACIÓN ===== -->
+            <div id="step-3" class="flex-shrink-0 px-4 py-6" style="width: 33.33%;">
+                <div class="max-w-md mx-auto space-y-3">
+                    <h3 class="text-xl font-semibold text-gray-900">Confirmar Pedido y Activar</h3>
+                    <div id="mobile-pedido-db-banner" class="hidden rounded-lg border px-3 py-2 text-sm"></div>
+                    <p class="text-sm text-gray-600">Verifica el pedido y confirma la activación</p>
+
+                    <!-- Card del pedido -->
+                    <div id="mobile-pedido-card" class="bg-white rounded-lg p-4">
+                        <p class="text-gray-500">Cargando...</p>
+                    </div>
+
+                    <div class="h-4"></div>
+
+                    <!-- Botón para ver otros pedidos -->
+                    <button type="button" id="mobile-ver-otros-pedidos"
+                        class="w-full px-4 py-3 bg-gray-600 text-white rounded-lg shadow-lg hover:shadows-xl hover:bg-gray-700 transition">
+                        Ver otros pedidos compatibles
+                    </button>
+
+
+                    <!-- Botón de Activación Final -->
+                    <button type="button" id="mobile-btn-activar" onclick="activarAlbaranMobile()"
+                        class="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg font-bold text-lg shadow-lg hover:shadow-xl hover:bg-emerald-700 transition">
+                        <span id="mobile-activar-label">Confirmar y Activar Albarán</span>
+                        <span id="mobile-activar-loading" class="hidden ml-2 align-middle">
+                            <span class="ia-spinner inline-block align-middle"></span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+        </div> <!-- Fin stepWrapper -->
     </div> <!-- Fin mobileStepContainer -->
 
     <!-- ========================================== -->
@@ -1279,11 +1286,13 @@
                         return;
                     }
 
-                    window.mobileStepManager.dataCache = {
-                        resultado: resultadoParaVista,
+                    // Guardar datos en cache (OPTIMIZADO: Sin preview para evitar QuotaExceededError)
+                    const cacheData = {
+                        resultado: { ...resultadoParaVista, preview: null }, // No guardar imagen base64
                         distribuidores: data.distribuidores,
                         ocr_log_id: resultadoParaVista?.ocr_log_id ?? null,
                     };
+                    window.mobileStepManager.dataCache = cacheData;
 
                     renderMobileStatus(data.resultados[0]?.status_messages || []);
 
@@ -1306,7 +1315,12 @@
                 }
 
             } catch (error) {
-                alert('Error de conexión. Por favor, verifica tu conexión a internet.');
+                console.error('Error al procesar/parsear respuesta:', error);
+                // Si ya avanzamos de paso (success), no molestamos al usuario con alertas de red falsas
+                if (window.mobileStepManager.currentStep === 1) {
+                    // Solo alertar si seguimos en el paso 1 (falló todo)
+                    // alert('Error de conexión o de proceso. Verifica tu internet.');
+                }
             } finally {
                 setProcessingState(false);
             }
