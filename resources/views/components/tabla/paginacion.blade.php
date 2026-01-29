@@ -3,7 +3,9 @@
 <div class="m-4 text-center">
     <form method="GET" id="perPageForm" class="inline-flex items-center justify-center gap-2 text-sm">
         <label for="perPage" class="text-gray-600 dark:text-gray-400">Mostrar</label>
-        <select name="{{ $perPageName }}" id="perPage" class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" onchange="document.getElementById('perPageForm').submit()">
+        <select name="{{ $perPageName }}" id="perPage"
+            class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded px-2 pr-7 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            onchange="document.getElementById('perPageForm').submit()">
             @foreach ([10, 25, 50, 100] as $option)
                 <option value="{{ $option }}" @selected(request($perPageName, $paginador->perPage()) == $option)>
                     {{ $option }}
@@ -35,7 +37,8 @@
                 @if ($paginador->onFirstPage())
                     <span class="px-3 py-1 text-xs text-gray-400 dark:text-gray-500 cursor-not-allowed">&laquo;</span>
                 @else
-                    <a href="{{ $paginador->previousPageUrl() }}" class="px-3 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-gray-700 rounded transition">
+                    <a href="{{ $paginador->previousPageUrl() }}"
+                        class="px-3 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-gray-700 rounded transition">
                         &laquo;
                     </a>
                 @endif
@@ -77,7 +80,8 @@
                             {{ $page }}
                         </span>
                     @else
-                        <a href="{{ $paginador->url($page) }}" class="px-3 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-gray-700 rounded transition">
+                        <a href="{{ $paginador->url($page) }}"
+                            class="px-3 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-gray-700 rounded transition">
                             {{ $page }}
                         </a>
                     @endif
@@ -87,7 +91,8 @@
 
                 {{-- Botón siguiente --}}
                 @if ($paginador->hasMorePages())
-                    <a href="{{ $paginador->nextPageUrl() }}" class="px-3 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-gray-700 rounded transition">&raquo;</a>
+                    <a href="{{ $paginador->nextPageUrl() }}"
+                        class="px-3 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-gray-700 rounded transition">&raquo;</a>
                 @else
                     <span class="px-3 py-1 text-xs text-gray-400 dark:text-gray-500 cursor-not-allowed">&raquo;</span>
                 @endif
