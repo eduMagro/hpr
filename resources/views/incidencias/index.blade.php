@@ -81,23 +81,24 @@
                 }
             }
         }"
-            class="bg-gradient-to-br from-gray-100 to-gray-50 p-4 rounded-2xl border border-gray-100 dark:from-gray-800 dark:to-gray-700 dark:border-gray-700 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
+            class="bg-white p-4 rounded-2xl border border-gray-100 dark:bg-white/5 dark:border-gray-600 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center gap-4">
-                <div
-                    class="inline-flex p-1.5 bg-gray-100/80 backdrop-blur-md rounded-2xl border border-gray-200 shadow-inner dark:bg-gray-700/80 dark:border-gray-700">
-                    <button @click="handleClick('pendientes')" :class="currentTab === 'pendientes' ? 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white shadow-sm' :
+                <div class="inline-flex p-1.5 bg-gray-100/80 backdrop-blur-md rounded-2xl shadow-inner dark:bg-white/5">
+                    <button @click="handleClick('pendientes')" :class="currentTab === 'pendientes' ? 'bg-white dark:bg-white/10 text-gray-800 dark:text-white shadow-sm' :
                             'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
                         class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all relative cursor-pointer outline-none focus:outline-none">
                         Pendientes
                         <div x-show="currentTab === 'pendientes'"
-                            class="absolute inset-0 rounded-xl bg-white shadow-sm -z-10" layoutId="tab-bg"></div>
+                            class="absolute inset-0 rounded-xl bg-white dark:bg-white/10 shadow-sm dark:shadow-none -z-10"
+                            layoutId="tab-bg"></div>
                     </button>
-                    <button @click="handleClick('historial')" :class="currentTab === 'historial' ? 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white shadow-sm' :
+                    <button @click="handleClick('historial')" :class="currentTab === 'historial' ? 'bg-white dark:bg-white/10 text-gray-800 dark:text-white shadow-sm' :
                             'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
                         class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all relative cursor-pointer outline-none focus:outline-none">
                         Historial
                         <div x-show="currentTab === 'historial'"
-                            class="absolute inset-0 rounded-xl bg-white shadow-sm -z-10" layoutId="tab-bg"></div>
+                            class="absolute inset-0 rounded-xl bg-white dark:bg-white/10 shadow-sm dark:shadow-none -z-10"
+                            layoutId="tab-bg"></div>
                     </button>
                 </div>
             </div>

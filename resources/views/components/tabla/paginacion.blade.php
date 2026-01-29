@@ -4,7 +4,7 @@
     <form method="GET" id="perPageForm" class="inline-flex items-center justify-center gap-2 text-sm">
         <label for="perPage" class="text-gray-600 dark:text-gray-400">Mostrar</label>
         <select name="{{ $perPageName }}" id="perPage"
-            class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded px-2 pr-7 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             onchange="document.getElementById('perPageForm').submit()">
             @foreach ([10, 25, 50, 100] as $option)
                 <option value="{{ $option }}" @selected(request($perPageName, $paginador->perPage()) == $option)>

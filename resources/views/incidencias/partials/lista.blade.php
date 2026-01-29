@@ -1,10 +1,10 @@
 @if (isset($grupos) && count($grupos) > 0)
     @foreach ($grupos as $maquina)
         <div x-data="{ expanded: false }"
-            class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            class="bg-white rounded-xl border border-gray-200 dark:bg-white/5 dark:border-gray-600 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
             {{-- Machine Header --}}
             <div @click="expanded = !expanded"
-                class="p-4 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-between">
+                class="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors flex items-center justify-between">
                 <div class="flex items-center gap-4">
                     {{-- Machine Image/Icon --}}
                     <div
@@ -26,9 +26,9 @@
 
                     <div>
                         <div class="flex items-center gap-2">
-                            <h3 class="font-bold text-gray-900 text-lg">{{ $maquina->nombre }}</h3>
+                            <h3 class="font-bold text-gray-900 dark:text-white text-lg">{{ $maquina->nombre }}</h3>
                             <span
-                                class="text-xs font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{{ $maquina->codigo }}</span>
+                                class="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-900 dark:border dark:border-gray-700 px-1.5 py-0.5 rounded">{{ $maquina->codigo }}</span>
                         </div>
                         <div class="flex items-center gap-2 text-sm text-gray-500 mt-0.5">
                             <span
@@ -52,7 +52,8 @@
             </div>
 
             {{-- Incidents List (Expanded) --}}
-            <div x-show="expanded" x-collapse style="display: none;" class="border-t border-gray-100 bg-gray-50/50">
+            <div x-show="expanded" x-collapse style="display: none;"
+                class="border-t border-gray-100 dark:border-gray-600 bg-gray-50/50 dark:bg-transparent">
                 @foreach ($maquina->incidencias as $incidencia)
                     <div class="p-4 last:border-0 hover:bg-white transition-colors group relative pl-20">
                         {{-- Connecting Line --}}
