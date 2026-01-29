@@ -6,8 +6,9 @@
         {{-- Header & Controls --}}
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900">Panel de Incidencias</h1>
-                <p class="text-gray-500 text-sm mt-1">Gestión de averías y mantenimiento correctivo</p>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Panel de Incidencias</h1>
+                <p class="text-gray-500 text-sm mt-1 dark:text-gray-400">Gestión de averías y mantenimiento correctivo
+                </p>
             </div>
 
             <div class="flex items-center gap-3">
@@ -80,21 +81,19 @@
                 }
             }
         }"
-            class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
+            class="bg-gradient-to-br from-gray-100 to-gray-50 p-4 rounded-2xl border border-gray-100 dark:from-gray-800 dark:to-gray-700 dark:border-gray-700 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center gap-4">
                 <div
-                    class="inline-flex p-1.5 bg-gray-100/80 backdrop-blur-md rounded-2xl border border-gray-200 shadow-inner">
-                    <button @click="handleClick('pendientes')"
-                        :class="currentTab === 'pendientes' ? 'bg-white text-gray-800 shadow-sm' :
-                            'text-gray-500 hover:text-gray-700'"
+                    class="inline-flex p-1.5 bg-gray-100/80 backdrop-blur-md rounded-2xl border border-gray-200 shadow-inner dark:bg-gray-700/80 dark:border-gray-700">
+                    <button @click="handleClick('pendientes')" :class="currentTab === 'pendientes' ? 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white shadow-sm' :
+                            'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
                         class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all relative cursor-pointer outline-none focus:outline-none">
                         Pendientes
                         <div x-show="currentTab === 'pendientes'"
                             class="absolute inset-0 rounded-xl bg-white shadow-sm -z-10" layoutId="tab-bg"></div>
                     </button>
-                    <button @click="handleClick('historial')"
-                        :class="currentTab === 'historial' ? 'bg-white text-gray-800 shadow-sm' :
-                            'text-gray-500 hover:text-gray-700'"
+                    <button @click="handleClick('historial')" :class="currentTab === 'historial' ? 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white shadow-sm' :
+                            'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
                         class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all relative cursor-pointer outline-none focus:outline-none">
                         Historial
                         <div x-show="currentTab === 'historial'"
@@ -103,13 +102,13 @@
                 </div>
             </div>
 
-            <div class="text-sm text-gray-500">
-                <span class="font-bold text-gray-900">{{ $activasCount }}</span> incidencias activas
+            <div class="text-sm text-gray-500 dark:text-gray-300">
+                <span class="font-bold text-gray-900 dark:text-white">{{ $activasCount }}</span> incidencias activas
             </div>
         </div>
 
         {{-- Incidents List --}}
-        <div id="incidencias-list-container" class="space-y-4 transition-all duration-100 ease-in-out">
+        <div id="incidencias-list-container" class="space-y-4 transition-all duration-100 ease-in-out ">
             @include('incidencias.partials.lista', ['grupos' => $grupos])
         </div>
 
@@ -267,18 +266,15 @@
                                                             <!-- Icon/Image -->
                                                             <div class="shrink-0 mr-3">
                                                                 @if ($maquina->imagen)
-                                                                    <img src="{{ asset($maquina->imagen) }}"
-                                                                        alt=""
+                                                                    <img src="{{ asset($maquina->imagen) }}" alt=""
                                                                         class="h-9 w-9 rounded-full object-cover border border-gray-200">
                                                                 @else
                                                                     <div
                                                                         class="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
-                                                                        <svg xmlns="http://www.w3.org/2000/svg"
-                                                                            width="18" height="18"
-                                                                            viewBox="0 0 24 24" fill="none"
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18"
+                                                                            height="18" viewBox="0 0 24 24" fill="none"
                                                                             stroke="currentColor" stroke-width="2"
-                                                                            stroke-linecap="round"
-                                                                            stroke-linejoin="round">
+                                                                            stroke-linecap="round" stroke-linejoin="round">
                                                                             <path
                                                                                 d="m21.12 6.4-6.05-4.06a2 2 0 0 0-2.17-.05L2.95 8.41a2 2 0 0 0-.95 1.7v5.82a2 2 0 0 0 .88 1.66l6.05 4.07a2 2 0 0 0 2.17.05l9.95-6.12a2 2 0 0 0 .95-1.7V8.06a2 2 0 0 0-.88-1.66Z" />
                                                                             <path d="M10 22v-8L2.25 9.15" />
@@ -293,12 +289,11 @@
                                                                     class="font-bold text-gray-800 group-hover:text-red-700">
                                                                     {{ $maquina->nombre }}
                                                                 </div>
-                                                                <div
-                                                                    class="text-xs text-gray-500 flex items-center gap-1">
-                                                                    <svg class="w-3 h-3" fill="none"
-                                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path stroke-linecap="round"
-                                                                            stroke-linejoin="round" stroke-width="2"
+                                                                <div class="text-xs text-gray-500 flex items-center gap-1">
+                                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                                        viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                                            stroke-width="2"
                                                                             d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
                                                                         </path>
                                                                     </svg>
@@ -320,12 +315,10 @@
 
                                     <!-- Título -->
                                     <div>
-                                        <label for="titulo"
-                                            class="block mb-1.5 text-sm font-bold text-gray-700">Título
+                                        <label for="titulo" class="block mb-1.5 text-sm font-bold text-gray-700">Título
                                             /
                                             Resumen</label>
-                                        <input type="text" name="titulo" id="titulo" required
-                                            autocomplete="off"
+                                        <input type="text" name="titulo" id="titulo" required autocomplete="off"
                                             class="bg-white border border-gray-300 text-gray-900 text-sm rounded-xl focus:ring-transparent focus:border-red-500 block w-full p-3 shadow-sm placeholder-gray-400"
                                             placeholder="Ej: Ruido en motor, Fuga de aceite...">
                                     </div>
