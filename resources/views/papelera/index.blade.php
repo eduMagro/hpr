@@ -1,9 +1,13 @@
 <x-app-layout>
+    <x-slot name="title">Papelera</x-slot>
+
+    <x-page-header
+        title="Papelera de Reciclaje"
+        subtitle="Gestiona y restaura elementos eliminados del sistema"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>'
+    />
+
     <div class="w-full px-4 sm:px-6 py-6">
-        <div class="mb-6">
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Papelera de Reciclaje</h1>
-            <p class="text-sm text-gray-600 mt-1">Gestiona y restaura elementos eliminados del sistema</p>
-        </div>
 
         @if (session('success'))
             <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">

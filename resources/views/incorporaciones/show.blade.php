@@ -1,6 +1,12 @@
 <x-app-layout>
     <x-slot name="title">Incorporación - {{ $incorporacion->name }} {{ $incorporacion->primer_apellido }}</x-slot>
 
+    <x-page-header
+        title="{{ $incorporacion->name }} {{ $incorporacion->primer_apellido }}"
+        subtitle="Detalle de incorporación del trabajador"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>'
+    />
+
     <div class="w-full max-w-5xl mx-auto py-6 px-4 sm:px-6">
         <!-- Cabecera -->
         <div class="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">

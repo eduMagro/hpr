@@ -1,13 +1,11 @@
 <x-app-layout>
     <x-slot name="title">{{ $salida->codigo_salida }} - {{ config('app.name') }}</x-slot>
-    <x-slot name="header">
-        <h2 class="text-lg font-semibold text-gray-800">
-            <a href="{{ route('planificacion.index') }}" wire:navigate class="text-blue-600">
-                {{ __('Planificación') }}
-            </a>
-            <span class="mx-2">/</span>
-            {{ __('Detalles de la Salida') }} {{ $salida->codigo_salida }}
-    </x-slot>
+
+    <x-page-header
+        title="Salida {{ $salida->codigo_salida }}"
+        subtitle="Detalles y paquetes de la expedición"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l-3-3m3 3l3-3"/></svg>'
+    />
 
     <div class="container mx-auto p-6">
         <!-- Detalles de la salida -->

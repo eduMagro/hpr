@@ -1,8 +1,15 @@
 <x-app-layout>
+    <x-slot name="title">Tabla de Ordenes</x-slot>
+
+    <x-page-header
+        title="Tabla de Ordenes"
+        subtitle="Listado y filtrado de órdenes de producción"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>'
+    />
+
     <div class="p-4 md:p-6">
         {{-- Encabezado con filtros --}}
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <h1 class="text-2xl font-bold text-gray-800">Tabla de Ordenes</h1>
 
             <div class="flex flex-wrap items-center gap-2">
                 {{-- Filtro por código de obra --}}

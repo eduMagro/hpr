@@ -5,6 +5,12 @@
     @endphp
     <x-navigation.context-menu :items="$menu['items']" :colorBase="$menu['config']['colorBase']" :style="$menu['config']['style']" :mobileLabel="$menu['config']['mobileLabel']" />
 
+    <x-page-header
+        title="Cargas de Máquinas"
+        subtitle="Análisis de carga de trabajo por turno y máquina"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>'
+    />
+
     <!-- Botones de navegación -->
     <div class="mb-6 border-b border-gray-200">
         <div class="flex space-x-2">
@@ -26,8 +32,6 @@
     <div class="py-6">
         <div class="max-w-full mx-auto px-2 sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                <h2 class="text-2xl font-bold mb-6">📊 Cargas de Máquinas por Turno</h2>
-
                 <!-- Filtros de fecha y turno -->
                 <div class="mb-6 p-4 bg-gray-50 rounded-lg flex flex-wrap items-center gap-3">
                     <label class="text-sm font-semibold">

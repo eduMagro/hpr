@@ -1,10 +1,11 @@
 <x-app-layout>
     <x-slot name="title">Festivos</x-slot>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Festivos') }}
-        </h2>
-    </x-slot>
+
+    <x-page-header
+        title="Calendario de Festivos"
+        subtitle="Gestión de días festivos y no laborables"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>'
+    />
 
     <div class="px-2 sm:px-6 py-4" x-data="{
         openModal: false,

@@ -1,13 +1,18 @@
 <x-app-layout>
     <x-slot name="title">Pedidos de Almacén - {{ config('app.name') }}</x-slot>
 
+    <x-page-header
+        title="Pedidos de Almacén"
+        subtitle="Gestión de pedidos de venta de almacén"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>'
+    />
+
     <x-menu.salidas.salidas />
     <x-menu.salidas.salidas2 />
     <x-menu.salidas.salidasAlmacen />
 
     <div class="w-full px-6 py-6">
         <div class="flex justify-between items-center mb-4">
-            <h1 class="text-xl font-semibold text-gray-800">📄 Pedidos de Almacén</h1>
             <a href="{{ route('pedidos-almacen-venta.create') }}" wire:navigate
                 class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow text-sm">
                 ➕ Nuevo pedido

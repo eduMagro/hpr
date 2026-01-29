@@ -1,14 +1,16 @@
 <x-app-layout>
+    <x-slot name="title">Configuración de Turnos</x-slot>
+
+    <x-page-header
+        title="Configuración de Turnos"
+        subtitle="Administra los turnos laborales y horarios de producción"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+    />
+
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <!-- Header -->
             <div class="mb-6 flex justify-between items-center">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-900">Configuración de Turnos</h2>
-                    <p class="mt-1 text-sm text-gray-600">
-                        Administra los turnos laborales, horarios y offsets para el calendario de producción
-                    </p>
-                </div>
                 <a href="{{ route('turnos.create') }}" wire:navigate
                     class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

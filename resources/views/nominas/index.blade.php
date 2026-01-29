@@ -1,15 +1,12 @@
 <x-app-layout>
     <x-slot name="title">Cálculo Nómina</x-slot>
 
-    <x-slot name="header">
-        <h2 class="text-lg font-semibold text-gray-800">
-            <a href="{{ route('empresas.index') }}" wire:navigate class="text-blue-600">
-                {{ __('Empresa Información') }}
-            </a>
-            <span class="mx-2">/</span>
-            {{ __('Nómina') }}
-        </h2>
-    </x-slot>
+    <x-page-header
+        title="Cálculo de Nóminas"
+        subtitle="Generación y gestión de nóminas del personal"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>'
+    />
+
     <div class="flex items-center space-x-4 mt-10 ml-10">
         <form id="form-generar-nominas" method="POST" action="{{ route('generar.nominas') }}">
             @csrf

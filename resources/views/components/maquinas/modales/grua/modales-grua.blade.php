@@ -677,6 +677,7 @@
 </style>
 
 <script src="{{ asset('js/movimientos/movimientosgrua.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('js/elementosJs/figuraElemento.js') }}?v={{ time() }}"></script>
 
 {{-- 📦 MODAL MOVER PAQUETE (3 pasos: escanear, validar, ubicar en mapa) --}}
 <div id="modal-mover-paquete"
@@ -1106,59 +1107,51 @@
     }
 </script>
 
-{{-- 🚛 MODAL EJECUTAR SALIDA (con mapa y escaneo de paquetes) --}}
+{{-- 🚛 MODAL EJECUTAR SALIDA (con mapa y escaneo de paquetes) - DARK MODE --}}
 <div id="modal-ejecutar-salida"
-    class="fixed inset-x-0 top-14 bottom-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
-    <div class="bg-white sm:rounded-2xl shadow-xl w-full h-full sm:w-[90vw] sm:max-h-[calc(100vh-5rem)] overflow-hidden flex flex-col">
+    class="fixed inset-x-0 top-14 bottom-0 bg-black bg-opacity-70 z-50 hidden flex items-center justify-center">
+    <div class="bg-gray-900 sm:rounded-2xl shadow-2xl w-full h-full sm:w-[90vw] sm:max-h-[calc(100vh-5rem)] overflow-hidden flex flex-col border border-gray-700">
         {{-- Header --}}
-        <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-4 flex justify-between items-center">
+        <div class="bg-gradient-to-r from-gray-800 to-gray-900 text-white p-4 flex justify-between items-center border-b border-gray-700">
             <div>
                 <h2 class="text-lg sm:text-xl font-bold">🚛 Ejecutar Salida</h2>
-                <p class="text-sm text-purple-100" id="salida-codigo-header">Cargando...</p>
+                <p class="text-sm text-gray-400" id="salida-codigo-header">Cargando...</p>
             </div>
             <button onclick="cerrarModalEjecutarSalida()"
-                class="text-white hover:text-gray-200 text-2xl">&times;</button>
+                class="text-gray-400 hover:text-white text-2xl">&times;</button>
         </div>
 
         {{-- Barra de escaneo --}}
-        <div class="bg-gray-50 border-b p-4">
+        <div class="bg-gray-800 border-b border-gray-700 p-4">
             <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
                 <div class="flex-1 w-full">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Escanear Etiqueta / Subetiqueta
-                    </label>
                     <input type="text" id="codigo_etiqueta_salida"
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"
                         placeholder="Escanea el código de la etiqueta..."
                         autocomplete="off">
                 </div>
-                <div class="flex items-end gap-2">
-                    <div class="text-sm">
-                        <p class="text-gray-600">Paquetes validados: <span id="contador-escaneadas" class="font-bold text-purple-600">0</span></p>
-                        <p class="text-gray-600">Total paquetes: <span id="contador-total" class="font-bold">0</span></p>
-                    </div>
+                <div class="flex items-center gap-2 text-sm text-gray-400">
+                    <span>Validados: <span id="contador-escaneadas" class="font-bold text-green-400">0</span></span>
+                    <span class="text-gray-600">|</span>
+                    <span>Total: <span id="contador-total" class="font-bold text-white">0</span></span>
                 </div>
             </div>
             <div id="mensaje-escaneo" class="hidden mt-2 p-2 rounded-lg text-sm"></div>
         </div>
 
         {{-- Contenido principal: Mapa + Lista --}}
-        <div class="flex-1 overflow-hidden flex flex-col lg:flex-row relative">
+        <div class="flex-1 overflow-hidden flex flex-col lg:flex-row relative bg-gray-900">
             {{-- MAPA (Izquierda) --}}
-            <div id="contenedor-mapa-ejecutar-salida" class="hidden lg:block w-full lg:flex-1 h-full p-4 overflow-hidden bg-white absolute inset-0 lg:static z-20 lg:z-auto">
-                <button onclick="ocultarMapaMovil()" 
-                    class="lg:hidden absolute top-5 right-5 bg-white text-gray-800 px-4 py-2 rounded-full shadow-lg border z-50 font-bold flex items-center gap-2 hover:bg-gray-50">
+            <div id="contenedor-mapa-ejecutar-salida" class="hidden lg:block w-full lg:flex-1 h-full p-4 overflow-hidden bg-gray-900 absolute inset-0 lg:static z-20 lg:z-auto">
+                <button onclick="ocultarMapaMovil()"
+                    class="lg:hidden absolute top-5 right-5 bg-gray-800 text-white px-4 py-2 rounded-full shadow-lg border border-gray-600 z-50 font-bold flex items-center gap-2 hover:bg-gray-700">
                     <span>✕</span> Volver
                 </button>
-                <x-mapa-simple :nave-id="1" :modo-edicion="false" class="h-full w-full" />
+                <x-mapa-simple :nave-id="$naveIdMapa" :modo-edicion="false" class="h-full w-full" />
             </div>
 
             {{-- LISTA DE PAQUETES (Derecha) --}}
-            <div id="contenedor-lista-paquetes" class="w-full lg:w-96 border-t lg:border-t-0 lg:border-l bg-gray-50 flex flex-col h-full overflow-hidden">
-                <div class="p-4 border-b bg-white">
-                    <h3 class="font-semibold text-gray-800">Paquetes de la Salida</h3>
-                    <p class="text-xs text-gray-500 mt-1">Haz clic para ver ubicación en el mapa</p>
-                </div>
+            <div id="contenedor-lista-paquetes" class="w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-gray-700 bg-gray-800 flex flex-col h-full overflow-hidden">
                 <div class="flex-1 overflow-y-auto p-4 space-y-2" id="lista-paquetes-salida">
                     {{-- Los paquetes se cargarán aquí dinámicamente --}}
                 </div>
@@ -1166,17 +1159,17 @@
         </div>
 
         {{-- Footer con botones --}}
-        <div class="border-t p-4 bg-gray-50 flex flex-col sm:flex-row justify-between gap-3">
-            <div class="text-sm text-gray-600">
+        <div class="border-t border-gray-700 p-4 bg-gray-800 flex flex-col sm:flex-row justify-between gap-3">
+            <div class="text-sm text-gray-400">
                 <p id="mensaje-validacion" class="hidden"></p>
             </div>
             <div class="flex gap-3">
                 <button onclick="cerrarModalEjecutarSalida()"
-                    class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg font-medium">
+                    class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg font-medium">
                     Cancelar
                 </button>
                 <button onclick="completarSalida()" id="btn-completar-salida"
-                    class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled>
                     Completar Salida
                 </button>
@@ -1194,6 +1187,52 @@
     let paquetesLocalizados = new Set();
     let paqueteSeleccionadoId = null;
 
+    // === FUNCIONES DE PERSISTENCIA EN LOCALSTORAGE ===
+    function getStorageKey(salidaId) {
+        return `salida_${salidaId}_escaneados`;
+    }
+
+    function guardarEstadoEscaneo(salidaId) {
+        if (!salidaId) return;
+        const estado = {
+            etiquetas: Array.from(etiquetasEscaneadas),
+            paquetes: Array.from(paquetesLocalizados),
+            timestamp: Date.now()
+        };
+        localStorage.setItem(getStorageKey(salidaId), JSON.stringify(estado));
+    }
+
+    function cargarEstadoEscaneo(salidaId) {
+        if (!salidaId) return;
+        const key = getStorageKey(salidaId);
+        const stored = localStorage.getItem(key);
+        if (stored) {
+            try {
+                const estado = JSON.parse(stored);
+                // Verificar que no sea muy antiguo (24 horas)
+                if (estado.timestamp && (Date.now() - estado.timestamp) < 24 * 60 * 60 * 1000) {
+                    etiquetasEscaneadas = new Set(estado.etiquetas || []);
+                    paquetesLocalizados = new Set(estado.paquetes || []);
+                    console.log('✅ Estado restaurado desde localStorage:', estado);
+                    return true;
+                } else {
+                    // Datos expirados, limpiar
+                    localStorage.removeItem(key);
+                }
+            } catch (e) {
+                console.error('Error al cargar estado:', e);
+                localStorage.removeItem(key);
+            }
+        }
+        return false;
+    }
+
+    function limpiarEstadoEscaneo(salidaId) {
+        if (!salidaId) return;
+        localStorage.removeItem(getStorageKey(salidaId));
+        console.log('🗑️ Estado de escaneo limpiado para salida:', salidaId);
+    }
+
     function abrirModalEjecutarSalida(movimientoId, salidaId) {
         console.log('=== Abriendo modal ejecutar salida ===');
         console.log('Movimiento ID:', movimientoId);
@@ -1207,7 +1246,7 @@
 
         modal.classList.remove('hidden');
 
-        // Resetear estado
+        // Resetear estado en memoria
         etiquetasEscaneadas.clear();
         paquetesLocalizados.clear();
         paqueteSeleccionadoId = null;
@@ -1216,6 +1255,9 @@
             movimientoId: movimientoId,
             salidaId: salidaId
         };
+
+        // Cargar estado guardado desde localStorage
+        cargarEstadoEscaneo(salidaId);
 
         // Cargar datos de la salida
         if (!salidaId) {
@@ -1303,14 +1345,24 @@
             // Actualizar contadores
             actualizarContadores();
 
-            // Recargar mapa con el salidaId actual
+            // Recargar mapa con el naveId y salidaId correctos
+            // Usar nave_id de la salida, o como fallback la nave del primer paquete
+            let naveId = data.salida.nave_id;
+            if (!naveId && paquetesSalida.length > 0) {
+                naveId = paquetesSalida[0].nave_id;
+                console.log('Usando nave del primer paquete:', naveId);
+            }
+
             const contenedorMapa = document.getElementById('contenedor-mapa-ejecutar-salida');
-            if (contenedorMapa) {
+            if (contenedorMapa && naveId) {
                 const mapaComponent = contenedorMapa.querySelector('[data-mapa-simple]');
                 if (mapaComponent && typeof mapaComponent.recargarMapa === 'function') {
-                    mapaComponent.recargarMapa(salidaId);
-                    console.log('Mapa recargado con salida:', salidaId);
+                    // Pasar naveId como primer parámetro y salidaId como segundo
+                    mapaComponent.recargarMapa(naveId, salidaId);
+                    console.log('Mapa recargado con nave:', naveId, 'y salida:', salidaId);
                 }
+            } else if (!naveId) {
+                console.warn('No se pudo determinar nave_id para la salida');
             }
 
         } catch (error) {
@@ -1333,13 +1385,48 @@
 
             const div = document.createElement('div');
             const isSeleccionado = paqueteSeleccionadoId === paquete.id;
-            let claseEstado = 'bg-white border-gray-200 hover:border-purple-300';
-            if (isLocalizado) claseEstado = 'bg-purple-50 border-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.2)]';
-            if (isSeleccionado) claseEstado = 'bg-purple-50 border-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.2)]';
+            let claseEstado = 'bg-gray-700 border-gray-600 hover:border-gray-500';
+            if (isLocalizado) claseEstado = 'bg-green-900/30 border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]';
+            if (isSeleccionado) claseEstado = 'bg-blue-900/30 border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]';
 
-            div.className = `p-3 rounded-lg border-2 cursor-pointer transition-all ${claseEstado}`;
-            // Click en paquete → mostrar/centrar y ocultar otros en el mapa, marcar selección
-            div.addEventListener('click', () => {
+            div.className = `p-3 rounded-lg border-2 transition-all ${claseEstado}`;
+
+            // Contenedor principal
+            const contenido = document.createElement('div');
+            contenido.className = 'flex items-start justify-between gap-2';
+            contenido.innerHTML = `
+                <div class="flex-1 min-w-0 cursor-pointer" data-action="seleccionar">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 inline-block rounded-full ${isLocalizado ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.45)]' : 'bg-gray-500'}"></span>
+                        <p class="font-semibold text-white truncate">${paquete.codigo}</p>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">${paquete.obra}</p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-xs px-2 py-0.5 rounded ${
+                            paquete.tipo === 'barras' ? 'bg-blue-900/50 text-blue-300' :
+                            paquete.tipo === 'estribos' ? 'bg-orange-900/50 text-orange-300' :
+                            'bg-gray-600 text-gray-300'
+                        }">${paquete.tipo}</span>
+                        <span class="text-xs text-gray-400">${paquete.peso} kg</span>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end gap-1">
+                    <p class="text-xs font-medium ${isLocalizado ? 'text-green-400' : 'text-gray-400'}">
+                        ${paquete.num_etiquetas} etiquetas
+                    </p>
+                    <button type="button" class="btn-ver-elementos p-1.5 rounded-lg bg-gray-600 hover:bg-gray-500 text-gray-300 hover:text-white transition" title="Ver elementos del paquete">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+
+            div.appendChild(contenido);
+
+            // Click en la parte izquierda → seleccionar paquete y mostrar en mapa
+            contenido.querySelector('[data-action="seleccionar"]').addEventListener('click', () => {
                 const mapa = document.querySelector('#contenedor-mapa-ejecutar-salida [data-mapa-simple]');
                 if (mapa) {
                     const grid = mapa.querySelector('.cuadricula-mapa');
@@ -1353,33 +1440,119 @@
                 mostrarMapaMovil();
             });
 
-            div.innerHTML = `
-                <div class="flex items-start justify-between gap-2">
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
-                            <span class="w-3 h-3 inline-block rounded-full ${isLocalizado ? 'bg-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.45)]' : 'bg-gray-300'}"></span>
-                            <p class="font-semibold text-gray-800 truncate">${paquete.codigo}</p>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">${paquete.obra}</p>
-                        <div class="flex items-center gap-2 mt-1">
-                            <span class="text-xs px-2 py-0.5 rounded ${
-                                paquete.tipo === 'barras' ? 'bg-blue-100 text-blue-700' :
-                                paquete.tipo === 'estribos' ? 'bg-orange-100 text-orange-700' :
-                                'bg-purple-100 text-purple-700'
-                            }">${paquete.tipo}</span>
-                            <span class="text-xs text-gray-500">${paquete.peso} kg</span>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-xs font-medium ${isLocalizado ? 'text-purple-600' : 'text-gray-500'}">
-                            ${paquete.num_etiquetas} etiquetas
-                        </p>
-                    </div>
-                </div>
-            `;
+            // Click en el botón ojo → ver elementos del paquete
+            contenido.querySelector('.btn-ver-elementos').addEventListener('click', (e) => {
+                e.stopPropagation();
+                mostrarElementosPaquete(paquete);
+            });
 
             lista.appendChild(div);
         });
+    }
+
+    // Mostrar modal con los elementos del paquete (representación gráfica)
+    function mostrarElementosPaquete(paquete) {
+        // Recopilar todos los elementos de todas las etiquetas
+        let todosElementos = [];
+        let elementoIndex = 0;
+
+        if (paquete.etiquetas && paquete.etiquetas.length > 0) {
+            paquete.etiquetas.forEach(etq => {
+                if (etq.elementos && etq.elementos.length > 0) {
+                    etq.elementos.forEach(elem => {
+                        todosElementos.push({
+                            ...elem,
+                            uniqueId: `elem-grafico-${paquete.id}-${elementoIndex++}`,
+                            etiquetaNombre: etq.nombre || etq.codigo || etq.etiqueta_sub_id || ''
+                        });
+                    });
+                }
+            });
+        }
+
+        if (todosElementos.length === 0) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: `Paquete ${paquete.codigo}`,
+                    html: '<p class="text-gray-500">No hay elementos registrados en este paquete</p>',
+                    icon: 'info',
+                    showCloseButton: true,
+                    showConfirmButton: false
+                });
+            } else {
+                alert(`Paquete ${paquete.codigo}: No hay elementos registrados`);
+            }
+            return;
+        }
+
+        // Crear HTML con contenedores para cada elemento
+        const elementosHtml = todosElementos.map(elem => `
+            <div class="bg-white rounded-lg border shadow-sm overflow-hidden">
+                <div class="bg-gray-100 px-3 py-2 border-b flex items-center justify-between">
+                    <span class="font-bold text-gray-800 text-lg">⌀ ${elem.diametro || '-'}</span>
+                    ${elem.etiquetaNombre ? `<span class="text-xs text-gray-500">${elem.etiquetaNombre}</span>` : ''}
+                </div>
+                <div id="${elem.uniqueId}" class="w-full" style="height: 140px; min-width: 200px;"></div>
+            </div>
+        `).join('');
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: `Elementos del Paquete ${paquete.codigo}`,
+                html: `
+                    <div class="text-left">
+                        <p class="text-sm text-gray-600 mb-3">${todosElementos.length} elemento(s)</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
+                            ${elementosHtml}
+                        </div>
+                    </div>
+                `,
+                width: 700,
+                showCloseButton: true,
+                showConfirmButton: false,
+                customClass: {
+                    popup: 'text-left'
+                },
+                didOpen: () => {
+                    // Dibujar cada elemento después de que el modal se abra
+                    todosElementos.forEach(elem => {
+                        // Siempre usar 'dimensiones' para dibujar
+                        const figuraStr = elem.dimensiones;
+
+                        // Verificar si tiene dimensiones válidas (debe contener números)
+                        const esValido = figuraStr && /\d/.test(figuraStr);
+
+                        const container = document.getElementById(elem.uniqueId);
+                        if (!container) return;
+
+                        if (esValido && typeof window.dibujarFiguraElemento === 'function') {
+                            // Solo pasamos figura y diámetro, sin peso ni barras
+                            window.dibujarFiguraElemento(
+                                elem.uniqueId,
+                                figuraStr,
+                                null,  // peso - no mostrar
+                                elem.diametro,
+                                null,  // barras - no mostrar
+                                null   // cantidad - no mostrar
+                            );
+                        } else {
+                            // Mostrar información básica si no hay figura válida
+                            const longitud = elem.longitud ? `${elem.longitud} mm` : '-';
+                            container.innerHTML = `
+                                <div class="flex flex-col items-center justify-center h-full text-gray-500 p-3">
+                                    <svg class="w-12 h-12 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z"></path>
+                                    </svg>
+                                    <span class="text-xs text-gray-400">Longitud: ${longitud}</span>
+                                </div>
+                            `;
+                        }
+                    });
+                }
+            });
+        } else {
+            alert(`Paquete: ${paquete.codigo}\nElementos: ${todosElementos.length}`);
+        }
     }
 
     // Funciones de manipulación del mapa eliminadas - el componente es auto-contenido
@@ -1387,23 +1560,26 @@
     async function validarYRegistrarEtiqueta(codigo) {
         // Verificar si ya fue escaneada
         if (etiquetasEscaneadas.has(codigo)) {
-            mostrarMensajeEscaneo('⚠️ Esta etiqueta ya fue escaneada', 'warning');
+            mostrarMensajeEscaneo('⚠️ Este código ya fue escaneado', 'warning');
             return;
         }
 
         const norm = (v) => (v ?? '').toString().trim().toLowerCase();
         const codigoNorm = norm(codigo);
 
-        // Buscar si la subetiqueta pertenece a algún paquete de la salida usando etiqueta_sub_id como clave principal
-        console.log('🔍 Buscando subetiqueta:', codigoNorm);
-        const paquete = paquetesSalida.find(p => p.etiquetas.some(e => {
-            const sub = norm(e.etiqueta_sub_id);
-            // console.log('   Comparando con:', sub);
-            return sub && sub === codigoNorm;
-        }));
+        // Primero buscar si es un código de paquete directamente
+        let paquete = paquetesSalida.find(p => norm(p.codigo) === codigoNorm);
+
+        // Si no es paquete, buscar por subetiqueta
+        if (!paquete) {
+            paquete = paquetesSalida.find(p => p.etiquetas.some(e => {
+                const sub = norm(e.etiqueta_sub_id);
+                return sub && sub === codigoNorm;
+            }));
+        }
 
         if (!paquete) {
-            mostrarMensajeEscaneo('❌ Esta subetiqueta no pertenece a ningún paquete de la salida', 'error');
+            mostrarMensajeEscaneo('❌ Este código no pertenece a ningún paquete de la salida', 'error');
             return;
         }
 
@@ -1411,6 +1587,10 @@
         etiquetasEscaneadas.add(codigo);
         paquetesLocalizados.add(paquete.id);
         paqueteSeleccionadoId = paquete.id;
+
+        // Guardar estado en localStorage
+        guardarEstadoEscaneo(window.salidaData?.salidaId);
+
         mostrarMensajeEscaneo(`✓ Paquete ${paquete.codigo} validado`, 'success');
 
         // Mostrar paquete en el mapa y ocultar el resto
@@ -1434,10 +1614,10 @@
 
         div.textContent = mensaje;
         div.className = `mt-2 p-2 rounded-lg text-sm ${
-            tipo === 'success' ? 'bg-green-100 text-green-800' :
-            tipo === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-            tipo === 'error' ? 'bg-red-100 text-red-800' :
-            'bg-gray-100 text-gray-800'
+            tipo === 'success' ? 'bg-green-900/50 text-green-300 border border-green-700' :
+            tipo === 'warning' ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-700' :
+            tipo === 'error' ? 'bg-red-900/50 text-red-300 border border-red-700' :
+            'bg-gray-700 text-gray-300'
         }`;
         div.classList.remove('hidden');
 
@@ -1466,13 +1646,43 @@
         if (completados === totalPaquetes && totalPaquetes > 0) {
             btnCompletar.disabled = false;
             mensajeValidacion.textContent = '✓ Todos los paquetes han sido escaneados correctamente';
-            mensajeValidacion.className = 'text-sm text-green-600 font-medium';
+            mensajeValidacion.className = 'text-sm text-green-400 font-medium';
             mensajeValidacion.classList.remove('hidden');
         } else {
             btnCompletar.disabled = true;
             mensajeValidacion.textContent = `Faltan ${totalPaquetes - completados} paquete(s) por escanear`;
-            mensajeValidacion.className = 'text-sm text-gray-600';
+            mensajeValidacion.className = 'text-sm text-gray-400';
             mensajeValidacion.classList.remove('hidden');
+        }
+    }
+
+    function mostrarSpinnerCentral(mensaje = 'Procesando...') {
+        // Crear overlay si no existe
+        let overlay = document.getElementById('spinner-overlay-salida');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'spinner-overlay-salida';
+            overlay.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[100]';
+            overlay.innerHTML = `
+                <div class="bg-gray-800 rounded-2xl p-8 flex flex-col items-center gap-4 shadow-2xl border border-gray-700">
+                    <svg class="animate-spin h-12 w-12 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-white text-lg font-medium" id="spinner-mensaje">${mensaje}</span>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        } else {
+            document.getElementById('spinner-mensaje').textContent = mensaje;
+            overlay.classList.remove('hidden');
+        }
+    }
+
+    function ocultarSpinnerCentral() {
+        const overlay = document.getElementById('spinner-overlay-salida');
+        if (overlay) {
+            overlay.classList.add('hidden');
         }
     }
 
@@ -1481,6 +1691,12 @@
             alert('Debes escanear al menos una subetiqueta de cada paquete antes de completar la salida.');
             return;
         }
+
+        const btn = document.getElementById('btn-completar-salida');
+        btn.disabled = true;
+
+        // Mostrar spinner central
+        mostrarSpinnerCentral('Completando salida...');
 
         try {
             const response = await fetch(`/salidas/completar-desde-movimiento/${window.salidaData.movimientoId}`, {
@@ -1494,14 +1710,21 @@
             const data = await response.json();
 
             if (data.success) {
+                // Limpiar localStorage al completar exitosamente
+                limpiarEstadoEscaneo(window.salidaData?.salidaId);
+                ocultarSpinnerCentral();
                 mostrarToastSwal('Salida completada con éxito', 'success');
                 cerrarModalEjecutarSalida();
             } else {
+                ocultarSpinnerCentral();
                 mostrarToastSwal('Error al completar la salida: ' + (data.message || 'Respuesta no válida'), 'error');
             }
         } catch (error) {
             console.error('Error al completar salida:', error);
+            ocultarSpinnerCentral();
             mostrarToastSwal('Error al completar la salida', 'error');
+        } finally {
+            btn.disabled = false;
         }
     }
 

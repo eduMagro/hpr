@@ -177,9 +177,9 @@ class MaquinaController extends Controller
             $base = $this->cargarContextoBase($maquina);
             // ⚠️ IMPORTANTE: Activar movimientos ANTES de cargar el contexto
             // para que los nuevos movimientos aparezcan en la primera carga
-            //$this->activarMovimientosSalidasHoy();
+            $this->activarMovimientosSalidasHoy();
             //$this->activarMovimientosSalidasAlmacenHoy();
-            //$this->activarMovimientosPreparacionPaquete($maquina);
+            $this->activarMovimientosPreparacionPaquete($maquina);
 
             // 🔧 MODO FABRICACIÓN: Si viene el parámetro fabricar_planilla, mostrar vista de fabricación
             $fabricarPlanillaId = request('fabricar_planilla');

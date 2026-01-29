@@ -1,22 +1,12 @@
 <x-app-layout>
     <x-slot name="title">Nómina</x-slot>
 
-    <x-slot name="header">
-        <h2 class="text-lg font-semibold text-gray-800">
-            <a href="{{ route('empresas.index') }}" wire:navigate class="text-blue-600">
-                {{ __('Empresa Información') }}
-            </a>
-            <span class="mx-2">/</span>
-            <a href="{{ route('nominas.index') }}" wire:navigate class="text-blue-600">
-                {{ __('Tabla Nóminas') }}
-            </a>
-            <span class="mx-2">/</span>
-            {{ __('Nómina de ') }} <a href="{{ route('users.show', $nomina->empleado_id ?? '#') }}" wire:navigate
-                class="text-blue-500 hover:underline">
-                {{ $nomina->empleado->name }}
-            </a>
-        </h2>
-    </x-slot>
+    <x-page-header
+        title="Nómina de {{ $nomina->empleado->name }}"
+        subtitle="Detalle de nómina del trabajador"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>'
+    />
+
     <div class="container mx-auto px-4 py-6" style="max-width: 794px;">
         <span>NIF: </span><span> {{ $nomina->empleado->dni ?? 'N/A' }}</span>
         <div class="bg-white border-1 border-gray-800 shadow-md overflow-hidden">

@@ -3,21 +3,16 @@
     <x-slot name="title">Mapa de Localizaciones -
         {{ config('app.name') }}</x-slot>
 
+    <x-page-header
+        title="Mapa de Paquetes"
+        subtitle="Obra: {{ $dimensiones['obra'] ?? 'Sin obra' }} · {{ $dimensiones['ancho'] }}m × {{ $dimensiones['largo'] }}m"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>'
+    />
+
     <div class="w-full p-4 flex flex-col gap-4">
         {{-- === Cabecera de la página === --}}
         <div class="bg-white rounded-lg shadow-sm p-4 ">
             <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-800">Mapa de
-                        Localizaciones</h1>
-                    <p class="text-gray-600 mt-1">
-                        Obra: <span class="font-semibold">{{ $dimensiones['obra'] ?? 'Sin obra' }}</span>
-                        | Dimensiones:
-                        <span class="font-semibold">{{ $dimensiones['ancho'] }}m
-                            × {{ $dimensiones['largo'] }}m</span>
-                        | Cliente: <span class="font-semibold">{{ $cliente->empresa ?? 'Sin cliente' }}</span>
-                    </p>
-                </div>
 
                 {{-- Selector de obra --}}
                 <div class="flex items-center gap-3">

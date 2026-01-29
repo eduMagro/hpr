@@ -1,26 +1,11 @@
 <x-app-layout>
     <x-slot name="title">Gestionar Salidas - {{ config('app.name') }}</x-slot>
 
-    {{-- Header con título y botón de volver --}}
-    <div class="bg-white border-b border-gray-200 shadow-sm mb-6">
-        <div class="container mx-auto px-2 sm:px-4 md:px-6 py-4">
-            <div class="flex items-center gap-3">
-                <h1 class="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
-                    Gestionar Salidas para Planillas
-                </h1>
-
-                <a href="{{ route('planificacion.index') }}" wire:navigate wire:navigate
-                    class="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors group flex-shrink-0"
-                    title="Volver a Planificación de Portes">
-                    <svg class="w-5 h-5 transform group-hover:-translate-x-1 transition-transform" fill="none"
-                        stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                </a>
-            </div>
-        </div>
-    </div>
+    <x-page-header
+        title="Gestionar Salidas para Planillas"
+        subtitle="Asignación de planillas a salidas de expedición"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>'
+    />
 
     <div class="container mx-auto px-2 sm:px-4 md:px-6 py-6">
 

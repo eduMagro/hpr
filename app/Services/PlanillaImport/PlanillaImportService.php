@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Log;
 use App\Services\PlanillaImport\CodigoEtiqueta;
 use Illuminate\Support\Carbon;
 use App\Services\ImportProgress;
+use App\Helpers\FechaEntregaHelper;
 
 /**
  * Servicio principal para importación de planillas - VERSIÓN OPTIMIZADA
@@ -462,9 +463,9 @@ class PlanillaImportService
                             false
                         );
 
-                        // 1.1) Si viene fecha de aprobación, fijamos fecha_estimada_entrega = aprobación + 7 días
+                        // 1.1) Si viene fecha de aprobación, fijamos fecha_estimada_entrega = aprobación + 7 días (ajustada)
                         if ($fechaAprobacion) {
-                            $resultado->planilla->fecha_estimada_entrega = $fechaAprobacion->copy()->addDays(7);
+                            $resultado->planilla->fecha_estimada_entrega = FechaEntregaHelper::calcular($fechaAprobacion, 7);
                             $resultado->planilla->save();
                         }
 
@@ -580,7 +581,7 @@ class PlanillaImportService
                         );
 
                         if ($fechaAprobacion) {
-                            $resultado->planilla->fecha_estimada_entrega = $fechaAprobacion->copy()->addDays(7);
+                            $resultado->planilla->fecha_estimada_entrega = FechaEntregaHelper::calcular($fechaAprobacion, 7);
                             $resultado->planilla->save();
                         }
 

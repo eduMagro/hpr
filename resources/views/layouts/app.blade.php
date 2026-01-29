@@ -237,8 +237,6 @@ data-user-id="{{ auth()->id() }}" @endauth>
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto bg-slate-100 dark:bg-gray-900 transition-colors">
                 <div id="mainlayout" class="py-4 md:px-6 h-full">
-                    <!-- Breadcrumbs -->
-                    <x-breadcrumbs />
 
                     <!-- Page Heading -->
                     @isset($header)

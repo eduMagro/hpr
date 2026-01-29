@@ -1,13 +1,15 @@
 <x-app-layout>
     <x-slot name="title">Incorporaciones</x-slot>
 
+    <x-page-header
+        title="Incorporaciones de Trabajadores"
+        subtitle="Gestiona las nuevas incorporaciones y su documentación"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>'
+    />
+
     <div class="w-full max-w-7xl mx-auto py-6 px-4 sm:px-6">
         <!-- Cabecera -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Incorporaciones de Trabajadores</h1>
-                <p class="text-gray-600 dark:text-gray-400 mt-1">Gestiona las nuevas incorporaciones y su documentación</p>
-            </div>
             <a href="{{ route('incorporaciones.create') }}"
                 class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white font-medium rounded-lg transition">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,14 +1,11 @@
 <x-app-layout>
     <x-slot name="title">Detalles de Cliente - {{ config('app.name') }}</x-slot>
-    <x-slot name="header">
-        <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-            <a href="{{ route('clientes.index') }}" wire:navigate class="text-blue-600 hover:underline">
-                {{ __('Clientes') }}
-            </a>
-            <span class="mx-2">/</span>
-            {{ __('Cliente ') }} {{ $cliente->empresa }}
-        </h2>
-    </x-slot>
+
+    <x-page-header
+        title="{{ $cliente->empresa }}"
+        subtitle="Información del cliente y sus obras"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>'
+    />
 
     <div x-data="{ modalObra: false }" class="container mx-auto px-4 py-6">
 

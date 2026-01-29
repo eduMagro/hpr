@@ -1,11 +1,11 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app.C-ic2wY5.css",
+    "file": "assets/app.D_QHrgs7.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
   "resources/css/estilosCalendarioSalidas.css": {
-    "file": "assets/estilosCalendarioSalidas.BL8zi8eY.css",
+    "file": "assets/estilosCalendarioSalidas.HADcNWGT.css",
     "src": "resources/css/estilosCalendarioSalidas.css",
     "isEntry": true
   },
@@ -15,12 +15,13 @@
     "isEntry": true
   },
   "resources/css/localizaciones/styleLocCreate.css": {
-    "file": "assets/styleLocCreate.DWCi0Orz.css",
+    "file": "assets/styleLocCreate.l0sNRNKZ.js",
+    "name": "styleLocCreate",
     "src": "resources/css/localizaciones/styleLocCreate.css",
     "isEntry": true
   },
   "resources/css/localizaciones/styleLocIndex.css": {
-    "file": "assets/styleLocIndex.D8Ekh_yc.css",
+    "file": "assets/styleLocIndex.Cm1ixjdo.css",
     "src": "resources/css/localizaciones/styleLocIndex.css",
     "isEntry": true
   },
@@ -58,7 +59,7 @@
     "isEntry": true
   },
   "resources/js/modules/calendario-salidas/index.js": {
-    "file": "assets/index.CSTmIAJG.js",
+    "file": "assets/index.Dlk3tvdL.js",
     "name": "index",
     "src": "resources/js/modules/calendario-salidas/index.js",
     "isEntry": true

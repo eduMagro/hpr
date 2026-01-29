@@ -1,20 +1,11 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Logs de Producción en Tiempo Real
-            </h2>
-            <div class="flex gap-3 items-center">
-                <span class="text-sm text-gray-600" id="last-update">
-                    Última actualización: {{ now()->format('H:i:s') }}
-                </span>
-                <button id="toggle-auto-refresh" class="px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition">
-                    ⏸ Pausar
-                </button>
-                <span class="text-xs font-medium text-green-600" id="stat-refresh">Auto-Refresh: ON</span>
-            </div>
-        </div>
-    </x-slot>
+    <x-slot name="title">Logs de Producción</x-slot>
+
+    <x-page-header
+        title="Logs de Producción"
+        subtitle="Monitoreo en tiempo real de la actividad de producción"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>'
+    />
 
     <div class="py-6">
         <div class="max-w-full mx-auto sm:px-6 lg:px-8">

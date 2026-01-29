@@ -1,6 +1,12 @@
 <x-app-layout>
     <x-slot name="title">Salidas - {{ config('app.name') }}</x-slot>
 
+    <x-page-header
+        title="Salidas de Material"
+        subtitle="Gestión de expediciones y envíos"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l-3-3m3 3l3-3m-3 3V3"/></svg>'
+    />
+
     <div class="w-full p-4 sm:p-4" data-salidas-index>
 
         {{-- Si el usuario es de oficina, mostramos la tabla con filtros Livewire --}}
@@ -24,7 +30,7 @@
                                     <div class="mt-2 sm:mt-0">
                                         <p class="py-2">{{ $salida->empresaTransporte->nombre ?? 'N/A' }}</p>
                                         <p class="py-2">
-                                            {{ $salida->camion->modelo }}
+                                            {{ $salida->camion->modelo ?? 'N/A' }}
                                         </p>
                                     </div>
                                     <button

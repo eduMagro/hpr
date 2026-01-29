@@ -81,6 +81,15 @@ return [
                     ]
                 ],
                 [
+                    'label' => 'Localizaciones',
+                    'route' => 'localizaciones.index',
+                    'icon' => '🗺️',
+                    'actions' => [
+                        ['label' => 'Ver mapa', 'route' => 'localizaciones.index', 'permission' => 'ver'],
+                        ['label' => 'Editor visual', 'route' => 'localizaciones.editarMapa', 'permission' => 'ver'],
+                    ]
+                ],
+                [
                     'label' => 'Movimientos',
                     'route' => 'movimientos.index',
                     'icon' => '🔄',
@@ -488,6 +497,18 @@ return [
                 'colorBase' => 'green',
                 'style' => 'tabs',
                 'mobileLabel' => 'Ubicaciones',
+            ]
+        ],
+
+        'localizaciones' => [
+            'items' => [
+                ['label' => 'Mapa', 'route' => 'localizaciones.index', 'icon' => '🗺️'],
+                ['label' => 'Editor', 'route' => 'localizaciones.editarMapa', 'icon' => '✏️'],
+            ],
+            'config' => [
+                'colorBase' => 'blue',
+                'style' => 'tabs',
+                'mobileLabel' => 'Localizaciones',
             ]
         ],
 

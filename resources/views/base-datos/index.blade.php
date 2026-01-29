@@ -1,11 +1,14 @@
 <x-app-layout>
+    <x-slot name="title">Base de Datos</x-slot>
+
+    <x-page-header
+        title="Base de Datos"
+        subtitle="Acceso centralizado a todas las tablas del sistema"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>'
+    />
+
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <!-- Header -->
-            <div class="mb-8">
-                <h1 class="text-3xl font-bold text-gray-900">Base de Datos</h1>
-                <p class="mt-2 text-sm text-gray-600">Acceso centralizado a todas las tablas del sistema</p>
-            </div>
 
             <!-- Grid de categorías -->
             <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">

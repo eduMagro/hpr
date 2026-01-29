@@ -1,19 +1,15 @@
 <x-app-layout>
     <x-slot name="title">{{ $planilla->codigo_limpio }} - {{ config('app.name') }}</x-slot>
 
+    <x-page-header
+        title="Planilla {{ $planilla->codigo_limpio }}"
+        subtitle="Obra: {{ $planilla->obra->obra ?? '—' }} · Cliente: {{ $planilla->cliente->empresa ?? '—' }}"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>'
+    />
+
     <x-slot name="header">
         {{-- CABECERA SHOW --}}
         <div x-data="{ planilla: @js($planilla) }" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                    Planilla <strong>{{ $planilla->codigo_limpio }}</strong>
-                </h2>
-                <p class="text-sm text-gray-600">
-                    Obra: <strong>{{ $planilla->obra->obra ?? '—' }}</strong> ·
-                    Cliente: <strong>{{ $planilla->cliente->empresa ?? '—' }}</strong> ·
-                    Sección: <strong>{{ $planilla->seccion ?? '—' }}</strong>
-                </p>
-            </div>
 
             <div class="flex items-center gap-3 sm:w-auto">
                 {{-- Barra de progreso --}}

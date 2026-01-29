@@ -1,10 +1,11 @@
 <x-app-layout>
     <x-slot name="title">Permisos y configuración</x-slot>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Permisos y configuración') }}
-        </h2>
-    </x-slot>
+
+    <x-page-header
+        title="Permisos y Configuración"
+        subtitle="Gestión de departamentos y permisos de acceso"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>'
+    />
 
     <style>
         .custom-scrollbar::-webkit-scrollbar {

@@ -1,208 +1,475 @@
 <x-app-layout>
-    {{-- Cabecera --}}
-    <x-slot name="title">Mapa de Ubicaciones — Ver máquinas</x-slot>
+    <x-slot name="title">Mapa de Ubicaciones</x-slot>
 
-    {{-- Menús --}}
-    <x-menu.localizaciones.menu-localizaciones-vistas :obra-actual-id="$obraActualId ?? null" route-index="localizaciones.index"
-        route-create="localizaciones.create" />
-    <x-menu.localizaciones.menu-localizaciones-naves :obras="$obras" :obra-actual-id="$obraActualId ?? null" />
+    <x-page-header
+        title="Mapa de Localizaciones"
+        subtitle="Visualización de la distribución de la planta"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>'
+    />
 
-    <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <!-- Columna: Título + detalle -->
-        <div class="px-4 sm:px-6 lg:px-8 mt-2 md:mt-4 w-full md:w-auto">
-            <div class="bg-white border rounded-lg p-3">
-                <h2 class="font-semibold text-base sm:text-lg md:text-xl text-gray-800 leading-tight">
-                    Mapa de {{ $dimensiones['obra'] ?? 'localizaciones' }}
-                </h2>
-                <p class="text-xs sm:text-sm text-gray-500 mt-1">
-                    Celda = 0,5 m.
-                    Ancho: {{ $dimensiones['ancho'] }} m
-                    ({{ $ctx['columnasReales'] }} cols),
-                    Largo: {{ $dimensiones['largo'] }} m
-                    ({{ $ctx['filasReales'] }} filas).
-                    Vista: {{ $columnasVista }}×{{ $filasVista }}
-                    ({{ $ctx['estaGirado'] ? 'vertical' : 'horizontal' }}).
-                </p>
-            </div>
-        </div>
+    <style>
+        /* Variables de tema */
+        :root {
+            --loc-header-bg: #ffffff;
+            --loc-header-text: #111827;
+            --loc-header-muted: #6b7280;
+            --loc-btn-bg: #f3f4f6;
+            --loc-accent: #3b82f6;
+        }
 
-        {{-- Controles: orientación + input QR --}}
-        @php
-            $qsBase = request()->except('orientacion');
-            $urlH = request()->url() . '?' . http_build_query(array_merge($qsBase, ['orientacion' => 'horizontal']));
-            $urlV = request()->url() . '?' . http_build_query(array_merge($qsBase, ['orientacion' => 'vertical']));
-        @endphp
+        :root.dark {
+            --loc-header-bg: #1f2937;
+            --loc-header-text: #f9fafb;
+            --loc-header-muted: #9ca3af;
+            --loc-btn-bg: #374151;
+            --loc-accent: #60a5fa;
+        }
 
-        <div class="px-4 sm:px-6 lg:px-8 w-full md:w-auto">
-            <div class="flex flex-wrap items-center gap-2">
-                <a href="{{ $urlH }}"
-                    class="px-3 py-1.5 rounded border text-sm {{ !$ctx['estaGirado'] ? 'bg-gray-800 text-white' : 'hover:bg-gray-50' }}">
-                    Horizontal
-                </a>
-                <a href="{{ $urlV }}"
-                    class="px-3 py-1.5 rounded border text-sm {{ $ctx['estaGirado'] ? 'bg-gray-800 text-white' : 'hover:bg-gray-50' }}">
-                    Vertical
-                </a>
+        .loc-container {
+            min-height: 100%;
+        }
 
-                <a href="{{ route('localizaciones.editarMapa', ['obra' => $obraActualId]) }}"
-                    class="px-3 py-1.5 rounded border text-sm bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2 shadow-sm transition-colors">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        /* Transiciones suaves para cambio de nave */
+        .map-transition-container {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .map-transition-container.loading {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .map-transition-container.fade-out {
+            opacity: 0;
+            transform: scale(0.98);
+        }
+
+        .map-transition-container.fade-in {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Indicador de carga */
+        .map-loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        :root.dark .map-loading-overlay {
+            background: rgba(31, 41, 55, 0.8);
+        }
+
+        .map-loading-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e5e7eb;
+            border-top-color: var(--loc-accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Transicion de elementos individuales */
+        .loc-existente {
+            transition: left 0.3s ease, top 0.3s ease, width 0.3s ease, height 0.3s ease, opacity 0.3s ease;
+        }
+
+        .loc-existente.entering {
+            opacity: 0;
+            transform: scale(0.8);
+        }
+
+        .loc-existente.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Header */
+        .loc-header {
+            background: var(--loc-header-bg);
+            padding: 10px 16px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .loc-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--loc-header-text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .loc-title-icon {
+            width: 26px;
+            height: 26px;
+            background: var(--loc-accent);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        /* Filtros */
+        .loc-filters {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-label {
+            font-size: 13px;
+            color: var(--loc-header-muted);
+        }
+
+        .filter-select {
+            background: var(--loc-btn-bg);
+            border: none;
+            border-radius: 5px;
+            padding: 6px 10px;
+            font-size: 13px;
+            color: var(--loc-header-text);
+            cursor: pointer;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px var(--loc-accent);
+        }
+
+        /* Botones de orientacion */
+        .orient-group {
+            display: flex;
+            background: var(--loc-btn-bg);
+            border-radius: 5px;
+            padding: 2px;
+        }
+
+        .orient-btn {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--loc-header-muted);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .orient-btn.active {
+            background: var(--loc-header-bg);
+            color: var(--loc-header-text);
+        }
+
+        .orient-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Boton Editor */
+        .btn-editor {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 12px;
+            background: var(--loc-accent);
+            color: white;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+
+        .btn-editor:hover {
+            opacity: 0.9;
+        }
+
+        .btn-editor svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Info derecha */
+        .header-right {
+            margin-left: auto;
+        }
+
+        .info-badge {
+            font-size: 11px;
+            color: var(--loc-header-muted);
+            font-family: monospace;
+        }
+
+        /* Leyenda del mapa */
+        .map-info {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 16px;
+            background: rgba(0,0,0,0.6);
+            padding: 6px 12px;
+            border-radius: 6px;
+            z-index: 5;
+        }
+
+        .map-info-item {
+            font-size: 11px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .loc-header {
+                padding: 12px;
+                gap: 12px;
+            }
+
+            .loc-title {
+                font-size: 16px;
+                width: 100%;
+            }
+
+            .header-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .filter-select {
+                min-width: 120px;
+            }
+        }
+    </style>
+
+    <div class="loc-container" id="loc-container">
+        {{-- Header --}}
+        <header class="loc-header">
+            <div class="loc-title">
+                <div class="loc-title-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:18px;height:18px">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                     </svg>
-                    Editor Visual
+                </div>
+                <span>Mapa de Localizaciones</span>
+            </div>
+
+            <div class="loc-filters">
+                {{-- Filtro de Naves --}}
+                <div class="filter-group">
+                    <label class="filter-label">Nave:</label>
+                    <select id="nave-selector" class="filter-select">
+                        @foreach($obras as $obra)
+                            <option value="{{ $obra->id }}"
+                                    data-ancho="{{ $obra->ancho_m ?? 22 }}"
+                                    data-largo="{{ $obra->largo_m ?? 115 }}"
+                                    {{ ($obraActualId == $obra->id) ? 'selected' : '' }}>
+                                {{ $obra->obra }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Orientacion --}}
+                <div class="orient-group">
+                    <button type="button" id="orient-horizontal" class="orient-btn {{ !$ctx['estaGirado'] ? 'active' : '' }}" data-orientacion="horizontal">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                        Horizontal
+                    </button>
+                    <button type="button" id="orient-vertical" class="orient-btn {{ $ctx['estaGirado'] ? 'active' : '' }}" data-orientacion="vertical">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8"/>
+                        </svg>
+                        Vertical
+                    </button>
+                </div>
+
+                {{-- Editor Visual --}}
+                <a href="{{ route('localizaciones.editarMapa', ['obra' => $obraActualId]) }}" id="btn-editar-mapa" class="btn-editor">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    Editar Mapa
                 </a>
+            </div>
 
-                <!-- Input QR: full-width en móvil, tamaño cómodo en desktop -->
-                <input id="input-etiqueta-sub" type="text" inputmode="text" autocomplete="off"
-                    placeholder="Escanea/pega etiqueta_sub_id (ETQ123456.01)"
-                    class="w-full sm:w-auto sm:min-w-[16rem] md:min-w-[18rem] flex-1 px-3 py-1.5 rounded border text-sm focus:ring focus:outline-none"
-                    aria-label="Escanear código QR de subetiqueta" />
+            <div class="header-right">
+                <div class="info-badge">
+                    {{ $dimensiones['ancho'] }}×{{ $dimensiones['largo'] }}m
+                    &bull;
+                    {{ $columnasVista }}×{{ $filasVista }} celdas
+                </div>
+            </div>
+        </header>
+
+        {{-- Mapa --}}
+        <div class="map-transition-container" id="map-transition-container" style="position: relative;">
+            <div class="map-loading-overlay" id="map-loading-overlay">
+                <div class="loading-spinner"></div>
+            </div>
+
+            <div id="escenario-cuadricula" class="{{ $ctx['estaGirado'] ? 'orient-vertical' : 'orient-horizontal' }}"
+                data-nave-id="{{ $obraActualId ?? ($ctx['naveId'] ?? '') }}"
+                style="--cols: {{ $ctx['estaGirado'] ? $ctx['columnasReales'] : $ctx['filasReales'] }};
+                       --rows: {{ $ctx['estaGirado'] ? $ctx['filasReales'] : $ctx['columnasReales'] }};">
+
+                <div id="cuadricula" aria-label="Cuadricula de la nave">
+                    {{-- Maquinas --}}
+                    @foreach ($localizacionesConMaquina as $loc)
+                        <div class="loc-existente loc-maquina"
+                             data-id="{{ $loc['id'] }}"
+                             data-x1="{{ $loc['x1'] }}" data-y1="{{ $loc['y1'] }}"
+                             data-x2="{{ $loc['x2'] }}" data-y2="{{ $loc['y2'] }}"
+                             data-nombre="{{ $loc['nombre'] }}"
+                             title="{{ $loc['nombre'] }}">
+                            <span class="loc-label">{{ $loc['nombre'] }}</span>
+                        </div>
+                    @endforeach
+
+                    {{-- Zonas --}}
+                    @foreach ($localizacionesZonas as $loc)
+                        @php $tipo = str_replace('-', '_', $loc['tipo'] ?? 'transitable'); @endphp
+                        <div class="loc-existente loc-zona tipo-{{ $tipo }}"
+                             data-id="{{ $loc['id'] }}"
+                             data-x1="{{ $loc['x1'] }}" data-y1="{{ $loc['y1'] }}"
+                             data-x2="{{ $loc['x2'] }}" data-y2="{{ $loc['y2'] }}"
+                             data-nombre="{{ $loc['nombre'] }}"
+                             title="{{ $loc['nombre'] }}">
+                            <span class="loc-label">{{ $loc['nombre'] }}</span>
+                        </div>
+                    @endforeach
+
+                    {{-- Leyenda --}}
+                    <div class="map-info">
+                        <div class="map-info-item">
+                            <span style="width:10px;height:10px;background:#3b82f6;border-radius:2px;"></span>
+                            <span>Maquinas</span>
+                        </div>
+                        <div class="map-info-item">
+                            <span style="width:10px;height:10px;background:#10b981;border-radius:2px;"></span>
+                            <span>Almacenamiento</span>
+                        </div>
+                        <div class="map-info-item">
+                            <span style="width:10px;height:10px;background:#6b7280;border-radius:2px;"></span>
+                            <span>Pasillos</span>
+                        </div>
+                        <div class="map-info-item">
+                            <span style="width:10px;height:10px;background:#f59e0b;border-radius:2px;"></span>
+                            <span>Carga/Descarga</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    {{-- Escenario + Cuadrícula (solo lectura) --}}
-    <div class="px-4 sm:px-6 lg:px-8 mt-4">
-        <div id="escenario-cuadricula" class="{{ $ctx['estaGirado'] ? 'orient-vertical' : 'orient-horizontal' }}"
-            data-nave-id="{{ $obraActualId ?? ($ctx['naveId'] ?? '') }}"
-            data-ruta-paquete="{{ route('paquetes.tamaño') }}"
-            data-ruta-guardar="{{ route('localizaciones.storePaquete') }}"
-            style="--cols: {{ $ctx['estaGirado'] ? $ctx['columnasReales'] : $ctx['filasReales'] }};
-            --rows: {{ $ctx['estaGirado'] ? $ctx['filasReales'] : $ctx['columnasReales'] }};">
-
-            <div id="cuadricula" aria-label="Cuadrícula de la nave">
-                {{-- Overlays: MÁQUINAS --}}
-                @foreach ($localizacionesConMaquina as $loc)
-                    <div class="loc-existente loc-maquina" data-id="{{ $loc['id'] }}" data-x1="{{ $loc['x1'] }}"
-                        data-y1="{{ $loc['y1'] }}" data-x2="{{ $loc['x2'] }}" data-y2="{{ $loc['y2'] }}"
-                        data-maquina-id="{{ $loc['maquina_id'] }}" data-nombre="{{ $loc['nombre'] }}"
-                        @if (isset($loc['wCeldas'])) data-w="{{ $loc['wCeldas'] }}" @endif
-                        @if (isset($loc['hCeldas'])) data-h="{{ $loc['hCeldas'] }}" @endif>
-                        <span class="loc-label">{{ $loc['nombre'] }}</span>
-                    </div>
-                @endforeach
-
-                {{-- Overlays: ZONAS (transitable / almacenamiento / carga_descarga) --}}
-                @foreach ($localizacionesZonas as $loc)
-                    @php
-                        $tipo = str_replace('-', '_', $loc['tipo'] ?? 'transitable');
-                    @endphp
-                    <div class="loc-existente loc-zona tipo-{{ $tipo }}" data-id="{{ $loc['id'] }}"
-                        data-x1="{{ $loc['x1'] }}" data-y1="{{ $loc['y1'] }}" data-x2="{{ $loc['x2'] }}"
-                        data-y2="{{ $loc['y2'] }}" data-nombre="{{ $loc['nombre'] }}"
-                        data-tipo="{{ $tipo }}">
-                        <span class="loc-label">{{ $loc['nombre'] }}</span>
-                    </div>
-                @endforeach
-            </div>
-
-
-            <div id="info-cuadricula" class="info-cuadricula">
-                {{ $columnasVista }} columnas × {{ $filasVista }} filas
-            </div>
-        </div>
-
-    </div>
-    {{-- Panel de resultados del escaneo --}}
-    <div id="scan-result" class="mx-4 sm:mx-6 lg:mx-8 mt-3 hidden border rounded-lg p-3 bg-white text-sm">
-        <div class="font-semibold mb-1">Resultado del paquete</div>
-        <div id="scan-result-body" class="text-gray-700"></div>
-    </div>
-
-    {{-- CSS --}}
+    {{-- CSS externo --}}
     <link rel="stylesheet" href="{{ asset('css/localizaciones/styleLocIndex.css') }}">
 
-    {{-- Contexto backend --}}
+    {{-- Contexto --}}
     <script>
         window.__LOC_CTX__ = @json($ctx);
     </script>
 
-    {{-- JS: solo render/resize; sin colocación ni borrado --}}
+    {{-- JS: Render con soporte AJAX --}}
     <script>
         (() => {
-            const ctx = window.__LOC_CTX__;
-
-            // Reales en celdas (0,5 m): W = ancho, H = largo
-            const W = ctx.columnasReales; // ej. 44
-            const H = ctx.filasReales; // ej. 330
-
-            // Vertical = true  => (1,1) abajo-izquierda (invertimos Y)
-            // Horizontal = false => (1,1) arriba-izquierda y la nave se "acuesta" (transpose)
-            const isVertical = !!ctx.estaGirado;
-
-            // Tamaño de la VISTA (cómo pintamos el grid en pantalla)
-            // Horizontal: ancho = H, alto = W  (más ancho que alto)
-            // Vertical:   ancho = W, alto = H
-            const viewCols = isVertical ? W : H;
-            const viewRows = isVertical ? H : W;
+            // Estado global del mapa
+            let ctx = window.__LOC_CTX__;
+            let W = ctx.columnasReales;
+            let H = ctx.filasReales;
+            let isVertical = !!ctx.estaGirado;
+            let viewCols = isVertical ? W : H;
+            let viewRows = isVertical ? H : W;
+            let currentNaveId = ctx.naveId;
+            let currentOrientacion = ctx.orientacion || 'horizontal';
 
             const escenario = document.getElementById('escenario-cuadricula');
             const grid = document.getElementById('cuadricula');
-            let celdaPx = 8;
+            const transitionContainer = document.getElementById('map-transition-container');
+            const loadingOverlay = document.getElementById('map-loading-overlay');
+            const naveSelector = document.getElementById('nave-selector');
+            const btnHorizontal = document.getElementById('orient-horizontal');
+            const btnVertical = document.getElementById('orient-vertical');
+            const btnEditarMapa = document.getElementById('btn-editar-mapa');
+            const infoBadge = document.querySelector('.info-badge');
 
+            // URL base para la API
+            const apiBaseUrl = '{{ url("/api/localizaciones-index") }}';
+            const editorBaseUrl = '{{ route("localizaciones.editarMapa") }}';
+
+            // Funciones de mapa
             function getCeldaPx() {
-                const v = getComputedStyle(grid).getPropertyValue('--tam-celda')
-                    .trim();
+                const v = getComputedStyle(grid).getPropertyValue('--tam-celda').trim();
                 const n = parseInt(v, 10);
                 return Number.isFinite(n) && n > 0 ? n : 8;
             }
 
-            // ---- MAPEOS ----
-            // Punto real -> punto vista
-            // Vertical: (x, H - y + 1)  [invierte Y, NO intercambia ejes]
-            // Horizontal: (y, x)        [transpose: intercambia ejes sin inversión]
             function mapPointToView(x, y) {
-                if (isVertical) return {
-                    x,
-                    y: (H - y + 1)
-                };
-                return {
-                    x: y,
-                    y: x
-                };
+                if (isVertical) return { x, y: (H - y + 1) };
+                return { x: y, y: x };
             }
 
-            // Rect real -> rect vista (usamos envolvente de las 4 esquinas)
             function realToViewRect(x1r, y1r, x2r, y2r) {
-                const x1 = Math.min(x1r, x2r),
-                    x2 = Math.max(x1r, x2r);
-                const y1 = Math.min(y1r, y2r),
-                    y2 = Math.max(y1r, y2r);
+                const x1 = Math.min(x1r, x2r), x2 = Math.max(x1r, x2r);
+                const y1 = Math.min(y1r, y2r), y2 = Math.max(y1r, y2r);
 
-                const p1 = mapPointToView(x1, y1);
-                const p2 = mapPointToView(x2, y1);
-                const p3 = mapPointToView(x1, y2);
-                const p4 = mapPointToView(x2, y2);
+                const corners = [
+                    mapPointToView(x1, y1),
+                    mapPointToView(x2, y1),
+                    mapPointToView(x1, y2),
+                    mapPointToView(x2, y2)
+                ];
 
-                const xs = [p1.x, p2.x, p3.x, p4.x];
-                const ys = [p1.y, p2.y, p3.y, p4.y];
-
-                const minX = Math.min(...xs),
-                    maxX = Math.max(...xs);
-                const minY = Math.min(...ys),
-                    maxY = Math.max(...ys);
+                const xs = corners.map(p => p.x);
+                const ys = corners.map(p => p.y);
 
                 return {
-                    x: minX,
-                    y: minY,
-                    w: (maxX - minX + 1),
-                    h: (maxY - minY + 1)
+                    x: Math.min(...xs),
+                    y: Math.min(...ys),
+                    w: Math.max(...xs) - Math.min(...xs) + 1,
+                    h: Math.max(...ys) - Math.min(...ys) + 1
                 };
             }
 
-            // ---- RENDER ----
             function renderExistentes() {
-                celdaPx = getCeldaPx();
+                const celdaPx = getCeldaPx();
                 document.querySelectorAll('.loc-existente').forEach(el => {
-                    const {
-                        x,
-                        y,
-                        w,
-                        h
-                    } = realToViewRect(
-                        +el.dataset.x1, +el.dataset.y1, +el.dataset
-                        .x2, +el.dataset.y2
+                    const { x, y, w, h } = realToViewRect(
+                        +el.dataset.x1, +el.dataset.y1, +el.dataset.x2, +el.dataset.y2
                     );
                     el.style.left = ((x - 1) * celdaPx) + 'px';
                     el.style.top = ((y - 1) * celdaPx) + 'px';
@@ -212,9 +479,8 @@
             }
 
             function ajustarTamCelda() {
-                const anchoDisp = escenario.clientWidth - 12;
-                const altoDisp = (window.innerHeight - escenario
-                    .getBoundingClientRect().top - 24);
+                const anchoDisp = escenario.clientWidth - 40;
+                const altoDisp = window.innerHeight - escenario.getBoundingClientRect().top - 60;
 
                 const tamPorAncho = Math.floor(anchoDisp / viewCols);
                 const tamPorAlto = Math.floor(altoDisp / viewRows);
@@ -227,401 +493,184 @@
                 renderExistentes();
             }
 
-            // Init + resize
-            ajustarTamCelda();
-            let pendiente = false;
-            window.addEventListener('resize', () => {
-                if (pendiente) return;
-                pendiente = true;
+            // Mostrar/ocultar carga
+            function showLoading() {
+                loadingOverlay.classList.add('visible');
+                transitionContainer.classList.add('loading');
+            }
+
+            function hideLoading() {
+                loadingOverlay.classList.remove('visible');
+                transitionContainer.classList.remove('loading');
+            }
+
+            // Actualizar botones de orientación
+            function updateOrientationButtons(orientacion) {
+                btnHorizontal.classList.toggle('active', orientacion === 'horizontal');
+                btnVertical.classList.toggle('active', orientacion === 'vertical');
+            }
+
+            // Actualizar link del editor
+            function updateEditorLink(naveId) {
+                btnEditarMapa.href = `${editorBaseUrl}?obra=${naveId}`;
+            }
+
+            // Crear elemento de localización
+            function createLocElement(loc, tipo) {
+                const div = document.createElement('div');
+                const tipoClass = tipo === 'maquina' ? 'loc-maquina' : `loc-zona tipo-${loc.tipo || 'transitable'}`;
+                div.className = `loc-existente ${tipoClass} entering`;
+                div.dataset.id = loc.id;
+                div.dataset.x1 = loc.x1;
+                div.dataset.y1 = loc.y1;
+                div.dataset.x2 = loc.x2;
+                div.dataset.y2 = loc.y2;
+                div.dataset.nombre = loc.nombre;
+                div.title = loc.nombre;
+                div.innerHTML = `<span class="loc-label">${loc.nombre}</span>`;
+
+                // Animación de entrada
                 requestAnimationFrame(() => {
-                    ajustarTamCelda();
-                    pendiente = false;
+                    div.classList.remove('entering');
+                    div.classList.add('visible');
                 });
-            }, {
-                passive: true
-            });
-        })();
-    </script>
 
-
-    <script>
-        (() => {
-            const escenario = document.getElementById('escenario-cuadricula');
-            const grid = document.getElementById('cuadricula');
-            if (!escenario || !grid) return;
-
-            const ctx = window.__LOC_CTX__;
-            const isVertical = !!ctx.estaGirado;
-            const W = ctx.columnasReales; // ancho real (celdas)
-            const H = ctx.filasReales; // alto real (celdas)
-
-            // Vista (como se pinta)
-            const viewCols = isVertical ? W : H;
-            const viewRows = isVertical ? H : W;
-
-            function getCeldaPx() {
-                const v = getComputedStyle(grid).getPropertyValue('--tam-celda')
-                    .trim();
-                const n = parseInt(v, 10);
-                return Number.isFinite(n) && n > 0 ? n : 8;
+                return div;
             }
 
-            // Mapas entre coordenadas reales y de vista
-            function mapPointToView(x, y) {
-                if (isVertical) return {
-                    x,
-                    y: (H - y + 1)
-                };
-                return {
-                    x: y,
-                    y: x
-                };
-            }
+            // Renderizar nuevos datos del mapa
+            function renderMapData(data) {
+                // Actualizar contexto
+                ctx = data.ctx;
+                W = ctx.columnasReales;
+                H = ctx.filasReales;
+                isVertical = !!ctx.estaGirado;
+                viewCols = isVertical ? W : H;
+                viewRows = isVertical ? H : W;
+                currentNaveId = ctx.naveId;
+                currentOrientacion = ctx.orientacion || 'horizontal';
 
-            function mapViewToReal(xv, yv) {
-                if (isVertical) return {
-                    x: xv,
-                    y: (H - yv + 1)
-                };
-                return {
-                    x: yv,
-                    y: xv
-                };
-            }
+                // Actualizar CSS variables del escenario
+                escenario.style.setProperty('--cols', ctx.estaGirado ? ctx.columnasReales : ctx.filasReales);
+                escenario.style.setProperty('--rows', ctx.estaGirado ? ctx.filasReales : ctx.columnasReales);
+                escenario.dataset.naveId = ctx.naveId;
+                escenario.className = ctx.estaGirado ? 'orient-vertical' : 'orient-horizontal';
 
-            // Estado del ghost
-            let ghost = null;
-            let ghostActions = null;
-            let celdaPx = getCeldaPx();
-            let gWidthCells = 1; // ancho en celdas (vista)
-            let gHeightCells = 2; // alto en celdas (vista)
-            let gX = 1; // posición (vista) 1-based
-            let gY = 1;
-            let paqueteMeta = null; // {codigo, paquete_id, longitud, ancho}
+                // Eliminar localizaciones existentes con animación
+                const existingLocs = grid.querySelectorAll('.loc-existente');
+                existingLocs.forEach(el => {
+                    el.style.opacity = '0';
+                    el.style.transform = 'scale(0.8)';
+                });
 
-            function ensureGhost() {
-                if (ghost) return;
+                // Esperar la animación de salida y luego limpiar
+                setTimeout(() => {
+                    existingLocs.forEach(el => el.remove());
 
-                ghost = document.createElement('div');
-                ghost.id = 'paquete-ghost';
-                ghost.innerHTML = `<div class="ghost-label"></div>`;
-                grid.appendChild(ghost);
-
-                ghostActions = document.createElement('div');
-                ghostActions.id = 'ghost-actions';
-                ghostActions.innerHTML = `
-      <button class="ghost-btn cancel" id="btn-cancel-ghost" title="Cancelar (Esc)" aria-label="Cancelar">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M6 6l12 12M18 6L6 18" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </button>
-
-      <button class="ghost-btn rotate" id="btn-rotate-ghost" title="Voltear (R)" aria-label="Voltear">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M12 4v4l3-2-3-2zM4 12a8 8 0 1 1 8 8" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-
-      <button class="ghost-btn confirm" id="btn-place-ghost" title="Asignar aquí (Enter)" aria-label="Asignar">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <circle cx="12" cy="12" r="9" stroke="#22c55e" stroke-width="2"/>
-          <path d="M8 12l3 3 5-6" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-    `;
-                grid.appendChild(ghostActions);
-
-                // Listeners de la botonera
-                document.getElementById('btn-cancel-ghost').addEventListener(
-                    'click', () => {
-                        ghost.remove();
-                        ghost = null;
-                        ghostActions.remove();
-                        ghostActions = null;
-                        paqueteMeta = null;
+                    // Crear nuevas máquinas
+                    data.localizacionesConMaquina.forEach(loc => {
+                        const el = createLocElement(loc, 'maquina');
+                        grid.insertBefore(el, grid.querySelector('.map-info'));
                     });
-                document.getElementById('btn-place-ghost').addEventListener(
-                    'click', onPlaceGhost);
-                document.getElementById('btn-rotate-ghost').addEventListener(
-                    'click', rotateGhostKeepCenter);
 
-                // Drag
-                enableDrag();
+                    // Crear nuevas zonas
+                    data.localizacionesZonas.forEach(loc => {
+                        const el = createLocElement(loc, 'zona');
+                        grid.insertBefore(el, grid.querySelector('.map-info'));
+                    });
+
+                    // Actualizar dimensiones y renderizar
+                    ajustarTamCelda();
+
+                    // Actualizar info badge
+                    if (infoBadge) {
+                        infoBadge.textContent = `${data.dimensiones.ancho}×${data.dimensiones.largo}m • ${data.columnasVista}×${data.filasVista} celdas`;
+                    }
+
+                    // Actualizar contexto global
+                    window.__LOC_CTX__ = ctx;
+
+                    hideLoading();
+                }, 200);
             }
 
-            function layoutGhost() {
-                if (!ghost) return;
-                celdaPx = getCeldaPx();
+            // Cargar datos de la nave via AJAX
+            async function loadNaveData(naveId, orientacion) {
+                showLoading();
 
-                // Mantener dentro de vista
-                gX = Math.max(1, Math.min(viewCols - gWidthCells + 1, gX));
-                gY = Math.max(1, Math.min(viewRows - gHeightCells + 1, gY));
-
-                ghost.style.left = ((gX - 1) * celdaPx) + 'px';
-                ghost.style.top = ((gY - 1) * celdaPx) + 'px';
-                ghost.style.width = (gWidthCells * celdaPx) + 'px';
-                ghost.style.height = (gHeightCells * celdaPx) + 'px';
-
-                const label = ghost.querySelector('.ghost-label');
-                if (label && paqueteMeta) {
-                    label.textContent =
-                        `${paqueteMeta.codigo} · ${paqueteMeta.longitud.toFixed(2)} m · ${gWidthCells}×${gHeightCells} celdas`;
-                }
-
-                if (ghostActions) {
-                    ghostActions.style.left = ghost.style.left;
-                    ghostActions.style.top = ghost.style.top;
-                    ghostActions.style.display = 'flex';
-                }
-            }
-
-            function centerGhost() {
-                gX = Math.floor((viewCols - gWidthCells) / 2) + 1;
-                gY = Math.floor((viewRows - gHeightCells) / 2) + 1;
-                layoutGhost();
-            }
-
-            function setGhostSizeFromPaquete(tamano) {
-                // tamano = { ancho: m, longitud: m } ; celda = 0.5 m
-                const CELDA_M = 0.5;
-                const anchoCells = Math.max(1, Math.round((tamano.ancho ?? 1) /
-                    CELDA_M));
-                const largoCells = Math.max(1, Math.ceil((tamano.longitud ??
-                    0) / CELDA_M));
-                // En vista, largo → horizontal (x), ancho → vertical (y)
-                gWidthCells = largoCells;
-                gHeightCells = anchoCells;
-            }
-
-            // Drag & drop con snap a celda
-            function enableDrag() {
-                if (!ghost) return;
-                let dragging = false;
-                let startMouseX = 0,
-                    startMouseY = 0;
-                let startGX = 0,
-                    startGY = 0;
-
-                function onDown(e) {
-                    dragging = true;
-                    ghost.classList.add('dragging');
-                    startMouseX = (e.touches ? e.touches[0].clientX : e
-                        .clientX);
-                    startMouseY = (e.touches ? e.touches[0].clientY : e
-                        .clientY);
-                    startGX = gX;
-                    startGY = gY;
-                    e.preventDefault();
-                }
-
-                function onMove(e) {
-                    if (!dragging) return;
-                    const mx = (e.touches ? e.touches[0].clientX : e.clientX);
-                    const my = (e.touches ? e.touches[0].clientY : e.clientY);
-                    const dx = mx - startMouseX;
-                    const dy = my - startMouseY;
-                    const dCol = Math.round(dx / celdaPx);
-                    const dRow = Math.round(dy / celdaPx);
-                    gX = startGX + dCol;
-                    gY = startGY + dRow;
-                    layoutGhost();
-                    e.preventDefault();
-                }
-
-                function onUp() {
-                    dragging = false;
-                    ghost.classList.remove('dragging');
-                }
-
-                ghost.addEventListener('mousedown', onDown);
-                ghost.addEventListener('touchstart', onDown, {
-                    passive: false
-                });
-                window.addEventListener('mousemove', onMove, {
-                    passive: false
-                });
-                window.addEventListener('touchmove', onMove, {
-                    passive: false
-                });
-                window.addEventListener('mouseup', onUp, {
-                    passive: true
-                });
-                window.addEventListener('touchend', onUp, {
-                    passive: true
-                });
-            }
-
-            // Rotación manteniendo el centro y respetando límites
-            function rotateGhostKeepCenter() {
-                if (!ghost) return;
-                const cx = gX + (gWidthCells - 1) / 2;
-                const cy = gY + (gHeightCells - 1) / 2;
-
-                const newW = gHeightCells;
-                const newH = gWidthCells;
-
-                let newGX = Math.round(cx - (newW - 1) / 2);
-                let newGY = Math.round(cy - (newH - 1) / 2);
-
-                newGX = Math.max(1, Math.min(viewCols - newW + 1, newGX));
-                newGY = Math.max(1, Math.min(viewRows - newH + 1, newGY));
-
-                gWidthCells = newW;
-                gHeightCells = newH;
-                gX = newGX;
-                gY = newGY;
-
-                layoutGhost();
-            }
-
-            async function onPlaceGhost() {
-                if (!paqueteMeta) return;
-
-                // Coordenadas vista → reales
-                const x1v = gX,
-                    y1v = gY;
-                const x2v = gX + gWidthCells - 1;
-                const y2v = gY + gHeightCells - 1;
-
-                const p1 = mapViewToReal(x1v, y1v);
-                const p2 = mapViewToReal(x2v, y2v);
-
-                const x1r = Math.min(p1.x, p2.x);
-                const y1r = Math.min(p1.y, p2.y);
-                const x2r = Math.max(p1.x, p2.x);
-                const y2r = Math.max(p1.y, p2.y);
-
-                // Límites reales
-                if (x1r < 1 || y1r < 1 || x2r > W || y2r > H) {
-                    alert('Fuera de los límites de la nave.');
-                    return;
-                }
-
-                if (!confirm(
-                        `Asignar paquete ${paqueteMeta.codigo} en (${x1r},${y1r})–(${x2r},${y2r})?`
-                    )) return;
-
-                const naveId = escenario.dataset.naveId || null;
-                const urlGuardar = escenario.dataset.rutaGuardar;
                 try {
-                    const resp = await fetch(urlGuardar, {
-                        method: 'POST',
+                    const url = `${apiBaseUrl}/${naveId}?orientacion=${orientacion}`;
+                    const response = await fetch(url, {
                         headers: {
                             'Accept': 'application/json',
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector(
-                                    'meta[name="csrf-token"]')
-                                ?.getAttribute(
-                                    'content') || ''
-                        },
-                        body: JSON.stringify({
-                            nave_id: naveId,
-                            tipo: 'paquete',
-                            nombre: paqueteMeta.codigo,
-                            paquete_id: paqueteMeta
-                                .paquete_id,
-                            x1: x1r,
-                            y1: y1r,
-                            x2: x2r,
-                            y2: y2r,
-                        })
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
                     });
-                    if (!resp.ok) {
-                        const t = await resp.text();
-                        throw new Error(t || `HTTP ${resp.status}`);
+
+                    if (!response.ok) {
+                        throw new Error('Error al cargar los datos');
                     }
-                    // éxito
-                    ghost.remove();
-                    ghost = null;
-                    ghostActions.remove();
-                    ghostActions = null;
-                    paqueteMeta = null;
-                    location.reload();
-                } catch (err) {
-                    console.error(err);
-                    alert(
-                        'No se pudo guardar la localización del paquete.');
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        renderMapData(result.data);
+                        updateOrientationButtons(orientacion);
+                        updateEditorLink(naveId);
+
+                        // Actualizar URL sin recargar
+                        const newUrl = new URL(window.location);
+                        newUrl.searchParams.set('obra', naveId);
+                        newUrl.searchParams.set('orientacion', orientacion);
+                        window.history.pushState({}, '', newUrl);
+                    } else {
+                        throw new Error(result.message || 'Error desconocido');
+                    }
+                } catch (error) {
+                    console.error('Error cargando nave:', error);
+                    hideLoading();
+                    // Mostrar mensaje de error
+                    alert('Error al cargar los datos de la nave. Por favor, recarga la página.');
                 }
             }
 
-            // Buscar paquete por etiqueta_sub_id y crear ghost centrado
-            async function fetchPaqueteBySubId(subId) {
-                const url = escenario.dataset.rutaPaquete;
-                const resp = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector(
-                                'meta[name="csrf-token"]')
-                            ?.getAttribute(
-                                'content') || '',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        codigo: subId
-                    })
-                });
-                if (!resp.ok) {
-                    const t = await resp.text();
-                    throw new Error(t || `HTTP ${resp.status}`);
-                }
-                return resp.json();
-            }
+            // Event Listeners
+            naveSelector.addEventListener('change', (e) => {
+                const naveId = e.target.value;
+                loadNaveData(naveId, currentOrientacion);
+            });
 
-            // Hook al input de escaneo
-            const input = document.getElementById('input-etiqueta-sub');
-            input?.addEventListener('keydown', async (e) => {
-                if (e.key !== 'Enter') return;
-                const raw = (input.value || '').trim();
-                if (!raw) return;
-
-                try {
-                    const data = await fetchPaqueteBySubId(raw);
-                    // data => { codigo, paquete_id, ancho, longitud, ... }
-                    paqueteMeta = {
-                        codigo: data.codigo,
-                        paquete_id: data.paquete_id,
-                        longitud: Number(data.longitud || 0),
-                        ancho: Number(data.ancho || 1),
-                    };
-                    ensureGhost();
-                    setGhostSizeFromPaquete({
-                        ancho: paqueteMeta.ancho,
-                        longitud: paqueteMeta.longitud
-                    });
-                    centerGhost();
-                    input.select();
-                } catch (err) {
-                    console.error(err);
-                    alert(
-                        'No se encontró el paquete para ese código.');
+            btnHorizontal.addEventListener('click', () => {
+                if (currentOrientacion !== 'horizontal') {
+                    loadNaveData(currentNaveId, 'horizontal');
                 }
             });
 
-            // Atajos de teclado
-            window.addEventListener('keydown', (e) => {
-                if (!ghost) return;
-                if (e.key === 'Escape') {
-                    document.getElementById('btn-cancel-ghost')
-                        ?.click();
-                } else if (e.key.toLowerCase() === 'r') {
-                    document.getElementById('btn-rotate-ghost')
-                        ?.click();
-                } else if (e.key === 'Enter') {
-                    document.getElementById('btn-place-ghost')?.click();
+            btnVertical.addEventListener('click', () => {
+                if (currentOrientacion !== 'vertical') {
+                    loadNaveData(currentNaveId, 'vertical');
                 }
             });
 
-            // Recolocar ghost si cambia el tamaño de celda
+            // Manejar navegación del historial
+            window.addEventListener('popstate', () => {
+                const params = new URLSearchParams(window.location.search);
+                const obra = params.get('obra') || currentNaveId;
+                const orientacion = params.get('orientacion') || 'horizontal';
+
+                naveSelector.value = obra;
+                loadNaveData(obra, orientacion);
+            });
+
+            // Init
+            ajustarTamCelda();
+
+            let resizeTimeout;
             window.addEventListener('resize', () => {
-                if (!ghost) return;
-                requestAnimationFrame(layoutGhost);
-            }, {
-                passive: true
-            });
-
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(ajustarTamCelda, 100);
+            }, { passive: true });
         })();
     </script>
-
 
 </x-app-layout>

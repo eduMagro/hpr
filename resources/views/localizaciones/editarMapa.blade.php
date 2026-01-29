@@ -1,6 +1,12 @@
 <x-app-layout>
     <x-slot name="title">Editor de Planta Industrial</x-slot>
 
+    <x-page-header
+        title="Editor de Planta Industrial"
+        subtitle="Diseño y configuración del layout de la nave"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>'
+    />
+
     {{-- Estilos para sobrescribir el layout y ocupar todo el espacio --}}
     <style>
         #mainlayout {
@@ -25,51 +31,16 @@
         <!-- Barra Superior Compacta -->
         <header class="editor-header">
             <div class="header-left">
-                <!-- Logo y Home -->
-                <a href="{{ route('dashboard') }}" class="nav-logo" title="Inicio">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                    </svg>
-                </a>
-
-                <!-- Menu de Navegacion -->
-                <nav class="nav-menu">
-                    @php
-                        $menuConfig = config('menu.main');
-                    @endphp
-                    @foreach($menuConfig as $section)
-                    <div class="nav-dropdown">
-                        <button type="button" class="nav-dropdown-btn" data-color="{{ $section['color'] }}">
-                            <span class="nav-icon">{{ $section['icon'] }}</span>
-                            <span class="nav-label">{{ $section['label'] }}</span>
-                            <svg class="nav-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </button>
-                        <div class="nav-dropdown-menu">
-                            <div class="nav-dropdown-header">{{ $section['icon'] }} {{ $section['label'] }}</div>
-                            @foreach($section['submenu'] as $item)
-                            <a href="{{ route($item['route']) }}" class="nav-dropdown-item">
-                                <span class="item-icon">{{ $item['icon'] }}</span>
-                                <span class="item-label">{{ $item['label'] }}</span>
-                            </a>
-                            @endforeach
-                        </div>
-                    </div>
-                    @endforeach
-                </nav>
-
-                <div class="nav-divider"></div>
-
                 <a href="{{ route('localizaciones.index') }}" class="btn-back" title="Volver a Localizaciones">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                     </svg>
                 </a>
                 <div class="header-title">
-                    <span class="title-text">Editor</span>
+                    <span class="title-text">Editor de Planta</span>
                     <span class="header-subtitle">
                         {{ strtoupper($obraActiva->obra ?? 'GENERAL') }}
+                        ({{ ($obraActiva->ancho_m ?? 22) }}x{{ ($obraActiva->largo_m ?? 115) }}m)
                     </span>
                 </div>
             </div>
@@ -137,46 +108,6 @@
                     </div>
                 </div>
 
-                <!-- User Menu -->
-                <div class="user-dropdown">
-                    <button type="button" class="user-dropdown-btn" id="user-menu-btn">
-                        <div class="user-avatar">
-                            {{ substr(Auth::user()->name ?? 'U', 0, 1) }}
-                        </div>
-                        <svg class="user-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </button>
-                    <div class="user-dropdown-menu" id="user-menu">
-                        <div class="user-info">
-                            <div class="user-name">{{ Auth::user()->name ?? 'Usuario' }}</div>
-                            <div class="user-email">{{ Auth::user()->email ?? '' }}</div>
-                        </div>
-                        <div class="user-menu-divider"></div>
-                        <a href="{{ route('users.mi-perfil') }}" class="user-menu-item">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                            </svg>
-                            <span>Mi Perfil</span>
-                        </a>
-                        <a href="{{ route('dashboard') }}" class="user-menu-item">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
-                            </svg>
-                            <span>Dashboard</span>
-                        </a>
-                        <div class="user-menu-divider"></div>
-                        <form method="POST" action="{{ route('logout') }}" class="user-menu-form">
-                            @csrf
-                            <button type="submit" class="user-menu-item user-menu-logout">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                                </svg>
-                                <span>Cerrar Sesion</span>
-                            </button>
-                        </form>
-                    </div>
-                </div>
             </div>
         </header>
 
@@ -354,11 +285,80 @@
         </div>
     </div>
 
+    <!-- Overlay de Transicion para cambio de nave -->
+    <div class="nave-transition-overlay" id="nave-transition-overlay">
+        <div class="transition-content">
+            <div class="transition-spinner"></div>
+            <span class="transition-text">Cargando nave...</span>
+        </div>
+    </div>
+
     <style>
         :root {
             --header-h: 36px;
             --panel-w: 200px;
             --props-w: 220px;
+        }
+
+        /* Overlay de transicion para cambio de nave */
+        .nave-transition-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(31, 41, 55, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .nave-transition-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .transition-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .transition-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .transition-text {
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Animar entrada de la pagina */
+        .editor-container {
+            animation: fadeInEditor 0.3s ease;
+        }
+
+        @keyframes fadeInEditor {
+            from {
+                opacity: 0;
+                transform: scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
 
         .editor-container {
@@ -383,112 +383,7 @@
             z-index: 100;
         }
 
-        .header-left { display: flex; align-items: center; gap: 6px; }
-
-        /* Logo/Home button */
-        .nav-logo {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 28px;
-            height: 28px;
-            border-radius: 4px;
-            color: #60a5fa;
-            transition: all 0.15s;
-        }
-        .nav-logo:hover { background: #374151; color: #93c5fd; }
-
-        /* Navigation Menu */
-        .nav-menu { display: flex; align-items: center; gap: 2px; }
-        .nav-divider { width: 1px; height: 20px; background: #4b5563; margin: 0 4px; }
-
-        .nav-dropdown { position: relative; }
-        .nav-dropdown-btn {
-            display: flex;
-            align-items: center;
-            gap: 3px;
-            padding: 4px 6px;
-            border-radius: 4px;
-            color: #d1d5db;
-            font-size: 11px;
-            transition: all 0.15s;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-        }
-        .nav-dropdown-btn:hover { background: #374151; color: white; }
-        .nav-dropdown.active .nav-dropdown-btn { background: #374151; color: white; }
-
-        .nav-icon { font-size: 12px; }
-        .nav-label { font-weight: 500; }
-        .nav-arrow { width: 10px; height: 10px; opacity: 0.6; transition: transform 0.2s; }
-        .nav-dropdown.active .nav-arrow { transform: rotate(180deg); }
-
-        /* Dropdown Menu */
-        .nav-dropdown-menu {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            margin-top: 4px;
-            background: #1f2937;
-            border: 1px solid #374151;
-            border-radius: 8px;
-            min-width: 200px;
-            max-height: 400px;
-            overflow-y: auto;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-5px);
-            transition: all 0.15s ease;
-        }
-        .nav-dropdown.active .nav-dropdown-menu {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-        }
-
-        .nav-dropdown-header {
-            padding: 8px 12px;
-            font-size: 11px;
-            font-weight: 600;
-            color: #9ca3af;
-            border-bottom: 1px solid #374151;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .nav-dropdown-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            color: #d1d5db;
-            font-size: 12px;
-            transition: all 0.15s;
-            text-decoration: none;
-        }
-        .nav-dropdown-item:hover {
-            background: #374151;
-            color: white;
-        }
-        .nav-dropdown-item .item-icon { font-size: 14px; width: 20px; text-align: center; }
-        .nav-dropdown-item .item-label { flex: 1; }
-
-        /* Color variations for hover */
-        .nav-dropdown-btn[data-color="blue"]:hover,
-        .nav-dropdown.active .nav-dropdown-btn[data-color="blue"] { background: rgba(59, 130, 246, 0.2); }
-        .nav-dropdown-btn[data-color="purple"]:hover,
-        .nav-dropdown.active .nav-dropdown-btn[data-color="purple"] { background: rgba(139, 92, 246, 0.2); }
-        .nav-dropdown-btn[data-color="green"]:hover,
-        .nav-dropdown.active .nav-dropdown-btn[data-color="green"] { background: rgba(34, 197, 94, 0.2); }
-        .nav-dropdown-btn[data-color="indigo"]:hover,
-        .nav-dropdown.active .nav-dropdown-btn[data-color="indigo"] { background: rgba(99, 102, 241, 0.2); }
-        .nav-dropdown-btn[data-color="orange"]:hover,
-        .nav-dropdown.active .nav-dropdown-btn[data-color="orange"] { background: rgba(249, 115, 22, 0.2); }
-        .nav-dropdown-btn[data-color="gray"]:hover,
-        .nav-dropdown.active .nav-dropdown-btn[data-color="gray"] { background: rgba(107, 114, 128, 0.2); }
+        .header-left { display: flex; align-items: center; gap: 8px; }
 
         .btn-back {
             display: flex;
@@ -668,50 +563,109 @@
         .section-title { font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
         .section-count { font-size: 9px; background: #e5e7eb; color: #6b7280; padding: 1px 5px; border-radius: 8px; }
 
-        .tool-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+        .tool-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
         .tool-btn {
             display: flex;
             align-items: center;
-            gap: 4px;
-            padding: 6px;
-            border: 1px solid #e5e7eb;
-            border-radius: 4px;
-            background: white;
+            gap: 6px;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            background: #f3f4f6;
             cursor: pointer;
-            transition: all 0.15s;
+            transition: all 0.2s ease;
         }
-        .tool-btn:hover { background: #f3f4f6; border-color: #d1d5db; }
-        .tool-btn.active { border-color: #3b82f6; background: #eff6ff; }
-        .tool-color { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
-        .tool-label { font-size: 10px; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tool-btn:hover {
+            background: #e5e7eb;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .tool-btn.active {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        }
+        .tool-btn.active .tool-label { color: white; }
+        .tool-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            flex-shrink: 0;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+        .tool-label { font-size: 10px; font-weight: 500; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        .machines-section { max-height: 120px; overflow: hidden; display: flex; flex-direction: column; }
-        .machines-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+        .machines-section { max-height: 140px; overflow: hidden; display: flex; flex-direction: column; }
+        .machines-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
         .machine-item {
             display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 4px 6px;
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 3px;
+            gap: 8px;
+            padding: 6px 8px;
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border: none;
+            border-radius: 6px;
             cursor: grab;
-            transition: all 0.15s;
+            transition: all 0.2s ease;
         }
-        .machine-item:hover { background: #eff6ff; border-color: #3b82f6; }
-        .machine-dot { width: 8px; height: 8px; background: #3b82f6; border-radius: 2px; flex-shrink: 0; }
-        .machine-name { font-size: 10px; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .machine-item:hover {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            transform: translateX(2px);
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2);
+        }
+        .machine-item:active { cursor: grabbing; }
+        .machine-dot {
+            width: 10px;
+            height: 10px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border-radius: 3px;
+            flex-shrink: 0;
+            box-shadow: 0 1px 3px rgba(29, 78, 216, 0.3);
+        }
+        .machine-name { font-size: 10px; font-weight: 500; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .locations-section { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
-        .search-input { width: 100%; padding: 5px 8px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 10px; margin-bottom: 6px; }
-        .search-input:focus { outline: none; border-color: #3b82f6; }
+        .search-input {
+            width: 100%;
+            padding: 8px 10px;
+            border: none;
+            border-radius: 6px;
+            background: #f3f4f6;
+            font-size: 11px;
+            margin-bottom: 8px;
+            transition: all 0.2s ease;
+        }
+        .search-input:focus {
+            outline: none;
+            background: #fff;
+            box-shadow: 0 0 0 2px #3b82f6;
+        }
 
-        .locations-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
-        .loc-item { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 3px; cursor: pointer; transition: all 0.15s; }
-        .loc-item:hover { background: #f3f4f6; }
-        .loc-item.selected { background: #eff6ff; }
-        .loc-color { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
-        .loc-name { flex: 1; font-size: 10px; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .locations-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
+        .loc-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .loc-item:hover {
+            background: #f3f4f6;
+            transform: translateX(2px);
+        }
+        .loc-item.selected {
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.3);
+        }
+        .loc-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+            flex-shrink: 0;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+        .loc-name { flex: 1; font-size: 10px; font-weight: 500; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .loc-coords { font-size: 9px; color: #9ca3af; font-family: monospace; }
 
         /* MAPA - Sin scroll innecesario */
@@ -744,9 +698,10 @@
 
         .grid-container {
             position: relative;
-            background: white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            border: 2px solid #4b5563;
+            background: #f8fafc;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            border: none;
+            border-radius: 4px;
             transform-origin: center center;
             flex-shrink: 0;
         }
@@ -756,11 +711,31 @@
             margin: 20px;
         }
 
-        .grid-lines { position: absolute; inset: 0; pointer-events: none; opacity: 0.3; }
+        .grid-lines {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.4;
+            border-radius: inherit;
+        }
+
+        /* Animaciones globales */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
         .objects-layer, .ghost-layer { position: absolute; inset: 0; }
         .ghost-layer { pointer-events: none; z-index: 100; }
 
-        .selection-box { position: absolute; border: 2px dashed #3b82f6; background: rgba(59, 130, 246, 0.1); pointer-events: none; z-index: 90; }
+        .selection-box {
+            position: absolute;
+            border: 2px dashed #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            pointer-events: none;
+            z-index: 90;
+            border-radius: 4px;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
         .selection-box.hidden { display: none; }
 
         .map-object {
@@ -769,95 +744,184 @@
             align-items: center;
             justify-content: center;
             font-size: 9px;
-            font-weight: 600;
+            font-weight: 700;
             color: white;
-            text-shadow: 0 1px 1px rgba(0,0,0,0.5);
-            border-radius: 2px;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+            border-radius: 4px;
             cursor: move;
-            transition: filter 0.1s;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
             overflow: visible;
-            padding: 1px 3px;
+            padding: 2px 4px;
             z-index: 10;
             user-select: none;
         }
+        .map-object::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 50%);
+            pointer-events: none;
+        }
         .object-label {
+            position: relative;
+            z-index: 2;
             overflow: hidden;
             white-space: nowrap;
             text-overflow: ellipsis;
             max-width: 100%;
             pointer-events: none;
+            letter-spacing: 0.3px;
         }
-        .map-object:hover { filter: brightness(1.1); z-index: 20; }
-        .map-object.selected { outline: 2px solid #fbbf24; outline-offset: 1px; z-index: 30; }
-        .map-object.dragging { opacity: 0.5; cursor: grabbing; }
-        .map-object.resizing { opacity: 0.7; }
+        .map-object:hover {
+            transform: scale(1.02);
+            z-index: 50;
+        }
+        .map-object:hover::before { opacity: 1; }
+        .map-object.selected {
+            outline: 2px solid #fbbf24;
+            outline-offset: 2px;
+            z-index: 60;
+            box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.3);
+        }
+        .map-object.dragging {
+            opacity: 0.7;
+            cursor: grabbing;
+            transform: scale(1.02);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        .map-object.resizing { opacity: 0.8; }
 
         /* Handles de redimension */
         .resize-handle {
             position: absolute;
-            background: #fbbf24;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
             z-index: 40;
             opacity: 0;
-            transition: opacity 0.15s;
+            transition: all 0.15s ease;
             box-sizing: border-box;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         .map-object.selected .resize-handle { opacity: 1; }
-        .map-object:hover .resize-handle { opacity: 0.6; }
+        .map-object:hover .resize-handle { opacity: 0.7; }
+        .resize-handle:hover {
+            transform: scale(1.2);
+            opacity: 1 !important;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+        }
 
         /* Esquinas - cuadrados en las 4 esquinas */
         .resize-handle.corner {
-            width: 12px;
-            height: 12px;
-            border-radius: 2px;
-            border: 2px solid #92400e;
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+            border: none;
         }
-        .resize-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }
-        .resize-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }
-        .resize-handle.sw { bottom: -6px; left: -6px; cursor: sw-resize; }
-        .resize-handle.se { bottom: -6px; right: -6px; cursor: se-resize; }
+        .resize-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
+        .resize-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
+        .resize-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+        .resize-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
 
         /* Lados - barras en el centro de cada borde */
         .resize-handle.edge {
-            border: 1px solid #92400e;
-            border-radius: 3px;
+            border: none;
+            border-radius: 4px;
         }
         .resize-handle.n {
-            top: -5px;
+            top: -4px;
             left: 50%;
             transform: translateX(-50%);
-            width: 30px;
-            height: 10px;
+            width: 24px;
+            height: 8px;
             cursor: n-resize;
         }
+        .resize-handle.n:hover { transform: translateX(-50%) scale(1.2); }
         .resize-handle.s {
-            bottom: -5px;
+            bottom: -4px;
             left: 50%;
             transform: translateX(-50%);
-            width: 30px;
-            height: 10px;
+            width: 24px;
+            height: 8px;
             cursor: s-resize;
         }
+        .resize-handle.s:hover { transform: translateX(-50%) scale(1.2); }
         .resize-handle.w {
-            left: -5px;
+            left: -4px;
             top: 50%;
             transform: translateY(-50%);
-            width: 10px;
-            height: 30px;
+            width: 8px;
+            height: 24px;
             cursor: w-resize;
         }
+        .resize-handle.w:hover { transform: translateY(-50%) scale(1.2); }
         .resize-handle.e {
-            right: -5px;
+            right: -4px;
             top: 50%;
             transform: translateY(-50%);
-            width: 10px;
-            height: 30px;
+            width: 8px;
+            height: 24px;
             cursor: e-resize;
         }
+        .resize-handle.e:hover { transform: translateY(-50%) scale(1.2); }
 
-        .type-maquina { background: linear-gradient(135deg, #2563eb, #1d4ed8); border: 1px solid #1e40af; }
-        .type-almacenamiento { background: linear-gradient(135deg, #16a34a, #15803d); border: 1px solid #166534; }
-        .type-transitable { background: linear-gradient(135deg, #9ca3af, #6b7280); border: 1px solid #4b5563; opacity: 0.7; }
-        .type-carga_descarga { background: linear-gradient(135deg, #f59e0b, #d97706); border: 1px solid #b45309; }
+        .type-maquina {
+            background: linear-gradient(145deg, #3b82f6 0%, #1d4ed8 50%, #1e40af 100%);
+            border: none;
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.2),
+                0 2px 4px rgba(29, 78, 216, 0.3),
+                0 1px 2px rgba(0,0,0,0.1);
+        }
+        .type-maquina:hover {
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.3),
+                0 4px 12px rgba(29, 78, 216, 0.4),
+                0 2px 4px rgba(0,0,0,0.15);
+        }
+
+        .type-almacenamiento {
+            background: linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%);
+            border: none;
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.15),
+                0 2px 4px rgba(5, 150, 105, 0.3);
+        }
+        .type-almacenamiento:hover {
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.2),
+                0 4px 10px rgba(5, 150, 105, 0.4);
+        }
+
+        .type-transitable {
+            background: linear-gradient(145deg, rgba(100, 116, 139, 0.7), rgba(71, 85, 105, 0.8));
+            border: 1px dashed rgba(148, 163, 184, 0.6);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+        }
+        .type-transitable:hover {
+            background: linear-gradient(145deg, rgba(100, 116, 139, 0.8), rgba(71, 85, 105, 0.9));
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.08);
+        }
+        .type-transitable .object-label {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: rgba(255,255,255,0.9);
+        }
+
+        .type-carga_descarga {
+            background: linear-gradient(145deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+            border: none;
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.15),
+                0 2px 4px rgba(217, 119, 6, 0.3);
+        }
+        .type-carga_descarga:hover {
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.2),
+                0 4px 10px rgba(217, 119, 6, 0.4);
+        }
 
         .ghost {
             position: absolute;
@@ -865,13 +929,25 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 9px;
-            font-weight: bold;
-            border-radius: 2px;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 4px;
             z-index: 110;
+            backdrop-filter: blur(2px);
+            transition: background 0.15s ease, border-color 0.15s ease;
         }
-        .ghost.valid { background: rgba(34, 197, 94, 0.3); border-color: #16a34a; color: #166534; }
-        .ghost.invalid { background: rgba(239, 68, 68, 0.3); border-color: #dc2626; color: #991b1b; }
+        .ghost.valid {
+            background: rgba(34, 197, 94, 0.25);
+            border-color: #22c55e;
+            color: #166534;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+        }
+        .ghost.invalid {
+            background: rgba(239, 68, 68, 0.25);
+            border-color: #ef4444;
+            color: #991b1b;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+        }
 
         /* Panel Propiedades */
         .props-header {
@@ -912,72 +988,147 @@
 
         .dim-display { font-size: 11px; color: #374151; }
 
-        .prop-actions { display: flex; gap: 6px; margin-top: auto; padding-top: 8px; border-top: 1px solid #e5e7eb; }
-        .btn-save, .btn-delete { flex: 1; padding: 6px; border-radius: 4px; font-size: 10px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
-        .btn-save { background: #3b82f6; color: white; }
-        .btn-save:hover { background: #2563eb; }
-        .btn-delete { background: white; color: #dc2626; border: 1px solid #dc2626; }
-        .btn-delete:hover { background: #fef2f2; }
+        .prop-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid #e5e7eb; }
+        .btn-save, .btn-delete {
+            flex: 1;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+        .btn-save {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+        }
+        .btn-save:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);
+        }
+        .btn-delete {
+            background: linear-gradient(135deg, #fee2e2, #fecaca);
+            color: #dc2626;
+        }
+        .btn-delete:hover {
+            background: linear-gradient(135deg, #fecaca, #fca5a5);
+            transform: translateY(-1px);
+        }
 
         /* Modal */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.15s ease;
+        }
         .modal-overlay.hidden { display: none; }
-        .modal-box { background: white; border-radius: 8px; width: 320px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
-        .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 600; font-size: 13px; }
-        .modal-close { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 4px; color: #9ca3af; font-size: 18px; cursor: pointer; }
+        .modal-box {
+            background: white;
+            border-radius: 12px;
+            width: 340px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideUp 0.2s ease;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e5e7eb;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .modal-close {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            color: #9ca3af;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
         .modal-close:hover { background: #f3f4f6; color: #374151; }
-        .modal-body { padding: 16px; }
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; font-size: 11px; font-weight: 500; color: #374151; margin-bottom: 4px; }
+        .modal-body { padding: 20px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; }
         .form-group.hidden { display: none; }
-        .form-input { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 12px; }
-        .form-input:focus { outline: none; border-color: #3b82f6; }
-        .form-info { display: flex; justify-content: space-between; background: #f9fafb; padding: 8px 12px; border-radius: 4px; font-size: 11px; color: #6b7280; }
-        .form-info strong { color: #374151; }
-        .modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid #e5e7eb; background: #f9fafb; border-radius: 0 0 8px 8px; }
-        .btn-cancel, .btn-confirm { padding: 8px 16px; border-radius: 4px; font-size: 12px; font-weight: 500; cursor: pointer; }
-        .btn-cancel { color: #6b7280; }
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: none;
+            border-radius: 8px;
+            background: #f3f4f6;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+        .form-input:focus {
+            outline: none;
+            background: #fff;
+            box-shadow: 0 0 0 2px #3b82f6;
+        }
+        .form-info {
+            display: flex;
+            justify-content: space-between;
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+        .form-info strong { color: #374151; font-weight: 600; }
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 16px 20px;
+            border-top: 1px solid #e5e7eb;
+            background: #f9fafb;
+            border-radius: 0 0 12px 12px;
+        }
+        .btn-cancel, .btn-confirm {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-cancel {
+            color: #6b7280;
+            background: transparent;
+        }
         .btn-cancel:hover { background: #e5e7eb; }
-        .btn-confirm { background: #3b82f6; color: white; }
-        .btn-confirm:hover { background: #2563eb; }
+        .btn-confirm {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        }
+        .btn-confirm:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5);
+        }
+        .btn-confirm:active {
+            transform: translateY(0);
+        }
     </style>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // =============================================
-        // NAVEGACION DROPDOWNS
-        // =============================================
-        const navDropdowns = document.querySelectorAll('.nav-dropdown');
-        let activeDropdown = null;
-
-        navDropdowns.forEach(dropdown => {
-            const btn = dropdown.querySelector('.nav-dropdown-btn');
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (activeDropdown && activeDropdown !== dropdown) {
-                    activeDropdown.classList.remove('active');
-                }
-                dropdown.classList.toggle('active');
-                activeDropdown = dropdown.classList.contains('active') ? dropdown : null;
-            });
-        });
-
-        // Cerrar dropdown al hacer clic fuera
-        document.addEventListener('click', (e) => {
-            if (activeDropdown && !activeDropdown.contains(e.target)) {
-                activeDropdown.classList.remove('active');
-                activeDropdown = null;
-            }
-        });
-
-        // Cerrar dropdown con Escape
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && activeDropdown) {
-                activeDropdown.classList.remove('active');
-                activeDropdown = null;
-            }
-        });
-
         // =============================================
         // CONFIGURACION
         // =============================================
@@ -2141,17 +2292,33 @@
             document.getElementById('modal-confirm').addEventListener('click', createLocalizacion);
             DOM.modal.addEventListener('click', (e) => { if (e.target === DOM.modal) closeModal(); });
 
+            // Funcion para navegar con transicion suave
+            function navigateWithTransition(url) {
+                const overlay = document.getElementById('nave-transition-overlay');
+                overlay.classList.add('active');
+
+                // Esperar la animacion del overlay antes de navegar
+                setTimeout(() => {
+                    window.location.href = url;
+                }, 300);
+            }
+
             // Nave selector
             document.getElementById('obra-selector').addEventListener('change', (e) => {
-                window.location.href = `{{ route('localizaciones.editarMapa') }}?obra=${e.target.value}&orientacion=${CONFIG.IS_VERTICAL ? 'vertical' : 'horizontal'}`;
+                const url = `{{ route('localizaciones.editarMapa') }}?obra=${e.target.value}&orientacion=${CONFIG.IS_VERTICAL ? 'vertical' : 'horizontal'}`;
+                navigateWithTransition(url);
             });
 
             // Orientation
             document.getElementById('btn-horizontal').addEventListener('click', () => {
-                window.location.href = `{{ route('localizaciones.editarMapa') }}?obra=${document.getElementById('obra-selector').value}&orientacion=horizontal`;
+                if (!CONFIG.IS_VERTICAL) return; // Ya esta en horizontal
+                const url = `{{ route('localizaciones.editarMapa') }}?obra=${document.getElementById('obra-selector').value}&orientacion=horizontal`;
+                navigateWithTransition(url);
             });
             document.getElementById('btn-vertical').addEventListener('click', () => {
-                window.location.href = `{{ route('localizaciones.editarMapa') }}?obra=${document.getElementById('obra-selector').value}&orientacion=vertical`;
+                if (CONFIG.IS_VERTICAL) return; // Ya esta en vertical
+                const url = `{{ route('localizaciones.editarMapa') }}?obra=${document.getElementById('obra-selector').value}&orientacion=vertical`;
+                navigateWithTransition(url);
             });
 
             // Machine drag

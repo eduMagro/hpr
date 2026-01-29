@@ -1,4 +1,6 @@
 <x-app-layout>
+    <x-slot name="title">Dashboard</x-slot>
+
     <div class="py-4 lg:py-12 ">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gradient-to-br from-gray-800 via-gray-800 to-gray-700 overflow-hidden shadow-sm sm:rounded-lg">

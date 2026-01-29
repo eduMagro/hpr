@@ -142,25 +142,22 @@ export async function updateTotalesFromCache(viewType, info) {
     const pesoSem = document.querySelector("#resumen-semanal-peso");
     const longSem = document.querySelector("#resumen-semanal-longitud");
     const diamSem = document.querySelector("#resumen-semanal-diametro");
-    if (pesoSem) pesoSem.textContent = `📦 ${num(semana?.peso)} kg`;
-    if (longSem) longSem.textContent = `📏 ${num(semana?.longitud)} m`;
+    const semEl = document.querySelector("#resumen-semanal-fecha");
+    if (pesoSem) pesoSem.textContent = `${num(semana?.peso)} kg`;
+    if (longSem) longSem.textContent = `${num(semana?.longitud)} m`;
     if (diamSem) diamSem.textContent = semana?.diametro ? `⌀ ${Number(semana.diametro).toFixed(2)} mm` : "";
+    if (semEl && semana?.nombre) semEl.textContent = `(${semana.nombre})`;
 
     // Mensual
     const pesoMes = document.querySelector("#resumen-mensual-peso");
     const longMes = document.querySelector("#resumen-mensual-longitud");
     const diamMes = document.querySelector("#resumen-mensual-diametro");
-    if (pesoMes) pesoMes.textContent = `📦 ${num(mes?.peso)} kg`;
-    if (longMes) longMes.textContent = `📏 ${num(mes?.longitud)} m`;
+    const mesEl = document.querySelector("#resumen-mensual-fecha");
+    if (pesoMes) pesoMes.textContent = `${num(mes?.peso)} kg`;
+    if (longMes) longMes.textContent = `${num(mes?.longitud)} m`;
     if (diamMes) diamMes.textContent = mes?.diametro ? `⌀ ${Number(mes.diametro).toFixed(2)} mm` : "";
-
-    // Actualizar fecha del mes
-    if (info.startStr) {
-        const dateObj = new Date(info.startStr);
-        const opciones = { year: "numeric", month: "long" };
-        let mesTexto = dateObj.toLocaleDateString("es-ES", opciones);
-        mesTexto = mesTexto.charAt(0).toUpperCase() + mesTexto.slice(1);
-        const mesEl = document.querySelector("#resumen-mensual-fecha");
-        if (mesEl) mesEl.textContent = `(${mesTexto})`;
+    // Usar el nombre del mes calculado en el backend (punto medio de la vista)
+    if (mesEl && mes?.nombre) {
+        mesEl.textContent = `(${mes.nombre})`;
     }
 }

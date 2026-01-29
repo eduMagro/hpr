@@ -5,16 +5,13 @@
     <link rel="stylesheet" href="{{ asset('css/maquinas-show.css') }}">
 
     <x-slot name="header">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                <strong>{{ $maquina->nombre }}</strong>,
-                {{ $usuario1->name }}
-                @if ($usuario2)
-                    y {{ $usuario2->name }}
-                @endif
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-1 lg:gap-4">
+            <h2 class="font-semibold text-base lg:text-xl text-gray-800 dark:text-gray-200 leading-tight">
+                <strong>{{ $maquina->nombre }}</strong>
+                <span class="text-sm lg:text-base font-normal text-gray-600 dark:text-gray-400">- {{ $usuario1->name }}@if ($usuario2), {{ $usuario2->name }}@endif</span>
             </h2>
 
-            <div class="flex flex-wrap items-center gap-4">
+            <div class="flex flex-wrap items-center gap-2 lg:gap-4">
                 @if ($maquina->tipo !== 'grua' && $maquina->tipo !== 'ensambladora')
                     {{-- Selectores de posiciones de planillas --}}
                     <div class="contenedor-selectores-planilla">
@@ -450,7 +447,7 @@
                     <div class="relative">
                         <select id="select-cambiar-maquina"
                             onchange="cambiarMaquinaSelect(this, {{ $maquina->id }})"
-                            class="appearance-none bg-white border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
+                            class="appearance-none bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:border-blue-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 rounded px-2 py-1 lg:px-4 lg:py-2 pr-8 lg:pr-10 text-xs lg:text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm transition-all duration-200 cursor-pointer">
                             @foreach ($maquinas as $m)
                                 <option value="{{ $m->id }}" {{ $m->id == $maquina->id ? 'selected' : '' }}>
                                     {{ $m->nombre }}
@@ -458,8 +455,8 @@
                             @endforeach
                         </select>
                         <div
-                            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 lg:px-3 text-gray-500 dark:text-gray-400">
+                            <svg class="w-3 h-3 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M19 9l-7 7-7-7" />
                             </svg>

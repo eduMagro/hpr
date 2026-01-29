@@ -31,48 +31,38 @@ class SalidaFerrallaController extends Controller
 {
     public function index(Request $request)
     {
-        // Cargar relaciones según el rol del usuario
+        // Para usuarios de oficina, Livewire maneja todo (paginación, filtros, resúmenes)
+        // Solo pasamos variables vacías para evitar errores en la vista
         if (auth()->user()->rol == 'oficina') {
-            $salidas = Salida::with([
+            return view('salidas.index', [
+                'salidasPorMes' => collect(),
+                'salidas' => collect(),
+                'resumenMensual' => [],
+                'resumenClienteObra' => [],
+                'paquetes' => collect(),
+                'empresasTransporte' => collect(),
+                'camiones' => collect(),
+                'camionesJson' => collect(),
+            ]);
+        }
+
+        // Para operarios: cargar solo salidas pendientes
+        $salidas = Salida::where('estado', 'pendiente')
+            ->with([
+                'paquetes' => function ($query) {
+                    $query->distinct();
+                },
+                'paquetes.etiquetas',
+                'empresaTransporte',
+                'camion',
                 'salidaClientes.cliente',
                 'salidaClientes.obra',
-                'paquetes.planilla.obra',
-                'empresaTransporte',
-                'camion'
             ])
-                ->orderBy('created_at', 'desc')
-                ->get();
+            ->get();
 
-            $empresasTransporte = EmpresaTransporte::orderBy('nombre')->get();
-            $camiones = Camion::with('empresaTransporte')->orderBy('modelo')->get();
-            // Prepara el array plano con solo los datos necesarios
-            $camionesJson = $camiones->map(function ($camion) {
-                return [
-                    'id'         => $camion->id,
-                    'modelo'     => $camion->modelo,
-                    'empresa_id' => $camion->empresaTransporte->id ?? null,
-                ];
-            });
-        } else {
-            $salidas = Salida::where('estado', 'pendiente')
-                ->with([
-                    'paquetes' => function ($query) {
-                        $query->distinct();
-                    },
-                    'paquetes.etiquetas',
-                    'empresaTransporte',
-                    'camion',
-                    // No cargamos 'clientes', sino la relación de salidaClientes
-                    'salidaClientes.cliente',
-                    'salidaClientes.obra',
-                ])
-                ->get();
-
-            // Inicializar variables para usuarios no oficina
-            $empresasTransporte = collect();
-            $camiones = collect();
-            $camionesJson = collect();
-        }
+        $empresasTransporte = collect();
+        $camiones = collect();
+        $camionesJson = collect();
 
         // Extraer todos los paquetes de las salidas
         $paquetes = $salidas->pluck('paquetes')->flatten();

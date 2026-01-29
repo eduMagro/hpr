@@ -1072,3 +1072,363 @@ body.fc-dragging-active .fc-timegrid-slot-lane[data-time$=":00:00"] {
         transform: translateY(0);
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🌙 MODO DARK - FULLCALENDAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Fondo general del calendario */
+html.dark .fc {
+    --fc-border-color: #374151;
+    --fc-page-bg-color: #1f2937;
+    --fc-neutral-bg-color: #111827;
+    --fc-list-event-hover-bg-color: #374151;
+    --fc-today-bg-color: rgba(99, 102, 241, 0.15);
+}
+
+html.dark .fc-theme-standard td,
+html.dark .fc-theme-standard th,
+html.dark .fc-theme-standard .fc-scrollgrid {
+    border-color: #374151;
+}
+
+/* Encabezados del calendario */
+html.dark .fc .fc-col-header-cell {
+    background-color: #1f2937;
+    color: #e5e7eb;
+}
+
+html.dark .fc .fc-col-header-cell-cushion {
+    color: #e5e7eb;
+}
+
+/* Toolbar */
+html.dark .fc .fc-toolbar-title {
+    color: #f3f4f6;
+}
+
+html.dark .fc .fc-button-primary {
+    background-color: #4b5563;
+    border-color: #4b5563;
+    color: #f3f4f6;
+}
+
+html.dark .fc .fc-button-primary:hover {
+    background-color: #6b7280;
+    border-color: #6b7280;
+}
+
+html.dark .fc .fc-button-primary:disabled {
+    background-color: #374151;
+    border-color: #374151;
+    color: #9ca3af;
+}
+
+html.dark .fc .fc-button-primary:not(:disabled).fc-button-active,
+html.dark .fc .fc-button-primary:not(:disabled):active {
+    background-color: #6366f1;
+    border-color: #6366f1;
+}
+
+/* Días del calendario */
+html.dark .fc .fc-daygrid-day {
+    background-color: #1f2937;
+}
+
+html.dark .fc .fc-daygrid-day:hover {
+    background-color: #374151;
+}
+
+html.dark .fc .fc-daygrid-day-number {
+    color: #d1d5db;
+}
+
+html.dark .fc .fc-day-today {
+    background-color: rgba(99, 102, 241, 0.15) !important;
+}
+
+html.dark .fc .fc-day-today .fc-daygrid-day-number {
+    color: #818cf8;
+    font-weight: 700;
+}
+
+/* Fines de semana */
+html.dark .fc .fc-day-sat,
+html.dark .fc .fc-day-sun {
+    background-color: #111827;
+}
+
+/* Días de otros meses */
+html.dark .fc .fc-day-other {
+    background-color: #0f172a;
+}
+
+html.dark .fc .fc-day-other .fc-daygrid-day-number {
+    color: #6b7280;
+}
+
+/* Timeline - Recursos */
+html.dark .fc .fc-resource-timeline .fc-datagrid {
+    background-color: #1f2937;
+}
+
+html.dark .fc .fc-datagrid-cell {
+    background-color: #1f2937;
+    color: #e5e7eb;
+}
+
+html.dark .fc .fc-datagrid-cell-cushion {
+    color: #e5e7eb;
+}
+
+html.dark .fc .fc-timeline-slot {
+    background-color: #1f2937;
+}
+
+html.dark .fc .fc-timeline-lane {
+    background-color: #1f2937;
+}
+
+/* Scrollbar del calendario */
+html.dark .fc ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+html.dark .fc ::-webkit-scrollbar-track {
+    background: #1f2937;
+}
+
+html.dark .fc ::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 4px;
+}
+
+html.dark .fc ::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+/* Eje de tiempo (timeGrid) */
+html.dark .fc-timegrid .fc-timegrid-axis {
+    background-color: #1f2937;
+    border-right-color: #374151;
+}
+
+html.dark .fc-timegrid .fc-timegrid-slot-label {
+    color: #9ca3af;
+}
+
+html.dark .fc-timegrid .fc-timegrid-slot-label[data-time$=":00:00"] {
+    color: #e5e7eb;
+}
+
+html.dark .fc-timegrid .fc-timegrid-slot[data-time$=":00:00"] {
+    border-top-color: #4b5563 !important;
+}
+
+html.dark .fc-timegrid .fc-timegrid-slot[data-time$=":30:00"] {
+    border-top-color: #374151 !important;
+}
+
+/* Menú contextual */
+html.dark .ctx-menu-container {
+    background: #1f2937;
+    border-color: #374151;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+html.dark .ctx-menu-header {
+    color: #e5e7eb;
+    background: #111827;
+    border-bottom-color: #374151;
+}
+
+html.dark .ctx-menu-item {
+    background: #1f2937;
+    color: #e5e7eb;
+}
+
+html.dark .ctx-menu-item:hover {
+    background: #374151;
+}
+
+html.dark .ctx-menu-item:active {
+    background: #4b5563;
+}
+
+html.dark .ctx-menu-danger {
+    color: #f87171;
+}
+
+html.dark .ctx-menu-danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+/* Resizer de columna de recursos */
+html.dark .fc-resource-area-resizer::after {
+    background: #4b5563;
+}
+
+html.dark .fc-resource-area-resizer:hover::after,
+html.dark .fc-resource-area-resizer.dragging::after {
+    background: #818cf8;
+}
+
+/* Encabezados de fin de semana colapsados */
+html.dark .weekend-header {
+    background-color: #374151;
+    color: #e5e7eb;
+}
+
+html.dark .weekend-header:hover {
+    background-color: #4b5563;
+}
+
+html.dark .weekend-header .collapse-icon {
+    color: #9ca3af;
+}
+
+html.dark .weekend-header[data-collapsed="true"] {
+    background-color: #4b5563;
+    color: #f3f4f6;
+}
+
+html.dark .weekend-header[data-collapsed="false"] {
+    background-color: rgba(99, 102, 241, 0.3);
+    color: #a5b4fc;
+}
+
+/* Columnas colapsadas */
+html.dark .fc-timeline .weekend-collapsed {
+    background-color: #111827 !important;
+}
+
+html.dark .fc-dayGridMonth-view td.weekend-day-collapsed {
+    background-color: #111827 !important;
+}
+
+html.dark .fc-dayGridMonth-view th.weekend-day-collapsed {
+    background-color: #4b5563 !important;
+}
+
+/* Ghost de drag & drop */
+html.dark .custom-drag-ghost .ghost-card {
+    background: rgba(31, 41, 55, 0.95);
+    border-color: var(--ghost-color, #818cf8);
+}
+
+html.dark .custom-drag-ghost .ghost-code {
+    color: #f3f4f6;
+}
+
+html.dark .custom-drag-ghost .ghost-name {
+    color: #9ca3af;
+}
+
+html.dark .custom-drag-ghost .ghost-client {
+    color: #6b7280;
+}
+
+html.dark .custom-drag-ghost .ghost-metrics {
+    background: #111827;
+    border-top-color: #374151;
+}
+
+html.dark .custom-drag-ghost .ghost-metric {
+    color: #d1d5db;
+}
+
+html.dark .custom-drag-ghost .ghost-destination {
+    background: #111827;
+    border-top-color: #374151;
+}
+
+html.dark .custom-drag-ghost .ghost-dest-date {
+    color: #e5e7eb;
+}
+
+/* Eventos filtrados en dark mode */
+html.dark .fc .fc-event.evento-filtrado {
+    background: #e5e7eb !important;
+    border-color: #f3f4f6 !important;
+    color: #1f2937 !important;
+}
+
+html.dark .fc .fc-event.evento-filtrado .fc-event-main,
+html.dark .fc .fc-event.evento-filtrado .fc-event-title {
+    background: #e5e7eb !important;
+    color: #1f2937 !important;
+}
+
+html.dark .fc .fc-event.evento-filtrado:hover {
+    background: #f3f4f6 !important;
+}
+
+/* Checkbox containers en dark mode */
+html.dark .checkbox-container {
+    background: #1f2937;
+    border-color: #374151;
+}
+
+html.dark .checkbox-container:hover {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+html.dark .checkbox-container:has(#solo-salidas:checked) {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: #10b981;
+}
+
+html.dark .checkbox-container:has(#solo-planillas:checked) {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: #8b5cf6;
+}
+
+/* Resumen diario en timeline */
+html.dark .fc-timeline .fc-timeline-lane[data-resource-id="_resumen_"] {
+    background-color: rgba(251, 191, 36, 0.1);
+}
+
+/* Popover del calendario */
+html.dark .fc .fc-popover {
+    background-color: #1f2937;
+    border-color: #374151;
+}
+
+html.dark .fc .fc-popover-header {
+    background-color: #111827;
+    color: #e5e7eb;
+}
+
+html.dark .fc .fc-popover-body {
+    background-color: #1f2937;
+}
+
+/* Lista de eventos */
+html.dark .fc .fc-list {
+    background-color: #1f2937;
+    border-color: #374151;
+}
+
+html.dark .fc .fc-list-day-cushion {
+    background-color: #111827;
+}
+
+html.dark .fc .fc-list-event:hover td {
+    background-color: #374151;
+}
+
+html.dark .fc .fc-list-event-title a {
+    color: #e5e7eb;
+}
+
+/* Eventos seleccionados */
+html.dark .fc-event.evento-seleccionado {
+    outline-color: #a78bfa !important;
+    box-shadow: 0 0 12px rgba(167, 139, 250, 0.5) !important;
+}
+
+html.dark .fc-event.evento-seleccionado::before {
+    background: #a78bfa;
+}

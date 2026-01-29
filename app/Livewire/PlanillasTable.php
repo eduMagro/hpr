@@ -7,6 +7,7 @@ use App\Models\Cliente;
 use App\Models\Obra;
 use App\Services\OrdenPlanillaService;
 use App\Services\PlanillaAprobacionAlertaService;
+use App\Helpers\FechaEntregaHelper;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Url;
@@ -517,8 +518,8 @@ class PlanillasTable extends Component
         $planilla->aprobada = true;
         $planilla->aprobada_por_id = auth()->id();
         $planilla->aprobada_at = now();
-        // Fecha de entrega = 7 días después de la aprobación
-        $planilla->fecha_estimada_entrega = now()->addDays(7)->setTime(10, 0, 0);
+        // Fecha de entrega = 7 días después de la aprobación (ajustada para evitar fines de semana y festivos)
+        $planilla->fecha_estimada_entrega = FechaEntregaHelper::calcular(now(), 7);
         $planilla->save();
 
         // Crear posición en orden_planillas al aprobar
@@ -608,7 +609,7 @@ class PlanillasTable extends Component
             $planilla->aprobada = true;
             $planilla->aprobada_por_id = auth()->id();
             $planilla->aprobada_at = now();
-            $planilla->fecha_estimada_entrega = now()->addDays(7)->setTime(10, 0, 0);
+            $planilla->fecha_estimada_entrega = FechaEntregaHelper::calcular(now(), 7);
             $planilla->save();
 
             // Crear posición en orden_planillas al aprobar

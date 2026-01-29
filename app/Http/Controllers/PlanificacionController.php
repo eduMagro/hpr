@@ -141,17 +141,30 @@ class PlanificacionController extends Controller
 
             $resources = $this->getResources($eventos, $viewType);
 
-            $fechaReferencia = $this->parseFlexibleDate($request->input('start')) ?? now();
-            $startOfWeek = $fechaReferencia->copy()->startOfWeek(Carbon::MONDAY);
-            $endOfWeek = $fechaReferencia->copy()->endOfWeek(Carbon::SUNDAY);
+            // Calcular fecha del medio de la vista para determinar el mes correcto
+            // $startDate y $endDate ya vienen de getDateRange() en línea 106
+            $middleTimestamp = ($startDate->timestamp + $endDate->timestamp) / 2;
+            $fechaReferenciaMes = Carbon::createFromTimestamp($middleTimestamp);
+
+            // Para la semana: en vista semanal usar las fechas de la vista, en otras vistas usar el punto medio
+            $esVistaSemanal = in_array($viewType, ['resourceTimelineWeek', 'resourceTimeGridWeek']);
+            if ($esVistaSemanal) {
+                // En vista semanal, usar las fechas exactas de la vista
+                $startOfWeek = $startDate->copy()->startOfDay();
+                $endOfWeek = $endDate->copy()->endOfDay();
+            } else {
+                // En otras vistas, calcular la semana desde el punto medio
+                $startOfWeek = $fechaReferenciaMes->copy()->startOfWeek(Carbon::MONDAY);
+                $endOfWeek = $fechaReferenciaMes->copy()->endOfWeek(Carbon::SUNDAY);
+            }
 
             // Calcular totales con consultas optimizadas
             $totalesSemana = Planilla::whereBetween('fecha_estimada_entrega', [$startOfWeek, $endOfWeek])
                 ->selectRaw('SUM(peso_total) as peso')
                 ->first();
 
-            $totalesMes = Planilla::whereMonth('fecha_estimada_entrega', $fechaReferencia->month)
-                ->whereYear('fecha_estimada_entrega', $fechaReferencia->year)
+            $totalesMes = Planilla::whereMonth('fecha_estimada_entrega', $fechaReferenciaMes->month)
+                ->whereYear('fecha_estimada_entrega', $fechaReferenciaMes->year)
                 ->selectRaw('SUM(peso_total) as peso')
                 ->first();
 
@@ -159,10 +172,14 @@ class PlanificacionController extends Controller
                 ->selectRaw('SUM(longitud * barras) as longitud_total, AVG(diametro) as diametro_avg')
                 ->first();
 
-            $elementosMes = Elemento::whereHas('planilla', fn($q) => $q->whereMonth('fecha_estimada_entrega', $fechaReferencia->month)
-                ->whereYear('fecha_estimada_entrega', $fechaReferencia->year))
+            $elementosMes = Elemento::whereHas('planilla', fn($q) => $q->whereMonth('fecha_estimada_entrega', $fechaReferenciaMes->month)
+                ->whereYear('fecha_estimada_entrega', $fechaReferenciaMes->year))
                 ->selectRaw('SUM(longitud * barras) as longitud_total, AVG(diametro) as diametro_avg')
                 ->first();
+
+            // Formatear nombres para el frontend
+            $nombreMes = ucfirst($fechaReferenciaMes->locale('es')->translatedFormat('F Y'));
+            $nombreSemana = $startOfWeek->format('d M') . ' - ' . $endOfWeek->format('d M');
 
             $responseData = [
                 'events' => $eventos->values(),
@@ -172,11 +189,13 @@ class PlanificacionController extends Controller
                         'peso' => $totalesSemana->peso ?? 0,
                         'longitud' => $elementosSemana->longitud_total ?? 0,
                         'diametro' => $elementosSemana->diametro_avg,
+                        'nombre' => $nombreSemana,
                     ],
                     'mes' => [
                         'peso' => $totalesMes->peso ?? 0,
                         'longitud' => $elementosMes->longitud_total ?? 0,
                         'diametro' => $elementosMes->diametro_avg,
+                        'nombre' => $nombreMes,
                     ],
                 ],
             ];

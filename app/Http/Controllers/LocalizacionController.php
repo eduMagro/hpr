@@ -25,9 +25,15 @@ class LocalizacionController extends Controller
             ->orderBy('obra')
             ->get();
 
-        // 2) Obra activa (?obra=ID)
+        // 2) Obra activa (?obra=ID) - Por defecto Nave A
         $obraActualId = request('obra');
-        $obraActiva   = $obras->firstWhere('id', $obraActualId) ?? $obras->first();
+        if ($obraActualId) {
+            $obraActiva = $obras->firstWhere('id', $obraActualId);
+        } else {
+            // Buscar "Nave A" primero, sino la primera disponible
+            $obraActiva = $obras->first(fn($o) => stripos($o->obra, 'nave a') !== false) ?? $obras->first();
+        }
+        $obraActualId = $obraActiva?->id;
         $cliente      = $obraActiva?->cliente;
 
         // 3) Dimensiones nave (m) -> grid real a 0,5 m/celda
@@ -36,9 +42,9 @@ class LocalizacionController extends Controller
         $columnasReales = $anchoM * 2; // celdas
         $filasReales    = $largoM * 2; // celdas
 
-        // 4) Orientación (vertical por defecto)
-        $orientacion = request('orientacion', 'vertical'); // 'vertical' | 'horizontal'
-        $estaGirado  = ($orientacion === 'vertical');      // true => vertical
+        // 4) Orientación (horizontal por defecto)
+        $orientacion = request('orientacion', 'horizontal'); // 'vertical' | 'horizontal'
+        $estaGirado  = ($orientacion === 'vertical');        // true => vertical
 
         // 5) Tamaño de la vista (según orientación)
         if ($estaGirado) {
@@ -1174,6 +1180,226 @@ class LocalizacionController extends Controller
                 'success' => false,
                 'message' => 'Error al actualizar la posición del paquete',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * API endpoint para obtener datos del mapa de localizaciones (vista index)
+     * Usado para cambio de nave inline sin recargar la página
+     */
+    public function getDatosLocalizacionesIndex($naveId)
+    {
+        try {
+            $obra = Obra::findOrFail($naveId);
+            $orientacion = request('orientacion', 'horizontal');
+            $estaGirado = ($orientacion === 'vertical');
+
+            // Dimensiones nave (m) -> grid real a 0,5 m/celda
+            $anchoM = max(1, (int) ($obra->ancho_m ?? 22));
+            $largoM = max(1, (int) ($obra->largo_m ?? 115));
+            $columnasReales = $anchoM * 2;
+            $filasReales = $largoM * 2;
+
+            // Tamaño de la vista (según orientación)
+            if ($estaGirado) {
+                $columnasVista = $columnasReales;
+                $filasVista = $filasReales;
+            } else {
+                $columnasVista = $filasReales;
+                $filasVista = $columnasReales;
+            }
+
+            // Cargar localizaciones de la nave
+            $localizaciones = Localizacion::with('maquina:id,nombre')
+                ->where('nave_id', $naveId)
+                ->get();
+
+            // Máquinas colocadas
+            $localizacionesConMaquina = $localizaciones
+                ->where('tipo', 'maquina')
+                ->whereNotNull('maquina_id')
+                ->filter(fn($l) => $l->maquina)
+                ->values()
+                ->map(function ($l) {
+                    return [
+                        'id'         => (int) $l->id,
+                        'x1'         => (int) $l->x1,
+                        'y1'         => (int) $l->y1,
+                        'x2'         => (int) $l->x2,
+                        'y2'         => (int) $l->y2,
+                        'tipo'       => 'maquina',
+                        'maquina_id' => (int) $l->maquina_id,
+                        'nombre'     => (string) ($l->nombre ?: $l->maquina->nombre),
+                        'nave_id'    => (int) $l->nave_id,
+                    ];
+                });
+
+            // Zonas no-maquina
+            $localizacionesZonas = $localizaciones
+                ->filter(fn($l) => $l->tipo !== 'maquina')
+                ->values()
+                ->map(function ($l) {
+                    $tipoNorm = str_replace('-', '_', (string) $l->tipo);
+                    return [
+                        'id'      => (int) $l->id,
+                        'x1'      => (int) $l->x1,
+                        'y1'      => (int) $l->y1,
+                        'x2'      => (int) $l->x2,
+                        'y2'      => (int) $l->y2,
+                        'tipo'    => $tipoNorm,
+                        'nombre'  => (string) ($l->nombre ?: strtoupper(str_replace('_', '/', $tipoNorm))),
+                        'nave_id' => (int) $l->nave_id,
+                    ];
+                });
+
+            // Coordenadas ocupadas
+            $ocupadas = $localizaciones
+                ->filter(fn($l) => str_replace('-', '_', $l->tipo) !== 'transitable')
+                ->map(fn($l) => [
+                    'x1' => (int) $l->x1,
+                    'y1' => (int) $l->y1,
+                    'x2' => (int) $l->x2,
+                    'y2' => (int) $l->y2,
+                ])->values()->all();
+
+            $ctx = [
+                'naveId'            => (int) $naveId,
+                'estaGirado'        => $estaGirado,
+                'orientacion'       => $orientacion,
+                'columnasReales'    => $columnasReales,
+                'filasReales'       => $filasReales,
+                'columnasVista'     => $columnasVista,
+                'filasVista'        => $filasVista,
+                'ocupadas'          => $ocupadas,
+                'storeUrl'          => route('localizaciones.store'),
+                'deleteUrlTemplate' => url('/localizaciones/:id'),
+            ];
+
+            $dimensiones = [
+                'ancho' => $anchoM,
+                'largo' => $largoM,
+                'obra'  => $obra->obra,
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'ctx'                      => $ctx,
+                    'localizacionesConMaquina' => $localizacionesConMaquina->values(),
+                    'localizacionesZonas'      => $localizacionesZonas->values(),
+                    'dimensiones'              => $dimensiones,
+                    'obraActualId'             => (int) $naveId,
+                    'columnasVista'            => $columnasVista,
+                    'filasVista'               => $filasVista,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Error al obtener datos de localizaciones para nave {$naveId}: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar datos: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * API endpoint para obtener datos del editor de mapa
+     * Usado para cambio de nave inline sin recargar la página
+     */
+    public function getDatosEditorMapa($naveId)
+    {
+        try {
+            $obra = Obra::findOrFail($naveId);
+            $orientacion = request('orientacion', 'horizontal');
+            $estaGirado = ($orientacion === 'vertical');
+
+            // Dimensiones
+            $anchoM = max(1, (int) ($obra->ancho_m ?? 22));
+            $largoM = max(1, (int) ($obra->largo_m ?? 115));
+            $columnasReales = $anchoM * 2;
+            $filasReales = $largoM * 2;
+
+            if ($estaGirado) {
+                $columnasVista = $columnasReales;
+                $filasVista = $filasReales;
+            } else {
+                $columnasVista = $filasReales;
+                $filasVista = $columnasReales;
+            }
+
+            // Localizaciones
+            $localizaciones = Localizacion::with('maquina:id,nombre')
+                ->where('nave_id', $naveId)
+                ->get()
+                ->map(function ($l) {
+                    return [
+                        'id'         => (int) $l->id,
+                        'x1'         => (int) $l->x1,
+                        'y1'         => (int) $l->y1,
+                        'x2'         => (int) $l->x2,
+                        'y2'         => (int) $l->y2,
+                        'tipo'       => str_replace('-', '_', (string) $l->tipo),
+                        'nombre'     => (string) ($l->nombre ?: ($l->maquina?->nombre ?? strtoupper(str_replace('_', '/', $l->tipo)))),
+                        'maquina_id' => $l->maquina_id ? (int) $l->maquina_id : null,
+                        'nave_id'    => (int) $l->nave_id,
+                    ];
+                });
+
+            // Máquinas disponibles (no colocadas)
+            $maquinasColocadasIds = $localizaciones
+                ->filter(fn($l) => $l['tipo'] === 'maquina' && $l['maquina_id'])
+                ->pluck('maquina_id')
+                ->unique()
+                ->values()
+                ->all();
+
+            $maquinas = Maquina::where('obra_id', $naveId)
+                ->when(!empty($maquinasColocadasIds), fn($q) => $q->whereNotIn('id', $maquinasColocadasIds))
+                ->where(function ($q) {
+                    $q->whereNull('tipo')->orWhereRaw('LOWER(tipo) <> ?', ['grua']);
+                })
+                ->orderBy('nombre')
+                ->get()
+                ->map(function ($m) {
+                    return [
+                        'id'      => (int) $m->id,
+                        'nombre'  => (string) $m->nombre,
+                        'ancho_m' => $m->ancho_m ?? 2,
+                        'largo_m' => $m->largo_m ?? 2,
+                    ];
+                });
+
+            // Todas las máquinas para el selector de propiedades
+            $todasMaquinas = Maquina::where('obra_id', $naveId)
+                ->orderBy('nombre')
+                ->get()
+                ->map(fn($m) => ['id' => (int) $m->id, 'nombre' => (string) $m->nombre]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'obraActiva' => [
+                        'id'       => (int) $obra->id,
+                        'obra'     => $obra->obra,
+                        'ancho_m'  => $anchoM,
+                        'largo_m'  => $largoM,
+                    ],
+                    'columnasVista'    => $columnasVista,
+                    'filasVista'       => $filasVista,
+                    'columnasReales'   => $columnasReales,
+                    'filasReales'      => $filasReales,
+                    'estaGirado'       => $estaGirado,
+                    'localizaciones'   => $localizaciones->values(),
+                    'maquinas'         => $maquinas->values(),
+                    'todasMaquinas'    => $todasMaquinas->values(),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Error al obtener datos del editor para nave {$naveId}: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar datos: ' . $e->getMessage()
             ], 500);
         }
     }

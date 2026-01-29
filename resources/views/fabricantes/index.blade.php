@@ -1,6 +1,12 @@
 <x-app-layout>
     <x-slot name="title">Proveedores - {{ config('app.name') }}</x-slot>
 
+    <x-page-header
+        title="Proveedores y Fabricantes"
+        subtitle="Gestión de proveedores de material"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/></svg>'
+    />
+
     <div class="px-4 py-4">
         <div x-data="{ openProveedorModal: false }" class="container mx-auto p-4">
             <!-- Botón para abrir el modal de añadir empresa -->

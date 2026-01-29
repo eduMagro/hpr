@@ -1,12 +1,17 @@
 <x-app-layout>
     <x-slot name="title">Salidas de Almacén - {{ config('app.name') }}</x-slot>
 
+    <x-page-header
+        title="Salidas de Almacén"
+        subtitle="Gestión de salidas de material de almacén"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l-3-3m3 3l3-3"/></svg>'
+    />
+
     <x-menu.salidas.salidas />
     <x-menu.salidas.salidas2 />
     <x-menu.salidas.salidasAlmacen />
 
     <div class="w-full px-6 py-6">
-        <h1 class="text-xl font-semibold text-gray-800 mb-4">🚛 Salidas de Almacén</h1>
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <div class="overflow-x-auto bg-white shadow rounded-lg">
 

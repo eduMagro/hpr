@@ -4,6 +4,7 @@
 
 
 <x-app-layout>
+    <x-slot name="title">Planificación por Orden</x-slot>
     @php
         $menu = \App\Services\MenuService::getContextMenu('planillas');
     @endphp
@@ -14,10 +15,14 @@
         :mobileLabel="$menu['config']['mobileLabel']"
     />
 
+    <x-page-header
+        title="Planificación por Orden"
+        subtitle="Vista de órdenes y planillas por máquina"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>'
+    />
 
     <div class="p-6 overflow-hidden relative max-h-[calc(100vh-80px)]">
         <div class="flex w-full justify-between">
-            <h1 class="text-2xl font-bold mb-4">🧾 Planificación por Orden</h1>
             <div class="flex gap-5">
 
                 <button id="btn_mostrar_modal_obras"

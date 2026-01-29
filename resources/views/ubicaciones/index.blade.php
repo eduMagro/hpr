@@ -1428,19 +1428,20 @@ Inesperados: ${inesperados.join(', ') || ''}
 </script>
 
 <x-app-layout>
+    <x-slot name="title">Ubicaciones - {{ config('app.name') }}</x-slot>
+
+    <x-page-header
+        title="Gestión de Ubicaciones"
+        subtitle="Crea, navega y revisa las ubicaciones del almacén"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>'
+    />
+
     <x-menu.ubicaciones :obras="$obras" :obra-actual-id="$obraActualId" color-base="emerald" />
 
     <div x-data="paginaUbicaciones()" class="max-w-7xl mx-auto space-y-4 min-h-[calc(100vh-8rem)] pb-8">
         <div
             class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-4 lg:p-6">
             <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-                <div>
-                    <p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400">Ubicaciones |
-                        {{ $nombreAlmacen }}</p>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Gestión de Ubicaciones</h1>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Crea, navega y revisa las ubicaciones del
-                        almacén con acceso rápido al inventario.</p>
-                </div>
 
                 <div class="flex justify-between md:flex-col gap-2 items-end h-fit">
                     <button @click="toggleAll()"

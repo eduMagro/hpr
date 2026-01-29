@@ -1,5 +1,12 @@
 <x-app-layout>
     <x-slot name="title">Paquetes - {{ config('app.name') }}</x-slot>
+
+    <x-page-header
+        title="Gestión de Paquetes"
+        subtitle="Control y localización de paquetes"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>'
+    />
+
     {{-- BOTÓN PARA IR AL MAPA DE LOCALIZACIONES --}}
     <div class="mb-4 flex justify-end">
         <a href="{{ route('mapa.paquetes', ['obra' => request('nave')]) }}" wire:navigate

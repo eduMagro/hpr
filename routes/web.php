@@ -391,6 +391,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/localizaciones-paquetes/{codigo}', [PaqueteController::class, 'update'])->name('localizaciones_paquetes.update');
     Route::post('/localizaciones/store-paquete', [LocalizacionController::class, 'storePaquete'])->name('localizaciones.storePaquete');
     Route::get('/api/mapa-nave/{naveId}', [LocalizacionController::class, 'obtenerDatosMapaNave'])->name('api.mapaNave');
+    Route::get('/api/localizaciones-index/{naveId}', [LocalizacionController::class, 'getDatosLocalizacionesIndex'])->name('api.localizacionesIndex');
+    Route::get('/api/localizaciones-editor/{naveId}', [LocalizacionController::class, 'getDatosEditorMapa'])->name('api.localizacionesEditor');
     // === USUARIOS Y VACACIONES ===
 
     Route::resource('users', ProfileController::class)->except(['create', 'store']);
