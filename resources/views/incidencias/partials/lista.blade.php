@@ -1,10 +1,10 @@
 @if (isset($grupos) && count($grupos) > 0)
     @foreach ($grupos as $maquina)
         <div x-data="{ expanded: false }"
-            class="bg-white rounded-xl border border-gray-200 dark:bg-white/5 dark:border-gray-600 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            class="rounded-xl border border-gray-200 dark:border-blue-600 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
             {{-- Machine Header --}}
             <div @click="expanded = !expanded"
-                class="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors flex items-center justify-between">
+                class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-blue-800/10 dark:to-blue-700/10 p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors flex items-center justify-between">
                 <div class="flex items-center gap-4">
                     {{-- Machine Image/Icon --}}
                     <div
@@ -53,12 +53,12 @@
 
             {{-- Incidents List (Expanded) --}}
             <div x-show="expanded" x-collapse style="display: none;"
-                class="border-t border-gray-100 dark:border-gray-600 bg-gray-50/50 dark:bg-transparent">
+                class="border-t border-gray-100 dark:border-blue-600 bg-gray-50/50 dark:bg-transparent">
                 @foreach ($maquina->incidencias as $incidencia)
                     <div class="p-4 last:border-0 hover:bg-white dark:hover:bg-gray-800/50 transition-colors group relative pl-20">
                         {{-- Connecting Line --}}
-                        <div class="absolute left-10 top-0 bottom-0 w-px bg-gray-300 group-last:bottom-1/2"></div>
-                        <div class="absolute left-10 top-1/2 w-6 h-px bg-gray-300"></div>
+                        <div class="absolute left-10 top-0 bottom-0 w-px bg-gray-300 dark:bg-blue-600 group-last:bottom-1/2"></div>
+                        <div class="absolute left-10 top-1/2 w-6 h-px bg-gray-300 dark:bg-blue-600"></div>
 
                         <a href="{{ route('incidencias.show', $incidencia->id) }}"
                             class="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -73,7 +73,8 @@
                                         <span
                                             class="text-xs text-gray-400 font-mono">#INC-{{ str_pad($incidencia->id, 4, '0', STR_PAD_LEFT) }}</span>
                                     </div>
-                                    <h4 class="font-bold text-gray-800 text-sm uppercase">{{ $incidencia->titulo }}
+                                    <h4 class="font-bold text-gray-800 dark:text-gray-200 text-sm uppercase">
+                                        {{ $incidencia->titulo }}
                                     </h4>
                                 </div>
                                 <div class="flex items-center gap-3">

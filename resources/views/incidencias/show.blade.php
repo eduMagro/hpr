@@ -23,17 +23,25 @@
 
                 {{-- Machine Profile --}}
                 <div
-                    class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm dark:bg-transparent dark:border-blue-600">
+                    class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 p-6 shadow-sm dark:from-blue-800/10 dark:to-blue-600/10 dark:border-blue-600">
                     <div class="flex items-center gap-4 mb-6">
                         <div
-                            class="w-16 h-16 rounded-xl bg-gray-50 dark:bg-gray-700 dark:border-gray-600 flex items-center justify-center text-gray-400 dark:text-gray-300 text-2xl border border-gray-200">
-                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                            class="w-16 h-16 rounded-xl bg-gray-50 dark:bg-blue-800/20 dark:border-gray-300 flex items-center justify-center text-gray-400 dark:text-gray-300 text-2xl border border-gray-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" class="lucide lucide-construction-icon lucide-construction">
+                                <rect x="2" y="6" width="20" height="8" rx="1" />
+                                <path d="M17 14v7" />
+                                <path d="M7 14v7" />
+                                <path d="M17 3v3" />
+                                <path d="M7 3v3" />
+                                <path d="M10 14 2.3 6.3" />
+                                <path d="m14 6 7.7 7.7" />
+                                <path d="m8 6 8 8" />
                             </svg>
                         </div>
                         <div>
-                            <h1 class="text-xl font-bold text-gray-900 dark:text-blue-600 leading-tight">
+                            <h1 class="text-xl font-bold text-gray-900 dark:text-gray-200 leading-tight">
                                 {{ $incidencia->maquina->nombre ?? 'N/A' }}
                             </h1>
                             <div class="flex items-center gap-2 mt-1">
@@ -49,20 +57,20 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                        <div class="text-center">
+                    <div class="grid grid-cols-2 text-sm mt-4 border-t border-gray-300 dark:border-blue-600">
+                        <div class="text-center pt-4">
                             <div
-                                class="text-xs text-gray-400 dark:text-gray-300 uppercase tracking-wider font-semibold mb-1">
+                                class="text-xs text-gray-400 dark:text-gray-400 uppercase tracking-wider font-semibold mb-1">
                                 Nave</div>
-                            <div class="font-bold text-gray-800 dark:text-blue-600">
+                            <div class="font-bold text-gray-800 dark:text-white">
                                 {{ $incidencia->maquina->obra->obra ?? 'Sin Asignar' }}
                             </div>
                         </div>
-                        <div class="text-center border-l border-gray-100">
+                        <div class="text-center border-l border-gray-300 dark:border-blue-600 pl-2 pt-4">
                             <div
-                                class="text-xs text-gray-400 dark:text-gray-300 uppercase tracking-wider font-semibold mb-1">
+                                class="text-xs text-gray-400 dark:text-gray-400 uppercase tracking-wider font-semibold mb-1">
                                 Modelo</div>
-                            <div class="font-bold text-gray-800 dark:text-blue-600">
+                            <div class="font-bold text-gray-800 dark:text-white">
                                 {{ $incidencia->maquina->tipo ?? 'Desconocido' }}
                             </div>
                         </div>
@@ -71,20 +79,21 @@
 
                 {{-- Timeline --}}
                 <div
-                    class="bg-white dark:bg-transparent rounded-xl border border-gray-200 dark:border-blue-600 p-6 shadow-sm relative">
-                    <h3 class="font-bold text-gray-900 dark:text-blue-600 mb-6 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-blue-800/10 dark:to-blue-600/10 rounded-xl border border-gray-200 dark:border-blue-600 p-6 shadow-sm relative">
+                    <h3 class="font-bold text-gray-900 dark:text-gray-200 mb-6 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-gray-400 dark:text-gray-200" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         Historial Reciente
                     </h3>
 
-                    <div class="space-y-8 relative pl-5 border-l-2 border-gray-300 ml-3">
+                    <div class="space-y-8 relative pl-5 border-l-2 border-gray-300 dark:border-gray-200 ml-3">
                         @foreach ($historial as $h)
                             <div class="relative group">
                                 <div
-                                    class="absolute -left-[26px] top-0 w-8 h-8 rounded-full bg-white outline outline-4 outline-white border-2 {{ $h->estado == 'resuelta' ? 'border-green-500 text-green-500' : 'border-red-500 text-red-500' }} flex items-center justify-center shadow-sm">
+                                    class="absolute -left-[26px] top-0 w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-200 outline outline-4 outline-gray-300 dark:outline-gray-200 border-2 {{ $h->estado == 'resuelta' ? 'border-green-500 text-green-500' : 'border-red-500 text-red-500' }} flex items-center justify-center shadow-sm">
                                     @if ($h->estado == 'resuelta')
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -105,7 +114,7 @@
                                         {{ ucfirst($h->estado) }}
                                     </div>
                                     <a href="{{ route('incidencias.show', $h->id) }}"
-                                        class="font-semibold text-gray-800 hover:text-blue-600 transition-colors block leading-tight">
+                                        class="font-semibold text-gray-800 dark:text-gray-300 hover:text-blue-600 hover:dark:text-gray-200 transition-colors block leading-tight">
                                         {{ $h->titulo }}
                                     </a>
                                     <p class="text-xs text-gray-400 mt-1">{{ $h->fecha_reporte->format('d M Y') }}</p>
@@ -121,14 +130,14 @@
             <div class="lg:col-span-2">
 
                 <div
-                    class="bg-white dark:bg-transparent dark:border-blue-600 rounded-xl border border-gray-200 shadow-lg overflow-hidden flex flex-col h-full">
+                    class="rounded-xl border border-gray-200 dark:border-blue-600 shadow-lg overflow-hidden flex flex-col h-full">
 
                     {{-- Toolbar --}}
                     <div
-                        class="p-6 border-b border-gray-100 dark:border-blue-600 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50 dark:bg-transparent">
+                        class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-blue-800/10 dark:to-blue-600/10 dark:border-blue-600 p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50 dark:bg-transparent">
                         <div>
                             <div class="flex items-center gap-2 mb-1">
-                                <h2 class="text-xl font-bold text-gray-900 dark:text-blue-600">
+                                <h2 class="text-xl font-bold text-gray-900 dark:text-gray-200">
                                     #INC-{{ str_pad($incidencia->id, 4, '0', STR_PAD_LEFT) }}</h2>
                                 @if ($incidencia->estado == 'resuelta')
                                     <span
@@ -138,14 +147,15 @@
                                         class="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full border border-red-200 animate-pulse">ABIERTA</span>
                                 @endif
                             </div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <p class="text-sm text-gray-500 dark:text-gray-300 flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="lucide lucide-clock-icon lucide-clock">
+                                    <path d="M12 6v6l4 2" />
+                                    <circle cx="12" cy="12" r="10" />
                                 </svg>
                                 Reportado {{ $incidencia->fecha_reporte->diffForHumans() }} por <strong
-                                    class="text-gray-700">{{ $incidencia->user->name ?? 'Usuario' }}</strong>
+                                    class="text-gray-700 dark:text-gray-100">{{ $incidencia->user->name ?? 'Usuario' }}</strong>
                             </p>
                         </div>
 
@@ -228,7 +238,7 @@
                                         {{ substr($incidencia->resolver->name ?? '?', 0, 1) }}
                                     </div>
                                     <span
-                                        class="text-sm font-semibold text-gray-800">{{ $incidencia->resolver->name ?? 'Usuario' }}</span>
+                                        class="text-sm font-semibold text-gray-800 dark:text-white">{{ $incidencia->resolver->name ?? 'Usuario' }}</span>
                                 </div>
                                 <div class="text-xs text-gray-400 mt-1">
                                     {{ $incidencia->fecha_resolucion->format('d/m/Y H:i') }}
@@ -244,9 +254,14 @@
                         <div class="mb-8">
                             <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Descripción del
                                 Problema</h3>
-                            <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-                                <h4 class="font-bold text-lg text-gray-900 mb-2">{{ $incidencia->titulo }}</h4>
-                                <p class="text-gray-600 leading-relaxed text-base">{{ $incidencia->descripcion }}</p>
+                            <div
+                                class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-blue-800/10 dark:to-blue-700/10 dark:border-blue-600 dark:bg- rounded-xl border border-gray-200 p-5 shadow-sm">
+                                <h4 class="font-bold text-lg text-gray-900 dark:text-white">
+                                    {{ $incidencia->titulo }}
+                                </h4>
+                                <p class="text-gray-600 dark:text-gray-300 leading-relaxed text-base">
+                                    {{ $incidencia->descripcion }}
+                                </p>
                             </div>
                         </div>
 
@@ -267,7 +282,8 @@
                                         Editar
                                     </button>
                                 </div>
-                                <div class="bg-green-50 border border-green-200 rounded-xl p-5 shadow-sm">
+                                <div
+                                    class="bg-green-50 dark:bg-green-800/10 border border-green-200 rounded-xl p-5 shadow-sm">
                                     <p class="text-green-800 leading-relaxed">{{ $incidencia->resolucion }}</p>
 
                                     @if($incidencia->coste > 0)
@@ -363,7 +379,7 @@
                                 <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Evidencia
                                 </h3>
                                 <div
-                                    class="bg-gray-50 border border-dashed border-gray-300 rounded-xl p-8 text-center text-gray-400">
+                                    class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-blue-800/10 dark:to-blue-700/10 border border-dashed border-gray-300 dark:border-blue-600 rounded-xl p-8 text-center text-gray-400">
                                     <svg class="w-10 h-10 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor"
                                         viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
