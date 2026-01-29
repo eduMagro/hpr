@@ -176,7 +176,7 @@ Route::middleware(['auth', 'puede.asistente', 'throttle:60,1'])
         // Ruta de envío de mensajes con rate limiting más estricto
         Route::post('/mensaje', [AsistenteVirtualController::class, 'enviarMensaje'])
             ->middleware('throttle:15,1'); // Solo 15 mensajes por minuto
-    
+
         // === SISTEMA EXPERTO: INFORMES ===
         Route::get('/informes', [\App\Http\Controllers\Api\AsistenteReportController::class, 'index'])
             ->name('asistente.informes.index');
@@ -384,9 +384,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/inventario-backups', [InventarioBackupController::class, 'index'])->name('inventario-backups.index');
 
     // === LOCALIZACIONES ===
-    Route::resource('localizaciones', LocalizacionController::class);
     Route::get('/localizaciones/editar-mapa', [LocalizacionController::class, 'editarMapa'])->name('localizaciones.editarMapa');
     Route::post('/localizaciones/verificar', [LocalizacionController::class, 'verificar'])->name('localizaciones.verificar');
+    Route::resource('localizaciones', LocalizacionController::class);
 
     Route::post('/localizaciones-paquetes/{codigo}', [PaqueteController::class, 'update'])->name('localizaciones_paquetes.update');
     Route::post('/localizaciones/store-paquete', [LocalizacionController::class, 'storePaquete'])->name('localizaciones.storePaquete');

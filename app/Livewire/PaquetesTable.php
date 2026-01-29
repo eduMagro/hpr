@@ -44,6 +44,9 @@ class PaquetesTable extends Component
     public $estado = '';
 
     #[Url]
+    public $salida = '';
+
+    #[Url]
     public $created_at = '';
 
     #[Url]
@@ -131,6 +134,13 @@ class PaquetesTable extends Component
             $query->where('estado', $this->estado);
         }
 
+        // Salida
+        if (!empty($this->salida)) {
+            $query->whereHas('salidas', function ($q) {
+                $q->where('codigo_salida', 'like', '%' . trim($this->salida) . '%');
+            });
+        }
+
         // Fecha de creación
         if (!empty($this->created_at)) {
             $query->whereDate('created_at', Carbon::parse($this->created_at)->format('Y-m-d'));
@@ -155,10 +165,22 @@ class PaquetesTable extends Component
             'peso',
             'estado',
             'created_at',
+            'salida',
         ];
 
         $sortBy = in_array($this->sort, $columnasPermitidas) ? $this->sort : 'created_at';
         $order = strtolower($this->order) === 'asc' ? 'asc' : 'desc';
+
+        // Ordenamiento especial para salida (viene de tabla relacionada)
+        if ($sortBy === 'salida') {
+            return $query->orderBy(
+                \App\Models\Salida::select('codigo_salida')
+                    ->join('salidas_paquetes', 'salidas.id', '=', 'salidas_paquetes.salida_id')
+                    ->whereColumn('salidas_paquetes.paquete_id', 'paquetes.id')
+                    ->limit(1),
+                $order
+            );
+        }
 
         return $query->orderBy($sortBy, $order);
     }
@@ -247,7 +269,8 @@ class PaquetesTable extends Component
             'ubicacion',
             'user',
             'etiquetas',
-            'localizacionPaquete'
+            'localizacionPaquete',
+            'salida'
         ]);
 
         $query = $this->aplicarFiltros($query);

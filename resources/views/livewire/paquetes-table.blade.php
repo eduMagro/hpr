@@ -19,6 +19,7 @@
                         <th>Localización</th>
                         <th>Usuario</th>
                         <x-tabla.encabezado-ordenable :sortActual="$sort" :orderActual="$order" campo="estado" texto="Estado" />
+                        <x-tabla.encabezado-ordenable :sortActual="$sort" :orderActual="$order" campo="salida" texto="Salida" />
                         <th>Elementos</th>
                         <x-tabla.encabezado-ordenable :sortActual="$sort" :orderActual="$order" campo="peso" texto="Peso (Kg)" />
                         <x-tabla.encabezado-ordenable :sortActual="$sort" :orderActual="$order" campo="created_at" texto="Fecha Creación" />
@@ -74,6 +75,10 @@
                                 <option value="enviado">Enviado</option>
                             </select>
                         </th>
+                        <th>
+                            <input type="text" wire:model.live.debounce.300ms="salida"
+                                class="inline-edit-input" placeholder="Salida...">
+                        </th>
                         <th></th> {{-- Elementos --}}
                         <th></th> {{-- Peso --}}
                         <th>
@@ -106,8 +111,8 @@
                             <td class="p-2 text-center border">{{ $paquete->id }}</td>
                             <td class="p-2 text-center border">{{ $paquete->codigo }}</td>
                             <td class="p-2 text-center border">
-                                <a href="{{ route('planillas.index', ['planilla_id' => $paquete->planilla->id]) }}"
-                                    wire:navigate class="text-blue-600 dark:text-blue-400 hover:underline">
+                                <a href="{{ route('planillas.index', ['codigo' => $paquete->planilla->codigo_limpio]) }}"
+                                    class="text-blue-600 dark:text-blue-400 hover:underline">
                                     {{ $paquete->planilla->codigo_limpio }}
                                 </a>
                             </td>
@@ -166,6 +171,17 @@
                                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold {{ $estadoBadge['bg'] }} {{ $estadoBadge['text'] }}">
                                     {{ $estadoBadge['icon'] }} {{ $estadoBadge['label'] }}
                                 </span>
+                            </td>
+                            <td class="p-2 text-center border">
+                                @if ($paquete->salida->first())
+                                    <a href="{{ route('salidas-ferralla.show', $paquete->salida->first()->id) }}"
+                                        wire:navigate
+                                        class="text-purple-600 dark:text-purple-400 hover:underline font-medium">
+                                        {{ $paquete->salida->first()->codigo_salida }}
+                                    </a>
+                                @else
+                                    <span class="text-gray-400 dark:text-gray-500">-</span>
+                                @endif
                             </td>
                             <td class="p-2 text-center border">
                                 @if ($paquete->etiquetas->isNotEmpty())

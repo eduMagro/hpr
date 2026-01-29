@@ -43,4 +43,7 @@ return [
         'api_key' => env('OCR_SPACE_API_KEY', 'K88888888888957'), // Obtener gratis en https://ocr.space/ocrapi/freekey
     ],
 
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+    ],
 ];

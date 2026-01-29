@@ -240,6 +240,23 @@ class LocalizacionController extends Controller
         $obraActualId = request('obra');
         $obraActiva = $obras->firstWhere('id', $obraActualId) ?? $obras->first();
 
+        // Dimensiones y Orientación
+        $anchoM = max(1, (int) ($obraActiva->ancho_m ?? 22));
+        $largoM = max(1, (int) ($obraActiva->largo_m ?? 115));
+        $columnasReales = $anchoM * 2;
+        $filasReales    = $largoM * 2;
+
+        $orientacion = request('orientacion', 'horizontal');
+        $estaGirado  = ($orientacion === 'vertical');
+
+        if ($estaGirado) {
+            $columnasVista = $columnasReales;
+            $filasVista    = $filasReales;
+        } else {
+            $columnasVista = $filasReales;
+            $filasVista    = $columnasReales;
+        }
+
         // Cliente (relación desde obra activa)
         $cliente = $obraActiva?->cliente;
 
@@ -248,7 +265,10 @@ class LocalizacionController extends Controller
             ? Localizacion::where('nave_id', $obraActiva->id)->get()
             : collect();
 
-        return view('localizaciones.editarMapa', compact('localizaciones', 'obras', 'obraActualId', 'cliente', 'obraActiva'));
+        // Máquinas para el selector
+        $maquinas = $obraActiva ? Maquina::where('obra_id', $obraActiva->id)->orderBy('nombre')->get() : collect();
+
+        return view('localizaciones.editarMapa', compact('localizaciones', 'obras', 'obraActualId', 'cliente', 'obraActiva', 'columnasVista', 'filasVista', 'estaGirado', 'maquinas'));
     }
     //------------------------------------------------------------------------------------ UPDATE LOCALIZACION()
     public function update(Request $request, $id)
@@ -308,7 +328,7 @@ class LocalizacionController extends Controller
                 'nombre.max'      => 'El nombre no puede superar 100 caracteres.',
             ];
 
-            $v = \Validator::make($request->all(), $rules, $messages);
+            $v = Validator::make($request->all(), $rules, $messages);
             if ($v->fails()) {
                 return $isJson
                     ? response()->json([
@@ -906,27 +926,27 @@ class LocalizacionController extends Controller
                 'etiquetas.elementos', // para calcular tipo de contenido
                 'planilla.obra'        // info adicional: planilla y su obra
             ])
-            ->where('nave_id', $obraActiva->id)
-            ->whereHas('localizacionPaquete') // solo paquetes con localización
-            ->get()
-            ->map(function ($paquete) {
-                $loc = $paquete->localizacionPaquete;
+                ->where('nave_id', $obraActiva->id)
+                ->whereHas('localizacionPaquete') // solo paquetes con localización
+                ->get()
+                ->map(function ($paquete) {
+                    $loc = $paquete->localizacionPaquete;
 
-                return [
-                    'id'                => (int) $paquete->id,
-                    'codigo'            => (string) $paquete->codigo,
-                    'peso'              => (float) $paquete->peso,
-                    'x1'                => (int) $loc->x1,
-                    'y1'                => (int) $loc->y1,
-                    'x2'                => (int) $loc->x2,
-                    'y2'                => (int) $loc->y2,
-                    'tipo_contenido'    => $paquete->getTipoContenido(), // 'barras', 'estribos', 'mixto'
-                    'cantidad_etiquetas' => $paquete->etiquetas->count(),
-                    'cantidad_elementos' => $paquete->etiquetas->sum(fn($e) => $e->elementos->count()),
-                    'planilla'          => $paquete->planilla?->codigo,
-                    'obra'              => $paquete->planilla?->obra?->obra ?? '-',
-                ];
-            });
+                    return [
+                        'id'                => (int) $paquete->id,
+                        'codigo'            => (string) $paquete->codigo,
+                        'peso'              => (float) $paquete->peso,
+                        'x1'                => (int) $loc->x1,
+                        'y1'                => (int) $loc->y1,
+                        'x2'                => (int) $loc->x2,
+                        'y2'                => (int) $loc->y2,
+                        'tipo_contenido'    => $paquete->getTipoContenido(), // 'barras', 'estribos', 'mixto'
+                        'cantidad_etiquetas' => $paquete->etiquetas->count(),
+                        'cantidad_elementos' => $paquete->etiquetas->sum(fn($e) => $e->elementos->count()),
+                        'planilla'          => $paquete->planilla?->codigo,
+                        'obra'              => $paquete->planilla?->obra?->obra ?? '-',
+                    ];
+                });
         }
 
         // 6) Información para la cabecera
@@ -1049,7 +1069,7 @@ class LocalizacionController extends Controller
 
             // Si se proporciona salida_id, filtrar solo paquetes de esa salida
             if ($salidaId) {
-                $paquetesQuery->whereHas('salidas', function($q) use ($salidaId) {
+                $paquetesQuery->whereHas('salidas', function ($q) use ($salidaId) {
                     $q->where('salidas.id', $salidaId);
                 });
             }
@@ -1100,7 +1120,6 @@ class LocalizacionController extends Controller
                     'obraActualId'             => (int) $naveId,
                 ]
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -1142,14 +1161,12 @@ class LocalizacionController extends Controller
                 'message' => 'Posición del paquete actualizada correctamente',
                 'localizacion' => $localizacionPaquete
             ]);
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Datos inválidos',
                 'errors' => $e->errors()
             ], 422);
-
         } catch (\Exception $e) {
             Log::error("❌ Error actualizando posición del paquete {$paqueteId}: " . $e->getMessage());
 
