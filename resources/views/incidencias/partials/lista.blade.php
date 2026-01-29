@@ -56,7 +56,7 @@
             <div x-show="expanded" x-collapse style="display: none;"
                 class="border-t border-gray-100 dark:border-gray-600 bg-gray-50/50 dark:bg-transparent">
                 @foreach ($maquina->incidencias as $incidencia)
-                    <div class="p-4 last:border-0 hover:bg-white transition-colors group relative pl-20">
+                    <div class="p-4 last:border-0 hover:bg-white dark:hover:bg-gray-800/50 transition-colors group relative pl-20">
                         {{-- Connecting Line --}}
                         <div class="absolute left-10 top-0 bottom-0 w-px bg-gray-300 group-last:bottom-1/2"></div>
                         <div class="absolute left-10 top-1/2 w-6 h-px bg-gray-300"></div>
