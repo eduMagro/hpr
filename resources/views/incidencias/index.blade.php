@@ -79,10 +79,10 @@
                 }
             }
         }"
-            class="bg-white p-4 rounded-2xl border border-gray-100 dark:bg-white/5 dark:border-gray-600 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
+            class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-blue-800/10 dark:to-blue-600/10 dark:border-blue-600 p-4 rounded-2xl border border-gray-100 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center gap-4">
                 <div class="inline-flex p-1.5 bg-gray-100/80 backdrop-blur-md rounded-2xl shadow-inner dark:bg-white/5">
-                    <button @click="handleClick('pendientes')" :class="currentTab === 'pendientes' ? 'bg-white dark:bg-white/10 text-gray-800 dark:text-white shadow-sm' :
+                    <button @click="handleClick('pendientes')" :class="currentTab === 'pendientes' ? 'bg-white dark:bg-blue-600/50 text-gray-800 dark:text-white shadow-sm' :
                             'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
                         class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all relative cursor-pointer outline-none focus:outline-none">
                         Pendientes
@@ -90,7 +90,7 @@
                             class="absolute inset-0 rounded-xl bg-white dark:bg-white/10 shadow-sm dark:shadow-none -z-10"
                             layoutId="tab-bg"></div>
                     </button>
-                    <button @click="handleClick('historial')" :class="currentTab === 'historial' ? 'bg-white dark:bg-white/10 text-gray-800 dark:text-white shadow-sm' :
+                    <button @click="handleClick('historial')" :class="currentTab === 'historial' ? 'bg-white dark:bg-blue-600/50 text-gray-800 dark:text-white shadow-sm' :
                             'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
                         class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all relative cursor-pointer outline-none focus:outline-none">
                         Historial
