@@ -43,33 +43,26 @@ class PlanillaService
                         'paquete_id' => $paquete->id,
                     ]);
 
-                // ✅ Reajustar colas
-                $ordenes = OrdenPlanilla::lockForUpdate()
-                    ->where('planilla_id', $planillaId)
-                    ->get();
-
-                $porMaquina = $ordenes->groupBy('maquina_id');
+                // ✅ Reajustar colas (optimizado)
+                $maquinasAfectadas = OrdenPlanilla::where('planilla_id', $planillaId)
+                    ->pluck('maquina_id')
+                    ->unique()
+                    ->toArray();
 
                 Log::info("Ajustando cola para planilla {$planillaId}");
 
-                foreach ($porMaquina as $maquinaId => $ordenesDeMaquina) {
-                    Log::info("Maquina {$maquinaId} - ordenes: " . $ordenesDeMaquina->count());
+                OrdenPlanilla::where('planilla_id', $planillaId)->delete();
 
-                    $posiciones = $ordenesDeMaquina->pluck('posicion')->sort()->values();
-
-                    foreach ($posiciones as $pos) {
-                        Log::info("Decrementando posiciones mayores a {$pos} en máquina {$maquinaId}");
-
-                        OrdenPlanilla::where('maquina_id', $maquinaId)
-                            ->where('posicion', '>', $pos)
-                            ->decrement('posicion');
-                    }
-
-                    Log::info("Eliminando orden de planilla {$planillaId} en máquina {$maquinaId}");
-
-                    OrdenPlanilla::where('maquina_id', $maquinaId)
-                        ->where('planilla_id', $planillaId)
-                        ->delete();
+                // Reindexar posiciones de cada máquina afectada
+                foreach ($maquinasAfectadas as $maquinaId) {
+                    Log::info("Reindexando posiciones en máquina {$maquinaId}");
+                    DB::statement('SET @pos := 0');
+                    DB::statement('
+                        UPDATE orden_planillas
+                        SET posicion = (@pos := @pos + 1)
+                        WHERE maquina_id = ?
+                        ORDER BY posicion
+                    ', [$maquinaId]);
                 }
             });
 
@@ -89,6 +82,9 @@ class PlanillaService
     {
         // Sin límite de tiempo para procesar muchas planillas
         set_time_limit(0);
+
+        // Aumentar timeout de bloqueo de MySQL (5 minutos)
+        DB::statement('SET SESSION innodb_lock_wait_timeout = 300');
 
         $ok = 0;
         $fail = 0;
@@ -164,14 +160,15 @@ class PlanillaService
 
                 OrdenPlanilla::where('planilla_id', $planilla->id)->delete();
 
-                // Reindexar posiciones de cada máquina afectada
+                // Reindexar posiciones de cada máquina afectada (optimizado con una sola consulta)
                 foreach ($maquinasAfectadas as $maquinaId) {
-                    OrdenPlanilla::where('maquina_id', $maquinaId)
-                        ->orderBy('posicion')
-                        ->get()
-                        ->each(function ($orden, $index) {
-                            $orden->update(['posicion' => $index + 1]);
-                        });
+                    DB::statement('SET @pos := 0');
+                    DB::statement('
+                        UPDATE orden_planillas
+                        SET posicion = (@pos := @pos + 1)
+                        WHERE maquina_id = ?
+                        ORDER BY posicion
+                    ', [$maquinaId]);
                 }
 
                 // Marcar planilla como completada
@@ -233,24 +230,24 @@ class PlanillaService
                     'elaborado' => 1,
                 ]);
 
-                // Eliminar orden de la planilla en cada máquina
-                $ordenes = OrdenPlanilla::lockForUpdate()
+                // Eliminar orden de la planilla y reindexar posiciones
+                $maquinasAfectadas = OrdenPlanilla::lockForUpdate()
                     ->where('planilla_id', $planillaId)
-                    ->get()
-                    ->groupBy('maquina_id');
+                    ->pluck('maquina_id')
+                    ->unique()
+                    ->toArray();
 
-                foreach ($ordenes as $maquinaId => $ordenesMaquina) {
-                    $posiciones = $ordenesMaquina->pluck('posicion')->sort()->values();
+                OrdenPlanilla::where('planilla_id', $planillaId)->delete();
 
-                    foreach ($posiciones as $pos) {
-                        OrdenPlanilla::where('maquina_id', $maquinaId)
-                            ->where('posicion', '>', $pos)
-                            ->decrement('posicion');
-                    }
-
-                    OrdenPlanilla::where('maquina_id', $maquinaId)
-                        ->where('planilla_id', $planillaId)
-                        ->delete();
+                // Reindexar posiciones de cada máquina afectada (optimizado)
+                foreach ($maquinasAfectadas as $maquinaId) {
+                    DB::statement('SET @pos := 0');
+                    DB::statement('
+                        UPDATE orden_planillas
+                        SET posicion = (@pos := @pos + 1)
+                        WHERE maquina_id = ?
+                        ORDER BY posicion
+                    ', [$maquinaId]);
                 }
 
                 // Si ya no quedan más subetiquetas pendientes, marcamos la planilla como completada
