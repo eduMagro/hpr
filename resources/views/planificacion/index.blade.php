@@ -226,24 +226,62 @@
             window.toggleFullScreen = function() {
                 const container = document.getElementById('planificacion-container');
                 const sidebar = document.querySelector('[class*="sidebar"]') || document.querySelector('aside');
-                const header = document.querySelector('nav');
+                const topNavigation = document.getElementById('top-navigation');
+                const mainLayout = document.getElementById('mainlayout');
                 const breadcrumbs = document.querySelector('[class*="breadcrumb"]');
                 const expandIcon = document.getElementById('fullscreen-icon-expand');
                 const collapseIcon = document.getElementById('fullscreen-icon-collapse');
                 const fullscreenBtn = document.getElementById('fullscreen-btn');
+                const calendarioWrapper = document.getElementById('calendario-wrapper');
+                const calendarioEl = document.getElementById('calendario');
+                // Sección de filtros y resúmenes (primer hijo directo del max-w container)
+                const filtrosSection = container?.querySelector('.max-w-\\[1800px\\] > .bg-white.p-6.mb-6');
+                const maxWContainer = container?.querySelector('.max-w-\\[1800px\\]');
 
                 // Si contenedor no existe (navegamos fuera), no hacemos nada
                 if (!container) return;
 
                 if (!window.isFullScreen) {
-                    // Entrar en pantalla completa
+                    // Entrar en pantalla completa - SOLO calendario
                     if (sidebar) sidebar.style.display = 'none';
-                    if (header) header.style.display = 'none';
+                    if (topNavigation) topNavigation.style.display = 'none';
                     if (breadcrumbs) breadcrumbs.style.display = 'none';
+                    if (filtrosSection) filtrosSection.style.display = 'none';
 
-                    container.classList.add('fixed', 'inset-0', 'z-50', 'bg-gray-50', 'overflow-auto');
+                    // Quitar padding del main layout
+                    if (mainLayout) {
+                        mainLayout.style.padding = '0';
+                        mainLayout.style.margin = '0';
+                    }
+
+                    // z-[70] para estar por encima del top-navigation (z-[60])
+                    container.classList.add('fixed', 'inset-0', 'bg-gray-50');
+                    container.style.zIndex = '70';
                     container.classList.remove('px-4');
-                    container.style.padding = '1rem';
+                    container.style.padding = '0';
+                    container.style.overflow = 'hidden';
+
+                    // Quitar límite de ancho del contenedor
+                    if (maxWContainer) {
+                        maxWContainer.style.maxWidth = '100%';
+                        maxWContainer.style.height = '100%';
+                        maxWContainer.style.display = 'flex';
+                        maxWContainer.style.flexDirection = 'column';
+                    }
+
+                    // Hacer que el calendario ocupe todo el espacio
+                    if (calendarioWrapper) {
+                        calendarioWrapper.style.flex = '1';
+                        calendarioWrapper.style.height = '100vh';
+                        calendarioWrapper.style.borderRadius = '0';
+                        calendarioWrapper.style.border = 'none';
+                        calendarioWrapper.style.margin = '0';
+                    }
+
+                    if (calendarioEl) {
+                        calendarioEl.style.minHeight = 'calc(100vh - 60px)';
+                        calendarioEl.style.height = 'calc(100vh - 60px)';
+                    }
 
                     if (expandIcon) expandIcon.classList.add('hidden');
                     if (collapseIcon) collapseIcon.classList.remove('hidden');
@@ -256,12 +294,43 @@
                 } else {
                     // Salir de pantalla completa
                     if (sidebar) sidebar.style.display = '';
-                    if (header) header.style.display = '';
+                    if (topNavigation) topNavigation.style.display = '';
                     if (breadcrumbs) breadcrumbs.style.display = '';
+                    if (filtrosSection) filtrosSection.style.display = '';
 
-                    container.classList.remove('fixed', 'inset-0', 'z-50', 'bg-gray-50', 'overflow-auto');
+                    // Restaurar padding del main layout
+                    if (mainLayout) {
+                        mainLayout.style.padding = '';
+                        mainLayout.style.margin = '';
+                    }
+
+                    container.classList.remove('fixed', 'inset-0', 'bg-gray-50');
+                    container.style.zIndex = '';
                     container.classList.add('px-4');
                     container.style.padding = '';
+                    container.style.overflow = '';
+
+                    // Restaurar límite de ancho
+                    if (maxWContainer) {
+                        maxWContainer.style.maxWidth = '';
+                        maxWContainer.style.height = '';
+                        maxWContainer.style.display = '';
+                        maxWContainer.style.flexDirection = '';
+                    }
+
+                    // Restaurar estilos del calendario
+                    if (calendarioWrapper) {
+                        calendarioWrapper.style.flex = '';
+                        calendarioWrapper.style.height = '';
+                        calendarioWrapper.style.borderRadius = '';
+                        calendarioWrapper.style.border = '';
+                        calendarioWrapper.style.margin = '';
+                    }
+
+                    if (calendarioEl) {
+                        calendarioEl.style.minHeight = '';
+                        calendarioEl.style.height = '';
+                    }
 
                     if (expandIcon) expandIcon.classList.remove('hidden');
                     if (collapseIcon) collapseIcon.classList.add('hidden');

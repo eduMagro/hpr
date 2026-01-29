@@ -115,6 +115,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([
         // App\Console\Commands\SincronizarFestivosCommand::class,
     ])
+    ->withProviders([
+        App\Providers\AppServiceProvider::class,
+    ])
 
     // Programación de tareas definida en routes/console.php
     ->create();

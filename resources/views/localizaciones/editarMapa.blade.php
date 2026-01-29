@@ -25,16 +25,51 @@
         <!-- Barra Superior Compacta -->
         <header class="editor-header">
             <div class="header-left">
-                <a href="{{ route('localizaciones.index') }}" class="btn-back" title="Volver">
+                <!-- Logo y Home -->
+                <a href="{{ route('dashboard') }}" class="nav-logo" title="Inicio">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                    </svg>
+                </a>
+
+                <!-- Menu de Navegacion -->
+                <nav class="nav-menu">
+                    @php
+                        $menuConfig = config('menu.main');
+                    @endphp
+                    @foreach($menuConfig as $section)
+                    <div class="nav-dropdown">
+                        <button type="button" class="nav-dropdown-btn" data-color="{{ $section['color'] }}">
+                            <span class="nav-icon">{{ $section['icon'] }}</span>
+                            <span class="nav-label">{{ $section['label'] }}</span>
+                            <svg class="nav-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div class="nav-dropdown-menu">
+                            <div class="nav-dropdown-header">{{ $section['icon'] }} {{ $section['label'] }}</div>
+                            @foreach($section['submenu'] as $item)
+                            <a href="{{ route($item['route']) }}" class="nav-dropdown-item">
+                                <span class="item-icon">{{ $item['icon'] }}</span>
+                                <span class="item-label">{{ $item['label'] }}</span>
+                            </a>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endforeach
+                </nav>
+
+                <div class="nav-divider"></div>
+
+                <a href="{{ route('localizaciones.index') }}" class="btn-back" title="Volver a Localizaciones">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                     </svg>
                 </a>
                 <div class="header-title">
-                    <span class="title-text">Editor de Planta</span>
+                    <span class="title-text">Editor</span>
                     <span class="header-subtitle">
                         {{ strtoupper($obraActiva->obra ?? 'GENERAL') }}
-                        ({{ ($obraActiva->ancho_m ?? 22) }}x{{ ($obraActiva->largo_m ?? 115) }}m)
                     </span>
                 </div>
             </div>
@@ -99,6 +134,47 @@
                             <div class="shortcut-info">Arrastra los bordes para redimensionar</div>
                             <div class="shortcut-info">Arrastra el centro para mover</div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- User Menu -->
+                <div class="user-dropdown">
+                    <button type="button" class="user-dropdown-btn" id="user-menu-btn">
+                        <div class="user-avatar">
+                            {{ substr(Auth::user()->name ?? 'U', 0, 1) }}
+                        </div>
+                        <svg class="user-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div class="user-dropdown-menu" id="user-menu">
+                        <div class="user-info">
+                            <div class="user-name">{{ Auth::user()->name ?? 'Usuario' }}</div>
+                            <div class="user-email">{{ Auth::user()->email ?? '' }}</div>
+                        </div>
+                        <div class="user-menu-divider"></div>
+                        <a href="{{ route('users.mi-perfil') }}" class="user-menu-item">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                            <span>Mi Perfil</span>
+                        </a>
+                        <a href="{{ route('dashboard') }}" class="user-menu-item">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                            </svg>
+                            <span>Dashboard</span>
+                        </a>
+                        <div class="user-menu-divider"></div>
+                        <form method="POST" action="{{ route('logout') }}" class="user-menu-form">
+                            @csrf
+                            <button type="submit" class="user-menu-item user-menu-logout">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                </svg>
+                                <span>Cerrar Sesion</span>
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -307,7 +383,112 @@
             z-index: 100;
         }
 
-        .header-left { display: flex; align-items: center; gap: 8px; }
+        .header-left { display: flex; align-items: center; gap: 6px; }
+
+        /* Logo/Home button */
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            color: #60a5fa;
+            transition: all 0.15s;
+        }
+        .nav-logo:hover { background: #374151; color: #93c5fd; }
+
+        /* Navigation Menu */
+        .nav-menu { display: flex; align-items: center; gap: 2px; }
+        .nav-divider { width: 1px; height: 20px; background: #4b5563; margin: 0 4px; }
+
+        .nav-dropdown { position: relative; }
+        .nav-dropdown-btn {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            padding: 4px 6px;
+            border-radius: 4px;
+            color: #d1d5db;
+            font-size: 11px;
+            transition: all 0.15s;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+        }
+        .nav-dropdown-btn:hover { background: #374151; color: white; }
+        .nav-dropdown.active .nav-dropdown-btn { background: #374151; color: white; }
+
+        .nav-icon { font-size: 12px; }
+        .nav-label { font-weight: 500; }
+        .nav-arrow { width: 10px; height: 10px; opacity: 0.6; transition: transform 0.2s; }
+        .nav-dropdown.active .nav-arrow { transform: rotate(180deg); }
+
+        /* Dropdown Menu */
+        .nav-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            background: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            min-width: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-5px);
+            transition: all 0.15s ease;
+        }
+        .nav-dropdown.active .nav-dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .nav-dropdown-header {
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #9ca3af;
+            border-bottom: 1px solid #374151;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            color: #d1d5db;
+            font-size: 12px;
+            transition: all 0.15s;
+            text-decoration: none;
+        }
+        .nav-dropdown-item:hover {
+            background: #374151;
+            color: white;
+        }
+        .nav-dropdown-item .item-icon { font-size: 14px; width: 20px; text-align: center; }
+        .nav-dropdown-item .item-label { flex: 1; }
+
+        /* Color variations for hover */
+        .nav-dropdown-btn[data-color="blue"]:hover,
+        .nav-dropdown.active .nav-dropdown-btn[data-color="blue"] { background: rgba(59, 130, 246, 0.2); }
+        .nav-dropdown-btn[data-color="purple"]:hover,
+        .nav-dropdown.active .nav-dropdown-btn[data-color="purple"] { background: rgba(139, 92, 246, 0.2); }
+        .nav-dropdown-btn[data-color="green"]:hover,
+        .nav-dropdown.active .nav-dropdown-btn[data-color="green"] { background: rgba(34, 197, 94, 0.2); }
+        .nav-dropdown-btn[data-color="indigo"]:hover,
+        .nav-dropdown.active .nav-dropdown-btn[data-color="indigo"] { background: rgba(99, 102, 241, 0.2); }
+        .nav-dropdown-btn[data-color="orange"]:hover,
+        .nav-dropdown.active .nav-dropdown-btn[data-color="orange"] { background: rgba(249, 115, 22, 0.2); }
+        .nav-dropdown-btn[data-color="gray"]:hover,
+        .nav-dropdown.active .nav-dropdown-btn[data-color="gray"] { background: rgba(107, 114, 128, 0.2); }
 
         .btn-back {
             display: flex;
@@ -763,6 +944,40 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
+        // =============================================
+        // NAVEGACION DROPDOWNS
+        // =============================================
+        const navDropdowns = document.querySelectorAll('.nav-dropdown');
+        let activeDropdown = null;
+
+        navDropdowns.forEach(dropdown => {
+            const btn = dropdown.querySelector('.nav-dropdown-btn');
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (activeDropdown && activeDropdown !== dropdown) {
+                    activeDropdown.classList.remove('active');
+                }
+                dropdown.classList.toggle('active');
+                activeDropdown = dropdown.classList.contains('active') ? dropdown : null;
+            });
+        });
+
+        // Cerrar dropdown al hacer clic fuera
+        document.addEventListener('click', (e) => {
+            if (activeDropdown && !activeDropdown.contains(e.target)) {
+                activeDropdown.classList.remove('active');
+                activeDropdown = null;
+            }
+        });
+
+        // Cerrar dropdown con Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && activeDropdown) {
+                activeDropdown.classList.remove('active');
+                activeDropdown = null;
+            }
+        });
+
         // =============================================
         // CONFIGURACION
         // =============================================
