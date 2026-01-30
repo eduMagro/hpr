@@ -1868,7 +1868,7 @@ class PlanillaController extends Controller
                     ]);
             }
 
-            // 5. Resetear la planilla
+            // 5. Resetear la planilla (incluyendo aprobación y fecha entrega)
             $planilla->update([
                 'estado' => 'pendiente',
                 'fecha_inicio' => null,
@@ -1876,25 +1876,27 @@ class PlanillaController extends Controller
                 'revisada' => false,
                 'revisada_por_id' => null,
                 'revisada_at' => null,
+                'aprobada' => false,
+                'aprobada_por_id' => null,
+                'aprobada_at' => null,
+                'fecha_estimada_entrega' => null,
             ]);
         }, 3); // 3 reintentos automáticos en deadlock
 
-        // FASE 2: Reasignar máquinas y crear órdenes (transacción separada)
+        // FASE 2: Reasignar máquinas (sin crear orden_planillas - eso se hace al aprobar)
         DB::transaction(function () use ($planilla, &$resultado) {
             $asignarMaquinaService = new \App\Services\AsignarMaquinaService();
-            $ordenPlanillaService = new \App\Services\OrdenPlanillaService();
 
-            // Reasignar máquinas
+            // Reasignar máquinas a elementos
             $asignarMaquinaService->repartirPlanilla($planilla->id);
 
-            // Crear órdenes
-            $ordenPlanillaService->crearOrdenParaPlanilla($planilla->id);
-
-            // Obtener máquinas asignadas
-            $resultado['maquinas_asignadas'] = OrdenPlanilla::where('planilla_id', $planilla->id)
+            // Obtener máquinas asignadas a elementos
+            $resultado['maquinas_asignadas'] = \App\Models\Elemento::where('planilla_id', $planilla->id)
+                ->whereNotNull('maquina_id')
                 ->with('maquina:id,codigo')
                 ->get()
                 ->pluck('maquina.codigo')
+                ->unique()
                 ->filter()
                 ->values()
                 ->toArray();
