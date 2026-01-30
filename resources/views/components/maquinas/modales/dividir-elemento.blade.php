@@ -106,24 +106,30 @@
     // Variable para almacenar las máquinas cargadas
     let maquinasDisponiblesCache = null;
 
-    // Attach event listeners cuando el DOM esté listo
-    (function initDividirElementoModal() {
+    // Attach event listeners - usar onclick directo para evitar problemas de timing
+    function initBotonesDividirElemento() {
         const btnCancelar = document.getElementById('btnCancelarDividir');
         const btnAceptar = document.getElementById('btnAceptarDividir');
         const modal = document.getElementById('modalDividirElemento');
 
-        if (btnCancelar) {
-            btnCancelar.addEventListener('click', function() {
+        if (btnCancelar && !btnCancelar._initialized) {
+            btnCancelar._initialized = true;
+            btnCancelar.onclick = function() {
                 if (modal) modal.classList.add('hidden');
-            });
+            };
         }
 
-        if (btnAceptar) {
-            btnAceptar.addEventListener('click', async function() {
+        if (btnAceptar && !btnAceptar._initialized) {
+            btnAceptar._initialized = true;
+            btnAceptar.onclick = async function() {
                 console.log('🔘 Botón Aceptar clickeado');
+                console.log('🔍 window.enviarAccionEtiqueta existe?', typeof window.enviarAccionEtiqueta);
+
                 if (typeof window.enviarAccionEtiqueta === 'function') {
                     try {
+                        console.log('📞 Llamando a enviarAccionEtiqueta...');
                         await window.enviarAccionEtiqueta();
+                        console.log('✅ enviarAccionEtiqueta completada');
                     } catch (error) {
                         console.error('❌ Error en enviarAccionEtiqueta:', error);
                         if (window.Swal) {
@@ -134,13 +140,28 @@
                     }
                 } else {
                     console.error('❌ window.enviarAccionEtiqueta no está definida');
-                    alert('Error: La función de envío no está disponible. Recarga la página.');
+                    alert('Error: La función de envío no está disponible. Recarga la página e intenta de nuevo.');
                 }
-            });
-        } else {
-            console.error('❌ No se encontró el botón btnAceptarDividir');
+            };
+            console.log('✅ Botón Aceptar inicializado');
         }
-    })();
+    }
+
+    // Inicializar cuando el DOM esté listo y también cuando se abra el modal
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initBotonesDividirElemento);
+    } else {
+        initBotonesDividirElemento();
+    }
+
+    // También inicializar cuando se muestre el modal (por si se carga dinámicamente)
+    const _modalObs = new MutationObserver(function() {
+        initBotonesDividirElemento();
+    });
+    const _modalEl = document.getElementById('modalDividirElemento');
+    if (_modalEl) {
+        _modalObs.observe(_modalEl, { attributes: true, attributeFilter: ['class'] });
+    }
 
     // Función para dividir automáticamente en múltiples etiquetas
     async function dividirAutomaticamente() {
