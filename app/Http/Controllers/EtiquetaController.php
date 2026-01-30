@@ -272,15 +272,15 @@ class EtiquetaController extends Controller
         $etiquetas = $query->paginate($request->input('per_page', 10))
             ->appends($request->except('page'));
 
-        // 🔥 en lugar de otra query con get(), cargamos solo para la página actual
-        $etiquetas->load([
+        // 🔥 Cargar relaciones para los items de la página actual
+        $etiquetas->getCollection()->load([
             'planilla.obra:id,obra',
             'planilla.cliente:id,empresa',
             'elementos:id,etiqueta_sub_id,dimensiones,barras,diametro,peso',
         ]);
 
-        // Transformar datos al formato que espera renderizarGrupoSVG
-        $etiquetasJson = $etiquetas->keyBy('id')->map(function ($etiqueta) {
+        // Transformar datos al formato que espera el modal
+        $etiquetasJson = $etiquetas->getCollection()->keyBy('id')->map(function ($etiqueta) {
             return [
                 'id' => $etiqueta->id,
                 'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
@@ -326,6 +326,40 @@ class EtiquetaController extends Controller
         ];
 
         return view('etiquetas.index', compact('etiquetas', 'etiquetasJson', 'ordenables', 'filtrosActivos'));
+    }
+
+    /**
+     * Obtener datos de una etiqueta para el modal (AJAX)
+     */
+    public function show($id)
+    {
+        $etiqueta = Etiqueta::with([
+            'planilla.obra:id,obra',
+            'planilla.cliente:id,empresa',
+            'elementos:id,etiqueta_sub_id,dimensiones,barras,diametro,peso',
+        ])->findOrFail($id);
+
+        return response()->json([
+            'id' => $etiqueta->id,
+            'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+            'nombre' => $etiqueta->nombre,
+            'peso_kg' => $etiqueta->peso_kg,
+            'planilla' => $etiqueta->planilla ? [
+                'codigo_limpio' => $etiqueta->planilla->codigo_limpio,
+                'seccion' => $etiqueta->planilla->seccion,
+                'obra' => $etiqueta->planilla->obra ? ['obra' => $etiqueta->planilla->obra->obra] : null,
+                'cliente' => $etiqueta->planilla->cliente ? ['empresa' => $etiqueta->planilla->cliente->empresa] : null,
+            ] : null,
+            'elementos' => $etiqueta->elementos->map(function ($e) {
+                return [
+                    'id' => $e->id,
+                    'dimensiones' => $e->dimensiones,
+                    'barras' => $e->barras,
+                    'diametro' => $e->diametro,
+                    'peso' => $e->peso,
+                ];
+            })->values()->toArray(),
+        ]);
     }
 
     public function calcularPatronCorteSimple(Request $request, $etiqueta)

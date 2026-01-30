@@ -330,9 +330,11 @@
                                         <template x-if="!editando">
                                             <div class="flex items-center space-x-2">
                                                 <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
+
+                                                {{-- Ver etiqueta (modal) --}}
                                                 <button @click="mostrar({{ $etiqueta->id }})"
                                                     class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
-                                                    title="Ver">
+                                                    title="Ver etiqueta">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                                         fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                                         stroke-width="2">
@@ -342,6 +344,18 @@
                                                             d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
                                                     </svg>
                                                 </button>
+
+                                                {{-- Ver elementos --}}
+                                                <a href="{{ route('elementos.index', ['subetiqueta' => $etiqueta->etiqueta_sub_id]) }}"
+                                                    class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                                    title="Ver elementos">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                        fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                        stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                                    </svg>
+                                                </a>
 
                                                 {{-- Eliminar --}}
                                                 <x-tabla.boton-eliminar :action="route('etiquetas.destroy', $etiqueta->id)" />
@@ -392,97 +406,84 @@
                 </div>
             </div>
             <script>
-                window.etiquetasConElementos = @json($etiquetasJson);
                 window.etiquetaModalActual = null;
-                console.log('etiquetasConElementos cargado:', window.etiquetasConElementos);
-            </script>
-            <script>
-                function mostrar(etiquetaId) {
-                    console.log('=== MOSTRAR LLAMADO ===');
-                    console.log('etiquetaId:', etiquetaId, 'tipo:', typeof etiquetaId);
-                    console.log('Keys disponibles:', Object.keys(window.etiquetasConElementos || {}));
 
-                    const datos = window.etiquetasConElementos[etiquetaId];
-                    console.log('datos:', datos);
-
-                    if (!datos) {
-                        alert('No se encontraron datos para etiquetaId: ' + etiquetaId + '\nKeys: ' + Object.keys(window.etiquetasConElementos || {}).join(', '));
-                        return;
-                    }
-
-                    window.etiquetaModalActual = { id: etiquetaId, datos: datos };
-
-                    const subId = datos.etiqueta_sub_id ?? 'N/A';
-                    const nombre = datos.nombre ?? 'Sin nombre';
-                    const peso = datos.peso_kg ?? 'N/A';
-                    const cliente = datos.planilla?.cliente?.empresa ?? 'Sin cliente';
-                    const obra = datos.planilla?.obra?.obra ?? 'Sin obra';
-                    const planillaCod = datos.planilla?.codigo_limpio ?? 'N/A';
-                    const seccion = datos.planilla?.seccion ?? '';
-
-                    const elementos = datos.elementos || [];
-
-                    // Construir HTML con un contenedor para cada elemento
-                    let elementosHtml = '';
-                    if (elementos.length > 0) {
-                        elementos.forEach((el, idx) => {
-                            elementosHtml += `
-                                <div class="elemento-figura mb-2 p-2 bg-white border rounded">
-                                    <div class="text-xs text-gray-600 mb-1">
-                                        <strong>Ø${el.diametro || '?'}</strong> - ${el.barras || 0} barras
-                                    </div>
-                                    <div id="figura-elemento-${etiquetaId}-${idx}" style="width:100%; height:120px; background:#f9f9f9;"></div>
-                                </div>
-                            `;
-                        });
-                    } else {
-                        elementosHtml = '<p class="text-center text-gray-500 py-4">Sin elementos</p>';
-                    }
-
-                    const html = `
-                        <div class="text-lg font-semibold">${obra} – ${cliente}</div>
-                        <div class="text-md mb-2">${planillaCod} – S:${seccion}</div>
-                        <h3 class="text-lg font-semibold text-black mb-3">
-                            ${subId} ${nombre} – Cal:B500SD – ${peso} kg
-                        </h3>
-                        <div class="border-t border-black pt-2">
-                            ${elementosHtml}
-                        </div>
-                    `;
-
-                    document.getElementById('modalContent').innerHTML = html;
-
+                async function mostrar(etiquetaId) {
+                    // Mostrar loading
                     const modal = document.getElementById('modalEtiqueta');
+                    const content = document.getElementById('modalContent');
+                    content.innerHTML = '<div class="text-center py-8"><span class="text-lg">Cargando...</span></div>';
                     modal.classList.remove('hidden');
                     modal.classList.add('flex');
 
-                    // Dibujar cada elemento usando dibujarFiguraSVG inline
-                    console.log('Elementos a dibujar:', elementos);
-                    setTimeout(() => {
-                        elementos.forEach((el, idx) => {
-                            const containerId = `figura-elemento-${etiquetaId}-${idx}`;
-                            const dimensiones = el.dimensiones || '';
-                            console.log(`Dibujando elemento ${idx}:`, containerId, dimensiones);
-                            const cont = document.getElementById(containerId);
-                            console.log('Contenedor encontrado:', cont);
-                            if (dimensiones && cont) {
-                                dibujarFiguraSVG(containerId, dimensiones, el.peso, el.diametro, el.barras);
-                            } else if (!dimensiones) {
-                                console.warn('Sin dimensiones para elemento', idx);
-                                if (cont) cont.innerHTML = '<p class="text-red-500 text-center">Sin dimensiones</p>';
-                            }
+                    try {
+                        // Cargar datos via AJAX
+                        const response = await fetch(`/etiquetas/${etiquetaId}`, {
+                            headers: { 'Accept': 'application/json' }
                         });
-                    }, 100);
+
+                        if (!response.ok) throw new Error('Error al cargar etiqueta');
+
+                        const datos = await response.json();
+                        window.etiquetaModalActual = { id: etiquetaId, datos: datos };
+
+                        const subId = datos.etiqueta_sub_id ?? 'N/A';
+                        const nombre = datos.nombre ?? 'Sin nombre';
+                        const peso = datos.peso_kg ?? 'N/A';
+                        const cliente = datos.planilla?.cliente?.empresa ?? 'Sin cliente';
+                        const obra = datos.planilla?.obra?.obra ?? 'Sin obra';
+                        const planillaCod = datos.planilla?.codigo_limpio ?? 'N/A';
+                        const seccion = datos.planilla?.seccion ?? '';
+                        const elementos = datos.elementos || [];
+
+                        // Construir HTML
+                        let elementosHtml = '';
+                        if (elementos.length > 0) {
+                            elementos.forEach((el, idx) => {
+                                elementosHtml += `
+                                    <div class="elemento-figura mb-2 p-2 bg-white border rounded">
+                                        <div class="text-xs text-gray-600 mb-1">
+                                            <strong>Ø${el.diametro || '?'}</strong> - ${el.barras || 0} barras
+                                            ${el.dimensiones ? `<span class="ml-2 text-gray-400">(${el.dimensiones})</span>` : ''}
+                                        </div>
+                                        <div id="figura-elemento-${etiquetaId}-${idx}" style="width:100%; height:120px; background:#f9f9f9;"></div>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            elementosHtml = '<p class="text-center text-gray-500 py-4">Sin elementos</p>';
+                        }
+
+                        content.innerHTML = `
+                            <div class="text-lg font-semibold">${obra} – ${cliente}</div>
+                            <div class="text-md mb-2">${planillaCod} – S:${seccion}</div>
+                            <h3 class="text-lg font-semibold text-black mb-3">
+                                ${subId} ${nombre} – Cal:B500SD – ${peso} kg
+                            </h3>
+                            <div class="border-t border-black pt-2">
+                                ${elementosHtml}
+                            </div>
+                        `;
+
+                        // Dibujar figuras
+                        setTimeout(() => {
+                            elementos.forEach((el, idx) => {
+                                const containerId = `figura-elemento-${etiquetaId}-${idx}`;
+                                if (el.dimensiones) {
+                                    dibujarFiguraSVG(containerId, el.dimensiones, el.peso, el.diametro, el.barras);
+                                }
+                            });
+                        }, 50);
+
+                    } catch (error) {
+                        content.innerHTML = `<p class="text-red-500 text-center py-4">Error: ${error.message}</p>`;
+                    }
                 }
 
                 // Función simple para dibujar SVG de una figura
                 function dibujarFiguraSVG(containerId, dimensionesStr, peso, diametro, barras) {
-                    console.log('dibujarFiguraSVG llamado:', { containerId, dimensionesStr, peso, diametro, barras });
                     const contenedor = document.getElementById(containerId);
-                    if (!contenedor) {
-                        console.error('Contenedor no encontrado:', containerId);
-                        return;
-                    }
+                    if (!contenedor) return;
 
                     const ancho = contenedor.offsetWidth || 500;
                     const alto = contenedor.offsetHeight || 120;
@@ -598,7 +599,6 @@
                     }
 
                     // Crear SVG
-                    console.log('pathD generado:', pathD);
                     const svgHtml = `
                         <svg viewBox="0 0 ${ancho} ${alto}" style="width:100%;height:100%;">
                             <rect x="0" y="0" width="${ancho}" height="${alto}" fill="#f9f9f9"/>
@@ -607,7 +607,6 @@
                         </svg>
                     `;
                     contenedor.innerHTML = svgHtml;
-                    console.log('SVG insertado en', containerId);
                 }
 
 

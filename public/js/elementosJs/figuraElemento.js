@@ -227,7 +227,9 @@ function initFiguraElemento() {
                 return false;
             }
 
-            while (tryResolve()) {}
+            // Límite de iteraciones para evitar bucle infinito
+            let intentos = 0;
+            while (tryResolve() && intentos < 3) { intentos++; }
 
             const dir = { x: Math.cos(rad(ang)), y: Math.sin(rad(ang)) };
             const nx = cx + out[i].length * dir.x;
