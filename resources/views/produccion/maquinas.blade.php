@@ -4306,49 +4306,55 @@
                     contenedorCalendario.classList.add('con-panel-abierto');
                     document.body.classList.add('panel-abierto');
 
-                    // Función para dibujar SVGs de forma progresiva (no bloquea el thread)
-                    function dibujarSVGsProgresivo() {
+                    // Función para dibujar SVGs con Intersection Observer (solo dibuja lo visible)
+                    function dibujarSVGsLazy() {
                         const secciones = lista.querySelectorAll('.seccion-maquina-wrapper');
-                        const todosElementos = [];
 
-                        // Recolectar todos los elementos a dibujar
+                        // Crear mapa de canvasId -> datos para dibujar
+                        const elementosMap = new Map();
                         secciones.forEach(seccion => {
                             if (seccion._elementosParaDibujar) {
-                                todosElementos.push(...seccion._elementosParaDibujar);
+                                seccion._elementosParaDibujar.forEach(elem => {
+                                    elementosMap.set(elem.canvasId, elem);
+                                });
                             }
                         });
 
-                        // Dibujar en batches usando requestAnimationFrame
-                        let indice = 0;
-                        const BATCH_SIZE = 5; // Dibujar 5 elementos por frame
+                        // Usar Intersection Observer para dibujar solo cuando sea visible
+                        const observer = new IntersectionObserver((entries) => {
+                            entries.forEach(entry => {
+                                if (entry.isIntersecting) {
+                                    const canvas = entry.target;
+                                    const canvasId = canvas.id;
+                                    const elem = elementosMap.get(canvasId);
 
-                        function dibujarBatch() {
-                            const fin = Math.min(indice + BATCH_SIZE, todosElementos.length);
+                                    if (elem && !canvas.dataset.dibujado) {
+                                        canvas.dataset.dibujado = 'true';
+                                        window.dibujarFiguraElemento(
+                                            elem.canvasId,
+                                            elem.dimensiones,
+                                            elem.peso,
+                                            elem.diametro,
+                                            elem.barras,
+                                            elem.cantidadElementos
+                                        );
+                                        observer.unobserve(canvas);
+                                    }
+                                }
+                            });
+                        }, {
+                            root: lista,
+                            rootMargin: '100px', // Pre-cargar 100px antes de que sea visible
+                            threshold: 0
+                        });
 
-                            for (let i = indice; i < fin; i++) {
-                                const elem = todosElementos[i];
-                                window.dibujarFiguraElemento(
-                                    elem.canvasId,
-                                    elem.dimensiones,
-                                    elem.peso,
-                                    elem.diametro,
-                                    elem.barras,
-                                    elem.cantidadElementos // Cantidad de elementos agrupados
-                                );
-                            }
+                        // Observar todos los canvas
+                        lista.querySelectorAll('canvas').forEach(canvas => {
+                            observer.observe(canvas);
+                        });
 
-                            indice = fin;
-
-                            // Si quedan más elementos, programar siguiente batch
-                            if (indice < todosElementos.length) {
-                                requestAnimationFrame(dibujarBatch);
-                            }
-                        }
-
-                        // Iniciar dibujado
-                        if (todosElementos.length > 0) {
-                            requestAnimationFrame(dibujarBatch);
-                        }
+                        // Guardar referencia para limpiar después
+                        lista._svgObserver = observer;
                     }
 
                     // Usar transitionend para detectar cuando el panel está visible
@@ -4357,7 +4363,7 @@
                         if (e.propertyName === 'transform' && e.target === panel) {
                             panel.removeEventListener('transitionend', onTransitionEnd);
                             calendar.updateSize();
-                            dibujarSVGsProgresivo();
+                            dibujarSVGsLazy();
                         }
                     };
 
@@ -4371,13 +4377,18 @@
                         if (panel.classList.contains('abierto')) {
                             panel.removeEventListener('transitionend', onTransitionEnd);
                             calendar.updateSize();
-                            dibujarSVGsProgresivo();
+                            dibujarSVGsLazy();
                         }
                     }, 500);
                 }
 
                 function cerrarPanel() {
-                    console.log('🚪 Cerrando panel...');
+                    // Limpiar observer de SVGs lazy
+                    const lista = document.getElementById('panel_lista');
+                    if (lista && lista._svgObserver) {
+                        lista._svgObserver.disconnect();
+                        lista._svgObserver = null;
+                    }
 
                     // Limpiar selección múltiple
                     window.MultiSelectElementos.limpiarSelecciones();
@@ -4386,7 +4397,6 @@
                     // Limpiar planillaId y codigo actual
                     planillaIdActualPanel = null;
                     codigoPlanillaActualPanel = null;
-                    console.log('🧹 planillaIdActualPanel limpiado');
 
                     const panelElementos = document.getElementById('panel_elementos');
                     const panelOverlay = document.getElementById('panel_overlay');
