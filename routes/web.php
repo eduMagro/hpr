@@ -644,7 +644,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/planillas/{planilla}/config-reset', [PlanillaController::class, 'getConfigReset'])->name('planillas.configReset');
     Route::post('/planillas/{planilla}/config-reset', [PlanillaController::class, 'saveConfigReset'])->name('planillas.saveConfigReset');
     Route::post('/planillas/completar', [PlanillaController::class, 'completar'])->name('planillas.completar');
-    Route::get('/planificacion/index', [PlanificacionController::class, 'index'])->name('planificacion.index');
+    // Alias legacy. El resource ya registra el nombre `planificacion.index` en GET /planificacion
+    Route::get('/planificacion/index', [PlanificacionController::class, 'index']);
     Route::get('/planificacion/totales', [PlanificacionController::class, 'getTotalesAjax']);
     Route::get('/planificacion/buscar-planillas', [PlanificacionController::class, 'buscarPlanillas'])->name('planificacion.buscarPlanillas');
     Route::get('/planificacion/buscar-obras', [PlanificacionController::class, 'buscarObras'])->name('planificacion.buscarObras');
