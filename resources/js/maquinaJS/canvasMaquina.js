@@ -923,10 +923,11 @@ function planMasonryOptimal(medidas, svgW, svgH, opts = {}) {
             availableHeight = Math.max(10, maxYForThisCol - padding);
         }
 
-        // Si solo hay un elemento, centrarlo verticalmente
+        // Si solo hay un elemento, posicionarlo en la parte INFERIOR
         if (col.items.length === 1) {
             const h = heights[0];
-            const centerY = padding + availableHeight / 2;
+            const bottomMargin = 10; // Margen desde el borde inferior
+            const centerY = padding + availableHeight - h / 2 - bottomMargin;
             const validCenterY = Math.max(padding + h / 2, Math.min(centerY, svgH - padding - h / 2));
             centersYByCol[c].push(validCenterY);
             continue;
@@ -977,9 +978,10 @@ function planMasonryOptimal(medidas, svgW, svgH, opts = {}) {
             // Recalcular la altura total con el gap ajustado
             const actualTotalHeight = totalItemsHeight + (numberOfGaps * gap);
 
-            // Si hay espacio extra después del ajuste, centrarlo verticalmente
+            // Si hay espacio extra después del ajuste, posicionar hacia ABAJO (no centrar)
             const extraSpace = availableHeight - actualTotalHeight;
-            let y = padding + Math.max(0, extraSpace / 2);
+            const bottomMargin = 10; // Margen desde el borde inferior
+            let y = padding + Math.max(0, extraSpace - bottomMargin);
 
             // Posicionar elementos
             for (let i = 0; i < col.items.length; i++) {
@@ -2256,33 +2258,5 @@ window.enviarDivision = async function enviarDivision() {
     }
 }
 
-// Función para manejar la acción de ver dimensiones desde el modal
-window.enviarAccionEtiqueta = async function() {
-    const elementoId = document.getElementById('dividir_elemento_id')?.value;
-    const accionRadio = document.querySelector('input[name="accion_etiqueta"]:checked');
-    const accion = accionRadio?.value;
-
-    if (!elementoId) {
-        alert('Falta el ID del elemento.');
-        return;
-    }
-
-    if (accion === 'ver_dimensiones') {
-        // Cerrar el modal actual
-        document.getElementById('modalDividirElemento')?.classList.add('hidden');
-
-        // Abrir el modal de ver dimensiones
-        if (typeof window.abrirModalVerDimensiones === 'function') {
-            window.abrirModalVerDimensiones(elementoId);
-        } else {
-            alert('La función de ver dimensiones no está disponible');
-        }
-        return;
-    }
-
-    // Para otras acciones, usar el formulario original si existe
-    const form = document.getElementById('formDividirElemento');
-    if (form && typeof form.requestSubmit === 'function') {
-        // Trigger the original form logic
-    }
-}
+// NOTA: window.enviarAccionEtiqueta está definida en dividir-elemento.blade.php
+// No duplicar aquí para evitar conflictos
