@@ -5255,7 +5255,7 @@ class ProduccionController extends Controller
                 $planillaPos1Protegida = null;
                 $primeraOp = $ordenPlanillas->first();
 
-                if ($primeraOp && $primeraOp->posicion === 1) {
+                if ($primeraOp && (int) $primeraOp->posicion === 1) {
                     // Por defecto, protegemos la primera posición (el operario sigue con su trabajo)
                     $debeSuplantar = false;
 
@@ -5265,10 +5265,17 @@ class ProduccionController extends Controller
 
                         foreach ($obrasIds as $obraId) {
                             $fechaObraPriorizada = $fechasObras[$obraId] ?? null;
-                            if ($fechaObraPriorizada && $fechaPlanillaPos1 && $fechaObraPriorizada < $fechaPlanillaPos1) {
-                                $debeSuplantar = true;
-                                Log::info("🔄 Suplantando posición 1 en máquina {$maquinaId}: obra {$obraId} tiene fecha {$fechaObraPriorizada} anterior a {$fechaPlanillaPos1}");
-                                break;
+
+                            // Suplantar si:
+                            // - La obra priorizada tiene fecha Y es anterior a pos 1
+                            // - O la pos 1 no tiene fecha pero la obra priorizada sí (priorizar lo que tiene fecha)
+                            if ($fechaObraPriorizada) {
+                                if (!$fechaPlanillaPos1 || $fechaObraPriorizada < $fechaPlanillaPos1) {
+                                    $debeSuplantar = true;
+                                    Log::info("🔄 Suplantando posición 1 en máquina {$maquinaId}: obra {$obraId} tiene fecha {$fechaObraPriorizada}" .
+                                        ($fechaPlanillaPos1 ? " anterior a {$fechaPlanillaPos1}" : " (pos 1 sin fecha)"));
+                                    break;
+                                }
                             }
                         }
                     }
@@ -5279,7 +5286,7 @@ class ProduccionController extends Controller
                     }
                 }
 
-                // Separar en priorizadas y no priorizadas (excluyendo la fabricando en pos 1)
+                // Separar en priorizadas y no priorizadas (excluyendo la protegida en pos 1)
                 $priorizadas = collect();
                 $noPriorizadas = collect();
 
@@ -5373,7 +5380,7 @@ class ProduccionController extends Controller
 
             $mensaje = "Priorización completada. {$cambiosRealizados} cambios realizados.";
             if ($omitidos > 0) {
-                $mensaje .= " ({$omitidos} planillas en fabricación no afectadas)";
+                $mensaje .= " ({$omitidos} posiciones 1 protegidas)";
             }
 
             // Registrar en log de planificación
