@@ -354,10 +354,17 @@
                                             placeholder="2026-886"
                                             class="w-24 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                                             title="Sincronizar una planilla específica">
+                                        <select wire:model="syncTarget"
+                                            class="px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 {{ $syncTarget === 'production' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700' }}">
+                                            @if ($canSyncToLocal)
+                                                <option value="local">Local</option>
+                                            @endif
+                                            <option value="production">Prod</option>
+                                        </select>
                                         <button wire:click="syncPlanillaEspecifica"
                                             wire:loading.attr="disabled"
-                                            class="px-2 py-1.5 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition flex items-center gap-1"
-                                            title="Sincronizar planilla específica">
+                                            class="px-2 py-1.5 text-sm font-medium text-white {{ $syncTarget === 'production' ? 'bg-red-600 hover:bg-red-700' : 'bg-purple-600 hover:bg-purple-700' }} rounded-lg transition flex items-center gap-1"
+                                            title="Sincronizar planilla específica a {{ $syncTarget === 'production' ? 'PRODUCCIÓN' : 'LOCAL' }}">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                             </svg>
