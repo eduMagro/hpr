@@ -1,11 +1,8 @@
 <x-app-layout>
     <x-slot name="title">Pedidos - {{ config('app.name') }}</x-slot>
 
-    <x-page-header
-        title="Pedidos de Material"
-        subtitle="Gestión de pedidos y compras"
-        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>'
-    />
+    <x-page-header title="Pedidos de Material" subtitle="Gestión de pedidos y compras"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>' />
 
     {{-- Estilos personalizados para el carrito --}}
     <style>
@@ -69,346 +66,324 @@
         }
     }">
         @if (auth()->user()->rol === 'oficina')
-            {{-- Navegación de Pestañas Premium --}}
-            <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div
-                    class="inline-flex p-1.5 bg-gray-100/80 backdrop-blur-md rounded-2xl border border-gray-200 shadow-inner">
-                    <button @click="activeTab = 'activos'"
-                        :class="activeTab === 'activos' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
-                            'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
-                        class="px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4">
-                            </path>
-                        </svg>
-                        Pedidos Activos
-                    </button>
-                    <button @click="activeTab = 'analisis'"
-                        :class="activeTab === 'analisis' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
-                            'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
-                        class="px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
-                            </path>
-                        </svg>
-                        Análisis y Reposición
-                    </button>
+                {{-- Navegación de Pestañas Premium --}}
+                <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div
+                        class="inline-flex p-1.5 bg-gray-100/80 backdrop-blur-md rounded-2xl border border-gray-200 shadow-inner">
+                        <button @click="activeTab = 'activos'" :class="activeTab === 'activos' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
+                                                    'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
+                            class="px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4">
+                                </path>
+                            </svg>
+                            Pedidos Activos
+                        </button>
+                        <button @click="activeTab = 'analisis'" :class="activeTab === 'analisis' ? 'bg-white text-blue-700 shadow-md ring-1 ring-black/5' :
+                                                    'text-gray-500 hover:text-gray-700 hover:bg-white/50'"
+                            class="px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                                </path>
+                            </svg>
+                            Análisis y Reposición
+                        </button>
+                    </div>
+
+                    <div x-show="activeTab === 'analisis' && cart.length > 0"
+                        x-transition:enter="transition ease-out duration-300 transform"
+                        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                        <button @click="mostrarConfirmacion()"
+                            class="bg-gradient-to-r from-green-600 to-emerald-700 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-xl hover:shadow-green-500/20 hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z">
+                                </path>
+                            </svg>
+                            Generar Pedido (<span x-text="cart.length"></span>)
+                        </button>
+                    </div>
                 </div>
 
-                <div x-show="activeTab === 'analisis' && cart.length > 0"
-                    x-transition:enter="transition ease-out duration-300 transform"
-                    x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
-                    <button @click="mostrarConfirmacion()"
-                        class="bg-gradient-to-r from-green-600 to-emerald-700 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-xl hover:shadow-green-500/20 hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z">
-                            </path>
-                        </svg>
-                        Generar Pedido (<span x-text="cart.length"></span>)
-                    </button>
+                <div x-show="activeTab === 'activos'" x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0">
+                    @livewire('pedidos-table')
                 </div>
-            </div>
 
-            <div x-show="activeTab === 'activos'" x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0">
-                @livewire('pedidos-table')
-            </div>
+                <div x-show="activeTab === 'analisis'" x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0">
+                    {{-- LAYOUT GRID: Contenido + Carrito --}}
+                    <div class="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-8 items-start">
+                        {{-- COLUMNA IZQUIERDA: Contenido Principal --}}
+                        <div class="space-y-8 min-w-0">
+                            {{-- SUMMARY CARDS --}}
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div
+                                    class="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 rounded-[2.5rem] shadow-xl text-white relative overflow-hidden group">
+                                    <div class="relative z-10">
+                                        <div class="flex items-center gap-3 mb-4">
+                                            <div class="p-2 bg-white/20 backdrop-blur-md rounded-xl">
+                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                                                    </path>
+                                                </svg>
+                                            </div>
+                                            <span class="text-xs font-black uppercase tracking-widest text-blue-100">Stock
+                                                Total Empresa</span>
+                                        </div>
+                                        <h4 class="text-3xl font-black mb-1">
+                                            {{ number_format($totalStockEmpresa, 0, ',', '.') }} <span
+                                                class="text-lg font-medium opacity-80">kg</span>
+                                        </h4>
+                                        <p class="text-[10px] text-blue-100/70 font-bold uppercase">Consolidado todas las
+                                            naves</p>
+                                    </div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        class="absolute -bottom-8 -right-8 w-40 h-40 text-white opacity-10 transform rotate-12 group-hover:scale-110 group-hover:rotate-0 transition-all duration-500 pointer-events-none lucide lucide-anvil-icon lucide-anvil">
+                                        <path d="M7 10H6a4 4 0 0 1-4-4 1 1 0 0 1 1-1h4" />
+                                        <path d="M7 5a1 1 0 0 1 1-1h13a1 1 0 0 1 1 1 7 7 0 0 1-7 7H8a1 1 0 0 1-1-1z" />
+                                        <path d="M9 12v5" />
+                                        <path d="M15 12v5" />
+                                        <path d="M5 20a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3 1 1 0 0 1-1 1H6a1 1 0 0 1-1-1" />
+                                    </svg>
+                                </div>
 
-            <div x-show="activeTab === 'analisis'" x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0">
-                {{-- LAYOUT GRID: Contenido + Carrito --}}
-                <div class="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-8 items-start">
-                    {{-- COLUMNA IZQUIERDA: Contenido Principal --}}
-                    <div class="space-y-8 min-w-0">
-                        {{-- SUMMARY CARDS --}}
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div
-                                class="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 rounded-[2.5rem] shadow-xl text-white relative overflow-hidden group">
-                                <div class="relative z-10">
+                                <div class="md:col-span-2 bg-white p-6 rounded-[1.5rem] shadow-sm border border-gray-100">
                                     <div class="flex items-center gap-3 mb-4">
-                                        <div class="p-2 bg-white/20 backdrop-blur-md rounded-xl">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor"
+                                        <div class="p-2 bg-gray-50 rounded-xl">
+                                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                                                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z">
                                                 </path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                             </svg>
                                         </div>
-                                        <span class="text-xs font-black uppercase tracking-widest text-blue-100">Stock
-                                            Total Empresa</span>
+                                        <span class="text-xs font-black uppercase tracking-widest text-gray-400">Distribución
+                                            por Naves</span>
                                     </div>
-                                    <h4 class="text-3xl font-black mb-1">
-                                        {{ number_format($totalStockEmpresa, 0, ',', '.') }} <span
-                                            class="text-lg font-medium opacity-80">kg</span>
-                                    </h4>
-                                    <p class="text-[10px] text-blue-100/70 font-bold uppercase">Consolidado todas las
-                                        naves</p>
+                                    <div class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                                        @foreach ($stockPorNaves as $resumen)
+                                            <div
+                                                class="flex-shrink-0 bg-gray-50/50 border border-gray-100 p-4 rounded-2xl min-w-[160px] hover:border-blue-200 transition-colors">
+                                                <p class="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-tight">
+                                                    {{ $resumen['nombre'] }}
+                                                </p>
+                                                <p class="text-base font-black text-gray-800">
+                                                    {{ number_format($resumen['total'], 0, ',', '.') }} <span
+                                                        class="text-[10px] font-bold opacity-40">kg</span>
+                                                </p>
+                                            </div>
+                                        @endforeach
+                                    </div>
                                 </div>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round"
-                                    class="absolute -bottom-8 -right-8 w-40 h-40 text-white opacity-10 transform rotate-12 group-hover:scale-110 group-hover:rotate-0 transition-all duration-500 pointer-events-none lucide lucide-anvil-icon lucide-anvil">
-                                    <path d="M7 10H6a4 4 0 0 1-4-4 1 1 0 0 1 1-1h4" />
-                                    <path d="M7 5a1 1 0 0 1 1-1h13a1 1 0 0 1 1 1 7 7 0 0 1-7 7H8a1 1 0 0 1-1-1z" />
-                                    <path d="M9 12v5" />
-                                    <path d="M15 12v5" />
-                                    <path d="M5 20a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3 1 1 0 0 1-1 1H6a1 1 0 0 1-1-1" />
-                                </svg>
                             </div>
 
-                            <div class="md:col-span-2 bg-white p-6 rounded-[1.5rem] shadow-sm border border-gray-100">
-                                <div class="flex items-center gap-3 mb-4">
-                                    <div class="p-2 bg-gray-50 rounded-xl">
-                                        <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z">
+                            {{-- SECCIÓN DE STOCK --}}
+                            <div class="p-6 rounded-3xl flex flex-wrap items-center justify-between gap-4">
+                                <div class="flex items-center gap-4">
+                                    <div class="p-3 bg-blue-50 rounded-2xl ring-1 ring-blue-100">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                            stroke-linejoin="round" class="w-6 h-6 text-blue-600">
+                                            <path
+                                                d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl font-black text-gray-900 tracking-tight italic uppercase">
+                                            Análisis detallado</h3>
+                                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Filtrar
+                                            tabla de reposición por nave</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-4">
+                                    <select name="obra_id_hpr" id="obra_id_hpr_stock"
+                                        class="min-w-[240px] rounded-xl border-gray-200 text-sm font-medium shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200">
+                                        <option value="">-- Todas las naves --</option>
+                                        @foreach ($obrasHpr as $obra)
+                                            <option value="{{ $obra->id }}" {{ request('obra_id_hpr') == $obra->id ? 'selected' : '' }}>
+                                                {{ $obra->obra }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div id="loading-stock" class="hidden">
+                                        <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg"
+                                            fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                                stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                                             </path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                         </svg>
                                     </div>
-                                    <span
-                                        class="text-xs font-black uppercase tracking-widest text-gray-400">Distribución
-                                        por Naves</span>
                                 </div>
-                                <div class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-                                    @foreach ($stockPorNaves as $resumen)
-                                        <div
-                                            class="flex-shrink-0 bg-gray-50/50 border border-gray-100 p-4 rounded-2xl min-w-[160px] hover:border-blue-200 transition-colors">
-                                            <p
-                                                class="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-tight">
-                                                {{ $resumen['nombre'] }}</p>
-                                            <p class="text-base font-black text-gray-800">
-                                                {{ number_format($resumen['total'], 0, ',', '.') }} <span
-                                                    class="text-[10px] font-bold opacity-40">kg</span></p>
+                            </div>
+
+                            <div id="contenedor-stock" class="transition-all duration-300">
+                                <x-estadisticas.stock :nombre-meses="$nombreMeses" :stock-data="$stockData"
+                                    :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro"
+                                    :total-general="$totalGeneral" :consumo-origen="$consumoOrigen"
+                                    :consumos-por-mes="$consumosPorMes" :producto-base-info="$productoBaseInfo"
+                                    :stock-por-producto-base="$stockPorProductoBase"
+                                    :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase"
+                                    :resumen-reposicion="$resumenReposicion"
+                                    :recomendacion-reposicion="$recomendacionReposicion"
+                                    :configuracion_vista_stock="$configuracion_vista_stock" />
+                            </div>
+                        </div>
+
+                        {{-- COLUMNA DERECHA: Carrito (Sticky) --}}
+                        <div class="hidden xl:block sticky top-6 self-start">
+                            {{-- CARRITO CON ITEMS --}}
+                            <div x-show="cart.length > 0" x-transition:enter="transition ease-out duration-300"
+                                x-transition:enter-start="opacity-0 translate-x-10"
+                                x-transition:enter-end="opacity-100 translate-x-0"
+                                class="bg-slate-900 rounded-[1.5rem] p-5 text-white shadow-2xl shadow-blue-900/20 border border-slate-800 flex flex-col max-h-[70vh] relative overflow-hidden">
+                                {{-- Background Glow --}}
+                                <div class="absolute -top-24 -right-24 w-64 h-64 bg-blue-600/10 rounded-full blur-[80px]">
+                                </div>
+
+                                <div class="relative z-10 flex flex-col h-full">
+                                    <div class="flex items-center justify-between mb-4 shrink-0">
+                                        <h3 class="text-xl font-black tracking-tight">Borrador</h3>
+                                        <div class="flex items-center gap-2">
+                                            <span
+                                                class="px-2.5 py-0.5 bg-blue-500 text-white text-[10px] font-black rounded-full"
+                                                x-text="cart.length"></span>
+                                            <button @click="cart = []"
+                                                class="text-[9px] font-black text-slate-500 uppercase hover:text-white transition-colors">Limpiar</button>
                                         </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- SECCIÓN DE STOCK --}}
-                        <div class="p-6 rounded-3xl flex flex-wrap items-center justify-between gap-4">
-                            <div class="flex items-center gap-4">
-                                <div class="p-3 bg-blue-50 rounded-2xl ring-1 ring-blue-100">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                        stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-blue-600">
-                                        <path
-                                            d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3 class="text-xl font-black text-gray-900 tracking-tight italic uppercase">
-                                        Análisis detallado</h3>
-                                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Filtrar
-                                        tabla de reposición por nave</p>
-                                </div>
-                            </div>
-
-                            <div class="flex items-center gap-4">
-                                <select name="obra_id_hpr" id="obra_id_hpr_stock"
-                                    class="min-w-[240px] rounded-xl border-gray-200 text-sm font-medium shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200">
-                                    <option value="">-- Todas las naves --</option>
-                                    @foreach ($obrasHpr as $obra)
-                                        <option value="{{ $obra->id }}"
-                                            {{ request('obra_id_hpr') == $obra->id ? 'selected' : '' }}>
-                                            {{ $obra->obra }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <div id="loading-stock" class="hidden">
-                                    <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg"
-                                        fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10"
-                                            stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor"
-                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                        </path>
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div id="contenedor-stock" class="transition-all duration-300">
-                            <x-estadisticas.stock :nombre-meses="$nombreMeses" :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro"
-                                :necesario-por-diametro="$necesarioPorDiametro" :total-general="$totalGeneral" :consumo-origen="$consumoOrigen" :consumos-por-mes="$consumosPorMes"
-                                :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase" :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion"
-                                :recomendacion-reposicion="$recomendacionReposicion" :configuracion_vista_stock="$configuracion_vista_stock" />
-                        </div>
-                    </div>
-
-                    {{-- COLUMNA DERECHA: Carrito (Sticky) --}}
-                    <div class="hidden xl:block sticky top-6 self-start">
-                        {{-- CARRITO CON ITEMS --}}
-                        <div x-show="cart.length > 0" x-transition:enter="transition ease-out duration-300"
-                            x-transition:enter-start="opacity-0 translate-x-10"
-                            x-transition:enter-end="opacity-100 translate-x-0"
-                            class="bg-slate-900 rounded-[1.5rem] p-5 text-white shadow-2xl shadow-blue-900/20 border border-slate-800 flex flex-col max-h-[70vh] relative overflow-hidden">
-                            {{-- Background Glow --}}
-                            <div class="absolute -top-24 -right-24 w-64 h-64 bg-blue-600/10 rounded-full blur-[80px]">
-                            </div>
-
-                            <div class="relative z-10 flex flex-col h-full">
-                                <div class="flex items-center justify-between mb-4 shrink-0">
-                                    <h3 class="text-xl font-black tracking-tight">Borrador</h3>
-                                    <div class="flex items-center gap-2">
-                                        <span
-                                            class="px-2.5 py-0.5 bg-blue-500 text-white text-[10px] font-black rounded-full"
-                                            x-text="cart.length"></span>
-                                        <button @click="cart = []"
-                                            class="text-[9px] font-black text-slate-500 uppercase hover:text-white transition-colors">Limpiar</button>
                                     </div>
-                                </div>
 
-                                {{-- Cart Items (Scrollable) --}}
-                                <div class="flex-1 overflow-y-auto cart-scrollbar pr-1 space-y-2 mb-4 max-h-[35vh]">
-                                    <template x-for="item in cart" :key="item.id">
-                                        <div
-                                            class="p-3 bg-slate-800/40 rounded-xl border border-slate-700/50 hover:bg-slate-800/80 transition-all duration-200">
-                                            <div class="flex flex-col gap-2">
-                                                <div class="flex items-start justify-between">
-                                                    <div class="flex flex-col">
-                                                        <span
-                                                            class="text-[11px] font-bold text-slate-200 leading-tight"
-                                                            x-text="'Ø' + item.diametro + (item.longitud ? ' x ' + item.longitud + 'm' : '')"></span>
-                                                        <span
-                                                            class="text-[8px] font-black text-slate-500 uppercase tracking-widest"
-                                                            x-text="item.tipo"></span>
+                                    {{-- Cart Items (Scrollable) --}}
+                                    <div class="flex-1 overflow-y-auto cart-scrollbar pr-1 space-y-2 mb-4 max-h-[35vh]">
+                                        <template x-for="item in cart" :key="item.id">
+                                            <div
+                                                class="p-3 bg-slate-800/40 rounded-xl border border-slate-700/50 hover:bg-slate-800/80 transition-all duration-200">
+                                                <div class="flex flex-col gap-2">
+                                                    <div class="flex items-start justify-between">
+                                                        <div class="flex flex-col">
+                                                            <span class="text-[11px] font-bold text-slate-200 leading-tight"
+                                                                x-text="'Ø' + item.diametro + (item.longitud ? ' x ' + item.longitud + 'm' : '')"></span>
+                                                            <span
+                                                                class="text-[8px] font-black text-slate-500 uppercase tracking-widest"
+                                                                x-text="item.tipo"></span>
+                                                        </div>
+                                                        <button @click="toggleItem(item)"
+                                                            class="text-slate-500 hover:text-rose-400 transition-colors">
+                                                            <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="3" d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                        </button>
                                                     </div>
-                                                    <button @click="toggleItem(item)"
-                                                        class="text-slate-500 hover:text-rose-400 transition-colors">
-                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="3" d="M6 18L18 6M6 6l12 12" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
 
-                                                <div class="relative">
-                                                    <input type="number" x-model.number="item.cantidad"
-                                                        class="cart-input w-full bg-slate-950 border border-slate-700 rounded-lg pl-2 pr-8 py-1 text-[10px] font-black text-blue-400 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
-                                                        step="100">
-                                                    <span
-                                                        class="absolute right-2 top-1 text-[8px] font-black text-slate-600">KG</span>
+                                                    <div class="relative">
+                                                        <input type="number" x-model.number="item.cantidad"
+                                                            class="cart-input w-full bg-slate-950 border border-slate-700 rounded-lg pl-2 pr-8 py-1 text-[10px] font-black text-blue-400 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                                                            step="100">
+                                                        <span
+                                                            class="absolute right-2 top-1 text-[8px] font-black text-slate-600">KG</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </template>
-                                </div>
-
-                                {{-- Totals & Call to Action (Fixed at bottom) --}}
-                                <div class="shrink-0 border-t border-slate-800 pt-4 space-y-4">
-                                    <div class="flex justify-between items-center">
-                                        <div class="flex flex-col">
-                                            <p class="text-[8px] font-black text-slate-500 uppercase tracking-widest">
-                                                Peso
-                                                Total</p>
-                                            <div class="flex items-baseline gap-1">
-                                                <p class="text-2xl font-black text-white"
-                                                    x-text="cartTotal.toLocaleString('es-ES')"></p>
-                                                <span class="text-[9px] font-bold text-slate-500 uppercase">kg</span>
-                                            </div>
-                                        </div>
-                                        <div
-                                            class="px-2 py-1 bg-slate-800 rounded-lg border border-slate-700/50 flex items-center gap-1.5">
-                                            <span class="text-[10px]">🚛</span>
-                                            <span class="text-[10px] font-black text-slate-300"
-                                                x-text="Math.ceil(cartTotal / 25000)"></span>
-                                        </div>
+                                        </template>
                                     </div>
 
-                                    <button type="button" @click="mostrarConfirmacion(cart)"
-                                        class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3.5 rounded-xl shadow-lg shadow-blue-900/20 transition-all transform active:scale-95 flex items-center justify-center gap-2 group/btn">
-                                        <span class="text-xs uppercase tracking-wider">Continuar Pedido</span>
-                                        <svg class="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform"
-                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                                d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                                        </svg>
-                                    </button>
+                                    {{-- Totals & Call to Action (Fixed at bottom) --}}
+                                    <div class="shrink-0 border-t border-slate-800 pt-4 space-y-4">
+                                        <div class="flex justify-between items-center">
+                                            <div class="flex flex-col">
+                                                <p class="text-[8px] font-black text-slate-500 uppercase tracking-widest">
+                                                    Peso
+                                                    Total</p>
+                                                <div class="flex items-baseline gap-1">
+                                                    <p class="text-2xl font-black text-white"
+                                                        x-text="cartTotal.toLocaleString('es-ES')"></p>
+                                                    <span class="text-[9px] font-bold text-slate-500 uppercase">kg</span>
+                                                </div>
+                                            </div>
+                                            <div
+                                                class="px-2 py-1 bg-slate-800 rounded-lg border border-slate-700/50 flex items-center gap-1.5">
+                                                <span class="text-[10px]">🚛</span>
+                                                <span class="text-[10px] font-black text-slate-300"
+                                                    x-text="Math.ceil(cartTotal / 25000)"></span>
+                                            </div>
+                                        </div>
+
+                                        <button type="button" @click="mostrarConfirmacion(cart)"
+                                            class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3.5 rounded-xl shadow-lg shadow-blue-900/20 transition-all transform active:scale-95 flex items-center justify-center gap-2 group/btn">
+                                            <span class="text-xs uppercase tracking-wider">Continuar Pedido</span>
+                                            <svg class="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform"
+                                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                                    d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {{-- CARRITO VACÍO --}}
-                        <div x-show="cart.length === 0"
-                            class="bg-white rounded-[1.5rem] p-12 text-center border-2 border-dashed border-slate-200">
-                            <div
-                                class="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
-                                🛒</div>
-                            <h4 class="text-sm font-black text-slate-400 uppercase tracking-widest">Carrito de
-                                Reposición
-                            </h4>
-                            <p class="text-xs text-slate-400 mt-3 font-medium leading-relaxed">Añade productos del
-                                análisis
-                                de stock para configurar un nuevo pedido de compra.</p>
+                            {{-- CARRITO VACÍO --}}
+                            <div x-show="cart.length === 0"
+                                class="bg-white rounded-[1.5rem] p-12 text-center border-2 border-dashed border-slate-200">
+                                <div
+                                    class="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
+                                    🛒</div>
+                                <h4 class="text-sm font-black text-slate-400 uppercase tracking-widest">Carrito de
+                                    Reposición
+                                </h4>
+                                <p class="text-xs text-slate-400 mt-3 font-medium leading-relaxed">Añade productos del
+                                    análisis
+                                    de stock para configurar un nuevo pedido de compra.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
 
-            {{-- MODAL COLADAS / BULTOS PARA ACTIVACIÓN --}}
-            <div id="modal-coladas-activacion"
-                class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm hidden items-center justify-center z-50 transition-all duration-300">
-                <div
-                    class="bg-white rounded-2xl w-full max-w-3xl shadow-2xl transform transition-all duration-300 overflow-hidden border border-gray-200">
-                    {{-- Header --}}
-                    <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-5 border-b border-slate-600">
-                        <h3 class="text-xl font-bold text-white flex items-center gap-3">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            Confirmar activación de línea
-                        </h3>
-                        <p class="text-sm text-slate-300 mt-2">
-                            Registrar coladas y bultos asociados (opcional)
-                        </p>
-                        <p id="modal-linea-info" class="text-sm text-slate-200 mt-1">
-                            Selecciona las coladas y bultos de la línea que estás activando antes de confirmar.
-                        </p>
-                    </div>
-
-                    {{-- Body --}}
-                    <div class="p-6">
-                        <div class="bg-blue-50 border-l-4 border-blue-500 px-4 py-3 rounded-r mb-5">
-                            <p class="text-sm text-blue-800 leading-relaxed">
-                                <strong class="font-semibold">Información:</strong> Puedes añadir cero o más coladas y
-                                bultos.
-                                Si no necesitas registrar información, deja la tabla vacía y confirma la activación.
+                {{-- MODAL COLADAS / BULTOS PARA ACTIVACIÓN --}}
+                <div id="modal-coladas-activacion"
+                    class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm hidden items-center justify-center z-50 transition-all duration-300">
+                    <div
+                        class="bg-white rounded-2xl w-full max-w-3xl shadow-2xl transform transition-all duration-300 overflow-hidden border border-gray-200">
+                        {{-- Header --}}
+                        <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-5 border-b border-slate-600">
+                            <h3 class="text-xl font-bold text-white flex items-center gap-3">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Confirmar activación de línea
+                            </h3>
+                            <p class="text-sm text-slate-300 mt-2">
+                                Registrar coladas y bultos asociados (opcional)
+                            </p>
+                            <p id="modal-linea-info" class="text-sm text-slate-200 mt-1">
+                                Selecciona las coladas y bultos de la línea que estás activando antes de confirmar.
                             </p>
                         </div>
 
-                        <div class="border border-gray-300 rounded-xl mb-5 shadow-sm bg-white overflow-hidden">
-                            <table class="w-full text-sm table-fixed">
-                                <colgroup>
-                                    <col style="width:30%">
-                                    <col style="width:35%">
-                                    <col style="width:20%">
-                                    <col style="width:15%">
-                                </colgroup>
-                                <thead class="bg-gradient-to-r from-gray-700 to-gray-800 text-white">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
-                                            Colada</th>
-                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
-                                            Fabricante</th>
-                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
-                                            Bultos</th>
-                                        <th
-                                            class="px-4 py-3 text-center font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
-                                            Acciones</th>
-                                    </tr>
-                                </thead>
-                            </table>
-                            <div class="max-h-72 overflow-y-auto">
+                        {{-- Body --}}
+                        <div class="p-6">
+                            <div class="bg-blue-50 border-l-4 border-blue-500 px-4 py-3 rounded-r mb-5">
+                                <p class="text-sm text-blue-800 leading-relaxed">
+                                    <strong class="font-semibold">Información:</strong> Puedes añadir cero o más coladas y
+                                    bultos.
+                                    Si no necesitas registrar información, deja la tabla vacía y confirma la activación.
+                                </p>
+                            </div>
+
+                            <div class="border border-gray-300 rounded-xl mb-5 shadow-sm bg-white overflow-hidden">
                                 <table class="w-full text-sm table-fixed">
                                     <colgroup>
                                         <col style="width:30%">
@@ -416,200 +391,221 @@
                                         <col style="width:20%">
                                         <col style="width:15%">
                                     </colgroup>
-                                    <tbody id="tabla-coladas-body" class="divide-y divide-gray-200">
-                                    </tbody>
+                                    <thead class="bg-gradient-to-r from-gray-700 to-gray-800 text-white">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
+                                                Colada</th>
+                                            <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
+                                                Fabricante</th>
+                                            <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
+                                                Bultos</th>
+                                            <th
+                                                class="px-4 py-3 text-center font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
+                                                Acciones</th>
+                                        </tr>
+                                    </thead>
                                 </table>
+                                <div class="max-h-72 overflow-y-auto">
+                                    <table class="w-full text-sm table-fixed">
+                                        <colgroup>
+                                            <col style="width:30%">
+                                            <col style="width:35%">
+                                            <col style="width:20%">
+                                            <col style="width:15%">
+                                        </colgroup>
+                                        <tbody id="tabla-coladas-body" class="divide-y divide-gray-200">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-between items-center mb-6 pt-2">
+                                <button type="button" id="btn-agregar-colada"
+                                    class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-medium px-4 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                            d="M12 4v16m8-8H4"></path>
+                                    </svg>
+                                    Añadir colada / bulto
+                                </button>
+                            </div>
+
+                            {{-- Footer con botones --}}
+                            <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                                <button type="button" id="btn-cancelar-coladas"
+                                    class="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 text-sm font-medium px-5 py-2.5 rounded-lg border border-gray-300 transition-all duration-200 shadow-sm hover:shadow">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                    Cancelar
+                                </button>
+                                <button type="button" id="btn-confirmar-activacion-coladas"
+                                    class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-semibold px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                            d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    Confirmar activación
+                                </button>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="flex justify-between items-center mb-6 pt-2">
-                            <button type="button" id="btn-agregar-colada"
-                                class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-medium px-4 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                        d="M12 4v16m8-8H4"></path>
-                                </svg>
-                                Añadir colada / bulto
-                            </button>
-                        </div>
-
-                        {{-- Footer con botones --}}
-                        <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                            <button type="button" id="btn-cancelar-coladas"
-                                class="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 text-sm font-medium px-5 py-2.5 rounded-lg border border-gray-300 transition-all duration-200 shadow-sm hover:shadow">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {{-- MODAL CONFIRMACIÓN PEDIDO --}}
+                <div id="modalConfirmacion"
+                    class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-[9999] transition-all duration-300">
+                    <div
+                        class="bg-white rounded-[1.5rem] w-full max-w-5xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[95vh] m-4">
+                        {{-- Header --}}
+                        <div
+                            class="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-4 text-white flex justify-between items-center shrink-0">
+                            <div>
+                                <h3 class="text-xl font-black tracking-tight uppercase">CONFIRMAR PEDIDO</h3>
+                                <p class="text-blue-100 text-[11px] font-medium opacity-80">Revisa los detalles antes de
+                                    generar la orden de compra</p>
+                            </div>
+                            <button type="button" onclick="cerrarModalConfirmacion()"
+                                class="p-2 hover:bg-white/20 rounded-xl transition-colors">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M6 18L18 6M6 6l12 12"></path>
                                 </svg>
-                                Cancelar
-                            </button>
-                            <button type="button" id="btn-confirmar-activacion-coladas"
-                                class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-semibold px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                        d="M5 13l4 4L19 7"></path>
-                                </svg>
-                                Confirmar activación
                             </button>
                         </div>
+
+                        <form id="formularioPedido" action="{{ route('pedidos.store') }}" method="POST"
+                            class="flex flex-col flex-1 overflow-hidden">
+                            @csrf
+
+                            <div class="flex-1 overflow-y-auto p-5 space-y-4">
+                                {{-- Proveedor --}}
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="space-y-2">
+                                        <label for="fabricante"
+                                            class="block text-[10px] font-black uppercase tracking-widest text-gray-400">Fabricante</label>
+                                        <select name="fabricante_id" id="fabricante"
+                                            onchange="if(this.value) document.getElementById('distribuidor').value = ''"
+                                            class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-xs font-bold text-gray-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none">
+                                            <option value="">-- Seleccionar fabricante --</option>
+                                            @foreach ($fabricantes as $fabricante)
+                                                <option value="{{ $fabricante->id }}">{{ $fabricante->nombre }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label for="distribuidor"
+                                            class="block text-[10px] font-black uppercase tracking-widest text-gray-400">Distribuidor</label>
+                                        <select name="distribuidor_id" id="distribuidor"
+                                            onchange="if(this.value) document.getElementById('fabricante').value = ''"
+                                            class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-xs font-bold text-gray-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none">
+                                            <option value="">-- Seleccionar distribuidor --</option>
+                                            @foreach ($distribuidores as $distribuidor)
+                                                <option value="{{ $distribuidor->id }}">{{ $distribuidor->nombre }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {{-- Ubicación --}}
+                                <div class="space-y-4">
+                                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400">Lugar
+                                        de Entrega</label>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div class="group">
+                                            <div
+                                                class="bg-gray-50 p-2.5 rounded-2xl border border-gray-100 group-focus-within:border-blue-500 transition-all">
+                                                <label
+                                                    class="block text-[9px] font-black text-gray-400 mb-1 uppercase tracking-tight">Nave
+                                                    HPR</label>
+                                                <select name="obra_id_hpr" id="obra_id_hpr_modal"
+                                                    class="w-full bg-transparent border-none p-0 text-xs font-black text-gray-800 focus:ring-0 cursor-pointer"
+                                                    onchange="if(this.value) { document.getElementById('obra_id_externa_modal').value = ''; document.getElementById('obra_manual_modal').value = ''; }">
+                                                    <option value="">Seleccionar nave</option>
+                                                    @foreach ($navesHpr as $nave)
+                                                        <option value="{{ $nave->id }}">{{ $nave->obra }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="group">
+                                            <div
+                                                class="bg-gray-50 p-2.5 rounded-2xl border border-gray-100 group-focus-within:border-blue-500 transition-all">
+                                                <label
+                                                    class="block text-[9px] font-black text-gray-400 mb-1 uppercase tracking-tight">Obra
+                                                    Externa</label>
+                                                <select name="obra_id_externa" id="obra_id_externa_modal"
+                                                    class="w-full bg-transparent border-none p-0 text-xs font-black text-gray-800 focus:ring-0 cursor-pointer"
+                                                    onchange="if(this.value) { document.getElementById('obra_id_hpr_modal').value = ''; document.getElementById('obra_manual_modal').value = ''; }">
+                                                    <option value="">Seleccionar obra</option>
+                                                    @foreach ($obrasExternas as $obra)
+                                                        <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="group">
+                                            <div
+                                                class="bg-gray-50 p-2.5 rounded-2xl border border-gray-100 group-focus-within:border-blue-500 transition-all">
+                                                <label
+                                                    class="block text-[9px] font-black text-gray-400 mb-1 uppercase tracking-tight">Manual
+                                                    / Libre</label>
+                                                <input type="text" name="obra_manual" id="obra_manual_modal"
+                                                    class="w-full bg-transparent border-none p-0 text-xs font-black text-gray-800 focus:ring-0 placeholder-gray-300"
+                                                    placeholder="Dirección manual"
+                                                    oninput="if(this.value) { document.getElementById('obra_id_hpr_modal').value = ''; document.getElementById('obra_id_externa_modal').value = ''; }"
+                                                    value="{{ old('obra_manual') }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Tabla de líneas --}}
+                                <div class="rounded-3xl border border-gray-100 overflow-x-auto shadow-sm">
+                                    <table class="w-full text-sm">
+                                        <thead class="bg-gray-50 border-b border-gray-100">
+                                            <tr>
+                                                <th
+                                                    class="px-4 py-3 text-left text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                                                    Producto</th>
+                                                <th
+                                                    class="px-4 py-3 text-left text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                                                    Dimensiones</th>
+                                                <th
+                                                    class="px-4 py-3 text-left text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                                                    Peso Total</th>
+                                                <th
+                                                    class="px-4 py-3 text-left text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                                                    Fechas de Entrega</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tablaConfirmacionBody" class="divide-y divide-gray-50"></tbody>
+                                    </table>
+                                </div>
+
+                                <div id="mensajesGlobales" class="space-y-1"></div>
+                            </div>
+
+                            {{-- Footer --}}
+                            <div class="shrink-0 bg-gray-50 px-8 py-4 flex justify-end gap-3 border-t border-gray-100">
+                                <button type="button" onclick="cerrarModalConfirmacion()"
+                                    class="px-6 py-2.5 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-200 transition-all">
+                                    Cancelar
+                                </button>
+                                <button type="submit"
+                                    class="bg-emerald-500 hover:bg-emerald-600 px-8 py-2.5 rounded-xl text-xs font-black text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all">
+                                    CREAR PEDIDO DE COMPRA
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
-
-            {{-- MODAL CONFIRMACIÓN PEDIDO --}}
-            <div id="modalConfirmacion"
-                class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-[9999] transition-all duration-300">
-                <div
-                    class="bg-white rounded-[1.5rem] w-full max-w-5xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[95vh] m-4">
-                    {{-- Header --}}
-                    <div
-                        class="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-4 text-white flex justify-between items-center shrink-0">
-                        <div>
-                            <h3 class="text-xl font-black tracking-tight uppercase">CONFIRMAR PEDIDO</h3>
-                            <p class="text-blue-100 text-[11px] font-medium opacity-80">Revisa los detalles antes de
-                                generar la orden de compra</p>
-                        </div>
-                        <button type="button" onclick="cerrarModalConfirmacion()"
-                            class="p-2 hover:bg-white/20 rounded-xl transition-colors">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <form id="formularioPedido" action="{{ route('pedidos.store') }}" method="POST"
-                        class="flex flex-col flex-1 overflow-hidden">
-                        @csrf
-
-                        <div class="flex-1 overflow-y-auto p-5 space-y-4">
-                            {{-- Proveedor --}}
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="space-y-2">
-                                    <label for="fabricante"
-                                        class="block text-[10px] font-black uppercase tracking-widest text-gray-400">Fabricante</label>
-                                    <select name="fabricante_id" id="fabricante"
-                                        onchange="if(this.value) document.getElementById('distribuidor').value = ''"
-                                        class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-xs font-bold text-gray-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none">
-                                        <option value="">-- Seleccionar fabricante --</option>
-                                        @foreach ($fabricantes as $fabricante)
-                                            <option value="{{ $fabricante->id }}">{{ $fabricante->nombre }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="space-y-2">
-                                    <label for="distribuidor"
-                                        class="block text-[10px] font-black uppercase tracking-widest text-gray-400">Distribuidor</label>
-                                    <select name="distribuidor_id" id="distribuidor"
-                                        onchange="if(this.value) document.getElementById('fabricante').value = ''"
-                                        class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-xs font-bold text-gray-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none">
-                                        <option value="">-- Seleccionar distribuidor --</option>
-                                        @foreach ($distribuidores as $distribuidor)
-                                            <option value="{{ $distribuidor->id }}">{{ $distribuidor->nombre }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-
-                            {{-- Ubicación --}}
-                            <div class="space-y-4">
-                                <label
-                                    class="block text-[10px] font-black uppercase tracking-widest text-gray-400">Lugar
-                                    de Entrega</label>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div class="group">
-                                        <div
-                                            class="bg-gray-50 p-2.5 rounded-2xl border border-gray-100 group-focus-within:border-blue-500 transition-all">
-                                            <label
-                                                class="block text-[9px] font-black text-gray-400 mb-1 uppercase tracking-tight">Nave
-                                                HPR</label>
-                                            <select name="obra_id_hpr" id="obra_id_hpr_modal"
-                                                class="w-full bg-transparent border-none p-0 text-xs font-black text-gray-800 focus:ring-0 cursor-pointer"
-                                                onchange="if(this.value) { document.getElementById('obra_id_externa_modal').value = ''; document.getElementById('obra_manual_modal').value = ''; }">
-                                                <option value="">Seleccionar nave</option>
-                                                @foreach ($navesHpr as $nave)
-                                                    <option value="{{ $nave->id }}">{{ $nave->obra }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div class="group">
-                                        <div
-                                            class="bg-gray-50 p-2.5 rounded-2xl border border-gray-100 group-focus-within:border-blue-500 transition-all">
-                                            <label
-                                                class="block text-[9px] font-black text-gray-400 mb-1 uppercase tracking-tight">Obra
-                                                Externa</label>
-                                            <select name="obra_id_externa" id="obra_id_externa_modal"
-                                                class="w-full bg-transparent border-none p-0 text-xs font-black text-gray-800 focus:ring-0 cursor-pointer"
-                                                onchange="if(this.value) { document.getElementById('obra_id_hpr_modal').value = ''; document.getElementById('obra_manual_modal').value = ''; }">
-                                                <option value="">Seleccionar obra</option>
-                                                @foreach ($obrasExternas as $obra)
-                                                    <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div class="group">
-                                        <div
-                                            class="bg-gray-50 p-2.5 rounded-2xl border border-gray-100 group-focus-within:border-blue-500 transition-all">
-                                            <label
-                                                class="block text-[9px] font-black text-gray-400 mb-1 uppercase tracking-tight">Manual
-                                                / Libre</label>
-                                            <input type="text" name="obra_manual" id="obra_manual_modal"
-                                                class="w-full bg-transparent border-none p-0 text-xs font-black text-gray-800 focus:ring-0 placeholder-gray-300"
-                                                placeholder="Dirección manual"
-                                                oninput="if(this.value) { document.getElementById('obra_id_hpr_modal').value = ''; document.getElementById('obra_id_externa_modal').value = ''; }"
-                                                value="{{ old('obra_manual') }}">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- Tabla de líneas --}}
-                            <div class="rounded-3xl border border-gray-100 overflow-x-auto shadow-sm">
-                                <table class="w-full text-sm">
-                                    <thead class="bg-gray-50 border-b border-gray-100">
-                                        <tr>
-                                            <th
-                                                class="px-4 py-3 text-left text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                                                Producto</th>
-                                            <th
-                                                class="px-4 py-3 text-left text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                                                Dimensiones</th>
-                                            <th
-                                                class="px-4 py-3 text-left text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                                                Peso Total</th>
-                                            <th
-                                                class="px-4 py-3 text-left text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                                                Fechas de Entrega</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tablaConfirmacionBody" class="divide-y divide-gray-50"></tbody>
-                                </table>
-                            </div>
-
-                            <div id="mensajesGlobales" class="space-y-1"></div>
-                        </div>
-
-                        {{-- Footer --}}
-                        <div class="shrink-0 bg-gray-50 px-8 py-4 flex justify-end gap-3 border-t border-gray-100">
-                            <button type="button" onclick="cerrarModalConfirmacion()"
-                                class="px-6 py-2.5 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-200 transition-all">
-                                Cancelar
-                            </button>
-                            <button type="submit"
-                                class="bg-emerald-500 hover:bg-emerald-600 px-8 py-2.5 rounded-xl text-xs font-black text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all">
-                                CREAR PEDIDO DE COMPRA
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-    </div>
-    @endif
+        @endif
 
     {{-- ROL OPERARIO --}}
     @if (Auth::user()->rol === 'operario')
@@ -856,14 +852,14 @@
             };
 
             fetch(`/pedidos/${pedidoId}/actualizar-linea`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(datos)
-                })
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(datos)
+            })
                 .then(response => {
                     // Verificar si la respuesta es JSON válido
                     const contentType = response.headers.get('content-type');
@@ -926,21 +922,21 @@
             selectExterna.parentNode.replaceChild(newSelectExterna, selectExterna);
             inputManual.parentNode.replaceChild(newInputManual, inputManual);
 
-            newSelectHpr.addEventListener('change', function() {
+            newSelectHpr.addEventListener('change', function () {
                 if (this.value) {
                     newSelectExterna.value = '';
                     newInputManual.value = '';
                 }
             });
 
-            newSelectExterna.addEventListener('change', function() {
+            newSelectExterna.addEventListener('change', function () {
                 if (this.value) {
                     newSelectHpr.value = '';
                     newInputManual.value = '';
                 }
             });
 
-            newInputManual.addEventListener('input', function() {
+            newInputManual.addEventListener('input', function () {
                 if (this.value.trim()) {
                     newSelectHpr.value = '';
                     newSelectExterna.value = '';
@@ -953,7 +949,7 @@
     <script>
         function debounce(fn, delay) {
             let timer;
-            return function() {
+            return function () {
                 clearTimeout(timer);
                 const args = arguments;
                 const context = this;
@@ -999,17 +995,17 @@
             if (lineas.length === 0) return;
 
             fetch('{{ route('pedidos.verSugerir-pedido-global') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({
-                        fabricante_id: fabricante,
-                        distribuidor_id: distribuidor,
-                        lineas: lineas
-                    })
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    fabricante_id: fabricante,
+                    distribuidor_id: distribuidor,
+                    lineas: lineas
                 })
+            })
                 .then(r => r.json())
                 .then(data => {
                     const mensajesGlobales = document.getElementById('mensajesGlobales');
@@ -1281,7 +1277,7 @@
             }
             formulario.dataset.initialized = 'true';
 
-            formulario.addEventListener('submit', function(ev) {
+            formulario.addEventListener('submit', function (ev) {
                 ev.preventDefault();
                 const errores = [];
 
@@ -1310,7 +1306,7 @@
                 document.querySelectorAll('#tablaConfirmacionBody tr').forEach(tr => {
                     const tipo = tr.querySelector('td:nth-child(1)')?.textContent.trim();
                     const diametro = tr.querySelector('td:nth-child(2)')?.textContent.trim().replace(' mm',
-                            '')
+                        '')
                         .split('/')[0].trim();
                     const peso = parseFloat(tr.querySelector('.peso-total')?.value || 0);
 
@@ -1352,7 +1348,7 @@
                         icon: 'error',
                         title: 'Revisa los datos',
                         html: '<ul style="text-align:left;">' + errores.map(e => `<li>• ${e}</li>`).join(
-                                '') +
+                            '') +
                             '</ul>'
                     });
                     return false;
@@ -1365,8 +1361,8 @@
                 let obraTexto = obraHpr ?
                     `Nave: ${document.querySelector('#obra_id_hpr_modal option:checked').textContent}` :
                     obraExterna ?
-                    `Obra externa: ${document.querySelector('#obra_id_externa_modal option:checked').textContent}` :
-                    `Lugar manual: ${obraManual}`;
+                        `Obra externa: ${document.querySelector('#obra_id_externa_modal option:checked').textContent}` :
+                        `Lugar manual: ${obraManual}`;
 
                 let htmlResumen =
                     `<p><b>${proveedorTexto}</b></p><p><b>${obraTexto}</b></p><hr><ul style="text-align:left;">`;
@@ -1422,7 +1418,7 @@
             }
             selectObra.dataset.initialized = 'true';
 
-            selectObra.addEventListener('change', function() {
+            selectObra.addEventListener('change', function () {
                 const obraId = this.value;
 
                 // Mostrar loading
@@ -1435,12 +1431,12 @@
                     '');
 
                 fetch(url, {
-                        method: 'GET',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'application/json'
-                        }
-                    })
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
                     .then(response => {
                         if (!response.ok) throw new Error('Error en la petición');
                         return response.json();
@@ -1534,7 +1530,7 @@
                 const diametro = fila.dataset.lineaDiametro ? `Ø${fila.dataset.lineaDiametro}` : null;
                 const longitud = fila.dataset.lineaLongitud ? `x${fila.dataset.lineaLongitud.trim()} m` : null;
                 const cantidad = fila.dataset.lineaCantidad ?
-                    `${parseFloat(fila.dataset.lineaCantidad).toLocaleString('es-ES', {maximumFractionDigits: 2})} kg` :
+                    `${parseFloat(fila.dataset.lineaCantidad).toLocaleString('es-ES', { maximumFractionDigits: 2 })} kg` :
                     null;
 
                 const detalles = [producto, diametro, longitud, cantidad].filter(Boolean).join(' • ');
@@ -1583,6 +1579,34 @@
                     return;
                 }
 
+                const fila = form.closest('tr');
+                const botonesEnFila = fila ? fila.querySelectorAll('button, input[type="submit"]') : [];
+                const btnSubmit = form.querySelector('button[type="submit"]');
+                const textoOriginal = btnSubmit ? btnSubmit.innerHTML : '';
+
+                // Función para bloquear/desbloquear botones
+                function toggleBloqueo(bloquear) {
+                    botonesEnFila.forEach(btn => {
+                        btn.disabled = bloquear;
+                        if (bloquear) {
+                            btn.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                        } else {
+                            btn.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                        }
+                    });
+                }
+
+                // Bloquear y mostrar spinner
+                toggleBloqueo(true);
+                if (btnSubmit) {
+                    btnSubmit.innerHTML = `
+                        <svg class="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    `;
+                }
+
                 const formData = new FormData(form);
                 if (!formData.has('_token')) {
                     formData.append('_token', obtenerTokenCsrf());
@@ -1592,13 +1616,13 @@
                 }
 
                 fetch(form.getAttribute('action'), {
-                        method: 'POST',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'application/json',
-                        },
-                        body: formData,
-                    })
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                })
                     .then(response => response.json().then(data => ({
                         ok: response.ok,
                         data
@@ -1607,24 +1631,34 @@
                         ok,
                         data
                     }) => {
+                        // Restaurar botón y desbloquear
+                        if (btnSubmit) btnSubmit.innerHTML = textoOriginal;
+                        toggleBloqueo(false);
+
                         if (!ok || !data.success) {
                             const mensaje = data && data.message ? data.message :
                                 'Error al desactivar la línea.';
                             throw new Error(mensaje);
                         }
 
-                        const fila = form.closest('tr');
                         actualizarEstadoVisualLinea(pedidoId, lineaId, 'pendiente', CLASES_PENDIENTE, fila);
                         toggleBotonesLinea(fila);
 
                         Swal.fire({
+                            toast: true,
+                            position: 'top',
                             icon: 'success',
                             title: data.message || 'Línea desactivada correctamente.',
                             showConfirmButton: false,
-                            timer: 1800,
+                            timer: 2000,
+                            timerProgressBar: true,
                         });
                     })
                     .catch(error => {
+                        // Restaurar botón y desbloquear en caso de error
+                        if (btnSubmit) btnSubmit.innerHTML = textoOriginal;
+                        toggleBloqueo(false);
+
                         console.error(error);
                         Swal.fire({
                             icon: 'error',
@@ -1694,14 +1728,14 @@
 
             if (btnAgregar && !btnAgregar.dataset.initialized) {
                 btnAgregar.dataset.initialized = 'true';
-                btnAgregar.addEventListener('click', function() {
+                btnAgregar.addEventListener('click', function () {
                     agregarFilaColada();
                 });
             }
 
             if (cuerpoTabla && !cuerpoTabla.dataset.initialized) {
                 cuerpoTabla.dataset.initialized = 'true';
-                cuerpoTabla.addEventListener('click', function(ev) {
+                cuerpoTabla.addEventListener('click', function (ev) {
                     const botonEliminar = ev.target.closest('.btn-eliminar-colada');
                     if (botonEliminar) {
                         const fila = botonEliminar.closest('tr');
@@ -1714,7 +1748,7 @@
 
             if (btnCancelar && !btnCancelar.dataset.initialized) {
                 btnCancelar.dataset.initialized = 'true';
-                btnCancelar.addEventListener('click', function() {
+                btnCancelar.addEventListener('click', function () {
                     cerrarModalColadas(true);
                 });
             }
@@ -1728,10 +1762,46 @@
                 return input ? input.value : '';
             }
 
+            function bloquearBotonesModal(bloquear) {
+                const elementos = [btnConfirmar, btnCancelar, btnAgregar];
+                elementos.forEach(el => {
+                    if (el) {
+                        el.disabled = bloquear;
+                        if (bloquear) {
+                            el.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                        } else {
+                            el.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                        }
+                    }
+                });
+                // También bloquear los botones de eliminar fila dentro de la tabla
+                cuerpoTabla.querySelectorAll('.btn-eliminar-colada').forEach(btn => {
+                    btn.disabled = bloquear;
+                    if (bloquear) {
+                        btn.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                    } else {
+                        btn.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                    }
+                });
+            }
+
             function activarLineaConColadas() {
                 if (!pedidoIdActual || !lineaIdActual) {
                     return;
                 }
+
+                // Bloquear todos los botones del modal para prevenir spam
+                bloquearBotonesModal(true);
+
+                // Guardar contenido original del botón y mostrar spinner
+                const textoOriginal = btnConfirmar.innerHTML;
+                btnConfirmar.innerHTML = `
+                    <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Procesando...</span>
+                `;
 
                 const filas = cuerpoTabla.querySelectorAll('.fila-colada');
                 const coladas = [];
@@ -1757,17 +1827,17 @@
                 const url = `{{ url('/pedidos') }}/${pedidoIdActual}/lineas/${lineaIdActual}/activar-con-coladas`;
 
                 fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRF-TOKEN': obtenerTokenCsrf(),
-                            'Accept': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            coladas
-                        }),
-                    })
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': obtenerTokenCsrf(),
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        coladas
+                    }),
+                })
                     .then(response => response.json().then(data => ({
                         ok: response.ok,
                         status: response.status,
@@ -1777,6 +1847,10 @@
                         ok,
                         data
                     }) => {
+                        // Restaurar botón y desbloquear
+                        btnConfirmar.innerHTML = textoOriginal;
+                        bloquearBotonesModal(false);
+
                         if (!ok || !data.success) {
                             const mensaje = data && data.message ? data.message : 'Error al activar la línea.';
                             throw new Error(mensaje);
@@ -1806,13 +1880,20 @@
                         }
 
                         Swal.fire({
+                            toast: true,
+                            position: 'top',
                             icon: 'success',
                             title: data.message || 'Línea activada correctamente.',
                             showConfirmButton: false,
-                            timer: 1800,
+                            timer: 2000,
+                            timerProgressBar: true,
                         });
                     })
                     .catch(error => {
+                        // Restaurar botón y desbloquear en caso de error
+                        btnConfirmar.innerHTML = textoOriginal;
+                        bloquearBotonesModal(false);
+
                         console.error(error);
                         Swal.fire({
                             icon: 'error',
@@ -1824,7 +1905,7 @@
 
             if (btnConfirmar && !btnConfirmar.dataset.initialized) {
                 btnConfirmar.dataset.initialized = 'true';
-                btnConfirmar.addEventListener('click', function() {
+                btnConfirmar.addEventListener('click', function () {
                     activarLineaConColadas();
                 });
             }
@@ -1835,7 +1916,7 @@
             }
             document._coladasSubmitListenerAdded = true;
 
-            document.addEventListener('submit', function(ev) {
+            document.addEventListener('submit', function (ev) {
                 const form = ev.target.closest('form');
                 if (!form) {
                     return;

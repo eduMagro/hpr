@@ -84,9 +84,18 @@ class PedidosTable extends Component
     public function limpiarFiltros()
     {
         $this->reset([
-            'codigo_linea', 'codigo', 'pedido_global_id', 'fabricante_id', 'distribuidor_id',
-            'obra_id', 'producto_tipo', 'producto_diametro', 'producto_longitud',
-            'fecha_pedido', 'fecha_entrega', 'estado'
+            'codigo_linea',
+            'codigo',
+            'pedido_global_id',
+            'fabricante_id',
+            'distribuidor_id',
+            'obra_id',
+            'producto_tipo',
+            'producto_diametro',
+            'producto_longitud',
+            'fecha_pedido',
+            'fecha_entrega',
+            'estado'
         ]);
         $this->resetPage();
     }
@@ -242,7 +251,10 @@ class PedidosTable extends Component
 
         // Aplicar ordenamiento
         $columnasPermitidas = [
-            'codigo', 'fecha_estimada_entrega', 'estado', 'created_at'
+            'codigo',
+            'fecha_estimada_entrega',
+            'estado',
+            'created_at'
         ];
 
         $sortBy = in_array($this->sort, $columnasPermitidas) ? $this->sort : 'created_at';
@@ -251,8 +263,8 @@ class PedidosTable extends Component
         // Para ordenar por campos del pedido padre
         if ($this->sort === 'fecha_pedido') {
             $query->join('pedidos', 'pedido_productos.pedido_id', '=', 'pedidos.id')
-                  ->orderBy('pedidos.fecha_pedido', $orderDir)
-                  ->select('pedido_productos.*');
+                ->orderBy('pedidos.fecha_pedido', $orderDir)
+                ->select('pedido_productos.*');
         } else {
             $query->orderBy($sortBy, $orderDir);
         }

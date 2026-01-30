@@ -130,7 +130,7 @@
         /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 4px;
-            height: 8px;
+            height: 4px;
         }
 
         /* Light Mode Scrollbar */
