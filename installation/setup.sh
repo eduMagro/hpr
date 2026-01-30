@@ -106,6 +106,13 @@ sudo -u $SUDO_USER bash << 'EOF'
         fi
     fi
 
+    # Ensure Vite HMR Host is localhost for fresh installs
+    if grep -q "VITE_HMR_HOST=" .env; then
+        sed -i 's/VITE_HMR_HOST=.*/VITE_HMR_HOST=localhost/' .env
+    else
+        echo "VITE_HMR_HOST=localhost" >> .env
+    fi
+
     # Install PHP Deps
     echo "Ejecutando composer install..."
     composer install
