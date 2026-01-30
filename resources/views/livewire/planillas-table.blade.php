@@ -125,6 +125,9 @@
                             texto="Aprobada" />
                         <x-tabla.encabezado-ordenable campo="aprobada_at" :sortActual="$sort" :orderActual="$order"
                             texto="Fecha aprobación" />
+                        <x-tabla.encabezado-ordenable campo="fecha_creacion_ferrawin" :sortActual="$sort" :orderActual="$order"
+                            texto="Fecha Ferrawin" />
+                        <th class="p-2 border dark:border-gray-700">Tiempo Fab.</th>
                         <th class="p-2 border dark:border-gray-700">Acciones</th>
 
                     </x-tabla.header-row>
@@ -295,12 +298,14 @@
                         <th class="p-1 border dark:border-gray-700">
                             <select wire:model.live="aprobada"
                                 class="w-full text-xs px-1 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
-                                <option value="">Aprobadas</option>
-                                <option value="todas">Todas</option>
+                                <option value="">Todas</option>
+                                <option value="aprobadas">Aprobadas</option>
                                 <option value="0">No aprobadas</option>
                             </select>
                         </th>
                         <th class="p-1 border dark:border-gray-700"></th>
+                        <th class="p-1 border dark:border-gray-700"></th> {{-- Fecha Ferrawin --}}
+                        <th class="p-1 border dark:border-gray-700"></th> {{-- Tiempo Fabricación --}}
                         <th class="p-1 border text-center align-middle">
                             <button wire:click="limpiarFiltros"
                                 class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center mx-auto"
@@ -415,6 +420,16 @@
                                     -
                                 @endif
                             </td>
+                            <td class="p-2 text-center border dark:border-gray-700">
+                                {{ $planilla->fecha_creacion_ferrawin_formateada ?? '-' }}
+                            </td>
+                            <td class="p-2 text-center border dark:border-gray-700">
+                                @if($planilla->tiempo_fabricacion)
+                                    {{ $planilla->tiempo_estimado_finalizacion_formato }}
+                                @else
+                                    -
+                                @endif
+                            </td>
                             <td class="px-2 py-2 border dark:border-gray-700 text-xs font-bold">
                                 <div class="flex items-center space-x-2 justify-center">
                                     <!-- Botón Reimportar -->
@@ -505,7 +520,7 @@
                         </x-tabla.row>
                     @empty
                         <x-tabla.row :clickable="false">
-                            <td colspan="{{ $modoSeleccion ? 25 : 24 }}" class="text-center py-4 text-gray-500 dark:text-gray-400">No hay planillas registradas
+                            <td colspan="{{ $modoSeleccion ? 27 : 26 }}" class="text-center py-4 text-gray-500 dark:text-gray-400">No hay planillas registradas
                             </td>
                         </x-tabla.row>
                     @endforelse
