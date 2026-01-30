@@ -4306,55 +4306,48 @@
                     contenedorCalendario.classList.add('con-panel-abierto');
                     document.body.classList.add('panel-abierto');
 
-                    // Función para dibujar SVGs con Intersection Observer (solo dibuja lo visible)
+                    // Función para dibujar SVGs de forma progresiva con setTimeout (no bloquea)
                     function dibujarSVGsLazy() {
                         const secciones = lista.querySelectorAll('.seccion-maquina-wrapper');
+                        const todosElementos = [];
 
-                        // Crear mapa de canvasId -> datos para dibujar
-                        const elementosMap = new Map();
+                        // Recolectar todos los elementos a dibujar
                         secciones.forEach(seccion => {
                             if (seccion._elementosParaDibujar) {
-                                seccion._elementosParaDibujar.forEach(elem => {
-                                    elementosMap.set(elem.canvasId, elem);
-                                });
+                                todosElementos.push(...seccion._elementosParaDibujar);
                             }
                         });
 
-                        // Usar Intersection Observer para dibujar solo cuando sea visible
-                        const observer = new IntersectionObserver((entries) => {
-                            entries.forEach(entry => {
-                                if (entry.isIntersecting) {
-                                    const canvas = entry.target;
-                                    const canvasId = canvas.id;
-                                    const elem = elementosMap.get(canvasId);
+                        // Dibujar uno por uno con setTimeout para no bloquear
+                        let indice = 0;
 
-                                    if (elem && !canvas.dataset.dibujado) {
-                                        canvas.dataset.dibujado = 'true';
-                                        window.dibujarFiguraElemento(
-                                            elem.canvasId,
-                                            elem.dimensiones,
-                                            elem.peso,
-                                            elem.diametro,
-                                            elem.barras,
-                                            elem.cantidadElementos
-                                        );
-                                        observer.unobserve(canvas);
-                                    }
-                                }
-                            });
-                        }, {
-                            root: lista,
-                            rootMargin: '100px', // Pre-cargar 100px antes de que sea visible
-                            threshold: 0
-                        });
+                        function dibujarSiguiente() {
+                            if (indice >= todosElementos.length) return;
 
-                        // Observar todos los canvas
-                        lista.querySelectorAll('canvas').forEach(canvas => {
-                            observer.observe(canvas);
-                        });
+                            const elem = todosElementos[indice];
+                            indice++;
 
-                        // Guardar referencia para limpiar después
-                        lista._svgObserver = observer;
+                            try {
+                                window.dibujarFiguraElemento(
+                                    elem.canvasId,
+                                    elem.dimensiones,
+                                    elem.peso,
+                                    elem.diametro,
+                                    elem.barras,
+                                    elem.cantidadElementos
+                                );
+                            } catch (e) {
+                                // Ignorar errores de dibujo individual
+                            }
+
+                            // Siguiente elemento con delay de 10ms
+                            if (indice < todosElementos.length) {
+                                setTimeout(dibujarSiguiente, 10);
+                            }
+                        }
+
+                        // Iniciar dibujado después de 100ms
+                        setTimeout(dibujarSiguiente, 100);
                     }
 
                     // Usar transitionend para detectar cuando el panel está visible
