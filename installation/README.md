@@ -40,5 +40,5 @@ Para instalar todo el entorno (PHP, Docker, Node, Dependencias, Base de Datos):
    - Crea el enlace simbólico de storage.
 
 ## Notas Importantes
-- **Base de Datos**: Las credenciales se encuentran en el archivo `.env`. El script asume la configuración por defecto de Laravel Sail (`mysql`).
+- **Base de Datos**: Se usa **MariaDB 10.6** para mayor compatibilidad. Las credenciales están en `.env`.
 - **Permisos**: El script se debe ejecutar con `sudo`, pero ejecuta los comandos del proyecto (composer, sail) como el usuario normal para evitar problemas de permisos.

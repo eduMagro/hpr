@@ -8,7 +8,7 @@ For a fresh install, `setup.sh` copies `.env.example` to `.env`.
 
 ### Database (Local / Sail)
 ```ini
-DB_CONNECTION=mysql
+DB_CONNECTION=mysql (compatible con MariaDB 10.6)
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=manager_pruebas
