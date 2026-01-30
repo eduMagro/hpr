@@ -2398,6 +2398,10 @@
                 // Inicializar FullCalendar
                 calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {
                     schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
+                    plugins: [
+                        FullCalendar.resourceTimeGridPlugin,
+                        FullCalendar.interactionPlugin
+                    ],
                     initialView: 'resourceTimeGrid7Days',
                     nextDayThreshold: '00:00:00',
                     allDaySlot: false,
@@ -2439,7 +2443,7 @@
                         resourceTimeGrid7Days: {
                             type: 'resourceTimeGrid',
                             duration: {
-                                days: 1
+                                days: {{ $fechaMaximaCalendario['dias'] ?? 7 }}
                             },
                             slotMinTime: '00:00:00',
                             slotMaxTime: '{{ $fechaMaximaCalendario['horas'] ?? 168 }}:00:00',

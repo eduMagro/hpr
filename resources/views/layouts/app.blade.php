@@ -552,57 +552,6 @@ data-user-id="{{ auth()->id() }}" @endauth>
             }
         });
 
-        const calendarioEl = document.getElementById('calendario');
-        if (calendarioEl && calendarioEl.dataset.calendarType === 'maquinas') {
-            setTimeout(() => {
-                if (window.calendar) {
-                    try {
-                        window.calendar.destroy();
-                        window.calendar = null;
-                    } catch (e) {
-                        console.warn('Error al destruir calendario anterior:', e);
-                    }
-                }
-
-                const scripts = [
-                    'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js',
-                    'https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js',
-                    'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js',
-                ];
-
-                function cargarScriptSecuencial(index, callback) {
-                    if (index >= scripts.length) {
-                        if (callback) callback();
-                        return;
-                    }
-                    const script = document.createElement('script');
-                    script.src = scripts[index];
-                    script.onload = () => cargarScriptSecuencial(index + 1, callback);
-                    document.head.appendChild(script);
-                }
-
-                function esperarYCargar(intentos = 0) {
-                    if (typeof window.inicializarCalendarioMaquinas === 'function') {
-                        if (typeof FullCalendar === 'undefined') {
-                            console.log('📅 Cargando FullCalendar dinámicamente...');
-                            cargarScriptSecuencial(0, () => {
-                                console.log('✅ FullCalendar cargado, inicializando calendario...');
-                                window.inicializarCalendarioMaquinas();
-                            });
-                        } else {
-                            console.log('📅 FullCalendar ya disponible, reinicializando calendario...');
-                            window.inicializarCalendarioMaquinas();
-                        }
-                    } else if (intentos < 20) {
-                        setTimeout(() => esperarYCargar(intentos + 1), 50);
-                    } else {
-                        console.error('❌ No se encontró la función inicializarCalendarioMaquinas');
-                    }
-                }
-
-                esperarYCargar();
-            }, 100);
-        }
     </script>
 </body>
 
