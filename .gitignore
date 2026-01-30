@@ -9,6 +9,7 @@
 .env
 .env.backup
 .env.production
+installation/env_backup
 .phpactor.json
 .phpunit.result.cache
 Homestead.json
@@ -33,4 +34,3 @@ public/scripts/*.sql
 *.sql
 *.xlsx
 nul
-php
