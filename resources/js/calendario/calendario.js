@@ -607,7 +607,7 @@
 
                 fetch(
                     routes.destroyUrl ||
-                    "{{ route('asignaciones-turnos.destroy') }}",
+                    "{{ route('asignaciones-turnos.destroy-post') }}",
                     {
                         method: "POST",
                         headers: {

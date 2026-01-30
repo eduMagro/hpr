@@ -452,7 +452,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::resource('turnos', TurnoController::class);
     Route::patch('turnos/{turno}/toggle', [TurnoController::class, 'toggleActivo'])->name('turnos.toggle');
     Route::resource('asignaciones-turnos', AsignacionTurnoController::class);
-    Route::post('/asignaciones-turnos/destroy', [AsignacionTurnoController::class, 'destroy'])->name('asignaciones-turnos.destroy');
+    // Endpoint legacy por POST (la ruta destroy REST ya existe en el resource y usa DELETE /asignaciones-turnos/{asignacion})
+    Route::post('/asignaciones-turnos/destroy', [AsignacionTurnoController::class, 'destroy'])->name('asignaciones-turnos.destroy-post');
     Route::post('/asignaciones-turno/{id}/actualizar-puesto', [ProduccionController::class, 'actualizarPuesto']);
     Route::post('/fichar', [AsignacionTurnoController::class, 'fichar'])->name('users.fichar');
     Route::post('/generar-turnos', function (Request $request) {

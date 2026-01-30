@@ -389,7 +389,8 @@ class ProfileController extends Controller
                 'resumenUrl' => route('users.verResumen-asistencia', ['user' => $user->id]),
                 'vacacionesStoreUrl' => route('vacaciones.solicitar'),
                 'storeUrl' => route('asignaciones-turnos.store'),
-                'destroyUrl' => route('asignaciones-turnos.destroy'),
+                // Este endpoint elimina por POST (legacy). El destroy REST del resource requiere {asignacion}.
+                'destroyUrl' => route('asignaciones-turnos.destroy-post'),
                 'vacationDataUrl' => route('usuarios.getVacationData', ['user' => $user->id]),
                 'solicitudesPendientesUrl' => route('vacaciones.verSolicitudesPendientesUsuario', ['user' => $user->id]),
             ],
