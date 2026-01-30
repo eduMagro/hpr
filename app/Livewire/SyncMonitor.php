@@ -176,6 +176,37 @@ class SyncMonitor extends Component
         $this->activeTab = $tab;
     }
 
+    /**
+     * Verifica solo el estado de la sincronización (ligero, para polling del botón).
+     */
+    public function checkSyncStatus()
+    {
+        // Si el modal está abierto, hacer refresh completo
+        if ($this->isOpen) {
+            $this->refresh();
+            return;
+        }
+
+        // Solo verificar si está corriendo
+        if (!$this->isLocalSyncEnvironment()) {
+            // En producción, leer estado remoto desde cache
+            $statusData = Cache::get('ferrawin_sync_status');
+            $this->isRunning = $statusData && in_array($statusData['status'] ?? '', ['running']);
+        } else {
+            // En local, verificar archivo PID
+            $pidFile = $this->syncDir . DIRECTORY_SEPARATOR . 'sync.pid';
+            if (file_exists($pidFile)) {
+                $pid = (int) trim(file_get_contents($pidFile));
+                $this->isRunning = ($pid > 0 && $this->procesoExiste($pid));
+                if (!$this->isRunning) {
+                    $this->limpiarArchivosHuerfanos();
+                }
+            } else {
+                $this->isRunning = false;
+            }
+        }
+    }
+
     public function refresh()
     {
         // Contar planillas y elementos en DB (cacheado 30 segundos)

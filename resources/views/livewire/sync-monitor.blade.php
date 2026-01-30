@@ -1,4 +1,4 @@
-<div>
+<div wire:poll.5s="checkSyncStatus">
     {{-- Botón para abrir el modal --}}
     <button type="button" wire:click="open"
         class="px-4 py-2 rounded bg-gradient-to-tr from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold shadow-sm flex items-center gap-2">
