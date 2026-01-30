@@ -518,7 +518,9 @@ function ajustarLongitudesParaEvitarSolapes(dims, grow) {
             }
             return false;
         }
-        while (tryResolve()) {}
+        // Límite de iteraciones para evitar bucle infinito
+        let intentos = 0;
+        while (tryResolve() && intentos < 3) { intentos++; }
         const dir = { x: Math.cos(deg2rad(ang)), y: Math.sin(deg2rad(ang)) };
         const nx = cx + out[i].length * dir.x,
             ny = cy + out[i].length * dir.y;
