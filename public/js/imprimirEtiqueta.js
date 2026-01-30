@@ -301,27 +301,25 @@ async function imprimirEtiquetas(ids, modo = 'a6') {
         if (figuraImg) {
             const targetSvg = clone.querySelector('svg');
             const targetCanvas = clone.querySelector('canvas');
-            const svgContainer = clone.querySelector('[id^="contenedor-svg-"]') ||
-                                 clone.querySelector('div[style*="min-height"]');
-            const host = svgContainer || (targetSvg ? targetSvg.parentNode : clone);
+            const svgContainer = clone.querySelector('[id^="contenedor-svg-"]');
 
+            // Eliminar SVG, canvas y contenedor original
             if (targetSvg) targetSvg.remove();
             if (targetCanvas) targetCanvas.remove();
+            if (svgContainer) svgContainer.remove();
 
             const img = new Image();
             img.src = figuraImg;
-            img.style.width = '100%';
+            img.style.width = 'calc(100% - 6mm)';
             img.style.height = 'auto';
             img.style.display = 'block';
             img.style.position = 'absolute';
             img.style.bottom = '3mm';
-            img.style.left = '0';
+            img.style.left = '3mm';
             img.className = 'figura-print';
 
-            if (host) {
-                host.innerHTML = '';
-                host.appendChild(img);
-            }
+            // Añadir imagen directamente al contenedor principal
+            clone.appendChild(img);
         }
 
         // Generar y añadir QR
