@@ -5207,12 +5207,10 @@ class ProduccionController extends Controller
         $request->validate([
             'obras' => 'required|array|min:1|max:5',
             'obras.*' => 'required|integer|exists:obras,id',
-            'incluir_fabricando' => 'boolean',
             'suplantar_primera' => 'boolean',
         ]);
 
         $obrasIds = $request->input('obras');
-        $incluirFabricando = $request->boolean('incluir_fabricando', false);
         $suplantarPrimera = $request->boolean('suplantar_primera', false);
 
         // Obtener fechas de entrega de las obras priorizadas
@@ -5253,19 +5251,18 @@ class ProduccionController extends Controller
 
                 if ($ordenPlanillas->isEmpty()) continue;
 
-                // Identificar la planilla en posición 1 si está fabricando (para no moverla)
-                $planillaFabricandoPos1 = null;
+                // Identificar la planilla en posición 1 (para decidir si moverla o no)
+                $planillaPos1Protegida = null;
                 $primeraOp = $ordenPlanillas->first();
 
-                if (!$incluirFabricando && $primeraOp && $primeraOp->posicion === 1 && $primeraOp->planilla?->estado === 'fabricando') {
-                    // Verificar si debemos suplantar por fecha de entrega
+                if ($primeraOp && $primeraOp->posicion === 1) {
+                    // Por defecto, protegemos la primera posición (el operario sigue con su trabajo)
                     $debeSuplantar = false;
 
                     if ($suplantarPrimera) {
-                        // Obtener fecha de entrega de la planilla en posición 1
+                        // Verificar si alguna obra priorizada tiene fecha de entrega anterior
                         $fechaPlanillaPos1 = $primeraOp->planilla?->fecha_estimada_entrega;
 
-                        // Verificar si alguna obra priorizada tiene fecha anterior
                         foreach ($obrasIds as $obraId) {
                             $fechaObraPriorizada = $fechasObras[$obraId] ?? null;
                             if ($fechaObraPriorizada && $fechaPlanillaPos1 && $fechaObraPriorizada < $fechaPlanillaPos1) {
@@ -5276,9 +5273,9 @@ class ProduccionController extends Controller
                         }
                     }
 
-                    // Solo preservar la primera posición si NO debemos suplantar
+                    // Proteger la primera posición si NO debemos suplantar
                     if (!$debeSuplantar) {
-                        $planillaFabricandoPos1 = $primeraOp;
+                        $planillaPos1Protegida = $primeraOp;
                     }
                 }
 
@@ -5287,8 +5284,8 @@ class ProduccionController extends Controller
                 $noPriorizadas = collect();
 
                 foreach ($ordenPlanillas as $op) {
-                    // Si es la planilla fabricando en posición 1, no la movemos
-                    if ($planillaFabricandoPos1 && $op->id === $planillaFabricandoPos1->id) {
+                    // Si es la planilla en posición 1 protegida, no la movemos
+                    if ($planillaPos1Protegida && $op->id === $planillaPos1Protegida->id) {
                         continue;
                     }
 
@@ -5309,9 +5306,9 @@ class ProduccionController extends Controller
                 // Combinar: primero las priorizadas, luego las demás
                 $nuevoOrden = $priorizadas->merge($noPriorizadas);
 
-                // Si hay planilla fabricando en pos 1, empezamos desde posición 2
-                $posicionInicial = $planillaFabricandoPos1 ? 2 : 1;
-                if ($planillaFabricandoPos1) {
+                // Si hay planilla protegida en pos 1, empezamos desde posición 2
+                $posicionInicial = $planillaPos1Protegida ? 2 : 1;
+                if ($planillaPos1Protegida) {
                     $omitidos++;
                 }
 

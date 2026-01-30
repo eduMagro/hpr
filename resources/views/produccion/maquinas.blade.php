@@ -6963,19 +6963,12 @@
                     title: '¿Aplicar estas prioridades?',
                     html: `${resumenHtml}<br>
                            <strong>Total: ${totalPlanillas} planillas</strong> se reordenarán según el orden indicado.<br><br>
-                           <div class="space-y-3 text-left bg-gray-50 p-3 rounded-lg">
+                           <div class="text-left bg-gray-50 p-3 rounded-lg">
                                <label class="flex items-start gap-2 cursor-pointer">
                                    <input type="checkbox" id="suplantarPrimera" class="w-4 h-4 mt-0.5 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
                                    <div>
                                        <span class="text-sm font-medium text-gray-700">Suplantar primera posición si es necesario</span>
-                                       <p class="text-xs text-gray-500">Si la fecha de entrega de la obra priorizada es anterior, se pondrá en posición 1 (quitando el trabajo actual al operario)</p>
-                                   </div>
-                               </label>
-                               <label class="flex items-start gap-2 cursor-pointer">
-                                   <input type="checkbox" id="pararFabricando" class="w-4 h-4 mt-0.5 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
-                                   <div>
-                                       <span class="text-sm font-medium text-gray-700">Incluir planillas que están fabricando</span>
-                                       <p class="text-xs text-gray-500">Mover también planillas cuyo estado es "fabricando" (puede interrumpir trabajo en curso)</p>
+                                       <p class="text-xs text-gray-500">Si la fecha de entrega de la obra priorizada es anterior a la planilla en posición 1, se pondrá primera (el operario cambiará de trabajo)</p>
                                    </div>
                                </label>
                            </div>`,
@@ -6986,8 +6979,7 @@
                     width: '550px',
                     preConfirm: () => {
                         return {
-                            suplantarPrimera: document.getElementById('suplantarPrimera').checked,
-                            pararFabricando: document.getElementById('pararFabricando').checked
+                            suplantarPrimera: document.getElementById('suplantarPrimera').checked
                         };
                     }
                 });
@@ -6995,7 +6987,6 @@
                 if (!result.isConfirmed) return;
 
                 const suplantarPrimera = result.value?.suplantarPrimera || false;
-                const pararFabricando = result.value?.pararFabricando || false;
 
                 Swal.fire({
                     title: 'Aplicando prioridades...',
@@ -7022,7 +7013,6 @@
                         },
                         body: JSON.stringify({
                             obras: obrasIds,
-                            incluir_fabricando: pararFabricando,
                             suplantar_primera: suplantarPrimera
                         })
                     });
