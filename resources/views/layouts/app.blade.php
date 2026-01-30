@@ -52,6 +52,9 @@
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <meta name="theme-color" content="#111827">
 
+    <!-- ✅ Theme Toggle Animations (within) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/theme-toggles@4.10.1/css/within.min.css">
+
     <!-- ✅ Vite Assets - Cache busting automático -->
     @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/css/styles.css', 'resources/css/etiquetas-responsive.css'])
 
@@ -122,6 +125,43 @@
             box-sizing: border-box;
             -webkit-font-smoothing: antialiased;
             text-rendering: optimizeLegibility;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 8px;
+        }
+
+        /* Light Mode Scrollbar */
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c9c9c9;
+            /* border-radius: 4px; */
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        /* Dark Mode Scrollbar */
+        html.dark ::-webkit-scrollbar-track {
+            background: #1f2937;
+            /* gray-800 */
+        }
+
+        html.dark ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            /* gray-600 */
+            /* border-radius: 4px; */
+        }
+
+        html.dark ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+            /* gray-500 */
         }
 
         /* Personalizar barra de progreso de Livewire Navigate */
@@ -242,7 +282,7 @@ data-user-id="{{ auth()->id() }}" @endauth>
                     @isset($header)
                         <header class="mb-6">
                             <div
-                                class="bg-white dark:bg-gray-800 shadow-sm rounded-lg px-6 py-4 border border-gray-200 dark:border-gray-700 transition-colors">
+                                class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg px-6 py-4 border border-gray-200 dark:border-gray-700 transition-colors">
                                 {{ $header }}
                             </div>
                         </header>
