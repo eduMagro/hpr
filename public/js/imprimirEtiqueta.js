@@ -153,11 +153,13 @@ body { margin: 0; padding: 0; background: #fff; }
     padding: 3mm;
     background: #fff;
     page-break-inside: avoid;
+    display: flex;
+    flex-direction: column;
 }
 .etiqueta-print h2 { font-size: 10pt; margin: 0; }
 .etiqueta-print h3 { font-size: 9pt; margin: 0; }
-.etiqueta-print img:not(.qr-print) { width: 100%; height: auto; margin-top: 2mm; display: block; }
-.etiqueta-print [id^="contenedor-svg-"] { text-align: left; }
+.etiqueta-print [id^="contenedor-svg-"] { margin-top: auto; text-align: left; }
+.etiqueta-print img:not(.qr-print) { width: 100%; height: auto; display: block; }
 .qr-box { position: absolute; top: 3mm; right: 3mm; border: 0.2mm solid #000; padding: 1mm; background: #fff; text-align: center; }
 .qr-box img { width: 16mm; height: 16mm; display: block; }
 .qr-label { font-size: 6pt; font-weight: bold; margin-top: 0.5mm; word-break: break-all; max-width: 16mm; }
@@ -180,11 +182,13 @@ html, body { margin: 0; padding: 0; background: #fff; }
     overflow: hidden;
     position: relative;
     page-break-after: always;
+    display: flex;
+    flex-direction: column;
 }
 .etiqueta-print h2 { font-size: 11pt; margin: 0 0 2mm 0; line-height: 1.3; }
 .etiqueta-print h3 { font-size: 10pt; margin: 0 0 2mm 0; }
-.etiqueta-print img:not(.qr-print) { width: 100%; height: auto; margin-top: 3mm; display: block; }
-.etiqueta-print [id^="contenedor-svg-"] { text-align: left; }
+.etiqueta-print [id^="contenedor-svg-"] { margin-top: auto; text-align: left; }
+.etiqueta-print img:not(.qr-print) { width: 100%; height: auto; display: block; }
 .qr-box { position: absolute; top: 4mm; right: 4mm; border: 0.2mm solid #000; padding: 1mm; background: #fff; text-align: center; }
 .qr-box img { width: 20mm; height: 20mm; display: block; }
 .qr-label { font-size: 7pt; font-weight: bold; margin-top: 0.5mm; word-break: break-all; max-width: 20mm; }
