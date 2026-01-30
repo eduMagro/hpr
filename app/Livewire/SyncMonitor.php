@@ -121,6 +121,9 @@ class SyncMonitor extends Component
     public int $yearPlanillasCount = 0;
     public ?string $yearLastPlanilla = null;
 
+    // Para sincronizar planilla específica
+    public string $codigoPlanillaEspecifica = '';
+
     // Entorno actual (detectado automáticamente)
     public string $currentTarget = 'local';
 
@@ -792,6 +795,122 @@ class SyncMonitor extends Component
     public function iniciarSyncCompleta(string $año = '2025')
     {
         $this->seleccionarAño($año);
+    }
+
+    /**
+     * Normaliza el código de planilla añadiendo ceros al número.
+     * Ej: "2026-886" → "2026-000886"
+     */
+    protected function normalizarCodigoPlanilla(string $codigo): ?string
+    {
+        // Limpiar espacios
+        $codigo = trim($codigo);
+
+        // Validar formato básico: YYYY-número
+        if (!preg_match('/^(\d{4})-(\d+)$/', $codigo, $matches)) {
+            return null;
+        }
+
+        $año = $matches[1];
+        $numero = $matches[2];
+
+        // Pad el número a 6 dígitos con ceros a la izquierda
+        $numeroPadded = str_pad($numero, 6, '0', STR_PAD_LEFT);
+
+        return "{$año}-{$numeroPadded}";
+    }
+
+    /**
+     * Sincroniza una planilla específica por código.
+     */
+    public function syncPlanillaEspecifica()
+    {
+        if (empty($this->codigoPlanillaEspecifica)) {
+            session()->flash('error', 'Introduce un código de planilla (ej: 2026-886)');
+            return;
+        }
+
+        // Normalizar código (2026-886 → 2026-000886)
+        $codigoNormalizado = $this->normalizarCodigoPlanilla($this->codigoPlanillaEspecifica);
+
+        if (!$codigoNormalizado) {
+            session()->flash('error', 'Formato inválido. Usa el formato: AÑO-NÚMERO (ej: 2026-886)');
+            return;
+        }
+
+        // Verificar si ya está corriendo
+        if ($this->isRunning) {
+            session()->flash('error', 'Ya hay una sincronización en ejecución');
+            return;
+        }
+
+        // Verificar estado remoto
+        $syncStatus = Cache::get('ferrawin_sync_status');
+        if ($syncStatus && ($syncStatus['status'] ?? '') === 'running') {
+            session()->flash('error', 'Ya hay una sincronización en curso. Espera a que termine.');
+            return;
+        }
+
+        // Ejecutar sync de planilla específica
+        $this->ejecutarSyncPlanillaEspecifica($codigoNormalizado);
+
+        // Limpiar input
+        $this->codigoPlanillaEspecifica = '';
+    }
+
+    /**
+     * Ejecuta la sincronización de una planilla específica.
+     */
+    protected function ejecutarSyncPlanillaEspecifica(string $codigo)
+    {
+        $target = $this->syncTarget;
+        $targetLabel = $target === 'production' ? 'PRODUCCIÓN' : 'LOCAL';
+
+        // Si estamos en producción (Linux), enviar comando remoto via Pusher
+        if (!$this->isLocalSyncEnvironment()) {
+            Cache::put('ferrawin_sync_status', [
+                'status' => 'running',
+                'progress' => '1/1',
+                'message' => "Sincronizando planilla {$codigo}...",
+                'year' => substr($codigo, 0, 4),
+                'target' => $target,
+                'last_planilla' => $codigo,
+                'updated_at' => now()->toIso8601String(),
+            ], now()->addMinutes(5));
+
+            $this->enviarComandoRemoto('start', [
+                'año' => 'especifica',
+                'target' => $target,
+                'codigo_especifico' => $codigo,
+            ]);
+
+            session()->flash('message', "Comando para sincronizar {$codigo} enviado → {$targetLabel}");
+            return;
+        }
+
+        // Ejecución local directa (Windows)
+        $sep = $this->isWindows() ? '\\' : '/';
+        $pauseFile = $this->syncDir . $sep . 'sync.pause';
+        if (file_exists($pauseFile)) {
+            unlink($pauseFile);
+        }
+
+        $args = "--codigo={$codigo} --target={$target}";
+
+        \Log::info("SyncMonitor: Sincronizando planilla específica", [
+            'codigo' => $codigo,
+            'args' => $args,
+            'target' => $target
+        ]);
+
+        if ($this->isWindows()) {
+            $this->ejecutarSyncWindows($args);
+        } else {
+            $this->ejecutarSyncLinux($args);
+        }
+
+        session()->flash('message', "Sincronizando planilla {$codigo} → {$targetLabel}");
+        $this->isRunning = true;
     }
 
     /**

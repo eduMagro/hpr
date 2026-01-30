@@ -345,6 +345,27 @@
                                     </button>
                                 @endif
 
+                                {{-- Input para sincronizar planilla específica --}}
+                                @if (!$isRunning)
+                                    <div class="flex items-center gap-1">
+                                        <input type="text"
+                                            wire:model="codigoPlanillaEspecifica"
+                                            wire:keydown.enter="syncPlanillaEspecifica"
+                                            placeholder="2026-886"
+                                            class="w-24 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                            title="Sincronizar una planilla específica">
+                                        <button wire:click="syncPlanillaEspecifica"
+                                            wire:loading.attr="disabled"
+                                            class="px-2 py-1.5 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition flex items-center gap-1"
+                                            title="Sincronizar planilla específica">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                            </svg>
+                                            <span class="hidden sm:inline">Sync</span>
+                                        </button>
+                                    </div>
+                                @endif
+
                                 {{-- Botón Iniciar Nueva Sync (Dropdown) --}}
                                 @if (!$isRunning)
                                     <div x-data="{ open: false }" class="relative">
