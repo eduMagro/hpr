@@ -1,6 +1,10 @@
     <x-app-layout>
         <x-slot name="title">Etiquetas - {{ config('app.name') }}</x-slot>
 
+        @push('scripts')
+        <script src="{{ asset('js/imprimirEtiqueta.js') }}?v={{ time() }}"></script>
+        @endpush
+
         <x-page-header
             title="Etiquetas de Producción"
             subtitle="Gestión y trazabilidad de etiquetas"
@@ -405,9 +409,9 @@
                     </div>
                 </div>
             </div>
-            <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
+            <script src="{{ asset('js/elementosJs/figuraElemento.js') }}?v={{ time() }}" data-navigate-reload></script>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-            <script src="{{ asset('js/imprimirEtiqueta.js') }}"></script>
+            <!-- imprimirEtiqueta.js se carga via @push('scripts') para evitar problemas con navegación SPA -->
             <script>
                 window.etiquetaModalActual = null;
 

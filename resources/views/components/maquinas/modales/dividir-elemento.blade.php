@@ -88,12 +88,16 @@
 
             <div class="flex justify-end mt-8 gap-3">
                 <button type="button" id="btnCancelarDividir"
-                    class="px-6 py-3 bg-gray-500 text-white text-base font-medium rounded-lg hover:bg-gray-600 transition">
+                    class="px-6 py-3 bg-gray-500 text-white text-base font-medium rounded-lg hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed">
                     Cancelar
                 </button>
                 <button type="button" id="btnAceptarDividir"
-                    class="px-6 py-3 bg-purple-600 text-white text-base font-medium rounded-lg hover:bg-purple-700 transition">
-                    Aceptar
+                    class="px-6 py-3 bg-purple-600 text-white text-base font-medium rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[120px]">
+                    <svg id="spinnerAceptar" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span id="textoAceptar">Aceptar</span>
                 </button>
             </div>
         </form>
@@ -101,8 +105,6 @@
 </div>
 
 <script>
-    console.log('✅ Script dividir-elemento.blade.php cargado');
-
     // Variable para almacenar las máquinas cargadas
     let maquinasDisponiblesCache = null;
 
@@ -127,30 +129,60 @@
                     event.preventDefault();
                     event.stopPropagation();
                 }
-                console.log('🔘 Botón Aceptar clickeado');
-                console.log('🔍 window.enviarAccionEtiqueta existe?', typeof window.enviarAccionEtiqueta);
+
+                // Prevenir doble clic - si ya está procesando, ignorar
+                if (btnAceptar.disabled) return;
+
+                // Mostrar estado de carga
+                setButtonLoading(true);
 
                 if (typeof window.enviarAccionEtiqueta === 'function') {
                     try {
-                        console.log('📞 Llamando a enviarAccionEtiqueta...');
                         await window.enviarAccionEtiqueta();
-                        console.log('✅ enviarAccionEtiqueta completada');
                     } catch (error) {
-                        console.error('❌ Error en enviarAccionEtiqueta:', error);
                         if (window.Swal) {
                             Swal.fire('Error', error.message || 'Error desconocido', 'error');
                         } else {
                             alert('Error: ' + (error.message || 'Error desconocido'));
                         }
+                    } finally {
+                        // Restaurar estado del botón (por si el modal sigue abierto tras un error)
+                        setButtonLoading(false);
                     }
                 } else {
-                    console.error('❌ window.enviarAccionEtiqueta no está definida');
+                    setButtonLoading(false);
                     alert('Error: La función de envío no está disponible. Recarga la página e intenta de nuevo.');
                 }
             };
-            console.log('✅ Botón Aceptar inicializado');
         }
     }
+
+    // Función para controlar el estado de carga del botón
+    function setButtonLoading(isLoading) {
+        const btnAceptar = document.getElementById('btnAceptarDividir');
+        const btnCancelar = document.getElementById('btnCancelarDividir');
+        const spinner = document.getElementById('spinnerAceptar');
+        const texto = document.getElementById('textoAceptar');
+
+        if (!btnAceptar) return;
+
+        if (isLoading) {
+            btnAceptar.disabled = true;
+            if (btnCancelar) btnCancelar.disabled = true;
+            if (spinner) spinner.classList.remove('hidden');
+            if (texto) texto.textContent = 'Procesando...';
+        } else {
+            btnAceptar.disabled = false;
+            if (btnCancelar) btnCancelar.disabled = false;
+            if (spinner) spinner.classList.add('hidden');
+            if (texto) texto.textContent = 'Aceptar';
+        }
+    }
+
+    // Exponer función para resetear el botón desde fuera (por si se necesita)
+    window.resetButtonDividirElemento = function() {
+        setButtonLoading(false);
+    };
 
     // Inicializar cuando el DOM esté listo y también cuando se abra el modal
     if (document.readyState === 'loading') {
@@ -174,7 +206,6 @@
         _formDividir.addEventListener('submit', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('⚠️ Formulario intentó enviarse - prevenido');
             return false;
         });
     }
@@ -469,7 +500,6 @@
             maquinasDisponiblesCache = data.maquinas;
 
         } catch (e) {
-            console.error('Error al cargar máquinas:', e);
             select.innerHTML = '<option value="">Error al cargar máquinas</option>';
         }
     }
@@ -493,10 +523,8 @@
     });
 
     window.enviarAccionEtiqueta = async function() {
-        console.log('🚀 enviarAccionEtiqueta() llamada');
         const elementoId = document.getElementById('dividir_elemento_id').value;
         const accion = document.querySelector('input[name="accion_etiqueta"]:checked').value;
-        console.log('📋 elementoId:', elementoId, 'accion:', accion);
 
         if (!elementoId) {
             alert('Falta el ID del elemento.');
@@ -505,17 +533,13 @@
 
         try {
             if (accion === 'ver_dimensiones') {
-                console.log('📐 Acción ver_dimensiones, elementoId:', elementoId);
-
                 // Cerrar el modal actual
                 document.getElementById('modalDividirElemento').classList.add('hidden');
 
                 // Abrir el modal de ver dimensiones
-                console.log('🔍 window.abrirModalVerDimensiones existe?', typeof window.abrirModalVerDimensiones);
                 if (typeof window.abrirModalVerDimensiones === 'function') {
                     window.abrirModalVerDimensiones(elementoId);
                 } else {
-                    console.error('❌ abrirModalVerDimensiones no está definida');
                     alert('La función de ver dimensiones no está disponible');
                 }
                 return;
@@ -605,13 +629,10 @@
             }
 
             if (accion === 'dividir') {
-                console.log('✂️ Iniciando acción DIVIDIR');
                 const barrasTotales = parseInt(document.getElementById('dividir_barras_totales').value) || 0;
                 const barrasAMover = parseInt(document.getElementById('barras_a_mover').value || '0', 10);
-                console.log('📊 barrasTotales:', barrasTotales, 'barrasAMover:', barrasAMover);
 
                 if (!barrasAMover || barrasAMover < 1) {
-                    console.log('❌ Validación fallida: barrasAMover inválido');
                     if (window.Swal) {
                         Swal.fire('Atención', 'Introduce un número válido de barras a mover.', 'warning');
                     } else {
@@ -621,7 +642,6 @@
                 }
 
                 if (barrasAMover >= barrasTotales) {
-                    console.log('❌ Validación fallida: barrasAMover >= barrasTotales');
                     if (window.Swal) {
                         Swal.fire('Atención', 'No puedes mover todas o más barras de las que tiene el elemento.', 'warning');
                     } else {
@@ -630,7 +650,6 @@
                     return;
                 }
 
-                console.log('🌐 Enviando petición a servidor...');
                 const csrfToken = document.querySelector('input[name=_token]')?.value;
                 if (!csrfToken) {
                     throw new Error('No se encontró el token CSRF');
@@ -647,9 +666,7 @@
                         barras_a_mover: barrasAMover
                     })
                 });
-                console.log('📥 Respuesta recibida, status:', resp.status);
                 const data = await resp.json();
-                console.log('📦 Data:', data);
                 if (!resp.ok || data.success === false) throw new Error(data.message || 'Error al dividir');
 
                 // Mostrar mensaje de éxito
@@ -664,7 +681,6 @@
                 }
             } else if (accion === 'mover') {
                 // mover todo a nueva subetiqueta
-                console.log('➡️ Iniciando acción MOVER');
                 const csrfToken = document.querySelector('input[name=_token]')?.value;
                 if (!csrfToken) {
                     throw new Error('No se encontró el token CSRF');
@@ -680,9 +696,7 @@
                         elemento_id: elementoId
                     })
                 });
-                console.log('📥 Respuesta recibida, status:', resp.status);
                 const data = await resp.json();
-                console.log('📦 Data:', data);
                 if (!resp.ok || data.success === false) throw new Error(data.message ||
                     'Error al mover a nueva etiqueta');
 
@@ -705,17 +719,13 @@
             document.getElementById('barras_a_mover').value = '';
             document.getElementById('previewDivision').classList.add('hidden');
 
-            console.log('✅ Acción completada, cerrando modal y refrescando...');
-
             // Llamar a la función de refresco si existe
             if (typeof window.refrescarEtiquetasMaquina === 'function') {
                 window.refrescarEtiquetasMaquina();
             } else {
-                console.warn('window.refrescarEtiquetasMaquina no está definida, recargando página...');
                 window.location.reload();
             }
         } catch (e) {
-            console.error('❌ Error en enviarAccionEtiqueta:', e);
             if (window.Swal) {
                 Swal.fire('Error', e.message || 'Error desconocido', 'error');
             } else {

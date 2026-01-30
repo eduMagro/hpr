@@ -1305,7 +1305,7 @@
 
         {{-- Script para dibujar figuras de elementos (NO necesario para grúa) --}}
         @if ($maquina->tipo !== 'grua')
-            <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
+            <script src="{{ asset('js/elementosJs/figuraElemento.js') }}?v={{ time() }}"></script>
         @endif
 
         {{-- Script de atajos de teclado para control de columnas --}}

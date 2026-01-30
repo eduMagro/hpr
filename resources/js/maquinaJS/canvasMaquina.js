@@ -136,7 +136,10 @@ function indexToLetters(n) {
 
 // ——— Padding exclusivo para la leyenda (0 = pegado al borde) ———
 const LEGEND_PAD_X = 0;
-const LEGEND_PAD_Y = -25; // Negativo para bajar la leyenda (más cerca del borde inferior)
+const LEGEND_PAD_Y = -25; // Más negativo = leyenda más abajo (cerca del borde inferior)
+
+// ——— Offset para bajar la figura dentro del SVG ———
+const FIGURE_OFFSET_Y = 20; // Positivo = figura más abajo
 
 /** Dibuja la leyenda SIEMPRE abajo-izquierda del SVG */
 function drawLegendBottomLeft(svg, entries, width, height) {
@@ -923,11 +926,10 @@ function planMasonryOptimal(medidas, svgW, svgH, opts = {}) {
             availableHeight = Math.max(10, maxYForThisCol - padding);
         }
 
-        // Si solo hay un elemento, posicionarlo en la parte INFERIOR
+        // Si solo hay un elemento, centrarlo verticalmente
         if (col.items.length === 1) {
             const h = heights[0];
-            const bottomMargin = 10; // Margen desde el borde inferior
-            const centerY = padding + availableHeight - h / 2 - bottomMargin;
+            const centerY = padding + availableHeight / 2;
             const validCenterY = Math.max(padding + h / 2, Math.min(centerY, svgH - padding - h / 2));
             centersYByCol[c].push(validCenterY);
             continue;
@@ -938,8 +940,6 @@ function planMasonryOptimal(medidas, svgW, svgH, opts = {}) {
         // Verificar si los elementos caben en el espacio disponible
         if (totalItemsHeight > availableHeight) {
             // No caben: necesitamos reducir la escala o apilar con gap mínimo
-            console.warn(`Columna ${c}: elementos no caben (${totalItemsHeight}px > ${availableHeight}px)`);
-
             // Determinar gap mínimo según tipo de elementos
             const avgHeight = totalItemsHeight / col.items.length;
             const isVeryThin = avgHeight < 4;
@@ -978,10 +978,9 @@ function planMasonryOptimal(medidas, svgW, svgH, opts = {}) {
             // Recalcular la altura total con el gap ajustado
             const actualTotalHeight = totalItemsHeight + (numberOfGaps * gap);
 
-            // Si hay espacio extra después del ajuste, posicionar hacia ABAJO (no centrar)
+            // Si hay espacio extra después del ajuste, centrarlo verticalmente
             const extraSpace = availableHeight - actualTotalHeight;
-            const bottomMargin = 10; // Margen desde el borde inferior
-            let y = padding + Math.max(0, extraSpace - bottomMargin);
+            let y = padding + Math.max(0, extraSpace / 2);
 
             // Posicionar elementos
             for (let i = 0; i < col.items.length; i++) {
@@ -1024,11 +1023,9 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
         const contenedor = document.getElementById("contenedor-svg-" + groupId);
         if (!contenedor) return;
 
-        // Usar dimensiones reales del contenedor
-        const rect = contenedor.getBoundingClientRect();
-        const ancho = rect.width > 0 ? rect.width : 600;
-        const alto = rect.height > 0 ? rect.height : 150;
-        console.log('📐 SVG container:', groupId, 'dims:', ancho, 'x', alto);
+        // Tamaño fijo del SVG
+        const ancho = 600;
+        const alto = 150;
         const svgBg = getEstadoColorFromCSSVar(contenedor);
         const svg = crearSVG(ancho, alto, svgBg);
 
@@ -1160,7 +1157,7 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
 
             const loc = indexInCol.get(idx);
             const cx = plan.centersX[loc.c],
-                cy = plan.centersYByCol[loc.c][loc.j],
+                cy = plan.centersYByCol[loc.c][loc.j] + FIGURE_OFFSET_Y,
                 scale = plan.S;
 
             // BBox figura
@@ -1917,7 +1914,6 @@ function initCanvasMaquina() {
         const showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'true');
         const showRight = JSON.parse(localStorage.getItem('showRight') ?? 'true');
         window.updateGridClasses(showLeft, showRight);
-        console.log('🎨 Clases aplicadas ANTES de renderizar SVG');
     }
 
     // 🔥 PASO 2: Renderizar todos los SVG
@@ -1931,7 +1927,6 @@ function initCanvasMaquina() {
             gridMaquina.style.opacity = '1';
             gridMaquina.style.visibility = 'visible';
             gridMaquina.style.transition = 'opacity 0.2s ease-in, visibility 0s 0s';
-            console.log('✅ Grid visible con clases:', gridMaquina.className);
         }
 
         // Mostrar las etiquetas
@@ -1953,7 +1948,6 @@ function initCanvasMaquina() {
         );
 
         if (grupoIndex === -1) {
-            console.warn(`No se encontró grupo para etiqueta ${etiquetaSubId}`);
             return;
         }
 
@@ -1981,8 +1975,6 @@ function initCanvasMaquina() {
 
         // Regenerar el SVG completo para este grupo
         renderizarGrupoSVG(grupo, grupoIndex);
-
-        console.log(`✅ SVG actualizado con coladas para etiqueta ${etiquetaSubId}`, coladasPorElemento);
     };
 
     // =======================
@@ -1998,7 +1990,6 @@ function initCanvasMaquina() {
         );
 
         if (grupoIndex === -1) {
-            console.warn(`No se encontró grupo para etiqueta ${etiquetaSubId}`);
             return;
         }
 
@@ -2013,8 +2004,6 @@ function initCanvasMaquina() {
 
         // Regenerar el SVG completo para este grupo
         renderizarGrupoSVG(grupo, grupoIndex);
-
-        console.log(`🧹 Coladas limpiadas del SVG para etiqueta ${etiquetaSubId}`);
     };
 
     // =======================
@@ -2030,13 +2019,11 @@ function initCanvasMaquina() {
         );
 
         if (grupoIndex === -1) {
-            console.warn(`No se encontró grupo para regenerar SVG: ${etiquetaSubId}`);
             return;
         }
 
         const grupo = grupos[grupoIndex];
         renderizarGrupoSVG(grupo, grupoIndex);
-        console.log(`🔄 SVG regenerado para etiqueta ${etiquetaSubId} (evento deshacer)`);
     });
 }
 
@@ -2082,11 +2069,10 @@ window.abrirModalDividirElemento = async function abrirModalDividirElemento(elem
             if (data.success && data.elemento) {
                 elementoData = data.elemento;
                 barrasTotales = parseInt(data.elemento.barras) || 0;
-                console.log('📊 Datos frescos del servidor:', data.elemento);
             }
         }
     } catch (error) {
-        console.warn('⚠️ No se pudieron obtener datos frescos, usando datos locales:', error);
+        // Fallback to local data if server request fails
     }
 
     // FALLBACK: Si no se obtuvo del servidor, buscar en datos locales
@@ -2170,12 +2156,6 @@ window.abrirModalDividirElemento = async function abrirModalDividirElemento(elem
     const pesoTotal = elementoData ? parseFloat(elementoData.peso_numerico) || 0 : 0;
     if (inputPesoTotal) inputPesoTotal.value = pesoTotal;
 
-    console.log('🔍 Debug badge sugerencia:', {
-        peso_numerico: elementoData?.peso_numerico,
-        pesoTotal,
-        barrasTotales
-    });
-
     // Calcular barras sugeridas para mantener paquetes bajo 1200 kg
     const PESO_MAXIMO_PAQUETE = 1200;
     const divisionAutoData = document.getElementById('divisionAutoData');
@@ -2236,6 +2216,11 @@ window.abrirModalDividirElemento = async function abrirModalDividirElemento(elem
 
     if (window.rutaDividirElemento)
         form.setAttribute("action", window.rutaDividirElemento);
+
+    // Resetear estado del botón Aceptar (por si quedó en estado de carga)
+    if (typeof window.resetButtonDividirElemento === 'function') {
+        window.resetButtonDividirElemento();
+    }
 
     modal.classList.remove("hidden");
 }

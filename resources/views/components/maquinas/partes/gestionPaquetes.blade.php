@@ -791,5 +791,5 @@ SCRIPT ALPINE.JS
 
 {{-- Cargar script de dibujo de figuras si no está ya cargado --}}
 @once
-    <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
+    <script src="{{ asset('js/elementosJs/figuraElemento.js') . '?v=' . time() }}" defer></script>
 @endonce

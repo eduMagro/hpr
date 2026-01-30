@@ -39,7 +39,6 @@
         // Debounce para evitar doble clic
         const ahora = Date.now();
         if (ahora - _ultimaAccion < CONFIG.debounceTime) {
-            console.warn("Acción demasiado rápida, ignorando...");
             return { success: false, message: "Espera un momento antes de intentar de nuevo." };
         }
         _ultimaAccion = ahora;
@@ -49,7 +48,6 @@
             ?.getAttribute("content");
 
         if (!csrfToken) {
-            console.error("CSRF token no encontrado");
             return { success: false, message: "Error de seguridad: token no encontrado." };
         }
 
@@ -121,7 +119,6 @@
             return data;
 
         } catch (error) {
-            console.error("Error al deshacer etiqueta:", error);
             Swal.fire({
                 icon: "error",
                 title: "Error",
@@ -148,7 +145,6 @@
 
             return await response.json();
         } catch (error) {
-            console.error("Error al verificar undo:", error);
             return { puede_deshacer: false };
         }
     }
@@ -170,7 +166,6 @@
 
             return await response.json();
         } catch (error) {
-            console.error("Error al obtener historial:", error);
             return { success: false, historial: [] };
         }
     }
@@ -319,9 +314,7 @@
             }
         }
 
-        // NO refrescamos la página para mantener la posición del scroll
-        console.log(`✅ DOM actualizado para ${etiquetaSubId}: estado = ${data.estado}`);
-    }
+        }
 
     /**
      * Actualiza el estado visual del botón de deshacer
@@ -331,8 +324,6 @@
     function actualizarBotonDeshacer(etiquetaSubId, puedeDeshacer) {
         const safeId = etiquetaSubId.replace(/\./g, "-");
         const btn = document.querySelector(`#etiqueta-${safeId} .btn-deshacer`);
-
-        console.log(`🔄 actualizarBotonDeshacer: ${etiquetaSubId}, puede=${puedeDeshacer}, btn encontrado=${!!btn}`);
 
         if (btn) {
             // Ya NO deshabilitamos el botón - siempre habilitado
@@ -361,7 +352,6 @@
 
             const etiquetaId = btn.dataset.etiquetaId;
             if (!etiquetaId) {
-                console.error("Botón deshacer sin data-etiqueta-id");
                 return;
             }
 
@@ -381,8 +371,6 @@
 
             await mostrarHistorial(etiquetaId);
         });
-
-        console.log("✅ Event listeners de historial inicializados");
     }
 
     // ============================================================================
@@ -422,8 +410,6 @@
                 }
             }
         });
-
-        console.log("✅ Atajo Ctrl+Z habilitado para deshacer etiquetas");
     }
 
     // ============================================================================
@@ -433,7 +419,6 @@
     function init() {
         initEventListeners();
         initAtajoTeclado();
-        console.log("✅ Módulo historialEtiquetas.js inicializado");
     }
 
     // Exportar funciones públicas
