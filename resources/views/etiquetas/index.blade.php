@@ -592,6 +592,13 @@
                         const qrBox = document.createElement('div');
                         qrBox.className = 'qr-print';
                         qrBox.appendChild(qrImg);
+
+                        // Añadir código de subetiqueta debajo del QR
+                        const qrLabel = document.createElement('div');
+                        qrLabel.className = 'qr-label';
+                        qrLabel.textContent = etiquetaSubId;
+                        qrBox.appendChild(qrLabel);
+
                         clone.insertBefore(qrBox, clone.firstChild);
 
                         /* --- abre ventana A6 --- */
@@ -609,8 +616,10 @@ body { margin:0; font-family:Arial,sans-serif; }
 .etiqueta-print img{ max-width:100%; height:auto; display:block; margin-top:6mm; }
 .qr-print{
     position:absolute; top:8mm; right:8mm;
-    width:60px; height:60px; border:2px solid #000; padding:0; background:#fff;
+    border:2px solid #000; padding:2px; background:#fff; text-align:center;
 }
+.qr-print img{ width:60px; height:60px; display:block; }
+.qr-label{ font-size:7pt; font-weight:bold; margin-top:1mm; word-break:break-all; }
 </style>`;
 
                         w.document.write(`
