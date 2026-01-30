@@ -729,30 +729,181 @@
                 if (!Array.isArray(ids)) ids = [ids];
                 const etiquetasHtml = [];
 
+                // Paso 1: Identificar etiquetas que no están en el DOM
+                const idsNoEncontrados = [];
+                const idsEncontrados = [];
+
                 for (const rawId of ids) {
-                    const safeId = domSafe(rawId);
+                    const safeId = window.domSafe(rawId);
+                    const contenedor = document.getElementById(`etiqueta-${safeId}`) ||
+                        document.getElementById(`etiqueta-${rawId}`);
+                    if (contenedor) {
+                        idsEncontrados.push(rawId);
+                    } else {
+                        idsNoEncontrados.push(rawId);
+                    }
+                }
+
+                // Paso 2: Si hay etiquetas no encontradas, obtenerlas del servidor
+                let etiquetasDelServidor = {};
+                if (idsNoEncontrados.length > 0) {
+                    try {
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                        const resp = await fetch('/etiquetas/render-multiple', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            body: JSON.stringify({
+                                etiqueta_sub_ids: idsNoEncontrados,
+                                maquina_tipo: window.MAQUINA_TIPO || 'barra',
+                            }),
+                        });
+
+                        if (resp.ok) {
+                            const data = await resp.json();
+                            if (data.success && data.etiquetas) {
+                                data.etiquetas.forEach(et => {
+                                    if (et.found) {
+                                        etiquetasDelServidor[et.etiqueta_sub_id] = et;
+                                    }
+                                });
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Error al obtener etiquetas del servidor:', e);
+                    }
+                }
+
+                for (const rawId of ids) {
+                    const safeId = window.domSafe(rawId);
                     let contenedor = document.getElementById(`etiqueta-${safeId}`) ||
                         document.getElementById(`etiqueta-${rawId}`);
+
+                    // Si no está en DOM, intentar usar datos del servidor
+                    let contenedorTemporal = null;
+                    if (!contenedor && etiquetasDelServidor[rawId]) {
+                        const etData = etiquetasDelServidor[rawId];
+                        contenedorTemporal = document.createElement('div');
+                        contenedorTemporal.innerHTML = etData.html;
+                        contenedorTemporal.style.position = 'absolute';
+                        contenedorTemporal.style.left = '-9999px';
+                        contenedorTemporal.style.top = '-9999px';
+                        document.body.appendChild(contenedorTemporal);
+
+                        contenedor = contenedorTemporal.querySelector('.etiqueta-card') ||
+                                     contenedorTemporal.querySelector('.proceso');
+
+                        if (contenedor && etData.elementos && etData.elementos.length > 0) {
+                            const svgContainer = contenedor.querySelector('[id^="contenedor-svg-"]');
+
+                            if (svgContainer && typeof window.renderizarGrupoSVG === 'function') {
+                                const containerId = svgContainer.id.replace('contenedor-svg-', '');
+                                const grupoData = {
+                                    id: parseInt(containerId) || Date.now(),
+                                    etiqueta: {
+                                        id: parseInt(containerId) || Date.now(),
+                                        etiqueta_sub_id: rawId,
+                                    },
+                                    elementos: etData.elementos,
+                                    colada_etiqueta: etData.elementos[0]?.coladas?.colada1 || null,
+                                    colada_etiqueta_2: etData.elementos[0]?.coladas?.colada2 || null,
+                                };
+
+                                try {
+                                    window.renderizarGrupoSVG(grupoData, containerId);
+                                } catch (e) {
+                                    console.warn('Error renderizando SVG:', e);
+                                }
+                            }
+                        }
+                    }
+
                     if (!contenedor) continue;
 
-                    // Buscar canvas
-                    let canvas = document.getElementById(`canvas-imprimir-etiqueta-${safeId}`) ||
-                        document.getElementById(`canvas-imprimir-etiqueta-${rawId}`) ||
-                        contenedor.querySelector('canvas');
+                    // Buscar SVG primero, luego canvas como fallback
+                    let svgElement = contenedor.querySelector('svg');
+                    let figuraImg = null;
 
-                    // Renderizar a imagen
-                    let canvasImg = null;
-                    if (canvas && (canvas.width || canvas.height)) {
-                        const scale = 2;
-                        const tmp = document.createElement('canvas');
-                        const w = canvas.width || canvas.getBoundingClientRect().width || 600;
-                        const h = canvas.height || canvas.getBoundingClientRect().height || 200;
-                        tmp.width = Math.max(1, Math.round(w * scale));
-                        tmp.height = Math.max(1, Math.round(h * scale));
-                        const ctx = tmp.getContext('2d');
-                        ctx.scale(scale, scale);
-                        ctx.drawImage(canvas, 0, 0);
-                        canvasImg = tmp.toDataURL('image/png');
+                    if (svgElement) {
+                        try {
+                            const svgClone = svgElement.cloneNode(true);
+                            const bbox = svgElement.getBoundingClientRect();
+                            const width = bbox.width || svgElement.getAttribute('width') || 600;
+                            const height = bbox.height || svgElement.getAttribute('height') || 150;
+
+                            svgClone.setAttribute('width', width);
+                            svgClone.setAttribute('height', height);
+                            if (!svgClone.getAttribute('viewBox')) {
+                                svgClone.setAttribute('viewBox', `0 0 ${width} ${height}`);
+                            }
+
+                            svgClone.style.background = '#ffffff';
+                            svgClone.style.backgroundColor = '#ffffff';
+                            svgClone.removeAttribute('style');
+
+                            const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                            bgRect.setAttribute('x', '0');
+                            bgRect.setAttribute('y', '0');
+                            bgRect.setAttribute('width', width);
+                            bgRect.setAttribute('height', height);
+                            bgRect.setAttribute('fill', '#ffffff');
+                            svgClone.insertBefore(bgRect, svgClone.firstChild);
+
+                            const svgData = new XMLSerializer().serializeToString(svgClone);
+                            const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                            const svgUrl = URL.createObjectURL(svgBlob);
+
+                            figuraImg = await new Promise((resolve) => {
+                                const img = new Image();
+                                img.onload = () => {
+                                    const scale = 4;
+                                    const canvas = document.createElement('canvas');
+                                    canvas.width = width * scale;
+                                    canvas.height = height * scale;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.imageSmoothingEnabled = true;
+                                    ctx.imageSmoothingQuality = 'high';
+                                    ctx.scale(scale, scale);
+                                    ctx.fillStyle = '#ffffff';
+                                    ctx.fillRect(0, 0, width, height);
+                                    ctx.drawImage(img, 0, 0, width, height);
+                                    URL.revokeObjectURL(svgUrl);
+                                    resolve(canvas.toDataURL('image/png', 1.0));
+                                };
+                                img.onerror = () => {
+                                    URL.revokeObjectURL(svgUrl);
+                                    resolve(null);
+                                };
+                                img.src = svgUrl;
+                            });
+                        } catch (e) {
+                            console.warn('Error al convertir SVG:', e);
+                        }
+                    }
+
+                    // Fallback: buscar canvas
+                    if (!figuraImg) {
+                        let canvas = document.getElementById(`canvas-imprimir-etiqueta-${safeId}`) ||
+                            document.getElementById(`canvas-imprimir-etiqueta-${rawId}`) ||
+                            contenedor.querySelector('canvas');
+
+                        if (canvas && (canvas.width || canvas.height)) {
+                            const scale = 4;
+                            const tmp = document.createElement('canvas');
+                            const w = canvas.width || canvas.getBoundingClientRect().width || 600;
+                            const h = canvas.height || canvas.getBoundingClientRect().height || 200;
+                            tmp.width = Math.max(1, Math.round(w * scale));
+                            tmp.height = Math.max(1, Math.round(h * scale));
+                            const ctx = tmp.getContext('2d');
+                            ctx.imageSmoothingEnabled = true;
+                            ctx.imageSmoothingQuality = 'high';
+                            ctx.scale(scale, scale);
+                            ctx.drawImage(canvas, 0, 0);
+                            figuraImg = tmp.toDataURL('image/png', 1.0);
+                        }
                     }
 
                     // Clonar y limpiar
@@ -760,16 +911,24 @@
                     clone.classList.add('etiqueta-print');
                     clone.querySelectorAll('.no-print').forEach(el => el.remove());
 
-                    // Reemplazar canvas
-                    if (canvasImg) {
+                    // Reemplazar SVG/canvas con imagen
+                    if (figuraImg) {
+                        const targetSvg = clone.querySelector('svg');
                         const targetCanvas = clone.querySelector('canvas');
-                        const host = targetCanvas ? targetCanvas.parentNode : clone;
+                        const svgContainer = clone.querySelector('[id^="contenedor-svg-"]');
+
+                        const host = svgContainer || (targetSvg ? targetSvg.parentNode : (targetCanvas ? targetCanvas.parentNode : clone));
+
+                        if (targetSvg) targetSvg.remove();
+                        if (targetCanvas) targetCanvas.remove();
+
+                        const img = new Image();
+                        img.src = figuraImg;
+                        img.style.width = '100%';
+                        img.style.height = 'auto';
+                        img.className = 'figura-print';
                         if (host) {
-                            if (targetCanvas) targetCanvas.remove();
-                            const img = new Image();
-                            img.src = canvasImg;
-                            img.style.width = '100%';
-                            img.style.height = 'auto';
+                            host.innerHTML = '';
                             host.appendChild(img);
                         }
                     }
@@ -794,9 +953,21 @@
 
                             if (qrNode) {
                                 qrNode.classList.add('qr-print');
+
                                 const qrBox = document.createElement('div');
                                 qrBox.className = 'qr-box';
                                 qrBox.appendChild(qrNode);
+
+                                const qrLabel = document.createElement('div');
+                                qrLabel.className = 'qr-label';
+                                qrLabel.textContent = String(rawId);
+                                qrLabel.style.fontSize = '8pt';
+                                qrLabel.style.marginTop = '0.5mm';
+                                qrLabel.style.lineHeight = '1';
+                                qrLabel.style.textAlign = 'center';
+                                qrLabel.style.fontWeight = 'bold';
+                                qrBox.appendChild(qrLabel);
+
                                 clone.insertBefore(qrBox, clone.firstChild);
                             }
                             tempQR.remove();
@@ -805,6 +976,10 @@
                     });
 
                     etiquetasHtml.push(clone.outerHTML);
+
+                    if (contenedorTemporal) {
+                        contenedorTemporal.remove();
+                    }
                 }
 
                 // CSS e impresión
@@ -840,19 +1015,16 @@
     margin: 0;
     padding: 0;
     background: #fff;
-    width: 148mm;
-    height: 105mm;
   }
 
-  body {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .sheet-grid {
+    margin: 0;
+    padding: 0;
   }
 
   .etiqueta-print {
-    width: 140mm;
-    height: 100mm;
+    width: 148mm;
+    height: 105mm;
     padding: 4mm;
     box-sizing: border-box;
     border: 0.2mm solid #000;
@@ -860,6 +1032,12 @@
     overflow: hidden;
     position: relative;
     page-break-after: always;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .etiqueta-print:first-child {
+    margin-top: 0;
   }
 
   .etiqueta-print h2 {
@@ -877,6 +1055,8 @@
     width: 100%;
     height: auto;
     margin-top: 3mm;
+    flex: 1;
+    object-fit: contain;
   }
 
   .qr-box {
@@ -900,6 +1080,14 @@
                 }
 
                 const w = window.open('', '_blank');
+                if (!w) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'No se pudo abrir la ventana de impresión',
+                        text: 'Por favor, desactiva el bloqueador de ventanas emergentes para este sitio e inténtalo de nuevo.',
+                    });
+                    return;
+                }
                 w.document.open();
                 w.document.write(`
           <html>

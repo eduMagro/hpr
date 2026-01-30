@@ -8,21 +8,10 @@
     />
 
     <div class="w-full">
-        <!-- Botones para desktop -->
-        <div class="hidden md:flex items-center gap-2">
-            {{-- Botón y modal de importar --}}
-            <button type="button" id="btn-abrir-import"
-                class="px-4 py-2 rounded bg-gradient-to-tr from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold shadow-sm">
-                Importar planillas
-            </button>
-
-            <button type="button" id="btn-completar-planillas" data-url="{{ route('planillas.completarTodas') }}"
-                class="bg-gradient-to-tr from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-2 px-4 rounded shadow-sm">
-                Completar planillas
-            </button>
-
-            {{-- Monitor de sincronización FerraWin --}}
-            @livewire('sync-monitor')
+        <!-- Botones ocultos (se activan desde el componente Livewire) -->
+        <div class="hidden">
+            <button type="button" id="btn-abrir-import">Importar planillas</button>
+            <button type="button" id="btn-completar-planillas" data-url="{{ route('planillas.completarTodas') }}">Completar planillas</button>
         </div>
 
         <div id="modal-import" class="fixed inset-0 z-[60] hidden">

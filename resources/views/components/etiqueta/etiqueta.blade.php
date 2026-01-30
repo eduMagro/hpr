@@ -579,8 +579,9 @@
         .etiqueta-print h2{font-size:10pt;margin:0;}
         .etiqueta-print h3{font-size:9pt;margin:0;}
         .etiqueta-print img:not(.qr-print){width:100%;height:auto;margin-top:2mm;}
-        .qr-box{position:absolute;top:3mm;right:3mm;border:0.2mm solid #000;padding:1mm;background:#fff;}
-        .qr-box img{width:16mm;height:16mm;}
+        .qr-box{position:absolute;top:3mm;right:3mm;border:0.2mm solid #000;padding:1mm;background:#fff;text-align:center;}
+        .qr-box img{width:16mm;height:16mm;display:block;}
+        .qr-label{font-size:6pt;font-weight:bold;margin-top:0.5mm;word-break:break-all;max-width:16mm;}
         .no-print{display:none!important;}
     </style>`;
         } else if (modo === 'a6') {
@@ -642,11 +643,21 @@
     border: 0.2mm solid #000;
     padding: 1mm;
     background: #fff;
+    text-align: center;
   }
 
   .qr-box img {
     width: 20mm;
     height: 20mm;
+    display: block;
+  }
+
+  .qr-label {
+    font-size: 7pt;
+    font-weight: bold;
+    margin-top: 0.5mm;
+    word-break: break-all;
+    max-width: 20mm;
   }
 
   .no-print {
