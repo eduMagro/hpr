@@ -581,27 +581,42 @@
             window.etiquetasConElementos = @json($etiquetasJson);
         </script>
         <script>
-            // Función para renderizar SVG de etiqueta usando el código ya cargado de canvasMaquina.js
+            // Función para renderizar todos los elementos de una etiqueta usando figuraElemento.js
             function renderizarSVGEtiqueta(etiquetaId, grupo) {
                 const contenedor = document.getElementById(`contenedor-svg-${etiquetaId}`);
-                if (!contenedor || !grupo.elementos || grupo.elementos.length === 0) {
-                    console.log('No hay elementos para renderizar');
+                if (!contenedor) return;
+
+                const elementos = grupo.elementos || [];
+                if (elementos.length === 0) {
+                    contenedor.innerHTML = '<p class="text-center text-gray-500 py-4">Sin elementos</p>';
                     return;
                 }
 
-                // Actualizar window.elementosAgrupadosScript temporalmente
-                const elementosAgrupadosOriginal = window.elementosAgrupadosScript;
-                window.elementosAgrupadosScript = [grupo];
+                // Crear contenedor para cada elemento
+                let html = '';
+                elementos.forEach((el, idx) => {
+                    html += `
+                        <div class="elemento-figura mb-2 p-2 bg-white border rounded">
+                            <div id="figura-elemento-${etiquetaId}-${idx}" style="width:100%; height:120px; background:white;"></div>
+                        </div>
+                    `;
+                });
+                contenedor.innerHTML = html;
 
-                // Disparar manualmente un evento DOMContentLoaded falso
-                // para que canvasMaquina.js procese el nuevo contenedor
-                const event = new Event('DOMContentLoaded');
-                document.dispatchEvent(event);
-
-                // Restaurar después de un momento
+                // Dibujar cada figura usando la función de figuraElemento.js
                 setTimeout(() => {
-                    window.elementosAgrupadosScript = elementosAgrupadosOriginal;
-                }, 200);
+                    elementos.forEach((el, idx) => {
+                        if (el.dimensiones && typeof window.dibujarFiguraElemento === 'function') {
+                            window.dibujarFiguraElemento(
+                                `figura-elemento-${etiquetaId}-${idx}`,
+                                el.dimensiones,
+                                el.peso,
+                                el.diametro,
+                                el.barras
+                            );
+                        }
+                    });
+                }, 50);
             }
 
             function mostrar(etiquetaId) {
@@ -694,6 +709,7 @@
                 modal.classList.remove('flex');
             }
         </script>
+        <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" onerror="console.warn('figuraElemento.js no encontrado')"></script>
         <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}" onerror="console.warn('canvasMaquina.js no encontrado')"
             wire:navigate></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>

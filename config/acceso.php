@@ -37,6 +37,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Rutas Universales
+    |--------------------------------------------------------------------------
+    |
+    | Rutas accesibles para CUALQUIER usuario autenticado, sin importar empresa.
+    | Usadas para funciones básicas como ver el propio perfil.
+    |
+    */
+    'rutas_universales' => [
+        'usuarios.show',           // Mi perfil
+        'usuarios.imagen',         // Imagen de perfil
+        'politica.privacidad',
+        'politica.cookies',
+        'politicas.aceptar',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Rutas Libres
     |--------------------------------------------------------------------------
     |
@@ -46,15 +63,10 @@ return [
     */
     'rutas_libres' => [
         // Políticas y ayuda
-        'politica.privacidad',
-        'politica.cookies',
-        'politicas.aceptar',
         'ayuda.index',
 
         // Perfil y usuario
-        'usuarios.show',
         'usuarios.index',
-        'usuarios.imagen',
         'usuarios.editarSubirImagen',
         'nominas.crearDescargarMes',
         'incorporaciones.descargarMiContrato',
