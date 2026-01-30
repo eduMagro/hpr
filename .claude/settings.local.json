@@ -111,7 +111,10 @@
       "Bash(head:*)",
       "Bash(Get-Content storagelogslaravel.log -Tail 50)",
       "Bash(Select-String -Pattern \"error|exception\" -CaseSensitive:$false)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(netstat:*)",
+      "Bash(tasklist:*)",
+      "Bash(\" al form\n- Añadir event.preventDefault\\(\\) en onclick del botón\n- Añadir event listener en submit del form como backup\n- Esto asegura que siempre use fetch/AJAX en vez de navegación\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ],
     "deny": [],
     "ask": []

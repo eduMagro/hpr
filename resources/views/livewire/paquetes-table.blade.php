@@ -683,6 +683,6 @@
             }
         });
     </script>
-    <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
+    <script src="{{ asset('js/elementosJs/figuraElemento.js') . '?v=' . time() }}" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </div>

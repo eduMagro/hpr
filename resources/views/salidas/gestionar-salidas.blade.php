@@ -660,7 +660,7 @@
     </script>
 
     <script src="{{ asset('js/gestion-salidas.js') }}?v={{ time() }}"></script>
-    <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
+    <script src="{{ asset('js/elementosJs/figuraElemento.js') . '?v=' . time() }}"></script>
 
     {{-- Debug y inicialización de filtros --}}
     <script data-navigate-once>

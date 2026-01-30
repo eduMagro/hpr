@@ -718,7 +718,7 @@
                 modal.classList.remove('flex');
             }
         </script>
-        <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" onerror="console.warn('figuraElemento.js no encontrado')"></script>
+        <script src="{{ asset('js/elementosJs/figuraElemento.js') . '?v=' . time() }}" onerror="console.warn('figuraElemento.js no encontrado')"></script>
         <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}" onerror="console.warn('canvasMaquina.js no encontrado')"
             wire:navigate></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>

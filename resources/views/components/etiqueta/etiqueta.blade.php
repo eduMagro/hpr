@@ -70,11 +70,20 @@
         transform-origin: top left;
     }
 
-    .etiqueta-card svg {
-        flex: 1 1 auto;
-        width: 100%;
-        height: 100%;
+    /* Contenedor del SVG - expande y posiciona el SVG en la parte inferior */
+    .etiqueta-card > div[id^="contenedor-svg-"] {
+        flex: 1 1 0%;
+        min-height: 0;
+        overflow: hidden;
+        display: flex;
+        align-items: flex-end; /* SVG pegado abajo */
+    }
 
+    .etiqueta-card svg {
+        width: 100%;
+        height: auto; /* Altura automática, no 100% */
+        max-height: 100%;
+        display: block;
     }
 
     /* QR Box */
@@ -259,4 +268,4 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="{{ asset('js/imprimirEtiqueta.js') }}"></script>
+<script src="{{ asset('js/imprimirEtiqueta.js') }}?v={{ time() }}"></script>

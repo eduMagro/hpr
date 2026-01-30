@@ -9,7 +9,6 @@
  * - QR con código de subetiqueta
  * - Fetch de etiquetas desde servidor si no están en DOM
  */
-
 // Utilidad para sanitizar IDs en selectores DOM
 if (!window.domSafe) {
     window.domSafe = (v) => String(v).replace(/[^A-Za-z0-9_-]/g, '-');
@@ -79,14 +78,16 @@ async function convertirSVGaImagen(svg) {
 }
 
 /**
- * Genera QR con etiqueta de texto debajo
- * @param {string} texto - Texto para el QR y la etiqueta
+ * Genera QR y devuelve data URL de la imagen
+ * @param {string} texto - Texto para el QR
  * @param {number} size - Tamaño del QR en px
- * @returns {Promise<HTMLElement>} - Elemento contenedor del QR
+ * @returns {Promise<string>} - Data URL de la imagen QR
  */
-async function generarQRConLabel(texto, size = 60) {
+async function generarQRDataUrl(texto, size = 60) {
     return new Promise((resolve) => {
         const tempQR = document.createElement('div');
+        tempQR.style.position = 'absolute';
+        tempQR.style.left = '-9999px';
         document.body.appendChild(tempQR);
 
         new QRCode(tempQR, {
@@ -99,27 +100,15 @@ async function generarQRConLabel(texto, size = 60) {
             const qrImg = tempQR.querySelector('img');
             const qrCanvas = tempQR.querySelector('canvas');
 
-            const qrBox = document.createElement('div');
-            qrBox.className = 'qr-box';
-
-            if (qrImg) {
-                qrImg.classList.add('qr-print');
-                qrBox.appendChild(qrImg.cloneNode(true));
+            let dataUrl = '';
+            if (qrImg && qrImg.src) {
+                dataUrl = qrImg.src;
             } else if (qrCanvas) {
-                const img = new Image();
-                img.src = qrCanvas.toDataURL();
-                img.classList.add('qr-print');
-                qrBox.appendChild(img);
+                dataUrl = qrCanvas.toDataURL();
             }
 
-            // Label debajo del QR
-            const qrLabel = document.createElement('div');
-            qrLabel.className = 'qr-label';
-            qrLabel.textContent = String(texto);
-            qrBox.appendChild(qrLabel);
-
             tempQR.remove();
-            resolve(qrBox);
+            resolve(dataUrl);
         }, 150);
     });
 }
@@ -284,41 +273,47 @@ async function imprimirEtiquetas(ids, modo = 'a6') {
         const svg = contenedor.querySelector('svg');
         const figuraImg = await convertirSVGaImagen(svg);
 
-        // Clonar y limpiar contenido
-        const clone = contenedor.cloneNode(true);
-        clone.classList.add('etiqueta-print');
-        clone.style.position = 'relative';
-        clone.querySelectorAll('.no-print').forEach(el => el.remove());
+        // Extraer textos del contenedor original
+        const h2El = contenedor.querySelector('h2');
+        const h3El = contenedor.querySelector('h3');
+        const h2Text = h2El ? h2El.textContent : '';
+        const h3Text = h3El ? h3El.textContent : '';
 
-        // Reemplazar SVG con imagen
-        if (figuraImg) {
-            // Eliminar SVGs y canvas
-            clone.querySelectorAll('svg').forEach(el => el.remove());
-            clone.querySelectorAll('canvas').forEach(el => el.remove());
+        // Generar QR
+        const qrSize = modo === 'a4' ? 50 : 60;
+        const qrDataUrl = await generarQRDataUrl(rawId, qrSize);
 
-            // Eliminar el contenedor SVG original
-            const svgContainer = clone.querySelector('[id^="contenedor-svg-"]');
-            if (svgContainer) svgContainer.remove();
+        // Construir HTML con posicionamiento absoluto para la figura en la parte inferior
+        const altura = modo === 'a4' ? '59.4mm' : '105mm';
+        const ancho = modo === 'a4' ? '105mm' : '148mm';
+        const qrImgSize = modo === 'a4' ? '16mm' : '20mm';
+        const padding = modo === 'a4' ? '3mm' : '4mm';
+        const figuraAltura = modo === 'a4' ? '42mm' : '75mm'; // Altura reservada para la figura
 
-            // Eliminar contenedor canvas oculto
-            const canvasContainer = clone.querySelector('div[style*="visibility:hidden"]') ||
-                                    clone.querySelector('div[style*="visibility: hidden"]');
-            if (canvasContainer) canvasContainer.remove();
+        let html = `
+            <div class="etiqueta-print" style="position:relative; width:${ancho}; height:${altura}; border:0.2mm solid #000; background:#fff; box-sizing:border-box; overflow:hidden;">
+                <!-- QR en esquina superior derecha -->
+                <div style="position:absolute; top:${padding}; right:${padding}; border:0.2mm solid #000; padding:1mm; background:#fff; text-align:center; z-index:10;">
+                    <img src="${qrDataUrl}" style="width:${qrImgSize}; height:${qrImgSize}; display:block;">
+                    <div style="font-size:6pt; font-weight:bold; margin-top:1mm;">${rawId}</div>
+                </div>
 
-            // Crear imagen con posición absoluta en la parte baja
-            const img = new Image();
-            img.src = figuraImg;
-            img.className = 'figura-print';
-            img.style.cssText = 'position:absolute; bottom:3mm; left:3mm; right:3mm; width:calc(100% - 6mm); height:auto; max-height:60%;';
+                <!-- Textos en la parte superior -->
+                <div style="position:absolute; top:${padding}; left:${padding}; right:calc(${qrImgSize} + ${padding} + 8mm);">
+                    <h2 style="font-size:${modo === 'a4' ? '10pt' : '11pt'}; margin:0; line-height:1.3;">${h2Text}</h2>
+                    <h3 style="font-size:${modo === 'a4' ? '9pt' : '10pt'}; margin:2mm 0 0 0;">${h3Text}</h3>
+                </div>
 
-            clone.appendChild(img);
-        }
+                <!-- FIGURA EN LA PARTE INFERIOR - posición absoluta -->
+                ${figuraImg ? `
+                <div style="position:absolute; bottom:${padding}; left:${padding}; right:${padding}; height:${figuraAltura}; overflow:visible;">
+                    <img src="${figuraImg}" style="width:100%; height:100%; object-fit:contain; object-position:center bottom; display:block;">
+                </div>
+                ` : ''}
+            </div>
+        `;
 
-        // Generar y añadir QR
-        const qrBox = await generarQRConLabel(rawId, modo === 'a4' ? 50 : 60);
-        clone.insertBefore(qrBox, clone.firstChild);
-
-        etiquetasHtml.push(clone.outerHTML);
+        etiquetasHtml.push(html);
 
         // Limpiar contenedor temporal
         if (contenedorTemporal) {
@@ -372,4 +367,4 @@ async function imprimirEtiquetas(ids, modo = 'a6') {
 // Exportar a window para uso global
 window.imprimirEtiquetas = imprimirEtiquetas;
 window.convertirSVGaImagen = convertirSVGaImagen;
-window.generarQRConLabel = generarQRConLabel;
+window.generarQRDataUrl = generarQRDataUrl;

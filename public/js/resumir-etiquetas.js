@@ -309,8 +309,6 @@ window.desagruparGrupo = async function(grupoId) {
 window.imprimirTodasEtiquetasGrupo = async function(grupoId) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
-    console.log('🖨️ Iniciando impresión de grupo:', grupoId);
-
     Swal.fire({
         title: 'Preparando impresión...',
         html: 'Obteniendo datos del grupo...',
@@ -320,10 +318,8 @@ window.imprimirTodasEtiquetasGrupo = async function(grupoId) {
 
     try {
         // 1. Obtener datos del grupo antes de desagrupar (para poder reagrupar después)
-        console.log('📋 Paso 1: Obteniendo datos del grupo...');
         const dataResponse = await fetch(`/api/etiquetas/resumir/${grupoId}/imprimir`);
         const dataInfo = await _parseJsonResponse(dataResponse, 'Obtener datos para imprimir');
-        console.log('📋 Datos obtenidos:', dataInfo);
 
         if (!dataInfo.success || !dataInfo.etiquetas || dataInfo.etiquetas.length === 0) {
             _mostrarError('No se pudieron obtener las etiquetas');
@@ -335,16 +331,11 @@ window.imprimirTodasEtiquetasGrupo = async function(grupoId) {
         const planillaId = dataInfo.grupo?.planilla_id || null;
         const maquinaId = dataInfo.grupo?.maquina_id || window.maquinaId || null;
 
-        console.log('📋 Etiquetas a imprimir:', etiquetasSubIds);
-        console.log('📋 planillaId:', planillaId, 'maquinaId:', maquinaId);
-
         // Obtener el modo de impresión seleccionado
         const selectModo = document.getElementById(`modo-impresion-grupo-${grupoId}`);
         const modo = selectModo ? selectModo.value : 'a6';
-        console.log('📋 Modo de impresión:', modo);
 
         // 2. Desagrupar
-        console.log('🔓 Paso 2: Desagrupando...');
         Swal.update({ html: 'Desagrupando para renderizar figuras...' });
         const desagruparResponse = await fetch(`/api/etiquetas/resumir/${grupoId}/desagrupar`, {
             method: 'POST',
@@ -356,59 +347,35 @@ window.imprimirTodasEtiquetasGrupo = async function(grupoId) {
         });
 
         const desagruparResult = await _parseJsonResponse(desagruparResponse, 'Desagrupar para imprimir');
-        console.log('🔓 Resultado desagrupar:', desagruparResult);
         if (!desagruparResult.success) {
             _mostrarError('No se pudo desagrupar: ' + (desagruparResult.message || ''));
             return;
         }
 
         // 3. Refrescar la vista para que las etiquetas individuales se rendericen
-        console.log('🔄 Paso 3: Refrescando vista...');
         Swal.update({ html: 'Renderizando etiquetas...' });
         if (typeof window.refrescarEtiquetasMaquina === 'function') {
             await window.refrescarEtiquetasMaquina();
         }
 
         // 4. Esperar a que los SVGs se rendericen completamente
-        console.log('⏳ Paso 4: Esperando renderizado de SVGs...');
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // Verificar que los contenedores de etiquetas existen
-        const domSafe = window.domSafe || (v => String(v).replace(/[^A-Za-z0-9_-]/g, '-'));
-        let etiquetasEncontradas = 0;
-        for (const id of etiquetasSubIds) {
-            const safeId = domSafe(id);
-            const contenedor = document.getElementById(`etiqueta-${safeId}`) ||
-                               document.getElementById(`etiqueta-${id}`);
-            if (contenedor) {
-                etiquetasEncontradas++;
-                const svg = contenedor.querySelector('svg');
-                console.log(`✅ Etiqueta ${id}: encontrada, SVG: ${svg ? 'sí' : 'no'}`);
-            } else {
-                console.warn(`❌ Etiqueta ${id}: NO encontrada en el DOM`);
-            }
-        }
-        console.log(`📊 Etiquetas encontradas: ${etiquetasEncontradas}/${etiquetasSubIds.length}`);
-
         // 5. Imprimir las etiquetas (ahora están desagrupadas y renderizadas)
-        console.log('🖨️ Paso 5: Imprimiendo...');
         Swal.close();
 
         if (typeof window.imprimirEtiquetas === 'function') {
             await window.imprimirEtiquetas(etiquetasSubIds, modo);
         } else {
-            console.error('❌ La función imprimirEtiquetas no está disponible');
             _mostrarError('Función de impresión no disponible');
             return;
         }
 
         // 6. Esperar un momento y volver a agrupar
-        console.log('⏳ Paso 6: Esperando antes de reagrupar...');
         await new Promise(resolve => setTimeout(resolve, 1500));
 
         // 7. Volver a resumir/agrupar las etiquetas
         if (planillaId && maquinaId) {
-            console.log('🔒 Paso 7: Reagrupando...');
             Swal.fire({
                 title: 'Reagrupando...',
                 allowOutsideClick: false,
@@ -429,23 +396,16 @@ window.imprimirTodasEtiquetasGrupo = async function(grupoId) {
             });
 
             const resumirResult = await _parseJsonResponse(resumirResponse, 'Reagrupar después de imprimir');
-            console.log('🔒 Resultado reagrupar:', resumirResult);
 
             // 8. Refrescar la vista final
-            console.log('🔄 Paso 8: Refrescando vista final...');
             if (typeof window.refrescarEtiquetasMaquina === 'function') {
                 await window.refrescarEtiquetasMaquina();
             }
 
             Swal.close();
-        } else {
-            console.warn('⚠️ No se puede reagrupar: falta planillaId o maquinaId');
         }
 
-        console.log('✅ Proceso de impresión completado');
-
     } catch (error) {
-        console.error('❌ Error al imprimir etiquetas del grupo:', error);
         _mostrarError('Ocurrió un error al imprimir', 'Error', error.message);
     }
 };
@@ -872,4 +832,3 @@ window.deshacerEstadoGrupo = async function(grupoId) {
     }
 };
 
-console.log('Sistema de resumen de etiquetas cargado (incluye multi-planilla, reagrupación manual y deshacer estado)');

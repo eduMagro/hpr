@@ -13,8 +13,6 @@
 window.Cortes = (function () {
     "use strict";
 
-    console.log("🔧 Inicializando módulo Cortes v3.0 Final");
-
     // ============================================================================
     // CONFIGURACIÓN
     // ============================================================================
@@ -51,11 +49,6 @@ window.Cortes = (function () {
 
     async function mejorCorteSimple(etiquetaId, diametro, csrfToken) {
         try {
-            console.log(
-                "🔍 [Cortes] Analizando corte simple para:",
-                etiquetaId
-            );
-
             const url = CONFIG.endpoints.calcularPatronSimple.replace(
                 "{id}",
                 etiquetaId
@@ -91,7 +84,6 @@ window.Cortes = (function () {
 
             return decision;
         } catch (error) {
-            console.error("❌ Error:", error);
             await Swal.fire({
                 icon: "error",
                 title: "Error",
@@ -113,9 +105,6 @@ window.Cortes = (function () {
         csrfToken
     ) {
         try {
-            console.log("🎯 [Cortes] Calculando patrones optimizados para:", etiquetaId, "diametro:", diametro);
-            console.log("🎯 [Cortes] Patrones previos recibidos:", patronesPrevios);
-
             let patrones = patronesPrevios;
             let etiquetasPlanillas = {};
 
@@ -124,7 +113,6 @@ window.Cortes = (function () {
                     "{id}",
                     etiquetaId
                 );
-                console.log("🎯 [Cortes] Llamando al endpoint:", url);
 
                 const response = await fetch(url, {
                     method: "POST",
@@ -135,22 +123,15 @@ window.Cortes = (function () {
                     body: JSON.stringify({ diametro, kmax: 5 }),
                 });
 
-                console.log("🎯 [Cortes] Response status:", response.status);
-
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error("🎯 [Cortes] Error response:", errorText);
                     throw new Error("Error al calcular patrones optimizados");
                 }
 
                 const data = await response.json();
-                console.log("🎯 [Cortes] Data recibida del backend:", data);
                 patrones = data.top_global || [];
                 // Guardar el mapa de etiquetas a planillas
                 etiquetasPlanillas = data.etiquetas_planillas || {};
             }
-
-            console.log("🎯 [Cortes] Patrones a mostrar:", patrones.length, patrones);
 
             if (patrones.length === 0) {
                 await Swal.fire({
@@ -162,7 +143,6 @@ window.Cortes = (function () {
                 return null;
             }
 
-            console.log("🎯 [Cortes] Mostrando popup optimizado...");
             const resultado = await mostrarPopupOptimizado({
                 etiquetaId,
                 diametro,
@@ -170,10 +150,8 @@ window.Cortes = (function () {
                 etiquetasPlanillas,
             });
 
-            console.log("🎯 [Cortes] Resultado del popup:", resultado);
             return resultado;
         } catch (error) {
-            console.error("❌ [Cortes] Error en mejorCorteOptimizado:", error);
             await Swal.fire({
                 icon: "error",
                 title: "Error al optimizar",
@@ -335,8 +313,6 @@ window.Cortes = (function () {
 
             return data;
         } catch (error) {
-            console.error("❌ Error en fabricación:", error);
-
             // Si el backend devolvió un JSON con mensaje, lo mostramos
             const mensajeError =
                 error?.data?.message ||
@@ -731,11 +707,7 @@ window.Cortes = (function () {
             },
         });
 
-        console.log("🔍 [Cortes] Resultado del modal simple:", resultado);
-        console.log("🔍 [Cortes] isConfirmed:", resultado.isConfirmed, "isDenied:", resultado.isDenied, "isDismissed:", resultado.isDismissed);
-
         if (resultado.isConfirmed && seleccionado) {
-            console.log("🔍 [Cortes] Usuario eligió FABRICAR patrón simple");
             // Generar el patrón de letras para el corte simple (todas las piezas son iguales: A + A + A...)
             const esquemaSimple = Array(seleccionado.por_barra).fill("A").join(" + ");
 
@@ -751,11 +723,9 @@ window.Cortes = (function () {
                 }
             };
         } else if (resultado.isDenied) {
-            console.log("🔍 [Cortes] Usuario eligió OPTIMIZAR - llamando a mejorCorteOptimizado...");
             return { accion: "optimizar" };
         }
 
-        console.log("🔍 [Cortes] Usuario CANCELÓ el modal");
         return null;
     }
     // ============================================================================
@@ -1207,12 +1177,6 @@ window.Cortes = (function () {
 
                     // Generar el esquema de letras para incluirlo en cada etiqueta
                     const { esquema } = generarEsquema(patronActual);
-
-                    console.log('🔧 Patrón generado:', esquema);
-                    console.log('📦 Etiquetas con patrón:', patronActual.etiquetas.map((id) => ({
-                        etiqueta_sub_id: id,
-                        patron_letras: esquema
-                    })));
 
                     resolve({
                         accion: "fabricar",

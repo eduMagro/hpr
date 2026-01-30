@@ -372,7 +372,7 @@
     <!-- blue-400 #34d399 -->
     <!-- blue-500 #3b82f6 -->
 
-    <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
+    <script src="{{ asset('js/elementosJs/figuraElemento.js') . '?v=' . time() }}" defer></script>
     <script src="{{ asset('js/planillas/planificacion.js') }}"></script>
     <style>
         .planilla.compi-resaltado {

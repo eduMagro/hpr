@@ -195,7 +195,7 @@
     @vite(['resources/css/estilosCalendarioSalidas.css', 'resources/js/modules/calendario-salidas/index.js'])
 
     <!-- Script para dibujar figuras de elementos -->
-    <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
+    <script src="{{ asset('js/elementosJs/figuraElemento.js') . '?v=' . time() }}"></script>
 
     {{-- Tu config global ANTES de @vite --}}
     <script>

@@ -626,4 +626,4 @@
 </script>
 
 {{-- Script para dibujar figuras de elementos --}}
-<script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
+<script src="{{ asset('js/elementosJs/figuraElemento.js') . '?v=' . time() }}"></script>
