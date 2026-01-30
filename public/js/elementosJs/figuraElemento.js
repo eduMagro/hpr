@@ -227,7 +227,7 @@ function initFiguraElemento() {
                 return false;
             }
 
-            // Límite de iteraciones para evitar bucle infinito
+            // Límite de iteraciones para evitar bucle infinito (máximo 3)
             let intentos = 0;
             while (tryResolve() && intentos < 3) { intentos++; }
 

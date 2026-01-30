@@ -581,7 +581,7 @@
             window.etiquetasConElementos = @json($etiquetasJson);
         </script>
         <script>
-            // Función para renderizar todos los elementos de una etiqueta usando figuraElemento.js
+            // Función para renderizar todos los elementos de una etiqueta usando canvasMaquina.js (renderizarGrupoSVG)
             function renderizarSVGEtiqueta(etiquetaId, grupo) {
                 const contenedor = document.getElementById(`contenedor-svg-${etiquetaId}`);
                 if (!contenedor) return;
@@ -592,31 +592,40 @@
                     return;
                 }
 
-                // Crear contenedor para cada elemento
-                let html = '';
-                elementos.forEach((el, idx) => {
-                    html += `
-                        <div class="elemento-figura mb-2 p-2 bg-white border rounded">
-                            <div id="figura-elemento-${etiquetaId}-${idx}" style="width:100%; height:120px; background:white;"></div>
-                        </div>
-                    `;
-                });
-                contenedor.innerHTML = html;
+                // Usar renderizarGrupoSVG de canvasMaquina.js si está disponible
+                if (typeof window.renderizarGrupoSVG === 'function') {
+                    // Construir el objeto grupo en el formato esperado por renderizarGrupoSVG
+                    const grupoData = {
+                        id: etiquetaId,
+                        etiqueta: {
+                            id: etiquetaId,
+                            etiqueta_sub_id: grupo.etiqueta?.etiqueta_sub_id || '',
+                            nombre: grupo.etiqueta?.nombre || '',
+                            peso_kg: grupo.etiqueta?.peso_kg || '',
+                            estado: grupo.etiqueta?.estado || 'pendiente'
+                        },
+                        elementos: elementos.map(el => ({
+                            id: el.id,
+                            diametro: el.diametro,
+                            dimensiones: el.dimensiones,
+                            barras: el.barras,
+                            peso: el.peso,
+                            coladas: el.coladas || null
+                        })),
+                        colada_etiqueta: null,
+                        colada_etiqueta_2: null
+                    };
 
-                // Dibujar cada figura usando la función de figuraElemento.js
-                setTimeout(() => {
+                    window.renderizarGrupoSVG(grupoData, etiquetaId);
+                } else {
+                    // Fallback: mostrar información básica
+                    let html = '<div class="p-2 text-sm">';
                     elementos.forEach((el, idx) => {
-                        if (el.dimensiones && typeof window.dibujarFiguraElemento === 'function') {
-                            window.dibujarFiguraElemento(
-                                `figura-elemento-${etiquetaId}-${idx}`,
-                                el.dimensiones,
-                                el.peso,
-                                el.diametro,
-                                el.barras
-                            );
-                        }
+                        html += `<div class="mb-1">Elemento ${idx + 1}: Ø${el.diametro || '?'} - ${el.barras || 0} barras - ${el.dimensiones || 'N/A'}</div>`;
                     });
-                }, 50);
+                    html += '</div>';
+                    contenedor.innerHTML = html;
+                }
             }
 
             function mostrar(etiquetaId) {
