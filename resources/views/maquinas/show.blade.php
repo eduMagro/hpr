@@ -1,17 +1,17 @@
 <x-app-layout>
     <x-slot name="title">{{ $maquina->nombre }} - {{ config('app.name') }}</x-slot>
 
-    {{-- CSS externalizado para mejor cacheo --}}
-    <link rel="stylesheet" href="{{ asset('css/maquinas-show.css') }}">
-
     <x-slot name="header">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-1 lg:gap-4">
-            <h2 class="font-semibold text-base lg:text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                <strong>{{ $maquina->nombre }}</strong>
-                <span class="text-sm lg:text-base font-normal text-gray-600 dark:text-gray-400">- {{ $usuario1->name }}@if ($usuario2), {{ $usuario2->name }}@endif</span>
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-300 leading-tight">
+                <strong>{{ $maquina->nombre }}</strong>,
+                {{ $usuario1->name }}
+                @if ($usuario2)
+                    y {{ $usuario2->name }}
+                @endif
             </h2>
 
-            <div class="flex flex-wrap items-center gap-2 lg:gap-4">
+            <div class="flex flex-wrap items-center gap-4">
                 @if ($maquina->tipo !== 'grua' && $maquina->tipo !== 'ensambladora')
                     {{-- Selectores de posiciones de planillas --}}
                     <div class="contenedor-selectores-planilla">
@@ -54,7 +54,76 @@
                         </span>
                     </div>
 
-                    {{-- Estilos movidos a public/css/maquinas-show.css --}}
+                    <style>
+                        /* Contenedor con layout fijo */
+                        .contenedor-selectores-planilla {
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            background: white;
+                            border-radius: 6px;
+                            padding: 6px 12px;
+                            border: 1px solid #d1d5db;
+                            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+                            /* CRÍTICO: Dimensiones fijas para evitar recalculos */
+                            min-width: 280px;
+                            height: 40px;
+                            box-sizing: border-box;
+                            /* Alineación vertical con otros controles */
+                            vertical-align: middle;
+                            /* NUEVO: Evitar que se mueva por cambios de layout */
+                            will-change: auto;
+                            contain: layout style;
+                        }
+
+                        .contenedor-selectores-planilla select {
+                            width: 120px;
+                            height: 30px;
+                            padding: 4px 8px;
+                            border: 1px solid #d1d5db;
+                            border-radius: 4px;
+                            font-size: 0.8rem;
+                            background: white;
+                            flex-shrink: 0;
+                            /* CRÍTICO: Sin transiciones ni transformaciones */
+                            transition: none !important;
+                            transform: none !important;
+                            box-sizing: border-box;
+                            /* NUEVO: Aislar del layout */
+                            isolation: isolate;
+                            -webkit-appearance: none;
+                            -moz-appearance: none;
+                            appearance: none;
+                            /* Agregar flecha personalizada */
+                            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23374151' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+                            background-repeat: no-repeat;
+                            background-position: right 8px center;
+                            padding-right: 28px;
+                        }
+
+                        .contenedor-selectores-planilla select:focus {
+                            outline: none !important;
+                            border-color: #3b82f6 !important;
+                            box-shadow: none !important;
+                            /* Mantener dimensiones exactas */
+                            width: 120px !important;
+                            height: 30px !important;
+                        }
+
+                        .contenedor-selectores-planilla select:disabled {
+                            opacity: 0.5;
+                            cursor: not-allowed;
+                        }
+
+                        .contenedor-selectores-planilla .separador {
+                            color: #9ca3af;
+                            flex-shrink: 0;
+                        }
+
+                        .contenedor-selectores-planilla .spinner-loading {
+                            flex-shrink: 0;
+                        }
+                    </style>
 
                     <script>
                         // Variable global para evitar múltiples ejecuciones simultáneas
@@ -439,7 +508,7 @@
                     @endif
                 @endif
 
-                <form method="POST" action="{{ route('turno.cambiarMaquina') }}" id="form-cambiar-maquina">
+                <form method="POST" class="w-full" action="{{ route('turno.cambiarMaquina') }}" id="form-cambiar-maquina">
                     @csrf
                     <input type="hidden" name="asignacion_id" value="{{ $turnoHoy->id ?? '' }}">
                     <input type="hidden" name="nueva_maquina_id" id="hidden-nueva-maquina-id" value="">
@@ -447,7 +516,7 @@
                     <div class="relative">
                         <select id="select-cambiar-maquina"
                             onchange="cambiarMaquinaSelect(this, {{ $maquina->id }})"
-                            class="appearance-none bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:border-blue-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 rounded px-2 py-1 lg:px-4 lg:py-2 pr-8 lg:pr-10 text-xs lg:text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm transition-all duration-200 cursor-pointer">
+                            class="max-md:w-full appearance-none bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
                             @foreach ($maquinas as $m)
                                 <option value="{{ $m->id }}" {{ $m->id == $maquina->id ? 'selected' : '' }}>
                                     {{ $m->nombre }}
@@ -455,8 +524,8 @@
                             @endforeach
                         </select>
                         <div
-                            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 lg:px-3 text-gray-500 dark:text-gray-400">
-                            <svg class="w-3 h-3 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            class="pointer-events-none hidden absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M19 9l-7 7-7-7" />
                             </svg>
@@ -494,7 +563,49 @@
                     }
                 </script>
 
-                {{-- Overlay de carga al cambiar máquina (estilos en maquinas-show.css) --}}
+                {{-- Overlay de carga al cambiar máquina --}}
+                <style>
+                    #overlay-cambiar-maquina {
+                        opacity: 0;
+                        visibility: hidden;
+                        transition: opacity 0.4s ease, visibility 0.4s ease;
+                    }
+
+                    #overlay-cambiar-maquina.active {
+                        opacity: 1;
+                        visibility: visible;
+                    }
+
+                    #overlay-cambiar-maquina .overlay-bg {
+                        opacity: 0;
+                        transition: opacity 0.4s ease;
+                    }
+
+                    #overlay-cambiar-maquina.active .overlay-bg {
+                        opacity: 1;
+                    }
+
+                    #overlay-cambiar-maquina .loader-card {
+                        opacity: 0;
+                        transform: scale(0.9) translateY(20px);
+                        transition: opacity 0.4s ease 0.1s, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s;
+                    }
+
+                    #overlay-cambiar-maquina.active .loader-card {
+                        opacity: 1;
+                        transform: scale(1) translateY(0);
+                    }
+
+                    @keyframes spin-smooth {
+                        to {
+                            transform: rotate(360deg);
+                        }
+                    }
+
+                    .spinner-ring {
+                        animation: spin-smooth 1s linear infinite;
+                    }
+                </style>
                 <div id="overlay-cambiar-maquina" class="fixed inset-0 z-[9999]">
                     {{-- Fondo con blur --}}
                     <div class="overlay-bg absolute inset-0 bg-gray-900/50 backdrop-blur-sm"></div>
@@ -546,7 +657,7 @@
                     <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementos-agrupados="$elementosAgrupados" :productos-base-compatibles="$productosBaseCompatibles"
                         :producto-base-solicitados="$productoBaseSolicitados" :planillas-activas="$planillasActivas" :elementos-por-planilla="$elementosPorPlanilla" :es-barra="$esBarra" :longitudes-por-diametro="$longitudesPorDiametro"
                         :diametro-por-etiqueta="$diametroPorEtiqueta" :elementos-agrupados-script="$elementosAgrupadosScript" :posiciones-disponibles="$posicionesDisponibles" :posicion1="$posicion1" :posicion2="$posicion2"
-                        :grupos-resumen="$gruposResumen ?? collect()" :etiquetas-en-grupos="$etiquetasEnGrupos ?? []" :etiquetas-pre-cargadas="$etiquetasPreCargadas ?? collect()" />
+                        :grupos-resumen="$gruposResumen ?? collect()" :etiquetas-en-grupos="$etiquetasEnGrupos ?? []" />
 
                     @include('components.maquinas.modales.normal.modales-normal')
 
@@ -1315,13 +1426,87 @@
                 window.__fullscreenEtiquetaIndex = 0;
                 window.__etiquetasVisibles = [];
 
-                // Crear overlay de pantalla completa (estilos en maquinas-show.css)
+                // Crear overlay de pantalla completa
                 const crearOverlayFullscreen = () => {
                     if (document.getElementById('fullscreen-etiqueta-overlay')) return;
 
                     const overlay = document.createElement('div');
                     overlay.id = 'fullscreen-etiqueta-overlay';
                     overlay.innerHTML = `
+                        <style>
+                            #fullscreen-etiqueta-overlay {
+                                position: fixed;
+                                top: 0;
+                                left: 0;
+                                right: 0;
+                                bottom: 0;
+                                background: #1a1a2e;
+                                z-index: 99999;
+                                display: none;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                opacity: 0;
+                                transition: opacity 0.3s ease;
+                            }
+                            #fullscreen-etiqueta-overlay.visible {
+                                display: flex;
+                                opacity: 1;
+                            }
+                            #fullscreen-etiqueta-container {
+                                transition: transform 0.3s ease, opacity 0.3s ease;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            }
+                            #fullscreen-etiqueta-container .etiqueta-card {
+                                width: 95vw !important;
+                                height: auto !important;
+                                max-height: 85vh !important;
+                                aspect-ratio: 126 / 71;
+                            }
+                            #fullscreen-etiqueta-container.changing {
+                                opacity: 0;
+                                transform: scale(0.95);
+                            }
+                            #fullscreen-contador {
+                                position: fixed;
+                                bottom: 2rem;
+                                left: 50%;
+                                transform: translateX(-50%);
+                                background: rgba(255,255,255,0.1);
+                                backdrop-filter: blur(10px);
+                                padding: 0.75rem 2rem;
+                                border-radius: 2rem;
+                                color: white;
+                                font-size: 1.25rem;
+                                font-weight: bold;
+                                display: flex;
+                                align-items: center;
+                                gap: 1rem;
+                            }
+                            #fullscreen-contador .actual {
+                                color: #a78bfa;
+                                font-size: 1.5rem;
+                            }
+                            #fullscreen-instrucciones {
+                                position: fixed;
+                                top: 1.5rem;
+                                right: 1.5rem;
+                                background: rgba(255,255,255,0.1);
+                                backdrop-filter: blur(10px);
+                                padding: 1rem 1.5rem;
+                                border-radius: 1rem;
+                                color: rgba(255,255,255,0.7);
+                                font-size: 0.85rem;
+                            }
+                            #fullscreen-instrucciones kbd {
+                                background: rgba(255,255,255,0.2);
+                                padding: 0.2rem 0.5rem;
+                                border-radius: 0.25rem;
+                                font-family: monospace;
+                            }
+                        </style>
                         <div id="fullscreen-etiqueta-container"></div>
                         <div id="fullscreen-contador">
                             <span class="actual">1</span>
