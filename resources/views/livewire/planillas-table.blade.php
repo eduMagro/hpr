@@ -1,71 +1,31 @@
 <div>
     <div class="w-full">
 
-        <!-- Badge de planillas sin aprobar -->
-        @if ($planillasSinAprobar > 0)
-            <div class="my-4 bg-orange-100 border-l-4 border-orange-500 p-4 rounded-r-lg shadow">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <span class="text-3xl">📋</span>
-                        <div>
-                            <h3 class="text-lg font-bold text-orange-800">
-                                {{ $planillasSinAprobar }}
-                                {{ $planillasSinAprobar === 1 ? 'planilla pendiente' : 'planillas pendientes' }} de
-                                aprobación
-                            </h3>
-                            <p class="text-sm text-orange-700">
-                                Las planillas deben ser aprobadas para establecer la fecha de entrega
-                            </p>
-                        </div>
-                    </div>
-                    <div class="flex gap-2">
+        <!-- Alertas de planillas pendientes -->
+        @if ($planillasSinAprobar > 0 || $planillasSinRevisar > 0)
+            <div class="mb-3 flex flex-wrap items-center gap-4 text-sm">
+                @if ($planillasSinAprobar > 0)
+                    <div class="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">{{ $planillasSinAprobar }} sin aprobar</span>
                         <button wire:click="verSinAprobar"
-                            class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition-colors">
-                            Ver sin aprobar
+                            class="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline">
+                            Ver
                         </button>
                         <button wire:click="toggleModoSeleccion"
-                            class="{{ $modoSeleccion ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700' }} text-white font-bold py-2 px-4 rounded transition-colors flex items-center gap-2">
-                            @if ($modoSeleccion)
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
-                                Cancelar selección
-                            @else
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                                    <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                </svg>
-                                Aprobar en masa
-                            @endif
+                            class="text-xs px-2 py-0.5 rounded {{ $modoSeleccion ? 'bg-gray-700 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200' }} hover:bg-gray-600 hover:text-white transition">
+                            {{ $modoSeleccion ? 'Cancelar' : 'Aprobar en masa' }}
                         </button>
                     </div>
-                </div>
-            </div>
-        @endif
-
-        <!-- Badge de planillas sin revisar -->
-        @if ($planillasSinRevisar > 0)
-            <div class="my-4 bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-r-lg shadow">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <span class="text-3xl">⚠️</span>
-                        <div>
-                            <h3 class="text-lg font-bold text-yellow-800">
-                                {{ $planillasSinRevisar }}
-                                {{ $planillasSinRevisar === 1 ? 'planilla pendiente' : 'planillas pendientes' }} de
-                                revisión
-                            </h3>
-                            <p class="text-sm text-yellow-700">
-                                Las planillas sin revisar aparecen en <strong>GRIS</strong> en el calendario de
-                                producción
-                            </p>
-                        </div>
+                @endif
+                @if ($planillasSinRevisar > 0)
+                    <div class="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">{{ $planillasSinRevisar }} sin revisar</span>
+                        <button wire:click="verSinRevisar"
+                            class="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline">
+                            Ver
+                        </button>
                     </div>
-                    <button wire:click="verSinRevisar"
-                        class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition-colors">
-                        Ver planillas sin revisar
-                    </button>
-                </div>
+                @endif
             </div>
         @endif
 
