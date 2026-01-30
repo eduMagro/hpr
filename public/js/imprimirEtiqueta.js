@@ -301,6 +301,7 @@ async function imprimirEtiquetas(ids, modo = 'a6') {
         // Crear estructura HTML limpia para impresión
         const etiquetaDiv = document.createElement('div');
         etiquetaDiv.className = 'etiqueta-print';
+        etiquetaDiv.style.position = 'relative';
 
         // Header
         if (headerText) {
@@ -316,11 +317,18 @@ async function imprimirEtiquetas(ids, modo = 'a6') {
             etiquetaDiv.appendChild(h3El);
         }
 
-        // Imagen de la figura (posicionada abajo via CSS)
+        // Imagen de la figura (posicionada abajo con estilos inline)
         if (figuraImg) {
             const img = document.createElement('img');
             img.src = figuraImg;
             img.className = 'figura-print';
+            img.style.position = 'absolute';
+            img.style.bottom = '5mm';
+            img.style.left = '5mm';
+            img.style.right = '5mm';
+            img.style.width = 'auto';
+            img.style.maxWidth = '90%';
+            img.style.height = 'auto';
             etiquetaDiv.appendChild(img);
         }
 
