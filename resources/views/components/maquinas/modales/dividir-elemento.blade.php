@@ -5,7 +5,7 @@
     <div class="bg-white p-8 rounded-xl shadow-xl w-[520px] max-h-[90vh] overflow-y-auto">
         <h2 class="text-xl font-bold text-gray-800 mb-5">Gestión de elemento</h2>
 
-        <form id="formDividirElemento" method="POST">
+        <form id="formDividirElemento" method="POST" onsubmit="return false;">
             @csrf
             <input type="hidden" name="elemento_id" id="dividir_elemento_id">
             <input type="hidden" name="barras_totales" id="dividir_barras_totales">
@@ -121,7 +121,12 @@
 
         if (btnAceptar && !btnAceptar._initialized) {
             btnAceptar._initialized = true;
-            btnAceptar.onclick = async function() {
+            btnAceptar.onclick = async function(event) {
+                // Prevenir cualquier envío de formulario
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
                 console.log('🔘 Botón Aceptar clickeado');
                 console.log('🔍 window.enviarAccionEtiqueta existe?', typeof window.enviarAccionEtiqueta);
 
@@ -161,6 +166,17 @@
     const _modalEl = document.getElementById('modalDividirElemento');
     if (_modalEl) {
         _modalObs.observe(_modalEl, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    // Prevenir envío del formulario por cualquier medio
+    const _formDividir = document.getElementById('formDividirElemento');
+    if (_formDividir) {
+        _formDividir.addEventListener('submit', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('⚠️ Formulario intentó enviarse - prevenido');
+            return false;
+        });
     }
 
     // Función para dividir automáticamente en múltiples etiquetas
