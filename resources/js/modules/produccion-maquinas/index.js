@@ -1,15 +1,27 @@
-import { crearCalendario } from './calendar.js';
+﻿import { crearCalendario } from './calendar.js';
 import { initIndicadorPosicion } from './event-handlers.js';
 import { initFiltros, toggleFiltros } from './filtros.js';
 import { aplicarLineasTurnos, toggleTurno } from './turnos.js';
 import { toggleFullScreen } from './fullscreen.js';
 import { onPageReady, onPageLeave } from '../../utils/livewire-helper.js';
+import { Draggable } from '@fullcalendar/interaction';
 
-// Importar módulos adicionales
+// FullCalendar base styles (previously loaded via CDN in Blade)
+import '@fullcalendar/core/index.css';
+import '@fullcalendar/resource-timegrid/index.css';
+
+// Importar modulos adicionales
 import './panel-elementos.js';
 import './modales.js';
 
 let calendar = null;
+
+// Marker to detect that the Vite module is active (and avoid legacy Blade/CDN bootstraps).
+window.__hprProduccionMaquinasVite = true;
+
+// Legacy Blade scripts in this view still reference FullCalendar.Draggable.
+window.FullCalendar = window.FullCalendar || {};
+window.FullCalendar.Draggable = Draggable;
 
 function inicializarCalendario() {
     // Destruir calendario anterior si existe

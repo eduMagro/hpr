@@ -377,7 +377,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::get('/ubicaciones/inventario', [UbicacionController::class, 'inventario'])->name('ubicaciones.verInventario');
     Route::resource('ubicaciones', UbicacionController::class);
-    Route::get('/ubicaciones/{ubicacion}', [UbicacionController::class, 'show'])->name('ubicaciones.show');
 
     // Backups de Inventario
     Route::post('/inventario-backups', [InventarioBackupController::class, 'store'])->name('inventario-backups.store');

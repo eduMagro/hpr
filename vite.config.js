@@ -28,6 +28,7 @@ export default defineConfig(({ command, mode }) => {
                     // Module-specific entries
                     "resources/js/modules/calendario-salidas/index.js",
                     "resources/js/modules/calendario-trabajadores/index.js",
+                    "resources/js/modules/produccion-maquinas/index.js",
                     "resources/css/estilosCalendarioSalidas.css",
 
                     // Localizaciones

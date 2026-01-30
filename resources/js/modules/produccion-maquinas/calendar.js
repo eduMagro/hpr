@@ -1,4 +1,4 @@
-import { Calendar } from '@fullcalendar/core';
+﻿import { Calendar } from '@fullcalendar/core';
 import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import esLocale from '@fullcalendar/core/locales/es';

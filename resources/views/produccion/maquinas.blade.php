@@ -1,4 +1,4 @@
-<x-app-layout>
+﻿<x-app-layout>
     <x-slot name="title">Planificación por Máquina</x-slot>
 
     <x-page-header
@@ -444,11 +444,7 @@
             </div>
         </div>
 
-        <!-- Scripts externos FullCalendar -->
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css">
-        <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
+        <!-- FullCalendar se carga via Vite (resources/js/modules/produccion-maquinas/index.js) -->
         <script src="{{ asset('js/elementosJs/figuraElemento.js') . '?v=' . time() }}"></script>
         <script src="{{ asset('js/multiselect-elementos.js') }}"></script>
         <script src="{{ asset('js/resumir-etiquetas.js') }}"></script>
@@ -2134,7 +2130,20 @@
                 "configTurnos": @json($configTurnos ?? ['horaInicioSemana' => '06:00', 'offsetDiasSemana' => 0])
             }
         </script>
-        <script>
+                <script>
+            // Datos para el bundle de Vite (resources/js/modules/produccion-maquinas/index.js)
+            (function() {
+                const el = document.getElementById('calendario-maquinas-data');
+                if (!el) return;
+                try {
+                    window.ProduccionMaquinas = JSON.parse(el.textContent || '{}');
+                } catch (e) {
+                    console.error('Error parseando calendario-maquinas-data:', e);
+                    window.ProduccionMaquinas = window.ProduccionMaquinas || {};
+                }
+            })();
+        </script>
+<script>
             // Variables globales para el sistema de drag (fuera de la función para persistir entre reinicializaciones)
             window._maquinasCalendarState = window._maquinasCalendarState || {
                 moverIndicadorHandler: null,
@@ -2316,6 +2325,11 @@
 
             // Hacer la función global para que el layout pueda llamarla
             window.inicializarCalendarioMaquinas = function() {
+                if (window.__hprProduccionMaquinasVite) {
+                    // Evitar doble inicializacion: el calendario se monta desde Vite.
+                    return;
+                }
+
                 // Verificar que el elemento del calendario existe
                 const calendarioEl = document.getElementById('calendario');
                 if (!calendarioEl) {
@@ -8217,142 +8231,14 @@
 
             // ============================================================
             // 🚀 INICIALIZACIÓN ROBUSTA SPA / LIVEWIRE
+                        // ============================================================
+            // Inicializacion del calendario (Vite)
             // ============================================================
-
-            // Función para cargar scripts de FullCalendar dinámicamente
-            window.cargarFullCalendarScripts = function() {
-                return new Promise((resolve, reject) => {
-                    // Si ya está cargado y disponible, resolver inmediatamente
-                    if (typeof FullCalendar !== 'undefined' && FullCalendar.Calendar) {
-                        resolve();
-                        return;
-                    }
-
-                    console.log('📦 Cargando FullCalendar dinámicamente...');
-
-                    // Lista de scripts a cargar en orden
-                    const scripts = [
-                        'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js',
-                        'https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js',
-                        'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js'
-                    ];
-
-                    // Cargar CSS si no existe
-                    if (!document.querySelector('link[href*="fullcalendar"]')) {
-                        const css = document.createElement('link');
-                        css.rel = 'stylesheet';
-                        css.href = 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css';
-                        document.head.appendChild(css);
-                    }
-
-                    // Cargar scripts en secuencia
-                    let loadIndex = 0;
-                    const loadNext = () => {
-                        if (loadIndex >= scripts.length) {
-                            // Esperar un momento para que FullCalendar se inicialice
-                            const checkReady = (attempts = 0) => {
-                                if (typeof FullCalendar !== 'undefined' && FullCalendar.Calendar) {
-                                    console.log('✅ FullCalendar cargado correctamente');
-                                    resolve();
-                                } else if (attempts < 20) {
-                                    setTimeout(() => checkReady(attempts + 1), 50);
-                                } else {
-                                    reject(new Error('FullCalendar no se inicializó después de cargar scripts'));
-                                }
-                            };
-                            checkReady();
-                            return;
-                        }
-
-                        const src = scripts[loadIndex];
-                        // Verificar si ya existe el script tag
-                        const existingScript = document.querySelector(`script[src="${src}"]`);
-                        if (existingScript) {
-                            loadIndex++;
-                            loadNext();
-                            return;
-                        }
-
-                        const script = document.createElement('script');
-                        script.src = src;
-                        script.onload = () => {
-                            loadIndex++;
-                            loadNext();
-                        };
-                        script.onerror = () => reject(new Error(`Error cargando: ${src}`));
-                        document.head.appendChild(script);
-                    };
-
-                    loadNext();
-                });
-            };
-
-            window.initProduccionMaquinasPage = async function(retryCount = 0) {
-                const MAX_RETRIES = 5;
-                const RETRY_DELAY = 100;
-
-                // Verificar si estamos en la página de máquinas
-                const dataEl = document.getElementById('calendario-maquinas-data');
-                const calendarioEl = document.querySelector('#calendario[data-calendar-type="maquinas"]');
-
-                if (!dataEl || !calendarioEl) {
-                    // Si no estamos en la página de máquinas, detener polling
-                    if (typeof window.stopPolling === 'function' && window._maquinasPollingInterval) {
-                        window.stopPolling();
-                    }
-
-                    // Si los elementos no existen pero deberían (navegación SPA), reintentar
-                    if (retryCount < MAX_RETRIES && document.querySelector('[data-page="produccion-maquinas"]')) {
-                        setTimeout(() => window.initProduccionMaquinasPage(retryCount + 1), RETRY_DELAY);
-                    }
-                    return;
-                }
-
-                // Asegurar que FullCalendar esté cargado
-                try {
-                    await window.cargarFullCalendarScripts();
-
-                    // Verificar que FullCalendar realmente existe después de cargar
-                    if (typeof FullCalendar === 'undefined') {
-                        throw new Error('FullCalendar no disponible después de cargar scripts');
-                    }
-                } catch (error) {
-                    console.error('❌ Error cargando FullCalendar:', error);
-                    if (retryCount < MAX_RETRIES) {
-                        setTimeout(() => window.initProduccionMaquinasPage(retryCount + 1), RETRY_DELAY * 2);
-                    }
-                    return;
-                }
-
-                // Inicializar calendario
-                if (typeof window.inicializarCalendarioMaquinas === 'function') {
-                    try {
-                        window.inicializarCalendarioMaquinas();
-                    } catch (error) {
-                        console.error('❌ Error inicializando calendario:', error);
-                        if (retryCount < MAX_RETRIES) {
-                            setTimeout(() => window.initProduccionMaquinasPage(retryCount + 1), RETRY_DELAY * 2);
-                        }
-                    }
-                } else {
-                    console.error('❌ window.inicializarCalendarioMaquinas no encontrada');
-                }
-            };
-
-            // Ejecutar en carga inicial
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', window.initProduccionMaquinasPage);
-            } else {
-                window.initProduccionMaquinasPage();
-            }
-
-            // Ejecutar en navegación SPA con pequeño delay para asegurar DOM listo
-            if (!window._maquinasListenerAdded) {
-                document.addEventListener('livewire:navigated', function() {
-                    // Pequeño delay para asegurar que el DOM esté completamente actualizado
-                    setTimeout(() => window.initProduccionMaquinasPage(), 50);
-                });
-                window._maquinasListenerAdded = true;
-            }
-        </script>
+            // Este calendario se inicializa desde el bundle de Vite:
+            // `resources/js/modules/produccion-maquinas/index.js`
+            //
+            // Nota: antes se intentaba cargar FullCalendar desde CDN (jsdelivr), pero en algunos
+            // entornos devuelve MIME `text/plain`/NS_ERROR_CORRUPTED_CONTENT y el navegador lo bloquea.
+</script>
+        @vite(['resources/js/modules/produccion-maquinas/index.js'])
 </x-app-layout>
