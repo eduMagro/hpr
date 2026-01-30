@@ -273,164 +273,156 @@
                     </div>
 
                     {{-- Footer --}}
-                    <div class="px-6 py-3 bg-gray-50 rounded-b-xl border-t">
+                    <div class="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-b-xl border-t">
                         {{-- Mensajes flash --}}
                         @if (session()->has('message'))
-                            <div class="mb-3 px-3 py-2 bg-green-100 text-green-800 text-sm rounded-lg">
+                            <div class="mb-3 px-3 py-2 bg-green-50 text-green-700 text-sm rounded-lg border border-green-200">
                                 {{ session('message') }}
                             </div>
                         @endif
                         @if (session()->has('error'))
-                            <div class="mb-3 px-3 py-2 bg-red-100 text-red-800 text-sm rounded-lg">
+                            <div class="mb-3 px-3 py-2 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200">
                                 {{ session('error') }}
                             </div>
                         @endif
 
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <p class="text-xs text-gray-500">
-                                    @if($isRunning)
-                                        Auto-refresh cada 5s
-                                    @else
-                                        Usa "Actualizar" para refrescar
-                                    @endif
-                                </p>
-                                @if ($ultimaPlanilla && !$isRunning)
-                                    <span class="text-xs text-gray-400">
-                                        Última: <span class="font-mono font-medium text-gray-600">{{ $ultimaPlanilla }}</span>
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            {{-- Info izquierda --}}
+                            <div class="flex items-center gap-2 text-xs text-gray-500">
+                                @if($isRunning)
+                                    <span class="flex items-center gap-1">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                                        Auto-refresh
                                     </span>
+                                @endif
+                                @if ($ultimaPlanilla && !$isRunning)
+                                    <span class="font-mono bg-gray-200 px-2 py-0.5 rounded">{{ $ultimaPlanilla }}</span>
                                 @endif
                             </div>
 
-                            <div class="flex gap-2">
-                                {{-- CONTROLES DE SINCRONIZACIÓN (Local y Producción via Pusher) --}}
+                            {{-- Botones derecha --}}
+                            <div class="flex flex-wrap items-center gap-2">
+                                @php
+                                    $btnBase = 'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 shadow-sm';
+                                    $btnPrimary = $btnBase . ' text-white bg-gray-800 hover:bg-gray-900 active:scale-95';
+                                    $btnSecondary = $btnBase . ' text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 active:scale-95';
+                                    $btnDanger = $btnBase . ' text-white bg-gray-800 hover:bg-red-600 active:scale-95';
+                                @endphp
 
-                                {{-- Botón Pausar / Estado pausando --}}
+                                {{-- Pausar --}}
                                 @if ($isRunning)
                                     @if ($isPausing)
-                                        {{-- Estado: Pausando (esperando que el proceso se detenga) --}}
-                                        <div class="px-3 py-1.5 text-sm font-medium text-white bg-amber-600 rounded-lg flex items-center gap-2 cursor-wait">
-                                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <div class="{{ $btnSecondary }} cursor-wait opacity-75">
+                                            <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
                                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                                             </svg>
-                                            <span>Pausando...</span>
+                                            Pausando...
                                         </div>
                                     @else
-                                        {{-- Estado: Normal (puede pausar) --}}
-                                        <button wire:click="pausarSync"
-                                            wire:loading.attr="disabled"
-                                            wire:loading.class="opacity-50 cursor-wait"
-                                            class="px-3 py-1.5 text-sm font-medium text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition flex items-center gap-1.5">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        <button wire:click="pausarSync" class="{{ $btnSecondary }}">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6" />
                                             </svg>
-                                            <span>Pausar</span>
+                                            Pausar
                                         </button>
                                     @endif
                                 @endif
 
-                                {{-- Botón Continuar Sincronización (solo local, necesita acceso a logs) --}}
+                                {{-- Continuar --}}
                                 @if ($currentTarget === 'local' && $ultimaPlanilla && !$isRunning)
-                                    <button wire:click="continuarSync"
-                                        wire:loading.attr="disabled"
-                                        wire:loading.class="opacity-50 cursor-wait"
-                                        class="px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition flex items-center gap-1.5">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <button wire:click="continuarSync" class="{{ $btnPrimary }}">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                        <span wire:loading.remove wire:target="continuarSync">Continuar desde {{ $ultimaPlanilla }}</span>
-                                        <span wire:loading wire:target="continuarSync">Iniciando...</span>
+                                        <span wire:loading.remove wire:target="continuarSync">Continuar</span>
+                                        <span wire:loading wire:target="continuarSync">...</span>
                                     </button>
                                 @endif
 
-                                {{-- Input para sincronizar planilla específica --}}
+                                {{-- Sync planilla específica --}}
                                 @if (!$isRunning)
-                                    <div class="flex items-center gap-1">
+                                    <div class="flex items-center gap-1 bg-white rounded-lg border border-gray-300 p-0.5">
                                         <input type="text"
                                             wire:model="codigoPlanillaEspecifica"
                                             wire:keydown.enter="syncPlanillaEspecifica"
                                             placeholder="2026-886"
-                                            class="w-24 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                                            title="Sincronizar una planilla específica">
+                                            class="w-20 px-2 py-1 text-xs border-0 bg-transparent focus:ring-0 focus:outline-none"
+                                            title="Código de planilla">
                                         <select wire:model="syncTarget"
-                                            class="px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 {{ $syncTarget === 'production' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700' }}">
+                                            class="px-1 py-1 text-xs border-0 bg-transparent focus:ring-0 focus:outline-none cursor-pointer {{ $syncTarget === 'production' ? 'text-red-600' : 'text-gray-600' }}">
                                             @if ($canSyncToLocal)
                                                 <option value="local">Local</option>
                                             @endif
                                             <option value="production">Prod</option>
                                         </select>
                                         <button wire:click="syncPlanillaEspecifica"
-                                            wire:loading.attr="disabled"
-                                            class="px-2 py-1.5 text-sm font-medium text-white {{ $syncTarget === 'production' ? 'bg-red-600 hover:bg-red-700' : 'bg-purple-600 hover:bg-purple-700' }} rounded-lg transition flex items-center gap-1"
-                                            title="Sincronizar planilla específica a {{ $syncTarget === 'production' ? 'PRODUCCIÓN' : 'LOCAL' }}">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            class="p-1.5 rounded-md {{ $syncTarget === 'production' ? 'bg-gray-800 hover:bg-red-600' : 'bg-gray-800 hover:bg-gray-900' }} text-white transition">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                             </svg>
-                                            <span class="hidden sm:inline">Sync</span>
                                         </button>
                                     </div>
                                 @endif
 
-                                {{-- Botón Iniciar Nueva Sync (Dropdown) --}}
+                                {{-- Nueva Sync dropdown --}}
                                 @if (!$isRunning)
                                     <div x-data="{ open: false }" class="relative">
-                                        <button @click="open = !open"
-                                            class="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center gap-1.5">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <button @click="open = !open" class="{{ $btnPrimary }}">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                             </svg>
                                             Nueva Sync
-                                            @if ($currentTarget !== 'local')
-                                                <span class="text-xs opacity-75">(remoto)</span>
-                                            @endif
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                             </svg>
                                         </button>
                                         <div x-show="open" @click.away="open = false" x-cloak
-                                            class="absolute right-0 bottom-full mb-1 w-48 bg-white rounded-lg shadow-lg border py-1 z-10">
+                                            x-transition:enter="transition ease-out duration-100"
+                                            x-transition:enter-start="opacity-0 scale-95"
+                                            x-transition:enter-end="opacity-100 scale-100"
+                                            class="absolute right-0 bottom-full mb-2 w-44 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-10 overflow-hidden">
                                             <button wire:click="seleccionarAño('nuevas')" @click="open = false"
-                                                class="w-full px-4 py-2 text-left text-sm text-emerald-700 font-medium hover:bg-emerald-50 transition border-b border-gray-200">
+                                                class="w-full px-3 py-2 text-left text-xs font-medium text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+                                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                                                 Solo NUEVAS
                                             </button>
                                             <button wire:click="seleccionarAño('todos')" @click="open = false"
-                                                class="w-full px-4 py-2 text-left text-sm text-blue-700 font-medium hover:bg-blue-50 transition border-b border-gray-200">
+                                                class="w-full px-3 py-2 text-left text-xs font-medium text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+                                                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
                                                 Sincronizar TODO
                                             </button>
+                                            <div class="border-t border-gray-100 my-1"></div>
                                             @foreach (['2026', '2025', '2024', '2023', '2022'] as $año)
                                                 <button wire:click="seleccionarAño('{{ $año }}')" @click="open = false"
-                                                    class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition">
-                                                    Sincronizar {{ $año }}
+                                                    class="w-full px-3 py-1.5 text-left text-xs text-gray-600 hover:bg-gray-100">
+                                                    {{ $año }}
                                                 </button>
                                             @endforeach
                                         </div>
                                     </div>
                                 @endif
 
-                                {{-- Botón Limpiar Logs (solo en local y cuando no está corriendo) --}}
+                                {{-- Limpiar Logs --}}
                                 @if ($currentTarget === 'local' && !$isRunning)
-                                    <button wire:click="limpiarLogs"
-                                        wire:confirm="¿Eliminar TODOS los archivos de log?"
-                                        class="px-3 py-1.5 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition flex items-center gap-1">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <button wire:click="limpiarLogs" wire:confirm="¿Eliminar TODOS los archivos de log?" class="{{ $btnSecondary }} hover:text-red-600 hover:border-red-300">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
-                                        Limpiar Logs
+                                        Limpiar
                                     </button>
                                 @endif
 
-                                <button wire:click="refresh"
-                                    class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-                                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                {{-- Actualizar --}}
+                                <button wire:click="refresh" class="{{ $btnSecondary }}">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                     </svg>
                                     Actualizar
                                 </button>
-                                <button wire:click="close"
-                                    class="px-3 py-1.5 text-sm font-medium text-white bg-gray-800 rounded-lg hover:bg-gray-700 transition">
+
+                                {{-- Cerrar --}}
+                                <button wire:click="close" class="{{ $btnPrimary }}">
                                     Cerrar
                                 </button>
                             </div>
