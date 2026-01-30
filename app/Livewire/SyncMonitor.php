@@ -517,8 +517,21 @@ class SyncMonitor extends Component
      */
     public function seleccionarAño(string $año)
     {
+        // Verificar estado local
         if ($this->isRunning) {
             session()->flash('error', 'Ya hay una sincronización en ejecución');
+            return;
+        }
+
+        // Verificar estado remoto (cache) - importante para cuando múltiples usuarios acceden
+        $syncStatus = Cache::get('ferrawin_sync_status');
+        if ($syncStatus && ($syncStatus['status'] ?? '') === 'running') {
+            $progress = $syncStatus['progress'] ?? '?/?';
+            $lastPlanilla = $syncStatus['last_planilla'] ?? 'desconocida';
+            $updatedAt = isset($syncStatus['updated_at'])
+                ? \Carbon\Carbon::parse($syncStatus['updated_at'])->diffForHumans()
+                : 'hace un momento';
+            session()->flash('error', "Ya hay una sincronización en curso ({$progress}, actualizado {$updatedAt}). Última planilla: {$lastPlanilla}. Espera a que termine o paúsala primero.");
             return;
         }
 
@@ -583,12 +596,31 @@ class SyncMonitor extends Component
      */
     protected function ejecutarSync(string $año, ?string $desdeCodigo = null)
     {
+        // BLOQUEO: Verificar si ya hay una sincronización en curso usando cache atómico
+        $syncStatus = Cache::get('ferrawin_sync_status');
+        if ($syncStatus && ($syncStatus['status'] ?? '') === 'running') {
+            $progress = $syncStatus['progress'] ?? '?/?';
+            $lastPlanilla = $syncStatus['last_planilla'] ?? 'desconocida';
+            session()->flash('error', "Ya hay una sincronización en curso ({$progress}). Última planilla: {$lastPlanilla}. Espera a que termine o paúsala primero.");
+            return;
+        }
+
         // Usar el target seleccionado por el usuario
         $target = $this->syncTarget;
         $targetLabel = $target === 'production' ? 'PRODUCCIÓN' : 'LOCAL';
 
         // Si estamos en producción (Linux), enviar comando remoto via Pusher
         if (!$this->isLocalSyncEnvironment()) {
+            // Marcar como iniciando para evitar doble clic
+            Cache::put('ferrawin_sync_status', [
+                'status' => 'running',
+                'progress' => '0/?',
+                'message' => 'Iniciando sincronización...',
+                'year' => $año,
+                'target' => $target,
+                'updated_at' => now()->toIso8601String(),
+            ], now()->addMinutes(5));
+
             $this->enviarComandoRemoto('start', [
                 'año' => $año,
                 'target' => $target,
