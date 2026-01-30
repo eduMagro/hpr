@@ -4209,60 +4209,6 @@
 
                             seccionElementos.appendChild(div);
 
-                            // ✅ Evento de clic para selección múltiple
-                            div.addEventListener('click', function(e) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                window.MultiSelectElementos.toggleSeleccion(div);
-                            });
-
-                            // ✅ Evento de dragstart en cada elemento
-                            div.addEventListener('dragstart', function(e) {
-                                // Ocultar ghost nativo del navegador
-                                const img = new Image();
-                                img.src =
-                                    'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-                                e.dataTransfer.setDragImage(img, 0, 0);
-
-                                elementoArrastrandose = div;
-                                mostrarIndicador = true;
-                                window.tooltipsDeshabilitados = true;
-
-                                // Añadir clase al body para ocultar tooltips via CSS
-                                document.body.classList.add('dragging-panel-elemento');
-
-                                // Ocultar y eliminar tooltips existentes
-                                document.querySelectorAll('.fc-tooltip').forEach(t => {
-                                    t.style.display = 'none';
-                                    t.remove();
-                                });
-
-                                // Mostrar indicador con posición inicial (se actualizará en dragover)
-                                if (numeroPosicion) {
-                                    numeroPosicion.textContent = '?';
-                                }
-
-                                div.classList.add('dragging-original');
-                            });
-
-                            div.addEventListener('dragend', function() {
-                                elementoArrastrandose = null;
-                                mostrarIndicador = false;
-                                window.tooltipsDeshabilitados = false;
-
-                                // Quitar clase del body
-                                document.body.classList.remove('dragging-panel-elemento');
-
-                                if (indicadorPosicion) {
-                                    indicadorPosicion.classList.add('hidden');
-                                    indicadorPosicion.style.display = 'none';
-                                }
-                                div.classList.remove('dragging-original');
-
-                                // Limpiar tooltips duplicados
-                                document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
-                            });
-
                             // Almacenar datos para dibujar después de que el panel sea visible
                             // 🆕 Usar el total de barras del grupo y cantidad de elementos
                             elementosParaDibujar.push({
@@ -4281,6 +4227,67 @@
 
                         seccionWrapper.appendChild(seccionElementos);
                     });
+
+                    // ✅ DELEGACIÓN DE EVENTOS - Un solo listener para todos los elementos
+                    // Esto es mucho más eficiente que añadir listeners individuales
+                    if (!lista._delegacionConfigurada) {
+                        lista._delegacionConfigurada = true;
+
+                        // Click delegado para selección múltiple
+                        lista.addEventListener('click', function(e) {
+                            const elementoDrag = e.target.closest('.elemento-drag');
+                            if (elementoDrag) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                window.MultiSelectElementos.toggleSeleccion(elementoDrag);
+                            }
+                        });
+
+                        // Dragstart delegado
+                        lista.addEventListener('dragstart', function(e) {
+                            const elementoDrag = e.target.closest('.elemento-drag');
+                            if (!elementoDrag) return;
+
+                            // Ocultar ghost nativo del navegador
+                            const img = new Image();
+                            img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                            e.dataTransfer.setDragImage(img, 0, 0);
+
+                            elementoArrastrandose = elementoDrag;
+                            mostrarIndicador = true;
+                            window.tooltipsDeshabilitados = true;
+                            document.body.classList.add('dragging-panel-elemento');
+
+                            // Ocultar tooltips existentes
+                            document.querySelectorAll('.fc-tooltip').forEach(t => {
+                                t.style.display = 'none';
+                                t.remove();
+                            });
+
+                            if (numeroPosicion) {
+                                numeroPosicion.textContent = '?';
+                            }
+                            elementoDrag.classList.add('dragging-original');
+                        });
+
+                        // Dragend delegado
+                        lista.addEventListener('dragend', function(e) {
+                            const elementoDrag = e.target.closest('.elemento-drag');
+                            if (!elementoDrag) return;
+
+                            elementoArrastrandose = null;
+                            mostrarIndicador = false;
+                            window.tooltipsDeshabilitados = false;
+                            document.body.classList.remove('dragging-panel-elemento');
+
+                            if (indicadorPosicion) {
+                                indicadorPosicion.classList.add('hidden');
+                                indicadorPosicion.style.display = 'none';
+                            }
+                            elementoDrag.classList.remove('dragging-original');
+                            document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
+                        });
+                    }
 
                     // Configurar FullCalendar.Draggable
                     setTimeout(() => {

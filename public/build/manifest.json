@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app.BRhWaOX3.css",
+    "file": "assets/app.aaOTslAa.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
@@ -47,7 +47,7 @@
     "isEntry": true
   },
   "resources/js/elementosJs/elementos-bundle.js": {
-    "file": "assets/elementos-bundle.CSIinF0H.js",
+    "file": "assets/elementos-bundle.DrSpDI-Y.js",
     "name": "elementos-bundle",
     "src": "resources/js/elementosJs/elementos-bundle.js",
     "isEntry": true
