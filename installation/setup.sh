@@ -144,3 +144,6 @@ sudo -u $SUDO_USER bash << 'EOF'
 EOF
 
 echo "=== Instalación completada exitosamente ==="
+echo ""
+echo "Aplicación disponible en: http://localhost"
+echo "Base de datos (phpMyAdmin): http://localhost:8080"
