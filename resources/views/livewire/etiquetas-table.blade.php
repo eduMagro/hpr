@@ -656,7 +656,7 @@
                                 </select>
 
                                 <button type="button" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                                    onclick="onclick="const modo = document.getElementById('modo-impresion-${etiquetaId}').value; imprimirEtiquetas(['${subId}'], modo)" wire:navigate">
+                                    onclick="const modo = document.getElementById('modo-impresion-${etiquetaId}').value; imprimirEtiquetas(['${subId}'], modo)">
                                     🖨️
                                 </button>
                             </div>

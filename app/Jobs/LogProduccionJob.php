@@ -91,9 +91,9 @@ class LogProduccionJob implements ShouldQueue
         if ($etiqueta && $maquina) {
             ProductionLogger::logCambioEstadoFabricacion(
                 $etiqueta,
-                $maquina,
                 $this->data['estado_anterior'] ?? '',
-                $this->data['estado_nuevo'] ?? ''
+                $this->data['estado_nuevo'] ?? '',
+                $maquina
             );
         }
     }

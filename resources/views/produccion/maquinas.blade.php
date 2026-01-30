@@ -5178,15 +5178,6 @@
 
                 function aplicarActualizaciones(actualizaciones) {
                     actualizaciones.forEach(upd => {
-                        console.log('📊 POLLING: Actualización recibida', {
-                            planilla_id: upd.planilla_id,
-                            maquina_id: upd.maquina_id,
-                            revisada: upd.revisada,
-                            fecha_entrega: upd.fecha_entrega,
-                            fin_programado: upd.fin_programado,
-                            tiene_retraso: upd.tiene_retraso
-                        });
-
                         // Buscar todos los eventos de esta planilla y máquina
                         const eventos = calendar.getEvents().filter(e => {
                             const eventoId = e.id || '';
