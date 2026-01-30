@@ -1,11 +1,8 @@
 <x-app-layout>
     <x-slot name="title">Permisos y configuración</x-slot>
 
-    <x-page-header
-        title="Permisos y Configuración"
-        subtitle="Gestión de departamentos y permisos de acceso"
-        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>'
-    />
+    <x-page-header title="Permisos y Configuración" subtitle="Gestión de departamentos y permisos de acceso"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>' />
 
     <style>
         .custom-scrollbar::-webkit-scrollbar {
@@ -35,7 +32,7 @@
         }
     </style>
 
-    <div class="py-4 relative flex flex-col gap-8 md:max-w-7xl md:mx-auto" x-data="{
+    <div class="p-4 relative flex flex-col gap-8" x-data="{
         openModal: false,
         openModalSecciones: false,
         openModalRutas: false,
@@ -494,16 +491,16 @@
                         @foreach ($todasLasSecciones as $sec)
                             <tr data-seccion-id="{{ $sec->id }}"
                                 x-data="{
-                                                                                                                                                editando: false,
-                                                                                                                                                seccion: @js($sec),
-                                                                                                                                                original: JSON.parse(JSON.stringify(@js($sec))),
-                                                                                                                                                cerrarEdicion() {
-                                                                                                                                                    if (this.editando) {
-                                                                                                                                                        this.seccion = JSON.parse(JSON.stringify(this.original));
-                                                                                                                                                        this.editando = false;
+                                                                                                                                                    editando: false,
+                                                                                                                                                    seccion: @js($sec),
+                                                                                                                                                    original: JSON.parse(JSON.stringify(@js($sec))),
+                                                                                                                                                    cerrarEdicion() {
+                                                                                                                                                        if (this.editando) {
+                                                                                                                                                            this.seccion = JSON.parse(JSON.stringify(this.original));
+                                                                                                                                                            this.editando = false;
+                                                                                                                                                        }
                                                                                                                                                     }
-                                                                                                                                                }
-                                                                                                                                            }"
+                                                                                                                                                }"
                                 @cerrar-edicion-sec.window="cerrarEdicion()"
                                 @dblclick="$dispatch('cerrar-edicion-sec'); $nextTick(() => editando = true)"
                                 @keydown.enter.stop.prevent="guardarSeccion(seccion); editando = false; original = JSON.parse(JSON.stringify(seccion))"
@@ -1000,13 +997,13 @@
                                             <img src="{{ $usuario->ruta_imagen }}" class="w-8 h-8 rounded-full object-cover"
                                                 alt=""
                                                 onerror="this.onerror=null; this.outerHTML=`<svg xmlns='' width='28' height='28'
-                                                                                                                                                                viewBox='0 0 24 24' fill='none' stroke='currentColor'
-                                                                                                                                                                stroke-width='1' stroke-linecap='round' stroke-linejoin='round'
-                                                                                                                                                                class='lucide lucide-circle-user-round-icon lucide-circle-user-round w-8 h-8 text-neutral-800 dark:text-gray-200'>
-                                                                                                                                                                <path d='M18 20a6 6 0 0 0-12 0' />
-                                                                                                                                                                <circle cx='12' cy='10' r='4' />
-                                                                                                                                                                <circle cx='12' cy='12' r='10' />
-                                                                                                                                                            </svg>`" />
+                                                                                                                                                                    viewBox='0 0 24 24' fill='none' stroke='currentColor'
+                                                                                                                                                                    stroke-width='1' stroke-linecap='round' stroke-linejoin='round'
+                                                                                                                                                                    class='lucide lucide-circle-user-round-icon lucide-circle-user-round w-8 h-8 text-neutral-800 dark:text-gray-200'>
+                                                                                                                                                                    <path d='M18 20a6 6 0 0 0-12 0' />
+                                                                                                                                                                    <circle cx='12' cy='10' r='4' />
+                                                                                                                                                                    <circle cx='12' cy='12' r='10' />
+                                                                                                                                                                </svg>`" />
 
 
                                             <div class="text-xs">

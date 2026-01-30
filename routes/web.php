@@ -176,7 +176,7 @@ Route::middleware(['auth', 'puede.asistente', 'throttle:60,1'])
         // Ruta de envío de mensajes con rate limiting más estricto
         Route::post('/mensaje', [AsistenteVirtualController::class, 'enviarMensaje'])
             ->middleware('throttle:15,1'); // Solo 15 mensajes por minuto
-
+    
         // === SISTEMA EXPERTO: INFORMES ===
         Route::get('/informes', [\App\Http\Controllers\Api\AsistenteReportController::class, 'index'])
             ->name('asistente.informes.index');
@@ -1051,7 +1051,16 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->name('incorporaciones.crearUsuario');
     Route::get('/mi-contrato/descargar', [\App\Http\Controllers\IncorporacionController::class, 'descargarMiContrato'])
         ->name('incorporaciones.descargarMiContrato');
+    // === SOLICITUDES DE COMPRA ===
+    Route::resource('solicitudes-compra', \App\Http\Controllers\SolicitudCompraController::class);
+    Route::post('/solicitudes-compra/{id}/aprobar', [\App\Http\Controllers\SolicitudCompraController::class, 'aprobar'])->name('solicitudes-compra.aprobar');
+    Route::post('/solicitudes-compra/{id}/rechazar', [\App\Http\Controllers\SolicitudCompraController::class, 'rechazar'])->name('solicitudes-compra.rechazar');
+    Route::get('/solicitudes-compra/{id}/ver-qr', [\App\Http\Controllers\SolicitudCompraController::class, 'verQr'])->name('solicitudes-compra.ver-qr');
 });
+
+// === API PÚBLICA PARA BIG MAT (Solicitudes de Compra) ===
+Route::get('/laapi/{token}', [\App\Http\Controllers\SolicitudCompraController::class, 'apiVerificar'])->name('api.solicitudes-compra.verificar');
+
 
 // === RUTAS PÚBLICAS - FORMULARIO INCORPORACIÓN (sin autenticación) ===
 Route::get('/incorporacion/{token}', [\App\Http\Controllers\IncorporacionPublicaController::class, 'show'])
