@@ -136,7 +136,10 @@ function indexToLetters(n) {
 
 // ——— Padding exclusivo para la leyenda (0 = pegado al borde) ———
 const LEGEND_PAD_X = 0;
-const LEGEND_PAD_Y = -70; // Más negativo = leyenda más abajo (cerca del borde inferior)
+const LEGEND_PAD_Y = -25; // Más negativo = leyenda más abajo (cerca del borde inferior)
+
+// ——— Offset para bajar la figura dentro del SVG ———
+const FIGURE_OFFSET_Y = 20; // Positivo = figura más abajo
 
 /** Dibuja la leyenda SIEMPRE abajo-izquierda del SVG */
 function drawLegendBottomLeft(svg, entries, width, height) {
@@ -1154,7 +1157,7 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
 
             const loc = indexInCol.get(idx);
             const cx = plan.centersX[loc.c],
-                cy = plan.centersYByCol[loc.c][loc.j],
+                cy = plan.centersYByCol[loc.c][loc.j] + FIGURE_OFFSET_Y,
                 scale = plan.S;
 
             // BBox figura
@@ -2213,6 +2216,11 @@ window.abrirModalDividirElemento = async function abrirModalDividirElemento(elem
 
     if (window.rutaDividirElemento)
         form.setAttribute("action", window.rutaDividirElemento);
+
+    // Resetear estado del botón Aceptar (por si quedó en estado de carga)
+    if (typeof window.resetButtonDividirElemento === 'function') {
+        window.resetButtonDividirElemento();
+    }
 
     modal.classList.remove("hidden");
 }
