@@ -1,5 +1,8 @@
-// IIFE para evitar contaminar el scope global pero exponer la función necesaria
-(function () {
+function initFiguraElemento() {
+    const modal = document.getElementById("modal-dibujo");
+    const cerrarModal = document.getElementById("cerrar-modal");
+    const canvasModal = document.getElementById("canvas-dibujo");
+
     /* ******************************************************************
      * Constantes y configuración
      ****************************************************************** */
@@ -224,7 +227,9 @@
                 return false;
             }
 
-            while (tryResolve()) {}
+            // Límite de iteraciones para evitar bucle infinito (máximo 3)
+            let intentos = 0;
+            while (tryResolve() && intentos < 3) { intentos++; }
 
             const dir = { x: Math.cos(rad(ang)), y: Math.sin(rad(ang)) };
             const nx = cx + out[i].length * dir.x;
@@ -566,46 +571,20 @@
     /* ******************************************************************
      * Función principal para dibujar la figura usando SVG
      ****************************************************************** */
-    function dibujarFigura(containerId, dimensionesStr, peso, diametro, barras, cantidadElementos) {
-        console.log("🎨 dibujarFigura llamada:", {
-            containerId,
-            dimensionesStr,
-            peso,
-            diametro,
-            barras,
-            cantidadElementos,
-        });
-
+    function dibujarFigura(containerId, dimensionesStr, peso, diametro, barras) {
         let contenedor = document.getElementById(containerId);
         if (!contenedor) {
-            console.error("❌ Contenedor no encontrado:", containerId);
             return;
         }
 
         // Variables para dimensiones
         let ancho, alto;
 
-        // 🔄 Si el elemento es un canvas, reemplazarlo por un div
+        // Si el elemento es un canvas, reemplazarlo por un div
         if (contenedor.tagName.toLowerCase() === "canvas") {
-            console.log("🔄 Detectado canvas, reemplazando por div contenedor");
-
             // Obtener dimensiones del canvas ANTES de reemplazarlo
-            const canvasHeight = contenedor.getAttribute('height');
-            alto = canvasHeight ? parseInt(canvasHeight) : (contenedor.height || 80);
-
-            // Obtener el ancho del contenedor padre para no excederlo
-            const padre = contenedor.parentNode;
-            const padreRect = padre ? padre.getBoundingClientRect() : null;
-
-            // Usar el ancho del padre si está disponible, sino un valor seguro
-            if (padreRect && padreRect.width > 0) {
-                ancho = Math.floor(padreRect.width) - 4; // -4 para padding/border
-            } else {
-                // Fallback: usar un ancho que quepa en el panel (320px - padding)
-                ancho = 260;
-            }
-
-            console.log("📐 Dimensiones calculadas:", { ancho, alto });
+            ancho = contenedor.width || parseInt(contenedor.style.width) || 240;
+            alto = contenedor.height || parseInt(contenedor.style.height) || 120;
 
             // Obtener estilos computados del canvas
             const computedStyles = window.getComputedStyle(contenedor);
@@ -613,10 +592,9 @@
             const div = document.createElement("div");
             div.id = containerId;
 
-            // Aplicar estilos - usar 100% del ancho disponible
-            div.style.width = "100%";
-            div.style.maxWidth = ancho + "px";
-            div.style.height = alto + "px";
+            // Aplicar estilos copiados del CSS .elemento-drag canvas
+            div.style.width = "100%"; // Igual que el canvas original
+            div.style.height = computedStyles.height || alto + "px";
             div.style.display = "block";
             div.style.margin = "0";
             div.style.padding = "0";
@@ -631,25 +609,24 @@
 
             contenedor.parentNode.replaceChild(div, contenedor);
             contenedor = div;
+
+            // Obtener dimensiones reales después del reemplazo
+            const rect = div.getBoundingClientRect();
+            ancho = rect.width || ancho;
+            alto = rect.height || alto;
         } else {
             // Si no es canvas, obtener dimensiones del contenedor
             const rect = contenedor.getBoundingClientRect();
-            console.log("🔍 getBoundingClientRect:", rect);
-            console.log("🔍 contenedor.style:", { width: contenedor.style.width, height: contenedor.style.height });
             ancho = rect.width > 0 ? rect.width : parseInt(contenedor.style.width) || 600;
             alto = rect.height > 0 ? rect.height : parseInt(contenedor.style.height) || 400;
         }
-
-        console.log("📐 Dimensiones finales del contenedor:", { ancho, alto });
 
         const svg = crearSVG(ancho, alto, "white");
 
         // Extraer y procesar dimensiones
         const dimsRaw = extraerDimensiones(dimensionesStr);
-        console.log("📐 Dimensiones extraídas:", dimsRaw);
 
         if (dimsRaw.length === 0) {
-            console.warn("⚠️ No hay dimensiones válidas para dibujar.");
             // Mostrar mensaje en el SVG
             agregarTexto(
                 svg,
@@ -666,7 +643,6 @@
         }
 
         const dimsNoZero = combinarRectasConCeros(dimsRaw);
-        console.log("🔧 Dimensiones combinadas:", dimsNoZero);
 
         // Verificar si es una pieza pequeña y escalar si es necesario
         let maxLinear = 0;
@@ -680,19 +656,9 @@
         const geomScale = isSmall ? SMALL_DIM_SCALE : 1;
         const dimsScaled = scaleDims(dimsNoZero, geomScale);
 
-        console.log(
-            "📏 Max linear:",
-            maxLinear,
-            "isSmall:",
-            isSmall,
-            "geomScale:",
-            geomScale
-        );
-
         // Medir la figura
         const medida = medirFiguraEnModelo(dimsScaled);
         if (!medida) {
-            console.warn("⚠️ No se pudo medir la figura.");
             agregarTexto(
                 svg,
                 ancho / 2,
@@ -707,14 +673,11 @@
             return;
         }
 
-        console.log("📊 Medida inicial:", medida);
-
-        // Ajustar dimensiones para evitar solapes (como en canvasMaquina.js)
+        // Ajustar dimensiones para evitar solapes
         const dimsAdjusted = ajustarLongitudesParaEvitarSolapes(dimsScaled, OVERLAP_GROW_UNITS);
 
         // Recalcular medida DESPUÉS del ajuste para centrado correcto
         const medidaAjustada = medirFiguraEnModelo(dimsAdjusted);
-        console.log("📊 Medida ajustada:", medidaAjustada);
 
         // Evitar división por cero
         const wRot = medidaAjustada.wRot || 1;
@@ -730,21 +693,8 @@
 
         // Para contenedores pequeños, usar escala completa sin reducción adicional
         if (ancho < 300 || alto < 150) {
-            scale *= 0.95; // Reducir solo al 95% en contenedores pequeños (antes era 80%)
+            scale *= 0.95;
         }
-
-        console.log(
-            "🔍 Escala calculada:",
-            scale,
-            "wRot:",
-            wRot,
-            "hRot:",
-            hRot,
-            "availableWidth:",
-            availableWidth,
-            "availableHeight:",
-            availableHeight
-        );
 
         // Centrar exactamente en el contenedor
         const cx = ancho / 2;
@@ -764,19 +714,14 @@
             cy
         );
 
-        console.log("🎨 Path generado:", dPath);
-
         if (dPath && dPath.length > 0) {
             // Ajustar grosor de línea según tamaño del contenedor
             const lineWidth = ancho < 300 ? 1.5 : 2;
             agregarPathD(svg, dPath, FIGURE_LINE_COLOR, lineWidth);
-            console.log("✅ Path dibujado correctamente con grosor:", lineWidth);
 
             // Añadir acotaciones solo si el contenedor es suficientemente grande
-            console.log("🔍 Verificando acotaciones:", { ancho, alto, cumpleCondicion: (ancho >= 120 && alto >= 80) });
-            if (ancho >= 120 && alto >= 80) {
-                console.log("✅ Dibujando acotaciones...");
-                const fontSize = ancho < 200 ? 9 : (ancho < 300 ? 10 : 12);
+            if (ancho > 150 && alto > 80) {
+                const fontSize = ancho < 300 ? 8 : 10;
 
                 // Calcular puntos transformados para las acotaciones usando la medida ajustada
                 function transformPoint(px, py) {
@@ -848,19 +793,13 @@
 
                 // Agrupar por dirección (paralelos comparten acotación)
                 const segmentosUnicos = agruparSegmentosPorDireccion(segmentosCombinados);
-                console.log("📊 Segmentos únicos para acotar:", segmentosUnicos.length, segmentosUnicos);
 
                 // Dibujar solo las acotaciones únicas
-                segmentosUnicos.forEach((s, idx) => {
-                    console.log(`📏 Dibujando acotación ${idx}:`, s.label);
+                segmentosUnicos.forEach((s) => {
                     dibujarAcotacion(svg, s.p1, s.p2, s.label, fontSize);
                 });
-                console.log("✅ Acotaciones completadas");
-            } else {
-                console.log("⚠️ Contenedor muy pequeño para acotaciones");
             }
         } else {
-            console.error("❌ Path vacío");
             agregarTexto(
                 svg,
                 ancho / 2,
@@ -872,106 +811,63 @@
             );
         }
 
-        // Mostrar información del elemento
-        console.log('📝 Información a mostrar:', { peso, diametro, barras, cantidadElementos, ancho, alto });
+        // Mostrar información en la esquina superior izquierda
+        const infoSize = ancho < 300 ? 10 : 12;
+        const infoMarginX = 15;
+        let infoMarginY = 25;
+        const lineHeight = infoSize + 8;
 
-        // Determinar si mostrar formato compacto (panel lateral) o expandido (modal)
-        const esCompacto = ancho < 350;
-        const infoSize = esCompacto ? 9 : 12;
+        // Mostrar peso
+        if (peso) {
+            agregarTexto(
+                svg,
+                infoMarginX,
+                infoMarginY,
+                `Peso: ${peso} kg`,
+                "#333333",
+                infoSize,
+                "start"
+            );
+            infoMarginY += lineHeight;
+        }
 
-        if (esCompacto) {
-            // Formato compacto: una línea en la parte inferior
-            const infoParts = [];
-            // Mostrar cantidad de elementos si es un grupo (>1)
-            if (cantidadElementos && cantidadElementos > 1) infoParts.push(`${cantidadElementos} elem`);
-            if (diametro) infoParts.push(`Ø${diametro}`);
-            // Peso redondeado a 1 decimal
-            if (peso) {
-                const pesoNum = parseFloat(peso);
-                const pesoRedondeado = isNaN(pesoNum) ? peso : pesoNum.toFixed(1);
-                infoParts.push(`${pesoRedondeado}kg`);
-            }
-            if (barras) infoParts.push(`${barras}b`);
+        // Mostrar diámetro
+        if (diametro) {
+            agregarTexto(
+                svg,
+                infoMarginX,
+                infoMarginY,
+                `Ø: ${diametro} mm`,
+                "#333333",
+                infoSize,
+                "start"
+            );
+            infoMarginY += lineHeight;
+        }
 
-            if (infoParts.length > 0) {
-                const infoText = infoParts.join(' · ');
-                agregarTexto(
-                    svg,
-                    ancho / 2,
-                    alto - 8,
-                    infoText,
-                    "#666666",
-                    infoSize,
-                    "middle"
-                );
-            }
-        } else {
-            // Formato expandido: múltiples líneas en la esquina superior izquierda
-            const infoMarginX = 15;
-            let infoMarginY = 25;
-            const lineHeight = infoSize + 8;
-
-            if (peso) {
-                // Peso redondeado a 1 decimal
-                const pesoNum = parseFloat(peso);
-                const pesoRedondeado = isNaN(pesoNum) ? peso : pesoNum.toFixed(1);
-                agregarTexto(
-                    svg,
-                    infoMarginX,
-                    infoMarginY,
-                    `Peso: ${pesoRedondeado} kg`,
-                    "#333333",
-                    infoSize,
-                    "start"
-                );
-                infoMarginY += lineHeight;
-            }
-
-            if (diametro) {
-                agregarTexto(
-                    svg,
-                    infoMarginX,
-                    infoMarginY,
-                    `Ø: ${diametro} mm`,
-                    "#333333",
-                    infoSize,
-                    "start"
-                );
-                infoMarginY += lineHeight;
-            }
-
-            if (barras) {
-                agregarTexto(
-                    svg,
-                    infoMarginX,
-                    infoMarginY,
-                    `Barras: ${barras}`,
-                    "#333333",
-                    infoSize,
-                    "start"
-                );
-            }
+        // Mostrar barras
+        if (barras) {
+            agregarTexto(
+                svg,
+                infoMarginX,
+                infoMarginY,
+                `Barras: ${barras}`,
+                "#333333",
+                infoSize,
+                "start"
+            );
         }
 
         // Limpiar el contenedor y agregar el SVG
         contenedor.innerHTML = "";
         contenedor.appendChild(svg);
-
-        console.log("✅ SVG agregado al contenedor");
     }
 
-    // Exponer la función globalmente para que esté disponible inmediatamente
     window.dibujarFiguraElemento = dibujarFigura;
 
-})();
-
-/* ******************************************************************
- * Eventos: abrir y cerrar modal (necesitan DOMContentLoaded)
- ****************************************************************** */
-document.addEventListener("DOMContentLoaded", function () {
-    const modal = document.getElementById("modal-dibujo");
-    const cerrarModal = document.getElementById("cerrar-modal");
-
+    /* ******************************************************************
+     * Eventos: abrir y cerrar modal
+     ****************************************************************** */
     document.querySelectorAll(".abrir-modal-dibujo").forEach((link) => {
         link.addEventListener("click", function (event) {
             event.preventDefault();
@@ -1012,7 +908,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
 
-            window.dibujarFiguraElemento("svg-dibujo-container", dimensiones, peso);
+            dibujarFigura("svg-dibujo-container", dimensiones, peso);
         });
     });
 
@@ -1029,4 +925,12 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
-});
+}
+
+// Inicialización compatible con Livewire Navigate
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initFiguraElemento);
+} else {
+    initFiguraElemento();
+}
+document.addEventListener("livewire:navigated", initFiguraElemento);

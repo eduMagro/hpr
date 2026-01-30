@@ -806,6 +806,11 @@
                                 Elementos</p>
                             <p id="paquete-peso-info" class="font-bold text-gray-800"></p>
                         </div>
+                        <div class="bg-white p-2 rounded border">
+                            <p class="text-gray-600 text-xs">Estado</p>
+                            <p id="paquete-estado-info"
+                                class="font-bold text-gray-800"></p>
+                        </div>
                     </div>
                     {{-- Mensaje de advertencia si no tiene localización --}}
                     <div id="warning-sin-localizacion"
@@ -815,10 +820,29 @@
                         <p class="text-blue-700 text-xs mt-1">Se mostrará un ghost para que puedas arrastrarlo a la
                             ubicación deseada.</p>
                     </div>
-                    <button onclick="mostrarPasoMapa()"
-                        class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow">
-                        Seleccionar Ubicación en Mapa
-                    </button>
+                    {{-- Botones de acción --}}
+                    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button onclick="mostrarPasoMapa()"
+                            class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            Mover Ubicación
+                        </button>
+                        <button onclick="expedirPaqueteDesdeGrua()"
+                            id="btn-expedir-paquete"
+                            class="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-lg shadow flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Entregar
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2 text-center">
+                        <strong>Mover:</strong> Cambia la ubicación del paquete en el mapa.
+                        <strong>Entregar:</strong> Marca el paquete como entregado y lo elimina del mapa.
+                    </p>
                 </div>
             </div>
 
@@ -1022,9 +1046,9 @@
 
             window.paqueteMoverData = data;
 
-            // Ir directamente al mapa
+            // Mostrar información del paquete y opciones
             document.getElementById('loading-paquete-mover').classList.add('hidden');
-            mostrarPasoMapa();
+            mostrarInfoPaqueteConOpciones(data);
 
         } catch (error) {
             console.error('Error al buscar paquete:', error);
@@ -1039,6 +1063,153 @@
         const errorDiv = document.getElementById('error-paquete-mover');
         errorDiv.textContent = mensaje;
         errorDiv.classList.remove('hidden');
+    }
+
+    function mostrarInfoPaqueteConOpciones(data) {
+        // Mostrar información del paquete
+        document.getElementById('paquete-codigo-info').textContent = data.codigo || '-';
+        document.getElementById('paquete-peso-info').textContent =
+            `${data.etiquetas_count || 0} etiquetas · ${data.elementos_count || 0} elementos`;
+        document.getElementById('paquete-estado-info').textContent = data.estado || 'pendiente';
+
+        // Mostrar u ocultar advertencia de sin localización
+        const warningDiv = document.getElementById('warning-sin-localizacion');
+        if (warningDiv) {
+            if (data.tiene_localizacion) {
+                warningDiv.classList.add('hidden');
+            } else {
+                warningDiv.classList.remove('hidden');
+            }
+        }
+
+        // Deshabilitar botón de entregar si ya está entregado
+        const btnExpedir = document.getElementById('btn-expedir-paquete');
+        if (btnExpedir) {
+            if (data.estado === 'entregado') {
+                btnExpedir.disabled = true;
+                btnExpedir.classList.add('opacity-50', 'cursor-not-allowed');
+                btnExpedir.classList.remove('hover:bg-orange-700');
+            } else {
+                btnExpedir.disabled = false;
+                btnExpedir.classList.remove('opacity-50', 'cursor-not-allowed');
+                btnExpedir.classList.add('hover:bg-orange-700');
+            }
+        }
+
+        // Mostrar panel de información
+        document.getElementById('info-paquete-validado').classList.remove('hidden');
+    }
+
+    async function expedirPaqueteDesdeGrua() {
+        if (!window.paqueteMoverData || !window.paqueteMoverData.id) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Sin paquete',
+                text: 'No hay paquete seleccionado',
+            });
+            return;
+        }
+
+        const paqueteId = window.paqueteMoverData.id;
+        const paqueteCodigo = window.paqueteMoverData.codigo;
+
+        // Confirmar acción con SweetAlert
+        const resultado = await Swal.fire({
+            title: '¿Entregar paquete?',
+            html: `
+                <div class="text-left">
+                    <p class="mb-3">Vas a entregar el paquete <strong>${paqueteCodigo}</strong></p>
+                    <p class="text-sm text-gray-600 mb-2">Esta acción:</p>
+                    <ul class="text-sm text-gray-600 list-disc list-inside space-y-1">
+                        <li>Marcará el paquete como <strong>"entregado"</strong></li>
+                        <li>Eliminará su ubicación del mapa</li>
+                    </ul>
+                    <p class="text-sm text-orange-600 mt-3 font-medium">Esta acción no se puede deshacer.</p>
+                </div>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ea580c',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, entregar',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true,
+        });
+
+        if (!resultado.isConfirmed) return;
+
+        // Obtener el ID de la máquina (grúa) desde la URL o variable global
+        const maquinaId = window.maquinaId || document.querySelector('[data-maquina-id]')?.dataset?.maquinaId;
+
+        if (!maquinaId) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudo determinar la máquina actual. Recarga la página.',
+            });
+            return;
+        }
+
+        const btnExpedir = document.getElementById('btn-expedir-paquete');
+        const textoOriginal = btnExpedir.innerHTML;
+        btnExpedir.disabled = true;
+        btnExpedir.innerHTML = `
+            <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Procesando...
+        `;
+
+        try {
+            const response = await fetch(`/maquinas/${maquinaId}/expedir-paquete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    paquete_id: paqueteId
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Error al expedir el paquete');
+            }
+
+            // Éxito - mostrar mensaje y cerrar modal
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                timer: 3000,
+                timerProgressBar: true,
+                icon: 'success',
+                title: `Paquete ${paqueteCodigo} entregado`,
+                showConfirmButton: false,
+            });
+
+            cerrarModalMoverPaquete();
+
+            // Recargar la página o actualizar la vista si es necesario
+            if (typeof Livewire !== 'undefined') {
+                Livewire.dispatch('paqueteExpedido', { paqueteId: paqueteId });
+            }
+
+        } catch (error) {
+            console.error('Error al expedir paquete:', error);
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.message || 'No se pudo expedir el paquete',
+            });
+        } finally {
+            btnExpedir.disabled = false;
+            btnExpedir.innerHTML = textoOriginal;
+        }
     }
 
     // Mostrar paquete en el mapa-simple que está dentro de un modal concreto

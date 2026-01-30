@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app.D_QHrgs7.css",
+    "file": "assets/app.aaOTslAa.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
@@ -47,13 +47,13 @@
     "isEntry": true
   },
   "resources/js/elementosJs/elementos-bundle.js": {
-    "file": "assets/elementos-bundle.CSIinF0H.js",
+    "file": "assets/elementos-bundle.CPfm-FG6.js",
     "name": "elementos-bundle",
     "src": "resources/js/elementosJs/elementos-bundle.js",
     "isEntry": true
   },
   "resources/js/maquinaJS/maquina-bundle.js": {
-    "file": "assets/maquina-bundle.CAmaOazk.js",
+    "file": "assets/maquina-bundle.DVa1zC2d.js",
     "name": "maquina-bundle",
     "src": "resources/js/maquinaJS/maquina-bundle.js",
     "isEntry": true

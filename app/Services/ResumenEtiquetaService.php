@@ -635,12 +635,14 @@ class ResumenEtiquetaService
                     ];
                 }
             }
-            if (!empty($productosParaGuardar)) {
-                \App\Models\Producto::upsert(
-                    $productosParaGuardar,
-                    ['id'],
-                    ['peso_stock', 'estado', 'updated_at']
-                );
+            // Actualizar productos existentes (no insertar nuevos)
+            foreach ($productosParaGuardar as $prodData) {
+                \App\Models\Producto::where('id', $prodData['id'])
+                    ->update([
+                        'peso_stock' => $prodData['peso_stock'],
+                        'estado' => $prodData['estado'],
+                        'updated_at' => $prodData['updated_at'],
+                    ]);
             }
 
             // ══════════════════════════════════════════════════════════════════════

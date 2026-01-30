@@ -1,73 +1,92 @@
 <div>
     <div class="w-full">
 
-        <!-- Badge de planillas sin aprobar -->
-        @if ($planillasSinAprobar > 0)
-            <div class="my-4 bg-orange-100 border-l-4 border-orange-500 p-4 rounded-r-lg shadow">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <span class="text-3xl">📋</span>
-                        <div>
-                            <h3 class="text-lg font-bold text-orange-800">
-                                {{ $planillasSinAprobar }}
-                                {{ $planillasSinAprobar === 1 ? 'planilla pendiente' : 'planillas pendientes' }} de
-                                aprobación
-                            </h3>
-                            <p class="text-sm text-orange-700">
-                                Las planillas deben ser aprobadas para establecer la fecha de entrega
-                            </p>
+        <!-- Barra de acciones y alertas -->
+        <div class="mb-4 p-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                {{-- Lado izquierdo: Contadores --}}
+                <div class="flex flex-wrap items-center gap-6">
+                    @if ($planillasSinAprobar > 0)
+                        <div class="flex items-center gap-2">
+                            <div class="flex items-center justify-center w-8 h-8 rounded-full bg-white dark:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-600">
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <div class="flex items-baseline gap-1.5">
+                                <span class="text-xl font-bold text-gray-800 dark:text-white">{{ number_format($planillasSinAprobar) }}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">sin aprobar</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button wire:click="verSinAprobar"
+                                    class="px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700 rounded transition">
+                                    Ver
+                                </button>
+                                <button wire:click="toggleModoSeleccion"
+                                    class="px-2 py-1 text-xs font-medium rounded transition flex items-center gap-1
+                                    {{ $modoSeleccion
+                                        ? 'bg-gray-800 text-white'
+                                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700'
+                                    }}">
+                                    @if ($modoSeleccion)
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                        Cancelar
+                                    @else
+                                        Aprobar
+                                    @endif
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <button wire:click="verSinAprobar"
-                            class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition-colors">
-                            Ver sin aprobar
-                        </button>
-                        <button wire:click="toggleModoSeleccion"
-                            class="{{ $modoSeleccion ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700' }} text-white font-bold py-2 px-4 rounded transition-colors flex items-center gap-2">
-                            @if ($modoSeleccion)
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
-                                Cancelar selección
-                            @else
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                                    <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                </svg>
-                                Aprobar en masa
-                            @endif
-                        </button>
-                    </div>
-                </div>
-            </div>
-        @endif
+                    @endif
 
-        <!-- Badge de planillas sin revisar -->
-        @if ($planillasSinRevisar > 0)
-            <div class="my-4 bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-r-lg shadow">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <span class="text-3xl">⚠️</span>
-                        <div>
-                            <h3 class="text-lg font-bold text-yellow-800">
-                                {{ $planillasSinRevisar }}
-                                {{ $planillasSinRevisar === 1 ? 'planilla pendiente' : 'planillas pendientes' }} de
-                                revisión
-                            </h3>
-                            <p class="text-sm text-yellow-700">
-                                Las planillas sin revisar aparecen en <strong>GRIS</strong> en el calendario de
-                                producción
-                            </p>
+                    @if ($planillasSinAprobar > 0 && $planillasSinRevisar > 0)
+                        <div class="hidden sm:block w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+                    @endif
+
+                    @if ($planillasSinRevisar > 0)
+                        <div class="flex items-center gap-2">
+                            <div class="flex items-center justify-center w-8 h-8 rounded-full bg-white dark:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-600">
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </div>
+                            <div class="flex items-baseline gap-1.5">
+                                <span class="text-xl font-bold text-gray-800 dark:text-white">{{ number_format($planillasSinRevisar) }}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">sin revisar</span>
+                            </div>
+                            <button wire:click="verSinRevisar"
+                                class="px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700 rounded transition">
+                                Ver
+                            </button>
                         </div>
-                    </div>
-                    <button wire:click="verSinRevisar"
-                        class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition-colors">
-                        Ver planillas sin revisar
+                    @endif
+                </div>
+
+                {{-- Lado derecho: Acciones --}}
+                <div class="flex items-center gap-2">
+                    <button type="button" id="btn-abrir-import-lw"
+                        onclick="document.getElementById('btn-abrir-import')?.click()"
+                        class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        Importar
                     </button>
+                    <button type="button" id="btn-completar-lw"
+                        onclick="document.getElementById('btn-completar-planillas')?.click()"
+                        class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Completar
+                    </button>
+                    @livewire('sync-monitor')
                 </div>
             </div>
-        @endif
+        </div>
 
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <!-- Tabla con filtros Livewire -->
@@ -125,6 +144,9 @@
                             texto="Aprobada" />
                         <x-tabla.encabezado-ordenable campo="aprobada_at" :sortActual="$sort" :orderActual="$order"
                             texto="Fecha aprobación" />
+                        <x-tabla.encabezado-ordenable campo="fecha_creacion_ferrawin" :sortActual="$sort" :orderActual="$order"
+                            texto="Fecha Ferrawin" />
+                        <th class="p-2 border dark:border-gray-700">Tiempo Fab.</th>
                         <th class="p-2 border dark:border-gray-700">Acciones</th>
 
                     </x-tabla.header-row>
@@ -295,12 +317,14 @@
                         <th class="p-1 border dark:border-gray-700">
                             <select wire:model.live="aprobada"
                                 class="w-full text-xs px-1 py-1 border rounded text-blue-900 dark:text-blue-300 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
-                                <option value="">Aprobadas</option>
-                                <option value="todas">Todas</option>
+                                <option value="">Todas</option>
+                                <option value="aprobadas">Aprobadas</option>
                                 <option value="0">No aprobadas</option>
                             </select>
                         </th>
                         <th class="p-1 border dark:border-gray-700"></th>
+                        <th class="p-1 border dark:border-gray-700"></th> {{-- Fecha Ferrawin --}}
+                        <th class="p-1 border dark:border-gray-700"></th> {{-- Tiempo Fabricación --}}
                         <th class="p-1 border text-center align-middle">
                             <button wire:click="limpiarFiltros"
                                 class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center mx-auto"
@@ -415,6 +439,16 @@
                                     -
                                 @endif
                             </td>
+                            <td class="p-2 text-center border dark:border-gray-700">
+                                {{ $planilla->fecha_creacion_ferrawin_formateada ?? '-' }}
+                            </td>
+                            <td class="p-2 text-center border dark:border-gray-700">
+                                @if($planilla->tiempo_fabricacion)
+                                    {{ $planilla->tiempo_estimado_finalizacion_formato }}
+                                @else
+                                    -
+                                @endif
+                            </td>
                             <td class="px-2 py-2 border dark:border-gray-700 text-xs font-bold">
                                 <div class="flex items-center space-x-2 justify-center">
                                     <!-- Botón Reimportar -->
@@ -505,7 +539,7 @@
                         </x-tabla.row>
                     @empty
                         <x-tabla.row :clickable="false">
-                            <td colspan="{{ $modoSeleccion ? 25 : 24 }}" class="text-center py-4 text-gray-500 dark:text-gray-400">No hay planillas registradas
+                            <td colspan="{{ $modoSeleccion ? 27 : 26 }}" class="text-center py-4 text-gray-500 dark:text-gray-400">No hay planillas registradas
                             </td>
                         </x-tabla.row>
                     @endforelse

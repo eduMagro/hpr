@@ -1102,8 +1102,16 @@ class PlanillaController extends Controller
 
         // Solo aplicar filtro de búsqueda si hay texto
         if ($busqueda !== '') {
-            $query->where(function ($q) use ($busqueda) {
+            // Convertir codigo_limpio a patron de búsqueda (ej: "2025-6530" -> "2025-%6530")
+            $patronCodigo = $busqueda;
+            if (preg_match('/^(\d{4})-(\d+)$/', $busqueda, $matches)) {
+                // Si es formato año-numero, buscar con comodín para los ceros
+                $patronCodigo = $matches[1] . '-%' . $matches[2];
+            }
+
+            $query->where(function ($q) use ($busqueda, $patronCodigo) {
                 $q->where('codigo', 'like', "%{$busqueda}%")
+                    ->orWhere('codigo', 'like', $patronCodigo)
                     ->orWhereHas('obra', function ($q2) use ($busqueda) {
                         $q2->where('obra', 'like', "%{$busqueda}%");
                     })
@@ -1122,6 +1130,7 @@ class PlanillaController extends Controller
             'planillas' => $planillas->map(fn($p) => [
                 'id' => $p->id,
                 'codigo' => $p->codigo,
+                'codigo_limpio' => $p->codigo_limpio,
                 'obra' => $p->obra->obra ?? '',
                 'cliente' => $p->cliente->empresa ?? '',
                 'fecha_entrega' => $p->fecha_estimada_entrega,
@@ -1868,7 +1877,7 @@ class PlanillaController extends Controller
                     ]);
             }
 
-            // 5. Resetear la planilla
+            // 5. Resetear la planilla (incluyendo aprobación y fecha entrega)
             $planilla->update([
                 'estado' => 'pendiente',
                 'fecha_inicio' => null,
@@ -1876,25 +1885,27 @@ class PlanillaController extends Controller
                 'revisada' => false,
                 'revisada_por_id' => null,
                 'revisada_at' => null,
+                'aprobada' => false,
+                'aprobada_por_id' => null,
+                'aprobada_at' => null,
+                'fecha_estimada_entrega' => null,
             ]);
         }, 3); // 3 reintentos automáticos en deadlock
 
-        // FASE 2: Reasignar máquinas y crear órdenes (transacción separada)
+        // FASE 2: Reasignar máquinas (sin crear orden_planillas - eso se hace al aprobar)
         DB::transaction(function () use ($planilla, &$resultado) {
             $asignarMaquinaService = new \App\Services\AsignarMaquinaService();
-            $ordenPlanillaService = new \App\Services\OrdenPlanillaService();
 
-            // Reasignar máquinas
+            // Reasignar máquinas a elementos
             $asignarMaquinaService->repartirPlanilla($planilla->id);
 
-            // Crear órdenes
-            $ordenPlanillaService->crearOrdenParaPlanilla($planilla->id);
-
-            // Obtener máquinas asignadas
-            $resultado['maquinas_asignadas'] = OrdenPlanilla::where('planilla_id', $planilla->id)
+            // Obtener máquinas asignadas a elementos
+            $resultado['maquinas_asignadas'] = \App\Models\Elemento::where('planilla_id', $planilla->id)
+                ->whereNotNull('maquina_id')
                 ->with('maquina:id,codigo')
                 ->get()
                 ->pluck('maquina.codigo')
+                ->unique()
                 ->filter()
                 ->values()
                 ->toArray();

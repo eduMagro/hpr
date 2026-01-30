@@ -399,6 +399,32 @@
             <span id="numero_posicion">1</span>
         </div>
 
+        <!-- Badge flotante con posiciones de planilla -->
+        <div id="badge_posiciones_planilla" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 hidden">
+            <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg shadow-xl p-4 min-w-[400px] max-w-[80vw]">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg font-bold" id="badge_codigo_planilla">Planilla</span>
+                        <span class="text-xs bg-white/20 rounded px-2 py-0.5" id="badge_estado_planilla"></span>
+                    </div>
+                    <button onclick="cerrarBadgePosiciones()" class="text-white/80 hover:text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="badge_posiciones_lista" class="flex flex-wrap gap-2">
+                    <!-- Se llena dinámicamente con las posiciones por máquina -->
+                </div>
+                <div class="mt-2 text-xs text-white/70 flex items-center gap-2">
+                    <span>Haz clic en "Ver elementos" para abrir el panel lateral</span>
+                    <button onclick="abrirPanelDesdeBadge()" class="bg-white/20 hover:bg-white/30 px-3 py-1 rounded transition">
+                        Ver elementos
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal para ver figura dibujada -->
         <div id="modal-dibujo"
             class="hidden fixed inset-0 flex justify-center items-center z-[9999] bg-black bg-opacity-50">
@@ -1420,11 +1446,6 @@
                             </svg>
                             Limpiar todo
                         </button>
-                        <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                            <input type="checkbox" id="chkPriorizarFabricando"
-                                class="w-4 h-4 text-orange-500 rounded border-gray-300 focus:ring-orange-500">
-                            <span>Incluir planillas en posición 1 y fabricando</span>
-                        </label>
                     </div>
                     <div class="flex justify-end gap-3">
                         <button onclick="cerrarModalPriorizarObra()"
@@ -2119,7 +2140,178 @@
                 moverIndicadorHandler: null,
                 dragoverHandler: null,
                 dragleaveHandler: null,
-                initialized: false
+                initialized: false,
+                // Variables para el badge de posiciones de planilla
+                badgePlanillaId: null,
+                badgeCodigoPlanilla: null,
+                badgePosicionesData: {},
+                badgeMaxPosiciones: {}
+            };
+
+            // ================================
+            // FUNCIONES GLOBALES BADGE POSICIONES (deben estar fuera de inicializarCalendarioMaquinas)
+            // ================================
+
+            /**
+             * Cierra el badge de posiciones
+             */
+            window.cerrarBadgePosiciones = function() {
+                const badge = document.getElementById('badge_posiciones_planilla');
+                if (badge) {
+                    badge.classList.add('hidden');
+                }
+                window._maquinasCalendarState.badgePlanillaId = null;
+                window._maquinasCalendarState.badgeCodigoPlanilla = null;
+            };
+
+            /**
+             * Abre el panel lateral desde el badge
+             */
+            window.abrirPanelDesdeBadge = function() {
+                const state = window._maquinasCalendarState;
+                if (state.badgePlanillaId && typeof window.abrirPanelAutomatico === 'function') {
+                    window.abrirPanelAutomatico(state.badgePlanillaId, state.badgeCodigoPlanilla);
+                }
+            };
+
+            /**
+             * Cambia la posición de una planilla desde el badge
+             */
+            window.cambiarPosicionDesdeBadge = async function(planillaId, maquinaId, nuevaPosicion, posicionAnterior) {
+                nuevaPosicion = parseInt(nuevaPosicion);
+                if (nuevaPosicion === posicionAnterior) return;
+
+                try {
+                    if (typeof mostrarSpinner === 'function') mostrarSpinner('Cambiando posición...');
+                    const res = await fetch('/planillas/reordenar', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            id: planillaId,
+                            maquina_id: maquinaId,
+                            nueva_posicion: nuevaPosicion
+                        })
+                    });
+
+                    const data = await res.json();
+                    if (typeof cerrarSpinner === 'function') cerrarSpinner();
+
+                    if (data.success) {
+                        // Refrescar eventos del calendario
+                        if (window.calendar) await window.calendar.refetchEvents();
+
+                        // Refrescar el badge
+                        const state = window._maquinasCalendarState;
+                        if (typeof window.mostrarBadgePosiciones === 'function') {
+                            window.mostrarBadgePosiciones(planillaId, state.badgeCodigoPlanilla);
+                        }
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Posición actualizada',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        throw new Error(data.message || 'Error al cambiar posición');
+                    }
+                } catch (error) {
+                    if (typeof cerrarSpinner === 'function') cerrarSpinner();
+                    Swal.fire({ icon: 'error', title: 'Error', text: error.message });
+                }
+            };
+
+            /**
+             * Genera las opciones del select de posición
+             */
+            window.generarOpcionesPosicionBadge = function(posActual, maxPos) {
+                let html = '';
+                for (let i = 1; i <= Math.max(maxPos, posActual) + 1; i++) {
+                    html += `<option value="${i}" ${i === posActual ? 'selected' : ''} style="background-color: #1e40af; color: white;">Pos ${i}</option>`;
+                }
+                return html;
+            };
+
+            /**
+             * Muestra el badge flotante con las posiciones de una planilla en cada máquina
+             */
+            window.mostrarBadgePosiciones = async function(planillaId, codigoPlanilla) {
+                const state = window._maquinasCalendarState;
+                state.badgePlanillaId = planillaId;
+                state.badgeCodigoPlanilla = codigoPlanilla;
+
+                try {
+                    const response = await fetch(`/elementos/por-ids?planilla_id=${planillaId}`);
+                    const data = await response.json();
+
+                    state.badgePosicionesData = data.posiciones || {};
+                    state.badgeMaxPosiciones = data.maxPosiciones || {};
+                    const infoPlanilla = data.planilla || {};
+
+                    const badge = document.getElementById('badge_posiciones_planilla');
+                    document.getElementById('badge_codigo_planilla').textContent = codigoPlanilla;
+                    document.getElementById('badge_estado_planilla').textContent = infoPlanilla.estado || '';
+
+                    const lista = document.getElementById('badge_posiciones_lista');
+                    lista.innerHTML = '';
+
+                    // Obtener nombres de máquinas desde recursos del calendario
+                    const maquinasMap = {};
+                    if (window.calendar) {
+                        window.calendar.getResources().forEach(r => {
+                            maquinasMap[r.id] = { codigo: r.extendedProps?.codigo || r.title, nombre: r.title };
+                        });
+                    }
+
+                    if (Object.keys(state.badgePosicionesData).length === 0) {
+                        lista.innerHTML = '<div class="text-white/70 text-sm">Sin posiciones asignadas (elementos sin máquina)</div>';
+                    } else {
+                        Object.entries(state.badgePosicionesData).forEach(([maquinaId, posicion]) => {
+                            const maquina = maquinasMap[maquinaId] || { codigo: 'M?', nombre: 'Desconocida' };
+                            const maxPos = state.badgeMaxPosiciones[maquinaId] || posicion || 1;
+
+                            const chip = document.createElement('div');
+                            chip.className = 'flex items-center gap-1 bg-white/20 rounded px-2 py-1';
+                            chip.innerHTML = `
+                                <span class="font-medium text-sm" title="${maquina.nombre}">${maquina.codigo}:</span>
+                                <select onchange="cambiarPosicionDesdeBadge(${planillaId}, ${maquinaId}, this.value, ${posicion})"
+                                    class="bg-blue-800 text-white border border-white/30 rounded px-2 py-0.5 text-sm cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/50"
+                                    style="color: white !important;">
+                                    ${window.generarOpcionesPosicionBadge(posicion, maxPos)}
+                                </select>
+                            `;
+                            lista.appendChild(chip);
+                        });
+                    }
+
+                    badge.classList.remove('hidden');
+                } catch (error) {
+                    console.error('Error al cargar posiciones:', error);
+                }
+            };
+
+            /**
+             * Busca una planilla por código (limpio) y muestra el badge
+             */
+            window.buscarYMostrarBadgePlanilla = async function(codigo) {
+                try {
+                    const res = await fetch(`/api/planillas/buscar?q=${encodeURIComponent(codigo)}`);
+                    const data = await res.json();
+                    if (data.planillas && data.planillas.length > 0) {
+                        const codigoLower = codigo.toLowerCase();
+                        const planilla = data.planillas.find(p =>
+                            (p.codigo_limpio && p.codigo_limpio.toLowerCase() === codigoLower) ||
+                            p.codigo.toLowerCase().includes(codigoLower)
+                        ) || data.planillas[0];
+                        window.mostrarBadgePosiciones(planilla.id, planilla.codigo_limpio || planilla.codigo);
+                    }
+                } catch (error) {
+                    console.error('Error buscando planilla:', error);
+                }
             };
 
             // Hacer la función global para que el layout pueda llamarla
@@ -4012,60 +4204,6 @@
 
                             seccionElementos.appendChild(div);
 
-                            // ✅ Evento de clic para selección múltiple
-                            div.addEventListener('click', function(e) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                window.MultiSelectElementos.toggleSeleccion(div);
-                            });
-
-                            // ✅ Evento de dragstart en cada elemento
-                            div.addEventListener('dragstart', function(e) {
-                                // Ocultar ghost nativo del navegador
-                                const img = new Image();
-                                img.src =
-                                    'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-                                e.dataTransfer.setDragImage(img, 0, 0);
-
-                                elementoArrastrandose = div;
-                                mostrarIndicador = true;
-                                window.tooltipsDeshabilitados = true;
-
-                                // Añadir clase al body para ocultar tooltips via CSS
-                                document.body.classList.add('dragging-panel-elemento');
-
-                                // Ocultar y eliminar tooltips existentes
-                                document.querySelectorAll('.fc-tooltip').forEach(t => {
-                                    t.style.display = 'none';
-                                    t.remove();
-                                });
-
-                                // Mostrar indicador con posición inicial (se actualizará en dragover)
-                                if (numeroPosicion) {
-                                    numeroPosicion.textContent = '?';
-                                }
-
-                                div.classList.add('dragging-original');
-                            });
-
-                            div.addEventListener('dragend', function() {
-                                elementoArrastrandose = null;
-                                mostrarIndicador = false;
-                                window.tooltipsDeshabilitados = false;
-
-                                // Quitar clase del body
-                                document.body.classList.remove('dragging-panel-elemento');
-
-                                if (indicadorPosicion) {
-                                    indicadorPosicion.classList.add('hidden');
-                                    indicadorPosicion.style.display = 'none';
-                                }
-                                div.classList.remove('dragging-original');
-
-                                // Limpiar tooltips duplicados
-                                document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
-                            });
-
                             // Almacenar datos para dibujar después de que el panel sea visible
                             // 🆕 Usar el total de barras del grupo y cantidad de elementos
                             elementosParaDibujar.push({
@@ -4084,6 +4222,67 @@
 
                         seccionWrapper.appendChild(seccionElementos);
                     });
+
+                    // ✅ DELEGACIÓN DE EVENTOS - Un solo listener para todos los elementos
+                    // Esto es mucho más eficiente que añadir listeners individuales
+                    if (!lista._delegacionConfigurada) {
+                        lista._delegacionConfigurada = true;
+
+                        // Click delegado para selección múltiple
+                        lista.addEventListener('click', function(e) {
+                            const elementoDrag = e.target.closest('.elemento-drag');
+                            if (elementoDrag) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                window.MultiSelectElementos.toggleSeleccion(elementoDrag);
+                            }
+                        });
+
+                        // Dragstart delegado
+                        lista.addEventListener('dragstart', function(e) {
+                            const elementoDrag = e.target.closest('.elemento-drag');
+                            if (!elementoDrag) return;
+
+                            // Ocultar ghost nativo del navegador
+                            const img = new Image();
+                            img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                            e.dataTransfer.setDragImage(img, 0, 0);
+
+                            elementoArrastrandose = elementoDrag;
+                            mostrarIndicador = true;
+                            window.tooltipsDeshabilitados = true;
+                            document.body.classList.add('dragging-panel-elemento');
+
+                            // Ocultar tooltips existentes
+                            document.querySelectorAll('.fc-tooltip').forEach(t => {
+                                t.style.display = 'none';
+                                t.remove();
+                            });
+
+                            if (numeroPosicion) {
+                                numeroPosicion.textContent = '?';
+                            }
+                            elementoDrag.classList.add('dragging-original');
+                        });
+
+                        // Dragend delegado
+                        lista.addEventListener('dragend', function(e) {
+                            const elementoDrag = e.target.closest('.elemento-drag');
+                            if (!elementoDrag) return;
+
+                            elementoArrastrandose = null;
+                            mostrarIndicador = false;
+                            window.tooltipsDeshabilitados = false;
+                            document.body.classList.remove('dragging-panel-elemento');
+
+                            if (indicadorPosicion) {
+                                indicadorPosicion.classList.add('hidden');
+                                indicadorPosicion.style.display = 'none';
+                            }
+                            elementoDrag.classList.remove('dragging-original');
+                            document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
+                        });
+                    }
 
                     // Configurar FullCalendar.Draggable
                     setTimeout(() => {
@@ -4107,8 +4306,8 @@
                     contenedorCalendario.classList.add('con-panel-abierto');
                     document.body.classList.add('panel-abierto');
 
-                    // Función para dibujar SVGs de forma progresiva (no bloquea el thread)
-                    function dibujarSVGsProgresivo() {
+                    // Función para dibujar SVGs de forma progresiva con setTimeout (no bloquea)
+                    function dibujarSVGsLazy() {
                         const secciones = lista.querySelectorAll('.seccion-maquina-wrapper');
                         const todosElementos = [];
 
@@ -4119,37 +4318,36 @@
                             }
                         });
 
-                        // Dibujar en batches usando requestAnimationFrame
+                        // Dibujar uno por uno con setTimeout para no bloquear
                         let indice = 0;
-                        const BATCH_SIZE = 5; // Dibujar 5 elementos por frame
 
-                        function dibujarBatch() {
-                            const fin = Math.min(indice + BATCH_SIZE, todosElementos.length);
+                        function dibujarSiguiente() {
+                            if (indice >= todosElementos.length) return;
 
-                            for (let i = indice; i < fin; i++) {
-                                const elem = todosElementos[i];
+                            const elem = todosElementos[indice];
+                            indice++;
+
+                            try {
                                 window.dibujarFiguraElemento(
                                     elem.canvasId,
                                     elem.dimensiones,
                                     elem.peso,
                                     elem.diametro,
                                     elem.barras,
-                                    elem.cantidadElementos // Cantidad de elementos agrupados
+                                    elem.cantidadElementos
                                 );
+                            } catch (e) {
+                                // Ignorar errores de dibujo individual
                             }
 
-                            indice = fin;
-
-                            // Si quedan más elementos, programar siguiente batch
+                            // Siguiente elemento con delay de 10ms
                             if (indice < todosElementos.length) {
-                                requestAnimationFrame(dibujarBatch);
+                                setTimeout(dibujarSiguiente, 10);
                             }
                         }
 
-                        // Iniciar dibujado
-                        if (todosElementos.length > 0) {
-                            requestAnimationFrame(dibujarBatch);
-                        }
+                        // Iniciar dibujado después de 100ms
+                        setTimeout(dibujarSiguiente, 100);
                     }
 
                     // Usar transitionend para detectar cuando el panel está visible
@@ -4158,7 +4356,7 @@
                         if (e.propertyName === 'transform' && e.target === panel) {
                             panel.removeEventListener('transitionend', onTransitionEnd);
                             calendar.updateSize();
-                            dibujarSVGsProgresivo();
+                            dibujarSVGsLazy();
                         }
                     };
 
@@ -4172,13 +4370,18 @@
                         if (panel.classList.contains('abierto')) {
                             panel.removeEventListener('transitionend', onTransitionEnd);
                             calendar.updateSize();
-                            dibujarSVGsProgresivo();
+                            dibujarSVGsLazy();
                         }
                     }, 500);
                 }
 
                 function cerrarPanel() {
-                    console.log('🚪 Cerrando panel...');
+                    // Limpiar observer de SVGs lazy
+                    const lista = document.getElementById('panel_lista');
+                    if (lista && lista._svgObserver) {
+                        lista._svgObserver.disconnect();
+                        lista._svgObserver = null;
+                    }
 
                     // Limpiar selección múltiple
                     window.MultiSelectElementos.limpiarSelecciones();
@@ -4187,7 +4390,6 @@
                     // Limpiar planillaId y codigo actual
                     planillaIdActualPanel = null;
                     codigoPlanillaActualPanel = null;
-                    console.log('🧹 planillaIdActualPanel limpiado');
 
                     const panelElementos = document.getElementById('panel_elementos');
                     const panelOverlay = document.getElementById('panel_overlay');
@@ -4617,7 +4819,7 @@
                 }
 
                 // Función para abrir el panel automáticamente cuando hay una sola planilla filtrada
-                async function abrirPanelAutomatico(planillaId, codigoPlanilla) {
+                window.abrirPanelAutomatico = async function(planillaId, codigoPlanilla) {
                     try {
                         const response = await fetch(`/elementos/por-ids?planilla_id=${planillaId}`);
                         const data = await response.json();
@@ -4668,7 +4870,11 @@
                     // Ocultar indicador y badge
                     document.getElementById('filtrosActivos').classList.add('hidden');
                     document.getElementById('filtrosActivosBadge').classList.add('hidden');
+
+                    // Cerrar badge de posiciones de planilla
+                    window.cerrarBadgePosiciones();
                 }
+
                 /**
                  * Actualiza el indicador visual de filtros activos
                  */
@@ -4738,6 +4944,22 @@
 
                     // Aplicar
                     aplicarResaltadoEventos();
+
+                    // Mostrar badge de posiciones si se filtra por planilla
+                    if (filtrosActivos.codigoPlanilla) {
+                        // Intentar obtener el ID del select de planillas
+                        const selectPlanilla = document.getElementById('filtroPlanillaSelect');
+                        const planillaId = selectPlanilla.selectedOptions[0]?.dataset?.planillaId;
+
+                        if (planillaId) {
+                            window.mostrarBadgePosiciones(planillaId, filtrosActivos.codigoPlanilla);
+                        } else {
+                            // Buscar por código si no está en el select
+                            window.buscarYMostrarBadgePlanilla(filtrosActivos.codigoPlanilla);
+                        }
+                    } else {
+                        window.cerrarBadgePosiciones();
+                    }
                 }
 
                 // Debounce para evitar ejecutar la función demasiadas veces
@@ -4956,15 +5178,6 @@
 
                 function aplicarActualizaciones(actualizaciones) {
                     actualizaciones.forEach(upd => {
-                        console.log('📊 POLLING: Actualización recibida', {
-                            planilla_id: upd.planilla_id,
-                            maquina_id: upd.maquina_id,
-                            revisada: upd.revisada,
-                            fecha_entrega: upd.fecha_entrega,
-                            fin_programado: upd.fin_programado,
-                            tiene_retraso: upd.tiene_retraso
-                        });
-
                         // Buscar todos los eventos de esta planilla y máquina
                         const eventos = calendar.getEvents().filter(e => {
                             const eventoId = e.id || '';
@@ -4973,9 +5186,6 @@
                         });
 
                         if (eventos.length === 0) {
-                            console.log(
-                                `⚠️ No se encontraron eventos para planilla ${upd.planilla_id} en máquina ${upd.maquina_id}`
-                            );
                             return;
                         }
 
@@ -6741,25 +6951,30 @@
                     title: '¿Aplicar estas prioridades?',
                     html: `${resumenHtml}<br>
                            <strong>Total: ${totalPlanillas} planillas</strong> se reordenarán según el orden indicado.<br><br>
-                           <label class="flex items-center justify-center gap-2 cursor-pointer">
-                               <input type="checkbox" id="pararFabricando" class="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
-                               <span class="text-sm text-gray-700">Parar planillas que estén fabricando si es necesario</span>
-                           </label>`,
+                           <div class="text-left bg-gray-50 p-3 rounded-lg">
+                               <label class="flex items-start gap-2 cursor-pointer">
+                                   <input type="checkbox" id="suplantarPrimera" class="w-4 h-4 mt-0.5 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                                   <div>
+                                       <span class="text-sm font-medium text-gray-700">Suplantar primera posición si es necesario</span>
+                                       <p class="text-xs text-gray-500">Si la fecha de entrega de la obra priorizada es anterior a la planilla en posición 1, se pondrá primera (el operario cambiará de trabajo)</p>
+                                   </div>
+                               </label>
+                           </div>`,
                     showCancelButton: true,
                     confirmButtonText: 'Sí, aplicar',
                     cancelButtonText: 'Cancelar',
                     confirmButtonColor: '#f97316',
-                    width: '500px',
+                    width: '550px',
                     preConfirm: () => {
                         return {
-                            pararFabricando: document.getElementById('pararFabricando').checked
+                            suplantarPrimera: document.getElementById('suplantarPrimera').checked
                         };
                     }
                 });
 
                 if (!result.isConfirmed) return;
 
-                const pararFabricando = result.value?.pararFabricando || false;
+                const suplantarPrimera = result.value?.suplantarPrimera || false;
 
                 Swal.fire({
                     title: 'Aplicando prioridades...',
@@ -6775,9 +6990,6 @@
                         fecha_entrega: sel.grupo.fecha_entrega
                     }));
 
-                    // Obtener el valor del checkbox del modal
-                    const incluirFabricando = document.getElementById('chkPriorizarFabricando')?.checked || false;
-
                     // Extraer solo los IDs de obras
                     const obrasIds = prioridades.map(p => p.obra_id);
 
@@ -6789,7 +7001,7 @@
                         },
                         body: JSON.stringify({
                             obras: obrasIds,
-                            incluir_fabricando: incluirFabricando
+                            suplantar_primera: suplantarPrimera
                         })
                     });
 

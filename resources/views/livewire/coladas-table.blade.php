@@ -437,7 +437,11 @@
     @push('scripts')
         <script>
             (function() {
-                // Definir funciones en window para que sean accesibles globalmente
+                // Evitar inicialización múltiple global para delegación
+                if (window.coladasTableInitialized) return;
+                window.coladasTableInitialized = true;
+
+                // --- FUNCIONES GLOBALES DE MODALES ---
                 window.abrirModalCrear = function() {
                     const modal = document.getElementById('modalCrear');
                     if (modal) {
@@ -461,12 +465,17 @@
 
                     if (form && modal) {
                         form.action = '/coladas/' + id;
+                        
+                        // Limpiar errores previos
+                        form.querySelectorAll('.error-message').forEach(el => el.remove());
+                        form.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
+
                         const inputs = {
                             'edit_numero_colada': numeroColada,
                             'edit_producto_base_id': productoBaseId,
                             'edit_fabricante_id': fabricanteId || '',
                             'edit_codigo_adherencia': codigoAdherencia || '',
-                            'edit_observaciones': observaciones
+                            'edit_observaciones': observaciones || ''
                         };
 
                         Object.entries(inputs).forEach(([id, value]) => {
@@ -480,16 +489,15 @@
                         const linkDocumento = document.getElementById('link_documento_actual');
                         const inputFile = document.getElementById('edit_documento');
 
-                        // Limpiar input de archivo
                         if (inputFile) inputFile.value = '';
 
                         if (documento) {
-                            docActualContainer.classList.remove('hidden');
-                            sinDocContainer.classList.add('hidden');
-                            linkDocumento.href = '/storage/' + documento;
+                            if (docActualContainer) docActualContainer.classList.remove('hidden');
+                            if (sinDocContainer) sinDocContainer.classList.add('hidden');
+                            if (linkDocumento) linkDocumento.href = '/storage/' + documento;
                         } else {
-                            docActualContainer.classList.add('hidden');
-                            sinDocContainer.classList.remove('hidden');
+                            if (docActualContainer) docActualContainer.classList.add('hidden');
+                            if (sinDocContainer) sinDocContainer.classList.remove('hidden');
                         }
 
                         modal.classList.remove('hidden');
@@ -505,201 +513,143 @@
                     }
                 };
 
-                function handleKeydown(event) {
-                    if (event.key === 'Escape') {
+                // --- MANEJADORES DE CERRADO ---
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
                         window.cerrarModalCrear();
                         window.cerrarModalEditar();
                     }
-                }
+                });
 
-                function handleOutsideClick(event) {
-                    const modalCrear = document.getElementById('modalCrear');
-                    const modalEditar = document.getElementById('modalEditar');
-                    if (event.target === modalCrear) window.cerrarModalCrear();
-                    if (event.target === modalEditar) window.cerrarModalEditar();
-                }
+                window.addEventListener('click', (e) => {
+                    if (e.target.id === 'modalCrear') window.cerrarModalCrear();
+                    if (e.target.id === 'modalEditar') window.cerrarModalEditar();
+                });
 
-                function initDeleteForms() {
-                    document.querySelectorAll('.form-eliminar').forEach(form => {
-                        // Evitar duplicar listeners
-                        if (form.dataset.listenerAttached === 'true') return;
+                // --- DELEGACIÓN DE EVENTOS (FORMULARIOS) ---
+                document.addEventListener('submit', function(e) {
+                    const form = e.target;
 
-                        form.dataset.listenerAttached = 'true';
-                        form.addEventListener('submit', function(e) {
-                            e.preventDefault();
-
-                            Swal.fire({
-                                title: '¿Estás seguro?',
-                                text: "Esta acción eliminará la colada de forma permanente.",
-                                icon: 'warning',
-                                showCancelButton: true,
-                                confirmButtonColor: '#dc2626',
-                                cancelButtonColor: '#6b7280',
-                                confirmButtonText: 'Sí, eliminar',
-                                cancelButtonText: 'Cancelar'
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    form.submit();
-                                }
-                            });
-                        });
-                    });
-                }
-
-                // Inicializar formulario de edición con AJAX
-                function initEditForm() {
-                    const form = document.getElementById('formEditar');
-                    if (!form || form.dataset.ajaxAttached === 'true') return;
-
-                    form.dataset.ajaxAttached = 'true';
-                    form.addEventListener('submit', async function(e) {
+                    // 1. ELIMINAR COLADA
+                    if (form.classList.contains('form-eliminar')) {
                         e.preventDefault();
+                        
+                        // Evitar múltiples Swals si ya hay uno visible
+                        if (Swal.isVisible()) return;
 
-                        const submitBtn = form.querySelector('button[type="submit"]');
-                        const originalText = submitBtn.innerHTML;
+                        Swal.fire({
+                            title: '¿Estás seguro?',
+                            text: "Esta acción eliminará la colada de forma permanente.",
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#dc2626',
+                            cancelButtonColor: '#6b7280',
+                            confirmButtonText: 'Sí, eliminar',
+                            cancelButtonText: 'Cancelar'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                form.submit();
+                            }
+                        });
+                        return;
+                    }
 
-                        // Mostrar loading
-                        submitBtn.disabled = true;
-                        submitBtn.innerHTML = `
-                            <svg class="animate-spin h-5 w-5 inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Guardando...
-                        `;
+                    // 2. EDITAR COLADA (AJAX)
+                    if (form.id === 'formEditar') {
+                        e.preventDefault();
+                        handleEditSubmit(form);
+                        return;
+                    }
+                });
 
-                        // Limpiar errores previos
-                        form.querySelectorAll('.error-message').forEach(el => el.remove());
-                        form.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
+                async function handleEditSubmit(form) {
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    if (!submitBtn || submitBtn.disabled) return;
 
-                        try {
-                            const formData = new FormData(form);
+                    const originalText = submitBtn.innerHTML;
 
-                            const response = await fetch(form.action, {
-                                method: 'POST',
-                                body: formData,
-                                headers: {
-                                    'X-Requested-With': 'XMLHttpRequest',
-                                    'Accept': 'application/json',
+                    // Bloquear para evitar doble envío
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = `
+                        <svg class="animate-spin h-5 w-5 inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Guardando...
+                    `;
+
+                    // Limpiar errores previos
+                    form.querySelectorAll('.error-message').forEach(el => el.remove());
+                    form.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
+
+                    try {
+                        const formData = new FormData(form);
+                        const response = await fetch(form.action, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                            }
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            window.cerrarModalEditar();
+                            
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Actualizado correctamente',
+                                toast: true,
+                                position: 'top',
+                                showConfirmButton: false,
+                                timer: 2000,
+                                timerProgressBar: true,
+                                didOpen: (toast) => {
+                                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                                    toast.addEventListener('mouseleave', Swal.resumeTimer)
                                 }
                             });
 
-                            const data = await response.json();
-
-                            if (data.success) {
-                                // Cerrar modal
-                                window.cerrarModalEditar();
-
-                                // Mostrar mensaje de éxito
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Actualizado',
-                                    text: data.message,
-                                    timer: 1500,
-                                    showConfirmButton: false
-                                });
-
-                                // Refrescar la tabla Livewire sin perder estado
-                                if (typeof Livewire !== 'undefined') {
-                                    const component = Livewire.getByName('coladas-table')[0];
-                                    if (component) {
-                                        component.$refresh();
+                            // Refrescar Livewire
+                            if (typeof Livewire !== 'undefined') {
+                                const components = Livewire.getByName('coladas-table');
+                                if (components && components.length > 0) {
+                                    components[0].$refresh();
+                                }
+                            }
+                        } else {
+                            if (data.errors) {
+                                Object.keys(data.errors).forEach(field => {
+                                    const input = form.querySelector(`[name="${field}"]`);
+                                    if (input) {
+                                        input.classList.add('border-red-500');
+                                        const errorDiv = document.createElement('p');
+                                        errorDiv.className = 'error-message text-red-500 text-xs mt-1';
+                                        errorDiv.textContent = data.errors[field][0];
+                                        input.parentNode.appendChild(errorDiv);
                                     }
-                                }
-                            } else {
-                                // Mostrar errores de validación
-                                if (data.errors) {
-                                    Object.keys(data.errors).forEach(field => {
-                                        const input = form.querySelector(`[name="${field}"]`);
-                                        if (input) {
-                                            input.classList.add('border-red-500');
-                                            const errorDiv = document.createElement('p');
-                                            errorDiv.className = 'error-message text-red-500 text-xs mt-1';
-                                            errorDiv.textContent = data.errors[field][0];
-                                            input.parentNode.appendChild(errorDiv);
-                                        }
-                                    });
-                                }
-
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Error',
-                                    text: 'Por favor corrige los errores del formulario.',
                                 });
                             }
-                        } catch (error) {
-                            console.error('Error:', error);
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
-                                text: 'Ocurrió un error al actualizar la colada.',
+                                text: data.message || 'Por favor corrige los errores del formulario.',
                             });
-                        } finally {
-                            submitBtn.disabled = false;
-                            submitBtn.innerHTML = originalText;
                         }
-                    });
-                }
-
-                // Función de inicialización de la página
-                function initColadasTablePage() {
-                    // Verificar si ya se inicializó
-                    if (document.body.dataset.coladasTablePageInit === 'true') return;
-
-                    console.log('Inicializando Coladas Table Page');
-
-                    // Agregar listeners globales
-                    document.addEventListener('keydown', handleKeydown);
-                    window.addEventListener('click', handleOutsideClick);
-
-                    // Inicializar formularios
-                    initDeleteForms();
-                    initEditForm();
-
-                    // Hook para reinicializar formularios después de actualizaciones de Livewire (morph)
-                    // Livewire 3 usa 'livewire:morph' o simplemente re-renders. 
-                    // Siendo un componente, livewire:navigated se dispara una vez.
-                    // Para actualizaciones parciales, necesitamos hooks.
-                    // Pero como este script corre una vez por navegación (gracias al flag),
-                    // necesitamos asegurarnos de que initDeleteForms se llame si el DOM cambia.
-                    // Usaremos un hook de Livewire si está disponible.
-                    if (typeof Livewire !== 'undefined' && Livewire.hook) {
-                        Livewire.hook('morph.updated', ({
-                            el,
-                            component
-                        }) => {
-                            initDeleteForms();
-                            initEditForm();
+                    } catch (error) {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Ocurrió un error al actualizar la colada.',
                         });
+                    } finally {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
                     }
-
-                    // Marcar como inicializado
-                    document.body.dataset.coladasTablePageInit = 'true';
                 }
-
-                // Registrar en el sistema global de limpieza
-                window.pageInitializers = window.pageInitializers || [];
-                window.pageInitializers.push(() => {
-                    document.removeEventListener('keydown', handleKeydown);
-                    window.removeEventListener('click', handleOutsideClick);
-                    // No necesitamos limpiar initDeleteForms porque los nodos se destruyen
-                    document.body.dataset.coladasTablePageInit = 'false';
-                });
-
-                // Inicializar
-                initColadasTablePage();
-
-                // Listeners para navegación
-                document.addEventListener('livewire:navigated', initColadasTablePage);
-                document.addEventListener('DOMContentLoaded', initColadasTablePage);
-
-                // Limpieza específica al navegar fuera
-                document.addEventListener('livewire:navigating', () => {
-                    document.body.dataset.coladasTablePageInit = 'false';
-                    document.removeEventListener('keydown', handleKeydown);
-                    window.removeEventListener('click', handleOutsideClick);
-                });
-
             })();
         </script>
     @endpush

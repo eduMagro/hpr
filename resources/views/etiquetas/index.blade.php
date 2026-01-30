@@ -330,9 +330,11 @@
                                         <template x-if="!editando">
                                             <div class="flex items-center space-x-2">
                                                 <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
-                                                <button @click="mostrar({{ $etiqueta->id }})" wire:navigate
+
+                                                {{-- Ver etiqueta (modal) --}}
+                                                <button @click="mostrar({{ $etiqueta->id }})"
                                                     class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
-                                                    title="Ver">
+                                                    title="Ver etiqueta">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                                         fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                                         stroke-width="2">
@@ -342,6 +344,18 @@
                                                             d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
                                                     </svg>
                                                 </button>
+
+                                                {{-- Ver elementos --}}
+                                                <a href="{{ route('elementos.index', ['subetiqueta' => $etiqueta->etiqueta_sub_id]) }}"
+                                                    class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                                    title="Ver elementos">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                        fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                        stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                                    </svg>
+                                                </a>
 
                                                 {{-- Eliminar --}}
                                                 <x-tabla.boton-eliminar :action="route('etiquetas.destroy', $etiqueta->id)" />
@@ -391,89 +405,82 @@
                     </div>
                 </div>
             </div>
+            <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+            <script src="{{ asset('js/imprimirEtiqueta.js') }}"></script>
             <script>
-                window.etiquetasConElementos = @json($etiquetasJson);
-                window.etiquetaModalActual = null; // Guardar la etiqueta actual del modal
-            </script>
-            <script>
-                function mostrar(etiquetaId) {
-                    console.log('mostrar() llamada con etiquetaId:', etiquetaId);
-                    console.log('etiquetasConElementos:', window.etiquetasConElementos);
+                window.etiquetaModalActual = null;
 
-                    const datos = window.etiquetasConElementos[etiquetaId];
-                    console.log('datos encontrados:', datos);
-
-                    if (!datos) {
-                        console.warn('No se encontraron datos para etiquetaId:', etiquetaId);
-                        return;
-                    }
-
-                    // Guardar referencia para impresión
-                    window.etiquetaModalActual = { id: etiquetaId, datos: datos };
-                    console.log('etiquetaModalActual guardado:', window.etiquetaModalActual);
-
-                    const subId = datos.etiqueta_sub_id ?? 'N/A';
-                    const nombre = datos.nombre ?? 'Sin nombre';
-                    const peso = datos.peso_kg ?? 'N/A';
-                    const cliente = datos.planilla?.cliente?.empresa ?? 'Sin cliente';
-                    const obra = datos.planilla?.obra?.obra ?? 'Sin obra';
-                    const planillaCod = datos.planilla?.codigo_limpio ?? 'N/A';
-                    const seccion = datos.planilla?.seccion ?? '';
-                    const etiquetaIdVisual = datos.id ?? 'N/A';
-
-                    const html = `
-        <div class="text-lg font-semibold">${obra} – ${cliente}</div>
-        <div class="text-md mb-2">${planillaCod} – S:${seccion}</div>
-        <h3 class="text-lg font-semibold text-black">
-            ${subId} ${nombre} – Cal:B500SD – ${peso} kg
-        </h3>
-        <div class="border-t border-black" style="min-height: 150px;">
-            <div id="contenedor-svg-${etiquetaId}" class="w-full" style="height: 150px;"></div>
-        </div>
-    `;
-
-                    const content = document.getElementById('modalContent');
-                    content.innerHTML = html;
-
+                async function mostrar(etiquetaId) {
+                    // Mostrar loading
                     const modal = document.getElementById('modalEtiqueta');
+                    const content = document.getElementById('modalContent');
+                    content.innerHTML = '<div class="text-center py-8"><span class="text-lg">Cargando...</span></div>';
                     modal.classList.remove('hidden');
                     modal.classList.add('flex');
 
-                    // Verificar si hay elementos con dimensiones
-                    const elementos = datos.elementos || [];
-                    console.log('elementos:', elementos);
+                    try {
+                        // Cargar datos via AJAX
+                        const response = await fetch(`/etiquetas/${etiquetaId}`, {
+                            headers: { 'Accept': 'application/json' }
+                        });
 
-                    if (elementos.length === 0 || !elementos.some(e => e.dimensiones)) {
-                        console.warn('No hay elementos con dimensiones para renderizar');
-                        document.getElementById(`contenedor-svg-${etiquetaId}`).innerHTML =
-                            '<p class="text-center text-gray-500 py-4">Sin elementos para mostrar</p>';
-                        return;
-                    }
+                        if (!response.ok) throw new Error('Error al cargar etiqueta');
 
-                    // Esperar a que renderizarGrupoSVG esté disponible y renderizar
-                    const grupoData = {
-                        id: etiquetaId,
-                        etiqueta: {
-                            id: etiquetaId,
-                            etiqueta_sub_id: subId,
-                            nombre: nombre,
-                            peso_kg: peso,
-                        },
-                        elementos: elementos,
-                    };
+                        const datos = await response.json();
+                        window.etiquetaModalActual = { id: etiquetaId, datos: datos };
 
-                    function intentarRenderizar(intentos = 0) {
-                        console.log('Intentando renderizar, intento:', intentos);
-                        if (typeof window.renderizarGrupoSVG === 'function') {
-                            console.log('Llamando a renderizarGrupoSVG con:', grupoData);
-                            window.renderizarGrupoSVG(grupoData, etiquetaId);
-                        } else if (intentos < 20) {
-                            setTimeout(() => intentarRenderizar(intentos + 1), 50);
+                        const subId = datos.etiqueta_sub_id ?? 'N/A';
+                        const nombre = datos.nombre ?? 'Sin nombre';
+                        const peso = datos.peso_kg ?? 'N/A';
+                        const cliente = datos.planilla?.cliente?.empresa ?? 'Sin cliente';
+                        const obra = datos.planilla?.obra?.obra ?? 'Sin obra';
+                        const planillaCod = datos.planilla?.codigo_limpio ?? 'N/A';
+                        const seccion = datos.planilla?.seccion ?? '';
+                        const elementos = datos.elementos || [];
+
+                        // Construir HTML
+                        let elementosHtml = '';
+                        if (elementos.length > 0) {
+                            elementos.forEach((el, idx) => {
+                                elementosHtml += `
+                                    <div class="elemento-figura mb-2 p-2 bg-white border rounded">
+                                        <div class="text-xs text-gray-600 mb-1">
+                                            <strong>Ø${el.diametro || '?'}</strong> - ${el.barras || 0} barras
+                                            ${el.dimensiones ? `<span class="ml-2 text-gray-400">(${el.dimensiones})</span>` : ''}
+                                        </div>
+                                        <div id="figura-elemento-${etiquetaId}-${idx}" style="width:100%; height:120px; background:#f9f9f9;"></div>
+                                    </div>
+                                `;
+                            });
                         } else {
-                            console.warn('renderizarGrupoSVG no disponible después de esperar');
+                            elementosHtml = '<p class="text-center text-gray-500 py-4">Sin elementos</p>';
                         }
+
+                        content.innerHTML = `
+                            <div class="text-lg font-semibold">${obra} – ${cliente}</div>
+                            <div class="text-md mb-2">${planillaCod} – S:${seccion}</div>
+                            <h3 class="text-lg font-semibold text-black mb-3">
+                                ${subId} ${nombre} – Cal:B500SD – ${peso} kg
+                            </h3>
+                            <div class="border-t border-black pt-2">
+                                ${elementosHtml}
+                            </div>
+                        `;
+
+                        // Dibujar figuras usando figuraElemento.js
+                        setTimeout(() => {
+                            elementos.forEach((el, idx) => {
+                                const containerId = `figura-elemento-${etiquetaId}-${idx}`;
+                                if (el.dimensiones && window.dibujarFiguraElemento) {
+                                    window.dibujarFiguraElemento(containerId, el.dimensiones, el.peso, el.diametro, el.barras);
+                                }
+                            });
+                        }, 50);
+
+                    } catch (error) {
+                        content.innerHTML = `<p class="text-red-500 text-center py-4">Error: ${error.message}</p>`;
                     }
-                    setTimeout(() => intentarRenderizar(), 50);
                 }
 
 
@@ -489,137 +496,12 @@
                     modal.classList.remove('flex');
                 }
             </script>
-            <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}" defer></script>
             <script>
-                // Función para imprimir desde el modal
+                // Función para imprimir desde el modal - usa función unificada
                 function imprimirEtiquetaModal() {
                     if (!window.etiquetaModalActual) return alert('No hay etiqueta seleccionada');
-                    imprimirEtiqueta(window.etiquetaModalActual.datos.etiqueta_sub_id);
-                }
-
-                async function imprimirEtiqueta(etiquetaSubId) {
-                    const svgElement = document.querySelector('#modalContent svg');
-                    if (!svgElement) return alert('SVG no encontrado');
-
-                    /* --- convierte SVG en imagen HD --- */
-                    let svgImg = null;
-                    try {
-                        const svgClone = svgElement.cloneNode(true);
-                        const bbox = svgElement.getBoundingClientRect();
-                        const width = bbox.width || 600;
-                        const height = bbox.height || 150;
-
-                        svgClone.setAttribute('width', width);
-                        svgClone.setAttribute('height', height);
-                        if (!svgClone.getAttribute('viewBox')) {
-                            svgClone.setAttribute('viewBox', `0 0 ${width} ${height}`);
-                        }
-
-                        // Fondo blanco
-                        const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                        bgRect.setAttribute('x', '0');
-                        bgRect.setAttribute('y', '0');
-                        bgRect.setAttribute('width', width);
-                        bgRect.setAttribute('height', height);
-                        bgRect.setAttribute('fill', '#ffffff');
-                        svgClone.insertBefore(bgRect, svgClone.firstChild);
-
-                        const svgData = new XMLSerializer().serializeToString(svgClone);
-                        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-                        const svgUrl = URL.createObjectURL(svgBlob);
-
-                        svgImg = await new Promise((resolve) => {
-                            const img = new Image();
-                            img.onload = () => {
-                                const scale = 4;
-                                const canvas = document.createElement('canvas');
-                                canvas.width = width * scale;
-                                canvas.height = height * scale;
-                                const ctx = canvas.getContext('2d');
-                                ctx.imageSmoothingEnabled = true;
-                                ctx.imageSmoothingQuality = 'high';
-                                ctx.scale(scale, scale);
-                                ctx.fillStyle = '#ffffff';
-                                ctx.fillRect(0, 0, width, height);
-                                ctx.drawImage(img, 0, 0, width, height);
-                                URL.revokeObjectURL(svgUrl);
-                                resolve(canvas.toDataURL('image/png', 1.0));
-                            };
-                            img.onerror = () => {
-                                URL.revokeObjectURL(svgUrl);
-                                resolve(null);
-                            };
-                            img.src = svgUrl;
-                        });
-                    } catch (e) {
-                        console.warn('Error al convertir SVG:', e);
-                    }
-
-                    if (!svgImg) return alert('Error al procesar la imagen');
-
-                    /* --- clona contenido del modal y sustituye SVG --- */
-                    const clone = document.getElementById('modalContent').cloneNode(true);
-                    clone.classList.add('etiqueta-print');
-                    clone.querySelectorAll('.no-print').forEach(el => el.remove());
-
-                    const svgClone = clone.querySelector('svg');
-                    const svgContainer = clone.querySelector('[id^="contenedor-svg-"]') || clone.querySelector('div[style*="min-height"]');
-                    const img = new Image();
-                    img.src = svgImg;
-                    img.style.width = '100%';
-                    img.style.height = 'auto';
-                    if (svgClone) svgClone.remove();
-                    if (svgContainer) {
-                        svgContainer.innerHTML = '';
-                        svgContainer.appendChild(img);
-                    }
-
-                    /* --- genera QR y lo añade --- */
-                    const tempQR = document.createElement('div');
-                    document.body.appendChild(tempQR);
-                    new QRCode(tempQR, {
-                        text: etiquetaSubId,
-                        width: 60,
-                        height: 60
-                    });
-
-                    setTimeout(() => {
-                        const qrImg = tempQR.querySelector('img');
-                        const qrBox = document.createElement('div');
-                        qrBox.className = 'qr-print';
-                        qrBox.appendChild(qrImg);
-                        clone.insertBefore(qrBox, clone.firstChild);
-
-                        /* --- abre ventana A6 --- */
-                        const w = window.open('', '_blank');
-                        const style = `
-<style>
-@page { size: A6 landscape; margin: 0; }
-body { margin:0; font-family:Arial,sans-serif; }
-.etiqueta-print{
-    width: 200mm;
-    height: 100mm;
-    background:#fe7f09; border:2px solid #000;
-    padding:4mm; box-sizing:border-box; position:relative;
-}
-.etiqueta-print img{ max-width:100%; height:auto; display:block; margin-top:6mm; }
-.qr-print{
-    position:absolute; top:8mm; right:8mm;
-    width:60px; height:60px; border:2px solid #000; padding:0; background:#fff;
-}
-</style>`;
-
-                        w.document.write(`
-<html><head><title>Etiqueta ${etiquetaSubId}</title>${style}</head>
-<body>${clone.outerHTML}
-<script>
-  window.onload = () => { window.print(); setTimeout(()=>window.close(),800); };
-<\/script>
-</body></html>
-        `);
-                        w.document.close();
-                        tempQR.remove();
-                    }, 250);
+                    // Usa la función unificada de imprimirEtiqueta.js
+                    window.imprimirEtiquetas(window.etiquetaModalActual.datos.etiqueta_sub_id, 'a6');
                 }
             </script>
             <script>

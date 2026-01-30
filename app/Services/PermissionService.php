@@ -46,17 +46,22 @@ class PermissionService
             return false;
         }
 
-        // 3. Rutas libres (accesibles para cualquier usuario autenticado de empresas permitidas)
+        // 3. Rutas universales (accesibles para CUALQUIER usuario autenticado, sin importar empresa)
+        if ($this->isRutaUniversal($routeName)) {
+            return true;
+        }
+
+        // 4. Rutas libres (accesibles para cualquier usuario autenticado de empresas permitidas)
         if ($this->isRutaLibre($routeName) && $this->isEmpresaConAcceso($user)) {
             return true;
         }
 
-        // 4. Rutas especiales (register solo para Programador)
+        // 5. Rutas especiales (register solo para Programador)
         if ($routeName === 'register') {
             return $this->belongsToDepartment($user, 'programador');
         }
 
-        // 5. Verificar según rol
+        // 6. Verificar según rol
         return match (strtolower($user->rol ?? '')) {
             'operario' => $this->checkOperarioAccess($user, $routeName),
             'transportista' => $this->checkTransportistaAccess($routeName),
@@ -76,6 +81,11 @@ class PermissionService
         }
 
         if ($this->hasFullAccess($user)) {
+            return true;
+        }
+
+        // Rutas universales son permitidas para cualquier usuario autenticado
+        if ($this->isRutaUniversal($routeName)) {
             return true;
         }
 
@@ -330,7 +340,16 @@ class PermissionService
     // =========================================================================
 
     /**
-     * Verifica si una ruta es libre (accesible para usuarios autenticados).
+     * Verifica si una ruta es universal (accesible para CUALQUIER usuario autenticado).
+     */
+    private function isRutaUniversal(string $routeName): bool
+    {
+        $rutasUniversales = config('acceso.rutas_universales', []);
+        return in_array($routeName, $rutasUniversales, true);
+    }
+
+    /**
+     * Verifica si una ruta es libre (accesible para usuarios autenticados de empresas permitidas).
      */
     private function isRutaLibre(string $routeName): bool
     {

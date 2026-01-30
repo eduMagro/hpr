@@ -319,11 +319,11 @@ class EtiquetasTable extends Component
 
         $etiquetas = $query->paginate($this->perPage);
 
-        // Cargar datos para el modal
-        $etiquetasJson = $etiquetas->load([
+        // Cargar datos para el modal (usar getCollection() porque paginate devuelve LengthAwarePaginator)
+        $etiquetasJson = $etiquetas->getCollection()->load([
             'planilla.obra:id,obra',
             'planilla.cliente:id,empresa',
-            'elementos:id,etiqueta_id,dimensiones,barras,diametro,peso',
+            'elementos:id,etiqueta_sub_id,dimensiones,barras,diametro,peso',
         ])->keyBy('id');
 
         return view('livewire.etiquetas-table', [

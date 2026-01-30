@@ -66,7 +66,6 @@
                         function cambiarPosicionesPlanillas() {
                             // Evitar ejecuciones múltiples si ya está en proceso
                             if (cambiarPosicionesEnProceso) {
-                                console.log('⏸️ Cambio de planillas ya en proceso, ignorando...');
                                 return;
                             }
 
@@ -117,8 +116,6 @@
                                 gridActual.style.opacity = '0.3';
                             }
 
-                            console.log('🔄 Cambiando planillas a posiciones:', pos1, pos2);
-
                             // Construir URL
                             const params = new URLSearchParams(window.location.search);
                             if (pos1 && pos1 !== '0') {
@@ -166,9 +163,8 @@
                                                 // Crear función para ejecutar en contexto global
                                                 const fn = new Function(content);
                                                 fn();
-                                                console.log('📊 Variables globales actualizadas');
                                             } catch (e) {
-                                                console.warn('Error ejecutando script:', e);
+                                                // Error ejecutando script
                                             }
                                         }
                                     });
@@ -188,25 +184,19 @@
                                     await new Promise(resolve => setTimeout(resolve, 100));
 
                                     // Renderizar SVGs
-                                    console.log('🎨 Renderizando SVGs...');
-                                    console.log('   - elementosAgrupadosScript:', window.elementosAgrupadosScript?.length || 0);
-                                    console.log('   - renderizarGrupoSVG:', typeof window.renderizarGrupoSVG);
-
                                     if (window.elementosAgrupadosScript && typeof window.renderizarGrupoSVG === 'function') {
                                         window.elementosAgrupadosScript.forEach((grupo, gidx) => {
                                             try {
                                                 window.renderizarGrupoSVG(grupo, gidx);
                                             } catch (e) {
-                                                console.warn('Error renderizando grupo', gidx, e);
+                                                // Error renderizando grupo
                                             }
                                         });
-                                        console.log('✅ SVGs renderizados:', window.elementosAgrupadosScript.length);
                                     }
 
                                     // Renderizar SVGs de grupos de resumen (leyendo datos del DOM)
                                     const gruposResumenCards = gridActual.querySelectorAll('.grupo-resumen-card');
                                     if (gruposResumenCards.length > 0 && typeof window.renderizarGrupoSVG === 'function') {
-                                        console.log('🎨 Renderizando grupos de resumen:', gruposResumenCards.length);
                                         gruposResumenCards.forEach((card) => {
                                             const contenedorSvgId = card.dataset.contenedorSvgId;
                                             const grupoId = card.dataset.grupoId;
@@ -214,7 +204,7 @@
                                             try {
                                                 elementos = JSON.parse(card.dataset.elementos || '[]');
                                             } catch (e) {
-                                                console.warn('Error parsing elementos del grupo:', e);
+                                                // Error parsing elementos del grupo
                                             }
 
                                             if (contenedorSvgId && elementos.length > 0) {
@@ -227,10 +217,8 @@
                                                         elementos: elementos
                                                     };
                                                     window.renderizarGrupoSVG(grupoData, parseInt(grupoId));
-                                                    console.log('✅ Grupo', grupoId, 'renderizado con', elementos.length,
-                                                        'elementos');
                                                 } catch (e) {
-                                                    console.warn('Error renderizando grupo resumen', grupoId, e);
+                                                    // Error renderizando grupo resumen
                                                 }
                                             }
                                         });
@@ -264,11 +252,8 @@
                                     if (window.TrabajoPaquete?.inicializar) {
                                         window.TrabajoPaquete.inicializar();
                                     }
-
-                                    console.log('✅ Planillas cambiadas correctamente (inline)');
                                 }
                             } catch (error) {
-                                console.error('❌ Error al cambiar planillas:', error);
                                 // En caso de error, hacer reload como fallback
                                 window.location.href = newUrl;
                                 return;
@@ -628,7 +613,6 @@
              */
             window.refrescarEtiquetasMaquina = async function() {
                 try {
-                    console.log('🔄 Refrescando etiquetas...');
 
                     // Hacer fetch a la URL actual con los mismos parámetros
                     const currentUrl = window.location.href;
@@ -686,11 +670,10 @@
                                 fn();
                                 variablesActualizadas++;
                             } catch (e) {
-                                console.warn('Error al ejecutar script:', e);
+                                // Error al ejecutar script
                             }
                         }
                     });
-                    console.log('📊 Variables actualizadas:', variablesActualizadas, 'scripts procesados');
 
                     // Actualizar data sources
                     if (window.setDataSources && window.elementosAgrupadosScript) {
@@ -703,7 +686,6 @@
                     // Re-inicializar input QR si existe (el botón crear usa event delegation global)
                     if (window.TrabajoPaquete && window.TrabajoPaquete.inicializar) {
                         window.TrabajoPaquete.inicializar();
-                        console.log('✅ TrabajoPaquete re-inicializado');
                     }
 
                     // Animación de entrada y re-renderizado de SVGs
@@ -737,8 +719,6 @@
                         setTimeout(() => {
                             // Re-renderizar SVGs de etiquetas individuales
                             if (window.elementosAgrupadosScript && window.renderizarGrupoSVG) {
-                                console.log('🎨 Re-renderizando', window.elementosAgrupadosScript
-                                    .length, 'etiquetas individuales...');
                                 window.elementosAgrupadosScript.forEach((grupo, gidx) => {
                                     window.renderizarGrupoSVG(grupo, gidx);
                                 });
@@ -747,8 +727,6 @@
                             // Re-renderizar SVGs de grupos de resumen (usando data attributes del DOM)
                             const gruposResumenCards = document.querySelectorAll('.grupo-resumen-card');
                             if (gruposResumenCards.length > 0 && window.renderizarGrupoSVG) {
-                                console.log('🎨 Re-renderizando', gruposResumenCards.length,
-                                    'grupos de resumen desde DOM...');
                                 gruposResumenCards.forEach((card) => {
                                     const contenedorSvgId = card.dataset.contenedorSvgId;
                                     const grupoId = card.dataset.grupoId;
@@ -756,7 +734,7 @@
                                     try {
                                         elementos = JSON.parse(card.dataset.elementos || '[]');
                                     } catch (e) {
-                                        console.warn('Error parsing elementos:', e);
+                                        // Error parsing elementos
                                     }
 
                                     if (contenedorSvgId && elementos.length > 0) {
@@ -768,7 +746,6 @@
                                             elementos: elementos
                                         };
                                         window.renderizarGrupoSVG(grupoData, parseInt(grupoId));
-                                        console.log('✅ SVG grupo resumen renderizado:', grupoId);
                                     }
                                 });
                             }
@@ -778,16 +755,12 @@
                         }, 150); // Delay aumentado para asegurar que el DOM esté completamente actualizado
                     });
 
-                    console.log('✅ Etiquetas refrescadas correctamente');
-
                     // Re-aplicar filtro de estado después de refrescar
                     const filtroActual = localStorage.getItem('filtroEstadoEtiqueta') ?? 'todos';
                     window.aplicarFiltroEstadoEtiquetas(filtroActual);
 
                 } catch (error) {
-                    console.error('❌ Error al refrescar etiquetas:', error);
                     // Si falla, recargar la página como fallback
-                    console.warn('Recargando página como fallback...');
                     window.location.reload();
                 }
             };
@@ -818,8 +791,6 @@
 
                     wrapper.style.display = mostrar ? '' : 'none';
                 });
-
-                console.log(`🔍 Filtro aplicado: ${estado}`);
             };
 
             // Escuchar cambios en el filtro de estado (con limpieza previa idealmente, o función nombrada)
@@ -883,7 +854,6 @@
             // Función principal de inicialización
             function initMaquinasShowPage() {
                 if (document.body.dataset.maquinasShowPageInit === 'true') return;
-                console.log('🔍 Inicializando página de visualización de máquina...');
 
                 // 1. Context Menu
                 const ctxHandler = function(e) {
@@ -1502,7 +1472,6 @@
                     window.__etiquetasVisibles = obtenerEtiquetas();
 
                     if (!window.__etiquetasVisibles.length) {
-                        console.log('⚠️ No hay etiquetas visibles');
                         return false;
                     }
 
@@ -1515,8 +1484,6 @@
 
                     mostrarEtiquetaFullscreen(0);
                     document.body.style.overflow = 'hidden';
-
-                    console.log('🖥️ Modo fullscreen activado');
                     return true;
                 };
 
@@ -1529,7 +1496,6 @@
                     }
                     document.body.style.overflow = '';
                     window.__vistaMode = 'solo';
-                    console.log('🔙 Volviendo a modo solo');
                 };
 
                 // Handler del scroll en fullscreen
@@ -1628,7 +1594,6 @@
                 };
 
                 document.addEventListener('keydown', arrowHandler, { capture: true });
-                console.log('✅ Atajos de flechas registrados (normal → solo → fullscreen)');
             })();
 
             // Definir funciones globalmente para acceso
@@ -1646,13 +1611,11 @@
                 window.showHeader = !window.showHeader;
                 localStorage.setItem('showHeader', JSON.stringify(window.showHeader));
                 window.aplicarEstadoHeader();
-                console.log('🎯 Header:', window.showHeader ? 'visible' : 'oculto');
             };
 
             // Migración a patrón de inicialización SPA Livewire
             window.initMaquinasShowPage = function() {
                 if (document.body.dataset.maquinasShowPageInit === 'true') return;
-                console.log('Inicializando Maquinas Show Page');
 
                 // 1. Inicializar Header
                 window.aplicarEstadoHeader();

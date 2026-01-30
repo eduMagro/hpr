@@ -498,6 +498,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/maquinas/movimientos-completados/{naveId}', [MaquinaController::class, 'getMovimientosCompletados'])->name('maquinas.movimientos-completados');
     Route::post('/turnos/cambiar-maquina', [Maquinacontroller::class, 'cambiarMaquina'])->name('turno.cambiarMaquina');
     Route::put('/maquinas/{maquina}/imagen', [MaquinaController::class, 'actualizarImagen'])->name('maquinas.imagen');
+    Route::post('/maquinas/{id}/expedir-paquete', [MaquinaController::class, 'expedirPaquete'])->name('maquinas.expedir-paquete');
 
     // === PLANIFICACIÓN DE ENSAMBLAJE ===
     Route::get('/ensamblaje/planificacion', [App\Http\Controllers\PlanificacionEnsamblajeController::class, 'index'])->name('ensamblaje.planificacion');

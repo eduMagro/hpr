@@ -8,21 +8,10 @@
     />
 
     <div class="w-full">
-        <!-- Botones para desktop -->
-        <div class="hidden md:flex items-center gap-2">
-            {{-- Botón y modal de importar --}}
-            <button type="button" id="btn-abrir-import"
-                class="px-4 py-2 rounded bg-gradient-to-tr from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold shadow-sm">
-                Importar planillas
-            </button>
-
-            <button type="button" id="btn-completar-planillas" data-url="{{ route('planillas.completarTodas') }}"
-                class="bg-gradient-to-tr from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-2 px-4 rounded shadow-sm">
-                Completar planillas
-            </button>
-
-            {{-- Monitor de sincronización FerraWin --}}
-            @livewire('sync-monitor')
+        <!-- Botones ocultos (se activan desde el componente Livewire) -->
+        <div class="hidden">
+            <button type="button" id="btn-abrir-import">Importar planillas</button>
+            <button type="button" id="btn-completar-planillas" data-url="{{ route('planillas.completarTodas') }}">Completar planillas</button>
         </div>
 
         <div id="modal-import" class="fixed inset-0 z-[60] hidden">
@@ -133,8 +122,8 @@
                             <label class="text-[10px] font-semibold text-gray-700">Aprobada</label>
                             <select name="aprobada"
                                 class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700">
-                                <option value="" @selected(request('aprobada', '') === '')>Aprobadas</option>
-                                <option value="todas" @selected(request('aprobada') === 'todas')>Todas</option>
+                                <option value="" @selected(request('aprobada', '') === '')>Todas</option>
+                                <option value="aprobadas" @selected(request('aprobada') === 'aprobadas')>Aprobadas</option>
                                 <option value="0" @selected(request('aprobada') === '0')>No aprobadas</option>
                             </select>
                         </div>
@@ -166,14 +155,14 @@
                     $query->where('estado', request('estado'));
                 }
 
-                // Filtro de aprobada: por defecto solo muestra aprobadas
+                // Filtro de aprobada: por defecto muestra todas
                 $aprobadaFilter = request('aprobada', '');
-                if ($aprobadaFilter === '') {
+                if ($aprobadaFilter === 'aprobadas') {
                     $query->where('aprobada', true);
                 } elseif ($aprobadaFilter === '0') {
                     $query->where('aprobada', false);
                 }
-                // Si es 'todas' no aplicamos filtro
+                // Si es '' (vacío) no aplicamos filtro - muestra todas
 
                 // Obtener planillas
                 $planillasMobile = $query

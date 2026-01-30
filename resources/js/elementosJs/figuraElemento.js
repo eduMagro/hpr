@@ -227,7 +227,9 @@ function initFiguraElemento() {
                 return false;
             }
 
-            while (tryResolve()) {}
+            // Límite de iteraciones para evitar bucle infinito (máximo 3)
+            let intentos = 0;
+            while (tryResolve() && intentos < 3) { intentos++; }
 
             const dir = { x: Math.cos(rad(ang)), y: Math.sin(rad(ang)) };
             const nx = cx + out[i].length * dir.x;
@@ -570,27 +572,16 @@ function initFiguraElemento() {
      * Función principal para dibujar la figura usando SVG
      ****************************************************************** */
     function dibujarFigura(containerId, dimensionesStr, peso, diametro, barras) {
-        console.log("🎨 dibujarFigura llamada:", {
-            containerId,
-            dimensionesStr,
-            peso,
-            diametro,
-            barras,
-        });
-
         let contenedor = document.getElementById(containerId);
         if (!contenedor) {
-            console.error("❌ Contenedor no encontrado:", containerId);
             return;
         }
 
         // Variables para dimensiones
         let ancho, alto;
 
-        // 🔄 Si el elemento es un canvas, reemplazarlo por un div
+        // Si el elemento es un canvas, reemplazarlo por un div
         if (contenedor.tagName.toLowerCase() === "canvas") {
-            console.log("🔄 Detectado canvas, reemplazando por div contenedor");
-
             // Obtener dimensiones del canvas ANTES de reemplazarlo
             ancho = contenedor.width || parseInt(contenedor.style.width) || 240;
             alto = contenedor.height || parseInt(contenedor.style.height) || 120;
@@ -626,22 +617,16 @@ function initFiguraElemento() {
         } else {
             // Si no es canvas, obtener dimensiones del contenedor
             const rect = contenedor.getBoundingClientRect();
-            console.log("🔍 getBoundingClientRect:", rect);
-            console.log("🔍 contenedor.style:", { width: contenedor.style.width, height: contenedor.style.height });
             ancho = rect.width > 0 ? rect.width : parseInt(contenedor.style.width) || 600;
             alto = rect.height > 0 ? rect.height : parseInt(contenedor.style.height) || 400;
         }
-
-        console.log("📐 Dimensiones finales del contenedor:", { ancho, alto });
 
         const svg = crearSVG(ancho, alto, "white");
 
         // Extraer y procesar dimensiones
         const dimsRaw = extraerDimensiones(dimensionesStr);
-        console.log("📐 Dimensiones extraídas:", dimsRaw);
 
         if (dimsRaw.length === 0) {
-            console.warn("⚠️ No hay dimensiones válidas para dibujar.");
             // Mostrar mensaje en el SVG
             agregarTexto(
                 svg,
@@ -658,7 +643,6 @@ function initFiguraElemento() {
         }
 
         const dimsNoZero = combinarRectasConCeros(dimsRaw);
-        console.log("🔧 Dimensiones combinadas:", dimsNoZero);
 
         // Verificar si es una pieza pequeña y escalar si es necesario
         let maxLinear = 0;
@@ -672,19 +656,9 @@ function initFiguraElemento() {
         const geomScale = isSmall ? SMALL_DIM_SCALE : 1;
         const dimsScaled = scaleDims(dimsNoZero, geomScale);
 
-        console.log(
-            "📏 Max linear:",
-            maxLinear,
-            "isSmall:",
-            isSmall,
-            "geomScale:",
-            geomScale
-        );
-
         // Medir la figura
         const medida = medirFiguraEnModelo(dimsScaled);
         if (!medida) {
-            console.warn("⚠️ No se pudo medir la figura.");
             agregarTexto(
                 svg,
                 ancho / 2,
@@ -699,14 +673,11 @@ function initFiguraElemento() {
             return;
         }
 
-        console.log("📊 Medida inicial:", medida);
-
-        // Ajustar dimensiones para evitar solapes (como en canvasMaquina.js)
+        // Ajustar dimensiones para evitar solapes
         const dimsAdjusted = ajustarLongitudesParaEvitarSolapes(dimsScaled, OVERLAP_GROW_UNITS);
 
         // Recalcular medida DESPUÉS del ajuste para centrado correcto
         const medidaAjustada = medirFiguraEnModelo(dimsAdjusted);
-        console.log("📊 Medida ajustada:", medidaAjustada);
 
         // Evitar división por cero
         const wRot = medidaAjustada.wRot || 1;
@@ -722,21 +693,8 @@ function initFiguraElemento() {
 
         // Para contenedores pequeños, usar escala completa sin reducción adicional
         if (ancho < 300 || alto < 150) {
-            scale *= 0.95; // Reducir solo al 95% en contenedores pequeños (antes era 80%)
+            scale *= 0.95;
         }
-
-        console.log(
-            "🔍 Escala calculada:",
-            scale,
-            "wRot:",
-            wRot,
-            "hRot:",
-            hRot,
-            "availableWidth:",
-            availableWidth,
-            "availableHeight:",
-            availableHeight
-        );
 
         // Centrar exactamente en el contenedor
         const cx = ancho / 2;
@@ -756,18 +714,13 @@ function initFiguraElemento() {
             cy
         );
 
-        console.log("🎨 Path generado:", dPath);
-
         if (dPath && dPath.length > 0) {
             // Ajustar grosor de línea según tamaño del contenedor
             const lineWidth = ancho < 300 ? 1.5 : 2;
             agregarPathD(svg, dPath, FIGURE_LINE_COLOR, lineWidth);
-            console.log("✅ Path dibujado correctamente con grosor:", lineWidth);
 
             // Añadir acotaciones solo si el contenedor es suficientemente grande
-            console.log("🔍 Verificando acotaciones:", { ancho, alto, cumpleCondicion: (ancho > 150 && alto > 80) });
             if (ancho > 150 && alto > 80) {
-                console.log("✅ Dibujando acotaciones...");
                 const fontSize = ancho < 300 ? 8 : 10;
 
                 // Calcular puntos transformados para las acotaciones usando la medida ajustada
@@ -840,19 +793,13 @@ function initFiguraElemento() {
 
                 // Agrupar por dirección (paralelos comparten acotación)
                 const segmentosUnicos = agruparSegmentosPorDireccion(segmentosCombinados);
-                console.log("📊 Segmentos únicos para acotar:", segmentosUnicos.length, segmentosUnicos);
 
                 // Dibujar solo las acotaciones únicas
-                segmentosUnicos.forEach((s, idx) => {
-                    console.log(`📏 Dibujando acotación ${idx}:`, s.label);
+                segmentosUnicos.forEach((s) => {
                     dibujarAcotacion(svg, s.p1, s.p2, s.label, fontSize);
                 });
-                console.log("✅ Acotaciones completadas");
-            } else {
-                console.log("⚠️ Contenedor muy pequeño para acotaciones");
             }
         } else {
-            console.error("❌ Path vacío");
             agregarTexto(
                 svg,
                 ancho / 2,
@@ -865,9 +812,6 @@ function initFiguraElemento() {
         }
 
         // Mostrar información en la esquina superior izquierda
-        console.log('📝 Información a mostrar:', { peso, diametro, barras, ancho, alto });
-
-        // Siempre mostrar si hay información disponible
         const infoSize = ancho < 300 ? 10 : 12;
         const infoMarginX = 15;
         let infoMarginY = 25;
@@ -917,8 +861,6 @@ function initFiguraElemento() {
         // Limpiar el contenedor y agregar el SVG
         contenedor.innerHTML = "";
         contenedor.appendChild(svg);
-
-        console.log("✅ SVG agregado al contenedor");
     }
 
     window.dibujarFiguraElemento = dibujarFigura;

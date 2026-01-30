@@ -1752,7 +1752,7 @@ class ProduccionController extends Controller
 
             // Obtener datos de la planilla con su obra
             $planilla = Planilla::with('obra:id,obra')
-                ->select('id', 'codigo', 'descripcion', 'ensamblado', 'comentario', 'obra_id')
+                ->select('id', 'codigo', 'descripcion', 'ensamblado', 'comentario', 'obra_id', 'estado')
                 ->find($planillaId);
 
             $elementos = Elemento::where('planilla_id', $planillaId)
@@ -1792,6 +1792,7 @@ class ProduccionController extends Controller
                     'ensamblado' => $planilla->ensamblado ?? null,
                     'comentario' => $planilla->comentario ?? null,
                     'obra' => $planilla->obra->obra ?? null,
+                    'estado' => $planilla->estado ?? null,
                 ]
             ]);
         } else {
@@ -5206,11 +5207,24 @@ class ProduccionController extends Controller
         $request->validate([
             'obras' => 'required|array|min:1|max:5',
             'obras.*' => 'required|integer|exists:obras,id',
-            'incluir_fabricando' => 'boolean',
+            'suplantar_primera' => 'boolean',
         ]);
 
         $obrasIds = $request->input('obras');
-        $incluirFabricando = $request->boolean('incluir_fabricando', false);
+        $suplantarPrimera = $request->boolean('suplantar_primera', false);
+
+        // Obtener fechas de entrega de las obras priorizadas
+        $fechasObras = Obra::whereIn('id', $obrasIds)
+            ->with(['planillas' => function ($q) {
+                $q->select('id', 'obra_id', 'fecha_estimada_entrega')
+                    ->whereNotNull('fecha_estimada_entrega');
+            }])
+            ->get()
+            ->mapWithKeys(function ($obra) {
+                // Obtener la fecha de entrega más próxima de las planillas de esta obra
+                $fechaMinima = $obra->planillas->min('fecha_estimada_entrega');
+                return [$obra->id => $fechaMinima];
+            });
 
         // Reconectar BD para evitar "MySQL server has gone away"
         DB::reconnect();
@@ -5237,22 +5251,48 @@ class ProduccionController extends Controller
 
                 if ($ordenPlanillas->isEmpty()) continue;
 
-                // Identificar la planilla en posición 1 si está fabricando (para no moverla)
-                $planillaFabricandoPos1 = null;
-                if (!$incluirFabricando) {
-                    $primeraOp = $ordenPlanillas->first();
-                    if ($primeraOp && $primeraOp->posicion === 1 && $primeraOp->planilla?->estado === 'fabricando') {
-                        $planillaFabricandoPos1 = $primeraOp;
+                // Identificar la planilla en posición 1 (para decidir si moverla o no)
+                $planillaPos1Protegida = null;
+                $primeraOp = $ordenPlanillas->first();
+
+                if ($primeraOp && (int) $primeraOp->posicion === 1) {
+                    // Por defecto, protegemos la primera posición (el operario sigue con su trabajo)
+                    $debeSuplantar = false;
+
+                    if ($suplantarPrimera) {
+                        // Verificar si alguna obra priorizada tiene fecha de entrega anterior
+                        $fechaPlanillaPos1 = $primeraOp->planilla?->fecha_estimada_entrega;
+
+                        foreach ($obrasIds as $obraId) {
+                            $fechaObraPriorizada = $fechasObras[$obraId] ?? null;
+
+                            // Suplantar si:
+                            // - La obra priorizada tiene fecha Y es anterior a pos 1
+                            // - O la pos 1 no tiene fecha pero la obra priorizada sí (priorizar lo que tiene fecha)
+                            if ($fechaObraPriorizada) {
+                                if (!$fechaPlanillaPos1 || $fechaObraPriorizada < $fechaPlanillaPos1) {
+                                    $debeSuplantar = true;
+                                    Log::info("🔄 Suplantando posición 1 en máquina {$maquinaId}: obra {$obraId} tiene fecha {$fechaObraPriorizada}" .
+                                        ($fechaPlanillaPos1 ? " anterior a {$fechaPlanillaPos1}" : " (pos 1 sin fecha)"));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // Proteger la primera posición si NO debemos suplantar
+                    if (!$debeSuplantar) {
+                        $planillaPos1Protegida = $primeraOp;
                     }
                 }
 
-                // Separar en priorizadas y no priorizadas (excluyendo la fabricando en pos 1)
+                // Separar en priorizadas y no priorizadas (excluyendo la protegida en pos 1)
                 $priorizadas = collect();
                 $noPriorizadas = collect();
 
                 foreach ($ordenPlanillas as $op) {
-                    // Si es la planilla fabricando en posición 1, no la movemos
-                    if ($planillaFabricandoPos1 && $op->id === $planillaFabricandoPos1->id) {
+                    // Si es la planilla en posición 1 protegida, no la movemos
+                    if ($planillaPos1Protegida && $op->id === $planillaPos1Protegida->id) {
                         continue;
                     }
 
@@ -5273,9 +5313,9 @@ class ProduccionController extends Controller
                 // Combinar: primero las priorizadas, luego las demás
                 $nuevoOrden = $priorizadas->merge($noPriorizadas);
 
-                // Si hay planilla fabricando en pos 1, empezamos desde posición 2
-                $posicionInicial = $planillaFabricandoPos1 ? 2 : 1;
-                if ($planillaFabricandoPos1) {
+                // Si hay planilla protegida en pos 1, empezamos desde posición 2
+                $posicionInicial = $planillaPos1Protegida ? 2 : 1;
+                if ($planillaPos1Protegida) {
                     $omitidos++;
                 }
 
@@ -5340,7 +5380,7 @@ class ProduccionController extends Controller
 
             $mensaje = "Priorización completada. {$cambiosRealizados} cambios realizados.";
             if ($omitidos > 0) {
-                $mensaje .= " ({$omitidos} planillas en fabricación no afectadas)";
+                $mensaje .= " ({$omitidos} posiciones 1 protegidas)";
             }
 
             // Registrar en log de planificación
