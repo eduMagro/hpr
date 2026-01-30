@@ -399,6 +399,32 @@
             <span id="numero_posicion">1</span>
         </div>
 
+        <!-- Badge flotante con posiciones de planilla -->
+        <div id="badge_posiciones_planilla" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 hidden">
+            <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg shadow-xl p-4 min-w-[400px] max-w-[80vw]">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg font-bold" id="badge_codigo_planilla">Planilla</span>
+                        <span class="text-xs bg-white/20 rounded px-2 py-0.5" id="badge_estado_planilla"></span>
+                    </div>
+                    <button onclick="cerrarBadgePosiciones()" class="text-white/80 hover:text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="badge_posiciones_lista" class="flex flex-wrap gap-2">
+                    <!-- Se llena dinámicamente con las posiciones por máquina -->
+                </div>
+                <div class="mt-2 text-xs text-white/70 flex items-center gap-2">
+                    <span>Haz clic en "Ver elementos" para abrir el panel lateral</span>
+                    <button onclick="abrirPanelDesdeBadge()" class="bg-white/20 hover:bg-white/30 px-3 py-1 rounded transition">
+                        Ver elementos
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal para ver figura dibujada -->
         <div id="modal-dibujo"
             class="hidden fixed inset-0 flex justify-center items-center z-[9999] bg-black bg-opacity-50">
@@ -2119,7 +2145,178 @@
                 moverIndicadorHandler: null,
                 dragoverHandler: null,
                 dragleaveHandler: null,
-                initialized: false
+                initialized: false,
+                // Variables para el badge de posiciones de planilla
+                badgePlanillaId: null,
+                badgeCodigoPlanilla: null,
+                badgePosicionesData: {},
+                badgeMaxPosiciones: {}
+            };
+
+            // ================================
+            // FUNCIONES GLOBALES BADGE POSICIONES (deben estar fuera de inicializarCalendarioMaquinas)
+            // ================================
+
+            /**
+             * Cierra el badge de posiciones
+             */
+            window.cerrarBadgePosiciones = function() {
+                const badge = document.getElementById('badge_posiciones_planilla');
+                if (badge) {
+                    badge.classList.add('hidden');
+                }
+                window._maquinasCalendarState.badgePlanillaId = null;
+                window._maquinasCalendarState.badgeCodigoPlanilla = null;
+            };
+
+            /**
+             * Abre el panel lateral desde el badge
+             */
+            window.abrirPanelDesdeBadge = function() {
+                const state = window._maquinasCalendarState;
+                if (state.badgePlanillaId && typeof window.abrirPanelAutomatico === 'function') {
+                    window.abrirPanelAutomatico(state.badgePlanillaId, state.badgeCodigoPlanilla);
+                }
+            };
+
+            /**
+             * Cambia la posición de una planilla desde el badge
+             */
+            window.cambiarPosicionDesdeBadge = async function(planillaId, maquinaId, nuevaPosicion, posicionAnterior) {
+                nuevaPosicion = parseInt(nuevaPosicion);
+                if (nuevaPosicion === posicionAnterior) return;
+
+                try {
+                    if (typeof mostrarSpinner === 'function') mostrarSpinner('Cambiando posición...');
+                    const res = await fetch('/planillas/reordenar', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            id: planillaId,
+                            maquina_id: maquinaId,
+                            nueva_posicion: nuevaPosicion
+                        })
+                    });
+
+                    const data = await res.json();
+                    if (typeof cerrarSpinner === 'function') cerrarSpinner();
+
+                    if (data.success) {
+                        // Refrescar eventos del calendario
+                        if (window.calendar) await window.calendar.refetchEvents();
+
+                        // Refrescar el badge
+                        const state = window._maquinasCalendarState;
+                        if (typeof window.mostrarBadgePosiciones === 'function') {
+                            window.mostrarBadgePosiciones(planillaId, state.badgeCodigoPlanilla);
+                        }
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Posición actualizada',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        throw new Error(data.message || 'Error al cambiar posición');
+                    }
+                } catch (error) {
+                    if (typeof cerrarSpinner === 'function') cerrarSpinner();
+                    Swal.fire({ icon: 'error', title: 'Error', text: error.message });
+                }
+            };
+
+            /**
+             * Genera las opciones del select de posición
+             */
+            window.generarOpcionesPosicionBadge = function(posActual, maxPos) {
+                let html = '';
+                for (let i = 1; i <= Math.max(maxPos, posActual) + 1; i++) {
+                    html += `<option value="${i}" ${i === posActual ? 'selected' : ''} style="background-color: #1e40af; color: white;">Pos ${i}</option>`;
+                }
+                return html;
+            };
+
+            /**
+             * Muestra el badge flotante con las posiciones de una planilla en cada máquina
+             */
+            window.mostrarBadgePosiciones = async function(planillaId, codigoPlanilla) {
+                const state = window._maquinasCalendarState;
+                state.badgePlanillaId = planillaId;
+                state.badgeCodigoPlanilla = codigoPlanilla;
+
+                try {
+                    const response = await fetch(`/elementos/por-ids?planilla_id=${planillaId}`);
+                    const data = await response.json();
+
+                    state.badgePosicionesData = data.posiciones || {};
+                    state.badgeMaxPosiciones = data.maxPosiciones || {};
+                    const infoPlanilla = data.planilla || {};
+
+                    const badge = document.getElementById('badge_posiciones_planilla');
+                    document.getElementById('badge_codigo_planilla').textContent = codigoPlanilla;
+                    document.getElementById('badge_estado_planilla').textContent = infoPlanilla.estado || '';
+
+                    const lista = document.getElementById('badge_posiciones_lista');
+                    lista.innerHTML = '';
+
+                    // Obtener nombres de máquinas desde recursos del calendario
+                    const maquinasMap = {};
+                    if (window.calendar) {
+                        window.calendar.getResources().forEach(r => {
+                            maquinasMap[r.id] = { codigo: r.extendedProps?.codigo || r.title, nombre: r.title };
+                        });
+                    }
+
+                    if (Object.keys(state.badgePosicionesData).length === 0) {
+                        lista.innerHTML = '<div class="text-white/70 text-sm">Sin posiciones asignadas (elementos sin máquina)</div>';
+                    } else {
+                        Object.entries(state.badgePosicionesData).forEach(([maquinaId, posicion]) => {
+                            const maquina = maquinasMap[maquinaId] || { codigo: 'M?', nombre: 'Desconocida' };
+                            const maxPos = state.badgeMaxPosiciones[maquinaId] || posicion || 1;
+
+                            const chip = document.createElement('div');
+                            chip.className = 'flex items-center gap-1 bg-white/20 rounded px-2 py-1';
+                            chip.innerHTML = `
+                                <span class="font-medium text-sm" title="${maquina.nombre}">${maquina.codigo}:</span>
+                                <select onchange="cambiarPosicionDesdeBadge(${planillaId}, ${maquinaId}, this.value, ${posicion})"
+                                    class="bg-blue-800 text-white border border-white/30 rounded px-2 py-0.5 text-sm cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/50"
+                                    style="color: white !important;">
+                                    ${window.generarOpcionesPosicionBadge(posicion, maxPos)}
+                                </select>
+                            `;
+                            lista.appendChild(chip);
+                        });
+                    }
+
+                    badge.classList.remove('hidden');
+                } catch (error) {
+                    console.error('Error al cargar posiciones:', error);
+                }
+            };
+
+            /**
+             * Busca una planilla por código (limpio) y muestra el badge
+             */
+            window.buscarYMostrarBadgePlanilla = async function(codigo) {
+                try {
+                    const res = await fetch(`/api/planillas/buscar?q=${encodeURIComponent(codigo)}`);
+                    const data = await res.json();
+                    if (data.planillas && data.planillas.length > 0) {
+                        const codigoLower = codigo.toLowerCase();
+                        const planilla = data.planillas.find(p =>
+                            (p.codigo_limpio && p.codigo_limpio.toLowerCase() === codigoLower) ||
+                            p.codigo.toLowerCase().includes(codigoLower)
+                        ) || data.planillas[0];
+                        window.mostrarBadgePosiciones(planilla.id, planilla.codigo_limpio || planilla.codigo);
+                    }
+                } catch (error) {
+                    console.error('Error buscando planilla:', error);
+                }
             };
 
             // Hacer la función global para que el layout pueda llamarla
@@ -4617,7 +4814,7 @@
                 }
 
                 // Función para abrir el panel automáticamente cuando hay una sola planilla filtrada
-                async function abrirPanelAutomatico(planillaId, codigoPlanilla) {
+                window.abrirPanelAutomatico = async function(planillaId, codigoPlanilla) {
                     try {
                         const response = await fetch(`/elementos/por-ids?planilla_id=${planillaId}`);
                         const data = await response.json();
@@ -4668,7 +4865,11 @@
                     // Ocultar indicador y badge
                     document.getElementById('filtrosActivos').classList.add('hidden');
                     document.getElementById('filtrosActivosBadge').classList.add('hidden');
+
+                    // Cerrar badge de posiciones de planilla
+                    window.cerrarBadgePosiciones();
                 }
+
                 /**
                  * Actualiza el indicador visual de filtros activos
                  */
@@ -4738,6 +4939,22 @@
 
                     // Aplicar
                     aplicarResaltadoEventos();
+
+                    // Mostrar badge de posiciones si se filtra por planilla
+                    if (filtrosActivos.codigoPlanilla) {
+                        // Intentar obtener el ID del select de planillas
+                        const selectPlanilla = document.getElementById('filtroPlanillaSelect');
+                        const planillaId = selectPlanilla.selectedOptions[0]?.dataset?.planillaId;
+
+                        if (planillaId) {
+                            window.mostrarBadgePosiciones(planillaId, filtrosActivos.codigoPlanilla);
+                        } else {
+                            // Buscar por código si no está en el select
+                            window.buscarYMostrarBadgePlanilla(filtrosActivos.codigoPlanilla);
+                        }
+                    } else {
+                        window.cerrarBadgePosiciones();
+                    }
                 }
 
                 // Debounce para evitar ejecutar la función demasiadas veces

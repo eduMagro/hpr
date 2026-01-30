@@ -1752,7 +1752,7 @@ class ProduccionController extends Controller
 
             // Obtener datos de la planilla con su obra
             $planilla = Planilla::with('obra:id,obra')
-                ->select('id', 'codigo', 'descripcion', 'ensamblado', 'comentario', 'obra_id')
+                ->select('id', 'codigo', 'descripcion', 'ensamblado', 'comentario', 'obra_id', 'estado')
                 ->find($planillaId);
 
             $elementos = Elemento::where('planilla_id', $planillaId)
@@ -1792,6 +1792,7 @@ class ProduccionController extends Controller
                     'ensamblado' => $planilla->ensamblado ?? null,
                     'comentario' => $planilla->comentario ?? null,
                     'obra' => $planilla->obra->obra ?? null,
+                    'estado' => $planilla->estado ?? null,
                 ]
             ]);
         } else {

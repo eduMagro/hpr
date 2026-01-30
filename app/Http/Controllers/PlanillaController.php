@@ -1102,8 +1102,16 @@ class PlanillaController extends Controller
 
         // Solo aplicar filtro de búsqueda si hay texto
         if ($busqueda !== '') {
-            $query->where(function ($q) use ($busqueda) {
+            // Convertir codigo_limpio a patron de búsqueda (ej: "2025-6530" -> "2025-%6530")
+            $patronCodigo = $busqueda;
+            if (preg_match('/^(\d{4})-(\d+)$/', $busqueda, $matches)) {
+                // Si es formato año-numero, buscar con comodín para los ceros
+                $patronCodigo = $matches[1] . '-%' . $matches[2];
+            }
+
+            $query->where(function ($q) use ($busqueda, $patronCodigo) {
                 $q->where('codigo', 'like', "%{$busqueda}%")
+                    ->orWhere('codigo', 'like', $patronCodigo)
                     ->orWhereHas('obra', function ($q2) use ($busqueda) {
                         $q2->where('obra', 'like', "%{$busqueda}%");
                     })
@@ -1122,6 +1130,7 @@ class PlanillaController extends Controller
             'planillas' => $planillas->map(fn($p) => [
                 'id' => $p->id,
                 'codigo' => $p->codigo,
+                'codigo_limpio' => $p->codigo_limpio,
                 'obra' => $p->obra->obra ?? '',
                 'cliente' => $p->cliente->empresa ?? '',
                 'fecha_entrega' => $p->fecha_estimada_entrega,
