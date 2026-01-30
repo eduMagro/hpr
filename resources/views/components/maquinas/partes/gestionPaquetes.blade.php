@@ -1,17 +1,44 @@
 {{-- ================================================================
-    COMPONENTE: Gestión de Paquetes por Planilla
-    Ubicación: Columna derecha de maquinas.show
-    ================================================================ --}}
+COMPONENTE: Gestión de Paquetes por Planilla
+Ubicación: Columna derecha de maquinas.show
+================================================================ --}}
 
-<div class="w-full bg-white self-start" x-data="gestionPaquetes()">
+<div class="w-full self-start" x-data="gestionPaquetes()">
 
     {{-- HEADER --}}
-    <div class="flex items-center justify-between">
-        <h3 class="font-bold text-xl text-gray-800">📦 Paquetes de Planilla</h3>
-        <button @click="cargarPaquetes()" class="text-blue-600 hover:text-blue-800 transition" title="Recargar paquetes">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+    <div class="flex items-center justify-between p-4 pb-0">
+        <h3 class="font-bold text-lg text-blue-600 dark:text-blue-400 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                class="lucide lucide-boxes-icon lucide-boxes">
+                <path
+                    d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z" />
+                <path d="m7 16.5-4.74-2.85" />
+                <path d="m7 16.5 5-3" />
+                <path d="M7 16.5v5.17" />
+                <path
+                    d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z" />
+                <path d="m17 16.5-5-3" />
+                <path d="m17 16.5 4.74-2.85" />
+                <path d="M17 16.5v5.17" />
+                <path
+                    d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z" />
+                <path d="M12 8 7.26 5.15" />
+                <path d="m12 8 4.74-2.85" />
+                <path d="M12 13.5V8" />
+            </svg>
+            <p>Paquetes de planilla</p>
+        </h3>
+        <button @click="cargarPaquetes()"
+            class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-600 flex items-center justify-center hover:-rotate-180 transition-all duration-[0.5s] ease-in-out"
+            title="Recargar paquetes">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                class="lucide lucide-refresh-ccw-icon lucide-refresh-ccw">
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                <path d="M16 16h5v5" />
             </svg>
         </button>
     </div>
@@ -22,22 +49,22 @@
         <span class="text-sm text-blue-800">
             🔍 Filtrando: <strong x-text="paqueteFiltrado?.codigo"></strong>
         </span>
-        <button @click="limpiarFiltroPaquete()"
-            class="text-blue-600 hover:text-blue-800 font-bold text-lg" title="Quitar filtro">
+        <button @click="limpiarFiltroPaquete()" class="text-blue-600 hover:text-blue-800 font-bold text-lg"
+            title="Quitar filtro">
             ✕
         </button>
     </div>
 
     {{-- SELECTOR DE PLANILLA --}}
-    <div class="mb-4">
-        <label class="block text-sm font-semibold text-gray-700 mb-2">
+    <div class="p-4">
+        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
             Seleccionar Planilla:
         </label>
         <select x-model="planillaSeleccionada" @change="cargarPaquetes()"
-            class="select-planilla-gestion w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none">
-            <option value="">-- Seleccione una planilla --</option>
+            class="select-planilla-gestion w-full border border-gray-300 rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 focus:border-blue-500 focus:outline-none pr-7">
+            <option class="dark:text-gray-300 dark:bg-gray-700" value="">Seleccione una planilla</option>
             @foreach ($planillasActivas as $planilla)
-                <option value="{{ $planilla->id }}">
+                <option class="dark:text-gray-300 dark:bg-gray-700" value="{{ $planilla->id }}">
                     {{ $planilla->codigo }} - {{ $planilla->obra->obra ?? 'Sin obra' }}
                 </option>
             @endforeach
@@ -45,11 +72,11 @@
     </div>
 
     {{-- FILTRO DE MAQUINA --}}
-    <div class="mb-4">
-        <label class="inline-flex items-center gap-2 cursor-pointer">
+    <div>
+        <label class="inline-flex items-center gap-2 cursor-pointer p-4">
             <input type="checkbox" x-model="soloEstaMaquina" @change="cargarPaquetes()"
                 class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-            <span class="text-sm text-gray-700">Solo paquetes de esta maquina</span>
+            <span class="text-sm text-gray-700 dark:text-gray-300">Solo paquetes de esta maquina</span>
         </label>
     </div>
 
@@ -86,8 +113,7 @@
                 <div class="flex items-center justify-between mb-3">
                     <div>
                         <h4 class="font-bold text-lg text-gray-900 cursor-pointer hover:text-blue-600 transition"
-                            x-text="paquete.codigo"
-                            @click="filtrarEtiquetasPorPaquete(paquete)"
+                            x-text="paquete.codigo" @click="filtrarEtiquetasPorPaquete(paquete)"
                             title="Click para filtrar etiquetas de este paquete"></h4>
                         <p class="text-sm text-gray-600">
                             <span class="font-semibold" x-text="paquete.peso"></span> kg ·
@@ -208,8 +234,7 @@
         style="z-index: 99999 !important;">
         <div class="bg-white p-3 sm:p-4 rounded-lg w-full sm:w-[500px] md:w-[600px] max-w-[90vw] max-h-[70vh] flex flex-col shadow-lg relative"
             style="z-index: 100000 !important;">
-            <button id="cerrar-modal-elementos"
-                onclick="cerrarModalElementosPaquete()"
+            <button id="cerrar-modal-elementos" onclick="cerrarModalElementosPaquete()"
                 class="absolute top-2 right-2 text-red-600 hover:bg-red-100 w-7 h-7 flex items-center justify-center rounded text-lg"
                 style="z-index: 100001 !important;">
                 ✖
@@ -218,8 +243,7 @@
             <h2 class="text-lg font-semibold mb-3 text-center pr-6">Elementos del paquete <span
                     id="modal-paquete-codigo"></span></h2>
 
-            <div class="overflow-y-auto flex-1 min-h-0"
-                style="max-height: 60vh; position: relative; z-index: 100000;">
+            <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 60vh; position: relative; z-index: 100000;">
                 <div id="canvas-elementos-paquete" class="border max-w-full h-auto"></div>
             </div>
         </div>
@@ -249,8 +273,8 @@
 </style>
 
 {{-- ================================================================
-    SCRIPT ALPINE.JS
-    ================================================================ --}}
+SCRIPT ALPINE.JS
+================================================================ --}}
 <script>
     function gestionPaquetes() {
         return {
@@ -724,7 +748,7 @@
     }
 
     // Función global para cerrar el modal de elementos del paquete
-    window.cerrarModalElementosPaquete = function() {
+    window.cerrarModalElementosPaquete = function () {
         const modal = document.getElementById('modal-elementos-paquete');
         if (modal) {
             modal.classList.add('hidden');

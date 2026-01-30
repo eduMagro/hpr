@@ -19,11 +19,10 @@
             }, 400);
         });
     }
-}"
-    class="bg-gray-900 dark:bg-gray-950 border-b border-gray-800 dark:border-gray-700 shadow-sm flex-shrink-0 transition-colors sticky top-0 z-[60]">
+}" class="bg-gray-900 dark:bg-gray-950 shadow-sm flex-shrink-0 transition-colors sticky top-0 z-[60]">
     <!-- Primary Navigation Menu -->
     <div class="w-full">
-        <div class="flex justify-between items-center h-14">
+        <div class="flex justify-between items-center h-14 border-b box-border border-gray-800 dark:border-blue-600">
             <!-- Logo & Title -->
             <div class="flex items-center space-x-4 relative overflow-hidden">
                 <!-- Botón hamburguesa para móvil (solo usuarios con sidebar) -->

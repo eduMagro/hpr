@@ -97,7 +97,7 @@
         });
     });
 
-    window.sliderConsumo = function(onComplete) {
+    window.sliderConsumo = function (onComplete) {
         return {
             dragging: false,
             startX: 0,
@@ -185,7 +185,7 @@
     };
 
     /* ------ Función global para confirmar productos manualmente ------ */
-    window.confirmarProductoManualmente = async function(codigo, ubicacionId, escaneadosActuales = []) {
+    window.confirmarProductoManualmente = async function (codigo, ubicacionId, escaneadosActuales = []) {
         if (!codigo) return false;
 
         const detalles = (window.detallesProductos || {})[codigo] || {};
@@ -203,7 +203,7 @@
                 '<p class="font-mono font-bold text-lg mb-2">' + codigo + '</p>' +
                 '<p class="text-sm text-gray-600 mb-3">Especificaciones:</p>' +
                 '<ul class="text-sm space-y-1">' +
-                especificaciones.map(function(e) {
+                especificaciones.map(function (e) {
                     return '<li>• ' + e + '</li>';
                 }).join('') +
                 '</ul>' +
@@ -234,7 +234,7 @@
                 const audioOk = document.getElementById('sonido-ok');
                 if (audioOk) {
                     audioOk.currentTime = 0;
-                    audioOk.play().catch(function() {});
+                    audioOk.play().catch(function () { });
                 }
 
                 swalToast.fire({
@@ -251,7 +251,7 @@
     };
 
     /* ------ Alpine factory per location ------ */
-    window.inventarioUbicacion = function(productosEsperados, nombreUbicacion) {
+    window.inventarioUbicacion = function (productosEsperados, nombreUbicacion) {
         const ubicacionSafe = nombreUbicacion ?? '';
         const listaBase = Array.isArray(productosEsperados) ? productosEsperados.filter(Boolean) : [];
 
@@ -435,7 +435,7 @@
                 }
                 this.audioOk.currentTime = 0;
                 console.log('[INV] Reproduciendo sonido: scan-ok');
-                this.audioOk.play().catch(() => {});
+                this.audioOk.play().catch(() => { });
             },
             reproducirError() {
                 if (!this.audioError) this.audioError = document.getElementById('sonido-error');
@@ -445,7 +445,7 @@
                 }
                 this.audioError.currentTime = 0;
                 console.log('[INV] Reproduciendo sonido: scan-error');
-                this.audioError.play().catch(() => {});
+                this.audioError.play().catch(() => { });
                 this.anunciarFallo('Producto no esperado en esta ubicación.');
             },
             reproducirPedo() {
@@ -456,7 +456,7 @@
                 }
                 this.audioPedo.currentTime = 0;
                 console.log('[INV] Reproduciendo sonido: scan-error (invalido)');
-                this.audioPedo.play().catch(() => {});
+                this.audioPedo.play().catch(() => { });
                 this.anunciarFallo('El código escaneado no es válido.');
             },
             reproducirEstaEnOtraUbi() {
@@ -468,7 +468,7 @@
                 }
                 this.audioEstaEnOtraUbi.currentTime = 0;
                 console.log('[INV] Reproduciendo sonido: scan-error (otra ubicacion)');
-                this.audioEstaEnOtraUbi.play().catch(() => {});
+                this.audioEstaEnOtraUbi.play().catch(() => { });
                 this.anunciarFallo('El producto está asignado a otra ubicación.');
             },
             reproducirNoTieneUbicacion() {
@@ -480,7 +480,7 @@
                 }
                 this.audioNoTieneUbicacion.currentTime = 0;
                 console.log('[INV] Reproduciendo sonido: scan-error (sin ubicacion)');
-                this.audioNoTieneUbicacion.play().catch(() => {});
+                this.audioNoTieneUbicacion.play().catch(() => { });
                 this.anunciarFallo('El producto no tiene ubicación registrada.');
             },
             reproducirConsumido() {
@@ -491,7 +491,7 @@
                 }
                 this.audioConsumido.currentTime = 0;
                 console.log('[INV] Reproduciendo sonido: scan-error (consumido)');
-                this.audioConsumido.play().catch(() => {});
+                this.audioConsumido.play().catch(() => { });
                 this.anunciarFallo('El producto ya está consumido.');
             },
 
@@ -695,18 +695,18 @@
 
             restablecerConsumido(codigo, pesoStock) {
                 fetch("{{ route('productos.restablecerInventario', ['codigo' => '___CODIGO___']) }}".replace(
-                        '___CODIGO___', codigo), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        },
-                        body: JSON.stringify({
-                            ubicacion_id: this.nombreUbicacion,
-                            peso_stock: pesoStock
-                        })
+                    '___CODIGO___', codigo), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        ubicacion_id: this.nombreUbicacion,
+                        peso_stock: pesoStock
                     })
+                })
                     .then(async res => {
                         const data = await res.json();
                         if (!res.ok || data.success === false) {
@@ -767,17 +767,17 @@
 
             asignarDesdeFabricando(codigo) {
                 fetch("{{ route('productos.liberarMaquinaInventario', ['codigo' => '___CODIGO___']) }}".replace(
-                        '___CODIGO___', codigo), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        },
-                        body: JSON.stringify({
-                            ubicacion_id: this.nombreUbicacion
-                        })
+                    '___CODIGO___', codigo), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        ubicacion_id: this.nombreUbicacion
                     })
+                })
                     .then(async res => {
                         const data = await res.json();
                         if (!res.ok || data.success === false) {
@@ -834,17 +834,17 @@
             // ?? Reasignar producto
             reasignarProducto(codigo) {
                 fetch("{{ route('productos.editarUbicacionInventario', ['codigo' => '___CODIGO___']) }}".replace(
-                        '___CODIGO___', codigo), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        },
-                        body: JSON.stringify({
-                            ubicacion_id: this.nombreUbicacion
-                        })
+                    '___CODIGO___', codigo), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        ubicacion_id: this.nombreUbicacion
                     })
+                })
                     .then(res => res.json())
                     .then(data => {
                         if (data.success) {
@@ -892,7 +892,7 @@
 </script>
 
 <script>
-    window.notificarProgramadorInventario = function({
+    window.notificarProgramadorInventario = function ({
         ubicacion,
         faltantes,
         inesperados
@@ -914,22 +914,22 @@
         }).then(result => {
             if (result.isConfirmed) {
                 fetch(RUTA_ALERTA, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        },
-                        body: JSON.stringify({
-                            tipo: 'inventario',
-                            mensaje: `
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        tipo: 'inventario',
+                        mensaje: `
 Ubicación: ${ubicacion}
 Faltantes: ${faltantes.join(', ') || ''}
 Inesperados: ${inesperados.join(', ') || ''}
                         `.trim(),
-                            enviar_a_departamentos: ['Programador']
-                        })
+                        enviar_a_departamentos: ['Programador']
                     })
+                })
                     .then(async res => {
                         const data = await res.json();
                         if (!res.ok || data.success === false) {
@@ -1053,7 +1053,7 @@ Inesperados: ${inesperados.join(', ') || ''}
         document.body.dataset.ubicacionesPageInit = 'false';
     });
 
-    window.paginaUbicaciones = function() {
+    window.paginaUbicaciones = function () {
         return {
             openModal: false,
             modalConsumo: false,
@@ -1430,11 +1430,8 @@ Inesperados: ${inesperados.join(', ') || ''}
 <x-app-layout>
     <x-slot name="title">Ubicaciones - {{ config('app.name') }}</x-slot>
 
-    <x-page-header
-        title="Gestión de Ubicaciones"
-        subtitle="Crea, navega y revisa las ubicaciones del almacén"
-        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>'
-    />
+    <x-page-header title="Gestión de Ubicaciones" subtitle="Crea, navega y revisa las ubicaciones del almacén"
+        icon='<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>' />
 
     <x-menu.ubicaciones :obras="$obras" :obra-actual-id="$obraActualId" color-base="emerald" />
 
@@ -1477,7 +1474,8 @@ Inesperados: ${inesperados.join(', ') || ''}
                         </div>
 
                         <!-- Botón Leyenda (Solo visible en modo inventario) -->
-                        <div x-data="{ showLeyenda: false }" class="relative" x-show="$store.inv.modoInventario" x-cloak>
+                        <div x-data="{ showLeyenda: false }" class="relative" x-show="$store.inv.modoInventario"
+                            x-cloak>
                             <button @click="showLeyenda = !showLeyenda"
                                 class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl shadow transition-all max-md:text-[12px]"
                                 title="Leyenda de colores">
@@ -1581,13 +1579,20 @@ Inesperados: ${inesperados.join(', ') || ''}
                             <span
                                 class="inline-flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-full text-white font-bold text-sm sm:text-base"
                                 :class="!($store.inv && $store.inv.modoInventario) ? 'bg-gray-600' : (
-                                    estadoSectores['{{ $sector }}'] === 'ok' ? 'bg-green-600' :
-                                    estadoSectores['{{ $sector }}'] === 'fabricando' ? 'bg-purple-600' :
-                                    estadoSectores['{{ $sector }}'] === 'consumido' ? 'bg-blue-600' :
-                                    estadoSectores['{{ $sector }}'] === 'ambar' ? 'bg-amber-500' :
-                                    estadoSectores['{{ $sector }}'] === 'rojo' ? 'bg-red-600' :
-                                    'bg-gray-600'
-                                )">S{{ $sector }}</span>
+                                        estadoSectores['{{ $sector }}'] === 'ok' ? 'bg-green-600' :
+                                        estadoSectores['{{ $sector }}'] === 'fabricando' ? 'bg-purple-600' :
+                                        estadoSectores['{{ $sector }}'] === 'consumido' ? 'bg-blue-600' :
+                                        estadoSectores['{{ $sector }}'] === 'ambar' ? 'bg-amber-500' :
+                                        estadoSectores['{{ $sector }}'] === 'rojo' ? 'bg-red-600' :
+                                        'bg-gray-600'
+                                    )">S{{ $sector }}</span>
+                            estadoSectores['{{ $sector }}'] === 'ok' ? 'bg-green-600' :
+                            estadoSectores['{{ $sector }}'] === 'fabricando' ? 'bg-purple-600' :
+                            estadoSectores['{{ $sector }}'] === 'consumido' ? 'bg-blue-600' :
+                            estadoSectores['{{ $sector }}'] === 'ambar' ? 'bg-amber-500' :
+                            estadoSectores['{{ $sector }}'] === 'rojo' ? 'bg-red-600' :
+                            'bg-gray-600'
+                            )">S{{ $sector }}</span>
                             <div class="flex flex-col gap-1 items-start">
                                 <p class="text-base sm:text-lg font-semibold leading-tight">Sector {{ $sector }}
                                 </p>
@@ -1600,9 +1605,8 @@ Inesperados: ${inesperados.join(', ') || ''}
                                         <span class="opacity-40">|</span>
                                         <span class="flex items-center gap-1 font-medium"
                                             :class="getPendientesSector('{{ $sector }}') > 0 ? 'text-orange-300' :
-                                                'text-green-400'">
-                                            Pendientes: <span
-                                                x-text="getPendientesSector('{{ $sector }}')"></span>
+                                                                                                                                                                            'text-green-400'">
+                                            Pendientes: <span x-text="getPendientesSector('{{ $sector }}')"></span>
                                         </span>
                                     </span>
                                 </p>
@@ -1612,10 +1616,9 @@ Inesperados: ${inesperados.join(', ') || ''}
                             <span class="text-xs sm:text-sm text-white/70">{{ count($ubicaciones) }}
                                 ubicaciones</span>
                             <svg :class="openSectors['{{ $sector }}'] ? 'rotate-180' : ''"
-                                class="w-4 h-4 sm:w-5 sm:h-5 transition-transform" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 9l-7 7-7-7" />
+                                class="w-4 h-4 sm:w-5 sm:h-5 transition-transform" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                         </div>
                     </button>
@@ -1625,88 +1628,88 @@ Inesperados: ${inesperados.join(', ') || ''}
                         @foreach ($ubicaciones as $ubicacion)
                             <div class="border rounded-xl p-2 md:p-4 flex flex-col gap-2 shadow-sm hover:shadow-md transition min-w-[282px] max-md:w-full"
                                 x-data="{
-                                    productos: @js($ubicacion->productos->pluck('codigo')->values()),
-                                    paquetes: @js($ubicacion->paquetes->pluck('codigo')->values()),
-                                    ubicId: '{{ $ubicacion->id }}',
-                                    sector: '{{ $sector }}',
-                                    estado: 'pendiente',
-                                    escaneadosCache: [],
-                                    init() {
-                                        this.actualizarEscaneadosCache();
-                                        this.calcularEstado();
-                                        window.addEventListener('inventario-actualizado', (e) => {
-                                            this.actualizarEscaneadosCache();
-                                            this.calcularEstado();
-                                        });
-                                        window.addEventListener('producto-reasignado', (e) => {
-                                            const { codigo, nuevaUbicacion } = e.detail || {};
-                                            if (!codigo) return;
-                                            if (nuevaUbicacion !== undefined && nuevaUbicacion !== null && nuevaUbicacion.toString() === this.ubicId.toString()) {
-                                                if (!this.productos.includes(codigo)) this.productos.push(codigo);
-                                            } else {
-                                                this.productos = this.productos.filter(c => c !== codigo);
-                                            }
-                                            this.actualizarEscaneadosCache();
-                                            this.calcularEstado();
-                                        });
-                                    },
-                                    actualizarEscaneadosCache() {
-                                        this.escaneadosCache = JSON.parse(localStorage.getItem(`inv-${this.ubicId}`) || '[]');
-                                    },
-                                    calcularEstado() {
-                                        const esperados = this.productos || [];
-                                        const escaneados = JSON.parse(localStorage.getItem(`inv-${this.ubicId}`) || '[]');
-                                        const sospechosos = JSON.parse(localStorage.getItem(`sospechosos-${this.ubicId}`) || '[]');
-                                        const estadosGlobal = window.productosEstados || {};
-                                        const maquinasGlobal = window.productosMaquinas || {};
-                                        let estado = esperados.length === 0 ? 'ok' : (escaneados.length === esperados.length ? 'ok' : 'pendiente');
-                                
-                                        const hayFabricando = esperados.some(c => estadosGlobal[c] === 'fabricando' && maquinasGlobal[c]);
-                                        if (hayFabricando) estado = 'fabricando';
-                                
-                                        for (const codigo of sospechosos) {
-                                            const estadoProd = (window.productosEstados || {})[codigo];
-                                            const ubicAsign = (window.productosAsignados || {})[codigo];
-                                            if (estadoProd === 'consumido') {
-                                                estado = 'consumido';
-                                                break;
-                                            }
-                                            if (estadoProd === 'fabricando' && maquinasGlobal[codigo]) {
-                                                estado = 'fabricando';
-                                                break;
-                                            }
-                                            if (ubicAsign && ubicAsign.toString() !== this.ubicId.toString()) {
-                                                estado = 'ambar';
-                                                break;
-                                            }
-                                            if (!ubicAsign) {
-                                                estado = 'rojo';
-                                                break;
-                                            }
-                                        }
-                                
-                                        this.estado = estado;
-                                        window.dispatchEvent(new CustomEvent('ubicacion-estado', {
-                                            detail: { ubicacionId: this.ubicId, sector: this.sector, estado }
-                                        }));
-                                    },
-                                    estaEscaneado(codigo) {
-                                        return this.escaneadosCache.includes(codigo);
-                                    }
-                                }"
+                                                                                                                                                                                                                                                                                            productos: @js($ubicacion->productos->pluck('codigo')->values()),
+                                                                                                                                                                                                                                                                                            paquetes: @js($ubicacion->paquetes->pluck('codigo')->values()),
+                                                                                                                                                                                                                                                                                            ubicId: '{{ $ubicacion->id }}',
+                                                                                                                                                                                                                                                                                            sector: '{{ $sector }}',
+                                                                                                                                                                                                                                                                                            estado: 'pendiente',
+                                                                                                                                                                                                                                                                                            escaneadosCache: [],
+                                                                                                                                                                                                                                                                                            init() {
+                                                                                                                                                                                                                                                                                                this.actualizarEscaneadosCache();
+                                                                                                                                                                                                                                                                                                this.calcularEstado();
+                                                                                                                                                                                                                                                                                                window.addEventListener('inventario-actualizado', (e) => {
+                                                                                                                                                                                                                                                                                                    this.actualizarEscaneadosCache();
+                                                                                                                                                                                                                                                                                                    this.calcularEstado();
+                                                                                                                                                                                                                                                                                                });
+                                                                                                                                                                                                                                                                                                window.addEventListener('producto-reasignado', (e) => {
+                                                                                                                                                                                                                                                                                                    const { codigo, nuevaUbicacion } = e.detail || {};
+                                                                                                                                                                                                                                                                                                    if (!codigo) return;
+                                                                                                                                                                                                                                                                                                    if (nuevaUbicacion !== undefined && nuevaUbicacion !== null && nuevaUbicacion.toString() === this.ubicId.toString()) {
+                                                                                                                                                                                                                                                                                                        if (!this.productos.includes(codigo)) this.productos.push(codigo);
+                                                                                                                                                                                                                                                                                                    } else {
+                                                                                                                                                                                                                                                                                                        this.productos = this.productos.filter(c => c !== codigo);
+                                                                                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                                                                                    this.actualizarEscaneadosCache();
+                                                                                                                                                                                                                                                                                                    this.calcularEstado();
+                                                                                                                                                                                                                                                                                                });
+                                                                                                                                                                                                                                                                                            },
+                                                                                                                                                                                                                                                                                            actualizarEscaneadosCache() {
+                                                                                                                                                                                                                                                                                                this.escaneadosCache = JSON.parse(localStorage.getItem(`inv-${this.ubicId}`) || '[]');
+                                                                                                                                                                                                                                                                                            },
+                                                                                                                                                                                                                                                                                            calcularEstado() {
+                                                                                                                                                                                                                                                                                                const esperados = this.productos || [];
+                                                                                                                                                                                                                                                                                                const escaneados = JSON.parse(localStorage.getItem(`inv-${this.ubicId}`) || '[]');
+                                                                                                                                                                                                                                                                                                const sospechosos = JSON.parse(localStorage.getItem(`sospechosos-${this.ubicId}`) || '[]');
+                                                                                                                                                                                                                                                                                                const estadosGlobal = window.productosEstados || {};
+                                                                                                                                                                                                                                                                                                const maquinasGlobal = window.productosMaquinas || {};
+                                                                                                                                                                                                                                                                                                let estado = esperados.length === 0 ? 'ok' : (escaneados.length === esperados.length ? 'ok' : 'pendiente');
+
+                                                                                                                                                                                                                                                                                                const hayFabricando = esperados.some(c => estadosGlobal[c] === 'fabricando' && maquinasGlobal[c]);
+                                                                                                                                                                                                                                                                                                if (hayFabricando) estado = 'fabricando';
+
+                                                                                                                                                                                                                                                                                                for (const codigo of sospechosos) {
+                                                                                                                                                                                                                                                                                                    const estadoProd = (window.productosEstados || {})[codigo];
+                                                                                                                                                                                                                                                                                                    const ubicAsign = (window.productosAsignados || {})[codigo];
+                                                                                                                                                                                                                                                                                                    if (estadoProd === 'consumido') {
+                                                                                                                                                                                                                                                                                                        estado = 'consumido';
+                                                                                                                                                                                                                                                                                                        break;
+                                                                                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                                                                                    if (estadoProd === 'fabricando' && maquinasGlobal[codigo]) {
+                                                                                                                                                                                                                                                                                                        estado = 'fabricando';
+                                                                                                                                                                                                                                                                                                        break;
+                                                                                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                                                                                    if (ubicAsign && ubicAsign.toString() !== this.ubicId.toString()) {
+                                                                                                                                                                                                                                                                                                        estado = 'ambar';
+                                                                                                                                                                                                                                                                                                        break;
+                                                                                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                                                                                    if (!ubicAsign) {
+                                                                                                                                                                                                                                                                                                        estado = 'rojo';
+                                                                                                                                                                                                                                                                                                        break;
+                                                                                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                                                                                }
+
+                                                                                                                                                                                                                                                                                                this.estado = estado;
+                                                                                                                                                                                                                                                                                                window.dispatchEvent(new CustomEvent('ubicacion-estado', {
+                                                                                                                                                                                                                                                                                                    detail: { ubicacionId: this.ubicId, sector: this.sector, estado }
+                                                                                                                                                                                                                                                                                                }));
+                                                                                                                                                                                                                                                                                            },
+                                                                                                                                                                                                                                                                                            estaEscaneado(codigo) {
+                                                                                                                                                                                                                                                                                                return this.escaneadosCache.includes(codigo);
+                                                                                                                                                                                                                                                                                            }
+                                                                                                                                                                                                                                                                                        }"
                                 :class="[
-                                    $store.inv && $store.inv.modoInventario ?
-                                    'cursor-pointer hover:ring-2 hover:ring-blue-400' : '',
-                                    $store.inv && $store.inv.modoInventario ?
-                                    (estado === 'ok' ? 'border-green-400 bg-green-200 dark:bg-green-950' :
-                                        estado === 'fabricando' ?
-                                        'border-purple-400 bg-purple-200 dark:bg-purple-950' :
-                                        estado === 'consumido' ? 'border-blue-400 bg-blue-200 dark:bg-blue-950' :
-                                        estado === 'ambar' ? 'border-amber-400 bg-amber-200 dark:bg-amber-950' :
-                                        estado === 'rojo' ? 'border-red-500 bg-red-200 dark:bg-red-950' :
-                                        'border-gray-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800') :
-                                    'border-gray-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800'
-                                ]"
+                                                                                                                                                                                                                                                                                            $store.inv && $store.inv.modoInventario ?
+                                                                                                                                                                                                                                                                                            'cursor-pointer hover:ring-2 hover:ring-blue-400' : '',
+                                                                                                                                                                                                                                                                                            $store.inv && $store.inv.modoInventario ?
+                                                                                                                                                                                                                                                                                            (estado === 'ok' ? 'border-green-400 bg-green-200 dark:bg-green-950' :
+                                                                                                                                                                                                                                                                                                estado === 'fabricando' ?
+                                                                                                                                                                                                                                                                                                'border-purple-400 bg-purple-200 dark:bg-purple-950' :
+                                                                                                                                                                                                                                                                                                estado === 'consumido' ? 'border-blue-400 bg-blue-200 dark:bg-blue-950' :
+                                                                                                                                                                                                                                                                                                estado === 'ambar' ? 'border-amber-400 bg-amber-200 dark:bg-amber-950' :
+                                                                                                                                                                                                                                                                                                estado === 'rojo' ? 'border-red-500 bg-red-200 dark:bg-red-950' :
+                                                                                                                                                                                                                                                                                                'border-gray-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800') :
+                                                                                                                                                                                                                                                                                            'border-gray-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800'
+                                                                                                                                                                                                                                                                                        ]"
                                 @click="abrirInventario('{{ $ubicacion->id }}', @js($ubicacion->productos->pluck('codigo')->values()), {{ json_encode($ubicacion->codigo ?? 'SIN-CODIGO') }})">
                                 <div class="flex items-center justify-between w-full">
                                     <div class="flex items-center gap-2">
@@ -1734,10 +1737,10 @@ Inesperados: ${inesperados.join(', ') || ''}
                                     <template x-for="prod in productos" :key="prod">
                                         <div class="rounded-md px-2 py-1 flex items-center gap-1"
                                             :class="[
-                                                $store.inv && $store.inv.modoInventario && estaEscaneado(prod) ?
-                                                'bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-500' :
-                                                'bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-400'
-                                            ]">
+                                                                                                                                                                                                                                                                                                        $store.inv && $store.inv.modoInventario && estaEscaneado(prod) ?
+                                                                                                                                                                                                                                                                                                        'bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-500' :
+                                                                                                                                                                                                                                                                                                        'bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-400'
+                                                                                                                                                                                                                                                                                                    ]">
                                             <!-- Checkmark icon for scanned products -->
                                             <svg x-show="$store.inv && $store.inv.modoInventario && estaEscaneado(prod)"
                                                 class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0"
@@ -1748,16 +1751,14 @@ Inesperados: ${inesperados.join(', ') || ''}
                                             </svg>
                                             <p class="text-[11px] font-semibold flex-1"
                                                 :class="[
-                                                    $store.inv && $store.inv.modoInventario && estaEscaneado(prod) ?
-                                                    'text-green-700 dark:text-green-300' :
-                                                    'text-gray-800 dark:text-gray-100'
-                                                ]">
+                                                                                                                                                                                                                                                                                                            $store.inv && $store.inv.modoInventario && estaEscaneado(prod) ?
+                                                                                                                                                                                                                                                                                                            'text-green-700 dark:text-green-300' :
+                                                                                                                                                                                                                                                                                                            'text-gray-800 dark:text-gray-100'
+                                                                                                                                                                                                                                                                                                        ]">
                                                 <span x-text="prod"></span> |
-                                                Ø <span
-                                                    x-text="window.detallesProductos?.[prod]?.diametro ?? 'N/D'"></span>
+                                                Ø <span x-text="window.detallesProductos?.[prod]?.diametro ?? 'N/D'"></span>
                                                 mm |
-                                                Cosl: <span
-                                                    x-text="window.detallesProductos?.[prod]?.colada ?? ''"></span>
+                                                Cosl: <span x-text="window.detallesProductos?.[prod]?.colada ?? ''"></span>
                                             </p>
                                         </div>
                                     </template>
@@ -1791,8 +1792,7 @@ Inesperados: ${inesperados.join(', ') || ''}
 
             <div x-show="$store.inv && $store.inv.modoInventario" x-cloak
                 class="w-full h-14 md:h-16 flex flex-col items-center justify-center border border-orange-200 dark:border-orange-700/70 rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/80 hover:border-orange-500 hover:shadow-md transition">
-                <button @click="abrirConsumos()"
-                    class="w-full flex items-center justify-between px-4 py-2.5 text-left">
+                <button @click="abrirConsumos()" class="w-full flex items-center justify-between px-4 py-2.5 text-left">
                     <div class="flex items-center gap-3">
                         <span
                             class="inline-flex items-center justify-center h-9 w-9 rounded-full bg-orange-600 text-white font-bold text-lg shadow-sm">
@@ -1830,18 +1830,16 @@ Inesperados: ${inesperados.join(', ') || ''}
                         <input type="hidden" name="almacen" value="{{ $codigoAlmacen }}">
 
                         <x-tabla.select name="sector" label="Sector" :options="collect(range(1, 20))
-                            ->mapWithKeys(
-                                fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)],
-                            )
-                            ->toArray()"
-                            placeholder="Ej. 01, 02, 03..." />
+        ->mapWithKeys(
+            fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)],
+        )
+        ->toArray()" placeholder="Ej. 01, 02, 03..." />
 
                         <x-tabla.select name="ubicacion" label="Ubicación" :options="collect(range(1, 100))
-                            ->mapWithKeys(
-                                fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)],
-                            )
-                            ->toArray()"
-                            placeholder="Ej. 01 a 100" />
+        ->mapWithKeys(
+            fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)],
+        )
+        ->toArray()" placeholder="Ej. 01 a 100" />
 
                         <x-tabla.input name="descripcion" label="Descripción"
                             placeholder="Ej. Entrada de barras largas" />
@@ -1864,8 +1862,8 @@ Inesperados: ${inesperados.join(', ') || ''}
             <div x-show="modalConsumo" x-transition x-cloak
                 class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur overflow-y-auto">
                 <div @click.away="modalConsumo = false"
-                    class="bg-white dark:bg-gray-900 w-screen md:max-w-4xl h-screen md:h-auto md:rounded-xl shadow-2xl md:mx-4 md:my-4 border border-gray-200 dark:border-gray-800">
-                    <div class="flex items-center justify-between p-6">
+                    class="bg-white dark:bg-gray-900 w-screen md:max-w-4xl h-screen md:h-auto md:rounded-xl md:shadow-2xl md:mx-4 md:my-4 md:border md:border-gray-200 md:dark:border-gray-800">
+                    <div class="flex items-center justify-between p-6 h-[10%]">
                         <div class="flex flex-col">
                             <h2 class="text-base md:text-lg lg:text-xl font-bold text-gray-800 dark:text-white">
                                 Materiales pendientes
@@ -1886,7 +1884,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                     </div>
 
                     <div
-                        class="bg-gray-50 dark:bg-gray-900/50 border-y border-gray-200 dark:border-gray-800 h-[80vh] md:h-auto md:max-h-[60vh] overflow-y-auto p-4">
+                        class="bg-gray-50 dark:bg-gray-900/50 border-y border-gray-200 dark:border-gray-800 h-[80%] md:h-auto md:max-h-[60vh] overflow-y-auto p-4">
                         <template x-if="!listaConsumos.length">
                             <div
                                 class="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
@@ -1906,8 +1904,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                     class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
                                     <div
                                         class="bg-gray-100 dark:bg-gray-700/50 px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                                        <span class="font-bold text-gray-900 dark:text-white"
-                                            x-text="ubicacion"></span>
+                                        <span class="font-bold text-gray-900 dark:text-white" x-text="ubicacion"></span>
                                         <span
                                             class="bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 text-[10px] font-bold px-2 py-0.5 rounded-full"
                                             x-text="items.length + ' pend.'"></span>
@@ -1938,12 +1935,12 @@ Inesperados: ${inesperados.join(', ') || ''}
                         </div>
                     </div>
 
-                    <div class="flex justify-center p-3 pt-4" x-data="sliderConsumo(() => consumirPendientes())"
-                        @pointermove.window="onDrag($event)" @pointerup.window="stopDrag()"
-                        @touchmove.window="onDrag($event)" @touchend.window="stopDrag()" @resize.window="recalcMax()"
-                        x-init="init()">
+                    <div class="flex justify-center items-center p-3 pt-4 h-[10%]"
+                        x-data="sliderConsumo(() => consumirPendientes())" @pointermove.window="onDrag($event)"
+                        @pointerup.window="stopDrag()" @touchmove.window="onDrag($event)" @touchend.window="stopDrag()"
+                        @resize.window="recalcMax()" x-init="init()">
                         <div x-ref="track"
-                            class="relative w-full max-w-2xl h-12 rounded-full bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 shadow-xl overflow-hidden select-none touch-none">
+                            class="relative w-full max-w-2xl max-h-12 h-full rounded-full bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 shadow-xl overflow-hidden select-none touch-none">
                             <div class="absolute inset-0 bg-white/10 blur-md opacity-60 pointer-events-none"></div>
                             <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                                 <p class="text-sm md:text-base font-semibold text-white tracking-wide select-none">
@@ -1952,13 +1949,12 @@ Inesperados: ${inesperados.join(', ') || ''}
                             </div>
 
                             <div x-ref="handle"
-                                class="absolute top-1 left-1 h-10 w-10 rounded-full bg-white text-orange-600 flex items-center justify-center shadow-md cursor-pointer active:scale-95"
+                                class="absolute top-[5%] left-1 h-[90%] aspect-square rounded-full bg-white text-orange-600 flex items-center justify-center shadow-md cursor-pointer active:scale-95"
                                 :class="{
                                     'transition-transform duration-300': !dragging,
                                     'transition-transform duration-75': dragging,
                                     'opacity-70 cursor-not-allowed': processing
-                                }"
-                                :style="`transform: translateX(${handleX}px);`"
+                                }" :style="`transform: translateX(${handleX}px);`"
                                 @pointerdown.prevent="startDrag($event)" @touchstart.prevent="startDrag($event)">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
                                     stroke-width="1.3" aria-hidden="true">
@@ -1979,8 +1975,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                     class="bg-white dark:bg-gray-900 w-full max-w-lg p-6 rounded-xl shadow-2xl mx-4 my-4 border border-gray-200 dark:border-gray-800">
                     <div class="flex items-center justify-between mb-6">
                         <h2 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -2014,8 +2009,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                     </div>
                                     <button @click="restaurarBackup(backup)"
                                         class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs font-bold text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:border-orange-200 transition-all flex items-center gap-1 shadow-sm">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                         </svg>
@@ -2045,11 +2039,13 @@ Inesperados: ${inesperados.join(', ') || ''}
             <div x-show="$store.inv.modalInventario" x-transition x-cloak
                 class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm sm:overflow-y-auto sm:pt-0 overflow-hidden"
                 @keydown.escape.window="!$store.inv.bloquearCierre && $store.inv.cerrarModalInventario()"
-                @click.self="!$store.inv.bloquearCierre && $store.inv.cerrarModalInventario()" x-init="document.body.style.overflow = 'hidden'"
-                x-destroy="document.body.style.overflow = ''" wire:ignore>
+                @click.self="!$store.inv.bloquearCierre && $store.inv.cerrarModalInventario()"
+                x-init="document.body.style.overflow = 'hidden'" x-destroy="document.body.style.overflow = ''"
+                wire:ignore>
                 <template x-if="$store.inv.modalInventario">
                     <div class="relative bg-white dark:bg-gray-900 w-full h-full sm:w-auto sm:h-auto sm:max-w-5xl sm:max-h-[90vh] sm:rounded-xl sm:m-4 shadow-2xl border-0 sm:border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col"
-                        x-data="inventarioUbicacion($store.inv.productosActuales, $store.inv.ubicacionActual)" :key="$store.inv.ubicacionActual">
+                        x-data="inventarioUbicacion($store.inv.productosActuales, $store.inv.ubicacionActual)"
+                        :key="$store.inv.ubicacionActual">
 
                         <!-- Header del modal -->
                         <div
@@ -2095,30 +2091,25 @@ Inesperados: ${inesperados.join(', ') || ''}
                                         ultimoCodigo) && !sospechosos.includes(ultimoCodigo)
                                 }">
                                 <div class="flex items-center gap-2">
-                                    <svg class="w-5 h-5"
-                                        :class="{
+                                    <svg class="w-5 h-5" :class="{
                                             'text-green-600': productosEsperados.includes(ultimoCodigo) && !sospechosos
                                                 .includes(ultimoCodigo),
                                             'text-red-600': sospechosos.includes(ultimoCodigo),
                                             'text-gray-600': !productosEsperados.includes(ultimoCodigo) && !sospechosos
                                                 .includes(ultimoCodigo)
-                                        }"
-                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     <div class="flex-1">
-                                        <div class="font-mono font-bold text-sm"
-                                            :class="{
+                                        <div class="font-mono font-bold text-sm" :class="{
                                                 'text-green-800 dark:text-green-200': productosEsperados.includes(
                                                     ultimoCodigo) && !sospechosos.includes(ultimoCodigo),
                                                 'text-red-800 dark:text-red-200': sospechosos.includes(ultimoCodigo),
                                                 'text-gray-800 dark:text-gray-200': !productosEsperados.includes(
                                                     ultimoCodigo) && !sospechosos.includes(ultimoCodigo)
-                                            }"
-                                            x-text="ultimoCodigo"></div>
-                                        <div class="text-xs mt-0.5"
-                                            :class="{
+                                            }" x-text="ultimoCodigo"></div>
+                                        <div class="text-xs mt-0.5" :class="{
                                                 'text-green-700 dark:text-green-300': productosEsperados.includes(
                                                     ultimoCodigo) && !sospechosos.includes(ultimoCodigo),
                                                 'text-red-700 dark:text-red-300': sospechosos.includes(ultimoCodigo),
@@ -2133,8 +2124,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                 colada</span>
                                         </div>
                                     </div>
-                                    <div class="text-xs font-semibold px-2 py-1 rounded"
-                                        :class="{
+                                    <div class="text-xs font-semibold px-2 py-1 rounded" :class="{
                                             'bg-green-200 text-green-800': productosEsperados.includes(ultimoCodigo) &&
                                                 !sospechosos.includes(ultimoCodigo),
                                             'bg-red-200 text-red-800': sospechosos.includes(ultimoCodigo),
@@ -2217,10 +2207,8 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                 </tr>
                                             </thead>
                                             <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                                                <template x-for="(codigo, idx) in productosEsperados"
-                                                    :key="codigo">
-                                                    <tr
-                                                        :class="{
+                                                <template x-for="(codigo, idx) in productosEsperados" :key="codigo">
+                                                    <tr :class="{
                                                             'bg-green-50 dark:bg-green-900/20': productoEscaneado(
                                                                 codigo),
                                                             'ring-2 ring-green-500 shadow-md scale-[1.01] transition-all duration-300': ultimoCodigo ===
@@ -2305,8 +2293,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                     <!-- Vista mobile -->
                                     <div class="sm:hidden space-y-2 p-3">
                                         <template x-for="(codigo, idx) in productosEsperados" :key="codigo">
-                                            <div class="border rounded-lg p-3"
-                                                :class="{
+                                            <div class="border rounded-lg p-3" :class="{
                                                     'bg-green-50 dark:bg-green-900/20 border-green-200': productoEscaneado(
                                                         codigo),
                                                     'bg-white dark:bg-gray-800 border-gray-200': !productoEscaneado(
@@ -2354,8 +2341,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                         </template>
 
                                         <!-- Productos añadidos dinámicamente (mobile) -->
-                                        <template x-for="codigo in productosAnadidos()"
-                                            :key="'added-mobile-' + codigo">
+                                        <template x-for="codigo in productosAnadidos()" :key="'added-mobile-' + codigo">
                                             <div
                                                 class="border rounded-lg p-2 bg-blue-50 dark:bg-blue-900/20 border-blue-200">
                                                 <div class="flex justify-between items-center">
@@ -2451,11 +2437,9 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                         :class="esConsumido ? 'bg-blue-500/80' : (esFabricando ?
                                                             'bg-purple-500/80' : (hasId ? 'bg-amber-500/80' :
                                                                 'bg-red-500/80'))"></span>
-                                                    <span class="font-mono text-sm font-semibold"
-                                                        :class="esConsumido ? 'text-blue-600' : (esFabricando ?
+                                                    <span class="font-mono text-sm font-semibold" :class="esConsumido ? 'text-blue-600' : (esFabricando ?
                                                             'text-purple-600' : (hasId ? 'text-amber-600' :
-                                                                'text-red-800'))"
-                                                        x-text="codigo"></span>
+                                                                'text-red-800'))" x-text="codigo"></span>
                                                 </div>
                                                 <div
                                                     class="text-[10px] md:text-xs text-gray-600 px-2 py-0.5 rounded flex gap-2">
@@ -2475,8 +2459,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                     </span>
                                                 </div>
                                             </div>
-                                            <button x-show="esConsumido"
-                                                @click="confirmarRestablecerConsumido(codigo)"
+                                            <button x-show="esConsumido" @click="confirmarRestablecerConsumido(codigo)"
                                                 class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
                                                 Restablecer aquí
                                             </button>
@@ -2514,8 +2497,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                     @click="$store.inv.showInesperados = !$store.inv.showInesperados">
                                     <div class="flex items-center gap-3">
                                         <div class="flex flex-col items-start">
-                                            <span
-                                                class="text-sm font-semibold text-red-700 dark:text-red-400">Productos
+                                            <span class="text-sm font-semibold text-red-700 dark:text-red-400">Productos
                                                 inesperados</span>
                                             <span class="text-xs text-red-600 dark:text-red-500"
                                                 x-text="`${sospechosos.length} producto${sospechosos.length !== 1 ? 's' : ''}`"></span>
@@ -2616,8 +2598,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                 get esFabricando() {
                                                     return (this.estado === 'fabricando' && this.maquinaId);
                                                 }
-                                            }"
-                                            :class="{
+                                            }" :class="{
                                                 'text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800': esConsumido,
                                                 'text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800 bg-white dark:bg-gray-800': esFabricando,
                                                 'text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-800':
@@ -2635,13 +2616,15 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                     <span x-show="esFabricando">Fabricando</span>
                                                     <span x-show="!esConsumido && !esFabricando && hasId">Otra
                                                         ubicación</span>
-                                                    <span x-show="!esConsumido && !esFabricando && !hasId && esAlmacenado">Almacenado sin ubicación</span>
-                                                    <span x-show="!esConsumido && !esFabricando && !hasId && !esAlmacenado">Sin
+                                                    <span
+                                                        x-show="!esConsumido && !esFabricando && !hasId && esAlmacenado">Almacenado
+                                                        sin ubicación</span>
+                                                    <span
+                                                        x-show="!esConsumido && !esFabricando && !hasId && !esAlmacenado">Sin
                                                         registrar</span>
                                                 </span>
                                             </div>
-                                            <button x-show="esConsumido"
-                                                @click="confirmarRestablecerConsumido(codigo)"
+                                            <button x-show="esConsumido" @click="confirmarRestablecerConsumido(codigo)"
                                                 class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
                                                 Restablecer aquí
                                             </button>
@@ -2792,13 +2775,11 @@ Inesperados: ${inesperados.join(', ') || ''}
                     <!-- Lista de productos -->
                     <div class="flex-1 overflow-y-auto p-3 space-y-2">
                         <template x-for="(codigo, idx) in productosEsperados" :key="'detalle-' + codigo">
-                            <div class="rounded-lg border p-3 transition-all"
-                                :class="{
+                            <div class="rounded-lg border p-3 transition-all" :class="{
                                     'bg-green-50 dark:bg-green-900/20 border-green-200': productoEscaneado(codigo),
                                     'bg-white dark:bg-gray-800 border-gray-200 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-[0.98]':
                                         !productoEscaneado(codigo)
-                                }"
-                                @click="!productoEscaneado(codigo) && confirmarManualmente(codigo)">
+                                }" @click="!productoEscaneado(codigo) && confirmarManualmente(codigo)">
                                 <div class="flex justify-between items-center">
                                     <div class="flex w-full gap-2 items-center justify-start">
                                         <span

@@ -1,60 +1,62 @@
 <x-app-layout>
     <x-slot name="title">{{ $maquina->nombre }} - {{ config('app.name') }}</x-slot>
 
-    {{-- CSS externalizado para mejor cacheo --}}
-    <link rel="stylesheet" href="{{ asset('css/maquinas-show.css') }}">
-
     <x-slot name="header">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-1 lg:gap-4">
-            <h2 class="font-semibold text-base lg:text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                <strong>{{ $maquina->nombre }}</strong>
-                <span class="text-sm lg:text-base font-normal text-gray-600 dark:text-gray-400">- {{ $usuario1->name }}@if ($usuario2), {{ $usuario2->name }}@endif</span>
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-300 leading-tight">
+                <strong>{{ $maquina->nombre }}</strong>,
+                {{ $usuario1->name }}
+                @if ($usuario2)
+                    y {{ $usuario2->name }}
+                @endif
             </h2>
 
-            <div class="flex flex-wrap items-center gap-2 lg:gap-4">
+            <div class="flex items-center gap-3">
                 @if ($maquina->tipo !== 'grua' && $maquina->tipo !== 'ensambladora')
-                    {{-- Selectores de posiciones de planillas --}}
-                    <div class="contenedor-selectores-planilla">
-                        <select id="posicion_1" name="posicion_1" onchange="cambiarPosicionesPlanillas()">
-                            <option value="0" data-planilla-id="" data-planilla-codigo="">0</option>
-                            @foreach ($posicionesDisponibles as $pos)
-                                <option value="{{ $pos }}"
-                                    data-planilla-id="{{ $planillaIdsPorPosicion[$pos] ?? '' }}"
-                                    data-planilla-codigo="{{ $codigosPorPosicion[$pos] ?? '' }}"
-                                    {{ $posicion1 == $pos ? 'selected' : '' }}>
-                                    {{ $pos }} - {{ $codigosPorPosicion[$pos] ?? '' }}
-                                </option>
-                            @endforeach
-                        </select>
+                    {{-- Material 3 Selector de Posiciones (Segmented Button Style) --}}
+                    <div class="flex items-center bg-gray-100 dark:bg-gray-700 rounded-full p-1 shadow-sm">
+                        <div class="relative">
+                            <select id="posicion_1" name="posicion_1" onchange="cambiarPosicionesPlanillas()"
+                                class="pr-8 appearance-none bg-transparent border-none py-1.5 text-sm font-medium text-gray-700 dark:text-[#E3E3E3] focus:ring-0 cursor-pointer hover:text-blue-600 dark:hover:text-blue-300 transition-colors">
+                                <option value="0" data-planilla-id="" data-planilla-codigo="" class="bg-white dark:bg-gray-700">0</option>
+                                @foreach ($posicionesDisponibles as $pos)
+                                    <option value="{{ $pos }}"
+                                        data-planilla-id="{{ $planillaIdsPorPosicion[$pos] ?? '' }}"
+                                        data-planilla-codigo="{{ $codigosPorPosicion[$pos] ?? '' }}"
+                                        class="bg-white dark:bg-gray-700"
+                                        {{ $posicion1 == $pos ? 'selected' : '' }}>
+                                        {{ $pos }} - {{ $codigosPorPosicion[$pos] ?? '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
 
-                        <span class="separador">+</span>
+                        <div class="h-5 w-px bg-gray-300 dark:bg-gray-600"></div>
 
-                        <select id="posicion_2" name="posicion_2" onchange="cambiarPosicionesPlanillas()">
-                            <option value="0" data-planilla-id="" data-planilla-codigo="">0</option>
-                            @foreach ($posicionesDisponibles as $pos)
-                                <option value="{{ $pos }}"
-                                    data-planilla-id="{{ $planillaIdsPorPosicion[$pos] ?? '' }}"
-                                    data-planilla-codigo="{{ $codigosPorPosicion[$pos] ?? '' }}"
-                                    {{ $posicion2 == $pos ? 'selected' : '' }}>
-                                    {{ $pos }} - {{ $codigosPorPosicion[$pos] ?? '' }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <div class="relative">
+                            <select id="posicion_2" name="posicion_2" onchange="cambiarPosicionesPlanillas()"
+                                class="pr-8 appearance-none bg-transparent border-none py-1.5 text-sm font-medium text-gray-700 dark:text-[#E3E3E3] focus:ring-0 cursor-pointer hover:text-blue-600 dark:hover:text-blue-300 transition-colors">
+                                <option value="0" data-planilla-id="" data-planilla-codigo="" class="bg-white dark:bg-[#303030]">0</option>
+                                @foreach ($posicionesDisponibles as $pos)
+                                    <option value="{{ $pos }}"
+                                        data-planilla-id="{{ $planillaIdsPorPosicion[$pos] ?? '' }}"
+                                        data-planilla-codigo="{{ $codigosPorPosicion[$pos] ?? '' }}"
+                                        class="bg-white dark:bg-[#303030]"
+                                        {{ $posicion2 == $pos ? 'selected' : '' }}>
+                                        {{ $pos }} - {{ $codigosPorPosicion[$pos] ?? '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
 
                         {{-- Indicador de carga --}}
-                        <span id="loading-planillas" class="spinner-loading" style="display: none;">
-                            <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg"
-                                fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                    stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                </path>
+                        <div id="loading-planillas" style="display: none;" class="px-2 animate-fade-in">
+                             <svg class="animate-spin h-4 w-4 text-blue-600 dark:text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                        </span>
+                        </div>
                     </div>
-
-                    {{-- Estilos movidos a public/css/maquinas-show.css --}}
 
                     <script>
                         // Variable global para evitar múltiples ejecuciones simultáneas
@@ -301,14 +303,14 @@
                         {{-- Filtros de estado de etiquetas - Select personalizado --}}
                         <div class="relative" x-data="{ open: false }">
                             <button @click="open = !open" @click.away="open = false" type="button"
-                                class="px-3 py-1.5 rounded-lg text-sm font-medium border shadow-sm transition-all duration-200 flex items-center gap-2 min-w-[130px] justify-between"
+                                class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-2 min-w-[140px] justify-between shadow-sm border border-gray-300 dark:border-gray-700"
                                 :class="{
-                                    'bg-white border-gray-300 text-gray-800': filtroEstado === 'todos',
-                                    'bg-purple-500 border-purple-600 text-white': filtroEstado === 'sin-paquete',
-                                    'bg-blue-500 border-blue-600 text-white': filtroEstado === 'en-paquete',
-                                    'bg-gray-500 border-gray-600 text-white': filtroEstado === 'pendiente',
-                                    'bg-yellow-500 border-yellow-600 text-white': filtroEstado === 'fabricando',
-                                    'bg-green-500 border-green-600 text-white': filtroEstado === 'completada'
+                                    'bg-white dark:bg-gray-700 text-gray-700 dark:text-[#E3E3E3] hover:bg-gray-50 dark:hover:bg-[#404040]': filtroEstado === 'todos',
+                                    'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-200': filtroEstado === 'sin-paquete',
+                                    'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200': filtroEstado === 'en-paquete',
+                                    'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300': filtroEstado === 'pendiente',
+                                    'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-200': filtroEstado === 'fabricando',
+                                    'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-200': filtroEstado === 'completada'
                                 }">
                                 <span
                                     x-text="{
@@ -331,29 +333,29 @@
                                 x-transition:leave="transition ease-in duration-75"
                                 x-transition:leave-start="opacity-100 scale-100"
                                 x-transition:leave-end="opacity-0 scale-95"
-                                class="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                                class="absolute z-50 mt-2 w-full bg-white dark:bg-gray-700 rounded-xl shadow-xl overflow-hidden py-1 border border-gray-100 dark:border-gray-800">
                                 <button @click="setFiltroEstado('todos'); open = false" type="button"
-                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-white hover:bg-gray-100 text-gray-800 border-b border-gray-100">
+                                    class="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-gray-50 dark:hover:bg-[#303030] text-gray-700 dark:text-[#E3E3E3] transition-colors">
                                     Todas
                                 </button>
                                 <button @click="setFiltroEstado('sin-paquete'); open = false" type="button"
-                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-purple-500 hover:bg-purple-600 text-white border-b border-purple-400">
+                                    class="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-700 dark:text-purple-300 transition-colors">
                                     Sin paquete
                                 </button>
                                 <button @click="setFiltroEstado('en-paquete'); open = false" type="button"
-                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white border-b border-blue-400">
+                                    class="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-700 dark:text-blue-300 transition-colors">
                                     En paquete
                                 </button>
                                 <button @click="setFiltroEstado('pendiente'); open = false" type="button"
-                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-gray-500 hover:bg-gray-600 text-white border-b border-gray-400">
+                                    class="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700/30 text-gray-700 dark:text-gray-300 transition-colors">
                                     Pendientes
                                 </button>
                                 <button @click="setFiltroEstado('fabricando'); open = false" type="button"
-                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-yellow-500 hover:bg-yellow-600 text-white border-b border-yellow-400">
+                                    class="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-yellow-50 dark:hover:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 transition-colors">
                                     Fabricando
                                 </button>
                                 <button @click="setFiltroEstado('completada'); open = false" type="button"
-                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-green-500 hover:bg-green-600 text-white">
+                                    class="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-green-50 dark:hover:bg-green-900/20 text-green-700 dark:text-green-300 transition-colors">
                                     Completadas
                                 </button>
                             </div>
@@ -389,33 +391,27 @@
                     @endif
 
                     {{-- Botones Comprimir/Descomprimir/Resumir Etiquetas --}}
-                    <div class="flex items-center gap-1">
+                    <div class="flex items-center gap-2">
                         <button type="button" onclick="comprimirEtiquetas()"
-                            class="px-3 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
-                            title="Comprimir: Agrupa elementos hermanos en mismas etiquetas (máx 5 por etiqueta)">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                            </svg>
-                            Comprimir
+                            class="px-4 py-2 group bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-full text-sm font-medium transition-colors flex items-center gap-2"
+                            title="Comprimir (Agrupar elementos)">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shrink-icon lucide-shrink w-5 h-5 group-hover:scale-75 transition-all duration-200 ease-in-out"><path d="m15 15 6 6m-6-6v4.8m0-4.8h4.8"/><path d="M9 19.8V15m0 0H4.2M9 15l-6 6"/><path d="M15 4.2V9m0 0h4.8M15 9l6-6"/><path d="M9 4.2V9m0 0H4.2M9 9 3 3"/></svg>
+                            <span class="hidden sm:inline">Comprimir</span>
                         </button>
                         <button type="button" onclick="descomprimirEtiquetas()"
-                            class="px-3 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
-                            title="Descomprimir: Separa elementos en etiquetas individuales (1 elemento = 1 etiqueta)">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                            </svg>
-                            Descomprimir
+                            class="px-4 py-2 group bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-full text-sm font-medium transition-colors flex items-center gap-2"
+                            title="Descomprimir (Separar elementos)">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-expand-icon lucide-expand w-4 h-4 group-hover:scale-125 transition-all duration-200 ease-in-out"><path d="m15 15 6 6"/><path d="m15 9 6-6"/><path d="M21 16v5h-5"/><path d="M21 8V3h-5"/><path d="M3 16v5h5"/><path d="m3 21 6-6"/><path d="M3 8V3h5"/><path d="M9 9 3 3"/></svg>
+                            <span class="hidden sm:inline">Descomprimir</span>
                         </button>
                     </div>
 
                     {{-- Botón Planilla Completada --}}
                     @if ($maquina->tipo !== 'grua')
                         <button type="button" onclick="completarPlanillaActual()"
-                            class="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
-                            title="Marcar planilla como completada y pasar a la siguiente">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            class="px-5 py-2 w-full bg-purple-200 dark:bg-purple-700 text-purple-900 dark:text-purple-100 hover:bg-purple-300 dark:hover:bg-purple-600 rounded-full text-sm font-bold shadow-sm transition-all duration-200 flex items-center gap-2"
+                            title="Marcar planilla como completada">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -424,15 +420,15 @@
                     @endif
                 @endif
 
-                <form method="POST" action="{{ route('turno.cambiarMaquina') }}" id="form-cambiar-maquina">
+                <form method="POST" class="w-full" action="{{ route('turno.cambiarMaquina') }}" id="form-cambiar-maquina">
                     @csrf
                     <input type="hidden" name="asignacion_id" value="{{ $turnoHoy->id ?? '' }}">
                     <input type="hidden" name="nueva_maquina_id" id="hidden-nueva-maquina-id" value="">
 
-                    <div class="relative">
+                    <div class="relative w-full">
                         <select id="select-cambiar-maquina"
                             onchange="cambiarMaquinaSelect(this, {{ $maquina->id }})"
-                            class="appearance-none bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:border-blue-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 rounded px-2 py-1 lg:px-4 lg:py-2 pr-8 lg:pr-10 text-xs lg:text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm transition-all duration-200 cursor-pointer">
+                            class="max-md:w-full appearance-none bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
                             @foreach ($maquinas as $m)
                                 <option value="{{ $m->id }}" {{ $m->id == $maquina->id ? 'selected' : '' }}>
                                     {{ $m->nombre }}
@@ -440,8 +436,8 @@
                             @endforeach
                         </select>
                         <div
-                            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 lg:px-3 text-gray-500 dark:text-gray-400">
-                            <svg class="w-3 h-3 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            class="pointer-events-none hidden absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M19 9l-7 7-7-7" />
                             </svg>
@@ -479,7 +475,49 @@
                     }
                 </script>
 
-                {{-- Overlay de carga al cambiar máquina (estilos en maquinas-show.css) --}}
+                {{-- Overlay de carga al cambiar máquina --}}
+                <style>
+                    #overlay-cambiar-maquina {
+                        opacity: 0;
+                        visibility: hidden;
+                        transition: opacity 0.4s ease, visibility 0.4s ease;
+                    }
+
+                    #overlay-cambiar-maquina.active {
+                        opacity: 1;
+                        visibility: visible;
+                    }
+
+                    #overlay-cambiar-maquina .overlay-bg {
+                        opacity: 0;
+                        transition: opacity 0.4s ease;
+                    }
+
+                    #overlay-cambiar-maquina.active .overlay-bg {
+                        opacity: 1;
+                    }
+
+                    #overlay-cambiar-maquina .loader-card {
+                        opacity: 0;
+                        transform: scale(0.9) translateY(20px);
+                        transition: opacity 0.4s ease 0.1s, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s;
+                    }
+
+                    #overlay-cambiar-maquina.active .loader-card {
+                        opacity: 1;
+                        transform: scale(1) translateY(0);
+                    }
+
+                    @keyframes spin-smooth {
+                        to {
+                            transform: rotate(360deg);
+                        }
+                    }
+
+                    .spinner-ring {
+                        animation: spin-smooth 1s linear infinite;
+                    }
+                </style>
                 <div id="overlay-cambiar-maquina" class="fixed inset-0 z-[9999]">
                     {{-- Fondo con blur --}}
                     <div class="overlay-bg absolute inset-0 bg-gray-900/50 backdrop-blur-sm"></div>
@@ -507,7 +545,7 @@
         </div>
     </x-slot>
 
-    <div class="w-full sm:px-4">
+    <div class="w-full">
         <!-- Grid principal -->
         <div class="w-full">
             @if ($maquina->tipo === 'grua' && !($modoFabricacionGrua ?? false))
@@ -531,7 +569,7 @@
                     <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementos-agrupados="$elementosAgrupados" :productos-base-compatibles="$productosBaseCompatibles"
                         :producto-base-solicitados="$productoBaseSolicitados" :planillas-activas="$planillasActivas" :elementos-por-planilla="$elementosPorPlanilla" :es-barra="$esBarra" :longitudes-por-diametro="$longitudesPorDiametro"
                         :diametro-por-etiqueta="$diametroPorEtiqueta" :elementos-agrupados-script="$elementosAgrupadosScript" :posiciones-disponibles="$posicionesDisponibles" :posicion1="$posicion1" :posicion2="$posicion2"
-                        :grupos-resumen="$gruposResumen ?? collect()" :etiquetas-en-grupos="$etiquetasEnGrupos ?? []" :etiquetas-pre-cargadas="$etiquetasPreCargadas ?? collect()" />
+                        :grupos-resumen="$gruposResumen ?? collect()" :etiquetas-en-grupos="$etiquetasEnGrupos ?? []" />
 
                     @include('components.maquinas.modales.normal.modales-normal')
 
@@ -1285,13 +1323,87 @@
                 window.__fullscreenEtiquetaIndex = 0;
                 window.__etiquetasVisibles = [];
 
-                // Crear overlay de pantalla completa (estilos en maquinas-show.css)
+                // Crear overlay de pantalla completa
                 const crearOverlayFullscreen = () => {
                     if (document.getElementById('fullscreen-etiqueta-overlay')) return;
 
                     const overlay = document.createElement('div');
                     overlay.id = 'fullscreen-etiqueta-overlay';
                     overlay.innerHTML = `
+                        <style>
+                            #fullscreen-etiqueta-overlay {
+                                position: fixed;
+                                top: 0;
+                                left: 0;
+                                right: 0;
+                                bottom: 0;
+                                background: #1a1a2e;
+                                z-index: 99999;
+                                display: none;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                opacity: 0;
+                                transition: opacity 0.3s ease;
+                            }
+                            #fullscreen-etiqueta-overlay.visible {
+                                display: flex;
+                                opacity: 1;
+                            }
+                            #fullscreen-etiqueta-container {
+                                transition: transform 0.3s ease, opacity 0.3s ease;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            }
+                            #fullscreen-etiqueta-container .etiqueta-card {
+                                width: 95vw !important;
+                                height: auto !important;
+                                max-height: 85vh !important;
+                                aspect-ratio: 126 / 71;
+                            }
+                            #fullscreen-etiqueta-container.changing {
+                                opacity: 0;
+                                transform: scale(0.95);
+                            }
+                            #fullscreen-contador {
+                                position: fixed;
+                                bottom: 2rem;
+                                left: 50%;
+                                transform: translateX(-50%);
+                                background: rgba(255,255,255,0.1);
+                                backdrop-filter: blur(10px);
+                                padding: 0.75rem 2rem;
+                                border-radius: 2rem;
+                                color: white;
+                                font-size: 1.25rem;
+                                font-weight: bold;
+                                display: flex;
+                                align-items: center;
+                                gap: 1rem;
+                            }
+                            #fullscreen-contador .actual {
+                                color: #a78bfa;
+                                font-size: 1.5rem;
+                            }
+                            #fullscreen-instrucciones {
+                                position: fixed;
+                                top: 1.5rem;
+                                right: 1.5rem;
+                                background: rgba(255,255,255,0.1);
+                                backdrop-filter: blur(10px);
+                                padding: 1rem 1.5rem;
+                                border-radius: 1rem;
+                                color: rgba(255,255,255,0.7);
+                                font-size: 0.85rem;
+                            }
+                            #fullscreen-instrucciones kbd {
+                                background: rgba(255,255,255,0.2);
+                                padding: 0.2rem 0.5rem;
+                                border-radius: 0.25rem;
+                                font-family: monospace;
+                            }
+                        </style>
                         <div id="fullscreen-etiqueta-container"></div>
                         <div id="fullscreen-contador">
                             <span class="actual">1</span>

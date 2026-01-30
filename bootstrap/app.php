@@ -87,6 +87,11 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
+            // Ignorar ValidationException - dejar que Laravel maneje la redirección back con errores
+            if ($e instanceof \Illuminate\Validation\ValidationException) {
+                return null;
+            }
+
             // Para peticiones AJAX/JSON
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([

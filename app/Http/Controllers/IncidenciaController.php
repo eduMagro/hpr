@@ -87,8 +87,8 @@ class IncidenciaController extends Controller
             'maquina_id' => 'required|exists:maquinas,id',
             'descripcion' => 'nullable|string', // Changed to nullable as per modal optional hint
             'titulo' => 'required',
-            'fotos.*' => 'image|mimes:jpeg,png,jpg,gif|max:10240', // Increased max size
-            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240', // Added validation for single file
+            'fotos.*' => 'file|mimes:jpeg,png,jpg,gif,webp,avif|max:10240', // Increased max size
+            'imagen' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,avif|max:10240', // Added validation for single file
             'estado_maquina' => 'nullable|in:activa,averiada,pausa,mantenimiento'
         ]);
 

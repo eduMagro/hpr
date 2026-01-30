@@ -3,6 +3,9 @@
     Header always set X-Frame-Options "SAMEORIGIN"
 </IfModule>
 
+# Ensure AVIF is served with correct MIME type
+AddType image/avif .avif
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
@@ -44,7 +47,7 @@
     </FilesMatch>
 
     # Cache images
-    <FilesMatch "\.(jpg|jpeg|png|gif|ico|svg|webp)$">
+    <FilesMatch "\.(jpg|jpeg|png|gif|ico|svg|webp|avif)$">
         Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>
 
