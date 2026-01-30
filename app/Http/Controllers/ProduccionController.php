@@ -5208,10 +5208,25 @@ class ProduccionController extends Controller
             'obras' => 'required|array|min:1|max:5',
             'obras.*' => 'required|integer|exists:obras,id',
             'incluir_fabricando' => 'boolean',
+            'suplantar_primera' => 'boolean',
         ]);
 
         $obrasIds = $request->input('obras');
         $incluirFabricando = $request->boolean('incluir_fabricando', false);
+        $suplantarPrimera = $request->boolean('suplantar_primera', false);
+
+        // Obtener fechas de entrega de las obras priorizadas
+        $fechasObras = Obra::whereIn('id', $obrasIds)
+            ->with(['planillas' => function ($q) {
+                $q->select('id', 'obra_id', 'fecha_estimada_entrega')
+                    ->whereNotNull('fecha_estimada_entrega');
+            }])
+            ->get()
+            ->mapWithKeys(function ($obra) {
+                // Obtener la fecha de entrega más próxima de las planillas de esta obra
+                $fechaMinima = $obra->planillas->min('fecha_estimada_entrega');
+                return [$obra->id => $fechaMinima];
+            });
 
         // Reconectar BD para evitar "MySQL server has gone away"
         DB::reconnect();
@@ -5240,9 +5255,29 @@ class ProduccionController extends Controller
 
                 // Identificar la planilla en posición 1 si está fabricando (para no moverla)
                 $planillaFabricandoPos1 = null;
-                if (!$incluirFabricando) {
-                    $primeraOp = $ordenPlanillas->first();
-                    if ($primeraOp && $primeraOp->posicion === 1 && $primeraOp->planilla?->estado === 'fabricando') {
+                $primeraOp = $ordenPlanillas->first();
+
+                if (!$incluirFabricando && $primeraOp && $primeraOp->posicion === 1 && $primeraOp->planilla?->estado === 'fabricando') {
+                    // Verificar si debemos suplantar por fecha de entrega
+                    $debeSuplantar = false;
+
+                    if ($suplantarPrimera) {
+                        // Obtener fecha de entrega de la planilla en posición 1
+                        $fechaPlanillaPos1 = $primeraOp->planilla?->fecha_estimada_entrega;
+
+                        // Verificar si alguna obra priorizada tiene fecha anterior
+                        foreach ($obrasIds as $obraId) {
+                            $fechaObraPriorizada = $fechasObras[$obraId] ?? null;
+                            if ($fechaObraPriorizada && $fechaPlanillaPos1 && $fechaObraPriorizada < $fechaPlanillaPos1) {
+                                $debeSuplantar = true;
+                                Log::info("🔄 Suplantando posición 1 en máquina {$maquinaId}: obra {$obraId} tiene fecha {$fechaObraPriorizada} anterior a {$fechaPlanillaPos1}");
+                                break;
+                            }
+                        }
+                    }
+
+                    // Solo preservar la primera posición si NO debemos suplantar
+                    if (!$debeSuplantar) {
                         $planillaFabricandoPos1 = $primeraOp;
                     }
                 }

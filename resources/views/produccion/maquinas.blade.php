@@ -1446,11 +1446,6 @@
                             </svg>
                             Limpiar todo
                         </button>
-                        <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                            <input type="checkbox" id="chkPriorizarFabricando"
-                                class="w-4 h-4 text-orange-500 rounded border-gray-300 focus:ring-orange-500">
-                            <span>Incluir planillas en posición 1 y fabricando</span>
-                        </label>
                     </div>
                     <div class="flex justify-end gap-3">
                         <button onclick="cerrarModalPriorizarObra()"
@@ -6965,17 +6960,30 @@
                     title: '¿Aplicar estas prioridades?',
                     html: `${resumenHtml}<br>
                            <strong>Total: ${totalPlanillas} planillas</strong> se reordenarán según el orden indicado.<br><br>
-                           <label class="flex items-center justify-center gap-2 cursor-pointer">
-                               <input type="checkbox" id="pararFabricando" class="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
-                               <span class="text-sm text-gray-700">Parar planillas que estén fabricando si es necesario</span>
-                           </label>`,
+                           <div class="space-y-3 text-left bg-gray-50 p-3 rounded-lg">
+                               <label class="flex items-start gap-2 cursor-pointer">
+                                   <input type="checkbox" id="suplantarPrimera" class="w-4 h-4 mt-0.5 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                                   <div>
+                                       <span class="text-sm font-medium text-gray-700">Suplantar primera posición si es necesario</span>
+                                       <p class="text-xs text-gray-500">Si la fecha de entrega de la obra priorizada es anterior, se pondrá en posición 1 (quitando el trabajo actual al operario)</p>
+                                   </div>
+                               </label>
+                               <label class="flex items-start gap-2 cursor-pointer">
+                                   <input type="checkbox" id="pararFabricando" class="w-4 h-4 mt-0.5 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                                   <div>
+                                       <span class="text-sm font-medium text-gray-700">Incluir planillas que están fabricando</span>
+                                       <p class="text-xs text-gray-500">Mover también planillas cuyo estado es "fabricando" (puede interrumpir trabajo en curso)</p>
+                                   </div>
+                               </label>
+                           </div>`,
                     showCancelButton: true,
                     confirmButtonText: 'Sí, aplicar',
                     cancelButtonText: 'Cancelar',
                     confirmButtonColor: '#f97316',
-                    width: '500px',
+                    width: '550px',
                     preConfirm: () => {
                         return {
+                            suplantarPrimera: document.getElementById('suplantarPrimera').checked,
                             pararFabricando: document.getElementById('pararFabricando').checked
                         };
                     }
@@ -6983,6 +6991,7 @@
 
                 if (!result.isConfirmed) return;
 
+                const suplantarPrimera = result.value?.suplantarPrimera || false;
                 const pararFabricando = result.value?.pararFabricando || false;
 
                 Swal.fire({
@@ -6999,9 +7008,6 @@
                         fecha_entrega: sel.grupo.fecha_entrega
                     }));
 
-                    // Obtener el valor del checkbox del modal
-                    const incluirFabricando = document.getElementById('chkPriorizarFabricando')?.checked || false;
-
                     // Extraer solo los IDs de obras
                     const obrasIds = prioridades.map(p => p.obra_id);
 
@@ -7013,7 +7019,8 @@
                         },
                         body: JSON.stringify({
                             obras: obrasIds,
-                            incluir_fabricando: incluirFabricando
+                            incluir_fabricando: pararFabricando,
+                            suplantar_primera: suplantarPrimera
                         })
                     });
 
