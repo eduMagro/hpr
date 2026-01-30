@@ -299,23 +299,17 @@ async function imprimirEtiquetas(ids, modo = 'a6') {
 
         // Reemplazar SVG con imagen
         if (figuraImg) {
-            const targetSvg = clone.querySelector('svg');
-            const targetCanvas = clone.querySelector('canvas');
-            const svgContainer = clone.querySelector('[id^="contenedor-svg-"]');
+            // Eliminar todos los SVGs y canvas
+            clone.querySelectorAll('svg').forEach(el => el.remove());
+            clone.querySelectorAll('canvas').forEach(el => el.remove());
 
-            // Eliminar SVG, canvas y contenedor original
-            if (targetSvg) targetSvg.remove();
-            if (targetCanvas) targetCanvas.remove();
-            if (svgContainer) svgContainer.remove();
+            // Eliminar contenedores de figuras (ambos formatos)
+            clone.querySelectorAll('[id^="contenedor-svg-"]').forEach(el => el.remove());
+            clone.querySelectorAll('[id^="figura-elemento-"]').forEach(el => el.remove());
+            clone.querySelectorAll('.elemento-figura').forEach(el => el.remove());
 
             const img = new Image();
             img.src = figuraImg;
-            img.style.width = 'calc(100% - 6mm)';
-            img.style.height = 'auto';
-            img.style.display = 'block';
-            img.style.position = 'absolute';
-            img.style.bottom = '3mm';
-            img.style.left = '3mm';
             img.className = 'figura-print';
 
             // Añadir imagen directamente al contenedor principal
