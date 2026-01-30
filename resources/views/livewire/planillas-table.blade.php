@@ -3,29 +3,69 @@
 
         <!-- Alertas de planillas pendientes -->
         @if ($planillasSinAprobar > 0 || $planillasSinRevisar > 0)
-            <div class="mb-3 flex flex-wrap items-center gap-4 text-sm">
-                @if ($planillasSinAprobar > 0)
-                    <div class="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5">
-                        <span class="font-semibold text-gray-700 dark:text-gray-300">{{ $planillasSinAprobar }} sin aprobar</span>
-                        <button wire:click="verSinAprobar"
-                            class="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline">
-                            Ver
-                        </button>
-                        <button wire:click="toggleModoSeleccion"
-                            class="text-xs px-2 py-0.5 rounded {{ $modoSeleccion ? 'bg-gray-700 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200' }} hover:bg-gray-600 hover:text-white transition">
-                            {{ $modoSeleccion ? 'Cancelar' : 'Aprobar en masa' }}
-                        </button>
-                    </div>
-                @endif
-                @if ($planillasSinRevisar > 0)
-                    <div class="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5">
-                        <span class="font-semibold text-gray-700 dark:text-gray-300">{{ $planillasSinRevisar }} sin revisar</span>
-                        <button wire:click="verSinRevisar"
-                            class="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline">
-                            Ver
-                        </button>
-                    </div>
-                @endif
+            <div class="mb-4 p-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                <div class="flex flex-wrap items-center gap-6">
+                    @if ($planillasSinAprobar > 0)
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-600">
+                                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-2xl font-bold text-gray-800 dark:text-white leading-none">{{ number_format($planillasSinAprobar) }}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">sin aprobar</span>
+                            </div>
+                            <div class="flex items-center gap-1 ml-2">
+                                <button wire:click="verSinAprobar"
+                                    class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
+                                    Ver
+                                </button>
+                                <button wire:click="toggleModoSeleccion"
+                                    class="px-3 py-1.5 text-xs font-medium rounded-lg transition shadow-sm flex items-center gap-1
+                                    {{ $modoSeleccion
+                                        ? 'bg-gray-800 text-white hover:bg-gray-900'
+                                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                                    }}">
+                                    @if ($modoSeleccion)
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                        Cancelar
+                                    @else
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Aprobar en masa
+                                    @endif
+                                </button>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if ($planillasSinAprobar > 0 && $planillasSinRevisar > 0)
+                        <div class="hidden sm:block w-px h-10 bg-gray-300 dark:bg-gray-600"></div>
+                    @endif
+
+                    @if ($planillasSinRevisar > 0)
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-600">
+                                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-2xl font-bold text-gray-800 dark:text-white leading-none">{{ number_format($planillasSinRevisar) }}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">sin revisar</span>
+                            </div>
+                            <button wire:click="verSinRevisar"
+                                class="ml-2 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm">
+                                Ver
+                            </button>
+                        </div>
+                    @endif
+                </div>
             </div>
         @endif
 
